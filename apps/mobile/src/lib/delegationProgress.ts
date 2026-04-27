@@ -38,6 +38,7 @@ const TOOL_RESULT_PREFIX = /^tool result:\s*/i;
 type DelegationToolEntry = {
   toolCall: NonNullable<ChatMessage['toolCalls']>[number];
   result?: Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>;
+  source: 'structured' | 'legacy';
 };
 
 const normalizeToolArguments = (input: unknown): Record<string, unknown> => {
@@ -113,6 +114,22 @@ const attachResultToEarliestPendingEntry = (
   return false;
 };
 
+const attachResultToLatestPendingLegacyEntry = (
+  entries: DelegationToolEntry[],
+  result: Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>,
+) => {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index];
+    if (entry.source !== 'legacy' || entry.result) {
+      continue;
+    }
+    entry.result = result;
+    return true;
+  }
+
+  return attachResultToEarliestPendingEntry(entries, result);
+};
+
 const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<ChatMessage, 'toolCalls' | 'toolResults'> => {
   const entries: DelegationToolEntry[] = [];
 
@@ -132,6 +149,7 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
           result: result
             ? normalizeToolResult(result)
             : undefined,
+          source: 'structured',
         });
       }
       if (structuredResults.length > structuredCalls.length) {
@@ -149,6 +167,7 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
                 arguments: {},
               },
               result: normalizedResult,
+              source: 'structured',
             });
           }
         }
@@ -167,13 +186,14 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
           name: message.toolName || parsedToolUse.name || 'tool_call',
           arguments: normalizeToolArguments(message.toolInput ?? parsedToolUse.input),
         },
+        source: 'legacy',
       });
       continue;
     }
 
     const normalizedMessageContent = (message.content ?? '').trim();
     if (TOOL_RESULT_PREFIX.test(normalizedMessageContent)) {
-      const attached = attachResultToEarliestPendingEntry(
+      const attached = attachResultToLatestPendingLegacyEntry(
         entries,
         normalizeToolResult({
           success: true,
@@ -190,6 +210,7 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
             success: true,
             content: normalizeToolResultContent(message.content),
           }),
+          source: 'legacy',
         });
       }
       continue;
@@ -208,6 +229,7 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
               content: normalizedContent,
             })
           : undefined,
+        source: 'legacy',
       });
       continue;
     }
