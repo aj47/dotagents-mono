@@ -62,8 +62,8 @@ const isPanelSize = (value: unknown): value is PanelSize =>
 const getCssViewportSize = (): PanelSize => {
   if (typeof window === "undefined") return { width: 0, height: 0 }
   return {
-    width: Math.max(1, Math.round(window.innerWidth || 0)),
-    height: Math.max(1, Math.round(window.innerHeight || 0)),
+    width: Math.round(window.innerWidth || 0),
+    height: Math.round(window.innerHeight || 0),
   }
 }
 

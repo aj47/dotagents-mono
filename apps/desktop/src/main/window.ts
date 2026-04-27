@@ -631,6 +631,7 @@ const getPanelMinHeight = (mode: SavedPanelSizeMode | "normal" | "agent" | "text
 // Get the saved panel size (mode-aware)
 const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
   const config = configStore.get()
+  const legacyCustomSize = config.panelCustomSize
 
   logApp(`[window.ts] getSavedPanelSize - checking config for mode: ${mode}...`)
 
@@ -658,7 +659,7 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
   }
 
   const validateSize = (
-    savedSize: { width: number; height: number },
+    savedSize: unknown,
     minHeight: number,
     fallbackSize: { width: number; height: number } = panelWindowSize,
     minWidth: number = getPanelMinWidth(mode),
@@ -670,15 +671,17 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
       return validateSize(config.panelProgressSize, PROGRESS_MIN_HEIGHT, agentPanelWindowSize)
     }
 
-    if (config.panelCustomSize) {
+    if (isFinitePanelSize(legacyCustomSize)) {
       // Migration fallback for users that had a single shared panel size before
       // progress-mode persistence existed.
       const migratedProgressSize = {
-        width: config.panelCustomSize.width,
-        height: Math.max(config.panelCustomSize.height, PROGRESS_MIN_HEIGHT),
+        width: legacyCustomSize.width,
+        height: Math.max(legacyCustomSize.height, PROGRESS_MIN_HEIGHT),
       }
       logApp(`[window.ts] No saved progress size; using migrated panel size:`, migratedProgressSize)
       return validateSize(migratedProgressSize, PROGRESS_MIN_HEIGHT, agentPanelWindowSize)
+    } else if (legacyCustomSize) {
+      logApp(`[window.ts] Ignoring invalid legacy progress size, using agent default:`, legacyCustomSize)
     }
 
     logApp(`[window.ts] No saved progress size, using agent default:`, agentPanelWindowSize)
@@ -691,13 +694,15 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
       return validateSize(config.panelTextInputSize, TEXT_INPUT_MIN_HEIGHT, textInputPanelWindowSize, TEXT_INPUT_MIN_WIDTH)
     }
 
-    if (config.panelCustomSize) {
+    if (isFinitePanelSize(legacyCustomSize)) {
       const migratedTextInputSize = {
-        width: Math.max(config.panelCustomSize.width, TEXT_INPUT_MIN_WIDTH),
-        height: Math.max(config.panelCustomSize.height, TEXT_INPUT_MIN_HEIGHT),
+        width: Math.max(legacyCustomSize.width, TEXT_INPUT_MIN_WIDTH),
+        height: Math.max(legacyCustomSize.height, TEXT_INPUT_MIN_HEIGHT),
       }
       logApp(`[window.ts] No saved text input size; using migrated panel size:`, migratedTextInputSize)
       return validateSize(migratedTextInputSize, TEXT_INPUT_MIN_HEIGHT, textInputPanelWindowSize, TEXT_INPUT_MIN_WIDTH)
+    } else if (legacyCustomSize) {
+      logApp(`[window.ts] Ignoring invalid legacy text input size, using text input default:`, legacyCustomSize)
     }
 
     logApp(`[window.ts] No saved text input size, using text input default:`, textInputPanelWindowSize)
@@ -716,19 +721,19 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
     logApp(`[window.ts] Ignoring invalid saved waveform size, checking legacy fallback:`, config.panelWaveformSize)
   }
 
-  if (isFinitePanelSize(config.panelCustomSize)) {
+  if (isFinitePanelSize(legacyCustomSize)) {
     const isCompactLegacyWaveformSize =
-      config.panelCustomSize.width <= LEGACY_WAVEFORM_SIZE_MAX_WIDTH &&
-      config.panelCustomSize.height <= LEGACY_WAVEFORM_SIZE_MAX_HEIGHT
+      legacyCustomSize.width <= LEGACY_WAVEFORM_SIZE_MAX_WIDTH &&
+      legacyCustomSize.height <= LEGACY_WAVEFORM_SIZE_MAX_HEIGHT
 
     if (isCompactLegacyWaveformSize) {
-      logApp(`[window.ts] Reusing compact legacy waveform size:`, config.panelCustomSize)
-      return validateSize(config.panelCustomSize, WAVEFORM_MIN_HEIGHT, panelWindowSize, getPanelMinWidth("waveform"))
+      logApp(`[window.ts] Reusing compact legacy waveform size:`, legacyCustomSize)
+      return validateSize(legacyCustomSize, WAVEFORM_MIN_HEIGHT, panelWindowSize, getPanelMinWidth("waveform"))
     }
 
-    logApp(`[window.ts] Ignoring oversized legacy waveform size, using compact default:`, config.panelCustomSize)
-  } else if (config.panelCustomSize) {
-    logApp(`[window.ts] Ignoring invalid legacy waveform size, using compact default:`, config.panelCustomSize)
+    logApp(`[window.ts] Ignoring oversized legacy waveform size, using compact default:`, legacyCustomSize)
+  } else if (legacyCustomSize) {
+    logApp(`[window.ts] Ignoring invalid legacy waveform size, using compact default:`, legacyCustomSize)
   }
 
   logApp(`[window.ts] No saved panel size, using default:`, panelWindowSize)
