@@ -45,7 +45,7 @@ describe("runtime-tools set_session_title", () => {
     mockEmitAgentProgress.mockResolvedValue(undefined)
     mockGetSession.mockImplementation((sessionId: string) =>
       sessionId === "app-session-1"
-        ? { id: "app-session-1", conversationId: "conversation-1", conversationTitle: "Old title" }
+        ? { id: "app-session-1", conversationId: "conversation-1", conversationTitle: "Old title", status: "active" }
         : undefined,
     )
     mockRenameConversationTitle.mockResolvedValue({ id: "conversation-1", title: "Delegated title" })
@@ -76,5 +76,25 @@ describe("runtime-tools set_session_title", () => {
       content: [{ type: "text", text: JSON.stringify({ success: true, title: "Delegated title" }, null, 2) }],
       isError: false,
     })
+  })
+
+  it("preserves terminal completion state for delegated title updates", async () => {
+    mockGetRootAppSessionForAcpSession.mockReturnValue("app-session-1")
+    mockGetSession.mockImplementation((sessionId: string) =>
+      sessionId === "app-session-1"
+        ? { id: "app-session-1", conversationId: "conversation-1", conversationTitle: "Old title", status: "completed" }
+        : undefined,
+    )
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    await executeRuntimeTool("set_session_title", { title: "Delegated title" }, "delegated-session-1")
+
+    expect(mockEmitAgentProgress).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: "delegated-session-1",
+      parentSessionId: "app-session-1",
+      conversationTitle: "Delegated title",
+      isComplete: true,
+      conversationState: "complete",
+    }))
   })
 })
