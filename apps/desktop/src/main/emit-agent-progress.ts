@@ -68,6 +68,10 @@ function isCriticalUpdate(update: AgentProgressUpdate): boolean {
   if (update.isComplete) return true
   if (update.pendingToolApproval) return true
   if (typeof update.userResponse === "string" && update.userResponse.trim().length > 0) return true
+  if (update.steps?.some(s => {
+    const status = s.delegation?.status
+    return status === "completed" || status === "failed" || status === "cancelled"
+  })) return true
   // First update for a session — send immediately
   if (update.sessionId && !sessionThrottleState.has(update.sessionId)) return true
   // Steps with error or awaiting_approval status

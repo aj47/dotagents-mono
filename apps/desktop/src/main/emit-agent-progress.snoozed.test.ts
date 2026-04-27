@@ -78,4 +78,36 @@ describe("emitAgentProgress snoozed propagation", () => {
     expect(mocks.resizePanelForAgentMode).toHaveBeenCalledTimes(1)
     expect(mocks.showPanelWindow).toHaveBeenCalledWith({ markOpenedWithMain: false })
   })
+
+  it("sends terminal delegation updates immediately instead of leaving them behind the throttle", async () => {
+    mocks.isSessionSnoozed.mockReturnValue(false)
+
+    await emitAgentProgress({
+      sessionId: "session-terminal-delegation",
+      runId: 1,
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [{
+        id: "delegation-1",
+        type: "completion",
+        title: "Sub-agent",
+        status: "completed",
+        timestamp: 1,
+        delegation: {
+          runId: "delegated-run-1",
+          agentName: "internal",
+          task: "Nested work",
+          status: "completed",
+          startTime: 1,
+          endTime: 2,
+        },
+      }],
+    })
+
+    expect(mocks.sendSpy).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: "session-terminal-delegation",
+      steps: [expect.objectContaining({ status: "completed" })],
+    }))
+  })
 })

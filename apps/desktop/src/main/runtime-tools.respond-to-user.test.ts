@@ -5,6 +5,7 @@ import path from "path"
 
 const mockGetSession = vi.fn()
 const mockGetAppSessionForAcpSession = vi.fn()
+const mockGetRootAppSessionForAcpSession = vi.fn()
 const mockAppendSessionUserResponse = vi.fn()
 const mockGetSessionRunId = vi.fn()
 const mockStoreDataImageUrlAsConversationAsset = vi.fn()
@@ -37,8 +38,10 @@ vi.mock("./conversation-service", () => ({
   },
 }))
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
+vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: vi.fn() }))
 vi.mock("./acp-session-state", () => ({
   getAppSessionForAcpSession: mockGetAppSessionForAcpSession,
+  getRootAppSessionForAcpSession: mockGetRootAppSessionForAcpSession,
   setAcpSessionTitleOverride: vi.fn(),
 }))
 
@@ -48,6 +51,7 @@ describe("runtime-tools respond_to_user", () => {
     vi.clearAllMocks()
 
     mockGetAppSessionForAcpSession.mockReturnValue(undefined)
+    mockGetRootAppSessionForAcpSession.mockReturnValue(undefined)
     mockGetSessionRunId.mockReturnValue(7)
     mockStoreDataImageUrlAsConversationAsset.mockImplementation(async (_conversationId: string, _url: string) => "assets://conversation-image/conversation-1/data.png")
     mockStoreImagePathAsConversationAsset.mockImplementation(async (_conversationId: string, _imagePath: string) => "assets://conversation-image/conversation-1/local.png")
@@ -59,12 +63,12 @@ describe("runtime-tools respond_to_user", () => {
   })
 
   it("stores delegated ACP responses against the mapped app session", async () => {
-    mockGetAppSessionForAcpSession.mockReturnValue("app-session-1")
+    mockGetRootAppSessionForAcpSession.mockReturnValue("app-session-1")
 
     const { executeRuntimeTool } = await import("./runtime-tools")
     const result = await executeRuntimeTool("respond_to_user", { text: "Hello from Augustus" }, "delegated-session-1")
 
-    expect(mockGetAppSessionForAcpSession).toHaveBeenCalledWith("delegated-session-1")
+    expect(mockGetRootAppSessionForAcpSession).toHaveBeenCalledWith("delegated-session-1")
     expect(mockGetSession).toHaveBeenCalledWith("app-session-1")
     expect(mockGetSessionRunId).toHaveBeenCalledWith("app-session-1")
     expect(mockAppendSessionUserResponse).toHaveBeenCalledWith({

@@ -6,7 +6,17 @@ type SessionLike = {
   conversationId?: string
 }
 
+type ParentSessionLike = SessionLike & {
+  parentSessionId?: string | null
+}
+
+export type SidebarSessionNesting = {
+  isSubagent: boolean
+  nestingDepth: number
+}
+
 type TitledSessionLike = SessionLike & {
+  parentSessionId?: string | null
   conversationTitle?: string
 }
 
@@ -20,13 +30,22 @@ export function isTaskSession(session: TitledSessionLike): boolean {
   return hasRepeatTaskTitlePrefix(session.conversationTitle)
 }
 
-export function partitionTaskAndUserEntries<T extends { session: TitledSessionLike }>(
-  entries: T[],
-): { userEntries: T[]; taskEntries: T[] } {
+export function partitionTaskAndUserEntries<
+  T extends { session: TitledSessionLike },
+>(entries: T[]): { userEntries: T[]; taskEntries: T[] } {
+  const taskSessionIds = new Set(
+    entries
+      .filter((entry) => isTaskSession(entry.session))
+      .map((entry) => entry.session.id),
+  )
   const userEntries: T[] = []
   const taskEntries: T[] = []
   for (const entry of entries) {
-    if (isTaskSession(entry.session)) {
+    const parentSessionId = entry.session.parentSessionId?.trim()
+    if (
+      isTaskSession(entry.session) ||
+      (parentSessionId && taskSessionIds.has(parentSessionId))
+    ) {
       taskEntries.push(entry)
     } else {
       userEntries.push(entry)
@@ -36,7 +55,7 @@ export function partitionTaskAndUserEntries<T extends { session: TitledSessionLi
 }
 
 export function partitionPinnedAndUnpinnedTaskEntries<
-  T extends { session: SessionLike },
+  T extends { session: ParentSessionLike },
 >(
   taskEntries: T[],
   pinnedSessionIds: ReadonlySet<string>,
@@ -45,11 +64,23 @@ export function partitionPinnedAndUnpinnedTaskEntries<
     return { pinnedTaskEntries: [], unpinnedTaskEntries: taskEntries }
   }
 
+  const pinnedTaskSessionIds = new Set(
+    taskEntries
+      .filter((entry) => {
+        const conversationId = entry.session.conversationId
+        return !!conversationId && pinnedSessionIds.has(conversationId)
+      })
+      .map((entry) => entry.session.id),
+  )
   const pinnedTaskEntries: T[] = []
   const unpinnedTaskEntries: T[] = []
   for (const entry of taskEntries) {
     const conversationId = entry.session.conversationId
-    if (conversationId && pinnedSessionIds.has(conversationId)) {
+    const parentSessionId = entry.session.parentSessionId?.trim()
+    if (
+      (conversationId && pinnedSessionIds.has(conversationId)) ||
+      (parentSessionId && pinnedTaskSessionIds.has(parentSessionId))
+    ) {
       pinnedTaskEntries.push(entry)
     } else {
       unpinnedTaskEntries.push(entry)
@@ -90,6 +121,154 @@ export function orderActiveSessionsByPinnedFirst<T extends SessionLike>(
   return [...pinnedSessions, ...unpinnedSessions]
 }
 
+export function getSubagentParentSessionIdMap(
+  progressEntries: Iterable<[string, Pick<AgentProgressUpdate, "steps">]>,
+): Map<string, string> {
+  const parentSessionIdsByChildId = new Map<string, string>()
+
+  for (const [parentSessionId, progress] of progressEntries) {
+    for (const step of progress.steps ?? []) {
+      const delegation = step.delegation
+      if (!delegation) continue
+
+      const possibleChildSessionIds = [
+        delegation.subSessionId,
+        delegation.acpSessionId,
+        delegation.runId,
+      ]
+
+      for (const childSessionId of possibleChildSessionIds) {
+        const normalizedChildSessionId = childSessionId?.trim()
+        if (
+          !normalizedChildSessionId ||
+          normalizedChildSessionId === parentSessionId ||
+          parentSessionIdsByChildId.has(normalizedChildSessionId)
+        ) {
+          continue
+        }
+        parentSessionIdsByChildId.set(normalizedChildSessionId, parentSessionId)
+      }
+    }
+  }
+
+  return parentSessionIdsByChildId
+}
+
+function isActiveDelegationStatus(status?: string): boolean {
+  return status === "pending" || status === "spawning" || status === "running"
+}
+
+function hasActiveDelegationProgress(
+  progress: Pick<AgentProgressUpdate, "steps">,
+): boolean {
+  return (progress.steps ?? []).some((step) =>
+    isActiveDelegationStatus(step.delegation?.status),
+  )
+}
+
+function isProgressActivelyRunning(
+  progress: Pick<AgentProgressUpdate, "steps" | "isComplete">,
+): boolean {
+  return !progress.isComplete || hasActiveDelegationProgress(progress)
+}
+
+export function getSessionIdsWithActiveChildProgress(
+  progressEntries: Iterable<[
+    string,
+    Pick<AgentProgressUpdate, "steps" | "isComplete" | "parentSessionId">,
+  ]>,
+): Set<string> {
+  const entries = Array.from(progressEntries)
+  const inferredParentIds = getSubagentParentSessionIdMap(entries)
+  const parentByChildId = new Map(inferredParentIds)
+
+  for (const [sessionId, progress] of entries) {
+    const parentSessionId = progress.parentSessionId?.trim()
+    if (parentSessionId && parentSessionId !== sessionId) {
+      parentByChildId.set(sessionId, parentSessionId)
+    }
+  }
+
+  const activeParentSessionIds = new Set<string>()
+
+  const markSessionAndAncestorsActive = (sessionId: string) => {
+    let currentSessionId: string | undefined = sessionId
+    const visitedSessionIds = new Set<string>()
+    while (currentSessionId && !visitedSessionIds.has(currentSessionId)) {
+      visitedSessionIds.add(currentSessionId)
+      activeParentSessionIds.add(currentSessionId)
+      currentSessionId = parentByChildId.get(currentSessionId)
+    }
+  }
+
+  for (const [sessionId, progress] of entries) {
+    if (hasActiveDelegationProgress(progress)) {
+      markSessionAndAncestorsActive(sessionId)
+    }
+
+    if (isProgressActivelyRunning(progress)) {
+      const parentSessionId = parentByChildId.get(sessionId)
+      if (parentSessionId) {
+        markSessionAndAncestorsActive(parentSessionId)
+      }
+    }
+  }
+
+  return activeParentSessionIds
+}
+
+export function nestSubagentSessionEntries<
+  T extends { session: ParentSessionLike },
+>(entries: T[]): Array<T & SidebarSessionNesting> {
+  if (entries.length === 0) return []
+
+  const entryIds = new Set(entries.map((entry) => entry.session.id))
+  const childrenByParentId = new Map<string, T[]>()
+  const topLevelEntries: T[] = []
+
+  for (const entry of entries) {
+    const parentSessionId = entry.session.parentSessionId?.trim()
+    if (
+      parentSessionId &&
+      parentSessionId !== entry.session.id &&
+      entryIds.has(parentSessionId)
+    ) {
+      const children = childrenByParentId.get(parentSessionId) ?? []
+      children.push(entry)
+      childrenByParentId.set(parentSessionId, children)
+    } else {
+      topLevelEntries.push(entry)
+    }
+  }
+
+  const orderedEntries: Array<T & SidebarSessionNesting> = []
+  const visitedSessionIds = new Set<string>()
+
+  const appendEntry = (entry: T, depth: number) => {
+    if (visitedSessionIds.has(entry.session.id)) return
+    visitedSessionIds.add(entry.session.id)
+    orderedEntries.push({
+      ...entry,
+      isSubagent: depth > 0,
+      nestingDepth: Math.min(depth, 2),
+    })
+
+    for (const child of childrenByParentId.get(entry.session.id) ?? []) {
+      appendEntry(child, depth + 1)
+    }
+  }
+
+  for (const entry of topLevelEntries) {
+    appendEntry(entry, 0)
+  }
+
+  for (const entry of entries) {
+    appendEntry(entry, 0)
+  }
+
+  return orderedEntries
+}
+
 export function filterPastSessionsAgainstActiveSessions<
   T extends { session: SessionLike },
 >(pastSessions: T[], activeSessions: SessionLike[]): T[] {
@@ -128,8 +307,9 @@ export function isSidebarSessionCurrentlyViewed(
       return session.conversationId === viewedConversationId
     }
 
-    return !isPast && (
-      session.id === focusedSessionId || session.id === expandedSessionId
+    return (
+      !isPast &&
+      (session.id === focusedSessionId || session.id === expandedSessionId)
     )
   }
 

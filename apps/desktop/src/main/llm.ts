@@ -1492,6 +1492,25 @@ export async function processTranscriptWithAgentMode(
       }
     }
 
+    const missingItems = normalizeMissingItemsList(verification?.missingItems)
+    const verificationReason =
+      typeof verification?.reason === "string" && verification.reason.trim().length > 0
+        ? verification.reason.trim()
+        : ""
+    const onlyMissingInternalCompletionSignal = (() => {
+      const combinedText = [verificationReason, ...missingItems].join(" ").toLowerCase()
+      if (!combinedText.trim()) return false
+      const mentionsCompletionSignal =
+        combinedText.includes(MARK_WORK_COMPLETE_TOOL) ||
+        combinedText.includes("completion signal")
+      const mentionsMissingWork = missingItems.some((item) => {
+        const normalized = item.toLowerCase()
+        return !normalized.includes(MARK_WORK_COMPLETE_TOOL) &&
+          !normalized.includes("completion signal")
+      })
+      return mentionsCompletionSignal && !mentionsMissingWork
+    })()
+
     const conversationState = normalizeAgentConversationState(
       verification?.conversationState,
       verified ? "complete" : "running",
@@ -1499,26 +1518,26 @@ export async function processTranscriptWithAgentMode(
     const skipPostVerifySummary =
       conversationState === "needs_input" || conversationState === "blocked"
 
-    if (verified) {
+    if (verified || (onlyMissingInternalCompletionSignal && isDeliverableResponseContent(finalContent))) {
+      const completionConversationState: AgentConversationState = onlyMissingInternalCompletionSignal
+        ? "complete"
+        : conversationState
       verifyStep.status = "completed"
-      verifyStep.description = getVerificationOutcomeDescription(conversationState)
+      verifyStep.description = onlyMissingInternalCompletionSignal
+        ? "Verification passed - only the internal completion signal was missing"
+        : getVerificationOutcomeDescription(completionConversationState)
       return {
         shouldContinue: false,
         isComplete: true,
         newFailCount: 0,
         skipPostVerifySummary,
         forcedByLimit: false,
-        conversationState,
+        conversationState: completionConversationState,
       }
     }
 
     // Verification failed; either continue with nudge or force incomplete.
     const newFailCount = currentFailCount + 1
-    const missingItems = normalizeMissingItemsList(verification?.missingItems)
-    const verificationReason =
-      typeof verification?.reason === "string" && verification.reason.trim().length > 0
-        ? verification.reason.trim()
-        : ""
 
     if (newFailCount >= VERIFICATION_FAIL_LIMIT) {
       verifyStep.status = "error"
@@ -2729,11 +2748,11 @@ export async function processTranscriptWithAgentMode(
     const hasErrors = toolResults.some((result) => result.isError)
     const allToolsSuccessful = toolResults.length > 0 && !hasErrors
 
-    // A successful tool batch is forward progress, so it breaks any
-    // verifier-failure streak. This keeps long deep-research runs from being
-    // killed by VERIFICATION_FAIL_LIMIT just because the verifier (correctly)
-    // said "still more work to do" several times before the agent finished.
-    if (allToolsSuccessful) {
+    // A successful real-work tool batch is forward progress, so it breaks any
+    // verifier-failure streak. Communication-only tools such as respond_to_user
+    // are intentionally excluded; otherwise a model that repeatedly talks but
+    // never calls mark_work_complete can reset the verifier budget forever.
+    if (allToolsSuccessful && !onlyCommunicationTools) {
       verificationFailCount = 0
     }
 

@@ -187,6 +187,22 @@ export function getAppSessionForAcpSession(acpxSessionId: string): string | unde
   return acpxToAppSession.get(acpxSessionId)
 }
 
+export function getRootAppSessionForAcpSession(acpxSessionId: string): string | undefined {
+  let currentSessionId = acpxSessionId
+  const visitedSessionIds = new Set<string>()
+
+  while (!visitedSessionIds.has(currentSessionId)) {
+    visitedSessionIds.add(currentSessionId)
+    const mappedSessionId = acpxToAppSession.get(currentSessionId)
+    if (!mappedSessionId) {
+      return currentSessionId === acpxSessionId ? undefined : currentSessionId
+    }
+    currentSessionId = mappedSessionId
+  }
+
+  return undefined
+}
+
 export function setAcpSessionTitleOverride(acpxSessionId: string, title: string): void {
   const normalizedTitle = title.trim()
   if (!normalizedTitle) {

@@ -4,7 +4,9 @@ const mockRenameConversationTitle = vi.fn()
 const mockGetSession = vi.fn()
 const mockUpdateSession = vi.fn()
 const mockGetAppSessionForAcpSession = vi.fn()
+const mockGetRootAppSessionForAcpSession = vi.fn()
 const mockSetAcpSessionTitleOverride = vi.fn()
+const mockEmitAgentProgress = vi.fn()
 
 vi.mock("./mcp-service", () => ({
   mcpService: { getAvailableTools: vi.fn(() => []) },
@@ -31,8 +33,10 @@ vi.mock("./conversation-service", () => ({ conversationService: { renameConversa
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
 vi.mock("./acp-session-state", () => ({
   getAppSessionForAcpSession: mockGetAppSessionForAcpSession,
+  getRootAppSessionForAcpSession: mockGetRootAppSessionForAcpSession,
   setAcpSessionTitleOverride: mockSetAcpSessionTitleOverride,
 }))
+vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: mockEmitAgentProgress }))
 
 describe("runtime-tools set_session_title", () => {
   beforeEach(() => {
@@ -40,6 +44,8 @@ describe("runtime-tools set_session_title", () => {
     vi.clearAllMocks()
 
     mockGetAppSessionForAcpSession.mockReturnValue(undefined)
+    mockGetRootAppSessionForAcpSession.mockReturnValue(undefined)
+    mockEmitAgentProgress.mockResolvedValue(undefined)
     mockGetSession.mockImplementation((sessionId: string) =>
       sessionId === "app-session-1"
         ? { id: "app-session-1", conversationId: "conversation-1", conversationTitle: "Old title" }
@@ -49,15 +55,27 @@ describe("runtime-tools set_session_title", () => {
   })
 
   it("updates the parent app session title when invoked from a delegated session", async () => {
+    mockGetRootAppSessionForAcpSession.mockReturnValue("app-session-1")
     mockGetAppSessionForAcpSession.mockReturnValue("app-session-1")
 
     const { executeRuntimeTool } = await import("./runtime-tools")
     const result = await executeRuntimeTool("set_session_title", { title: "Delegated title" }, "delegated-session-1")
 
-    expect(mockGetAppSessionForAcpSession).toHaveBeenCalledWith("delegated-session-1")
+    expect(mockGetRootAppSessionForAcpSession).toHaveBeenCalledWith("delegated-session-1")
     expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title")
     expect(mockUpdateSession).toHaveBeenCalledWith("app-session-1", { conversationTitle: "Delegated title" })
     expect(mockSetAcpSessionTitleOverride).toHaveBeenCalledWith("delegated-session-1", "Delegated title")
+    expect(mockEmitAgentProgress).toHaveBeenCalledWith({
+      sessionId: "delegated-session-1",
+      parentSessionId: "app-session-1",
+      runId: 1,
+      conversationTitle: "Delegated title",
+      currentIteration: 0,
+      maxIterations: 1,
+      steps: [],
+      isComplete: false,
+      conversationState: "running",
+    })
     expect(result).toEqual({
       content: [{ type: "text", text: JSON.stringify({ success: true, title: "Delegated title" }, null, 2) }],
       isError: false,

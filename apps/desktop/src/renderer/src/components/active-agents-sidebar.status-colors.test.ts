@@ -5,9 +5,17 @@ const sidebarSource = readFileSync(new URL("./active-agents-sidebar.tsx", import
 
 describe("active agents sidebar status colors", () => {
   it("keeps the selected or expanded sidebar session green even if a stale snooze flag remains", () => {
-    expect(sidebarSource).toContain("const isVisiblyActive = isSessionExpanded || isFocused || !isSnoozed")
+    expect(sidebarSource).toContain("const isVisiblyActive =")
+    expect(sidebarSource).toContain("isSessionExpanded || isFocused || !isSnoozed || hasActiveChildProgress")
     expect(sidebarSource).toContain('? "bg-green-500"')
     expect(sidebarSource).toContain(': "bg-muted-foreground"')
+  })
+
+  it("keeps parent sessions visually active while child progress is running", () => {
+    expect(sidebarSource).toContain("getSessionIdsWithActiveChildProgress")
+    expect(sidebarSource).toContain("const sessionsWithActiveChildProgress = useMemo")
+    expect(sidebarSource).toContain("const hasActiveChildProgress = sessionsWithActiveChildProgress.has")
+    expect(sidebarSource).toContain('session.status === "active" || hasActiveChildProgress')
   })
 
   it("promotes store-backed sessions into the active list until dismissed", () => {
@@ -17,7 +25,8 @@ describe("active agents sidebar status colors", () => {
   })
 
   it("keeps active sidebar sessions running even if a stale progress packet claims completion", () => {
-    expect(sidebarSource).toContain('const progressLifecycleState = session.status === "active"')
+    expect(sidebarSource).toContain("const progressLifecycleState =")
+    expect(sidebarSource).toContain('session.status === "active" || hasActiveChildProgress')
     expect(sidebarSource).toContain('? "running"')
     expect(sidebarSource).toContain(': (sessionProgress?.isComplete ? "complete" : "running")')
   })

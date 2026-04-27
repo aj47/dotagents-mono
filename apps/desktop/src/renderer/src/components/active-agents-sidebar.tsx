@@ -9,6 +9,7 @@ import {
   Pin,
   X,
   Clock,
+  CornerDownRight,
   Mic,
   Plus,
 } from "lucide-react"
@@ -25,8 +26,11 @@ import {
 import { useSavedConversationsQuery } from "@renderer/lib/queries"
 import {
   filterPastSessionsAgainstActiveSessions,
+  getSessionIdsWithActiveChildProgress,
+  getSubagentParentSessionIdMap,
   hasUnreadAgentResponse,
   isSidebarSessionCurrentlyViewed,
+  nestSubagentSessionEntries,
   orderActiveSessionsByPinnedFirst,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
@@ -41,6 +45,7 @@ import type { AgentProgressUpdate } from "@shared/types"
 interface SidebarSessionRecord {
   id: string
   conversationId?: string
+  parentSessionId?: string | null
   conversationTitle?: string
   status: "active" | "completed" | "error" | "stopped"
   startTime: number
@@ -68,6 +73,8 @@ interface SidebarSessionEntry {
   session: SidebarSessionRecord
   isSavedConversation: boolean
   key: string
+  isSubagent?: boolean
+  nestingDepth?: number
 }
 
 function getSessionLastMessageTimestamp(
@@ -281,6 +288,9 @@ export function ActiveAgentsSidebar({
     []
 
   const activeSessions = useMemo<SidebarSessionRecord[]>(() => {
+    const subagentParentSessionIds = getSubagentParentSessionIdMap(
+      agentProgressById.entries(),
+    )
     const mergedSessions = new Map(
       trackedActiveSessions.map((session) => [session.id, session] as const),
     )
@@ -300,6 +310,10 @@ export function ActiveAgentsSidebar({
       mergedSessions.set(sessionId, {
         id: sessionId,
         conversationId: progress.conversationId ?? existingSession?.conversationId,
+        parentSessionId:
+          progress.parentSessionId ??
+          subagentParentSessionIds.get(sessionId) ??
+          existingSession?.parentSessionId,
         conversationTitle:
           progress.conversationTitle ?? existingSession?.conversationTitle,
         status: "active",
@@ -315,6 +329,15 @@ export function ActiveAgentsSidebar({
         lastActivity: existingSession?.lastActivity,
         errorMessage: existingSession?.errorMessage,
         isSnoozed: progress.isSnoozed ?? existingSession?.isSnoozed,
+      })
+    }
+
+    for (const [childSessionId, parentSessionId] of subagentParentSessionIds) {
+      const session = mergedSessions.get(childSessionId)
+      if (!session || session.parentSessionId) continue
+      mergedSessions.set(childSessionId, {
+        ...session,
+        parentSessionId,
       })
     }
 
@@ -334,6 +357,11 @@ export function ActiveAgentsSidebar({
       return bTimestamp - aTimestamp
     })
   }, [trackedActiveSessions, agentProgressById])
+
+  const sessionsWithActiveChildProgress = useMemo(
+    () => getSessionIdsWithActiveChildProgress(agentProgressById.entries()),
+    [agentProgressById],
+  )
 
   const savedConversationEntries = useMemo(() => {
     const items: SidebarSessionEntry[] = []
@@ -407,12 +435,12 @@ export function ActiveAgentsSidebar({
       activeSessions,
       pinnedSessionIds,
     )
-    const activeItems: SidebarSessionEntry[] = orderedActiveSessions.map(
-      (session) => ({
+    const activeItems: SidebarSessionEntry[] = nestSubagentSessionEntries(
+      orderedActiveSessions.map((session) => ({
         session,
         isSavedConversation: false,
         key: `active:${session.id}`,
-      }),
+      })),
     )
     const dedupedSavedConversations =
       filterPastSessionsAgainstActiveSessions<SidebarSessionEntry>(
@@ -905,7 +933,13 @@ export function ActiveAgentsSidebar({
         >
           {(() => {
             const renderSessionRow = (
-              { session, isSavedConversation, key }: SidebarSessionEntry,
+              {
+                session,
+                isSavedConversation,
+                key,
+                isSubagent = false,
+                nestingDepth = 0,
+              }: SidebarSessionEntry,
               index: number,
             ) => {
             const isFocused = focusedSessionId === session.id
@@ -934,9 +968,13 @@ export function ActiveAgentsSidebar({
             )
             const hasPendingApproval =
               !isSavedConversation && !!sessionProgress?.pendingToolApproval
-            const progressLifecycleState = session.status === "active"
-              ? "running"
-              : (sessionProgress?.isComplete ? "complete" : "running")
+            const hasActiveChildProgress = sessionsWithActiveChildProgress.has(
+              session.id,
+            )
+            const progressLifecycleState =
+              session.status === "active" || hasActiveChildProgress
+                ? "running"
+                : (sessionProgress?.isComplete ? "complete" : "running")
             const conversationState = sessionProgress?.conversationState
               ? normalizeAgentConversationState(
                   sessionProgress.conversationState,
@@ -1046,7 +1084,8 @@ export function ActiveAgentsSidebar({
               )
             }
 
-            const isVisiblyActive = isSessionExpanded || isFocused || !isSnoozed
+            const isVisiblyActive =
+              isSessionExpanded || isFocused || !isSnoozed || hasActiveChildProgress
 
             // Active session row
             // Retained completed turns should stay visually active until the user dismisses them.
@@ -1066,25 +1105,47 @@ export function ActiveAgentsSidebar({
               ? pinnedSessionIds.has(session.conversationId)
               : false
             const sessionPreview = getSidebarSessionPreview(sessionProgress)
+            const normalizedNestingDepth = Math.max(
+              0,
+              Math.min(nestingDepth, 2),
+            )
+            const isNestedSubagent = isSubagent && normalizedNestingDepth > 0
+            const subagentIndentClass = normalizedNestingDepth > 1 ? "ml-12" : "ml-8"
+            const showSessionDetails = !isNestedSubagent && (sessionPreview || lastMessageMinutesAgo)
 
             return (
               <div
                 key={key}
                 onClick={() => handleActiveSessionSelect(session.id)}
                 className={cn(
-                  "group relative flex cursor-pointer items-start rounded py-1.5 pl-2 pr-2 text-xs transition-all",
-                  hasPendingApproval
-                    ? "bg-amber-500/10"
-                    : isCurrentView
-                      ? "bg-blue-500/15 ring-1 ring-inset ring-blue-500/20"
-                      : isSessionExpanded
-                        ? "bg-blue-500/15"
-                        : isFocused
-                          ? "bg-blue-500/10"
-                          : "hover:bg-accent/50",
+                  "group relative flex cursor-pointer items-start rounded text-xs transition-all",
+                  isNestedSubagent
+                    ? cn(subagentIndentClass, "rounded-sm py-0.5 pl-0 pr-1")
+                    : "py-1.5 pl-2 pr-2",
+                  isNestedSubagent
+                    ? hasPendingApproval
+                      ? "text-amber-700 hover:bg-amber-500/5 dark:text-amber-300"
+                      : isCurrentView
+                        ? "bg-muted/25 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/20"
+                    : hasPendingApproval
+                      ? "bg-amber-500/10"
+                      : isCurrentView
+                        ? "bg-blue-500/15 ring-1 ring-inset ring-blue-500/20"
+                        : isSessionExpanded
+                          ? "bg-blue-500/15"
+                          : isFocused
+                            ? "bg-blue-500/10"
+                            : "hover:bg-accent/50",
                 )}
               >
-                {isActivePinned ? (
+                {isNestedSubagent && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -left-6 top-0 h-1/2 w-6 rounded-bl border-b border-l border-border/70"
+                  />
+                )}
+                {!isNestedSubagent && isActivePinned ? (
                   <Pin
                     className={cn(
                       "absolute left-0.5 top-2 h-3 w-3 -rotate-45",
@@ -1100,7 +1161,7 @@ export function ActiveAgentsSidebar({
                       shouldPulseStatus && "animate-pulse",
                     )}
                   />
-                ) : (
+                ) : !isNestedSubagent ? (
                   <span
                     className={cn(
                       "absolute bottom-1 left-0 top-1 w-0.5 rounded-full",
@@ -1108,8 +1169,8 @@ export function ActiveAgentsSidebar({
                       shouldPulseStatus && "animate-pulse",
                     )}
                   />
-                )}
-                <div className={cn("flex min-w-0 flex-1 flex-col gap-0.5 transition-[padding-right] duration-200 group-hover:pr-7", isActivePinned && "pl-2.5")}>
+                ) : null}
+                <div className={cn("flex min-w-0 flex-1 flex-col transition-[padding-right] duration-200 group-hover:pr-7", isNestedSubagent ? "gap-0" : "gap-0.5", isActivePinned && !isNestedSubagent && "pl-2.5")}>
                   <div
                     className="relative z-10 flex min-w-0 items-start gap-1.5"
                     onClick={(event) => {
@@ -1117,21 +1178,50 @@ export function ActiveAgentsSidebar({
                       handleActiveSessionSelect(session.id)
                     }}
                   >
+                    {isNestedSubagent && (
+                      <CornerDownRight
+                        aria-hidden="true"
+                        className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/60"
+                      />
+                    )}
+                    {isNestedSubagent && (
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full",
+                          statusRailColor,
+                          shouldPulseStatus && "animate-pulse",
+                        )}
+                      />
+                    )}
                     {renderEditableTitle(
                       session,
                       cn(
-                        "flex-1 text-[12px] font-medium leading-4",
-                        hasPendingApproval
-                          ? "text-amber-700 dark:text-amber-300"
-                          : hasUnreadResponse
-                            ? "text-foreground"
-                            : !isVisiblyActive
-                              ? "text-muted-foreground"
-                              : "text-foreground",
+                        isNestedSubagent
+                          ? "flex-1 text-[10.5px] font-normal leading-4"
+                          : "flex-1 text-[12px] font-medium leading-4",
+                        isNestedSubagent
+                          ? hasPendingApproval
+                            ? "text-amber-700 dark:text-amber-300"
+                            : isCurrentView || hasUnreadResponse
+                              ? "text-foreground"
+                              : "text-muted-foreground"
+                          : hasPendingApproval
+                            ? "text-amber-700 dark:text-amber-300"
+                            : hasUnreadResponse
+                              ? "text-foreground"
+                              : !isVisiblyActive
+                                ? "text-muted-foreground"
+                                : "text-foreground",
                       ),
                       hasPendingApproval ? "⚠ " : undefined,
                     )}
-                    {index < 9 && (sessionPreview || lastMessageMinutesAgo) && (
+                    {isNestedSubagent && lastMessageMinutesAgo && (
+                      <span className="shrink-0 text-[10px] leading-4 tabular-nums text-muted-foreground/60 transition-opacity group-hover:opacity-0">
+                        {lastMessageMinutesAgo}
+                      </span>
+                    )}
+                    {!isNestedSubagent && index < 9 && (sessionPreview || lastMessageMinutesAgo) && (
                       <span
                         className="shrink-0 text-[10px] leading-4 tabular-nums text-muted-foreground/60 transition-opacity group-hover:opacity-0"
                         title={`${IS_MAC ? "⌘" : "Ctrl+"}${index + 1} to focus this session`}
@@ -1141,7 +1231,7 @@ export function ActiveAgentsSidebar({
                       </span>
                     )}
                   </div>
-                  {(sessionPreview || lastMessageMinutesAgo) && (
+                  {showSessionDetails && (
                     <div
                       className={cn(
                         "flex min-w-0 items-center gap-1.5",

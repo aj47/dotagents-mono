@@ -116,6 +116,8 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-forced-final-summary",
       "session-same-run-replay",
       "session-comm-only-verify",
+      "session-comm-only-loop",
+      "session-comm-only-real-missing-work",
       "session-resume",
       "session-resume-followup",
       "session-command",
@@ -676,6 +678,85 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.content).toBe("Final answer after more work")
     expect(mocks.makeLLMCallWithStreamingAndTools.mock.calls.length).toBeGreaterThanOrEqual(2)
     expect(mocks.verifyCompletionWithFetch).not.toHaveBeenCalled()
+  })
+
+  it("finalizes when verification only complains about the missing internal completion signal", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools.mockImplementation(async () => ({
+      content: "",
+      toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Depth 3 reporting complete." } },
+      ],
+    }))
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: false,
+      conversationState: "running",
+      reason: "Completion signal is missing.",
+      missingItems: ["mark_work_complete was not called"],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Return a depth 3 message",
+      availableTools as any,
+      makeExecuteToolCall("session-comm-only-loop", 1),
+      6,
+      [],
+      "conv-comm-only-loop",
+      "session-comm-only-loop",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.totalIterations).toBe(1)
+    expect(result.content).toBe("Depth 3 reporting complete.")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(1)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+    expect(result.conversationHistory.filter((message) => message.role === "assistant" && message.content === "Depth 3 reporting complete.")).toHaveLength(1)
+
+    const updatesWithResponseEvents = (mocks.emitAgentProgress.mock.calls as unknown as Array<[any]>)
+      .map(([update]) => update.responseEvents)
+      .filter(Boolean)
+    expect(updatesWithResponseEvents.at(-1)).toHaveLength(1)
+  })
+
+  it("keeps iterating when communication-only verification reports real missing work", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools.mockImplementation(async () => ({
+      content: "",
+      toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Still working on it." } },
+      ],
+    }))
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: false,
+      conversationState: "running",
+      reason: "The requested result has not been delivered.",
+      missingItems: ["Needs the actual final answer"],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Return the final result",
+      availableTools as any,
+      makeExecuteToolCall("session-comm-only-real-missing-work", 1),
+      6,
+      [],
+      "conv-comm-only-real-missing-work",
+      "session-comm-only-real-missing-work",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.totalIterations).toBeGreaterThan(1)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(5)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(5)
   })
 
   it("ignores blank response events when resolving the final visible answer", async () => {

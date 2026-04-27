@@ -2853,17 +2853,34 @@ const DelegationSummaryStrip: React.FC<{
   entries: DelegationSummaryEntry[]
   maxItems: number
   onOpenDetails: (runId: string) => void
-}> = ({ entries, maxItems, onOpenDetails }) => {
+  isCollapsed?: boolean
+  onToggleCollapsed?: () => void
+}> = ({ entries, maxItems, onOpenDetails, isCollapsed = false, onToggleCollapsed }) => {
   if (entries.length === 0) {
     return null
   }
 
   const visibleEntries = entries.slice(0, maxItems)
   const activeCount = entries.filter((entry) => entry.isActive).length
+  const hiddenCount = Math.max(entries.length - visibleEntries.length, 0)
 
   return (
     <div className="border-b border-border/30 bg-muted/5 px-1.5 py-1">
-      <div className="mb-1 flex flex-wrap items-center gap-1 text-[9px] text-muted-foreground">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleCollapsed?.()
+        }}
+        className="mb-1 flex w-full flex-wrap items-center gap-1 rounded-sm text-left text-[9px] text-muted-foreground transition-colors hover:bg-muted/30"
+        aria-label={isCollapsed ? "Expand delegations" : "Collapse delegations"}
+        aria-expanded={!isCollapsed}
+      >
+        {isCollapsed ? (
+          <ChevronRight className="h-2.5 w-2.5 shrink-0" />
+        ) : (
+          <ChevronDown className="h-2.5 w-2.5 shrink-0" />
+        )}
         <span className="inline-flex items-center gap-1 font-medium text-foreground/90">
           <Bot className="h-2.5 w-2.5" />
           Delegations
@@ -2876,9 +2893,14 @@ const DelegationSummaryStrip: React.FC<{
             {activeCount} live
           </Badge>
         )}
-      </div>
+        {isCollapsed && hiddenCount > 0 && (
+          <span className="ml-auto text-[8.5px] text-muted-foreground/80">
+            +{hiddenCount} more
+          </span>
+        )}
+      </button>
 
-      <div className="space-y-0.5">
+      {!isCollapsed && <div className="space-y-0.5">
         {visibleEntries.map((entry) => (
           <button
             key={entry.delegation.runId}
@@ -2919,7 +2941,7 @@ const DelegationSummaryStrip: React.FC<{
             </div>
           </button>
         ))}
-      </div>
+      </div>}
     </div>
   )
 }
@@ -3142,6 +3164,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // Tab state for Chat/Summary view toggle (only relevant when dual-model is enabled)
   const [activeTab, setActiveTab] = useState<"chat" | "summary">("chat")
   const [selectedDelegationRunId, setSelectedDelegationRunId] = useState<string | null>(null)
+  const [isDelegationSummaryCollapsed, setIsDelegationSummaryCollapsed] = useState(false)
 
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
 
@@ -4003,6 +4026,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     [delegationSummaryEntries, selectedDelegationRunId],
   )
 
+  const handleToggleDelegationSummaryCollapsed = useCallback(() => {
+    setIsDelegationSummaryCollapsed((collapsed) => !collapsed)
+  }, [])
+
   useEffect(() => {
     if (selectedDelegationRunId && !selectedDelegation) {
       setSelectedDelegationRunId(null)
@@ -4351,6 +4378,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
             {/* Message Stream (Chat Tab) */}
             <div className={cn("relative flex-1 min-h-0 flex flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
+              <DelegationSummaryStrip
+                entries={delegationSummaryEntries}
+                maxItems={delegationSummaryMaxItems}
+                onOpenDetails={setSelectedDelegationRunId}
+                isCollapsed={isDelegationSummaryCollapsed}
+                onToggleCollapsed={handleToggleDelegationSummaryCollapsed}
+              />
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
@@ -4770,6 +4804,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           entries={delegationSummaryEntries}
           maxItems={delegationSummaryMaxItems}
           onOpenDetails={setSelectedDelegationRunId}
+          isCollapsed={isDelegationSummaryCollapsed}
+          onToggleCollapsed={handleToggleDelegationSummaryCollapsed}
         />
         <div
           ref={scrollContainerRef}

@@ -81,6 +81,89 @@ describe('agent-store delegation merge', () => {
     expect(delegation?.conversationId).toBe('delegated-conversation-1')
   })
 
+  it('updates a delegated subagent title from title-only progress without clearing existing progress', () => {
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      sessionId: 'subsession-1',
+      parentSessionId: 'parent-session',
+      conversationTitle: 'Initial title',
+      steps: [
+        { id: 'thinking-1', type: 'thinking', title: 'Thinking', status: 'in_progress', timestamp: 1 },
+      ],
+      conversationHistory: [
+        { role: 'assistant', content: 'Working', timestamp: 1 },
+      ],
+    })
+
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      sessionId: 'subsession-1',
+      parentSessionId: 'parent-session',
+      conversationTitle: 'Delegated research',
+      steps: [],
+      conversationHistory: [],
+    })
+
+    const stored = useAgentStore.getState().agentProgressById.get('subsession-1')
+    expect(stored?.conversationTitle).toBe('Delegated research')
+    expect(stored?.steps).toHaveLength(1)
+    expect(stored?.conversationHistory).toHaveLength(1)
+  })
+
+  it('does not regress a terminal delegation back to running when stale progress arrives late', () => {
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      steps: [
+        {
+          id: 'delegation-1',
+          type: 'completion',
+          title: 'Delegation finished',
+          status: 'completed',
+          timestamp: 2,
+          delegation: {
+            runId: 'delegated-run-1',
+            agentName: 'internal',
+            task: 'Do work',
+            status: 'completed',
+            startTime: 1,
+            endTime: 2,
+            resultSummary: 'Finished',
+          },
+        },
+      ],
+    })
+
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      steps: [
+        {
+          id: 'delegation-1',
+          type: 'completion',
+          title: 'Delegation stale update',
+          status: 'in_progress',
+          timestamp: 3,
+          delegation: {
+            runId: 'delegated-run-1',
+            agentName: 'internal',
+            task: 'Do work',
+            status: 'running',
+            startTime: 1,
+            conversation: [{ role: 'assistant', content: 'Late transcript', timestamp: 3 }],
+          },
+        },
+      ],
+    })
+
+    const stored = useAgentStore.getState().agentProgressById.get('session-1')
+    const step = stored?.steps?.[0]
+
+    expect(step?.status).toBe('completed')
+    expect(step?.delegation?.status).toBe('completed')
+    expect(step?.delegation?.endTime).toBe(2)
+    expect(step?.delegation?.resultSummary).toBe('Finished')
+    expect(step?.delegation?.conversation?.[0]?.content).toBe('Late transcript')
+  })
+
   it('replaces pinned session ids during hydration', () => {
     useAgentStore.getState().togglePinSession('session-1')
 

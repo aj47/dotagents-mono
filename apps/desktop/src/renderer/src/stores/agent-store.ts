@@ -51,6 +51,47 @@ const isDelegationOnlyProgressUpdate = (progress: AgentProgressUpdate): boolean 
   (!progress.conversationHistory || progress.conversationHistory.length === 0)
 )
 
+type ProgressStep = AgentProgressUpdate['steps'][number]
+
+const isTerminalDelegationStatus = (status?: string): boolean => (
+  status === 'completed' || status === 'failed' || status === 'cancelled'
+)
+
+const mergeDelegationStep = (
+  existingStep: ProgressStep | undefined,
+  step: ProgressStep,
+): ProgressStep => {
+  if (!existingStep?.delegation || !step.delegation) return step
+
+  const existingWasTerminal = isTerminalDelegationStatus(existingStep.delegation.status)
+  const incomingIsTerminal = isTerminalDelegationStatus(step.delegation.status)
+
+  if (existingWasTerminal && !incomingIsTerminal) {
+    return {
+      ...existingStep,
+      ...step,
+      status: existingStep.status,
+      delegation: {
+        ...existingStep.delegation,
+        ...step.delegation,
+        status: existingStep.delegation.status,
+        endTime: existingStep.delegation.endTime,
+        resultSummary: existingStep.delegation.resultSummary,
+        error: existingStep.delegation.error,
+      },
+    }
+  }
+
+  return {
+    ...existingStep,
+    ...step,
+    delegation: {
+      ...existingStep.delegation,
+      ...step.delegation,
+    },
+  }
+}
+
 export type SessionViewMode = 'grid' | 'list' | 'kanban'
 export type SessionFilter = 'all' | 'active' | 'completed' | 'error'
 export type SessionSortBy = 'recent' | 'oldest' | 'status'
@@ -211,14 +252,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             for (const [runId, step] of newDelegationSteps) {
               const existingStep = mergedDelegationSteps.get(runId)
               if (existingStep?.delegation || step.delegation) {
-                mergedDelegationSteps.set(runId, {
-                  ...existingStep,
-                  ...step,
-                  delegation: {
-                    ...existingStep?.delegation,
-                    ...step.delegation,
-                  },
-                })
+                mergedDelegationSteps.set(runId, mergeDelegationStep(existingStep, step))
               } else {
                 mergedDelegationSteps.set(runId, step)
               }
