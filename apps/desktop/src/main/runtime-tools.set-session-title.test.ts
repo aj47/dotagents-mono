@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mockRenameConversationTitle = vi.fn()
 const mockGetSession = vi.fn()
 const mockUpdateSession = vi.fn()
-const mockGetAppSessionForAcpSession = vi.fn()
 const mockGetRootAppSessionForAcpSession = vi.fn()
 const mockSetAcpSessionTitleOverride = vi.fn()
 const mockEmitAgentProgress = vi.fn()
@@ -32,7 +31,6 @@ vi.mock("./session-user-response-store", () => ({ appendSessionUserResponse: vi.
 vi.mock("./conversation-service", () => ({ conversationService: { renameConversationTitle: mockRenameConversationTitle } }))
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
 vi.mock("./acp-session-state", () => ({
-  getAppSessionForAcpSession: mockGetAppSessionForAcpSession,
   getRootAppSessionForAcpSession: mockGetRootAppSessionForAcpSession,
   setAcpSessionTitleOverride: mockSetAcpSessionTitleOverride,
 }))
@@ -43,7 +41,6 @@ describe("runtime-tools set_session_title", () => {
     vi.resetModules()
     vi.clearAllMocks()
 
-    mockGetAppSessionForAcpSession.mockReturnValue(undefined)
     mockGetRootAppSessionForAcpSession.mockReturnValue(undefined)
     mockEmitAgentProgress.mockResolvedValue(undefined)
     mockGetSession.mockImplementation((sessionId: string) =>
@@ -56,7 +53,6 @@ describe("runtime-tools set_session_title", () => {
 
   it("updates the parent app session title when invoked from a delegated session", async () => {
     mockGetRootAppSessionForAcpSession.mockReturnValue("app-session-1")
-    mockGetAppSessionForAcpSession.mockReturnValue("app-session-1")
 
     const { executeRuntimeTool } = await import("./runtime-tools")
     const result = await executeRuntimeTool("set_session_title", { title: "Delegated title" }, "delegated-session-1")

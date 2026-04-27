@@ -17,7 +17,7 @@ import { messageQueueService } from "./message-queue-service"
 import { appendSessionUserResponse } from "./session-user-response-store"
 import { conversationService } from "./conversation-service"
 import { readMoreContext } from "./context-budget"
-import { getAppSessionForAcpSession, getRootAppSessionForAcpSession, setAcpSessionTitleOverride } from "./acp-session-state"
+import { getRootAppSessionForAcpSession, setAcpSessionTitleOverride } from "./acp-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
@@ -1004,7 +1004,7 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     if (mappedAppSessionId) {
       setAcpSessionTitleOverride(context.sessionId, updatedConversation.title)
-      const parentSessionId = getAppSessionForAcpSession(context.sessionId)
+      const parentSessionId = mappedAppSessionId
       const runId = agentSessionStateManager.getSessionRunId(context.sessionId)
 
       await emitAgentProgress({

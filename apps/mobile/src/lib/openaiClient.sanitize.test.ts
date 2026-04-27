@@ -53,6 +53,25 @@ describe('sanitizeMessagesForRequest', () => {
     ]);
   });
 
+  it('drops misaligned toolCalls when lengths differ without placeholder filtering', () => {
+    const messages: ChatMessage[] = [{
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        { name: 'first_tool', arguments: { a: 1 } },
+        { name: 'second_tool', arguments: { b: 2 } },
+      ],
+      toolResults: [{ success: true, content: 'single-result' }],
+    }];
+
+    const sanitized = sanitizeMessagesForRequest(messages);
+
+    expect(sanitized[0].toolCalls).toBeUndefined();
+    expect(sanitized[0].toolResults).toEqual([
+      { success: true, content: 'single-result' },
+    ]);
+  });
+
   it('removes both toolCalls and toolResults when all results are pending placeholders', () => {
     const messages: ChatMessage[] = [{
       role: 'assistant',
