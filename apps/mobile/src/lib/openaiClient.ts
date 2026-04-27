@@ -62,7 +62,7 @@ export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage
     if (toolResults.length === 0) {
       const rest = { ...message };
       delete rest.toolResults;
-      if (Array.isArray(message.toolCalls) && message.toolCalls.length === message.toolResults.length) {
+      if (Array.isArray(message.toolCalls)) {
         delete rest.toolCalls;
       }
       return rest;

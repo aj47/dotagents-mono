@@ -25,21 +25,6 @@ export function appendSessionUserResponse(params: {
   const { sessionId, text, runId, timestamp = Date.now() } = params
   const runKey = getRunKey(sessionId, runId)
   const events = sessionUserResponseEvents.get(sessionId) ?? []
-  const lastEventForRun = [...events].reverse().find((event) => event.runId === runId)
-
-  if (
-    lastEventForRun &&
-    lastEventForRun.text === text
-  ) {
-    logApp("[session-user-response-store] skip duplicate append", {
-      sessionId,
-      runId,
-      ordinal: lastEventForRun.ordinal,
-      responseLength: text.length,
-      sessionEventCount: events.length,
-    })
-    return lastEventForRun
-  }
 
   const ordinal = (sessionRunOrdinals.get(runKey) ?? 0) + 1
   sessionRunOrdinals.set(runKey, ordinal)

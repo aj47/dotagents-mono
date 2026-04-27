@@ -191,4 +191,52 @@ describe("emitAgentProgress snoozed propagation", () => {
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
     vi.useRealTimers()
   })
+
+  it("does not repeatedly bypass throttling for terminal delegations without stable identity", async () => {
+    vi.useFakeTimers()
+    mocks.isSessionSnoozed.mockReturnValue(false)
+
+    await emitAgentProgress({
+      sessionId: "session-unstable-terminal",
+      runId: 7,
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [{
+        type: "completion",
+        title: "Sub-agent A",
+        status: "completed",
+        delegation: {
+          agentName: "internal",
+          task: "Nested work",
+          status: "completed",
+        },
+      }],
+    })
+
+    const firstSendCount = mocks.sendSpy.mock.calls.length
+
+    await emitAgentProgress({
+      sessionId: "session-unstable-terminal",
+      runId: 7,
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [{
+        type: "completion",
+        title: "Sub-agent B",
+        status: "completed",
+        delegation: {
+          agentName: "internal",
+          task: "Nested work",
+          status: "completed",
+        },
+      }],
+    })
+
+    expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
+    vi.advanceTimersByTime(200)
+    expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
+    vi.useRealTimers()
+  })
 })

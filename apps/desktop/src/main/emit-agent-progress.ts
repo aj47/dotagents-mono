@@ -20,18 +20,26 @@ const sessionThrottleState = new Map<string, {
   sentTerminalDelegationKeys: Set<string>
 }>()
 
-function getDelegationIdentity(step: AgentProgressUpdate["steps"][number], index: number): string {
+function getDelegationIdentity(step: AgentProgressUpdate["steps"][number]): string | undefined {
   if (step.delegation?.runId) return `run:${step.delegation.runId}`
   if (step.id) return `step:${step.id}`
-  return `idx:${index}:${step.title ?? ""}:${step.delegation?.task ?? ""}`
+  if (typeof step.delegation?.startTime === "number") {
+    return `start:${step.delegation.startTime}:${step.delegation.agentName ?? ""}:${step.delegation.task ?? ""}`
+  }
+  if (typeof step.timestamp === "number") {
+    return `timestamp:${step.timestamp}:${step.delegation?.agentName ?? ""}:${step.delegation?.task ?? ""}`
+  }
+  return undefined
 }
 
 function getTerminalDelegationKeys(update: AgentProgressUpdate): Set<string> {
   const keys = new Set<string>()
-  for (const [index, step] of (update.steps ?? []).entries()) {
+  for (const step of (update.steps ?? [])) {
     const status = step.delegation?.status
     if (status === "completed" || status === "failed" || status === "cancelled") {
-      keys.add(`${getDelegationIdentity(step, index)}:${status}`)
+      const identity = getDelegationIdentity(step)
+      if (!identity) continue
+      keys.add(`${identity}:${status}`)
     }
   }
   return keys

@@ -111,6 +111,23 @@ describe('sanitizeMessagesForRequest', () => {
     expect(sanitized[0].toolResults).toBeUndefined();
   });
 
+  it('removes toolCalls even when placeholder-only toolResults are not length-aligned', () => {
+    const messages: ChatMessage[] = [{
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        { name: 'pending_tool_1', arguments: {} },
+        { name: 'pending_tool_2', arguments: {} },
+      ],
+      toolResults: [undefined],
+    }];
+
+    const sanitized = sanitizeMessagesForRequest(messages);
+
+    expect(sanitized[0].toolCalls).toBeUndefined();
+    expect(sanitized[0].toolResults).toBeUndefined();
+  });
+
   it('treats null tool-result entries as placeholders and removes them safely', () => {
     const messages: ChatMessage[] = [{
       role: 'assistant',

@@ -11,7 +11,7 @@ describe("session-user-response-store", () => {
     clearSessionUserResponse("session-dedupe")
   })
 
-  it("dedupes only exact repeated response text for the same run", () => {
+  it("preserves repeated response text as distinct events for the same run", () => {
     const first = appendSessionUserResponse({
       sessionId: "session-dedupe",
       runId: 1,
@@ -26,8 +26,13 @@ describe("session-user-response-store", () => {
       timestamp: 2000,
     })
 
-    expect(second).toEqual(first)
-    expect(getSessionRunUserResponseEvents("session-dedupe", 1)).toHaveLength(1)
+    expect(second).not.toEqual(first)
+    const events = getSessionRunUserResponseEvents("session-dedupe", 1)
+    expect(events).toHaveLength(2)
+    expect(events[0]?.text).toBe("Same response")
+    expect(events[1]?.text).toBe("Same response")
+    expect(events[0]?.ordinal).toBe(1)
+    expect(events[1]?.ordinal).toBe(2)
   })
 
   it("preserves formatting-only differences as separate response events", () => {
