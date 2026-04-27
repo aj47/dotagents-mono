@@ -100,6 +100,16 @@ function describeAgentSessionId(sessionId?: string | null): "missing" | "pending
   return "unknown"
 }
 
+const isFinitePanelSize = (value: unknown): value is { width: number; height: number } =>
+  !!value &&
+  typeof value === "object" &&
+  "width" in value &&
+  "height" in value &&
+  typeof (value as { width: unknown }).width === "number" &&
+  typeof (value as { height: unknown }).height === "number" &&
+  Number.isFinite((value as { width: number }).width) &&
+  Number.isFinite((value as { height: number }).height)
+
 /**
  * Convert Float32Array audio samples to WAV format buffer
  */
@@ -3515,6 +3525,10 @@ export const router = {
   updatePanelSize: t.procedure
     .input<{ width: number; height: number }>()
     .action(async ({ input }) => {
+      if (!isFinitePanelSize(input)) {
+        throw new Error("Invalid panel size")
+      }
+
       const win = WINDOWS.get("panel")
       if (!win) {
         throw new Error("Panel window not found")
@@ -3544,6 +3558,10 @@ export const router = {
   savePanelCustomSize: t.procedure
     .input<{ width: number; height: number }>()
     .action(async ({ input }) => {
+      if (!isFinitePanelSize(input)) {
+        throw new Error("Invalid panel size")
+      }
+
       const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
       const width = Math.max(minWidth, input.width)
       const height = Math.max(WAVEFORM_MIN_HEIGHT, input.height)
@@ -3561,6 +3579,10 @@ export const router = {
   savePanelModeSize: t.procedure
     .input<{ mode: "normal" | "agent" | "textInput"; width: number; height: number }>()
     .action(async ({ input }) => {
+      if (!isFinitePanelSize(input)) {
+        throw new Error("Invalid panel size")
+      }
+
       const minWidth = input.mode === "textInput" ? TEXT_INPUT_MIN_WIDTH : Math.max(200, MIN_WAVEFORM_WIDTH)
       const minHeight =
         input.mode === "agent"
@@ -3600,7 +3622,7 @@ export const router = {
     const config = configStore.get()
     const legacyCustomSize = config.panelCustomSize
     const isCompactLegacyWaveformSize =
-      legacyCustomSize &&
+      isFinitePanelSize(legacyCustomSize) &&
       legacyCustomSize.width <= LEGACY_WAVEFORM_SIZE_MAX_WIDTH &&
       legacyCustomSize.height <= LEGACY_WAVEFORM_SIZE_MAX_HEIGHT
     const savedWaveformSize = config.panelWaveformSize ?? (isCompactLegacyWaveformSize ? legacyCustomSize : undefined)

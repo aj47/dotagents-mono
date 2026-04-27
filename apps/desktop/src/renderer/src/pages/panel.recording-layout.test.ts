@@ -88,6 +88,8 @@ describe("panel recording layout", () => {
     expect(panelResizeWrapperSource).toContain("minWidth: `${minWidth / safeViewportScale}px`")
     expect(panelResizeWrapperSource).toContain("minHeight: `${minHeight / safeViewportScale}px`")
     expect(panelResizeWrapperSource).toContain("export const getNativePanelResizeSize =")
+    expect(panelResizeWrapperSource).toContain("const safeViewportScale = useMemo(")
+    expect(panelResizeWrapperSource).toContain("[viewportScale],")
 
     const nativeResizeHelperSection = panelResizeWrapperSource.slice(
       panelResizeWrapperSource.indexOf("export const getNativePanelResizeSize ="),
@@ -113,7 +115,11 @@ describe("panel recording layout", () => {
     expect(panelSource).toContain("!Number.isFinite(cssViewportSize.height)")
     expect(panelResizeWrapperSource).toContain("Number.isFinite((value as { width: number }).width)")
     expect(mainWindowSource).toContain("!Number.isFinite(savedSize.width)")
+    expect(mainWindowSource).toContain("isFinitePanelSize(config.panelCustomSize)")
     expect(tipcSource).toContain("Number.isFinite(savedWaveformSize.width)")
+    expect(tipcSource).toContain("if (!isFinitePanelSize(input))")
+    expect(tipcSource).toContain("throw new Error(\"Invalid panel size\")")
+    expect(tipcSource).toContain("isFinitePanelSize(legacyCustomSize)")
   })
 
   it("keeps legacy size fallback limited to waveform mode", () => {

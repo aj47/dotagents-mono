@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react"
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { ResizeHandle } from "@renderer/components/resize-handle"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 
@@ -51,7 +51,10 @@ export function PanelResizeWrapper({
   const lastResizeCallRef = useRef<number>(0)
   const inFlightResizeUpdatesRef = useRef(new Set<Promise<unknown>>())
   const RESIZE_THROTTLE_MS = 16 // ~60fps
-  const safeViewportScale = Number.isFinite(viewportScale) && viewportScale > 0 ? viewportScale : 1
+  const safeViewportScale = useMemo(
+    () => (Number.isFinite(viewportScale) && viewportScale > 0 ? viewportScale : 1),
+    [viewportScale],
+  )
 
   useEffect(() => {
     // Initialize local size state from current window bounds; do not change size on mount

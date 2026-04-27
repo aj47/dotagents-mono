@@ -599,6 +599,16 @@ export const TEXT_INPUT_MIN_WIDTH = textInputPanelWindowSize.width
 
 type SavedPanelSizeMode = "waveform" | "progress" | "textInput"
 
+const isFinitePanelSize = (value: unknown): value is { width: number; height: number } =>
+  !!value &&
+  typeof value === "object" &&
+  "width" in value &&
+  "height" in value &&
+  typeof (value as { width: unknown }).width === "number" &&
+  typeof (value as { height: unknown }).height === "number" &&
+  Number.isFinite((value as { width: number }).width) &&
+  Number.isFinite((value as { height: number }).height)
+
 const getPanelMinWidth = (mode: SavedPanelSizeMode | "normal" | "agent" | "textInput") => {
   if (mode === "textInput") {
     return TEXT_INPUT_MIN_WIDTH
@@ -697,7 +707,7 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
     return validateSize(config.panelWaveformSize, WAVEFORM_MIN_HEIGHT, panelWindowSize, getPanelMinWidth("waveform"))
   }
 
-  if (config.panelCustomSize) {
+  if (isFinitePanelSize(config.panelCustomSize)) {
     const isCompactLegacyWaveformSize =
       config.panelCustomSize.width <= LEGACY_WAVEFORM_SIZE_MAX_WIDTH &&
       config.panelCustomSize.height <= LEGACY_WAVEFORM_SIZE_MAX_HEIGHT
@@ -708,6 +718,8 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
     }
 
     logApp(`[window.ts] Ignoring oversized legacy waveform size, using compact default:`, config.panelCustomSize)
+  } else if (config.panelCustomSize) {
+    logApp(`[window.ts] Ignoring invalid legacy waveform size, using compact default:`, config.panelCustomSize)
   }
 
   logApp(`[window.ts] No saved panel size, using default:`, panelWindowSize)
