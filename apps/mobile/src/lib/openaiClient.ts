@@ -52,6 +52,7 @@ export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage
       return message;
     }
 
+    const originalToolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : undefined;
     const resultIndexesToKeep = message.toolResults
       .map((result, index) => (result === undefined ? -1 : index))
       .filter((index) => index >= 0);
@@ -67,16 +68,30 @@ export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage
       return rest;
     }
 
+    const didFilterToolResults = resultIndexesToKeep.length !== message.toolResults.length;
+    const canSafelyAlignToolCalls =
+      Array.isArray(originalToolCalls) && originalToolCalls.length === message.toolResults.length;
     const sanitizedToolCalls =
-      Array.isArray(message.toolCalls) && message.toolCalls.length === message.toolResults.length
-        ? resultIndexesToKeep.map((index) => message.toolCalls![index])
-        : message.toolCalls;
+      canSafelyAlignToolCalls
+        ? resultIndexesToKeep
+            .map((index) => originalToolCalls[index])
+            .filter((toolCall): toolCall is ToolCall => !!toolCall)
+        : didFilterToolResults
+          ? undefined
+          : originalToolCalls;
+    const shouldDropToolCalls = didFilterToolResults && !!originalToolCalls && !canSafelyAlignToolCalls;
 
-    return {
+    const sanitizedMessage: ChatMessage = {
       ...message,
       ...(sanitizedToolCalls ? { toolCalls: sanitizedToolCalls } : {}),
       toolResults,
     };
+
+    if (shouldDropToolCalls) {
+      delete sanitizedMessage.toolCalls;
+    }
+
+    return sanitizedMessage;
   });
 };
 
