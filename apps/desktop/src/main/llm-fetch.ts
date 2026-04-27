@@ -33,6 +33,7 @@ import { getErrorMessage, normalizeError } from "./error-utils"
 import { normalizeVerificationResultForCompletion } from "./llm-continuation-guards"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
 import type { AgentConversationState } from "@dotagents/shared"
+import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import {
   createLLMGeneration,
   endLLMGeneration,
@@ -414,6 +415,12 @@ function isRetryableError(error: unknown): boolean {
     error.name === "AbortError" ||
     message.includes("abort")
   ) {
+    return false
+  }
+
+  // Missing API-key setup errors are deterministic local configuration problems.
+  // Surface them immediately instead of adding retry delay/noise.
+  if (isMissingApiKeyErrorMessage(error.message)) {
     return false
   }
 

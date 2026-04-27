@@ -520,6 +520,21 @@ describe('LLM Fetch with AI SDK', () => {
     expect(result.content).toBe('recovered')
   })
 
+  it('should not retry missing API key configuration errors', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    const missingApiKeyError = new Error('API key is required for openai')
+    generateTextMock.mockRejectedValue(missingApiKeyError)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    await expect(
+      makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+    ).rejects.toThrow('API key is required for openai')
+
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+  })
+
   it('should not retry on abort errors', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
