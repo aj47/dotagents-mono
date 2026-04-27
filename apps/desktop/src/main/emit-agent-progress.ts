@@ -248,6 +248,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
     }
     state.pendingUpdate = null
     state.lastSendTime = now
+    state.sentTerminalDelegationKeys = mergeTerminalDelegationKeys(state.sentTerminalDelegationKeys, displayUpdate)
     sendToWindows(displayUpdate)
   } else {
     // Within throttle window — store as pending and schedule a trailing send
@@ -274,6 +275,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
             return
           }
           s.lastSendTime = Date.now()
+          s.sentTerminalDelegationKeys = mergeTerminalDelegationKeys(s.sentTerminalDelegationKeys, s.pendingUpdate)
           sendToWindows(s.pendingUpdate)
           s.pendingUpdate = null
         }
