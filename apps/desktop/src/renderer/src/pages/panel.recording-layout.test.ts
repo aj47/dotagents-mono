@@ -74,6 +74,7 @@ describe("panel recording layout", () => {
   it("keeps recording waveform layout stable under browser zoom", () => {
     expect(panelSource).toContain("function RecordingWaveformPanel")
     expect(panelSource).toContain("getPanelViewportScale(nativePanelSize, cssViewportSize)")
+    expect(panelSource).toContain("Number.isFinite(nativePanelSize.width)")
     expect(panelSource).toContain("stableRecordingViewportSize.width - WAVEFORM_HORIZONTAL_PADDING_PX * 2")
     expect(panelSource).toContain('transform: `scale(${zoomCompensationScale})`')
     expect(panelResizeWrapperSource).toContain("viewportScale?: number")
@@ -83,6 +84,23 @@ describe("panel recording layout", () => {
     expect(panelResizeWrapperSource).toContain("const newHeight = Math.max(minHeight, startSize.height + delta.height)")
     expect(panelResizeWrapperSource).not.toContain("delta.width * safeViewportScale")
     expect(panelResizeWrapperSource).not.toContain("delta.height * safeViewportScale")
+  })
+
+  it("ignores non-finite panel sizes from IPC before they reach recording layout math", () => {
+    expect(panelSource).toContain("Number.isFinite((value as { width: number }).width)")
+    expect(panelSource).toContain("Number.isFinite((value as { height: number }).height)")
+    expect(panelResizeWrapperSource).toContain("Number.isFinite((value as { width: number }).width)")
+  })
+
+  it("keeps legacy size fallback limited to waveform mode", () => {
+    const resizeEndSection = panelResizeWrapperSource.slice(
+      panelResizeWrapperSource.indexOf("const handleResizeEnd = useCallback"),
+      panelResizeWrapperSource.indexOf("return (")
+    )
+
+    expect(resizeEndSection).toContain('if (mode === "normal")')
+    expect(resizeEndSection).toContain("await tipcClient.savePanelCustomSize(requestedFinalSize)")
+    expect(resizeEndSection).toContain("dedicated buckets and must not clobber the shared legacy size")
   })
 
   it("gives text input its own safer min width, height, and persisted size bucket", () => {

@@ -11,6 +11,16 @@ interface ResizeHandleProps {
   onResizeEnd?: (size: { width: number; height: number }) => void
 }
 
+const isPanelSize = (value: unknown): value is { width: number; height: number } =>
+  !!value &&
+  typeof value === "object" &&
+  "width" in value &&
+  "height" in value &&
+  typeof (value as { width: unknown }).width === "number" &&
+  typeof (value as { height: unknown }).height === "number" &&
+  Number.isFinite((value as { width: number }).width) &&
+  Number.isFinite((value as { height: number }).height)
+
 export function ResizeHandle({
   className,
   position,
@@ -163,7 +173,7 @@ export function ResizeHandle({
     try {
       // Get current window size
       const windowSize = await tipcClient.getPanelSize()
-      if (!windowSize || typeof windowSize !== 'object' || !('width' in windowSize) || !('height' in windowSize)) {
+      if (!isPanelSize(windowSize)) {
         console.error("Invalid window size response:", windowSize)
         return
       }
@@ -172,8 +182,8 @@ export function ResizeHandle({
       setResizeStart({
         x: e.screenX,
         y: e.screenY,
-        width: (windowSize as { width: number; height: number }).width,
-        height: (windowSize as { width: number; height: number }).height,
+        width: windowSize.width,
+        height: windowSize.height,
       })
 
       onResizeStart?.()

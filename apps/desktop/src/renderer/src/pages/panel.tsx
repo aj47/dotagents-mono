@@ -55,7 +55,9 @@ const isPanelSize = (value: unknown): value is PanelSize =>
   "width" in value &&
   "height" in value &&
   typeof (value as { width: unknown }).width === "number" &&
-  typeof (value as { height: unknown }).height === "number"
+  typeof (value as { height: unknown }).height === "number" &&
+  Number.isFinite((value as { width: number }).width) &&
+  Number.isFinite((value as { height: number }).height)
 
 const getCssViewportSize = (): PanelSize => {
   if (typeof window === "undefined") return { width: 0, height: 0 }
@@ -69,7 +71,12 @@ const getPanelViewportScale = (
   nativePanelSize: PanelSize,
   cssViewportSize: PanelSize,
 ) => {
-  if (nativePanelSize.width <= 0 || cssViewportSize.width <= 0) return 1
+  if (
+    !Number.isFinite(nativePanelSize.width) ||
+    !Number.isFinite(cssViewportSize.width) ||
+    nativePanelSize.width <= 0 ||
+    cssViewportSize.width <= 0
+  ) return 1
   return clamp(nativePanelSize.width / cssViewportSize.width, 0.5, 3)
 }
 

@@ -13,7 +13,9 @@ const isPanelSize = (value: unknown): value is { width: number; height: number }
   "width" in value &&
   "height" in value &&
   typeof (value as { width: unknown }).width === "number" &&
-  typeof (value as { height: unknown }).height === "number"
+  typeof (value as { height: unknown }).height === "number" &&
+  Number.isFinite((value as { width: number }).width) &&
+  Number.isFinite((value as { height: number }).height)
 
 interface PanelResizeWrapperProps {
   children: React.ReactNode
@@ -106,6 +108,9 @@ export function PanelResizeWrapper({
       height: Math.max(minHeight, size.height),
     }
 
+    const rawMode = await tipcClient.getPanelMode().catch(() => null)
+    const mode: PanelMode | null = isPanelMode(rawMode) ? rawMode : null
+
     // Force one final size sync in case the last throttled mousemove was skipped.
     try {
       // Ensure all throttled fire-and-forget updates are finished before final sync.
@@ -119,8 +124,9 @@ export function PanelResizeWrapper({
       setCurrentSize(finalSize)
 
       // Save the final size by mode so waveform and progress views don't override each other.
-      const rawMode = await tipcClient.getPanelMode()
-      const mode: PanelMode = isPanelMode(rawMode) ? rawMode : "normal"
+      if (!mode) {
+        throw new Error("Unable to determine panel mode for size persistence")
+      }
       await tipcClient.savePanelModeSize({
         mode,
         width: finalSize.width,
@@ -128,9 +134,14 @@ export function PanelResizeWrapper({
       })
     } catch (error) {
       try {
-        // Fallback for older router builds that may not have mode-aware persistence.
-        await tipcClient.savePanelCustomSize(requestedFinalSize)
-        setCurrentSize(requestedFinalSize)
+        // Fallback only for legacy waveform persistence. Non-waveform modes have
+        // dedicated buckets and must not clobber the shared legacy size.
+        if (mode === "normal") {
+          await tipcClient.savePanelCustomSize(requestedFinalSize)
+          setCurrentSize(requestedFinalSize)
+        } else {
+          throw error
+        }
       } catch (fallbackError) {
         console.error("Failed to save panel size:", error, fallbackError)
       }
