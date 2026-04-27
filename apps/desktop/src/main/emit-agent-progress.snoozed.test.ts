@@ -192,6 +192,50 @@ describe("emitAgentProgress snoozed propagation", () => {
     vi.useRealTimers()
   })
 
+  it("sends the first run-scoped update immediately after prior unscoped updates", async () => {
+    vi.useFakeTimers()
+    mocks.isSessionSnoozed.mockReturnValue(false)
+
+    await emitAgentProgress({
+      sessionId: "session-first-run-after-unscoped",
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [],
+    })
+
+    const unscopedSendCount = mocks.sendSpy.mock.calls.length
+    expect(unscopedSendCount).toBeGreaterThan(0)
+
+    await emitAgentProgress({
+      sessionId: "session-first-run-after-unscoped",
+      runId: 99,
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [],
+    })
+
+    const firstRunScopedSendCount = mocks.sendSpy.mock.calls.length
+    // The first run-scoped update should bypass throttling even with existing unscoped state.
+    expect(firstRunScopedSendCount).toBeGreaterThan(unscopedSendCount)
+
+    await emitAgentProgress({
+      sessionId: "session-first-run-after-unscoped",
+      runId: 99,
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [],
+    })
+
+    // Follow-up run-scoped updates should be throttled.
+    expect(mocks.sendSpy.mock.calls.length).toBe(firstRunScopedSendCount)
+    vi.advanceTimersByTime(200)
+    expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstRunScopedSendCount)
+    vi.useRealTimers()
+  })
+
   it("does not repeatedly bypass throttling for terminal delegations without stable identity", async () => {
     vi.useFakeTimers()
     mocks.isSessionSnoozed.mockReturnValue(false)

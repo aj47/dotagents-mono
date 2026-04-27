@@ -2114,6 +2114,12 @@ function isDelegatedToolResultMessage(message: ACPSubAgentMessage): boolean {
   return message.role === "tool" && /^tool result:/i.test((message.content ?? "").trim())
 }
 
+function isStructuredToolInvocationMessage(message: ACPSubAgentMessage): boolean {
+  if (message.role !== "tool") return false
+  if (isDelegatedToolResultMessage(message)) return false
+  return !!(message.toolName || message.toolInput !== undefined)
+}
+
 function toCompactToolResult(result: { success: boolean; content: string; error?: string }): CompactToolExecutionResult {
   return {
     success: result.success,
@@ -2183,11 +2189,17 @@ function buildDelegatedToolExecution(
   resultMessage?: ACPSubAgentMessage,
 ): SubAgentToolExecutionData {
   const parsedUseMessage = parseDelegatedToolUseMessage(message)
+  const isStructuredToolUseMessage = isStructuredToolInvocationMessage(message)
   const parsedMessage = extractSubAgentToolDisplayContent(message.content ?? "")
   const parsedResult = resultMessage ? extractSubAgentToolDisplayContent(resultMessage.content ?? "") : null
-  const toolName = parsedUseMessage?.toolName || parsedMessage.toolName || parsedResult?.toolName || "Tool"
+  const toolName = parsedUseMessage?.toolName
+    || message.toolName
+    || parsedMessage.toolName
+    || resultMessage?.toolName
+    || parsedResult?.toolName
+    || "Tool"
   const toolInput = parsedUseMessage?.toolInput ?? message.toolInput
-  const isToolUseMessage = !!parsedUseMessage
+  const isToolUseMessage = !!parsedUseMessage || isStructuredToolUseMessage
   const isDelegationActive = isDelegationActiveStatus(delegationStatus)
   const isPending = isToolUseMessage && !resultMessage && isDelegationActive
 
@@ -2333,7 +2345,7 @@ function buildSubAgentConversationItems(
       continue
     }
 
-    if (message.toolName || message.toolInput !== undefined || isDelegatedToolResultMessage(message)) {
+    if (isStructuredToolInvocationMessage(message) || isDelegatedToolResultMessage(message)) {
       appendToolExecutionItem(`tool-${index}`, buildDelegatedToolExecution(message, delegationStatus))
       continue
     }

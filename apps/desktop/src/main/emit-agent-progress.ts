@@ -192,6 +192,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
       }
       sessionThrottleState.set(sessionId, state)
     } else if (state.runId === undefined) {
+      isFirstUpdateForSession = true
       state.runId = incomingRunId
     }
   }
