@@ -21,9 +21,10 @@ export const getNativePanelResizeSize = (
   startSize: { width: number; height: number },
   delta: { width: number; height: number },
   minimumSize: { width: number; height: number },
+  viewportScale = 1,
 ) => ({
-  width: Math.max(minimumSize.width, startSize.width + delta.width),
-  height: Math.max(minimumSize.height, startSize.height + delta.height),
+  width: Math.max(minimumSize.width, startSize.width + delta.width * viewportScale),
+  height: Math.max(minimumSize.height, startSize.height + delta.height * viewportScale),
 })
 
 interface PanelResizeWrapperProps {
@@ -93,12 +94,17 @@ export function PanelResizeWrapper({
     }
     lastResizeCallRef.current = now
 
-    // ResizeHandle deltas use screen coordinates, matching the native panel
-    // size units used by Electron; viewportScale only affects CSS constraints.
-    const { width: newWidth, height: newHeight } = getNativePanelResizeSize(startSize, delta, {
-      width: minWidth,
-      height: minHeight,
-    })
+    // ResizeHandle deltas come from browser coordinates. Convert them back to
+    // native panel pixels so drag distance stays consistent under zoom.
+    const { width: newWidth, height: newHeight } = getNativePanelResizeSize(
+      startSize,
+      delta,
+      {
+        width: minWidth,
+        height: minHeight,
+      },
+      safeViewportScale,
+    )
 
     // Update local size immediately; send IPC without awaiting to avoid resize lag.
     setCurrentSize({ width: newWidth, height: newHeight })
@@ -121,6 +127,7 @@ export function PanelResizeWrapper({
 
     const rawMode = await tipcClient.getPanelMode().catch(() => null)
     const mode: PanelMode | null = isPanelMode(rawMode) ? rawMode : null
+    let finalSize = requestedFinalSize
 
     // Force one final size sync in case the last throttled mousemove was skipped.
     try {
@@ -131,7 +138,7 @@ export function PanelResizeWrapper({
       }
 
       const updatedSize = await tipcClient.updatePanelSize(requestedFinalSize)
-      const finalSize = isPanelSize(updatedSize) ? updatedSize : requestedFinalSize
+      finalSize = isPanelSize(updatedSize) ? updatedSize : requestedFinalSize
       setCurrentSize(finalSize)
 
       // Save the final size by mode so waveform and progress views don't override each other.
@@ -148,8 +155,11 @@ export function PanelResizeWrapper({
         // Fallback only for legacy waveform persistence. Non-waveform modes have
         // dedicated buckets and must not clobber the shared legacy size.
         if (mode === "normal") {
-          await tipcClient.savePanelCustomSize(requestedFinalSize)
-          setCurrentSize(requestedFinalSize)
+          const savedSize = await tipcClient.savePanelCustomSize(finalSize)
+          if (isPanelSize(savedSize)) {
+            finalSize = savedSize
+          }
+          setCurrentSize(finalSize)
         } else {
           throw error
         }

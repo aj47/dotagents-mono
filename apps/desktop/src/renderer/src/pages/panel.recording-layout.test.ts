@@ -86,10 +86,10 @@ describe("panel recording layout", () => {
       panelResizeWrapperSource.indexOf("export const getNativePanelResizeSize ="),
       panelResizeWrapperSource.indexOf("interface PanelResizeWrapperProps")
     )
-    expect(nativeResizeHelperSection).toContain("startSize.width + delta.width")
-    expect(nativeResizeHelperSection).toContain("startSize.height + delta.height")
-    expect(nativeResizeHelperSection).not.toContain("viewportScale")
+    expect(nativeResizeHelperSection).toContain("startSize.width + delta.width * viewportScale")
+    expect(nativeResizeHelperSection).toContain("startSize.height + delta.height * viewportScale")
     expect(nativeResizeHelperSection).not.toContain("safeViewportScale")
+    expect(panelResizeWrapperSource).toContain("safeViewportScale,")
   })
 
   it("ignores non-finite panel sizes from IPC before they reach recording layout math", () => {
@@ -109,7 +109,8 @@ describe("panel recording layout", () => {
     )
 
     expect(resizeEndSection).toContain('if (mode === "normal")')
-    expect(resizeEndSection).toContain("await tipcClient.savePanelCustomSize(requestedFinalSize)")
+    expect(resizeEndSection).toContain("let finalSize = requestedFinalSize")
+    expect(resizeEndSection).toContain("await tipcClient.savePanelCustomSize(finalSize)")
     expect(resizeEndSection).toContain("dedicated buckets and must not clobber the shared legacy size")
   })
 
