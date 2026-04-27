@@ -82,6 +82,8 @@ export function PanelResizeWrapper({
     }
     lastResizeCallRef.current = now
 
+    // ResizeHandle deltas use screen coordinates, matching the native panel
+    // size units used by Electron; viewportScale only affects CSS constraints.
     const newWidth = Math.max(minWidth, startSize.width + delta.width)
     const newHeight = Math.max(minHeight, startSize.height + delta.height)
 

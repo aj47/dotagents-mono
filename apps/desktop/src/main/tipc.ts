@@ -3550,10 +3550,9 @@ export const router = {
       const updatedConfig = {
         ...config,
         panelCustomSize: { width, height },
-        panelWaveformSize: { width, height },
       }
       configStore.save(updatedConfig)
-      return updatedConfig.panelWaveformSize
+      return updatedConfig.panelCustomSize
     }),
 
   // Save panel size with mode-specific persistence

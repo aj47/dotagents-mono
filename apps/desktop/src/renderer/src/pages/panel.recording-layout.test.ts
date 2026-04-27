@@ -48,6 +48,12 @@ describe("panel recording layout", () => {
     expect(mainWindowSource).toContain("config.panelWaveformSize")
     expect(mainWindowSource).toContain("Ignoring oversized legacy waveform size")
     expect(tipcSource).toContain("updatedConfig.panelWaveformSize = { width, height }")
+    const legacyCustomSizeSection = tipcSource.slice(
+      tipcSource.indexOf("savePanelCustomSize: t.procedure"),
+      tipcSource.indexOf("// Save panel size with mode-specific persistence")
+    )
+    expect(legacyCustomSizeSection).toContain("panelCustomSize: { width, height }")
+    expect(legacyCustomSizeSection).not.toContain("panelWaveformSize")
     expect(resizeWaveformSection).toContain("getWaveformPanelSize()")
     expect(resizeWaveformSection).not.toContain("Math.max(currentWidth")
   })
@@ -72,6 +78,11 @@ describe("panel recording layout", () => {
     expect(panelSource).toContain('transform: `scale(${zoomCompensationScale})`')
     expect(panelResizeWrapperSource).toContain("viewportScale?: number")
     expect(panelResizeWrapperSource).toContain("minWidth: `${minWidth / safeViewportScale}px`")
+    expect(panelResizeWrapperSource).toContain("minHeight: `${minHeight / safeViewportScale}px`")
+    expect(panelResizeWrapperSource).toContain("const newWidth = Math.max(minWidth, startSize.width + delta.width)")
+    expect(panelResizeWrapperSource).toContain("const newHeight = Math.max(minHeight, startSize.height + delta.height)")
+    expect(panelResizeWrapperSource).not.toContain("delta.width * safeViewportScale")
+    expect(panelResizeWrapperSource).not.toContain("delta.height * safeViewportScale")
   })
 
   it("gives text input its own safer min width, height, and persisted size bucket", () => {
