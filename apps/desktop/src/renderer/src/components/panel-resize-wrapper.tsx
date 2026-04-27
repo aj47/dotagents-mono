@@ -34,6 +34,7 @@ interface PanelResizeWrapperProps {
   minWidth?: number
   minHeight?: number
   viewportScale?: number
+  fallbackMode?: PanelMode
 }
 
 export function PanelResizeWrapper({
@@ -43,6 +44,7 @@ export function PanelResizeWrapper({
   minWidth = 200,
   minHeight = WAVEFORM_MIN_HEIGHT,
   viewportScale = 1,
+  fallbackMode = "normal",
 }: PanelResizeWrapperProps) {
   const [currentSize, setCurrentSize] = useState({ width: 300, height: 200 })
   const resizeStartSizeRef = useRef<{ width: number; height: number } | null>(null)
@@ -115,18 +117,32 @@ export function PanelResizeWrapper({
     void updatePromise.finally(() => {
       inFlightResizeUpdatesRef.current.delete(updatePromise)
     })
-  }, [enableResize, minWidth, minHeight])
+  }, [enableResize, minWidth, minHeight, safeViewportScale])
 
   const handleResizeEnd = useCallback(async (size: { width: number; height: number }) => {
     if (!enableResize) return
 
-    const requestedFinalSize = {
-      width: Math.max(minWidth, size.width),
-      height: Math.max(minHeight, size.height),
-    }
+    const startSize = resizeStartSizeRef.current
+    const requestedFinalSize = startSize
+      ? getNativePanelResizeSize(
+          startSize,
+          {
+            width: size.width - startSize.width,
+            height: size.height - startSize.height,
+          },
+          {
+            width: minWidth,
+            height: minHeight,
+          },
+          safeViewportScale,
+        )
+      : {
+          width: Math.max(minWidth, size.width),
+          height: Math.max(minHeight, size.height),
+        }
 
     const rawMode = await tipcClient.getPanelMode().catch(() => null)
-    const mode: PanelMode | null = isPanelMode(rawMode) ? rawMode : null
+    const mode: PanelMode = isPanelMode(rawMode) ? rawMode : fallbackMode
     let finalSize = requestedFinalSize
 
     // Force one final size sync in case the last throttled mousemove was skipped.
@@ -142,9 +158,6 @@ export function PanelResizeWrapper({
       setCurrentSize(finalSize)
 
       // Save the final size by mode so waveform and progress views don't override each other.
-      if (!mode) {
-        throw new Error("Unable to determine panel mode for size persistence")
-      }
       await tipcClient.savePanelModeSize({
         mode,
         width: finalSize.width,
@@ -167,7 +180,7 @@ export function PanelResizeWrapper({
         console.error("Failed to save panel size:", error, fallbackError)
       }
     }
-  }, [enableResize, minWidth, minHeight])
+  }, [enableResize, fallbackMode, minWidth, minHeight, safeViewportScale])
 
   return (
     <div

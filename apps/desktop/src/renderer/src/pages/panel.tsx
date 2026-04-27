@@ -1313,6 +1313,7 @@ export function Component() {
   const waveformHeight = hasPreviewVisible ? WAVEFORM_WITH_PREVIEW_HEIGHT : WAVEFORM_MIN_HEIGHT
   const minWidth = showTextInput ? TEXT_INPUT_MIN_WIDTH_PX : MIN_WAVEFORM_WIDTH
   const minHeight = showTextInput ? TEXT_INPUT_MIN_HEIGHT : (anyVisibleSessions && !recording ? PROGRESS_MIN_HEIGHT : waveformHeight)
+  const panelResizeMode = showTextInput ? "textInput" : anyVisibleSessions && !recording ? "agent" : "normal"
 
   return (
     <PanelResizeWrapper
@@ -1320,6 +1321,7 @@ export function Component() {
       minWidth={minWidth}
       minHeight={minHeight}
       viewportScale={recordingViewportScale}
+      fallbackMode={panelResizeMode}
       className={cn(
         "floating-panel modern-text-strong flex h-screen flex-col text-foreground",
         isDark ? "dark" : ""

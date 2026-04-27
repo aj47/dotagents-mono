@@ -3601,7 +3601,11 @@ export const router = {
       legacyCustomSize && legacyCustomSize.width <= 420 && legacyCustomSize.height <= 240
     const savedWaveformSize = config.panelWaveformSize ?? (isCompactLegacyWaveformSize ? legacyCustomSize : undefined)
 
-    if (savedWaveformSize) {
+    if (
+      savedWaveformSize &&
+      Number.isFinite(savedWaveformSize.width) &&
+      Number.isFinite(savedWaveformSize.height)
+    ) {
       // Apply saved waveform size (use MIN_WAVEFORM_WIDTH to ensure visualizer bars aren't clipped)
       const { width, height } = savedWaveformSize
       const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)

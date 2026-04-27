@@ -631,6 +631,11 @@ const getSavedPanelSize = (mode: SavedPanelSizeMode = "waveform") => {
     const maxWidth = 3000
     const maxHeight = 2000
 
+    if (!Number.isFinite(savedSize.width) || !Number.isFinite(savedSize.height)) {
+      logApp(`[window.ts] Saved size is invalid (${savedSize.width}x${savedSize.height}), using default:`, fallbackSize)
+      return fallbackSize
+    }
+
     if (savedSize.width > maxWidth || savedSize.height > maxHeight) {
       logApp(`[window.ts] Saved size too large (${savedSize.width}x${savedSize.height}), using default:`, fallbackSize)
       return fallbackSize

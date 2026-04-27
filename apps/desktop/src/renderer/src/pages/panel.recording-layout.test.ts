@@ -78,6 +78,7 @@ describe("panel recording layout", () => {
     expect(panelSource).toContain("stableRecordingViewportSize.width - WAVEFORM_HORIZONTAL_PADDING_PX * 2")
     expect(panelSource).toContain('transform: `scale(${zoomCompensationScale})`')
     expect(panelResizeWrapperSource).toContain("viewportScale?: number")
+    expect(panelResizeWrapperSource).toContain("fallbackMode?: PanelMode")
     expect(panelResizeWrapperSource).toContain("minWidth: `${minWidth / safeViewportScale}px`")
     expect(panelResizeWrapperSource).toContain("minHeight: `${minHeight / safeViewportScale}px`")
     expect(panelResizeWrapperSource).toContain("export const getNativePanelResizeSize =")
@@ -90,6 +91,11 @@ describe("panel recording layout", () => {
     expect(nativeResizeHelperSection).toContain("startSize.height + delta.height * viewportScale")
     expect(nativeResizeHelperSection).not.toContain("safeViewportScale")
     expect(panelResizeWrapperSource).toContain("safeViewportScale,")
+    expect(panelResizeWrapperSource).toContain("size.width - startSize.width")
+    expect(panelResizeWrapperSource).toContain("size.height - startSize.height")
+    expect(panelResizeWrapperSource).toContain("[enableResize, minWidth, minHeight, safeViewportScale]")
+    expect(panelSource).toContain('const panelResizeMode = showTextInput ? "textInput"')
+    expect(panelSource).toContain("fallbackMode={panelResizeMode}")
   })
 
   it("ignores non-finite panel sizes from IPC before they reach recording layout math", () => {
@@ -100,6 +106,8 @@ describe("panel recording layout", () => {
     expect(panelSource).toContain("!Number.isFinite(cssViewportSize.width)")
     expect(panelSource).toContain("!Number.isFinite(cssViewportSize.height)")
     expect(panelResizeWrapperSource).toContain("Number.isFinite((value as { width: number }).width)")
+    expect(mainWindowSource).toContain("!Number.isFinite(savedSize.width)")
+    expect(tipcSource).toContain("Number.isFinite(savedWaveformSize.width)")
   })
 
   it("keeps legacy size fallback limited to waveform mode", () => {
@@ -110,6 +118,7 @@ describe("panel recording layout", () => {
 
     expect(resizeEndSection).toContain('if (mode === "normal")')
     expect(resizeEndSection).toContain("let finalSize = requestedFinalSize")
+    expect(resizeEndSection).toContain("const mode: PanelMode = isPanelMode(rawMode) ? rawMode : fallbackMode")
     expect(resizeEndSection).toContain("await tipcClient.savePanelCustomSize(finalSize)")
     expect(resizeEndSection).toContain("dedicated buckets and must not clobber the shared legacy size")
   })
