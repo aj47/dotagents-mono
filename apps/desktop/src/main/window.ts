@@ -1469,6 +1469,9 @@ export function resizePanelForWaveformPreview(showPreview: boolean) {
     const targetSize = getWaveformPanelSize(targetHeight)
     const newWidth = targetSize.width
     const newHeight = targetSize.height
+    const minWidth = getPanelMinWidth("waveform")
+
+    win.setMinimumSize(minWidth, targetHeight)
 
     // Skip if already at target size
     if (currentWidth === newWidth && currentHeight === newHeight) return

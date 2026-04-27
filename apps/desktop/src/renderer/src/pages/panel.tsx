@@ -1320,7 +1320,7 @@ export function Component() {
       enableResize={true}
       minWidth={minWidth}
       minHeight={minHeight}
-      viewportScale={recordingViewportScale}
+      viewportScale={panelViewportScale}
       fallbackMode={panelResizeMode}
       className={cn(
         "floating-panel modern-text-strong flex h-screen flex-col text-foreground",

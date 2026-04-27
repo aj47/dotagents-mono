@@ -106,8 +106,20 @@ describe("panel recording layout", () => {
     expect(panelResizeWrapperSource).toContain("size.width - startSize.width")
     expect(panelResizeWrapperSource).toContain("size.height - startSize.height")
     expect(panelResizeWrapperSource).toContain("[enableResize, minWidth, minHeight, safeViewportScale]")
+    expect(panelSource).toContain("viewportScale={panelViewportScale}")
     expect(panelSource).toContain('const panelResizeMode = showTextInput ? "textInput"')
     expect(panelSource).toContain("fallbackMode={panelResizeMode}")
+  })
+
+  it("updates the native minimum height while waveform preview is visible", () => {
+    const previewResizeSection = mainWindowSource.slice(
+      mainWindowSource.indexOf("export function resizePanelForWaveformPreview"),
+      mainWindowSource.indexOf("/**\n * Set the focusability")
+    )
+
+    expect(previewResizeSection).toContain("const targetHeight = showPreview ? WAVEFORM_WITH_PREVIEW_HEIGHT : WAVEFORM_MIN_HEIGHT")
+    expect(previewResizeSection).toContain('const minWidth = getPanelMinWidth("waveform")')
+    expect(previewResizeSection).toContain("win.setMinimumSize(minWidth, targetHeight)")
   })
 
   it("ignores non-finite panel sizes from IPC before they reach recording layout math", () => {
