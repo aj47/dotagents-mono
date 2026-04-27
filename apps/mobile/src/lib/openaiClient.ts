@@ -71,13 +71,20 @@ export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage
     const didFilterToolResults = resultIndexesToKeep.length !== message.toolResults.length;
     const originalCallsAreIndexAligned =
       Array.isArray(originalToolCalls) && originalToolCalls.length === message.toolResults.length;
-    const sanitizedToolCalls = originalCallsAreIndexAligned
-      ? (didFilterToolResults
-          ? resultIndexesToKeep
-              .map((index) => originalToolCalls[index])
-              .filter((toolCall): toolCall is ToolCall => !!toolCall)
-          : originalToolCalls)
-      : undefined;
+    const sanitizedToolCalls = (() => {
+      if (!originalCallsAreIndexAligned) return undefined;
+
+      if (didFilterToolResults) {
+        const alignedCalls = resultIndexesToKeep.map((index) => originalToolCalls[index]);
+        return alignedCalls.every((toolCall): toolCall is ToolCall => !!toolCall)
+          ? alignedCalls
+          : undefined;
+      }
+
+      return originalToolCalls.every((toolCall): toolCall is ToolCall => !!toolCall)
+        ? originalToolCalls
+        : undefined;
+    })();
     const shouldDropToolCalls = !!originalToolCalls && !sanitizedToolCalls;
 
     const sanitizedMessage: ChatMessage = {

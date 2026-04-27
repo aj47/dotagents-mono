@@ -72,6 +72,29 @@ describe('sanitizeMessagesForRequest', () => {
     ]);
   });
 
+  it('drops toolCalls when any aligned toolCall entry is missing', () => {
+    const messages: ChatMessage[] = [{
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        { name: 'first_tool', arguments: { a: 1 } },
+        undefined as unknown as ChatMessage['toolCalls'][number],
+      ],
+      toolResults: [
+        { success: true, content: 'first-result' },
+        { success: true, content: 'second-result' },
+      ],
+    }];
+
+    const sanitized = sanitizeMessagesForRequest(messages);
+
+    expect(sanitized[0].toolCalls).toBeUndefined();
+    expect(sanitized[0].toolResults).toEqual([
+      { success: true, content: 'first-result' },
+      { success: true, content: 'second-result' },
+    ]);
+  });
+
   it('removes both toolCalls and toolResults when all results are pending placeholders', () => {
     const messages: ChatMessage[] = [{
       role: 'assistant',
