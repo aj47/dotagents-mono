@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockGetSkill = vi.fn()
 const mockGetSkills = vi.fn()
+const mockRefreshFromDisk = vi.fn()
 const mockGetSessionProfileSnapshot = vi.fn()
 const mockGetTrackerSessionProfileSnapshot = vi.fn()
 const mockGetCurrentProfile = vi.fn()
@@ -37,6 +38,7 @@ vi.mock("./skills-service", () => ({
   skillsService: {
     getSkill: mockGetSkill,
     getSkills: mockGetSkills,
+    refreshFromDisk: mockRefreshFromDisk,
     upgradeGitHubSkillToLocal: vi.fn(),
   },
 }))
@@ -57,6 +59,10 @@ describe("runtime-tools skill access", () => {
       filePath: "/tmp/disabled-skill/SKILL.md",
     })
     mockGetSkills.mockReturnValue([
+      { id: "allowed-skill", name: "Allowed Skill", instructions: "allowed instructions" },
+      { id: "disabled-skill", name: "Disabled Skill", instructions: "secret instructions" },
+    ])
+    mockRefreshFromDisk.mockReturnValue([
       { id: "allowed-skill", name: "Allowed Skill", instructions: "allowed instructions" },
       { id: "disabled-skill", name: "Disabled Skill", instructions: "secret instructions" },
     ])
@@ -93,6 +99,28 @@ describe("runtime-tools skill access", () => {
     expect(result?.isError).toBe(true)
     const payload = JSON.parse(String(result?.content[0]?.text))
     expect(payload.skillId).toBe("disabled-skill")
+  })
+
+  it("refreshes the skill registry before loading instructions", async () => {
+    mockGetSessionProfileSnapshot.mockReturnValue({
+      profileId: "main-agent",
+      profileName: "Main Agent",
+      guidelines: "",
+      skillsConfig: { allSkillsDisabledByDefault: false },
+    })
+    mockGetSkill.mockReturnValue({
+      id: "fresh-skill",
+      name: "Fresh Skill",
+      instructions: "fresh instructions",
+      filePath: "/tmp/fresh-skill/skill.md",
+    })
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("load_skill_instructions", { skillId: "fresh-skill" }, "session-1")
+
+    expect(mockRefreshFromDisk).toHaveBeenCalledTimes(1)
+    expect(result?.isError).toBe(false)
+    expect(String(result?.content[0]?.text)).toContain("fresh instructions")
   })
 
   it("blocks executing commands inside a disabled skill directory", async () => {

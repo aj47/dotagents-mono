@@ -243,7 +243,7 @@ export async function processTranscriptWithTools(
     : []
   // null means "all skills enabled by default" — resolve to all available skill IDs
   const enabledSkillIds = enabledSkillIdsOrNull === null
-    ? skillsService.getSkills().map(s => s.id)
+    ? skillsService.refreshFromDisk().map(s => s.id)
     : enabledSkillIdsOrNull
   const skillsInstructions = skillsService.getEnabledSkillsInstructionsForProfile(enabledSkillIds)
   const skillsIndex = extractSkillsIndexForMinimalPrompt(skillsInstructions)
@@ -1027,7 +1027,7 @@ export async function processTranscriptWithAgentMode(
     const snapshotSkillsConfig = effectiveProfileSnapshot?.skillsConfig
     // When skillsConfig is undefined or allSkillsDisabledByDefault is false, all skills are enabled
     const enabledSkillIds = (!snapshotSkillsConfig || !snapshotSkillsConfig.allSkillsDisabledByDefault)
-      ? skillsService.getSkills().map(s => s.id)
+      ? skillsService.refreshFromDisk().map(s => s.id)
       : (snapshotSkillsConfig.enabledSkillIds ?? [])
     logLLM(`[processTranscriptWithAgentMode] Loading skills for session ${currentSessionId}. enabledSkillIds: [${enabledSkillIds.join(', ')}]`)
     profileSkillsInstructions = skillsService.getEnabledSkillsInstructionsForProfile(enabledSkillIds)
@@ -1906,9 +1906,8 @@ export async function processTranscriptWithAgentMode(
 
     const hasValidContent = llmResponse?.content && llmResponse.content.trim().length > 0
     const hasValidToolCalls = llmResponse?.toolCalls && Array.isArray(llmResponse.toolCalls) && llmResponse.toolCalls.length > 0
-    const hasValidReasoningSummary = !!llmResponse?.reasoningSummary?.trim()
 
-    if (!llmResponse || (!hasValidContent && !hasValidToolCalls && !hasValidReasoningSummary)) {
+    if (!llmResponse || (!hasValidContent && !hasValidToolCalls)) {
       emptyResponseRetryCount++
       logLLM(`❌ LLM null/empty response on iteration ${iteration} (retry ${emptyResponseRetryCount}/${MAX_EMPTY_RESPONSE_RETRIES})`)
       logLLM("Response details:", {
@@ -1971,8 +1970,10 @@ export async function processTranscriptWithAgentMode(
     // Reset empty response counter on successful response
     emptyResponseRetryCount = 0
 
-    // Prepend reasoning summary wrapped in <tool_call>think> tags so the existing
-    // ThinkSection UI renders it as a collapsible thinking block.
+    // Build a display-only reasoning block for the progress UI. Do not mutate
+    // llmResponse.content: reasoning summaries are internal thinking and must
+    // never be treated as deliverable/final user-facing content.
+    let reasoningDisplayContent: string | undefined
     if (llmResponse.reasoningSummary) {
       // Sanitize reasoningSummary to prevent nested think tags from
       // breaking parseThinkSections()'s regex-based extraction.
@@ -1980,7 +1981,7 @@ export async function processTranscriptWithAgentMode(
         .replace(/<\/think>/gi, "")
         .replace(/<think>/gi, "")
       const thinkBlock = `<think>\n${sanitized}\n</think>`
-      llmResponse.content = llmResponse.content
+      reasoningDisplayContent = llmResponse.content
         ? `${thinkBlock}\n\n${llmResponse.content}`
         : thinkBlock
     }
@@ -1988,7 +1989,7 @@ export async function processTranscriptWithAgentMode(
     // Update thinking step with actual LLM content and mark as completed.
     // Strip any raw tool-marker tokens (e.g. <|tool_call_begin|>) so they
     // don't leak into the progress UI before the marker-recovery branch runs.
-    const displayContent = (llmResponse.content || "").replace(/<\|[^|]*\|>/g, "").trim()
+    const displayContent = (reasoningDisplayContent || llmResponse.content || "").replace(/<\|[^|]*\|>/g, "").trim()
     thinkingStep.status = "completed"
     thinkingStep.llmContent = displayContent
     if (displayContent) {

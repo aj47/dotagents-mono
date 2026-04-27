@@ -4605,7 +4605,7 @@ export const router = {
       // Pass all available skill IDs so the toggle can properly transition
       // from "all enabled by default" to explicit opt-in mode
       const { skillsService } = await import("./skills-service")
-      const allSkillIds = skillsService.getSkills().map(s => s.id)
+      const allSkillIds = skillsService.refreshFromDisk().map(s => s.id)
       return agentProfileService.toggleProfileSkill(input.profileId, input.skillId, allSkillIds)
     }),
 
@@ -4622,7 +4622,7 @@ export const router = {
       if (enabledSkillIds === null) {
         // null means "all skills enabled" — return all available skill IDs
         const { skillsService } = await import("./skills-service")
-        return skillsService.getSkills().map(s => s.id)
+        return skillsService.refreshFromDisk().map(s => s.id)
       }
       return enabledSkillIds
     }),
@@ -4635,7 +4635,7 @@ export const router = {
       const enabledSkillIds = agentProfileService.getEnabledSkillIdsForProfile(input.profileId)
       if (enabledSkillIds === null) {
         // null means "all skills enabled" — use all available skill IDs
-        const allSkillIds = skillsService.getSkills().map(s => s.id)
+        const allSkillIds = skillsService.refreshFromDisk().map(s => s.id)
         return skillsService.getEnabledSkillsInstructionsForProfile(allSkillIds)
       }
       return skillsService.getEnabledSkillsInstructionsForProfile(enabledSkillIds)
