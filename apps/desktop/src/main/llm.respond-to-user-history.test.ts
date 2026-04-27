@@ -127,6 +127,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-clean-final",
       "session-windowed-progress",
       "session-reasoning-stub",
+      "session-reasoning-only-empty-retry",
     )
   })
 
@@ -321,6 +322,40 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .map((message: any) => message.content)
       .join("\n")
     expect(secondPrompt).toContain("without first providing the final user-facing answer")
+  })
+
+  it("treats reasoning-summary-only responses as empty and retries", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({
+        content: undefined,
+        reasoningSummary: "I should keep working before answering.",
+        toolCalls: undefined,
+      })
+      .mockResolvedValueOnce({ content: "Recovered after retry", toolCalls: [] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Finish this",
+      availableTools as any,
+      makeExecuteToolCall("session-reasoning-only-empty-retry", 1),
+      4,
+      [],
+      "conv-reasoning-only-empty-retry",
+      "session-reasoning-only-empty-retry",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Recovered after retry")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+
+    const retryPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(retryPrompt).toContain("Previous request had empty response")
+    expect(result.conversationHistory.some((message) => message.role === "assistant" && message.content.includes("I should keep working"))).toBe(false)
   })
 
   it("only generates a separate final summary when final-summary mode is enabled", async () => {

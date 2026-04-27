@@ -177,6 +177,8 @@ describe("continuation guard helpers", () => {
 
   it("rejects pure thinking blocks as non-deliverable content", () => {
     expect(isDeliverableResponseContent("<think>Need to inspect more chunks.</think>")).toBe(false)
+    expect(isDeliverableResponseContent("<think>Need to inspect more chunks.")).toBe(false)
+    expect(isDeliverableResponseContent("Need to inspect more chunks.</think>")).toBe(false)
     expect(resolveIterationLimitFinalContent({
       finalContent: "<think>Need to inspect more chunks.</think>",
       conversationHistory: [{ role: "assistant", content: "<think>Still planning.</think>" }],

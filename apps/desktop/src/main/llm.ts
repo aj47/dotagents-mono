@@ -1906,9 +1906,8 @@ export async function processTranscriptWithAgentMode(
 
     const hasValidContent = llmResponse?.content && llmResponse.content.trim().length > 0
     const hasValidToolCalls = llmResponse?.toolCalls && Array.isArray(llmResponse.toolCalls) && llmResponse.toolCalls.length > 0
-    const hasValidReasoningSummary = !!llmResponse?.reasoningSummary?.trim()
 
-    if (!llmResponse || (!hasValidContent && !hasValidToolCalls && !hasValidReasoningSummary)) {
+    if (!llmResponse || (!hasValidContent && !hasValidToolCalls)) {
       emptyResponseRetryCount++
       logLLM(`❌ LLM null/empty response on iteration ${iteration} (retry ${emptyResponseRetryCount}/${MAX_EMPTY_RESPONSE_RETRIES})`)
       logLLM("Response details:", {
