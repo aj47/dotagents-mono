@@ -428,7 +428,8 @@ function isRetryableError(error: unknown): boolean {
   // Non-transient 4xx (auth, validation, not-found, etc.) won't succeed on retry.
   // 408 (timeout) and 429 (rate limit) are explicitly retryable.
   const statusCode = errorWithStatus.statusCode ?? errorWithStatus.status
-  if (typeof statusCode === "number") {
+  const hasStructuredStatusCode = typeof statusCode === "number"
+  if (hasStructuredStatusCode) {
     if (statusCode === 408 || statusCode === 429) {
       return true
     }
@@ -440,7 +441,7 @@ function isRetryableError(error: unknown): boolean {
   // Guard against broad stream-error retries. Keep known transient Codex
   // chatgpt-web failure signatures retryable, but avoid retrying generic
   // "stream error" failures that may be deterministic for other providers.
-  if (message.includes("stream error")) {
+  if (!hasStructuredStatusCode && message.includes("stream error")) {
     const isKnownCodexTransient =
       message.includes("chatgpt codex stream error") ||
       message.includes("chatgpt codex response failed") ||

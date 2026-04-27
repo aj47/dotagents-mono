@@ -492,6 +492,34 @@ describe('LLM Fetch with AI SDK', () => {
     expect(generateTextMock).toHaveBeenCalledTimes(1)
   })
 
+  it('should still retry stream errors when structured status indicates a transient failure', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    let callCount = 0
+    generateTextMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        const transientStreamError = Object.assign(
+          new Error('stream error while parsing provider payload'),
+          { statusCode: 503 },
+        )
+        return Promise.reject(transientStreamError)
+      }
+      return Promise.resolve({
+        text: '{"content": "recovered"}',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+      } as any)
+    })
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    const result = await makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+
+    expect(callCount).toBe(2)
+    expect(result.content).toBe('recovered')
+  })
+
   it('should not retry on abort errors', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
