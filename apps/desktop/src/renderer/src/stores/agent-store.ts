@@ -69,8 +69,7 @@ const mergeDelegationStep = (
   if (existingWasTerminal && !incomingIsTerminal) {
     return {
       ...existingStep,
-      ...step,
-      status: existingStep.status,
+      timestamp: Math.max(existingStep.timestamp || 0, step.timestamp || 0) || existingStep.timestamp || step.timestamp,
       delegation: {
         ...existingStep.delegation,
         ...step.delegation,

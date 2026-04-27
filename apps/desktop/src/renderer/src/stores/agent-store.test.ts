@@ -164,6 +164,63 @@ describe('agent-store delegation merge', () => {
     expect(step?.delegation?.conversation?.[0]?.content).toBe('Late transcript')
   })
 
+  it('preserves terminal step metadata when stale non-terminal updates arrive', () => {
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      steps: [
+        {
+          id: 'delegation-2',
+          type: 'completion',
+          title: 'Delegation completed',
+          description: 'Terminal step metadata',
+          status: 'completed',
+          timestamp: 5,
+          delegation: {
+            runId: 'delegated-run-2',
+            agentName: 'internal',
+            task: 'Do work',
+            status: 'completed',
+            startTime: 1,
+            endTime: 5,
+          },
+        },
+      ],
+    })
+
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      steps: [
+        {
+          id: 'delegation-2',
+          type: 'thinking',
+          title: 'Delegation running',
+          description: 'Stale non-terminal metadata',
+          status: 'in_progress',
+          timestamp: 6,
+          delegation: {
+            runId: 'delegated-run-2',
+            agentName: 'internal',
+            task: 'Do work',
+            status: 'running',
+            startTime: 1,
+            conversation: [{ role: 'assistant', content: 'Late transcript', timestamp: 6 }],
+          },
+        },
+      ],
+    })
+
+    const stored = useAgentStore.getState().agentProgressById.get('session-1')
+    const step = stored?.steps?.[0]
+
+    expect(step?.status).toBe('completed')
+    expect(step?.type).toBe('completion')
+    expect(step?.title).toBe('Delegation completed')
+    expect(step?.description).toBe('Terminal step metadata')
+    expect(step?.timestamp).toBe(6)
+    expect(step?.delegation?.status).toBe('completed')
+    expect(step?.delegation?.conversation?.[0]?.content).toBe('Late transcript')
+  })
+
   it('replaces pinned session ids during hydration', () => {
     useAgentStore.getState().togglePinSession('session-1')
 

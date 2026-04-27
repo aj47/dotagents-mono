@@ -1502,14 +1502,26 @@ export async function processTranscriptWithAgentMode(
         .map((value) => value.toLowerCase().trim())
         .filter((value) => value.length > 0)
       if (verificationSignals.length === 0) return false
-      const mentionsCompletionSignal =
-        verificationSignals.some((signal) => signal.includes(MARK_WORK_COMPLETE_TOOL)) ||
-        verificationSignals.some((signal) => signal.includes("completion signal"))
+
+      const completionSignalPhrases = [MARK_WORK_COMPLETE_TOOL, "completion signal"] as const
+      const mentionsCompletionSignal = verificationSignals.some((signal) =>
+        completionSignalPhrases.some((phrase) => signal.includes(phrase))
+      )
+
+      const stripCompletionSignalPhrases = (signal: string): string => (
+        completionSignalPhrases.reduce(
+          (current, phrase) => current.replaceAll(phrase, " "),
+          signal
+        ).replace(/[^\p{L}\p{N}]+/gu, " ").trim()
+      )
+
       const mentionsMissingWork = verificationSignals.some((signal) => {
-        const normalized = signal
-        return !normalized.includes(MARK_WORK_COMPLETE_TOOL) &&
-          !normalized.includes("completion signal")
+        if (!completionSignalPhrases.some((phrase) => signal.includes(phrase))) {
+          return true
+        }
+        return stripCompletionSignalPhrases(signal).length > 0
       })
+
       return mentionsCompletionSignal && !mentionsMissingWork
     })()
 

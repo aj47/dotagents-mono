@@ -46,24 +46,35 @@ export type { ToolCall, ToolResult, ConversationHistoryMessage } from '@dotagent
 export type { AgentProgressUpdate, AgentProgressStep, OnProgressCallback } from '@dotagents/shared';
 export type { StreamingCheckpoint } from './connectionRecovery';
 
-const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage[] => {
+export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage[] => {
   return messages.map((message) => {
     if (!Array.isArray(message.toolResults)) {
       return message;
     }
 
-    const toolResults = message.toolResults.filter(
-      (result): result is ToolResult => result !== undefined
-    );
+    const resultIndexesToKeep = message.toolResults
+      .map((result, index) => (result === undefined ? -1 : index))
+      .filter((index) => index >= 0);
+
+    const toolResults = resultIndexesToKeep.map((index) => message.toolResults![index] as ToolResult);
 
     if (toolResults.length === 0) {
       const rest = { ...message };
       delete rest.toolResults;
+      if (Array.isArray(message.toolCalls) && message.toolCalls.length === message.toolResults.length) {
+        delete rest.toolCalls;
+      }
       return rest;
     }
 
+    const sanitizedToolCalls =
+      Array.isArray(message.toolCalls) && message.toolCalls.length === message.toolResults.length
+        ? resultIndexesToKeep.map((index) => message.toolCalls![index])
+        : message.toolCalls;
+
     return {
       ...message,
+      ...(sanitizedToolCalls ? { toolCalls: sanitizedToolCalls } : {}),
       toolResults,
     };
   });
