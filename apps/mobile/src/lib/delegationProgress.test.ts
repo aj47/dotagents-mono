@@ -165,6 +165,48 @@ describe('createDelegationProgressMessages', () => {
     ]);
   });
 
+  it('attaches structured result-only messages to prior pending structured calls', () => {
+    const steps: AgentProgressStep[] = [
+      {
+        id: 'delegation-structured-split',
+        type: 'thinking',
+        title: 'Delegating',
+        status: 'in_progress',
+        timestamp: 550,
+        delegation: {
+          runId: 'run-structured-split',
+          agentName: 'Worker',
+          task: 'Run split tool stream',
+          status: 'running',
+          startTime: 550,
+          conversation: [
+            {
+              role: 'assistant',
+              content: '',
+              toolCalls: [{ name: 'search', arguments: { query: 'tooling' } }],
+              timestamp: 551,
+            },
+            {
+              role: 'tool',
+              content: '',
+              toolResults: [{ success: true, content: 'found' }],
+              timestamp: 552,
+            },
+          ],
+        },
+      },
+    ];
+
+    const messages = createDelegationProgressMessages(steps);
+    expect(messages).toHaveLength(1);
+    expect(messages[0].toolCalls).toEqual([
+      { name: 'search', arguments: { query: 'tooling' } },
+    ]);
+    expect(messages[0].toolResults).toEqual([
+      { success: true, content: 'found' },
+    ]);
+  });
+
   it('preserves empty tool output and avoids success fallback for failed structured results', () => {
     const steps: AgentProgressStep[] = [
       {

@@ -36,7 +36,7 @@ export type ChatMessage = {
   content?: string;
   timestamp?: number;
   toolCalls?: ToolCall[];
-  toolResults?: ToolResult[];
+  toolResults?: Array<ToolResult | undefined>;
   variant?: 'delegation';
 };
 

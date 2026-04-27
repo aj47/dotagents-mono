@@ -1890,6 +1890,7 @@ function buildSubAgentConversationItems(
   delegationStatus: ACPDelegationProgress["status"],
 ): SubAgentConversationRenderItem[] {
   const items: SubAgentConversationRenderItem[] = []
+  const pendingStructuredResultSlots: Array<{ itemIndex: number; resultIndex: number }> = []
 
   const hasRenderableStructuredMessageContent = (message: ACPSubAgentMessage): boolean => {
     const content = (message.content ?? "").trim()
@@ -1898,47 +1899,104 @@ function buildSubAgentConversationItems(
     return !/^using tool:/i.test(content) && !/^tool result:/i.test(content)
   }
 
+  const attachStructuredResultToPendingExecution = (result: CompactToolExecutionResult): boolean => {
+    while (pendingStructuredResultSlots.length > 0) {
+      const pendingSlot = pendingStructuredResultSlots.shift()
+      if (!pendingSlot) return false
+      const pendingItem = items[pendingSlot.itemIndex]
+      if (!pendingItem || pendingItem.kind !== "tool_execution") {
+        continue
+      }
+      if (pendingItem.execution.results[pendingSlot.resultIndex]) {
+        continue
+      }
+      pendingItem.execution.results[pendingSlot.resultIndex] = result
+      return true
+    }
+    return false
+  }
+
+  const appendToolExecutionItem = (
+    key: string,
+    execution: SubAgentToolExecutionData,
+    trackStructuredPendingSlots = false,
+  ): void => {
+    const itemIndex = items.length
+    items.push({
+      kind: "tool_execution",
+      key,
+      execution,
+    })
+    if (!trackStructuredPendingSlots) {
+      return
+    }
+    execution.results.forEach((result, resultIndex) => {
+      if (!result) {
+        pendingStructuredResultSlots.push({ itemIndex, resultIndex })
+      }
+    })
+  }
+
   for (let index = 0; index < conversation.length; index += 1) {
     const message = conversation[index]
+    const structuredToolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : []
+    const structuredToolResults = Array.isArray(message.toolResults) ? message.toolResults : []
+    const hasStructuredToolData = structuredToolCalls.length > 0 || structuredToolResults.length > 0
+
+    if (hasStructuredToolData && structuredToolCalls.length === 0 && structuredToolResults.length > 0) {
+      const unattachedResults: CompactToolExecutionResult[] = []
+      for (const rawResult of structuredToolResults) {
+        if (!rawResult) continue
+        const result = toCompactToolResult({
+          success: rawResult.success !== false,
+          content: normalizeStructuredToolResultContent(rawResult),
+          error: rawResult.error,
+        })
+        if (!attachStructuredResultToPendingExecution(result)) {
+          unattachedResults.push(result)
+        }
+      }
+
+      if (hasRenderableStructuredMessageContent(message)) {
+        items.push({ kind: "message", key: `msg-structured-${index}`, message })
+      }
+
+      if (unattachedResults.length > 0) {
+        appendToolExecutionItem(`tool-structured-orphan-${index}`, {
+          timestamp: message.timestamp,
+          calls: unattachedResults.map(() => ({ name: "tool_call", arguments: {} })),
+          results: unattachedResults,
+        }, true)
+      }
+      continue
+    }
+
     const structuredExecution = buildStructuredSubAgentToolExecution(message)
     if (structuredExecution) {
       if (hasRenderableStructuredMessageContent(message)) {
         items.push({ kind: "message", key: `msg-structured-${index}`, message })
       }
-      items.push({
-        kind: "tool_execution",
-        key: `tool-structured-${index}`,
-        execution: structuredExecution,
-      })
+      appendToolExecutionItem(`tool-structured-${index}`, structuredExecution, true)
       continue
     }
 
     if (isDelegatedToolUseMessage(message)) {
       const nextMessage = conversation[index + 1]
       if (nextMessage && isDelegatedToolResultMessage(nextMessage)) {
-        items.push({
-          kind: "tool_execution",
-          key: `tool-${index}-${index + 1}`,
-          execution: buildDelegatedToolExecution(message, delegationStatus, nextMessage),
-        })
+        appendToolExecutionItem(
+          `tool-${index}-${index + 1}`,
+          buildDelegatedToolExecution(message, delegationStatus, nextMessage),
+        )
         index += 1
         continue
       }
 
-      items.push({
-        kind: "tool_execution",
-        key: `tool-${index}`,
-        execution: buildDelegatedToolExecution(message, delegationStatus),
-      })
+      appendToolExecutionItem(`tool-${index}`, buildDelegatedToolExecution(message, delegationStatus))
       continue
     }
 
     if (message.role === "tool" || isDelegatedToolResultMessage(message)) {
-      items.push({
-        kind: "tool_execution",
-        key: `tool-${index}`,
-        execution: buildDelegatedToolExecution(message, delegationStatus),
-      })
+      appendToolExecutionItem(`tool-${index}`, buildDelegatedToolExecution(message, delegationStatus))
       continue
     }
 

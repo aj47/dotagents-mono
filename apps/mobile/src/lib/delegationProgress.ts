@@ -37,7 +37,7 @@ const TOOL_RESULT_PREFIX = /^tool result:\s*/i;
 
 type DelegationToolEntry = {
   toolCall: NonNullable<ChatMessage['toolCalls']>[number];
-  result?: NonNullable<ChatMessage['toolResults']>[number];
+  result?: Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>;
 };
 
 const normalizeToolArguments = (input: unknown): Record<string, unknown> => {
@@ -90,8 +90,8 @@ const defaultToolResultContent = (result: { success?: boolean; content?: string;
 };
 
 const normalizeToolResult = (
-  result: Partial<NonNullable<ChatMessage['toolResults']>[number]>,
-): NonNullable<ChatMessage['toolResults']>[number] => ({
+  result: Partial<Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>>,
+): Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined> => ({
   success: result.success !== false,
   content: defaultToolResultContent(result),
   error: result.error,
@@ -99,7 +99,7 @@ const normalizeToolResult = (
 
 const attachResultToLatestPendingEntry = (
   entries: DelegationToolEntry[],
-  result: NonNullable<ChatMessage['toolResults']>[number],
+  result: Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>,
 ) => {
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     if (!entries[index].result) {
@@ -118,8 +118,7 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
     const structuredCalls = Array.isArray(message.toolCalls) ? message.toolCalls : [];
     const structuredResults = Array.isArray(message.toolResults) ? message.toolResults : [];
     if (structuredCalls.length > 0 || structuredResults.length > 0) {
-      const maxEntries = Math.max(structuredCalls.length, structuredResults.length);
-      for (let index = 0; index < maxEntries; index += 1) {
+      for (let index = 0; index < structuredCalls.length; index += 1) {
         const call = structuredCalls[index];
         const result = structuredResults[index];
 
@@ -132,6 +131,25 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
             ? normalizeToolResult(result)
             : undefined,
         });
+      }
+      if (structuredResults.length > structuredCalls.length) {
+        for (let index = structuredCalls.length; index < structuredResults.length; index += 1) {
+          const result = structuredResults[index];
+          if (!result) {
+            continue;
+          }
+          const normalizedResult = normalizeToolResult(result);
+          const attached = attachResultToLatestPendingEntry(entries, normalizedResult);
+          if (!attached) {
+            entries.push({
+              toolCall: {
+                name: 'tool_call',
+                arguments: {},
+              },
+              result: normalizedResult,
+            });
+          }
+        }
       }
       continue;
     }
@@ -195,7 +213,7 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
   // Preserve positional alignment with toolCalls so renderers using toolResults[index]
   // do not mis-associate later results when earlier calls are still pending.
   const toolResults = alignedToolResults.some((result) => !!result)
-    ? alignedToolResults as unknown as NonNullable<ChatMessage['toolResults']>
+    ? alignedToolResults
     : undefined;
 
   return {
