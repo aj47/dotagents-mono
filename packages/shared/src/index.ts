@@ -22,3 +22,4 @@ export * from './conversation-media-assets';
 export * from './stt-models';
 export * from './api-key-error-utils';
 export * from './tool-activity-grouping';
+export * from './artifacts';

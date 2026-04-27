@@ -268,6 +268,83 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
       required: ["contextRef"],
     },
   },
+  {
+    name: "create_artifact",
+    description:
+      "Create a new interactive HTML artifact on the user's Artifacts page. Use this to build a self-contained mini webapp (dashboard, form, visualization, game, etc.) that the user can run and interact with. The artifact renders in a sandboxed iframe: no network access, no access to host APIs. A form can post results back to the agent via <form data-dotagents-submit>. Provide a descriptive title. index.html is required. style.css and script.js are optional; inline <style>/<script> in index.html also work. Returns the artifact id.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Short human-readable title." },
+        files: {
+          type: "object",
+          description: "File contents. Keys: 'index.html' (required), 'style.css', 'script.js'.",
+          properties: {
+            "index.html": { type: "string" },
+            "style.css": { type: "string" },
+            "script.js": { type: "string" },
+          },
+          required: ["index.html"],
+        },
+        note: { type: "string", description: "Optional short note describing this version." },
+        open: { type: "boolean", description: "If true, navigate the user to the artifact after creating it. Defaults to true." },
+      },
+      required: ["title", "files"],
+    },
+  },
+  {
+    name: "update_artifact",
+    description:
+      "Create a new version of an existing artifact with updated file contents. The previous version is preserved. Use this to iterate on an artifact based on user feedback.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "The artifact id returned by create_artifact." },
+        files: {
+          type: "object",
+          properties: {
+            "index.html": { type: "string" },
+            "style.css": { type: "string" },
+            "script.js": { type: "string" },
+          },
+        },
+        note: { type: "string", description: "Optional short note describing this version." },
+      },
+      required: ["id", "files"],
+    },
+  },
+  {
+    name: "read_artifact",
+    description:
+      "Read the current version of an artifact, including its files. Use this to inspect an artifact before updating it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "The artifact id." },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "list_artifacts",
+    description: "List all existing artifacts (metadata only, not file contents).",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "open_artifact",
+    description: "Navigate the user's window to an artifact so they can see it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "The artifact id." },
+      },
+      required: ["id"],
+    },
+  },
 ]
 
 /**

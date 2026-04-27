@@ -102,6 +102,14 @@ export const router: ReturnType<typeof createBrowserRouter> =
           path: "knowledge",
           lazy: () => import("./pages/knowledge"),
         },
+        {
+          path: "artifacts",
+          lazy: () => import("./pages/artifacts"),
+        },
+        {
+          path: "artifacts/:id",
+          lazy: () => import("./pages/artifacts"),
+        },
       ],
     },
     {

@@ -85,6 +85,11 @@
       "types": "./dist/api-key-error-utils.d.ts",
       "import": "./dist/api-key-error-utils.mjs",
       "require": "./dist/api-key-error-utils.js"
+    },
+    "./artifacts": {
+      "types": "./dist/artifacts.d.ts",
+      "import": "./dist/artifacts.mjs",
+      "require": "./dist/artifacts.js"
     }
   },
   "scripts": {
