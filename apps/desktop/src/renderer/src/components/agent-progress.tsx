@@ -1788,12 +1788,16 @@ function toCompactToolResult(result: { success: boolean; content: string; error?
   }
 }
 
+function hasStructuredToolError(result: { error?: string }): boolean {
+  return result.error !== undefined && result.error !== null
+}
+
 function normalizeStructuredToolResultContent(result: { success?: boolean; content?: string; error?: string }): string {
   if (typeof result.content === "string") {
     return result.content
   }
 
-  if (result.success === false || result.error) {
+  if (result.success === false || hasStructuredToolError(result)) {
     return "Tool failed"
   }
 
@@ -1826,7 +1830,7 @@ function buildStructuredSubAgentToolExecution(message: ACPSubAgentMessage): SubA
     }
 
     results.push(toCompactToolResult({
-      success: result.success !== false,
+      success: !hasStructuredToolError(result) && result.success !== false,
       content: normalizeStructuredToolResultContent(result),
       error: result.error,
     }))
@@ -1948,7 +1952,7 @@ function buildSubAgentConversationItems(
       for (const rawResult of structuredToolResults) {
         if (!rawResult) continue
         const result = toCompactToolResult({
-          success: rawResult.success !== false,
+          success: !hasStructuredToolError(rawResult) && rawResult.success !== false,
           content: normalizeStructuredToolResultContent(rawResult),
           error: rawResult.error,
         })

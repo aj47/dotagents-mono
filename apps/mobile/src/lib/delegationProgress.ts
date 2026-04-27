@@ -79,11 +79,13 @@ const normalizeToolResultContent = (content?: string): string => {
   return (content ?? '').replace(TOOL_RESULT_PREFIX, '').trim();
 };
 
+const hasToolError = (result: { error?: string }): boolean => result.error !== undefined && result.error !== null;
+
 const defaultToolResultContent = (result: { success?: boolean; content?: string; error?: string }): string => {
   if (typeof result.content === 'string') {
     return result.content;
   }
-  if (result.success === false || result.error) {
+  if (result.success === false || hasToolError(result)) {
     return 'Tool failed';
   }
   return 'Tool completed';
@@ -92,16 +94,16 @@ const defaultToolResultContent = (result: { success?: boolean; content?: string;
 const normalizeToolResult = (
   result: Partial<Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>>,
 ): Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined> => ({
-  success: result.success !== false,
+  success: !hasToolError(result) && result.success !== false,
   content: defaultToolResultContent(result),
   error: result.error,
 });
 
-const attachResultToLatestPendingEntry = (
+const attachResultToEarliestPendingEntry = (
   entries: DelegationToolEntry[],
   result: Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>,
 ) => {
-  for (let index = entries.length - 1; index >= 0; index -= 1) {
+  for (let index = 0; index < entries.length; index += 1) {
     if (!entries[index].result) {
       entries[index].result = result;
       return true;
@@ -139,7 +141,7 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
             continue;
           }
           const normalizedResult = normalizeToolResult(result);
-          const attached = attachResultToLatestPendingEntry(entries, normalizedResult);
+          const attached = attachResultToEarliestPendingEntry(entries, normalizedResult);
           if (!attached) {
             entries.push({
               toolCall: {
@@ -171,7 +173,7 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
 
     const normalizedMessageContent = (message.content ?? '').trim();
     if (TOOL_RESULT_PREFIX.test(normalizedMessageContent)) {
-      const attached = attachResultToLatestPendingEntry(
+      const attached = attachResultToEarliestPendingEntry(
         entries,
         normalizeToolResult({
           success: true,

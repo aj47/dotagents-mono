@@ -159,9 +159,9 @@ describe('createDelegationProgressMessages', () => {
       { name: 'ls', arguments: { path: '.' } },
     ]);
     expect(messages[0].toolResults).toEqual([
-      { success: true, content: '1 hit' },
+      { success: true, content: '1 hit', error: undefined },
+      { success: true, content: '{"files":["README.md"]}', error: undefined },
       undefined,
-      { success: true, content: '{"files":["README.md"]}' },
     ]);
   });
 
@@ -207,6 +207,52 @@ describe('createDelegationProgressMessages', () => {
     ]);
   });
 
+  it('attaches result-only structured messages in FIFO order for multiple pending calls', () => {
+    const steps: AgentProgressStep[] = [
+      {
+        id: 'delegation-structured-split-multi',
+        type: 'thinking',
+        title: 'Delegating',
+        status: 'in_progress',
+        timestamp: 560,
+        delegation: {
+          runId: 'run-structured-split-multi',
+          agentName: 'Worker',
+          task: 'Run split tool stream',
+          status: 'running',
+          startTime: 560,
+          conversation: [
+            {
+              role: 'assistant',
+              content: '',
+              toolCalls: [
+                { name: 'first_call', arguments: {} },
+                { name: 'second_call', arguments: {} },
+              ],
+              timestamp: 561,
+            },
+            {
+              role: 'tool',
+              content: '',
+              toolResults: [
+                { success: true, content: 'first_result' },
+                { success: true, content: 'second_result' },
+              ],
+              timestamp: 562,
+            },
+          ],
+        },
+      },
+    ];
+
+    const messages = createDelegationProgressMessages(steps);
+    expect(messages).toHaveLength(1);
+    expect(messages[0].toolResults).toEqual([
+      { success: true, content: 'first_result' },
+      { success: true, content: 'second_result' },
+    ]);
+  });
+
   it('preserves empty tool output and avoids success fallback for failed structured results', () => {
     const steps: AgentProgressStep[] = [
       {
@@ -232,6 +278,7 @@ describe('createDelegationProgressMessages', () => {
               toolResults: [
                 { success: true, content: '' },
                 { success: false, error: 'boom' },
+                { error: 'implicit_failure' },
               ],
               timestamp: 601,
             },
@@ -245,6 +292,7 @@ describe('createDelegationProgressMessages', () => {
     expect(messages[0].toolResults).toEqual([
       { success: true, content: '' },
       { success: false, content: 'Tool failed', error: 'boom' },
+      { success: false, content: 'Tool failed', error: 'implicit_failure' },
     ]);
   });
 });
