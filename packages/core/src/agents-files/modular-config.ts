@@ -87,20 +87,26 @@ export function loadAgentsLayerConfig(layer: AgentsLayerPaths): Partial<Config> 
       defaultValue: {},
     }),
   )
-  const mcp = safeReadJsonFileSync<Partial<Config>>(layer.mcpJsonPath, {
-    backupDir: layer.backupsDir,
-    defaultValue: {},
-  })
-  const models = safeReadJsonFileSync<Partial<Config>>(layer.modelsJsonPath, {
-    backupDir: layer.backupsDir,
-    defaultValue: {},
-  })
-  const layout = safeReadJsonFileSync<Partial<Config>>(layer.layoutJsonPath, {
-    backupDir: layer.backupsDir,
-    defaultValue: {},
-  })
+  const mcp = omitAppLocalConfigKeys(
+    safeReadJsonFileSync<Partial<Config>>(layer.mcpJsonPath, {
+      backupDir: layer.backupsDir,
+      defaultValue: {},
+    }),
+  )
+  const models = omitAppLocalConfigKeys(
+    safeReadJsonFileSync<Partial<Config>>(layer.modelsJsonPath, {
+      backupDir: layer.backupsDir,
+      defaultValue: {},
+    }),
+  )
+  const layout = omitAppLocalConfigKeys(
+    safeReadJsonFileSync<Partial<Config>>(layer.layoutJsonPath, {
+      backupDir: layer.backupsDir,
+      defaultValue: {},
+    }),
+  )
 
-  return { ...settings, ...models, ...mcp, ...layout }
+  return omitAppLocalConfigKeys({ ...settings, ...models, ...mcp, ...layout })
 }
 
 export function loadAgentsPrompts(layer: AgentsLayerPaths): { systemPrompt: string | null, agentsGuidelines: string | null } {

@@ -1007,6 +1007,11 @@ const toolHandlers: Record<string, ToolHandler> = {
       const parentSessionId = mappedAppSessionId
       const runId = agentSessionStateManager.getSessionRunId(trackedSessionId)
       const isSessionComplete = session.status === "completed" || session.status === "error" || session.status === "stopped"
+      const conversationState = session.status === "completed"
+        ? "complete"
+        : isSessionComplete
+          ? "blocked"
+          : "running"
 
       await emitAgentProgress({
         sessionId: context.sessionId,
@@ -1017,7 +1022,7 @@ const toolHandlers: Record<string, ToolHandler> = {
         maxIterations: 1,
         steps: [],
         isComplete: isSessionComplete,
-        conversationState: isSessionComplete ? "complete" : "running",
+        conversationState,
       })
     }
 

@@ -81,6 +81,20 @@ describe("acp-session-state", () => {
     expect(sessionState.getRootAppSessionForAcpSession("level-3-subsession")).toBe("app-session-from-conversation")
   })
 
+  it("caps tracked known app sessions to avoid unbounded persisted growth", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    for (let index = 0; index < 2100; index += 1) {
+      sessionState.registerKnownAppSessionId(`app-session-${index}`)
+    }
+
+    sessionState.setAcpToAppSessionMapping("delegated-old", "app-session-0")
+    sessionState.setAcpToAppSessionMapping("delegated-new", "app-session-2099")
+
+    expect(sessionState.getRootAppSessionForAcpSession("delegated-old")).toBeUndefined()
+    expect(sessionState.getRootAppSessionForAcpSession("delegated-new")).toBe("app-session-2099")
+  })
+
   it("resolves pending app-session mappings for injected MCP tokens and clears them", async () => {
     const sessionState = await import("./acp-session-state")
 

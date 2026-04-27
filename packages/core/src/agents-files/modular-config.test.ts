@@ -130,6 +130,22 @@ describe("modular-config", () => {
     expect(loaded).not.toHaveProperty("archivedSessionIds")
   })
 
+  it("drops app-local session IDs even when they appear in non-settings layer files", () => {
+    const dir = mkTempDir("dotagents-modular-app-local-non-settings-")
+    const agentsDir = path.join(dir, ".agents")
+    const layer = getAgentsLayerPaths(agentsDir)
+
+    writeJson(layer.settingsJsonPath, { textInputEnabled: true })
+    writeJson(layer.mcpJsonPath, { pinnedSessionIds: ["stale-pin-from-mcp"] })
+    writeJson(layer.modelsJsonPath, { archivedSessionIds: ["stale-archive-from-models"] })
+    writeJson(layer.layoutJsonPath, { pinnedSessionIds: ["stale-pin-from-layout"] })
+
+    const loaded = loadAgentsLayerConfig(layer)
+    expect(loaded.textInputEnabled).toBe(true)
+    expect(loaded).not.toHaveProperty("pinnedSessionIds")
+    expect(loaded).not.toHaveProperty("archivedSessionIds")
+  })
+
   it("does not rewrite layer JSON files when the in-memory value is unchanged", () => {
     const dir = mkTempDir("dotagents-modular-skip-")
     const agentsDir = path.join(dir, ".agents")

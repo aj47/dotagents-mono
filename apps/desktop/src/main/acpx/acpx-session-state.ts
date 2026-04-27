@@ -32,6 +32,15 @@ const acpxToClientSessionToken = new Map<string, string>()
 const pendingClientSessionTokenToAppSession = new Map<string, string>()
 const acpxSessionTitleOverrides = new Map<string, string>()
 const knownAppSessionIds = new Set<string>()
+const MAX_KNOWN_APP_SESSION_IDS = 2048
+
+function trimKnownAppSessionIds(): void {
+  while (knownAppSessionIds.size > MAX_KNOWN_APP_SESSION_IDS) {
+    const [oldestSessionId] = knownAppSessionIds
+    if (!oldestSessionId) break
+    knownAppSessionIds.delete(oldestSessionId)
+  }
+}
 
 function ensureStateDir(): void {
   if (!fs.existsSync(STATE_DIR)) {
@@ -87,6 +96,7 @@ function readPersistedState(): PersistedState | null {
 
 function saveState(): void {
   ensureStateDir()
+  trimKnownAppSessionIds()
   const state: PersistedState = {
     conversations: Object.fromEntries(conversationSessions.entries()),
     sessionToAppSession: Object.fromEntries(acpxToAppSession.entries()),
@@ -136,6 +146,7 @@ function loadState(): void {
   for (const sessionId of state.knownAppSessions) {
     knownAppSessionIds.add(sessionId)
   }
+  trimKnownAppSessionIds()
 }
 
 loadState()
@@ -206,7 +217,12 @@ export function setAcpToAppSessionMapping(acpxSessionId: string, appSessionId: s
 function registerKnownAppSessionIdInternal(appSessionId: string, options?: { persist?: boolean }): void {
   const normalizedSessionId = appSessionId.trim()
   if (!normalizedSessionId) return
+  if (knownAppSessionIds.has(normalizedSessionId)) {
+    // Refresh insertion order so trimming keeps recently-used IDs.
+    knownAppSessionIds.delete(normalizedSessionId)
+  }
   knownAppSessionIds.add(normalizedSessionId)
+  trimKnownAppSessionIds()
   if (options?.persist !== false) {
     saveState()
   }

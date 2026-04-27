@@ -103,4 +103,24 @@ describe("runtime-tools set_session_title", () => {
       conversationState: "complete",
     }))
   })
+
+  it("emits blocked conversation state for delegated title updates from stopped sessions", async () => {
+    mockGetRootAppSessionForAcpSession.mockReturnValue("app-session-1")
+    mockGetSession.mockImplementation((sessionId: string) =>
+      sessionId === "app-session-1"
+        ? { id: "app-session-1", conversationId: "conversation-1", conversationTitle: "Old title", status: "stopped" }
+        : undefined,
+    )
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    await executeRuntimeTool("set_session_title", { title: "Delegated title" }, "delegated-session-1")
+
+    expect(mockEmitAgentProgress).toHaveBeenCalledWith(expect.objectContaining({
+      sessionId: "delegated-session-1",
+      parentSessionId: "app-session-1",
+      conversationTitle: "Delegated title",
+      isComplete: true,
+      conversationState: "blocked",
+    }))
+  })
 })
