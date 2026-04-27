@@ -1,31 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { ResizeHandle } from "@renderer/components/resize-handle"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { getNativePanelResizeSize, isPanelSize, type PanelSize } from "./panel-resize-utils"
+
+export { getNativePanelResizeSize } from "./panel-resize-utils"
 
 // Minimum height for waveform panel - matches WAVEFORM_MIN_HEIGHT in main/window.ts
 const WAVEFORM_MIN_HEIGHT = 120
 type PanelMode = "normal" | "agent" | "textInput"
 const isPanelMode = (value: unknown): value is PanelMode =>
   value === "normal" || value === "agent" || value === "textInput"
-const isPanelSize = (value: unknown): value is { width: number; height: number } =>
-  !!value &&
-  typeof value === "object" &&
-  "width" in value &&
-  "height" in value &&
-  typeof (value as { width: unknown }).width === "number" &&
-  typeof (value as { height: unknown }).height === "number" &&
-  Number.isFinite((value as { width: number }).width) &&
-  Number.isFinite((value as { height: number }).height)
-
-export const getNativePanelResizeSize = (
-  startSize: { width: number; height: number },
-  delta: { width: number; height: number },
-  minimumSize: { width: number; height: number },
-  viewportScale = 1,
-) => ({
-  width: Math.max(minimumSize.width, Math.round(startSize.width + delta.width * viewportScale)),
-  height: Math.max(minimumSize.height, Math.round(startSize.height + delta.height * viewportScale)),
-})
 
 interface PanelResizeWrapperProps {
   children: React.ReactNode
@@ -47,7 +31,7 @@ export function PanelResizeWrapper({
   fallbackMode = "normal",
 }: PanelResizeWrapperProps) {
   const [currentSize, setCurrentSize] = useState({ width: 300, height: 200 })
-  const resizeStartSizeRef = useRef<{ width: number; height: number } | null>(null)
+  const resizeStartSizeRef = useRef<PanelSize | null>(null)
   const lastResizeCallRef = useRef<number>(0)
   const inFlightResizeUpdatesRef = useRef(new Set<Promise<unknown>>())
   const RESIZE_THROTTLE_MS = 16 // ~60fps
