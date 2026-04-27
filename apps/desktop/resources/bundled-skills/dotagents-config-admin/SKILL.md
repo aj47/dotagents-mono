@@ -82,7 +82,7 @@ Edit `tasks/<id>/task.md`. Frontmatter defines the task metadata; the markdown b
 
 ### Change durable knowledge
 
-Edit `knowledge/<slug>/<slug>.md` directly. Default most notes to `context: search-only`; reserve `context: auto` for a tiny curated subset.
+Edit `knowledge/<slug>/<slug>.md` directly. Use canonical frontmatter: `kind: note`, `id`, `title`, `context`, numeric millisecond `createdAt`/`updatedAt`, and comma-separated `tags`. Default most notes to `context: search-only`; reserve `context: auto` for a tiny curated subset.
 
 ## Guardrails
 

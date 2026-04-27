@@ -45,6 +45,7 @@ KNOWLEDGE NOTES:
 - Prefer direct file editing there to create or update notes
 - Store each note at .agents/knowledge/<slug>/<slug>.md using a human-readable slug
 - Related assets such as images or documents may live in the same note folder
+- Use canonical note frontmatter: kind: note, id, title, context, numeric createdAt/updatedAt millisecond timestamps, and comma-separated tags
 - Default most notes to context: search-only
 - Use context: auto only for a tiny curated subset of high-signal notes
 

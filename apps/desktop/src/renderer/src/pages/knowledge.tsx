@@ -12,12 +12,15 @@ import {
 } from "@renderer/components/ui/dialog"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Label } from "@renderer/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@renderer/components/ui/select"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type {
   KnowledgeNote,
   KnowledgeNoteContext,
+  KnowledgeNoteDateFilter,
   KnowledgeNoteGroupSummary,
+  KnowledgeNoteSort,
   KnowledgeNotesOverview,
 } from "@shared/types"
 import { toast } from "sonner"
@@ -52,6 +55,26 @@ const contextFilterOptions: { label: string; value: "all" | KnowledgeNoteContext
   { label: "Search only", value: "search-only" },
   { label: "Auto", value: "auto" },
 ]
+
+const dateFilterOptions: { label: string; value: KnowledgeNoteDateFilter }[] = [
+  { label: "Any time", value: "all" },
+  { label: "Past 7 days", value: "7d" },
+  { label: "Past 30 days", value: "30d" },
+  { label: "Past 90 days", value: "90d" },
+  { label: "Past year", value: "year" },
+]
+
+const sortOptions: { label: string; value: KnowledgeNoteSort }[] = [
+  { label: "Best match", value: "relevance" },
+  { label: "Updated newest", value: "updated-desc" },
+  { label: "Updated oldest", value: "updated-asc" },
+  { label: "Created newest", value: "created-desc" },
+  { label: "Created oldest", value: "created-asc" },
+  { label: "Title A-Z", value: "title-asc" },
+  { label: "Title Z-A", value: "title-desc" },
+]
+
+type KnowledgeViewMode = "grouped" | "flat"
 
 type EditFormState = {
   title: string
@@ -113,7 +136,7 @@ function KnowledgeNoteCard({
       )}
     >
       <div
-        className="flex cursor-pointer items-start gap-2 px-3 py-2"
+        className="flex cursor-pointer flex-wrap items-start gap-2 px-3 py-2 sm:flex-nowrap"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <button
@@ -134,17 +157,21 @@ function KnowledgeNoteCard({
           {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-[calc(100%-3rem)] sm:basis-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-sm font-medium">{note.title}</h3>
+            <h3 className="min-w-0 max-w-full truncate text-sm font-medium">{note.title}</h3>
             <Badge className={cn("px-1.5 py-0 text-[10px]", contextBadgeClasses[note.context])}>
               {note.context}
             </Badge>
+            <span className="flex basis-full items-center gap-1 text-[11px] text-muted-foreground sm:basis-auto">
+              <Calendar className="h-3 w-3" />
+              Updated {formattedDate}
+            </span>
           </div>
           <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{summarizeNote(note)}</p>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="ml-8 flex w-full items-center justify-end gap-1 sm:ml-0 sm:w-auto sm:justify-start">
           {note.context === "search-only" ? (
             <Button
               variant="outline"
@@ -260,6 +287,8 @@ function KnowledgeNoteCard({
 function GroupPanel({
   group,
   contextFilter,
+  dateFilter,
+  sortOption,
   isCollapsed,
   onToggleCollapse,
   collapsedSeriesKeys,
@@ -275,6 +304,8 @@ function GroupPanel({
 }: {
   group: KnowledgeNoteGroupSummary
   contextFilter: KnowledgeNoteContext | undefined
+  dateFilter: KnowledgeNoteDateFilter
+  sortOption: KnowledgeNoteSort
   isCollapsed: boolean
   onToggleCollapse: () => void
   collapsedSeriesKeys: Set<string>
@@ -290,11 +321,13 @@ function GroupPanel({
 }) {
   // Only fetch the group's notes once it's expanded. React Query caches across expand/collapse.
   const notesQuery = useQuery({
-    queryKey: ["knowledgeNotesByGroup", group.key, contextFilter ?? "all"],
+    queryKey: ["knowledgeNotesByGroup", group.key, contextFilter ?? "all", dateFilter, sortOption],
     queryFn: async () =>
       tipcClient.getKnowledgeNotesByGroup({
         groupKey: group.key,
         context: contextFilter,
+        dateFilter,
+        sort: sortOption,
       }),
     enabled: !isCollapsed,
   })
@@ -351,6 +384,8 @@ function GroupPanel({
               groupKey={group.key}
               series={series}
               contextFilter={contextFilter}
+              dateFilter={dateFilter}
+              sortOption={sortOption}
               isCollapsed={collapsedSeriesKeys.has(series.key)}
               onToggleCollapse={() => onToggleSeriesCollapse(series.key)}
               onNotesLoaded={onNotesLoaded}
@@ -373,6 +408,8 @@ function SeriesPanel({
   groupKey,
   series,
   contextFilter,
+  dateFilter,
+  sortOption,
   isCollapsed,
   onToggleCollapse,
   onNotesLoaded,
@@ -387,6 +424,8 @@ function SeriesPanel({
   groupKey: string
   series: { key: string; label: string; count: number }
   contextFilter: KnowledgeNoteContext | undefined
+  dateFilter: KnowledgeNoteDateFilter
+  sortOption: KnowledgeNoteSort
   isCollapsed: boolean
   onToggleCollapse: () => void
   onNotesLoaded: (notes: KnowledgeNote[]) => void
@@ -399,12 +438,14 @@ function SeriesPanel({
   isPromoteToAutoPending: boolean
 }) {
   const notesQuery = useQuery({
-    queryKey: ["knowledgeNotesByGroup", groupKey, series.key, contextFilter ?? "all"],
+    queryKey: ["knowledgeNotesByGroup", groupKey, series.key, contextFilter ?? "all", dateFilter, sortOption],
     queryFn: async () =>
       tipcClient.getKnowledgeNotesByGroup({
         groupKey,
         seriesKey: series.key,
         context: contextFilter,
+        dateFilter,
+        sort: sortOption,
       }),
     enabled: !isCollapsed,
   })
@@ -460,6 +501,9 @@ export function Component() {
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState("")
   const [contextFilter, setContextFilter] = useState<"all" | KnowledgeNoteContext>("all")
+  const [dateFilter, setDateFilter] = useState<KnowledgeNoteDateFilter>("all")
+  const [sortOption, setSortOption] = useState<KnowledgeNoteSort>("relevance")
+  const [viewMode, setViewMode] = useState<KnowledgeViewMode>("grouped")
   const [editingNote, setEditingNote] = useState<KnowledgeNote | null>(null)
   const [editForm, setEditForm] = useState<EditFormState | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
@@ -470,15 +514,24 @@ export function Component() {
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false)
   const [promotingNoteId, setPromotingNoteId] = useState<string | null>(null)
 
+  // Notes loaded into memory via expanded group panels — keyed by note id.
+  // Used for selection, promote, and bulk operations.
+  const [loadedNotesById, setLoadedNotesById] = useState<Map<string, KnowledgeNote>>(new Map())
+
   useEffect(() => {
     setSelectedIds(new Set())
-  }, [searchQuery, contextFilter])
+  }, [searchQuery, contextFilter, dateFilter, sortOption])
+
+  useEffect(() => {
+    setLoadedNotesById(new Map())
+  }, [contextFilter, dateFilter, sortOption])
 
   const overviewQuery = useQuery({
-    queryKey: ["knowledgeNotesOverview", contextFilter],
+    queryKey: ["knowledgeNotesOverview", contextFilter, dateFilter],
     queryFn: async () =>
       tipcClient.getKnowledgeNotesOverview({
         context: contextFilter === "all" ? undefined : contextFilter,
+        dateFilter,
       }),
   })
 
@@ -493,8 +546,29 @@ export function Component() {
     staleTime: Infinity,
   })
 
+  const flatNotesQuery = useQuery({
+    queryKey: ["knowledgeNotesFlat", contextFilter, dateFilter, sortOption],
+    queryFn: async () =>
+      tipcClient.getAllKnowledgeNotes({
+        context: contextFilter === "all" ? undefined : contextFilter,
+        dateFilter,
+        sort: sortOption,
+        limit: 1000,
+      }),
+    enabled: viewMode === "flat" && !searchQuery.trim(),
+  })
+
   const searchMutation = useMutation({
-    mutationFn: async (query: string) => (!query.trim() ? null : tipcClient.searchKnowledgeNotes({ query })),
+    mutationFn: async ({ query }: { query: string }) =>
+      !query.trim()
+        ? null
+        : tipcClient.searchKnowledgeNotes({
+          query,
+          context: contextFilter === "all" ? undefined : contextFilter,
+          dateFilter,
+          sort: sortOption,
+          limit: 500,
+        }),
   })
 
   const deleteMutation = useMutation({
@@ -518,7 +592,7 @@ export function Component() {
     onSuccess: () => {
       invalidateKnowledgeQueries()
       if (searchQuery.trim()) {
-        searchMutation.mutate(searchQuery)
+        searchMutation.mutate({ query: searchQuery })
       }
       toast.success("Note updated")
       setEditingNote(null)
@@ -542,7 +616,7 @@ export function Component() {
     onSuccess: () => {
       invalidateKnowledgeQueries()
       if (searchQuery.trim()) {
-        searchMutation.mutate(searchQuery)
+        searchMutation.mutate({ query: searchQuery })
       }
       toast.success("Note promoted to auto context")
     },
@@ -599,6 +673,7 @@ export function Component() {
   const searchOnlyCount = overview?.searchOnlyCount ?? 0
 
   const isSearching = !!searchQuery.trim()
+  const isFlatView = viewMode === "flat"
   const searchResults = searchMutation.data ?? []
   const searchFilteredResults = useMemo(
     () =>
@@ -611,10 +686,7 @@ export function Component() {
     () => buildKnowledgeNoteSections(searchFilteredResults),
     [searchFilteredResults],
   )
-
-  // Notes loaded into memory via expanded group panels — keyed by note id.
-  // Used for selection, promote, and bulk operations.
-  const [loadedNotesById, setLoadedNotesById] = useState<Map<string, KnowledgeNote>>(new Map())
+  const flatNotes = flatNotesQuery.data ?? []
 
   const registerLoadedNotes = (notes: KnowledgeNote[]) => {
     setLoadedNotesById((prev) => {
@@ -655,9 +727,21 @@ export function Component() {
     })
   }, [overview])
 
+  useEffect(() => {
+    const query = searchQuery.trim()
+    if (!query) {
+      searchMutation.reset()
+      return undefined
+    }
+    searchMutation.reset()
+    const timer = window.setTimeout(() => {
+      searchMutation.mutate({ query })
+    }, 200)
+    return () => window.clearTimeout(timer)
+  }, [searchQuery, contextFilter, dateFilter, sortOption])
+
   const handleSearch = (query: string) => {
     setSearchQuery(query)
-    query.trim() ? searchMutation.mutate(query) : searchMutation.reset()
   }
 
   const handleEdit = (note: KnowledgeNote) => {
@@ -719,7 +803,7 @@ export function Component() {
 
   // Visible notes depend on whether we're searching or browsing groups.
   // When browsing, only loaded (expanded) notes are selectable.
-  const visibleNotes = isSearching ? searchFilteredResults : Array.from(loadedNotesById.values())
+  const visibleNotes = isSearching ? searchFilteredResults : isFlatView ? flatNotes : Array.from(loadedNotesById.values())
   const visibleIds = new Set(visibleNotes.map((note) => note.id))
   const visibleSelectedCount = [...selectedIds].filter((id) => visibleIds.has(id)).length
 
@@ -790,14 +874,14 @@ export function Component() {
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-0 max-w-md flex-1">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+          <div className="relative w-full min-w-0 md:max-w-md md:flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search notes..."
               value={searchQuery}
               onChange={(event) => handleSearch(event.target.value)}
-              className="pl-9"
+              className="pl-9 pr-9"
             />
             {searchQuery ? (
               <Button
@@ -810,17 +894,62 @@ export function Component() {
               </Button>
             ) : null}
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="grid w-full grid-cols-3 gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
             {contextFilterOptions.map((option) => (
               <Button
                 key={option.value}
                 variant={contextFilter === option.value ? "default" : "outline"}
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => setContextFilter(option.value)}
               >
                 {option.label}
               </Button>
             ))}
+          </div>
+          <div className="grid w-full grid-cols-2 gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+            <Button
+              variant={viewMode === "grouped" ? "default" : "outline"}
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={() => setViewMode("grouped")}
+            >
+              Grouped
+            </Button>
+            <Button
+              variant={viewMode === "flat" ? "default" : "outline"}
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={() => setViewMode("flat")}
+            >
+              Ungrouped
+            </Button>
+          </div>
+          <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 md:flex md:w-auto md:flex-wrap md:items-center">
+            <Select value={dateFilter} onValueChange={(value) => setDateFilter(value as KnowledgeNoteDateFilter)}>
+              <SelectTrigger className="h-8 w-full border bg-background md:w-[130px]">
+                <SelectValue placeholder="Date" />
+              </SelectTrigger>
+              <SelectContent>
+                {dateFilterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortOption} onValueChange={(value) => setSortOption(value as KnowledgeNoteSort)}>
+              <SelectTrigger className="h-8 w-full border bg-background md:w-[150px]">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                {sortOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -842,12 +971,14 @@ export function Component() {
                     ? `${selectedIds.size} selected`
                     : isSearching
                       ? "Select all results"
-                      : "Select all loaded"}
+                      : isFlatView
+                        ? "Select all sorted"
+                        : "Select all loaded"}
                 </span>
               </>
             ) : (
               <span className="text-sm text-muted-foreground">
-                Expand a group to load notes
+                {isFlatView ? "No notes match the active filters" : "Expand a group to load notes"}
               </span>
             )}
             <div className="flex-1" />
@@ -881,10 +1012,34 @@ export function Component() {
           </div>
         ) : null}
 
-        {overviewQuery.isLoading ? (
+        {overviewQuery.isLoading || (isFlatView && flatNotesQuery.isLoading && !isSearching) ? (
           <div className="flex items-center justify-center py-10">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
+        ) : (isSearching && isFlatView) || (!isSearching && isFlatView) ? (
+          visibleNotes.length === 0 ? (
+            <div className="rounded-lg border border-dashed bg-muted/20 px-5 py-6 text-center sm:px-6">
+              <h3 className="text-base font-medium">No matching notes</h3>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                No notes match the active search and filters.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {visibleNotes.map((note) => (
+                <KnowledgeNoteCard
+                  key={note.id}
+                  note={note}
+                  onDelete={(id) => setDeleteConfirmId(id)}
+                  onEdit={handleEdit}
+                  onPromoteToAuto={handlePromoteToAuto}
+                  isPromotingToAuto={promotingNoteId === note.id && promoteToAutoMutation.isPending}
+                  isSelected={selectedIds.has(note.id)}
+                  onToggleSelect={handleToggleSelect}
+                />
+              ))}
+            </div>
+          )
         ) : isSearching ? (
           searchFilteredResults.length === 0 ? (
             <div className="rounded-lg border border-dashed bg-muted/20 px-5 py-6 text-center sm:px-6">
@@ -969,6 +1124,8 @@ export function Component() {
                 key={group.key}
                 group={group}
                 contextFilter={contextFilter === "all" ? undefined : contextFilter}
+                dateFilter={dateFilter}
+                sortOption={sortOption}
                 isCollapsed={collapsedGroupKeys.has(group.key)}
                 onToggleCollapse={() => toggleGroupCollapsed(group.key)}
                 collapsedSeriesKeys={collapsedSeriesKeys}

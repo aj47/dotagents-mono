@@ -5066,14 +5066,29 @@ export const router = {
     }),
 
   // Knowledge notes service handlers
-  getAllKnowledgeNotes: t.procedure.action(async () => {
-    return knowledgeNotesService.getAllNotes()
-  }),
+  getAllKnowledgeNotes: t.procedure
+    .input<{
+      context?: import("../shared/types").KnowledgeNoteContext
+      dateFilter?: import("../shared/types").KnowledgeNoteDateFilter
+      sort?: import("../shared/types").KnowledgeNoteSort
+      limit?: number
+    }>()
+    .action(async ({ input }) => {
+      return knowledgeNotesService.getAllNotes({
+        context: input?.context,
+        dateFilter: input?.dateFilter,
+        sort: input?.sort,
+        limit: input?.limit,
+      })
+    }),
 
   getKnowledgeNotesOverview: t.procedure
-    .input<{ context?: import("../shared/types").KnowledgeNoteContext }>()
+    .input<{
+      context?: import("../shared/types").KnowledgeNoteContext
+      dateFilter?: import("../shared/types").KnowledgeNoteDateFilter
+    }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.getOverview({ context: input?.context })
+      return knowledgeNotesService.getOverview({ context: input?.context, dateFilter: input?.dateFilter })
     }),
 
   getKnowledgeNotesByGroup: t.procedure
@@ -5081,6 +5096,8 @@ export const router = {
       groupKey: string
       seriesKey?: string
       context?: import("../shared/types").KnowledgeNoteContext
+      dateFilter?: import("../shared/types").KnowledgeNoteDateFilter
+      sort?: import("../shared/types").KnowledgeNoteSort
     }>()
     .action(async ({ input }) => {
       return knowledgeNotesService.getNotesByGroup(input)
@@ -5160,9 +5177,20 @@ export const router = {
     }),
 
   searchKnowledgeNotes: t.procedure
-    .input<{ query: string }>()
+    .input<{
+      query: string
+      context?: import("../shared/types").KnowledgeNoteContext
+      dateFilter?: import("../shared/types").KnowledgeNoteDateFilter
+      sort?: import("../shared/types").KnowledgeNoteSort
+      limit?: number
+    }>()
     .action(async ({ input }) => {
-      return knowledgeNotesService.searchNotes(input.query)
+      return knowledgeNotesService.searchNotes(input.query, {
+        context: input.context,
+        dateFilter: input.dateFilter,
+        sort: input.sort,
+        limit: input.limit,
+      })
     }),
 
   // Summarization service handlers
