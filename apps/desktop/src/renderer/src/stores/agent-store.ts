@@ -80,13 +80,26 @@ const mergeDelegationStep = (
     }
   }
 
+  const incomingConversation = step.delegation.conversation
+  const shouldPreserveConversation =
+    Array.isArray(incomingConversation) &&
+    incomingConversation.length === 0 &&
+    Array.isArray(existingStep.delegation.conversation) &&
+    existingStep.delegation.conversation.length > 0
+
+  const mergedDelegation = {
+    ...existingStep.delegation,
+    ...step.delegation,
+  }
+
+  if (shouldPreserveConversation) {
+    mergedDelegation.conversation = existingStep.delegation.conversation
+  }
+
   return {
     ...existingStep,
     ...step,
-    delegation: {
-      ...existingStep.delegation,
-      ...step.delegation,
-    },
+    delegation: mergedDelegation,
   }
 }
 

@@ -158,4 +158,37 @@ describe("emitAgentProgress snoozed propagation", () => {
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
     vi.useRealTimers()
   })
+
+  it("sends the first run-scoped session update immediately", async () => {
+    vi.useFakeTimers()
+    mocks.isSessionSnoozed.mockReturnValue(false)
+
+    await emitAgentProgress({
+      sessionId: "session-first-run-update",
+      runId: 42,
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [],
+    })
+
+    const firstSendCount = mocks.sendSpy.mock.calls.length
+    expect(firstSendCount).toBeGreaterThan(0)
+
+    await emitAgentProgress({
+      sessionId: "session-first-run-update",
+      runId: 42,
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [],
+    })
+
+    // Follow-up update should be throttled because only the first update is critical.
+    expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
+
+    vi.advanceTimersByTime(200)
+    expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
+    vi.useRealTimers()
+  })
 })

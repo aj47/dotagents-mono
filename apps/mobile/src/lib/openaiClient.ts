@@ -54,7 +54,7 @@ export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage
 
     const originalToolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : undefined;
     const resultIndexesToKeep = message.toolResults
-      .map((result, index) => (result === undefined ? -1 : index))
+      .map((result, index) => (result == null ? -1 : index))
       .filter((index) => index >= 0);
 
     const toolResults = resultIndexesToKeep.map((index) => message.toolResults![index] as ToolResult);

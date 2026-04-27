@@ -107,13 +107,15 @@ function sendToWindows(update: AgentProgressUpdate): void {
  */
 function isCriticalUpdate(update: AgentProgressUpdate, state?: {
   sentTerminalDelegationKeys: Set<string>
+}, options?: {
+  isFirstUpdateForSession?: boolean
 }): boolean {
   if (update.isComplete) return true
   if (update.pendingToolApproval) return true
   if (typeof update.userResponse === "string" && update.userResponse.trim().length > 0) return true
   if (hasNewTerminalDelegation(update, state)) return true
   // First update for a session — send immediately
-  if (update.sessionId && !sessionThrottleState.has(update.sessionId)) return true
+  if (update.sessionId && options?.isFirstUpdateForSession) return true
   // Steps with error or awaiting_approval status
   if (update.steps?.some(s => s.status === "error" || s.status === "awaiting_approval")) return true
   return false
@@ -146,6 +148,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
   const sessionId = displayUpdate.sessionId || "__global__"
   const incomingRunId = displayUpdate.runId
   let state = sessionThrottleState.get(sessionId)
+  let isFirstUpdateForSession = !state
 
   if (displayUpdate.sessionId && typeof incomingRunId === "number") {
     const currentRunId = agentSessionStateManager.getSessionRunId(displayUpdate.sessionId)
@@ -171,6 +174,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
       if (state.timer) {
         clearTimeout(state.timer)
       }
+      isFirstUpdateForSession = true
       state = {
         timer: null,
         lastSendTime: 0,
@@ -185,7 +189,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
   }
 
   // Critical updates bypass the throttle entirely
-  if (isCriticalUpdate(displayUpdate, state)) {
+  if (isCriticalUpdate(displayUpdate, state, { isFirstUpdateForSession })) {
     // Flush any pending throttled update for this session first
     if (state?.timer) {
       clearTimeout(state.timer)

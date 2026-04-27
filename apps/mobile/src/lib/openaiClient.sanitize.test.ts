@@ -110,4 +110,25 @@ describe('sanitizeMessagesForRequest', () => {
     expect(sanitized[0].toolCalls).toBeUndefined();
     expect(sanitized[0].toolResults).toBeUndefined();
   });
+
+  it('treats null tool-result entries as placeholders and removes them safely', () => {
+    const messages: ChatMessage[] = [{
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        { name: 'first_tool', arguments: { a: 1 } },
+        { name: 'second_tool', arguments: { b: 2 } },
+      ],
+      toolResults: [null as unknown as ChatMessage['toolResults'][number], { success: true, content: 'ok' }],
+    }];
+
+    const sanitized = sanitizeMessagesForRequest(messages);
+
+    expect(sanitized[0].toolCalls).toEqual([
+      { name: 'second_tool', arguments: { b: 2 } },
+    ]);
+    expect(sanitized[0].toolResults).toEqual([
+      { success: true, content: 'ok' },
+    ]);
+  });
 });

@@ -274,6 +274,57 @@ describe('agent-store delegation merge', () => {
     ])
   })
 
+  it('does not clear non-terminal delegation transcript when update provides an empty conversation array', () => {
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      steps: [
+        {
+          id: 'delegation-4',
+          type: 'thinking',
+          title: 'Delegation running',
+          status: 'in_progress',
+          timestamp: 20,
+          delegation: {
+            runId: 'delegated-run-4',
+            agentName: 'internal',
+            task: 'Do work',
+            status: 'running',
+            startTime: 1,
+            conversation: [{ role: 'assistant', content: 'Transcript chunk', timestamp: 20 }],
+          },
+        },
+      ],
+    })
+
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      steps: [
+        {
+          id: 'delegation-4',
+          type: 'thinking',
+          title: 'Delegation running',
+          status: 'in_progress',
+          timestamp: 21,
+          delegation: {
+            runId: 'delegated-run-4',
+            agentName: 'internal',
+            task: 'Do work',
+            status: 'running',
+            startTime: 1,
+            conversation: [],
+          },
+        },
+      ],
+    })
+
+    const stored = useAgentStore.getState().agentProgressById.get('session-1')
+    const step = stored?.steps?.[0]
+
+    expect(step?.delegation?.conversation).toEqual([
+      { role: 'assistant', content: 'Transcript chunk', timestamp: 20 },
+    ])
+  })
+
   it('replaces pinned session ids during hydration', () => {
     useAgentStore.getState().togglePinSession('session-1')
 
