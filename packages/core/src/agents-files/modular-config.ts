@@ -145,6 +145,7 @@ const LAYOUT_KEYS = new Set<string>([
   "panelCustomPosition",
   "panelDragEnabled",
   "panelCustomSize",
+  "panelWaveformSize",
   "panelProgressSize",
   "floatingPanelAutoShow",
   "hidePanelWhenMainFocused",

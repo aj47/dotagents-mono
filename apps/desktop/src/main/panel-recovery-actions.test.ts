@@ -19,6 +19,7 @@ describe("floating panel recovery affordances", () => {
     expect(windowSource).toContain("export function resetFloatingPanelPositionAndSize(showAfterReset = true)")
     expect(windowSource).toContain('panelPosition: "top-right"')
     expect(windowSource).toContain('panelCustomSize: undefined')
+    expect(windowSource).toContain('panelWaveformSize: undefined')
     expect(windowSource).toContain('panelTextInputSize: undefined')
     expect(windowSource).toContain('panelProgressSize: undefined')
   })

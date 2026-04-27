@@ -5,7 +5,7 @@ import { Recorder } from "@renderer/lib/recorder"
 import { playSound, setSoundOutputDevice } from "@renderer/lib/sound"
 import { cn } from "@renderer/lib/utils"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
 import { rendererHandlers, tipcClient } from "~/lib/tipc-client"
 import { TextInputPanel, TextInputPanelRef } from "@renderer/components/text-input-panel"
 import { PanelResizeWrapper } from "@renderer/components/panel-resize-wrapper"
@@ -25,27 +25,72 @@ import type { AgentProfile } from "@shared/types"
 
 type PendingScreenshotAttachment = { name?: string; dataUrl: string }
 
-const DEFAULT_VISUALIZER_BAR_COUNT = 70
+const DEFAULT_VISUALIZER_BAR_COUNT = 52
 const MIN_VISUALIZER_BAR_COUNT = 24
 const MAX_VISUALIZER_BAR_COUNT = 240
 const WAVEFORM_BAR_WIDTH_PX = 2
 const WAVEFORM_BAR_GAP_PX = 2
 const WAVEFORM_HORIZONTAL_PADDING_PX = 16
-const WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX = 360
+const WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX = 280
 const MIN_WAVEFORM_WIDTH =
   Math.max(
     DEFAULT_VISUALIZER_BAR_COUNT * (WAVEFORM_BAR_WIDTH_PX + WAVEFORM_BAR_GAP_PX) +
       WAVEFORM_HORIZONTAL_PADDING_PX * 2,
     WAVEFORM_PANEL_CONTENT_MIN_WIDTH_PX,
   )
-const WAVEFORM_MIN_HEIGHT = 150
-const WAVEFORM_WITH_PREVIEW_HEIGHT = 160
+const WAVEFORM_MIN_HEIGHT = 120
+const WAVEFORM_WITH_PREVIEW_HEIGHT = 148
 const TEXT_INPUT_MIN_HEIGHT = 180
 const TEXT_INPUT_MIN_WIDTH_PX = 380
 const PROGRESS_MIN_HEIGHT = 200
 
+type PanelSize = { width: number; height: number }
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
+
+const PANEL_VIEWPORT_SCALE_SNAP_EPSILON = 0.05
+
+const isPanelSize = (value: unknown): value is PanelSize =>
+  !!value &&
+  typeof value === "object" &&
+  "width" in value &&
+  "height" in value &&
+  typeof (value as { width: unknown }).width === "number" &&
+  typeof (value as { height: unknown }).height === "number" &&
+  Number.isFinite((value as { width: number }).width) &&
+  Number.isFinite((value as { height: number }).height)
+
+const getCssViewportSize = (): PanelSize => {
+  if (typeof window === "undefined") return { width: 0, height: 0 }
+  return {
+    width: Math.round(window.innerWidth || 0),
+    height: Math.round(window.innerHeight || 0),
+  }
+}
+
+const getPanelViewportScale = (
+  nativePanelSize: PanelSize,
+  cssViewportSize: PanelSize,
+) => {
+  if (
+    !Number.isFinite(nativePanelSize.width) ||
+    !Number.isFinite(nativePanelSize.height) ||
+    !Number.isFinite(cssViewportSize.width) ||
+    !Number.isFinite(cssViewportSize.height) ||
+    nativePanelSize.width <= 0 ||
+    nativePanelSize.height <= 0 ||
+    cssViewportSize.width <= 0 ||
+    cssViewportSize.height <= 0
+  ) return 1
+
+  const widthScale = nativePanelSize.width / cssViewportSize.width
+  const heightScale = nativePanelSize.height / cssViewportSize.height
+  // Prefer the smaller axis and snap near-1 values to avoid false zoom
+  // detection from outer-window border/chrome differences.
+  const rawScale = clamp(Math.min(widthScale, heightScale), 0.5, 3)
+  return Math.abs(rawScale - 1) <= PANEL_VIEWPORT_SCALE_SNAP_EPSILON ? 1 : rawScale
+}
 
 const getInitialVisualizerData = (length = DEFAULT_VISUALIZER_BAR_COUNT) =>
   Array<number>(length).fill(-1000)
@@ -57,6 +102,121 @@ const resizeVisualizerData = (data: number[], targetLength: number): number[] =>
     return data.slice(data.length - targetLength)
   }
   return [...Array<number>(targetLength - data.length).fill(-1000), ...data]
+}
+
+interface RecordingWaveformPanelProps {
+  recordingViewportRef: RefObject<HTMLDivElement | null>
+  selectedAgentName: string | null
+  continueConversationTitle: string | null
+  visualizerData: number[]
+  visualizerBarCount: number
+  waveformContainerHeightPx: number
+  stableViewportSize: PanelSize
+  zoomCompensationScale: number
+  isPreviewEnabled: boolean
+  previewText: string
+  submitShortcutText: string
+  onSubmitRecording: () => void
+}
+
+function RecordingWaveformPanel({
+  recordingViewportRef,
+  selectedAgentName,
+  continueConversationTitle,
+  visualizerData,
+  visualizerBarCount,
+  waveformContainerHeightPx,
+  stableViewportSize,
+  zoomCompensationScale,
+  isPreviewEnabled,
+  previewText,
+  submitShortcutText,
+  onSubmitRecording,
+}: RecordingWaveformPanelProps) {
+  const stableWidth = stableViewportSize.width > 0 ? stableViewportSize.width : MIN_WAVEFORM_WIDTH
+  const stableHeight = stableViewportSize.height > 0 ? stableViewportSize.height : WAVEFORM_MIN_HEIGHT
+
+  return (
+    <div
+      ref={recordingViewportRef}
+      className="absolute inset-0 z-30 flex items-center justify-center overflow-hidden"
+    >
+      <div
+        className="flex flex-col items-center justify-center"
+        style={{
+          width: `${stableWidth}px`,
+          height: `${stableHeight}px`,
+          transform: `scale(${zoomCompensationScale})`,
+          transformOrigin: "center",
+        }}
+      >
+        {/* Selected agent indicator during recording */}
+        {selectedAgentName && !continueConversationTitle && (
+          <div className="mb-1 flex max-w-[calc(100%-2rem)] items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs text-primary dark:bg-primary/10">
+            <Bot className="h-3 w-3 shrink-0" />
+            <span className="min-w-0 truncate font-medium">{selectedAgentName}</span>
+          </div>
+        )}
+        {/* Continue conversation indicator */}
+        {continueConversationTitle && (
+          <div className="mb-1 flex max-w-[calc(100%-2rem)] items-center gap-1 rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-600 dark:bg-blue-400/10 dark:text-blue-400">
+            <span className="opacity-70">Continuing:</span>
+            <span className="min-w-0 truncate font-medium">{continueConversationTitle}</span>
+          </div>
+        )}
+        {/* Waveform uses native panel pixels so browser zoom does not reshape it. */}
+        <div
+          className="pointer-events-none flex w-full items-center justify-center px-4 opacity-100 transition-all duration-300"
+          style={{ height: `${waveformContainerHeightPx}px` }}
+        >
+          <div className="flex h-full w-full items-center justify-center gap-0.5 overflow-hidden">
+            {visualizerData.slice(-visualizerBarCount).map((rms, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "h-full w-0.5 shrink-0 rounded-lg",
+                  "bg-red-500 dark:bg-white",
+                  rms === -1000 && "bg-neutral-400 dark:bg-neutral-500",
+                )}
+                style={{ height: `${Math.min(100, Math.max(16, rms * 100))}%` }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Transcription preview */}
+        {isPreviewEnabled && previewText && (
+          <div className="w-full px-4 mt-1">
+            <p className="text-xs text-muted-foreground italic text-center line-clamp-2">
+              {previewText}
+            </p>
+          </div>
+        )}
+
+        {/* Submit button and keyboard hint */}
+        <div className="mt-1 flex max-w-[calc(100%-2rem)] flex-wrap items-center justify-center gap-2 px-4 text-center">
+          <button
+            onClick={onSubmitRecording}
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              "bg-blue-500 hover:bg-blue-600 text-white",
+              "dark:bg-blue-600 dark:hover:bg-blue-700",
+            )}
+          >
+            <Send className="h-3.5 w-3.5" />
+            <span>Submit</span>
+          </button>
+          <span className="min-w-0 text-center text-xs leading-relaxed text-muted-foreground">
+            {submitShortcutText.toLowerCase().startsWith("release") ? (
+              <>or <kbd className="inline-flex max-w-full items-center rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">{submitShortcutText}</kbd></>
+            ) : (
+              <>or press <kbd className="inline-flex max-w-full items-center rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">{submitShortcutText}</kbd></>
+            )}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function Component() {
@@ -80,6 +240,8 @@ export function Component() {
   const previewTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recordingViewportRef = useRef<HTMLDivElement | null>(null)
   const [recordingViewportSize, setRecordingViewportSize] = useState({ width: 0, height: 0 })
+  const [nativePanelSize, setNativePanelSize] = useState<PanelSize>({ width: 0, height: 0 })
+  const [cssViewportSize, setCssViewportSize] = useState<PanelSize>(() => getCssViewportSize())
   const visualizerBarCountRef = useRef(DEFAULT_VISUALIZER_BAR_COUNT)
   const { isDark } = useTheme()
   const lastRequestedModeRef = useRef<"normal" | "agent" | "textInput">("normal")
@@ -132,7 +294,7 @@ export function Component() {
   const visibleSessionCount = Array.from(agentProgressById?.values() ?? [])
     .filter(progress => progress && !progress.isSnoozed).length
   // Aggregate session state helpers
-  // Only consider non-snoozed AND non-completed sessions as "active" for mode switching
+  // Only consider non-snoozed AND non-completed sessions as "active" for session lifecycle.
   const anyActiveNonSnoozed = activeSessionCount > 0
   // Any non-snoozed session (including completed) should show the overlay
   // Also show overlay if there's a focused session (user explicitly selected it, even if snoozed)
@@ -144,6 +306,43 @@ export function Component() {
   const isPreviewEnabled =
     (configQuery.data?.transcriptionPreviewEnabled ?? false) &&
     configQuery.data?.sttProviderId !== "parakeet"
+
+  useEffect(() => {
+    const updateNativePanelSize = (size: unknown) => {
+      if (isPanelSize(size)) {
+        setNativePanelSize((prev) => {
+          if (prev.width === size.width && prev.height === size.height) return prev
+          return size
+        })
+      }
+    }
+
+    tipcClient.getPanelSize().then(updateNativePanelSize).catch((error: unknown) => {
+      console.error("Failed to get panel size for zoom compensation:", error)
+    })
+
+    const unlisten = rendererHandlers.onPanelSizeChanged.listen(updateNativePanelSize)
+    return unlisten
+  }, [])
+
+  useEffect(() => {
+    const updateCssViewportSize = () => {
+      const nextSize = getCssViewportSize()
+      setCssViewportSize((prev) => {
+        if (prev.width === nextSize.width && prev.height === nextSize.height) return prev
+        return nextSize
+      })
+    }
+
+    updateCssViewportSize()
+    window.addEventListener("resize", updateCssViewportSize)
+    window.visualViewport?.addEventListener("resize", updateCssViewportSize)
+
+    return () => {
+      window.removeEventListener("resize", updateCssViewportSize)
+      window.visualViewport?.removeEventListener("resize", updateCssViewportSize)
+    }
+  }, [])
 
   // Keep a ref to the configured audio input device so effect callbacks can access it synchronously
   const audioInputDeviceIdRef = useRef(configQuery.data?.audioInputDeviceId)
@@ -920,7 +1119,7 @@ export function Component() {
     let targetMode: "agent" | "normal" | null = null
     if (anyActiveNonSnoozed) {
       targetMode = "agent"
-      // When switching to agent mode, stop any ongoing recording
+      // When switching to agent/progress mode, stop any ongoing recording.
       if (recordingRef.current) {
         isConfirmedRef.current = false
         setRecording(false)
@@ -928,6 +1127,8 @@ export function Component() {
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
         recorderRef.current?.stopRecording()
       }
+    } else if (anyVisibleSessions && !recording) {
+      targetMode = "agent"
     } else if (isTextSubmissionPending) {
       targetMode = null // keep current size briefly to avoid flicker
     } else {
@@ -944,7 +1145,7 @@ export function Component() {
     return () => {
       if (tid) clearTimeout(tid)
     }
-  }, [anyActiveNonSnoozed, textInputMutation.isPending, mcpTextInputMutation.isPending, showTextInput])
+  }, [anyActiveNonSnoozed, anyVisibleSessions, recording, textInputMutation.isPending, mcpTextInputMutation.isPending, showTextInput])
 
   // Note: We don't need to hide text input when agentProgress changes because:
   // 1. handleTextSubmit already hides it immediately on submit (line 375)
@@ -1069,9 +1270,22 @@ export function Component() {
 
   // Use appropriate minimum height based on current mode
   const hasPreviewVisible = recording && isPreviewEnabled && previewText.length > 0
+  const panelViewportScale = useMemo(
+    () => getPanelViewportScale(nativePanelSize, cssViewportSize),
+    [nativePanelSize, cssViewportSize],
+  )
+  const recordingViewportScale = recording ? panelViewportScale : 1
+  const stableRecordingViewportSize = useMemo(
+    () => ({
+      width: Math.round(recordingViewportSize.width * recordingViewportScale),
+      height: Math.round(recordingViewportSize.height * recordingViewportScale),
+    }),
+    [recordingViewportScale, recordingViewportSize.height, recordingViewportSize.width],
+  )
+  const zoomCompensationScale = recordingViewportScale > 0 ? 1 / recordingViewportScale : 1
   const availableWaveformWidth = Math.max(
     0,
-    recordingViewportSize.width - WAVEFORM_HORIZONTAL_PADDING_PX * 2,
+    stableRecordingViewportSize.width - WAVEFORM_HORIZONTAL_PADDING_PX * 2,
   )
   const visualizerBarCount = useMemo(() => {
     if (availableWaveformWidth <= 0) return DEFAULT_VISUALIZER_BAR_COUNT
@@ -1087,17 +1301,17 @@ export function Component() {
   }, [availableWaveformWidth])
   const waveformContainerHeightPx = useMemo(() => {
     const availableHeight =
-      recordingViewportSize.height > 0
-        ? recordingViewportSize.height
+      stableRecordingViewportSize.height > 0
+        ? stableRecordingViewportSize.height
         : hasPreviewVisible
           ? WAVEFORM_WITH_PREVIEW_HEIGHT
           : WAVEFORM_MIN_HEIGHT
 
     if (hasPreviewVisible) {
-      return Math.round(clamp(availableHeight * 0.24, 40, 88))
+      return Math.round(clamp(availableHeight * 0.22, 34, 64))
     }
-    return Math.round(clamp(availableHeight * 0.34, 56, 120))
-  }, [hasPreviewVisible, recordingViewportSize.height])
+    return Math.round(clamp(availableHeight * 0.3, 44, 88))
+  }, [hasPreviewVisible, stableRecordingViewportSize.height])
 
   useEffect(() => {
     visualizerBarCountRef.current = visualizerBarCount
@@ -1107,12 +1321,15 @@ export function Component() {
   const waveformHeight = hasPreviewVisible ? WAVEFORM_WITH_PREVIEW_HEIGHT : WAVEFORM_MIN_HEIGHT
   const minWidth = showTextInput ? TEXT_INPUT_MIN_WIDTH_PX : MIN_WAVEFORM_WIDTH
   const minHeight = showTextInput ? TEXT_INPUT_MIN_HEIGHT : (anyVisibleSessions && !recording ? PROGRESS_MIN_HEIGHT : waveformHeight)
+  const panelResizeMode = showTextInput ? "textInput" : anyVisibleSessions && !recording ? "agent" : "normal"
 
   return (
     <PanelResizeWrapper
       enableResize={true}
       minWidth={minWidth}
       minHeight={minHeight}
+      viewportScale={panelViewportScale}
+      fallbackMode={panelResizeMode}
       className={cn(
         "floating-panel modern-text-strong flex h-screen flex-col text-foreground",
         isDark ? "dark" : ""
@@ -1168,81 +1385,20 @@ export function Component() {
 
               {/* Waveform visualization and submit controls - show when recording is active */}
               {recording && (
-                <div
-                  ref={recordingViewportRef}
-                  className="absolute inset-0 z-30 flex flex-col items-center justify-center"
-                >
-                  {/* Selected agent indicator during recording */}
-                  {selectedAgentName && !continueConversationTitle && (
-                    <div className="mb-1 flex max-w-[calc(100%-2rem)] items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs text-primary dark:bg-primary/10">
-                      <Bot className="h-3 w-3 shrink-0" />
-                      <span className="min-w-0 truncate font-medium">{selectedAgentName}</span>
-                    </div>
-                  )}
-                  {/* Continue conversation indicator */}
-                  {continueConversationTitle && (
-                    <div className="mb-1 flex max-w-[calc(100%-2rem)] items-center gap-1 rounded bg-blue-500/10 px-2 py-0.5 text-xs text-blue-600 dark:bg-blue-400/10 dark:text-blue-400">
-                      <span className="opacity-70">Continuing:</span>
-                      <span className="min-w-0 truncate font-medium">{continueConversationTitle}</span>
-                    </div>
-                  )}
-                  {/* Waveform scales with panel size while preserving stable min/max bounds */}
-                  <div
-                    className="pointer-events-none flex w-full items-center justify-center px-4 opacity-100 transition-all duration-300"
-                    style={{ height: `${waveformContainerHeightPx}px` }}
-                  >
-                    <div className="flex h-full w-full items-center justify-center gap-0.5 overflow-hidden">
-                      {visualizerData
-                        .slice(-visualizerBarCount)
-                        .map((rms, index) => {
-                          return (
-                            <div
-                              key={index}
-                              className={cn(
-                                "h-full w-0.5 shrink-0 rounded-lg",
-                                "bg-red-500 dark:bg-white",
-                                rms === -1000 && "bg-neutral-400 dark:bg-neutral-500",
-                              )}
-                              style={{
-                                height: `${Math.min(100, Math.max(16, rms * 100))}%`,
-                              }}
-                            />
-                          )
-                        })}
-                    </div>
-                  </div>
-
-                  {/* Transcription preview */}
-                  {isPreviewEnabled && previewText && (
-                    <div className="w-full px-4 mt-1">
-                      <p className="text-xs text-muted-foreground italic text-center line-clamp-2">
-                        {previewText}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Submit button and keyboard hint */}
-                  <div className="mt-1 flex max-w-[calc(100%-2rem)] flex-wrap items-center justify-center gap-2 px-4 text-center">
-                    <button
-                      onClick={handleSubmitRecording}
-                      className={cn(
-                        "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                        "bg-blue-500 hover:bg-blue-600 text-white",
-                        "dark:bg-blue-600 dark:hover:bg-blue-700"
-                      )}
-                    >
-                      <Send className="h-3.5 w-3.5" />
-                      <span>Submit</span>
-                    </button>
-                    <span className="min-w-0 text-center text-xs leading-relaxed text-muted-foreground">
-                      {getSubmitShortcutText.toLowerCase().startsWith("release") ? (
-                        <>or <kbd className="inline-flex max-w-full items-center rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">{getSubmitShortcutText}</kbd></>
-                      ) : (
-                        <>or press <kbd className="inline-flex max-w-full items-center rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">{getSubmitShortcutText}</kbd></>
-                      )}
-                    </span>
-                  </div>
-                </div>
+                <RecordingWaveformPanel
+                  recordingViewportRef={recordingViewportRef}
+                  selectedAgentName={selectedAgentName}
+                  continueConversationTitle={continueConversationTitle}
+                  visualizerData={visualizerData}
+                  visualizerBarCount={visualizerBarCount}
+                  waveformContainerHeightPx={waveformContainerHeightPx}
+                  stableViewportSize={stableRecordingViewportSize}
+                  zoomCompensationScale={zoomCompensationScale}
+                  isPreviewEnabled={isPreviewEnabled}
+                  previewText={previewText}
+                  submitShortcutText={getSubmitShortcutText}
+                  onSubmitRecording={handleSubmitRecording}
+                />
               )}
             </div>
           </div>
