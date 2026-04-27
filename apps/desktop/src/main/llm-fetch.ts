@@ -388,6 +388,21 @@ function isEmptyResponseError(error: unknown): boolean {
   return false
 }
 
+function isLocalConfigurationErrorMessage(message: string): boolean {
+  if (isMissingApiKeyErrorMessage(message)) {
+    return true
+  }
+
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes("unknown provider:") ||
+    normalized.includes("base url is required") ||
+    normalized.includes("access token is required") ||
+    normalized.includes("session token is required") ||
+    normalized.includes("is not configured")
+  )
+}
+
 /**
  * Check if an error is retryable.
  *
@@ -418,9 +433,9 @@ function isRetryableError(error: unknown): boolean {
     return false
   }
 
-  // Missing API-key setup errors are deterministic local configuration problems.
-  // Surface them immediately instead of adding retry delay/noise.
-  if (isMissingApiKeyErrorMessage(error.message)) {
+  // Deterministic local setup/configuration errors should fail fast instead of
+  // adding retry delay/noise.
+  if (isLocalConfigurationErrorMessage(error.message)) {
     return false
   }
 

@@ -535,6 +535,36 @@ describe('LLM Fetch with AI SDK', () => {
     expect(generateTextMock).toHaveBeenCalledTimes(1)
   })
 
+  it('should not retry unknown provider configuration errors', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    const unknownProviderError = new Error('Unknown provider: invalid-provider')
+    generateTextMock.mockRejectedValue(unknownProviderError)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    await expect(
+      makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+    ).rejects.toThrow('Unknown provider: invalid-provider')
+
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not retry local base URL configuration errors', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    const baseUrlError = new Error('Base URL is required')
+    generateTextMock.mockRejectedValue(baseUrlError)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    await expect(
+      makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+    ).rejects.toThrow('Base URL is required')
+
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+  })
+
   it('should not retry on abort errors', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
