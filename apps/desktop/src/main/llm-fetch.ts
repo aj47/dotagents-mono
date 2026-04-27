@@ -439,6 +439,12 @@ function isRetryableError(error: unknown): boolean {
     return false
   }
 
+  // Preserve empty-response retries regardless of status code. withRetry()
+  // handles these via an immediate retry path without backoff.
+  if (isEmptyResponseError(error)) {
+    return true
+  }
+
   // Check for AI SDK structured error fields (AI_APICallError, etc.)
   const errorWithStatus = error as { statusCode?: number; isRetryable?: boolean; status?: number }
 

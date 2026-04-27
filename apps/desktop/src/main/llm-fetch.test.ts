@@ -520,6 +520,34 @@ describe('LLM Fetch with AI SDK', () => {
     expect(result.content).toBe('recovered')
   })
 
+  it('should retry empty response errors even when status code is a structured 4xx', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    let callCount = 0
+    generateTextMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        const emptyResponse401 = Object.assign(
+          new Error('LLM returned empty response'),
+          { statusCode: 401 },
+        )
+        return Promise.reject(emptyResponse401)
+      }
+      return Promise.resolve({
+        text: '{"content": "recovered from empty response"}',
+        finishReason: 'stop',
+        usage: { promptTokens: 10, completionTokens: 20 },
+      } as any)
+    })
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    const result = await makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+
+    expect(callCount).toBe(2)
+    expect(result.content).toBe('recovered from empty response')
+  })
+
   it('should not retry missing API key configuration errors', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
