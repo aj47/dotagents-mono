@@ -407,10 +407,12 @@ function isRetryableError(error: unknown): boolean {
     return false
   }
 
+  const message = error.message.toLowerCase()
+
   // Abort errors should never be retried
   if (
     error.name === "AbortError" ||
-    error.message.toLowerCase().includes("abort")
+    message.includes("abort")
   ) {
     return false
   }
@@ -435,9 +437,22 @@ function isRetryableError(error: unknown): boolean {
     }
   }
 
-  // Default: retry. Empty responses, network blips, provider-specific stream
-  // errors, transient 5xx, etc. all fall through to here. The bounded retry
-  // count in withRetry caps the cost if the failure turns out to be permanent.
+  // Guard against broad stream-error retries. Keep known transient Codex
+  // chatgpt-web failure signatures retryable, but avoid retrying generic
+  // "stream error" failures that may be deterministic for other providers.
+  if (message.includes("stream error")) {
+    const isKnownCodexTransient =
+      message.includes("chatgpt codex stream error") ||
+      message.includes("chatgpt codex response failed") ||
+      message.includes("chatgpt codex response.failed")
+    if (!isKnownCodexTransient) {
+      return false
+    }
+  }
+
+  // Default: retry. Empty responses, network blips, known transient provider
+  // stream errors, transient 5xx, etc. all fall through to here. The bounded
+  // retry count in withRetry caps the cost if the failure turns out permanent.
   return true
 }
 

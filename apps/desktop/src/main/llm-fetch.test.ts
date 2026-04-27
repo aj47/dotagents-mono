@@ -476,6 +476,22 @@ describe('LLM Fetch with AI SDK', () => {
     expect(result.content).toBe('Success after retry')
   })
 
+  it('should not retry generic stream error messages that are not codex-specific', async () => {
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+
+    const genericStreamError = new Error('stream error while parsing provider payload')
+    generateTextMock.mockRejectedValue(genericStreamError)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await expect(
+      makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
+    ).rejects.toThrow('stream error while parsing provider payload')
+
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+  })
+
   it('should not retry on abort errors', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
@@ -1172,5 +1188,23 @@ describe('LLM Fetch with AI SDK', () => {
 
     expect(callCount).toBe(2)
     expect(result).toEqual({ content: 'recovered after response.failed' })
+  })
+
+  it('does not retry non-codex stream errors for chatgpt-web llm calls', async () => {
+    let callCount = 0
+    makeChatGptWebResponseMock.mockImplementation(() => {
+      callCount++
+      return Promise.reject(new Error('provider stream error: malformed chunk'))
+    })
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    await expect(
+      makeLLMCallWithFetch(
+        [{ role: 'user', content: 'hello' }],
+        'chatgpt-web',
+      )
+    ).rejects.toThrow('provider stream error: malformed chunk')
+
+    expect(callCount).toBe(1)
   })
 })
