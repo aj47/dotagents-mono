@@ -71,6 +71,16 @@ describe("acp-session-state", () => {
     expect(sessionState.getRootAppSessionForAcpSession("inferred-level-3-subsession")).toBeUndefined()
   })
 
+  it("resolves nested delegated sessions when the terminal session is tracked by a conversation", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    sessionState.setSessionForConversation("conversation-1", "app-session-from-conversation", "test-agent")
+    sessionState.setAcpToAppSessionMapping("level-2-subsession", "app-session-from-conversation")
+    sessionState.setAcpToAppSessionMapping("level-3-subsession", "level-2-subsession")
+
+    expect(sessionState.getRootAppSessionForAcpSession("level-3-subsession")).toBe("app-session-from-conversation")
+  })
+
   it("resolves pending app-session mappings for injected MCP tokens and clears them", async () => {
     const sessionState = await import("./acp-session-state")
 

@@ -185,8 +185,18 @@ export function clearSessionForConversation(conversationId: string): void {
   saveState()
 }
 
+function isTrackedConversationSessionId(sessionId: string): boolean {
+  for (const session of conversationSessions.values()) {
+    if (session.sessionId === sessionId) return true
+  }
+  return false
+}
+
 export function setAcpToAppSessionMapping(acpxSessionId: string, appSessionId: string, runId?: string | number): void {
   acpxToAppSession.set(acpxSessionId, appSessionId)
+  if (knownAppSessionIds.has(appSessionId) || isTrackedConversationSessionId(appSessionId)) {
+    registerKnownAppSessionIdInternal(appSessionId, { persist: false })
+  }
   if (runId) {
     acpxToRunId.set(acpxSessionId, runId)
   }
@@ -216,10 +226,6 @@ function isKnownAcpSessionId(sessionId: string): boolean {
   if (acpxToClientSessionToken.has(sessionId)) return true
   if (acpxSessionTitleOverrides.has(sessionId)) return true
 
-  for (const session of conversationSessions.values()) {
-    if (session.sessionId === sessionId) return true
-  }
-
   return false
 }
 
@@ -233,7 +239,10 @@ export function getRootAppSessionForAcpSession(acpxSessionId: string): string | 
     if (!mappedSessionId) {
       if (currentSessionId === acpxSessionId) return undefined
       if (isKnownAcpSessionId(currentSessionId)) return undefined
-      return knownAppSessionIds.has(currentSessionId) ? currentSessionId : undefined
+      if (knownAppSessionIds.has(currentSessionId) || isTrackedConversationSessionId(currentSessionId)) {
+        return currentSessionId
+      }
+      return undefined
     }
     currentSessionId = mappedSessionId
   }
