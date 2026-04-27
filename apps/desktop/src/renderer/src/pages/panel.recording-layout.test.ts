@@ -127,10 +127,21 @@ describe("panel recording layout", () => {
     expect(tipcSource).toContain("config.panelWaveformSize.width >= minWidth")
     expect(tipcSource).toContain("config.panelWaveformSize.height >= WAVEFORM_MIN_HEIGHT")
     expect(tipcSource).toContain("const initialWaveformSize = savedWaveformSize ??")
-    expect(tipcSource).toContain("Number.isFinite(initialWaveformSize.width)")
+    expect(tipcSource).toContain("normalizePanelSize(")
+    expect(tipcSource).toContain("Math.min(PANEL_SAVED_SIZE_MAX_WIDTH")
+    expect(tipcSource).toContain("Math.round(input.width)")
+    expect(tipcSource).toContain("Math.round(input.height)")
     expect(tipcSource).toContain("if (!isFinitePanelSize(input))")
     expect(tipcSource).toContain("throw new Error(\"Invalid panel size\")")
     expect(tipcSource).toContain("isFinitePanelSize(legacyCustomSize)")
+  })
+
+  it("runtime-validates mode-aware panel size persistence", () => {
+    expect(tipcSource).toContain("const isPanelSizeMode =")
+    expect(tipcSource).toContain('value === "normal" || value === "agent" || value === "textInput"')
+    expect(tipcSource).toContain("if (!isPanelSizeMode(input.mode))")
+    expect(tipcSource).toContain('throw new Error("Invalid panel mode")')
+    expect(tipcSource).toContain("const mode = isPanelSizeMode(rawMode) ? rawMode : \"normal\"")
   })
 
   it("keeps legacy size fallback limited to waveform mode", () => {

@@ -117,6 +117,30 @@ const isBoundedPanelSize = (value: unknown): value is { width: number; height: n
   value.width <= PANEL_SAVED_SIZE_MAX_WIDTH &&
   value.height <= PANEL_SAVED_SIZE_MAX_HEIGHT
 
+type PanelSizeMode = "normal" | "agent" | "textInput"
+
+const isPanelSizeMode = (value: unknown): value is PanelSizeMode =>
+  value === "normal" || value === "agent" || value === "textInput"
+
+const getPanelMinWidthForMode = (mode: PanelSizeMode) =>
+  mode === "textInput" ? TEXT_INPUT_MIN_WIDTH : Math.max(200, MIN_WAVEFORM_WIDTH)
+
+const getPanelMinHeightForMode = (mode: PanelSizeMode) =>
+  mode === "agent"
+    ? PROGRESS_MIN_HEIGHT
+    : mode === "textInput"
+      ? TEXT_INPUT_MIN_HEIGHT
+      : WAVEFORM_MIN_HEIGHT
+
+const normalizePanelSize = (
+  input: { width: number; height: number },
+  minWidth: number,
+  minHeight: number,
+) => ({
+  width: Math.min(PANEL_SAVED_SIZE_MAX_WIDTH, Math.max(minWidth, Math.round(input.width))),
+  height: Math.min(PANEL_SAVED_SIZE_MAX_HEIGHT, Math.max(minHeight, Math.round(input.height))),
+})
+
 /**
  * Convert Float32Array audio samples to WAV format buffer
  */
@@ -3541,16 +3565,11 @@ export const router = {
         throw new Error("Panel window not found")
       }
 
-      const mode = getCurrentPanelMode()
-      const minWidth = mode === "textInput" ? TEXT_INPUT_MIN_WIDTH : Math.max(200, MIN_WAVEFORM_WIDTH)
-      const minHeight =
-        mode === "agent"
-          ? PROGRESS_MIN_HEIGHT
-          : mode === "textInput"
-            ? TEXT_INPUT_MIN_HEIGHT
-            : WAVEFORM_MIN_HEIGHT
-      const finalWidth = Math.max(minWidth, input.width)
-      const finalHeight = Math.max(minHeight, input.height)
+      const rawMode = getCurrentPanelMode()
+      const mode = isPanelSizeMode(rawMode) ? rawMode : "normal"
+      const minWidth = getPanelMinWidthForMode(mode)
+      const minHeight = getPanelMinHeightForMode(mode)
+      const { width: finalWidth, height: finalHeight } = normalizePanelSize(input, minWidth, minHeight)
 
       // Update size constraints to allow resizing
       win.setMinimumSize(minWidth, minHeight)
@@ -3569,9 +3588,8 @@ export const router = {
         throw new Error("Invalid panel size")
       }
 
-      const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
-      const width = Math.max(minWidth, input.width)
-      const height = Math.max(WAVEFORM_MIN_HEIGHT, input.height)
+      const minWidth = getPanelMinWidthForMode("normal")
+      const { width, height } = normalizePanelSize(input, minWidth, WAVEFORM_MIN_HEIGHT)
 
       const config = configStore.get()
       const updatedConfig = {
@@ -3590,15 +3608,13 @@ export const router = {
         throw new Error("Invalid panel size")
       }
 
-      const minWidth = input.mode === "textInput" ? TEXT_INPUT_MIN_WIDTH : Math.max(200, MIN_WAVEFORM_WIDTH)
-      const minHeight =
-        input.mode === "agent"
-          ? PROGRESS_MIN_HEIGHT
-          : input.mode === "textInput"
-            ? TEXT_INPUT_MIN_HEIGHT
-            : WAVEFORM_MIN_HEIGHT
-      const width = Math.max(minWidth, input.width)
-      const height = Math.max(minHeight, input.height)
+      if (!isPanelSizeMode(input.mode)) {
+        throw new Error("Invalid panel mode")
+      }
+
+      const minWidth = getPanelMinWidthForMode(input.mode)
+      const minHeight = getPanelMinHeightForMode(input.mode)
+      const { width, height } = normalizePanelSize(input, minWidth, minHeight)
 
       const config = configStore.get()
       const updatedConfig = { ...config }
@@ -3627,7 +3643,7 @@ export const router = {
     }
 
     const config = configStore.get()
-    const minWidth = Math.max(200, MIN_WAVEFORM_WIDTH)
+    const minWidth = getPanelMinWidthForMode("normal")
     const legacyCustomSize = config.panelCustomSize
     const savedWaveformSize =
       isBoundedPanelSize(config.panelWaveformSize) &&
@@ -3648,8 +3664,11 @@ export const router = {
     ) {
       // Apply saved waveform size (use MIN_WAVEFORM_WIDTH to ensure visualizer bars aren't clipped)
       const { width, height } = initialWaveformSize
-      const finalWidth = Math.max(minWidth, width)
-      const finalHeight = Math.max(WAVEFORM_MIN_HEIGHT, height)
+      const { width: finalWidth, height: finalHeight } = normalizePanelSize(
+        { width, height },
+        minWidth,
+        WAVEFORM_MIN_HEIGHT,
+      )
 
       win.setMinimumSize(minWidth, WAVEFORM_MIN_HEIGHT)
       win.setSize(finalWidth, finalHeight, false) // no animation on init
