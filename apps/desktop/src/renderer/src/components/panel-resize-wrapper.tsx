@@ -23,8 +23,8 @@ export const getNativePanelResizeSize = (
   minimumSize: { width: number; height: number },
   viewportScale = 1,
 ) => ({
-  width: Math.max(minimumSize.width, startSize.width + delta.width * viewportScale),
-  height: Math.max(minimumSize.height, startSize.height + delta.height * viewportScale),
+  width: Math.max(minimumSize.width, Math.round(startSize.width + delta.width * viewportScale)),
+  height: Math.max(minimumSize.height, Math.round(startSize.height + delta.height * viewportScale)),
 })
 
 interface PanelResizeWrapperProps {

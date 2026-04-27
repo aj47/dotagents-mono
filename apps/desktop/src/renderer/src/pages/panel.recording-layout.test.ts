@@ -95,8 +95,8 @@ describe("panel recording layout", () => {
       panelResizeWrapperSource.indexOf("export const getNativePanelResizeSize ="),
       panelResizeWrapperSource.indexOf("interface PanelResizeWrapperProps")
     )
-    expect(nativeResizeHelperSection).toContain("startSize.width + delta.width * viewportScale")
-    expect(nativeResizeHelperSection).toContain("startSize.height + delta.height * viewportScale")
+    expect(nativeResizeHelperSection).toContain("Math.round(startSize.width + delta.width * viewportScale)")
+    expect(nativeResizeHelperSection).toContain("Math.round(startSize.height + delta.height * viewportScale)")
     expect(nativeResizeHelperSection).not.toContain("safeViewportScale")
     expect(panelResizeWrapperSource).toContain("safeViewportScale,")
     expect(panelResizeWrapperSource).toContain("size.width - startSize.width")
