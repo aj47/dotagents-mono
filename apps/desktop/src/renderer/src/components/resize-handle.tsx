@@ -6,7 +6,7 @@ interface ResizeHandleProps {
   className?: string
   position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right'
   disabled?: boolean
-  onResizeStart?: () => void
+  onResizeStart?: (size: { width: number; height: number }) => void
   onResize?: (delta: { width: number; height: number }) => void
   onResizeEnd?: (size: { width: number; height: number }) => void
 }
@@ -186,7 +186,7 @@ export function ResizeHandle({
         height: windowSize.height,
       })
 
-      onResizeStart?.()
+      onResizeStart?.(windowSize)
     } catch (error) {
       console.error("Failed to get panel size:", error)
     }

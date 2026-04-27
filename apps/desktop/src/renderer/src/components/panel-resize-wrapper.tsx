@@ -65,12 +65,13 @@ export function PanelResizeWrapper({
     return unlisten
   }, [])
 
-  const handleResizeStart = useCallback(() => {
-    // Capture current size at the start of resize operation
-    resizeStartSizeRef.current = currentSize
+  const handleResizeStart = useCallback((size: PanelSize) => {
+    // Capture the same native window size used by ResizeHandle for its deltas.
+    resizeStartSizeRef.current = size
+    setCurrentSize(size)
     // Reset throttle state so the first move in a new drag is never skipped.
     lastResizeCallRef.current = 0
-  }, [currentSize])
+  }, [])
 
   const handleResize = useCallback((delta: { width: number; height: number }) => {
     const startSize = resizeStartSizeRef.current
