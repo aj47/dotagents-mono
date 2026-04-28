@@ -30,6 +30,11 @@ const desktopReleaseScript = readFileSync(
   "utf8",
 )
 
+const linuxBuildScript = readFileSync(
+  new URL("../scripts/build-linux.ts", import.meta.url),
+  "utf8",
+)
+
 const rootBuildReleaseScript = readFileSync(
   new URL("../../../scripts/build-release.sh", import.meta.url),
   "utf8",
@@ -101,5 +106,10 @@ describe("desktop package scripts", () => {
     expect(desktopBuilderConfig).toContain("process.env.APPLE_TEAM_ID")
     expect(desktopBuilderConfig).toContain("process.env.APPLE_ID")
     expect(desktopBuilderConfig).toContain("process.env.APPLE_APP_SPECIFIC_PASSWORD")
+  })
+
+  it("disables hardlinks for Linux electron-builder packaging", () => {
+    expect(linuxBuildScript).toContain('USE_HARD_LINKS: "false"')
+    expect(linuxBuildScript).toContain("electronBuilderLinuxEnv")
   })
 })

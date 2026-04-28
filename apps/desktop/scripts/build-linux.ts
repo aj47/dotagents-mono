@@ -33,6 +33,7 @@ const distDir = join(desktopDir, "dist")
 const require = createRequire(import.meta.url)
 const packageJson = require("../package.json")
 const builderConfig = require("../electron-builder.config.cjs")
+const electronBuilderLinuxEnv = { USE_HARD_LINKS: "false" }
 
 function usage(): never {
   console.log(`Usage: npx tsx scripts/build-linux.ts [options]
@@ -306,11 +307,17 @@ function main() {
   run("npx electron-vite build")
 
   if (formats.has("AppImage")) {
-    run(`npx electron-builder --linux AppImage --${targetArch} --config electron-builder.config.cjs --publish=${args.publish}`)
+    run(
+      `npx electron-builder --linux AppImage --${targetArch} --config electron-builder.config.cjs --publish=${args.publish}`,
+      electronBuilderLinuxEnv,
+    )
   }
 
   if (formats.has("deb")) {
-    run(`npx electron-builder --linux dir --${targetArch} --config electron-builder.config.cjs --publish=never`)
+    run(
+      `npx electron-builder --linux dir --${targetArch} --config electron-builder.config.cjs --publish=never`,
+      electronBuilderLinuxEnv,
+    )
     createDebPackage(getLinuxUnpackedDir(targetArch), targetArch)
   }
 
