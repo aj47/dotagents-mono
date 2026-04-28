@@ -39,6 +39,22 @@ const isDelegatedSubagentProgress = (progress: AgentProgressUpdate): boolean => 
   typeof progress.parentSessionId === 'string' && progress.parentSessionId.trim().length > 0
 )
 
+const hasRenderableProgressContent = (progress: AgentProgressUpdate): boolean => (
+  (progress.steps?.length ?? 0) > 0 ||
+  (progress.conversationHistory?.length ?? 0) > 0 ||
+  (progress.responseEvents?.length ?? 0) > 0 ||
+  (progress.userResponseHistory?.length ?? 0) > 0 ||
+  !!progress.finalContent?.trim() ||
+  !!progress.userResponse?.trim() ||
+  !!progress.streamingContent?.text?.trim() ||
+  !!progress.pendingToolApproval ||
+  !!progress.retryInfo?.isRetrying
+)
+
+const isEmptyDelegatedSubagentProgress = (progress: AgentProgressUpdate): boolean => (
+  isDelegatedSubagentProgress(progress) && !hasRenderableProgressContent(progress)
+)
+
 const isDelegationOnlyProgressUpdate = (progress: AgentProgressUpdate): boolean => (
   progress.steps.length > 0 &&
   progress.steps.every((step) => !!step.delegation) &&
@@ -187,6 +203,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       const isNewSession = !newMap.has(sessionId)
       const existingProgress = newMap.get(sessionId)
       const isReactivation = !!existingProgress && existingProgress.isComplete && !update.isComplete
+
+      if (isNewSession && isEmptyDelegatedSubagentProgress(update)) {
+        return state
+      }
 
       if (
         existingProgress &&

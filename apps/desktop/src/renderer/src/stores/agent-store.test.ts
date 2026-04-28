@@ -456,6 +456,20 @@ describe('agent-store delegation merge', () => {
     expect(useAgentStore.getState().focusedSessionId).toBe('current-session')
   })
 
+  it('does not create empty delegated subagent placeholders from title-only updates', () => {
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      sessionId: 'subsession-empty',
+      parentSessionId: 'parent-session',
+      conversationId: 'parent-conversation',
+      conversationTitle: 'Delegated title',
+      steps: [],
+      conversationHistory: [],
+    })
+
+    expect(useAgentStore.getState().agentProgressById.has('subsession-empty')).toBe(false)
+  })
+
   it('does not steal focus for delegation-only parent progress updates', () => {
     useAgentStore.setState({
       agentProgressById: new Map([
