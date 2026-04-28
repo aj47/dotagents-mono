@@ -30,7 +30,7 @@ describe("active agents sidebar task section", () => {
     expect(sessionsHeaderIndex).toBeLessThan(sessionsListIndex)
     expect(sidebarSource).toContain("hasMoreTaskSessions")
     expect(sidebarSource).toContain("Load more tasks")
-    expect(sidebarSource).toContain("Load more sessions")
+    expect(sidebarSource).toContain("Show more")
   })
 
   it("preserves backend repeat-task markers when merging live progress", () => {
@@ -89,5 +89,16 @@ describe("active agents sidebar task section", () => {
   it("lets the session list size naturally instead of keeping a collapsed gap", () => {
     expect(sidebarSource).not.toContain("max-h-[45vh]")
     expect(sidebarSource).toContain("mt-1 space-y-0.5 overflow-visible")
+  })
+
+  it("renders show less to the right of show more", () => {
+    const showMoreIndex = sidebarSource.indexOf("Show more")
+    const showLessIndex = sidebarSource.indexOf("Show less")
+
+    expect(sidebarSource).toContain("const canShowLessSavedConversations =")
+    expect(sidebarSource).toContain("const showLessSavedConversations = useCallback")
+    expect(sidebarSource).toContain("hasMoreSavedConversations || canShowLessSavedConversations")
+    expect(showMoreIndex).toBeGreaterThan(-1)
+    expect(showLessIndex).toBeGreaterThan(showMoreIndex)
   })
 })

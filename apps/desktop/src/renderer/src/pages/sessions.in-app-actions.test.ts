@@ -64,6 +64,7 @@ describe("sessions in-app actions", () => {
     expect(sidebarSource).toContain('className="ml-auto flex items-center gap-2"')
     expect(sidebarSource).toContain('aria-label="Start text session"')
     expect(sidebarSource).toContain('aria-label="Start voice session"')
+    expect(sidebarSource).not.toContain('variant="secondary"')
     expect(sidebarSource).not.toContain('aria-label="Cycle tile layout"')
     expect(appLayoutSource).not.toContain("onCycleTileLayout")
     expect(sidebarSource).not.toContain("<span>Start Text</span>")

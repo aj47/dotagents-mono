@@ -522,6 +522,8 @@ export function ActiveAgentsSidebar({
     visibleSavedConversationCount,
     minimumSavedConversationRowsNeeded,
   )
+  const canShowLessSavedConversations =
+    visibleSavedConversationCount > minimumSavedConversationRowsNeeded
 
   const {
     visibleEntries: userSidebarSessions,
@@ -747,6 +749,15 @@ export function ActiveAgentsSidebar({
     )
   }, [minimumSavedConversationRowsNeeded])
 
+  const showLessSavedConversations = useCallback(() => {
+    setVisibleSavedConversationCount((prev) =>
+      Math.max(
+        prev - SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
+        minimumSavedConversationRowsNeeded,
+      ),
+    )
+  }, [minimumSavedConversationRowsNeeded])
+
   const loadMoreTaskConversations = useCallback(() => {
     setVisibleTaskConversationCount((prev) =>
       prev + SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
@@ -810,7 +821,7 @@ export function ActiveAgentsSidebar({
               {onStartVoiceSession && (
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
                   onClick={() => void onStartVoiceSession()}
@@ -1256,14 +1267,31 @@ export function ActiveAgentsSidebar({
             )
           })()}
 
-          {isExpanded && hasMoreSavedConversations && (
-            <button
-              type="button"
-              onClick={loadMoreSavedConversations}
-              className="text-muted-foreground hover:bg-accent/50 hover:text-foreground mt-1 w-full rounded px-1.5 py-1 text-left text-[11px] transition-colors"
-            >
-              Load more sessions
-            </button>
+          {isExpanded &&
+            (hasMoreSavedConversations || canShowLessSavedConversations) && (
+            <div className="mt-1 flex items-center gap-1">
+              {hasMoreSavedConversations && (
+                <button
+                  type="button"
+                  onClick={loadMoreSavedConversations}
+                  className="text-muted-foreground hover:bg-accent/50 hover:text-foreground flex-1 rounded px-1.5 py-1 text-left text-[11px] transition-colors"
+                >
+                  Show more
+                </button>
+              )}
+              {canShowLessSavedConversations && (
+                <button
+                  type="button"
+                  onClick={showLessSavedConversations}
+                  className={cn(
+                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 rounded px-1.5 py-1 text-right text-[11px] transition-colors",
+                    !hasMoreSavedConversations && "ml-auto",
+                  )}
+                >
+                  Show less
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
