@@ -334,6 +334,33 @@ describe("partitionTaskAndUserEntries", () => {
       "task-subagent",
     ])
   })
+
+  it("uses configured repeat-task titles as a fallback for sessions already retitled without the prefix", () => {
+    const entries = [
+      { session: { id: "t1", conversationTitle: "Conversation Knowledge Review" } },
+      { session: { id: "u1", conversationTitle: "Hello" } },
+    ]
+
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(
+      entries,
+      new Set(["Conversation Knowledge Review"]),
+    )
+
+    expect(userEntries.map((e) => e.session.id)).toEqual(["u1"])
+    expect(taskEntries.map((e) => e.session.id)).toEqual(["t1"])
+  })
+
+  it("uses the backend repeat-task flag when title matching is unavailable", () => {
+    const entries = [
+      { session: { id: "t1", conversationTitle: "Generated Title", isRepeatTask: true } },
+      { session: { id: "u1", conversationTitle: "Generated Title" } },
+    ]
+
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(entries)
+
+    expect(userEntries.map((e) => e.session.id)).toEqual(["u1"])
+    expect(taskEntries.map((e) => e.session.id)).toEqual(["t1"])
+  })
 })
 
 describe("partitionPinnedAndUnpinnedTaskEntries", () => {

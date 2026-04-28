@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
 import { useSavedConversationsQuery } from "@renderer/lib/queries"
+import { formatRepeatTaskTitle } from "@shared/repeat-tasks"
 import {
   filterPastSessionsAgainstActiveSessions,
   getSessionIdsWithActiveChildProgress,
@@ -40,7 +41,7 @@ import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
 import { normalizeAgentConversationState } from "@dotagents/shared"
-import type { AgentProgressUpdate } from "@shared/types"
+import type { AgentProgressUpdate, LoopConfig } from "@shared/types"
 
 interface SidebarSessionRecord {
   id: string
@@ -55,6 +56,7 @@ interface SidebarSessionRecord {
   lastActivity?: string
   errorMessage?: string
   isSnoozed?: boolean
+  isRepeatTask?: boolean
 }
 
 interface SidebarSessionsResponse {
@@ -75,6 +77,46 @@ interface SidebarSessionEntry {
   key: string
   isSubagent?: boolean
   nestingDepth?: number
+}
+
+const TASK_NAME_CONNECTOR_WORDS = new Set(["a", "an", "and", "for", "of", "the", "to"])
+
+function toTitleCaseTaskName(value: string, options: { dropConnectorWords?: boolean } = {}): string {
+  return value
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter((word) => !options.dropConnectorWords || !TASK_NAME_CONNECTOR_WORDS.has(word.toLowerCase()))
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(" ")
+}
+
+function getFirstMarkdownHeading(value: string): string | null {
+  const heading = value
+    .split(/\r?\n/u)
+    .map((line) => line.match(/^#\s+(.+)$/u)?.[1]?.trim())
+    .find((line): line is string => !!line)
+  return heading ?? null
+}
+
+function getRepeatTaskTitleHints(task: LoopConfig): string[] {
+  const hints = new Set<string>()
+  const addHint = (value?: string | null) => {
+    const trimmed = value?.trim()
+    if (trimmed) hints.add(trimmed)
+  }
+
+  addHint(task.name)
+  addHint(formatRepeatTaskTitle(task.name))
+  addHint(toTitleCaseTaskName(task.name))
+  addHint(toTitleCaseTaskName(task.name, { dropConnectorWords: true }))
+
+  const firstHeading = getFirstMarkdownHeading(task.prompt)
+  addHint(firstHeading)
+  addHint(firstHeading ? `${firstHeading} Run` : null)
+
+  return Array.from(hints)
 }
 
 function getSessionLastMessageTimestamp(
@@ -123,6 +165,16 @@ function getSidebarSessionPreview(progress?: AgentProgressUpdate | null): string
   return null
 }
 
+function isAnalyzingOrPlanningProgress(progress?: AgentProgressUpdate | null): boolean {
+  if (!progress || progress.isComplete) return false
+
+  const latestStep = progress.steps?.[progress.steps.length - 1]
+  if (!latestStep || latestStep.status !== "in_progress") return false
+
+  const activeStepText = `${latestStep.title ?? ""} ${latestStep.description ?? ""}`.toLowerCase()
+  return activeStepText.includes("analyzing") || activeStepText.includes("planning")
+}
+
 const MIN_VISIBLE_SIDEBAR_SESSIONS = 8
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 10
 
@@ -131,7 +183,6 @@ const SHORTCUT_MOD_SYMBOL = IS_MAC ? "⌘" : "Ctrl"
 
 const STORAGE_KEY = "active-agents-sidebar-expanded"
 const TASKS_SECTION_EXPANDED_STORAGE_KEY = "sidebar-tasks-section-expanded"
-const TASKS_SECTION_HIDDEN_STORAGE_KEY = "sidebar-tasks-section-hidden"
 
 function readBooleanFromStorage(key: string, fallback: boolean): boolean {
   try {
@@ -210,6 +261,7 @@ export function ActiveAgentsSidebar({
   onStartPromptSession,
   inactiveSessionCount = 0,
   onClearInactiveSessions,
+  className,
 }: {
   onOpenSavedConversationsDialog?: () => void
   selectedAgentId?: string | null
@@ -219,6 +271,7 @@ export function ActiveAgentsSidebar({
   onStartPromptSession?: (content: string) => void | Promise<void>
   inactiveSessionCount?: number
   onClearInactiveSessions?: () => void | Promise<void>
+  className?: string
 }) {
   const [isExpanded, setIsExpanded] = useState(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
@@ -234,9 +287,6 @@ export function ActiveAgentsSidebar({
   // foregrounded; respect remembered state once the user has toggled it.
   const [tasksSectionExpanded, setTasksSectionExpanded] = useState(() =>
     readBooleanFromStorage(TASKS_SECTION_EXPANDED_STORAGE_KEY, false),
-  )
-  const [tasksSectionHidden, setTasksSectionHidden] = useState(() =>
-    readBooleanFromStorage(TASKS_SECTION_HIDDEN_STORAGE_KEY, false),
   )
 
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
@@ -270,6 +320,11 @@ export function ActiveAgentsSidebar({
     },
   })
   const savedConversationsQuery = useSavedConversationsQuery(isExpanded)
+  const repeatTasksQuery = useQuery<LoopConfig[]>({
+    queryKey: ["loops"],
+    queryFn: async () => await tipcClient.getLoops(),
+    enabled: isExpanded,
+  })
 
   useEffect(() => {
     const unlisten = rendererHandlers.agentSessionsUpdated.listen(
@@ -329,6 +384,7 @@ export function ActiveAgentsSidebar({
         lastActivity: existingSession?.lastActivity,
         errorMessage: existingSession?.errorMessage,
         isSnoozed: progress.isSnoozed ?? existingSession?.isSnoozed,
+        isRepeatTask: existingSession?.isRepeatTask,
       })
     }
 
@@ -491,7 +547,13 @@ export function ActiveAgentsSidebar({
     pinnedTaskSidebarSessions,
     unpinnedTaskSidebarSessions,
   } = useMemo(() => {
-    const { userEntries, taskEntries } = partitionTaskAndUserEntries(sidebarSessions)
+    const repeatTaskTitleHints = new Set(
+      (repeatTasksQuery.data ?? []).flatMap(getRepeatTaskTitleHints),
+    )
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(
+      sidebarSessions,
+      repeatTaskTitleHints,
+    )
     const { pinnedTaskEntries, unpinnedTaskEntries } =
       partitionPinnedAndUnpinnedTaskEntries(taskEntries, pinnedSessionIds)
     return {
@@ -499,29 +561,44 @@ export function ActiveAgentsSidebar({
       pinnedTaskSidebarSessions: pinnedTaskEntries,
       unpinnedTaskSidebarSessions: unpinnedTaskEntries,
     }
-  }, [sidebarSessions, pinnedSessionIds])
+  }, [sidebarSessions, pinnedSessionIds, repeatTasksQuery.data])
 
-  const hasPinnedTasks = pinnedTaskSidebarSessions.length > 0
-  const hasUnpinnedTasks = unpinnedTaskSidebarSessions.length > 0
-  // Pinned tasks always render at the top regardless of section state, so we
-  // only need the Tasks subsection when there are unpinned tasks to show.
-  const showTasksSection = hasUnpinnedTasks && !tasksSectionHidden
-  const tasksListVisible = showTasksSection && tasksSectionExpanded
-
-  // Hotkeys (Cmd/Ctrl+1..9) target only entries that are currently rendered,
-  // in the same order as they appear: pinned tasks → user sessions →
-  // unpinned tasks (when the tasks subsection is expanded).
-  const visibleSidebarSessions = useMemo(
+  const taskSidebarSessions = useMemo(
     () => [
       ...pinnedTaskSidebarSessions,
+      ...unpinnedTaskSidebarSessions,
+    ],
+    [pinnedTaskSidebarSessions, unpinnedTaskSidebarSessions],
+  )
+  const activeTaskSidebarSessions = useMemo(
+    () => taskSidebarSessions.filter((entry) => {
+      const progress = agentProgressById.get(entry.session.id)
+      return (
+        !entry.isSavedConversation &&
+        entry.session.status === "active" &&
+        progress?.isComplete !== true
+      )
+    }),
+    [agentProgressById, taskSidebarSessions],
+  )
+  const visibleTaskSidebarSessions = useMemo(
+    () => tasksSectionExpanded ? taskSidebarSessions : activeTaskSidebarSessions,
+    [activeTaskSidebarSessions, taskSidebarSessions, tasksSectionExpanded],
+  )
+  const hasTaskSessions = taskSidebarSessions.length > 0
+  const tasksListVisible = visibleTaskSidebarSessions.length > 0
+
+  // Hotkeys (Cmd/Ctrl+1..9) target only entries that are currently rendered,
+  // in the same order as they appear: user sessions → visible task rows.
+  // Running task rows remain visible even when historical task rows are collapsed.
+  const visibleSidebarSessions = useMemo(
+    () => [
       ...userSidebarSessions,
-      ...(tasksListVisible ? unpinnedTaskSidebarSessions : []),
+      ...visibleTaskSidebarSessions,
     ],
     [
-      pinnedTaskSidebarSessions,
       userSidebarSessions,
-      tasksListVisible,
-      unpinnedTaskSidebarSessions,
+      visibleTaskSidebarSessions,
     ],
   )
 
@@ -559,10 +636,6 @@ export function ActiveAgentsSidebar({
   useEffect(() => {
     writeBooleanToStorage(TASKS_SECTION_EXPANDED_STORAGE_KEY, tasksSectionExpanded)
   }, [tasksSectionExpanded])
-
-  useEffect(() => {
-    writeBooleanToStorage(TASKS_SECTION_HIDDEN_STORAGE_KEY, tasksSectionHidden)
-  }, [tasksSectionHidden])
 
   const handleActiveSessionSelect = useCallback((sessionId: string) => {
     logUI("[ActiveAgentsSidebar] Active session selected:", sessionId)
@@ -810,7 +883,7 @@ export function ActiveAgentsSidebar({
     !!onStartTextSession || !!onStartVoiceSession || !!onStartPromptSession
 
   return (
-    <div className="px-2">
+    <div className={cn("flex min-h-0 flex-col px-2", className)}>
       <div className="flex items-center">
         <div
           className={cn(
@@ -928,7 +1001,7 @@ export function ActiveAgentsSidebar({
 
       {isExpanded && (
         <div
-          className="mt-1 max-h-[45vh] space-y-0.5 overflow-y-auto pl-2 pr-1 scrollbar-none"
+          className="mt-1 space-y-0.5 overflow-visible pl-2 pr-1"
           onScroll={handleSidebarSessionsScroll}
         >
           {(() => {
@@ -941,7 +1014,9 @@ export function ActiveAgentsSidebar({
                 nestingDepth = 0,
               }: SidebarSessionEntry,
               index: number,
+              options: { forceSingleLine?: boolean } = {},
             ) => {
+            const forceSingleLine = options.forceSingleLine ?? false
             const isFocused = focusedSessionId === session.id
             const isSessionExpanded = expandedSessionId === session.id
             const isCurrentView = isSidebarSessionCurrentlyViewed(session, {
@@ -956,6 +1031,10 @@ export function ActiveAgentsSidebar({
               agentResponseReadAtBySessionId.get(session.id),
               isCurrentView,
             )
+            const hasAnalyzingOrPlanningProgress =
+              isAnalyzingOrPlanningProgress(sessionProgress)
+            const usesActiveStatusBlue =
+              hasUnreadResponse || hasAnalyzingOrPlanningProgress
             const conversationTimestamp =
               sessionProgress?.conversationHistory &&
               sessionProgress.conversationHistory.length > 0
@@ -1093,13 +1172,13 @@ export function ActiveAgentsSidebar({
               ? "bg-amber-500"
               : conversationState === "blocked"
                 ? "bg-red-500"
-                : hasUnreadResponse
+                : usesActiveStatusBlue
                   ? "bg-blue-500"
                   : isVisiblyActive
                     ? "bg-green-500"
                     : "bg-muted-foreground"
             const shouldPulseStatus =
-              (isVisiblyActive || hasUnreadResponse) && !hasPendingApproval
+              (isVisiblyActive || usesActiveStatusBlue) && !hasPendingApproval
 
             const isActivePinned = session.conversationId
               ? pinnedSessionIds.has(session.conversationId)
@@ -1111,7 +1190,10 @@ export function ActiveAgentsSidebar({
             )
             const isNestedSubagent = isSubagent && normalizedNestingDepth > 0
             const subagentIndentClass = normalizedNestingDepth > 1 ? "ml-12" : "ml-8"
-            const showSessionDetails = !isNestedSubagent && (sessionPreview || lastMessageMinutesAgo)
+            const showSessionDetails =
+              !forceSingleLine &&
+              !isNestedSubagent &&
+              (sessionPreview || lastMessageMinutesAgo)
 
             return (
               <div
@@ -1153,7 +1235,7 @@ export function ActiveAgentsSidebar({
                         ? "text-amber-500"
                         : conversationState === "blocked"
                           ? "text-red-500"
-                          : hasUnreadResponse
+                          : usesActiveStatusBlue
                             ? "text-blue-500"
                             : isVisiblyActive
                               ? "text-green-500"
@@ -1203,12 +1285,12 @@ export function ActiveAgentsSidebar({
                         isNestedSubagent
                           ? hasPendingApproval
                             ? "text-amber-700 dark:text-amber-300"
-                            : isCurrentView || hasUnreadResponse
+                            : isCurrentView || usesActiveStatusBlue
                               ? "text-foreground"
                               : "text-muted-foreground"
                           : hasPendingApproval
                             ? "text-amber-700 dark:text-amber-300"
-                            : hasUnreadResponse
+                            : usesActiveStatusBlue
                               ? "text-foreground"
                               : !isVisiblyActive
                                 ? "text-muted-foreground"
@@ -1297,28 +1379,15 @@ export function ActiveAgentsSidebar({
 
             // Hotkey ordering must mirror render ordering exactly; see
             // visibleSidebarSessions above.
-            const pinnedOffset = 0
-            const userOffset = pinnedTaskSidebarSessions.length
-            const unpinnedTasksOffset = userOffset + userSidebarSessions.length
+            const userOffset = 0
+            const tasksOffset = userSidebarSessions.length
 
             return (
               <>
-                {hasPinnedTasks && (
-                  <div className="flex items-center gap-1 px-1.5 pb-0.5 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
-                    <Pin className="h-3 w-3 -rotate-45 shrink-0 text-muted-foreground/70" />
-                    <span className="select-none">Pinned tasks</span>
-                    <span className="ml-1 rounded-full bg-muted-foreground/20 px-1.5 py-px text-[9px] font-medium leading-none text-muted-foreground">
-                      {pinnedTaskSidebarSessions.length}
-                    </span>
-                  </div>
-                )}
-                {pinnedTaskSidebarSessions.map((entry, idx) =>
-                  renderSessionRow(entry, pinnedOffset + idx),
-                )}
                 {userSidebarSessions.map((entry, idx) =>
                   renderSessionRow(entry, userOffset + idx),
                 )}
-                {showTasksSection && (
+                {hasTaskSessions && (
                   <div className="mt-1 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
                     <button
                       type="button"
@@ -1335,42 +1404,14 @@ export function ActiveAgentsSidebar({
                     </button>
                     <span className="select-none">Tasks</span>
                     <span className="ml-1 rounded-full bg-muted-foreground/20 px-1.5 py-px text-[9px] font-medium leading-none text-muted-foreground">
-                      {unpinnedTaskSidebarSessions.length}
+                      {taskSidebarSessions.length}
                     </span>
-                    <div className="ml-auto">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            className="hover:bg-accent focus-visible:ring-ring flex h-4 w-4 items-center justify-center rounded transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                            aria-label="Tasks section actions"
-                            title="Tasks section actions"
-                          >
-                            <MoreHorizontal className="h-3 w-3" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => setTasksSectionHidden(true)}>
-                            Hide tasks section
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
                   </div>
                 )}
                 {tasksListVisible &&
-                  unpinnedTaskSidebarSessions.map((entry, idx) =>
-                    renderSessionRow(entry, unpinnedTasksOffset + idx),
+                  visibleTaskSidebarSessions.map((entry, idx) =>
+                    renderSessionRow(entry, tasksOffset + idx, { forceSingleLine: true }),
                   )}
-                {hasUnpinnedTasks && tasksSectionHidden && (
-                  <button
-                    type="button"
-                    onClick={() => setTasksSectionHidden(false)}
-                    className="text-muted-foreground hover:bg-accent/50 hover:text-foreground mt-1 w-full rounded px-1.5 py-1 text-left text-[11px] transition-colors"
-                  >
-                    Show tasks ({unpinnedTaskSidebarSessions.length})
-                  </button>
-                )}
               </>
             )
           })()}

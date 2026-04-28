@@ -18,7 +18,10 @@ export type SidebarSessionNesting = {
 type TitledSessionLike = SessionLike & {
   parentSessionId?: string | null
   conversationTitle?: string
+  isRepeatTask?: boolean
 }
+
+type RepeatTaskTitleHints = ReadonlySet<string>
 
 /**
  * Sessions started by the repeat-task loop service get the shared
@@ -27,15 +30,28 @@ type TitledSessionLike = SessionLike & {
  * sidebar so they can be grouped separately from user-driven sessions.
  */
 export function isTaskSession(session: TitledSessionLike): boolean {
-  return hasRepeatTaskTitlePrefix(session.conversationTitle)
+  return isTaskSessionWithHints(session)
+}
+
+function isTaskSessionWithHints(
+  session: TitledSessionLike,
+  repeatTaskTitleHints?: RepeatTaskTitleHints,
+): boolean {
+  if (session.isRepeatTask) return true
+  if (hasRepeatTaskTitlePrefix(session.conversationTitle)) return true
+  const title = session.conversationTitle?.trim()
+  return !!title && !!repeatTaskTitleHints?.has(title)
 }
 
 export function partitionTaskAndUserEntries<
   T extends { session: TitledSessionLike },
->(entries: T[]): { userEntries: T[]; taskEntries: T[] } {
+>(
+  entries: T[],
+  repeatTaskTitleHints?: RepeatTaskTitleHints,
+): { userEntries: T[]; taskEntries: T[] } {
   const taskSessionIds = new Set(
     entries
-      .filter((entry) => isTaskSession(entry.session))
+      .filter((entry) => isTaskSessionWithHints(entry.session, repeatTaskTitleHints))
       .map((entry) => entry.session.id),
   )
   const userEntries: T[] = []
@@ -43,7 +59,7 @@ export function partitionTaskAndUserEntries<
   for (const entry of entries) {
     const parentSessionId = entry.session.parentSessionId?.trim()
     if (
-      isTaskSession(entry.session) ||
+      isTaskSessionWithHints(entry.session, repeatTaskTitleHints) ||
       (parentSessionId && taskSessionIds.has(parentSessionId))
     ) {
       taskEntries.push(entry)

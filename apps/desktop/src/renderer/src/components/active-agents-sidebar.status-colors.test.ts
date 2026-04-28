@@ -38,7 +38,16 @@ describe("active agents sidebar status colors", () => {
 
   it("shows unread agent responses as a blue active-session status", () => {
     expect(sidebarSource).toContain("const hasUnreadResponse = hasUnreadAgentResponse(")
-    expect(sidebarSource).toContain(': hasUnreadResponse\n                  ? "bg-blue-500"')
+    expect(sidebarSource).toContain("const usesActiveStatusBlue =")
+    expect(sidebarSource).toContain("hasUnreadResponse || hasAnalyzingOrPlanningProgress")
+    expect(sidebarSource).toContain(': usesActiveStatusBlue\n                  ? "bg-blue-500"')
     expect(sidebarSource).toContain("const shouldPulseStatus =")
+  })
+
+  it("treats analyzing/planning progress as an active blue sidebar status", () => {
+    expect(sidebarSource).toContain("function isAnalyzingOrPlanningProgress")
+    expect(sidebarSource).toContain('latestStep.status !== "in_progress"')
+    expect(sidebarSource).toContain('activeStepText.includes("analyzing")')
+    expect(sidebarSource).toContain('activeStepText.includes("planning")')
   })
 })

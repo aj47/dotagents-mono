@@ -17,6 +17,7 @@ import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
 import { getAcpSessionTitleOverride } from "./acp-session-state"
+import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
 import { getCurrentPresetName } from "@dotagents/shared"
 import {
   createAgentTrace,
@@ -742,7 +743,13 @@ export async function processTranscriptWithAgentMode(
             }
 
             const trackedSession = agentSessionTracker.getSession(sessionId)
-            if (trackedSession?.conversationTitle !== retitledConversation.title) {
+            const shouldPreserveRepeatTaskTitle = hasRepeatTaskTitlePrefix(
+              trackedSession?.conversationTitle,
+            ) && !hasRepeatTaskTitlePrefix(retitledConversation.title)
+            if (
+              !shouldPreserveRepeatTaskTitle &&
+              trackedSession?.conversationTitle !== retitledConversation.title
+            ) {
               agentSessionTracker.updateSession(sessionId, {
                 conversationTitle: retitledConversation.title,
               })
@@ -753,7 +760,13 @@ export async function processTranscriptWithAgentMode(
           })
       } else if (updatedConversation?.title && sessionId) {
         const trackedSession = agentSessionTracker.getSession(sessionId)
-        if (trackedSession?.conversationTitle !== updatedConversation.title) {
+        const shouldPreserveRepeatTaskTitle = hasRepeatTaskTitlePrefix(
+          trackedSession?.conversationTitle,
+        ) && !hasRepeatTaskTitlePrefix(updatedConversation.title)
+        if (
+          !shouldPreserveRepeatTaskTitle &&
+          trackedSession?.conversationTitle !== updatedConversation.title
+        ) {
           agentSessionTracker.updateSession(sessionId, {
             conversationTitle: updatedConversation.title,
           })
