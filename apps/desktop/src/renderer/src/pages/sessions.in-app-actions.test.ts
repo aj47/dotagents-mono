@@ -71,6 +71,19 @@ describe("sessions in-app actions", () => {
     expect(sessionsSource).not.toContain('aria-label="Cycle tile layout"')
   })
 
+  it("keeps expanded sidebar settings headings compact", () => {
+    expect(appLayoutSource).toContain(
+      'flex w-full items-center gap-1 rounded px-1.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide transition-colors',
+    )
+    expect(appLayoutSource).toContain('<div className="mt-1 grid gap-0.5 text-xs">')
+    expect(appLayoutSource).toContain('flex h-6 items-center rounded px-1.5 text-[11px] font-medium transition-all duration-200')
+    expect(appLayoutSource).toContain('isCollapsed ? "justify-center" : "gap-1.5"')
+    expect(appLayoutSource).toContain('h-3.5 w-3.5 shrink-0')
+    expect(appLayoutSource).toContain('<span className="truncate text-[11px] font-medium leading-4">')
+    expect(appLayoutSource).toContain('<span className="select-none">Settings</span>')
+    expect(appLayoutSource).not.toContain('i-mingcute-settings-3-line"></span>')
+  })
+
   it("shows sidebar session previews and removes sidebar minimize controls", () => {
     expect(sidebarSource).toContain("getSidebarSessionPreview")
     expect(sidebarSource).toContain('className="min-w-0 flex-1 truncate text-[11px] leading-4 text-muted-foreground"')

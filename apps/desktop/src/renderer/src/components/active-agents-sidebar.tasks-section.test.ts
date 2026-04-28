@@ -20,11 +20,14 @@ describe("active agents sidebar task section", () => {
 
   it("renders Tasks above regular sessions with separate pagination", () => {
     const tasksHeaderIndex = sidebarSource.indexOf("{hasTaskSessions && (")
-    const sessionsListIndex = sidebarSource.indexOf("{userSidebarSessions.map((entry, idx) =>")
+    const sessionsHeaderIndex = sidebarSource.indexOf('<span className="select-none">Sessions</span>')
+    const sessionsListIndex = sidebarSource.indexOf("userSidebarSessions.map((entry, idx) =>")
 
     expect(tasksHeaderIndex).toBeGreaterThan(-1)
+    expect(sessionsHeaderIndex).toBeGreaterThan(-1)
     expect(sessionsListIndex).toBeGreaterThan(-1)
-    expect(tasksHeaderIndex).toBeLessThan(sessionsListIndex)
+    expect(tasksHeaderIndex).toBeLessThan(sessionsHeaderIndex)
+    expect(sessionsHeaderIndex).toBeLessThan(sessionsListIndex)
     expect(sidebarSource).toContain("hasMoreTaskSessions")
     expect(sidebarSource).toContain("Load more tasks")
     expect(sidebarSource).toContain("Load more sessions")
@@ -54,6 +57,23 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain('<span className="select-none">Tasks</span>')
     expect(sidebarSource).toContain('<span className="select-none">Sessions</span>')
     expect(sidebarSource).not.toContain("violet")
+  })
+
+  it("uses compact unindented sidebar section headings", () => {
+    const tasksHeaderIndex = sidebarSource.indexOf('<span className="select-none">Tasks</span>')
+    const sessionsHeaderIndex = sidebarSource.indexOf('<span className="select-none">Sessions</span>')
+    const savedConversationsIndex = sidebarSource.indexOf('aria-label="Saved conversations"')
+
+    expect(tasksHeaderIndex).toBeGreaterThan(-1)
+    expect(sessionsHeaderIndex).toBeGreaterThan(-1)
+    expect(savedConversationsIndex).toBeGreaterThan(-1)
+    expect(tasksHeaderIndex).toBeLessThan(sessionsHeaderIndex)
+    expect(sessionsHeaderIndex).toBeLessThan(savedConversationsIndex)
+    expect(sidebarSource).toContain('-ml-2 mt-1 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px]')
+    expect(sidebarSource).toContain('"-ml-2 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px]')
+    expect(sidebarSource).toContain('<Clock className="h-3.5 w-3.5" />')
+    expect(sidebarSource).not.toContain("i-mingcute-grid-line")
+    expect(sidebarSource).not.toContain("text-sm font-medium transition-all duration-200")
   })
 
   it("keeps active task rows visible when historical task rows are collapsed", () => {

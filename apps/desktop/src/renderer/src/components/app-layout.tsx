@@ -406,8 +406,8 @@ export const Component = () => {
   const renderNavLink = (link: NavLinkItem) => {
     const isActive = isNavLinkActive(link.href)
     const icon = typeof link.icon === "string"
-      ? <span className={cn(link.icon, "h-4 w-4 shrink-0")}></span>
-      : <link.icon className="h-4 w-4 shrink-0" />
+      ? <span className={cn(link.icon, "h-3.5 w-3.5 shrink-0")}></span>
+      : <link.icon className="h-3.5 w-3.5 shrink-0" />
 
     return (
       <NavLink
@@ -424,8 +424,8 @@ export const Component = () => {
         }}
         className={() => {
           return cn(
-            "flex h-7 items-center rounded-md px-2 font-medium transition-all duration-200",
-            isCollapsed ? "justify-center" : "gap-2",
+            "flex h-6 items-center rounded px-1.5 text-[11px] font-medium transition-all duration-200",
+            isCollapsed ? "justify-center" : "gap-1.5",
             isActive
               ? "bg-accent text-accent-foreground"
               : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
@@ -434,7 +434,7 @@ export const Component = () => {
       >
         {icon}
         {!isCollapsed && (
-          <span className="truncate font-medium">{link.text}</span>
+          <span className="truncate text-[11px] font-medium leading-4">{link.text}</span>
         )}
       </NavLink>
     )
@@ -815,24 +815,23 @@ export const Component = () => {
                 <button
                   onClick={() => setSettingsExpanded(!settingsExpanded)}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200",
+                    "flex w-full items-center gap-1 rounded px-1.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide transition-colors",
                     "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                   )}
                 >
                   <span
                     className={cn(
-                      "transition-transform duration-200",
+                      "h-3 w-3 shrink-0 transition-transform duration-200",
                       settingsExpanded
                         ? "i-mingcute-down-line"
                         : "i-mingcute-right-line",
                     )}
                   ></span>
-                  <span className="i-mingcute-settings-3-line"></span>
-                  <span className="truncate">Settings</span>
+                  <span className="select-none">Settings</span>
                 </button>
 
                 {settingsExpanded && (
-                  <div className="mt-1 grid gap-0.5 text-sm">
+                  <div className="mt-1 grid gap-0.5 text-xs">
                     {settingsNavLinks.map(renderNavLink)}
                   </div>
                 )}

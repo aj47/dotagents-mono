@@ -288,7 +288,6 @@ export function ActiveAgentsSidebar({
   const repeatTasksQuery = useQuery<LoopConfig[]>({
     queryKey: ["loops"],
     queryFn: async () => await tipcClient.getLoops(),
-    enabled: isExpanded,
   })
 
   useEffect(() => {
@@ -578,9 +577,10 @@ export function ActiveAgentsSidebar({
   const visibleSidebarSessions = useMemo(
     () => [
       ...visibleTaskSidebarSessions,
-      ...userSidebarSessions,
+      ...(isExpanded ? userSidebarSessions : []),
     ],
     [
+      isExpanded,
       visibleTaskSidebarSessions,
       userSidebarSessions,
     ],
@@ -740,16 +740,6 @@ export function ActiveAgentsSidebar({
     [],
   )
 
-  const handleHeaderClick = () => {
-    // Navigate to sessions view
-    logUI("[ActiveAgentsSidebar] Header clicked, navigating to sessions")
-    navigate("/")
-    // Expand the list if not already expanded
-    if (!isExpanded) {
-      setIsExpanded(true)
-    }
-  }
-
   const loadMoreSavedConversations = useCallback(() => {
     setVisibleSavedConversationCount((prev) =>
       Math.max(prev, minimumSavedConversationRowsNeeded) +
@@ -784,58 +774,7 @@ export function ActiveAgentsSidebar({
 
   return (
     <div className={cn("flex min-h-0 flex-col px-2", className)}>
-      <div className="flex items-center">
-        <div
-          className={cn(
-            "flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-all duration-200",
-            "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-          )}
-        >
-          {hasAnySessions ? (
-            <button
-              onClick={handleToggleExpand}
-              className="hover:text-foreground focus:ring-ring shrink-0 cursor-pointer rounded focus:outline-none focus:ring-1"
-              aria-label={isExpanded ? "Collapse sessions" : "Expand sessions"}
-              aria-expanded={isExpanded}
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5" />
-              )}
-            </button>
-          ) : (
-            <span className="h-3.5 w-3.5 shrink-0" />
-          )}
-          <button
-            onClick={handleHeaderClick}
-            className="focus:ring-ring flex min-w-0 flex-1 items-center gap-2 rounded focus:outline-none focus:ring-1"
-          >
-            <span className="i-mingcute-grid-line h-3.5 w-3.5"></span>
-            <span className="truncate">Sessions</span>
-            {activeSessions.length > 0 && (
-              <span className="ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-500 text-[10px] font-semibold text-white">
-                {activeSessions.length}
-              </span>
-            )}
-          </button>
-        </div>
-        {onOpenSavedConversationsDialog && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onOpenSavedConversationsDialog()
-            }}
-            className="text-muted-foreground hover:text-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors"
-            title="Saved conversations"
-            aria-label="Saved conversations"
-          >
-            <Clock className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
-      {isExpanded && hasLaunchControls && (
+      {hasLaunchControls && (
         <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 p-2">
           <div className="flex w-full flex-wrap items-center gap-2">
             {onSelectAgent && (
@@ -899,7 +838,7 @@ export function ActiveAgentsSidebar({
         </div>
       )}
 
-      {isExpanded && (
+      {hasAnySessions && (
         <div
           className="mt-1 space-y-0.5 overflow-visible pl-2 pr-1"
           onScroll={handleSidebarSessionsScroll}
@@ -1238,7 +1177,7 @@ export function ActiveAgentsSidebar({
             return (
               <>
                 {hasTaskSessions && (
-                  <div className="mt-1 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                  <div className="-ml-2 mt-1 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
                     <button
                       type="button"
                       onClick={() => setTasksSectionExpanded((v) => !v)}
@@ -1271,22 +1210,53 @@ export function ActiveAgentsSidebar({
                     Load more tasks
                   </button>
                 )}
-                {hasTaskSessions && userSidebarSessions.length > 0 && (
-                  <div className="mt-2 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                {userSidebarSessions.length > 0 && (
+                  <div
+                    className={cn(
+                      hasTaskSessions ? "mt-2" : "mt-1",
+                      "-ml-2 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={handleToggleExpand}
+                      className="hover:text-foreground focus:ring-ring flex shrink-0 items-center rounded focus:outline-none focus:ring-1"
+                      aria-label={isExpanded ? "Collapse sessions" : "Expand sessions"}
+                      aria-expanded={isExpanded}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="h-3 w-3" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3" />
+                      )}
+                    </button>
                     <span className="select-none">Sessions</span>
                     <span className="ml-1 rounded-full bg-muted-foreground/20 px-1.5 py-px text-[9px] font-medium leading-none text-muted-foreground">
                       {userSidebarSessions.length}
                     </span>
+                    {onOpenSavedConversationsDialog && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onOpenSavedConversationsDialog()
+                        }}
+                        className="text-muted-foreground hover:text-foreground focus:ring-ring ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded focus:outline-none focus:ring-1 transition-colors"
+                        title="Saved conversations"
+                        aria-label="Saved conversations"
+                      >
+                        <Clock className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 )}
-                {userSidebarSessions.map((entry, idx) =>
+                {isExpanded && userSidebarSessions.map((entry, idx) =>
                   renderSessionRow(entry, userOffset + idx),
                 )}
               </>
             )
           })()}
 
-          {hasMoreSavedConversations && (
+          {isExpanded && hasMoreSavedConversations && (
             <button
               type="button"
               onClick={loadMoreSavedConversations}
