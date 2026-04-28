@@ -25,11 +25,9 @@ import {
   extractRespondToUserResponseEvents,
   formatArgumentsPreview,
   formatToolArguments,
-  getAgentConversationStateLabel,
   getToolArgumentEntries,
   getIndividualToolCallPreview,
   getToolResultsSummary,
-  normalizeAgentConversationState,
   TOOL_GROUP_PREVIEW_COUNT,
   TOOL_GROUP_MIN_SIZE,
   getToolActivitySummaryLine,
@@ -45,6 +43,10 @@ import { buildContentTTSKey, buildResponseEventTTSKey, hasTTSPlayed, markTTSPlay
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { sanitizeMessageContentForDisplay, sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
 import { toast } from "sonner"
+import {
+  getFollowUpInputPresentation,
+  getSessionPresentation,
+} from "@renderer/lib/session-presentation"
 
 interface AgentProgressProps {
   progress: AgentProgressUpdate | null
@@ -3122,6 +3124,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const [showKillConfirmation, setShowKillConfirmation] = useState(false)
   const [isKilling, setIsKilling] = useState(false)
   const { isDark } = useTheme()
+  const configQuery = useConfigQuery()
 
   const clearPendingInitialScrollAttempts = useCallback(() => {
     pendingInitialScrollTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId))
@@ -3408,6 +3411,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     profileName,
     acpSessionInfo,
   } = progress
+  const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? true
 
   // Detect if agent was stopped by kill switch
   const wasStopped = finalContent?.includes("emergency kill switch") ||
@@ -4203,38 +4207,39 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const hasErrors = steps.some(
     (step) => step.status === "error" || step.toolResult?.error,
   )
-  const conversationState = progress.conversationState
-    ? normalizeAgentConversationState(progress.conversationState, isComplete ? "complete" : "running")
-    : progress.pendingToolApproval
-      ? "needs_input"
-      : hasErrors || wasStopped
-        ? "blocked"
-        : isComplete
-          ? "complete"
-          : "running"
-  const conversationStateLabel = getAgentConversationStateLabel(conversationState)
-  const conversationStateBadgeClass = conversationState === "complete"
-    ? "border-green-500 text-green-700 dark:border-green-700 dark:text-green-300"
-    : conversationState === "needs_input"
-      ? "border-amber-500 text-amber-700 dark:border-amber-700 dark:text-amber-300"
-      : conversationState === "blocked"
-        ? "border-red-500 text-red-700 dark:border-red-700 dark:text-red-300"
-        : "border-blue-500 text-blue-700 dark:border-blue-700 dark:text-blue-300"
+  const sessionPresentation = getSessionPresentation({
+    conversationState: progress.conversationState,
+    isComplete,
+    pendingToolApproval: progress.pendingToolApproval,
+    hasErrors,
+    wasStopped,
+    isSnoozed: progress.isSnoozed,
+    isFocused,
+    isSessionExpanded: isExpanded,
+  })
+  const conversationState = sessionPresentation.lifecycleState
+  const conversationStateLabel = sessionPresentation.label
+  const conversationStateBadgeClass = sessionPresentation.badgeClassName
+  const isSessionActiveForInput = conversationState === "running" || conversationState === "needs_input"
+  const followUpInputPresentation = getFollowUpInputPresentation({
+    conversationState,
+    isInitializingSession: isFollowUpInputInitializing,
+    isQueueEnabled,
+  })
 
   // Get status indicator for tile variant
   const getStatusIndicator = () => {
-    const isSnoozed = progress.isSnoozed
     if (conversationState === "needs_input") {
       return <Shield className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
     }
-    if (conversationState === "running") {
-      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_img]:h-3.5 [&_img]:w-3.5" />
-    }
-    if (isSnoozed) {
-      return <Moon className="h-3.5 w-3.5 text-muted-foreground" />
-    }
     if (conversationState === "blocked") {
       return <XCircle className="h-3.5 w-3.5 text-red-500" />
+    }
+    if (conversationState === "running" && sessionPresentation.attentionState === "background") {
+      return <Moon className="h-3.5 w-3.5 text-muted-foreground" />
+    }
+    if (conversationState === "running") {
+      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_img]:h-3.5 [&_img]:w-3.5" />
     }
     return <Check className="h-3.5 w-3.5 text-green-500" />
   }
@@ -4313,6 +4318,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <span className={cn("pointer-events-none truncate font-medium min-w-0", isCollapsed ? "text-xs" : "text-sm")}>
               {getTitle()}
             </span>
+            <Badge variant="outline" className={cn("h-5 shrink-0 px-1.5 text-[10px]", conversationStateBadgeClass)}>
+              {conversationStateLabel}
+            </Badge>
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 app-no-drag-region">
             {canCollapseTile && (
@@ -4654,8 +4662,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           <TileFollowUpInput
             conversationId={progress.conversationId}
             sessionId={progress.sessionId}
-            isSessionActive={!isComplete}
+            isSessionActive={isSessionActiveForInput}
             isInitializingSession={isFollowUpInputInitializing}
+            presentation={followUpInputPresentation}
             agentName={profileName}
             conversationTitle={progress.conversationTitle}
             className="flex-shrink-0"
@@ -4707,6 +4716,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           <span className="text-xs font-medium text-foreground truncate min-w-0">
             {getTitle()}
           </span>
+          <Badge variant="outline" className={cn("h-5 shrink-0 px-1.5 text-[10px]", conversationStateBadgeClass)}>
+            {conversationStateLabel}
+          </Badge>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {/* Profile/agent name — secondary */}
@@ -5033,7 +5045,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       <OverlayFollowUpInput
         conversationId={progress.conversationId}
         sessionId={progress.sessionId}
-        isSessionActive={!isComplete}
+        isSessionActive={isSessionActiveForInput}
+        presentation={followUpInputPresentation}
         agentName={profileName}
         className="flex-shrink-0"
       />

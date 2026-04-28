@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
   getSubagentParentSessionIdMap,
   getSessionIdsWithActiveChildProgress,
@@ -10,6 +11,7 @@ import {
   isTaskSession,
   nestSubagentSessionEntries,
   orderActiveSessionsByPinnedFirst,
+  paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
 } from "./sidebar-sessions"
@@ -410,6 +412,63 @@ describe("partitionPinnedAndUnpinnedTaskEntries", () => {
       "task-subagent",
     ])
     expect(unpinnedTaskEntries.map((e) => e.session.id)).toEqual(["other-task"])
+  })
+})
+
+describe("dedupeTaskEntriesByTitle", () => {
+  it("keeps the active run when repeat-task history has the same title", () => {
+    const entries = [
+      { session: { id: "active", conversationTitle: "[Repeat] Chess Trainer", status: "active", startTime: 300 } },
+      { session: { id: "stopped", conversationTitle: "[Repeat] Chess Trainer", status: "stopped", startTime: 200, endTime: 250 } },
+      { session: { id: "completed", conversationTitle: "[Repeat] Chess Trainer", status: "completed", startTime: 100, endTime: 150 } },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["active"])
+  })
+
+  it("keeps the newest historical run when no active run exists", () => {
+    const entries = [
+      { session: { id: "older", conversationTitle: "Serendipity Engine Run", status: "completed", startTime: 100, endTime: 150 } },
+      { session: { id: "newer", conversationTitle: "Serendipity Engine Run", status: "completed", startTime: 200, endTime: 250 } },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["newer"])
+  })
+})
+
+describe("paginateSidebarEntries", () => {
+  it("always keeps active and pinned entries while paginating unpinned saved entries", () => {
+    const entries = [
+      { session: { id: "active", conversationId: "active-c" }, isSavedConversation: false },
+      { session: { id: "pinned", conversationId: "pinned-c" }, isSavedConversation: true },
+      { session: { id: "saved-1", conversationId: "saved-c-1" }, isSavedConversation: true },
+      { session: { id: "saved-2", conversationId: "saved-c-2" }, isSavedConversation: true },
+    ]
+
+    const paginated = paginateSidebarEntries(entries, new Set(["pinned-c"]), 1)
+
+    expect(paginated.visibleEntries.map((entry) => entry.session.id)).toEqual([
+      "active",
+      "pinned",
+      "saved-1",
+    ])
+    expect(paginated.hasMoreEntries).toBe(true)
+  })
+
+  it("keeps saved subagents visible with their pinned parent", () => {
+    const entries = [
+      { session: { id: "parent", conversationId: "parent-c" }, isSavedConversation: true },
+      { session: { id: "child", parentSessionId: "parent" }, isSavedConversation: true },
+      { session: { id: "saved", conversationId: "saved-c" }, isSavedConversation: true },
+    ]
+
+    const paginated = paginateSidebarEntries(entries, new Set(["parent-c"]), 0)
+
+    expect(paginated.visibleEntries.map((entry) => entry.session.id)).toEqual([
+      "parent",
+      "child",
+    ])
+    expect(paginated.hasMoreEntries).toBe(true)
   })
 })
 

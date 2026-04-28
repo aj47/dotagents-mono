@@ -14,6 +14,17 @@ describe("agent progress TTS guardrails", () => {
     expect(agentProgressSource).toContain('isSnoozed={progress.isSnoozed}')
   })
 
+  it("presents snoozed running sessions as background work instead of paused or complete", () => {
+    expect(agentProgressSource).toContain("getSessionPresentation")
+    expect(agentProgressSource).toContain('conversationState === "running" && sessionPresentation.attentionState === "background"')
+    expect(agentProgressSource).toContain("<Moon className=\"h-3.5 w-3.5 text-muted-foreground\" />")
+
+    const backgroundIconIndex = agentProgressSource.indexOf('conversationState === "running" && sessionPresentation.attentionState === "background"')
+    const spinnerIndex = agentProgressSource.indexOf('if (conversationState === "running")', backgroundIconIndex + 1)
+    expect(backgroundIconIndex).toBeGreaterThan(-1)
+    expect(spinnerIndex).toBeGreaterThan(backgroundIconIndex)
+  })
+
   it("suppresses tile auto-play while the floating panel is visible so the same session is not spoken twice", () => {
     expect(agentProgressSource).toContain('if (variant === "tile") return isFocused && !isFloatingPanelVisible')
     expect(agentProgressSource).toContain('shouldAutoPlayTTSForVariant(messageVariant, isSnoozed, isFocused, isFloatingPanelVisible)')

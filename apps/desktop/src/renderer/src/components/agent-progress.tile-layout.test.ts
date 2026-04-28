@@ -288,13 +288,13 @@ describe("agent progress tile layout", () => {
   })
 
   it("uses shared conversation-state normalization across agent progress surfaces", () => {
-    expect(agentProgressSource).toContain('getAgentConversationStateLabel')
-    expect(agentProgressSource).toContain('normalizeAgentConversationState(progress.conversationState, isComplete ? "complete" : "running")')
+    expect(agentProgressSource).toContain('getSessionPresentation')
+    expect(agentProgressSource).toContain('const sessionPresentation = getSessionPresentation({')
     expect(agentProgressSource).toContain('conversationState === "needs_input"')
     expect(agentProgressSource).toContain('conversationState === "blocked"')
     expect(agentProgressSource).toContain(
       'Badge variant="outline" className={cn("h-4 rounded-full px-1 text-[9px] font-medium", statusBadgeClass)}'
     )
-    expect(agentProgressSource).toContain('const conversationStateBadgeClass = conversationState === "complete"')
+    expect(agentProgressSource).toContain('const conversationStateBadgeClass = sessionPresentation.badgeClassName')
   })
 })

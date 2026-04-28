@@ -18,6 +18,18 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).not.toContain("Hide tasks section")
   })
 
+  it("renders Tasks above regular sessions with separate pagination", () => {
+    const tasksHeaderIndex = sidebarSource.indexOf("{hasTaskSessions && (")
+    const sessionsListIndex = sidebarSource.indexOf("{userSidebarSessions.map((entry, idx) =>")
+
+    expect(tasksHeaderIndex).toBeGreaterThan(-1)
+    expect(sessionsListIndex).toBeGreaterThan(-1)
+    expect(tasksHeaderIndex).toBeLessThan(sessionsListIndex)
+    expect(sidebarSource).toContain("hasMoreTaskSessions")
+    expect(sidebarSource).toContain("Load more tasks")
+    expect(sidebarSource).toContain("Load more sessions")
+  })
+
   it("preserves backend repeat-task markers when merging live progress", () => {
     expect(sidebarSource).toContain("isRepeatTask?: boolean")
     expect(sidebarSource).toContain("isRepeatTask: existingSession?.isRepeatTask")
@@ -38,13 +50,19 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("renderSessionRow(entry, tasksOffset + idx, { forceSingleLine: true })")
   })
 
+  it("distinguishes task rows from regular sessions with section headings", () => {
+    expect(sidebarSource).toContain('<span className="select-none">Tasks</span>')
+    expect(sidebarSource).toContain('<span className="select-none">Sessions</span>')
+    expect(sidebarSource).not.toContain("violet")
+  })
+
   it("keeps active task rows visible when historical task rows are collapsed", () => {
     expect(sidebarSource).toContain("const activeTaskSidebarSessions = useMemo(")
     expect(sidebarSource).toContain("const progress = agentProgressById.get(entry.session.id)")
     expect(sidebarSource).toContain("!entry.isSavedConversation &&")
     expect(sidebarSource).toContain('entry.session.status === "active" &&')
     expect(sidebarSource).toContain("progress?.isComplete !== true")
-    expect(sidebarSource).toContain("tasksSectionExpanded ? taskSidebarSessions : activeTaskSidebarSessions")
+    expect(sidebarSource).toContain("tasksSectionExpanded ? paginatedTaskSidebarSessions : activeTaskSidebarSessions")
     expect(sidebarSource).toContain("const tasksListVisible = visibleTaskSidebarSessions.length > 0")
   })
 

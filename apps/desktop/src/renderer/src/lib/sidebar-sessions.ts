@@ -1,5 +1,5 @@
 import type { AgentProgressUpdate } from "@shared/types"
-import { hasRepeatTaskTitlePrefix } from "@shared/repeat-tasks"
+import { TASK_SESSION_TITLE_PREFIX, hasRepeatTaskTitlePrefix } from "@shared/repeat-tasks"
 
 type SessionLike = {
   id: string
@@ -70,6 +70,49 @@ export function partitionTaskAndUserEntries<
   return { userEntries, taskEntries }
 }
 
+function getTaskEntryDedupeKey(session: TitledSessionLike): string | null {
+  const title = session.conversationTitle?.trim()
+  if (!title) return null
+  return title.startsWith(TASK_SESSION_TITLE_PREFIX)
+    ? title.slice(TASK_SESSION_TITLE_PREFIX.length).trim().toLowerCase()
+    : title.toLowerCase()
+}
+
+function getTaskEntryTimestamp(session: TitledSessionLike & { startTime?: number; endTime?: number }): number {
+  return Math.max(session.endTime ?? 0, session.startTime ?? 0)
+}
+
+function isBetterTaskEntry<T extends { session: TitledSessionLike & { status?: string; startTime?: number; endTime?: number } }>(
+  candidate: T,
+  current: T,
+): boolean {
+  const candidateIsActive = candidate.session.status === "active"
+  const currentIsActive = current.session.status === "active"
+  if (candidateIsActive !== currentIsActive) return candidateIsActive
+  return getTaskEntryTimestamp(candidate.session) > getTaskEntryTimestamp(current.session)
+}
+
+export function dedupeTaskEntriesByTitle<
+  T extends { session: TitledSessionLike & { status?: string; startTime?: number; endTime?: number } },
+>(taskEntries: T[]): T[] {
+  if (taskEntries.length <= 1) return taskEntries
+
+  const selectedByTitle = new Map<string, T>()
+  for (const entry of taskEntries) {
+    const key = getTaskEntryDedupeKey(entry.session)
+    if (!key) continue
+    const current = selectedByTitle.get(key)
+    if (!current || isBetterTaskEntry(entry, current)) {
+      selectedByTitle.set(key, entry)
+    }
+  }
+
+  return taskEntries.filter((entry) => {
+    const key = getTaskEntryDedupeKey(entry.session)
+    return !key || selectedByTitle.get(key) === entry
+  })
+}
+
 export function partitionPinnedAndUnpinnedTaskEntries<
   T extends { session: ParentSessionLike },
 >(
@@ -103,6 +146,49 @@ export function partitionPinnedAndUnpinnedTaskEntries<
     }
   }
   return { pinnedTaskEntries, unpinnedTaskEntries }
+}
+
+export function paginateSidebarEntries<
+  T extends { session: ParentSessionLike; isSavedConversation: boolean },
+>(
+  entries: T[],
+  pinnedSessionIds: ReadonlySet<string>,
+  visibleUnpinnedSavedEntryCount: number,
+): { visibleEntries: T[]; hasMoreEntries: boolean } {
+  const pinnedSavedSessionIds = new Set(
+    entries
+      .filter((entry) => {
+        const conversationId = entry.session.conversationId
+        return entry.isSavedConversation && !!conversationId && pinnedSessionIds.has(conversationId)
+      })
+      .map((entry) => entry.session.id),
+  )
+
+  const alwaysVisibleEntries: T[] = []
+  const pageableEntries: T[] = []
+  for (const entry of entries) {
+    const conversationId = entry.session.conversationId
+    const parentSessionId = entry.session.parentSessionId?.trim()
+    const isPinnedSavedEntry =
+      entry.isSavedConversation && !!conversationId && pinnedSessionIds.has(conversationId)
+    const isChildOfPinnedSavedEntry =
+      entry.isSavedConversation && !!parentSessionId && pinnedSavedSessionIds.has(parentSessionId)
+
+    if (!entry.isSavedConversation || isPinnedSavedEntry || isChildOfPinnedSavedEntry) {
+      alwaysVisibleEntries.push(entry)
+    } else {
+      pageableEntries.push(entry)
+    }
+  }
+
+  const sliceCount = Math.max(visibleUnpinnedSavedEntryCount, 0)
+  return {
+    visibleEntries: [
+      ...alwaysVisibleEntries,
+      ...pageableEntries.slice(0, sliceCount),
+    ],
+    hasMoreEntries: pageableEntries.length > sliceCount,
+  }
 }
 
 interface SidebarSessionViewState {
