@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  buildLinuxReleaseManifest,
+  getDebPackageArchitecture,
   normalizeLinuxArchitecture,
   parseLinuxArtifactName,
   selectLinuxArtifact,
@@ -25,6 +27,11 @@ describe("linux-artifacts", () => {
       architecture: "arm64",
       format: "AppImage",
     })
+  })
+
+  it("maps release architectures to Debian package architectures", () => {
+    expect(getDebPackageArchitecture("x64")).toBe("amd64")
+    expect(getDebPackageArchitecture("arm64")).toBe("arm64")
   })
 
   it("selects the preferred architecture-matched artifact and falls back formats", () => {
@@ -54,5 +61,17 @@ describe("linux-artifacts", () => {
         distro: { id: "fedora" },
       })?.url,
     ).toBe("deb-arm64")
+  })
+
+  it("builds a manifest keyed by architecture and package format", () => {
+    const deb = { name: "DotAgents_1.2.3_amd64.deb", sha256: "deb-sha" }
+    const appImage = { name: "DotAgents-1.2.3-x64.AppImage", sha256: "app-sha" }
+
+    expect(buildLinuxReleaseManifest([deb, appImage, { name: "notes.txt" }])).toEqual({
+      x64: {
+        deb,
+        AppImage: appImage,
+      },
+    })
   })
 })

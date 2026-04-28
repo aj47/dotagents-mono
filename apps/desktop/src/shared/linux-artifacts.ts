@@ -12,6 +12,10 @@ export interface LinuxReleaseAsset {
   sha256?: string
 }
 
+export type LinuxReleaseManifest = Partial<
+  Record<LinuxReleaseArch, Partial<Record<LinuxPackageFormat, LinuxReleaseAsset>>>
+>
+
 const ARCHITECTURE_ALIASES: Record<string, LinuxReleaseArch> = {
   x64: "x64",
   amd64: "x64",
@@ -33,6 +37,10 @@ const DEBIAN_FAMILY_IDS = new Set([
 export function normalizeLinuxArchitecture(value: string | null | undefined): LinuxReleaseArch | null {
   if (!value) return null
   return ARCHITECTURE_ALIASES[value.trim().toLowerCase()] ?? null
+}
+
+export function getDebPackageArchitecture(architecture: LinuxReleaseArch): string {
+  return architecture === "x64" ? "amd64" : "arm64"
 }
 
 function isDebianFamily(distro?: LinuxDistroInfo | null): boolean {
@@ -92,4 +100,18 @@ export function selectLinuxArtifact(
   if (preferredAsset) return preferredAsset
 
   return matchingAssets.find(asset => parseLinuxArtifactName(asset.name).format === fallbackFormat) ?? null
+}
+
+export function buildLinuxReleaseManifest(assets: LinuxReleaseAsset[]): LinuxReleaseManifest {
+  return assets.reduce<LinuxReleaseManifest>((manifest, asset) => {
+    const { architecture, format } = parseLinuxArtifactName(asset.name)
+    if (!architecture || !format) return manifest
+
+    manifest[architecture] = {
+      ...manifest[architecture],
+      [format]: asset,
+    }
+
+    return manifest
+  }, {})
 }
