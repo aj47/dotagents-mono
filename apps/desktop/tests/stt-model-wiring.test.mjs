@@ -12,8 +12,10 @@ const sttModelsSource = readFileSync(new URL('../../../packages/shared/src/stt-m
 
 test('speech-to-text general settings link model configuration to the models page', () => {
   assert.match(settingsGeneralSource, /label="Model Selection"/)
+  assert.match(settingsGeneralSource, /label="Transcript Processing"/)
   assert.match(settingsGeneralSource, /navigate\("\/settings\/models"\)/)
   assert.match(settingsGeneralSource, /Open Models page/)
+  assert.match(settingsGeneralSource, /Prompt, provider, and model live on the Models page\./)
 })
 
 test('router and navigation split models and providers into separate pages', () => {
@@ -28,7 +30,7 @@ test('models page consolidates transcript processing with its provider, model, a
   assert.match(settingsModelsSource, /ControlGroup title="Choose a Provider for Each Job" collapsible/)
   assert.match(settingsModelsSource, /ControlGroup title="Transcript Processing" collapsible/)
   assert.match(settingsModelsSource, /ControlGroup title="Speech & Voice Models" collapsible/)
-  assert.match(settingsModelsSource, /ControlGroup title="Agent Models" collapsible/)
+  assert.match(settingsModelsSource, /ControlGroup title="Agent Models"/)
   assert.match(settingsModelsSource, /ControlGroup title="Advanced Agent Models" collapsible/)
   assert.match(settingsModelsSource, /label="Speech-to-Text"/)
   assert.match(settingsModelsSource, /label="Text-to-Speech"/)

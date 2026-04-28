@@ -992,6 +992,23 @@ export function Component() {
             </div>
           </Control>
 
+          <Control label={<ControlLabel label="Transcript Processing" tooltip="Clean up punctuation, capitalization, or obvious speech-to-text mistakes after dictation." />} className="px-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Switch
+                checked={configQuery.data.transcriptPostProcessingEnabled ?? false}
+                onCheckedChange={(value) => {
+                  saveConfig({ transcriptPostProcessingEnabled: value })
+                }}
+              />
+              <Button variant="outline" size="sm" onClick={() => navigate("/settings/models")}>
+                Configure
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Prompt, provider, and model live on the Models page.
+              </p>
+            </div>
+          </Control>
+
           <Control label={<ControlLabel label="Language" tooltip="Select the language for speech transcription. 'Auto-detect' lets the model determine the language automatically based on your speech." />} className="px-3">
             <Select
               value={configQuery.data.sttLanguage || "auto"}
