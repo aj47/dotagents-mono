@@ -325,16 +325,44 @@ export function nestSubagentSessionEntries<
   if (entries.length === 0) return []
 
   const entryIds = new Set(entries.map((entry) => entry.session.id))
+  const entriesByConversationId = new Map<string, T[]>()
   const childrenByParentId = new Map<string, T[]>()
   const topLevelEntries: T[] = []
 
   for (const entry of entries) {
+    const conversationId = entry.session.conversationId?.trim()
+    if (!conversationId) continue
+    const conversationEntries = entriesByConversationId.get(conversationId) ?? []
+    conversationEntries.push(entry)
+    entriesByConversationId.set(conversationId, conversationEntries)
+  }
+
+  const resolveParentEntryId = (entry: T): string | null => {
     const parentSessionId = entry.session.parentSessionId?.trim()
-    if (
-      parentSessionId &&
-      parentSessionId !== entry.session.id &&
-      entryIds.has(parentSessionId)
-    ) {
+    if (!parentSessionId || parentSessionId === entry.session.id) return null
+    if (entryIds.has(parentSessionId)) return parentSessionId
+
+    const conversationId = entry.session.conversationId?.trim()
+    if (!conversationId) return null
+
+    const conversationEntries = entriesByConversationId.get(conversationId) ?? []
+    const parentCandidate =
+      conversationEntries.find((candidate) =>
+        candidate.session.id !== entry.session.id &&
+        !candidate.session.parentSessionId?.trim(),
+      ) ??
+      conversationEntries.find((candidate) =>
+        candidate.session.id !== entry.session.id &&
+        candidate.session.id === conversationId,
+      ) ??
+      conversationEntries.find((candidate) => candidate.session.id !== entry.session.id)
+
+    return parentCandidate?.session.id ?? null
+  }
+
+  for (const entry of entries) {
+    const parentSessionId = resolveParentEntryId(entry)
+    if (parentSessionId) {
       const children = childrenByParentId.get(parentSessionId) ?? []
       children.push(entry)
       childrenByParentId.set(parentSessionId, children)

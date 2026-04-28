@@ -207,6 +207,44 @@ describe("nestSubagentSessionEntries", () => {
       nestingDepth: 0,
     })
   })
+
+  it("nests an active child under a saved pinned parent when both groups are combined", () => {
+    const ordered = nestSubagentSessionEntries([
+      {
+        session: { id: "child", parentSessionId: "parent" },
+        isSavedConversation: false,
+      },
+      {
+        session: { id: "parent", conversationId: "parent-c" },
+        isSavedConversation: true,
+      },
+    ])
+
+    expect(ordered.map((entry) => entry.session.id)).toEqual(["parent", "child"])
+    expect(ordered.map((entry) => entry.isSubagent)).toEqual([false, true])
+    expect(ordered.map((entry) => entry.nestingDepth)).toEqual([0, 1])
+  })
+
+  it("falls back to a shared conversation when the saved parent uses the conversation id", () => {
+    const ordered = nestSubagentSessionEntries([
+      {
+        session: {
+          id: "child",
+          parentSessionId: "runtime-parent",
+          conversationId: "parent-c",
+        },
+        isSavedConversation: false,
+      },
+      {
+        session: { id: "parent-c", conversationId: "parent-c" },
+        isSavedConversation: true,
+      },
+    ])
+
+    expect(ordered.map((entry) => entry.session.id)).toEqual(["parent-c", "child"])
+    expect(ordered.map((entry) => entry.isSubagent)).toEqual([false, true])
+    expect(ordered.map((entry) => entry.nestingDepth)).toEqual([0, 1])
+  })
 })
 
 describe("filterPastSessionsAgainstActiveSessions", () => {

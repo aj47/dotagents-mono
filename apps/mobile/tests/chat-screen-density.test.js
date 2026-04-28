@@ -51,8 +51,9 @@ test('caps live transcript height so the recording overlay is less likely to cov
 test('derives visible assistant content from respond_to_user output and suppresses raw tool payloads', () => {
   assert.match(screenSource, /const getVisibleMessageContent = \(message: ChatMessage\): string =>/);
   assert.match(screenSource, /extractRespondToUserContentFromArgs\(call\.arguments\)/);
-  assert.match(screenSource, /looksLikeToolPayloadContent\(message\.content\)/);
+  assert.match(screenSource, /looksLikeToolPayloadContent\(renderContent\)/);
   assert.match(screenSource, /const TOOL_PAYLOAD_PREFIX_REGEX = \/\^\(\?:using tool:\|tool result:\)\/i;/);
+  assert.match(screenSource, /\^tool_call\$/);
   assert.match(screenSource, /if \(stripped\.length > 0\) \{\s+return stripped;\s+\}\s+return stripped === rawContent \? rawContent : '';/);
   assert.doesNotMatch(screenSource, /const TOOL_PAYLOAD_PREFIX_REGEX = .*input:\|output:/);
   assert.doesNotMatch(screenSource, /const looksLikeToolPayloadContent = \(content\?: string\): boolean => \{[\s\S]*?JSON\.parse\(trimmedContent\)/);
@@ -70,15 +71,27 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
 });
 
 test('derives tool execution card status from displayed non-meta tool entries', () => {
-  assert.match(screenSource, /const displayToolEntries = toolCalls\.reduce\(/);
+  assert.match(screenSource, /const displayToolEntries = \(m\.toolExecutions\?\.length/);
   assert.match(screenSource, /const renderedToolEntries =/);
   assert.match(screenSource, /const allSuccess =\s+hasToolResults && renderedToolEntries\.every\(entry => entry\.result\?\.success === true\);/);
   assert.match(screenSource, /const hasErrors = renderedToolEntries\.some\(entry => entry\.result\?\.success === false\);/);
-  assert.match(screenSource, /const isPending =\s+renderedToolEntries\.some\(entry => !entry\.result && entry\.origIdx >= toolResultCount\);/);
-  assert.match(screenSource, /\{renderedToolEntries\.map\(\(\{ toolCall, origIdx, result: tcResult \}, tcIdx\) => \{/);
-  assert.match(screenSource, /\{renderedToolEntries\.map\(\(\{ toolCall, origIdx, result \}, idx\) => \{/);
+  assert.match(screenSource, /const isPending =\s+renderedToolEntries\.some\(entry => !entry\.result\);/);
+  assert.match(screenSource, /\{renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result: tcResult \}, tcIdx\) => \{/);
+  assert.match(screenSource, /\{renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result \}, idx\) => \{/);
   assert.doesNotMatch(screenSource, /const allSuccess = hasToolResults && m\.toolResults!\.every\(r => r\.success\);/);
   assert.doesNotMatch(screenSource, /const hasErrors = hasToolResults && m\.toolResults!\.some\(r => !r\.success\);/);
+});
+
+test('keeps Codex thinking blocks display-only on mobile', () => {
+  assert.match(screenSource, /const getRenderableMessageContent = \(message: ChatMessage\): string =>\s+message\.displayContent \?\? message\.content \?\? '';/);
+  assert.match(screenSource, /displayContent: historyMsg\.displayContent/);
+  assert.match(screenSource, /preserveDisplayContentFromProgress\(finalTurnMessages, progressMsgs\)/);
+});
+
+test('labels result-only tool entries without showing raw tool_call text', () => {
+  assert.match(screenSource, /label: 'Tool result'/);
+  assert.match(screenSource, /const toolPreview = label \?\? getIndividualToolCallPreview\(toolCall\);/);
+  assert.match(screenSource, /\{label \?\? toolCall\.name\}/);
 });
 
 test('uses tool activities wording consistently for grouped tool activity labels', () => {

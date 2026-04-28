@@ -321,6 +321,10 @@ const looksLikeToolPayloadContent = (content?: string): boolean => {
     return true;
   }
 
+  if (/^tool_call$/i.test(trimmedContent)) {
+    return true;
+  }
+
   // Catch raw tool result content like "[tool_name] { json }" or "[tool_name] # markdown"
   if (TOOL_RESULT_BRACKET_REGEX.test(trimmedContent)) {
     return true;
@@ -354,6 +358,9 @@ const stripRawToolTextFromContent = (content: string): string => {
   return cleaned.trim();
 };
 
+const getRenderableMessageContent = (message: ChatMessage): string =>
+  message.displayContent ?? message.content ?? '';
+
 const getVisibleMessageContent = (message: ChatMessage): string => {
   // Tool role messages are raw tool results — always hide their content
   // (they should have been merged into the preceding assistant message)
@@ -362,7 +369,7 @@ const getVisibleMessageContent = (message: ChatMessage): string => {
   }
 
   if (message.role !== 'assistant') {
-    return message.content || '';
+    return getRenderableMessageContent(message);
   }
 
   const respondToUserContent = getRespondToUserContentFromMessage(message);
@@ -374,23 +381,26 @@ const getVisibleMessageContent = (message: ChatMessage): string => {
     (message.toolCalls?.length ?? 0) > 0 ||
     (message.toolResults?.length ?? 0) > 0;
 
-  if (isToolOnlyMessage(message)) {
+  const renderContent = getRenderableMessageContent(message);
+  const displayMessage = { ...message, content: renderContent };
+
+  if (isToolOnlyMessage(displayMessage)) {
     return '';
   }
 
-  if (hasToolMetadata && looksLikeToolPayloadContent(message.content)) {
+  if (hasToolMetadata && looksLikeToolPayloadContent(renderContent)) {
     return '';
   }
 
   // Hide standalone messages that are raw tool results (no structured metadata
   // but content looks like "[tool_name] { json }" from unmerged tool responses)
-  if (looksLikeToolPayloadContent(message.content)) {
+  if (looksLikeToolPayloadContent(renderContent)) {
     return '';
   }
 
   // Strip any remaining inline tool call text (e.g. "[execute_command] {json}")
   // that might be embedded within otherwise valid content
-  const rawContent = message.content || '';
+  const rawContent = renderContent;
   const stripped = stripRawToolTextFromContent(rawContent);
   if (stripped.length > 0) {
     return stripped;
@@ -405,11 +415,27 @@ const shouldTreatMessageAsToolOnly = (message: ChatMessage): boolean => {
     (message.toolResults?.length ?? 0) > 0;
 
   // Also treat standalone raw tool result messages as tool-only
-  if (looksLikeToolPayloadContent(message.content)) {
+  if (looksLikeToolPayloadContent(getRenderableMessageContent(message))) {
     return true;
   }
 
   return hasToolMetadata && getVisibleMessageContent(message).trim().length === 0;
+};
+
+const preserveDisplayContentFromProgress = (
+  finalMessages: ChatMessage[],
+  progressMessages: ChatMessage[]
+): ChatMessage[] => {
+  if (progressMessages.length === 0) return finalMessages;
+
+  return finalMessages.map((message, index) => {
+    if (message.displayContent) return message;
+    const progressMessage = progressMessages[index];
+    if (message.role !== 'assistant' || !progressMessage?.displayContent) {
+      return message;
+    }
+    return { ...message, displayContent: progressMessage.displayContent };
+  });
 };
 
 const applyUserResponseToMessages = (
@@ -442,7 +468,7 @@ const applyUserResponseToMessages = (
       continue;
     }
 
-    updatedMessages[i] = { ...msg, content: trimmedResponse };
+    updatedMessages[i] = { ...msg, content: trimmedResponse, displayContent: undefined };
     return updatedMessages;
   }
 
@@ -1588,6 +1614,7 @@ export default function ChatScreen({ route, navigation }: any) {
         const chatMessages: ChatMessage[] = currentSession.messages.map(m => ({
           role: m.role,
           content: m.content,
+          displayContent: (m as ChatMessage).displayContent,
           timestamp: m.timestamp,
           toolCalls: m.toolCalls,
           toolResults: m.toolResults,
@@ -1626,6 +1653,7 @@ export default function ChatScreen({ route, navigation }: any) {
               id: m.id,
               role: m.role,
               content: m.content,
+              displayContent: (m as ChatMessage).displayContent,
               timestamp: m.timestamp,
               toolCalls: m.toolCalls,
               toolResults: m.toolResults,
@@ -1669,6 +1697,7 @@ export default function ChatScreen({ route, navigation }: any) {
       const chatMessages: ChatMessage[] = currentSession.messages.map(m => ({
         role: m.role,
         content: m.content,
+        displayContent: (m as ChatMessage).displayContent,
         timestamp: m.timestamp,
         toolCalls: m.toolCalls,
         toolResults: m.toolResults,
@@ -1903,6 +1932,7 @@ export default function ChatScreen({ route, navigation }: any) {
           messages.push({
             role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
             content: historyMsg.content || '',
+            displayContent: historyMsg.displayContent,
             toolCalls: historyMsg.toolCalls,
             toolResults: historyMsg.toolResults,
           });
@@ -2326,6 +2356,7 @@ export default function ChatScreen({ route, navigation }: any) {
           newMessages.push({
             role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
             content: historyMsg.content || '',
+            displayContent: historyMsg.displayContent,
             toolCalls: historyMsg.toolCalls,
             toolResults: historyMsg.toolResults,
           });
@@ -2362,19 +2393,22 @@ export default function ChatScreen({ route, navigation }: any) {
             // If progress had more messages than conversationHistory, keep progress messages
             // and only update/append the final message from history
             let mergedMessages: ChatMessage[];
-	            if (progressMsgs.length > 0 && finalTurnMessages.length === 0) {
+            if (progressMsgs.length > 0 && finalTurnMessages.length === 0) {
               // Edge case: server returned empty history but we have progress messages
               // Keep progress messages to prevent intermediate messages from disappearing (#1083)
               console.log('[ChatScreen] Merging: newMessages empty, keeping progress messages');
               mergedMessages = [...progressMsgs];
-	            } else if (progressMsgs.length > finalTurnMessages.length && finalTurnMessages.length > 0) {
+            } else if (progressMsgs.length > finalTurnMessages.length && finalTurnMessages.length > 0) {
               console.log('[ChatScreen] Merging: progress had more messages, preserving intermediate');
               mergedMessages = [...progressMsgs];
               // Replace/update the last message with the final one from history
-	              mergedMessages[mergedMessages.length - 1] = finalTurnMessages[finalTurnMessages.length - 1];
+              mergedMessages[mergedMessages.length - 1] = preserveDisplayContentFromProgress(
+                [finalTurnMessages[finalTurnMessages.length - 1]],
+                [mergedMessages[mergedMessages.length - 1]],
+              )[0];
             } else {
               // History is authoritative when it has >= messages
-	              mergedMessages = finalTurnMessages;
+              mergedMessages = preserveDisplayContentFromProgress(finalTurnMessages, progressMsgs);
             }
             const result = [...beforePlaceholder, ...mergedMessages];
             console.log('[ChatScreen] Final messages count:', result.length);
@@ -2722,6 +2756,7 @@ export default function ChatScreen({ route, navigation }: any) {
           newMessages.push({
             role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
             content: historyMsg.content || '',
+            displayContent: historyMsg.displayContent,
             toolCalls: historyMsg.toolCalls,
             toolResults: historyMsg.toolResults,
           });
@@ -3258,11 +3293,13 @@ export default function ChatScreen({ route, navigation }: any) {
             const displayToolEntries = (m.toolExecutions?.length
               ? m.toolExecutions.map((execution, origIdx) => ({
                   toolCall: execution.toolCall,
+                  label: undefined as string | undefined,
                   origIdx,
                   result: execution.result,
                 }))
               : toolCalls.map((toolCall, origIdx) => ({
                   toolCall,
+                  label: undefined as string | undefined,
                   origIdx,
                   result: toolResults[origIdx],
                 })))
@@ -3274,6 +3311,7 @@ export default function ChatScreen({ route, navigation }: any) {
                       name: 'tool_call',
                       arguments: {},
                     },
+                    label: 'Tool result',
                     origIdx: idx,
                     result,
                   }))
@@ -3441,11 +3479,11 @@ export default function ChatScreen({ route, navigation }: any) {
                               pressed && styles.toolCallCompactPressed,
                             ]}
                           >
-                            {renderedToolEntries.map(({ toolCall, origIdx, result: tcResult }, tcIdx) => {
+                            {renderedToolEntries.map(({ toolCall, label, origIdx, result: tcResult }, tcIdx) => {
                               const tcPending = !tcResult;
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
-                              const toolPreview = getIndividualToolCallPreview(toolCall);
+                              const toolPreview = label ?? getIndividualToolCallPreview(toolCall);
                               return (
                                 <View key={tcIdx} style={styles.toolCallCompactLine}>
                                   <Text style={[
@@ -3502,7 +3540,7 @@ export default function ChatScreen({ route, navigation }: any) {
                             allSuccess && styles.toolExecutionSuccess,
                             hasErrors && styles.toolExecutionError,
                           ]}>
-                            {renderedToolEntries.map(({ toolCall, origIdx, result }, idx) => {
+                            {renderedToolEntries.map(({ toolCall, label, origIdx, result }, idx) => {
                               const isResultPending = !result;
                               // Use message id or fallback to array index to ensure stable, unique keys
                               // that won't collide when m.id is undefined (which is common)
@@ -3519,12 +3557,12 @@ export default function ChatScreen({ route, navigation }: any) {
                                       pressed && styles.toolCallHeaderPressed,
                                     ]}
                                     accessibilityRole="button"
-                                    accessibilityLabel={createExpandCollapseAccessibilityLabel(`${toolCall.name} tool details`, isToolCallFullyExpanded)}
+                                    accessibilityLabel={createExpandCollapseAccessibilityLabel(`${label ?? toolCall.name} tool details`, isToolCallFullyExpanded)}
                                     accessibilityState={{ expanded: isToolCallFullyExpanded }}
                                     aria-expanded={isToolCallFullyExpanded}
                                     accessibilityHint={isToolCallFullyExpanded ? 'Collapse tool details' : 'Expand to show full input/output'}
                                   >
-                                    <Text style={styles.toolName}>{toolCall.name}</Text>
+                                    <Text style={styles.toolName}>{label ?? toolCall.name}</Text>
                                     <Text style={styles.toolCallExpandHint}>
                                       {isToolCallFullyExpanded ? '▼ Collapse' : '▶ Full Details'}
                                     </Text>
@@ -3806,6 +3844,7 @@ export default function ChatScreen({ route, navigation }: any) {
                                 id: msg.id,
                                 role: msg.role,
                                 content: msg.content,
+                                displayContent: (msg as ChatMessage).displayContent,
                                 toolCalls: msg.toolCalls,
                                 toolResults: msg.toolResults,
                               });

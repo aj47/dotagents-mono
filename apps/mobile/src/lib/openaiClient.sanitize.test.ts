@@ -107,4 +107,17 @@ describe('sanitizeMessagesForRequest', () => {
     expect(sanitized[0].toolExecutions).toBeUndefined();
     expect(sanitized[0].toolResults).toBeUndefined();
   });
+
+  it('removes display-only thinking content from request messages', () => {
+    const messages: ChatMessage[] = [{
+      role: 'assistant',
+      content: 'Final answer',
+      displayContent: '<think>reasoning</think>\n\nFinal answer',
+    }];
+
+    const sanitized = sanitizeMessagesForRequest(messages);
+
+    expect(sanitized[0].content).toBe('Final answer');
+    expect(sanitized[0].displayContent).toBeUndefined();
+  });
 });

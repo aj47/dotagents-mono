@@ -1,10 +1,10 @@
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
-import { isRenderableVideoUrl } from '@dotagents/shared';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
 import { VideoAttachmentCard } from './VideoAttachmentCard';
+import { splitMarkdownContent } from './markdownParts';
 
 interface MarkdownRendererProps {
   content: string;
@@ -12,34 +12,80 @@ interface MarkdownRendererProps {
   assetAuthToken?: string;
 }
 
-// NOTE: Splitting markdown around video links may break contiguous constructs (lists, fenced code blocks)
-// when a video link appears inline. This is an accepted trade-off for now; video links in agent messages
-// rarely appear mid-structure.
-function splitVideoLinks(content: string) {
-  // Create a new regex instance per call to avoid /g lastIndex state leaking between invocations.
-  const videoLinkRegex = /(^|[^!])\[([^\]]+)\]\(([^)]+)\)/g;
-  const parts: Array<{ type: 'markdown' | 'video'; content?: string; label?: string; url?: string }> = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
+const ThinkSection: React.FC<{
+  content: string;
+  markdownStyles: any;
+  styles: any;
+}> = ({ content, markdownStyles, styles }) => {
+  const [collapsed, setCollapsed] = React.useState(true);
 
-  while ((match = videoLinkRegex.exec(content)) !== null) {
-    const [fullMatch, prefix, label, url] = match;
-    if (!isRenderableVideoUrl(url)) continue;
+  return (
+    <View style={[styles.container, collapsed ? styles.containerCollapsed : styles.containerExpanded]}>
+      <Pressable
+        onPress={() => setCollapsed(prev => !prev)}
+        accessibilityRole="button"
+        accessibilityLabel={collapsed ? 'Show thinking' : 'Hide thinking'}
+        accessibilityState={{ expanded: !collapsed }}
+        style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
+      >
+        <Text style={styles.chevron}>{collapsed ? '▶' : '▼'}</Text>
+        <Text style={styles.icon}>🧠</Text>
+        <Text style={styles.label}>{collapsed ? 'Thinking' : 'Hide thinking'}</Text>
+      </Pressable>
+      {!collapsed && content.trim().length > 0 && (
+        <View style={styles.content}>
+          <Markdown style={markdownStyles}>{content}</Markdown>
+        </View>
+      )}
+    </View>
+  );
+};
 
-    const matchStart = (match.index ?? 0) + prefix.length;
-    if (matchStart > lastIndex) {
-      parts.push({ type: 'markdown', content: content.slice(lastIndex, matchStart) });
-    }
-    parts.push({ type: 'video', label, url });
-    lastIndex = (match.index ?? 0) + fullMatch.length;
-  }
-
-  if (lastIndex < content.length) {
-    parts.push({ type: 'markdown', content: content.slice(lastIndex) });
-  }
-
-  return parts.length > 0 ? parts : [{ type: 'markdown' as const, content }];
-}
+const createThinkStyles = (theme: ReturnType<typeof useTheme>['theme'], isDark: boolean) => StyleSheet.create({
+  container: {
+    overflow: 'hidden',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    marginVertical: 2,
+  },
+  containerCollapsed: {
+    borderColor: isDark ? 'rgba(251,191,36,0.28)' : 'rgba(245,158,11,0.35)',
+    backgroundColor: isDark ? 'rgba(146,64,14,0.12)' : 'rgba(254,243,199,0.45)',
+  },
+  containerExpanded: {
+    borderColor: isDark ? 'rgba(251,191,36,0.45)' : 'rgba(245,158,11,0.5)',
+    backgroundColor: isDark ? 'rgba(146,64,14,0.18)' : 'rgba(254,243,199,0.65)',
+    marginVertical: spacing.xs,
+  },
+  header: {
+    minHeight: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  headerPressed: {
+    opacity: 0.7,
+  },
+  chevron: {
+    color: isDark ? '#fbbf24' : '#d97706',
+    fontSize: 10,
+  },
+  icon: {
+    fontSize: 12,
+  },
+  label: {
+    color: isDark ? '#fde68a' : '#92400e',
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+});
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
@@ -47,6 +93,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   assetAuthToken,
 }) => {
   const { theme, isDark } = useTheme();
+  const thinkStyles = createThinkStyles(theme, isDark);
 
   // Compact markdown styles matching desktop's tight layout
   const markdownStyles = StyleSheet.create({
@@ -187,12 +234,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     },
   });
 
-  const parts = splitVideoLinks(content);
+  const parts = splitMarkdownContent(content);
 
   return (
     <View>
       {parts.map((part, index) => {
-        if (part.type === 'video' && part.url) {
+        if (part.type === 'video') {
           return (
             <VideoAttachmentCard
               key={`video-${index}-${part.url}`}
@@ -200,6 +247,17 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               label={part.label}
               assetBaseUrl={assetBaseUrl}
               authToken={assetAuthToken}
+            />
+          );
+        }
+
+        if (part.type === 'think') {
+          return (
+            <ThinkSection
+              key={`think-${index}`}
+              content={part.content}
+              markdownStyles={markdownStyles}
+              styles={thinkStyles}
             />
           );
         }

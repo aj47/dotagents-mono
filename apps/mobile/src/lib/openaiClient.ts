@@ -34,6 +34,8 @@ export type ChatMessage = {
   id?: string;
   role: 'user' | 'assistant' | 'tool';
   content?: string;
+  /** Renderer-only content override. Never send to the model or persist as canonical content. */
+  displayContent?: string;
   timestamp?: number;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
@@ -52,6 +54,7 @@ export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage
   return messages.map((message) => {
     const requestMessage = { ...message };
     delete requestMessage.toolExecutions;
+    delete requestMessage.displayContent;
 
     if (message.toolExecutions?.length) {
       delete requestMessage.toolCalls;

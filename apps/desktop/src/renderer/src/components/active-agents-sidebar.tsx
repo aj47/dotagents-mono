@@ -449,13 +449,12 @@ export function ActiveAgentsSidebar({
       activeSessions,
       pinnedSessionIds,
     )
-    const activeItems: SidebarSessionEntry[] = nestSubagentSessionEntries(
+    const activeItems: SidebarSessionEntry[] =
       orderedActiveSessions.map((session) => ({
         session,
         isSavedConversation: false,
         key: `active:${session.id}`,
-      })),
-    )
+      }))
     const dedupedSavedConversations =
       filterPastSessionsAgainstActiveSessions<SidebarSessionEntry>(
         savedConversationEntries,
@@ -478,11 +477,15 @@ export function ActiveAgentsSidebar({
       }
     }
 
-    return [
+    // Apply nesting after combining active sessions with pinned/history rows.
+    // A current pinned parent can be represented by a saved conversation while
+    // its delegated subagent is still active; nesting active-only would leave
+    // that child rendered as a top-level session.
+    return nestSubagentSessionEntries([
       ...activeItems,
       ...pinnedSavedConversations,
       ...unpinnedSavedConversations,
-    ]
+    ])
   }, [
     activeSessions,
     savedConversationEntries,
