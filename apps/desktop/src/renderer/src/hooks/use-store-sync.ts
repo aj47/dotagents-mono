@@ -5,7 +5,7 @@ import { useAgentStore, useConversationStore } from '@renderer/stores'
 import { AgentProgressUpdate, QueuedMessage } from '@shared/types'
 import { queryClient } from '@renderer/lib/queries'
 import { ttsManager } from '@renderer/lib/tts-manager'
-import { clearSessionTTSTracking } from '@renderer/lib/tts-tracking'
+import { clearSessionTTSTracking, markSessionForcedAutoPlay } from '@renderer/lib/tts-tracking'
 import { logUI } from '@renderer/lib/debug'
 
 const areStringArraysEqual = (left: string[], right: string[]): boolean => {
@@ -142,11 +142,16 @@ export function useStoreSync() {
     return unlisten
   }, [setSessionSnoozed])
 
-  // Clear stale TTS tracking keys for a session (sent before speakOnTrigger unsnooze)
+  // Clear stale TTS tracking keys for a session (sent before speakOnTrigger unsnooze).
+  // Also mark the session as authorized for one forced auto-play, so the renderer's
+  // historical-message guard does not suppress speakOnTrigger when the session's
+  // CompactMessage mounts with an already-final assistant response after the panel
+  // reveals it.
   useEffect(() => {
     const unlisten = rendererHandlers.clearSessionTTSKeys.listen(
       (sessionId: string) => {
         clearSessionTTSTracking(sessionId)
+        markSessionForcedAutoPlay(sessionId)
       }
     )
     return unlisten

@@ -39,7 +39,7 @@ import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
 import { LoadingSpinner } from "./ui/loading-spinner"
 import { extractSubAgentToolDisplayContent } from "@shared/delegation-tool-display"
-import { buildContentTTSKey, buildResponseEventTTSKey, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
+import { buildContentTTSKey, buildResponseEventTTSKey, consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { sanitizeMessageContentForDisplay, sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
 import { toast } from "sonner"
@@ -678,6 +678,11 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const inFlightTtsKeysRef = useRef<string[]>([])
   // Track the last ttsSource that was successfully auto-played to prevent replay on follow-up messages
   const lastAutoPlayedSourceRef = useRef<string | null>(null)
+  // Track whether the agent's progress was ever observed in a non-complete state during
+  // this component's lifetime. Live runs (including mid-turn respond_to_user emissions)
+  // always pass through `isComplete=false` first; reopened/historical sessions mount with
+  // `isComplete=true` from the start. Auto-play is gated on having observed an active run.
+  const observedLiveProgressRef = useRef(false)
   const configQuery = useConfigQuery()
   const isFloatingPanelVisible = useAgentStore((s) => s.isFloatingPanelVisible)
 
@@ -833,6 +838,18 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     }
   }, [ttsSource])
 
+  // Detect whether this component has observed the parent agent in a non-complete
+  // state. Reopened/historical sessions mount with `isComplete=true` from the very
+  // first render, so the ref stays false and the auto-play effect treats those
+  // messages as historical. Live runs (including mid-turn respond_to_user updates
+  // before the agent overall completes) pass through `isComplete=false`, flipping
+  // the ref so subsequent final renders may auto-play.
+  useEffect(() => {
+    if (!isComplete) {
+      observedLiveProgressRef.current = true
+    }
+  }, [isComplete])
+
   // Check if TTS button should be shown for this message (any completed assistant message with content)
   const shouldShowTTSButton =
     message.role === "assistant" &&
@@ -871,6 +888,20 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     // historical, so auto-playing its TTS would replay an already-heard response.
     if (sessionId?.startsWith("pending-")) {
       return
+    }
+
+    // Reopening a previous session re-renders its last assistant message with
+    // `isComplete=true` from the first render. Treat as historical when the
+    // component never observed the parent agent in a non-complete state under
+    // its own lifetime. Manual TTS playback remains available via the play
+    // button. The speakOnTrigger path explicitly authorizes one auto-play via
+    // markSessionForcedAutoPlay, which we consume here so the historical guard
+    // does not suppress that flow.
+    if (!observedLiveProgressRef.current) {
+      const forced = sessionId ? consumeSessionForcedAutoPlay(sessionId) : false
+      if (!forced) {
+        return
+      }
     }
 
     // Guard against replaying the same content on follow-up user messages.
