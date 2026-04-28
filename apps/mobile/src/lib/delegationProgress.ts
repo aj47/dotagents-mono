@@ -100,27 +100,18 @@ const normalizeToolResult = (
   error: result.error,
 });
 
-const attachResultToEarliestPendingEntry = (
+const attachResultToPendingEntry = (
   entries: DelegationToolEntry[],
   result: Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>,
+  options: { source: DelegationToolEntry['source']; direction: 'earliest' | 'latest' },
 ) => {
-  for (let index = 0; index < entries.length; index += 1) {
-    if (!entries[index].result) {
-      entries[index].result = result;
-      return true;
-    }
-  }
+  const start = options.direction === 'earliest' ? 0 : entries.length - 1;
+  const end = options.direction === 'earliest' ? entries.length : -1;
+  const step = options.direction === 'earliest' ? 1 : -1;
 
-  return false;
-};
-
-const attachResultToEarliestPendingStructuredEntry = (
-  entries: DelegationToolEntry[],
-  result: Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>,
-) => {
-  for (let index = 0; index < entries.length; index += 1) {
+  for (let index = start; index !== end; index += step) {
     const entry = entries[index];
-    if (entry.source !== 'structured' || entry.result) {
+    if (entry.source !== options.source || entry.result) {
       continue;
     }
     entry.result = result;
@@ -130,23 +121,7 @@ const attachResultToEarliestPendingStructuredEntry = (
   return false;
 };
 
-const attachResultToLatestPendingLegacyEntry = (
-  entries: DelegationToolEntry[],
-  result: Exclude<NonNullable<ChatMessage['toolResults']>[number], undefined>,
-) => {
-  for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const entry = entries[index];
-    if (entry.source !== 'legacy' || entry.result) {
-      continue;
-    }
-    entry.result = result;
-    return true;
-  }
-
-  return false;
-};
-
-const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<ChatMessage, 'toolCalls' | 'toolResults'> => {
+const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<ChatMessage, 'toolCalls' | 'toolResults' | 'toolExecutions'> => {
   const entries: DelegationToolEntry[] = [];
 
   for (const message of delegation.conversation ?? []) {
@@ -175,7 +150,10 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
             continue;
           }
           const normalizedResult = normalizeToolResult(result);
-          const attached = attachResultToEarliestPendingStructuredEntry(entries, normalizedResult);
+          const attached = attachResultToPendingEntry(entries, normalizedResult, {
+            source: 'structured',
+            direction: 'earliest',
+          });
           if (!attached) {
             entries.push({
               toolCall: {
@@ -209,12 +187,13 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
 
     const normalizedMessageContent = (message.content ?? '').trim();
     if (TOOL_RESULT_PREFIX.test(normalizedMessageContent)) {
-      const attached = attachResultToLatestPendingLegacyEntry(
+      const attached = attachResultToPendingEntry(
         entries,
         normalizeToolResult({
           success: true,
           content: normalizeToolResultContent(message.content),
         }),
+        { source: 'legacy', direction: 'latest' },
       );
       if (!attached) {
         entries.push({
@@ -252,16 +231,18 @@ const getDelegationToolMetadata = (delegation: ACPDelegationProgress): Pick<Chat
   }
 
   const toolCalls: NonNullable<ChatMessage['toolCalls']> = entries.map((entry) => entry.toolCall);
-  const alignedToolResults = entries.map((entry) => entry.result);
-  // Preserve positional alignment with toolCalls so renderers using toolResults[index]
-  // do not mis-associate later results when earlier calls are still pending.
-  const toolResults = alignedToolResults.some((result) => !!result)
-    ? alignedToolResults
-    : undefined;
+  const toolResults = entries
+    .map((entry) => entry.result)
+    .filter((result): result is NonNullable<ChatMessage['toolResults']>[number] => !!result);
+  const toolExecutions = entries.map((entry) => ({
+    toolCall: entry.toolCall,
+    ...(entry.result ? { result: entry.result } : {}),
+  }));
 
   return {
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-    toolResults,
+    toolResults: toolResults.length > 0 ? toolResults : undefined,
+    toolExecutions: toolExecutions.length > 0 ? toolExecutions : undefined,
   };
 };
 

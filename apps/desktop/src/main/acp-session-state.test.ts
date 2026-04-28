@@ -71,6 +71,19 @@ describe("acp-session-state", () => {
     expect(sessionState.getRootAppSessionForAcpSession("inferred-level-3-subsession")).toBeUndefined()
   })
 
+  it("resolves direct internal subagent mappings when the parent is explicitly registered as an app session", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    sessionState.setAcpToAppSessionMapping(
+      "internal-subsession-1",
+      "normal-parent-session",
+      42,
+      { registerAppSession: true },
+    )
+
+    expect(sessionState.getRootAppSessionForAcpSession("internal-subsession-1")).toBe("normal-parent-session")
+  })
+
   it("resolves nested delegated sessions when the terminal session is tracked by a conversation", async () => {
     const sessionState = await import("./acp-session-state")
 

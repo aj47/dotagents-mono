@@ -36,7 +36,9 @@ export type ChatMessage = {
   content?: string;
   timestamp?: number;
   toolCalls?: ToolCall[];
-  toolResults?: Array<ToolResult | undefined>;
+  toolResults?: ToolResult[];
+  /** Render-only aligned call/result pairs for pending delegation tool activity. */
+  toolExecutions?: Array<{ toolCall: ToolCall; result?: ToolResult }>;
   variant?: 'delegation';
 };
 
@@ -48,19 +50,24 @@ export type { StreamingCheckpoint } from './connectionRecovery';
 
 export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage[] => {
   return messages.map((message) => {
+    const requestMessage = { ...message };
+    delete requestMessage.toolExecutions;
+
+    if (message.toolExecutions?.length) {
+      delete requestMessage.toolCalls;
+      delete requestMessage.toolResults;
+      return requestMessage;
+    }
+
     if (!Array.isArray(message.toolResults)) {
-      return message;
+      return requestMessage;
     }
 
     const originalToolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : undefined;
-    const resultIndexesToKeep = message.toolResults
-      .map((result, index) => (result == null ? -1 : index))
-      .filter((index) => index >= 0);
-
-    const toolResults = resultIndexesToKeep.map((index) => message.toolResults![index] as ToolResult);
+    const toolResults = message.toolResults.filter((result): result is ToolResult => result != null);
 
     if (toolResults.length === 0) {
-      const rest = { ...message };
+      const rest = { ...requestMessage };
       delete rest.toolResults;
       if (Array.isArray(message.toolCalls)) {
         delete rest.toolCalls;
@@ -68,27 +75,17 @@ export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage
       return rest;
     }
 
-    const didFilterToolResults = resultIndexesToKeep.length !== message.toolResults.length;
     const originalCallsAreIndexAligned =
-      Array.isArray(originalToolCalls) && originalToolCalls.length === message.toolResults.length;
-    const sanitizedToolCalls = (() => {
-      if (!originalCallsAreIndexAligned) return undefined;
-
-      if (didFilterToolResults) {
-        const alignedCalls = resultIndexesToKeep.map((index) => originalToolCalls[index]);
-        return alignedCalls.every((toolCall): toolCall is ToolCall => !!toolCall)
-          ? alignedCalls
-          : undefined;
-      }
-
-      return originalToolCalls.every((toolCall): toolCall is ToolCall => !!toolCall)
+      Array.isArray(originalToolCalls) && originalToolCalls.length === toolResults.length;
+    const sanitizedToolCalls = originalCallsAreIndexAligned
+      ? originalToolCalls.every((toolCall): toolCall is ToolCall => !!toolCall)
         ? originalToolCalls
-        : undefined;
-    })();
+        : undefined
+      : undefined;
     const shouldDropToolCalls = !!originalToolCalls && !sanitizedToolCalls;
 
     const sanitizedMessage: ChatMessage = {
-      ...message,
+      ...requestMessage,
       ...(sanitizedToolCalls ? { toolCalls: sanitizedToolCalls } : {}),
       toolResults,
     };

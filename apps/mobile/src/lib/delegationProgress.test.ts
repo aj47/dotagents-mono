@@ -160,8 +160,12 @@ describe('createDelegationProgressMessages', () => {
     ]);
     expect(messages[0].toolResults).toEqual([
       { success: true, content: '1 hit', error: undefined },
-      undefined,
       { success: true, content: '{"files":["README.md"]}', error: undefined },
+    ]);
+    expect(messages[0].toolExecutions).toEqual([
+      { toolCall: { name: 'rg', arguments: { pattern: 'subagent' } }, result: { success: true, content: '1 hit', error: undefined } },
+      { toolCall: { name: 'read_file', arguments: { path: 'README.md' } } },
+      { toolCall: { name: 'ls', arguments: { path: '.' } }, result: { success: true, content: '{"files":["README.md"]}', error: undefined } },
     ]);
   });
 
@@ -277,8 +281,8 @@ describe('createDelegationProgressMessages', () => {
               ],
               toolResults: [
                 { success: true, content: '' },
-                { success: false, error: 'boom' },
-                { error: 'implicit_failure' },
+                { success: false, error: 'boom' } as any,
+                { error: 'implicit_failure' } as any,
               ],
               timestamp: 601,
             },
@@ -369,8 +373,11 @@ describe('createDelegationProgressMessages', () => {
       { name: 'tool_call', arguments: {} },
     ]);
     expect(messages[0].toolResults).toEqual([
-      undefined,
       { success: true, content: 'structured-result', error: undefined },
+    ]);
+    expect(messages[0].toolExecutions).toEqual([
+      { toolCall: { name: 'read_file', arguments: { path: 'README.md' } } },
+      { toolCall: { name: 'tool_call', arguments: {} }, result: { success: true, content: 'structured-result', error: undefined } },
     ]);
   });
 });

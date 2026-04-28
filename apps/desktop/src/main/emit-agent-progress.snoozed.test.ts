@@ -254,8 +254,8 @@ describe("emitAgentProgress snoozed propagation", () => {
           agentName: "internal",
           task: "Nested work",
           status: "completed",
-        },
-      }],
+        } as any,
+      } as any],
     })
 
     const firstSendCount = mocks.sendSpy.mock.calls.length
@@ -274,8 +274,8 @@ describe("emitAgentProgress snoozed propagation", () => {
           agentName: "internal",
           task: "Nested work",
           status: "completed",
-        },
-      }],
+        } as any,
+      } as any],
     })
 
     expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)

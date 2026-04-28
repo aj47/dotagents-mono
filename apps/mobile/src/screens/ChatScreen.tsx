@@ -3255,25 +3255,18 @@ export default function ChatScreen({ route, navigation }: any) {
             const toolResults = m.toolResults ?? [];
             // Filter out meta-tools from display (respond_to_user, mark_work_complete)
             // since their content is already shown as visible message text
-            const displayToolEntries = toolCalls.reduce(
-              (entries, toolCall, origIdx) => {
-                if (HIDDEN_META_TOOLS.has(toolCall.name)) {
-                  return entries;
-                }
-
-                entries.push({
+            const displayToolEntries = (m.toolExecutions?.length
+              ? m.toolExecutions.map((execution, origIdx) => ({
+                  toolCall: execution.toolCall,
+                  origIdx,
+                  result: execution.result,
+                }))
+              : toolCalls.map((toolCall, origIdx) => ({
                   toolCall,
                   origIdx,
                   result: toolResults[origIdx],
-                });
-                return entries;
-              },
-              [] as Array<{
-                toolCall: NonNullable<ChatMessage['toolCalls']>[number];
-                origIdx: number;
-                result: NonNullable<ChatMessage['toolResults']>[number] | undefined;
-              }>
-            );
+                })))
+              .filter((entry) => !HIDDEN_META_TOOLS.has(entry.toolCall.name));
             const fallbackToolEntries =
               displayToolEntries.length === 0 && toolResults.length > 0
                 ? toolResults.map((result, idx) => ({

@@ -203,9 +203,14 @@ function isTrackedConversationSessionId(sessionId: string): boolean {
   return false
 }
 
-export function setAcpToAppSessionMapping(acpxSessionId: string, appSessionId: string, runId?: string | number): void {
+export function setAcpToAppSessionMapping(
+  acpxSessionId: string,
+  appSessionId: string,
+  runId?: string | number,
+  options?: { registerAppSession?: boolean },
+): void {
   acpxToAppSession.set(acpxSessionId, appSessionId)
-  if (knownAppSessionIds.has(appSessionId) || isTrackedConversationSessionId(appSessionId)) {
+  if (options?.registerAppSession || knownAppSessionIds.has(appSessionId) || isTrackedConversationSessionId(appSessionId)) {
     registerKnownAppSessionIdInternal(appSessionId, { persist: false })
   }
   if (runId) {

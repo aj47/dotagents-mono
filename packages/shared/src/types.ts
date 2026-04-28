@@ -111,6 +111,7 @@ export type HandsFreeDebugEventType =
   | 'background-pause'
   | 'foreground-resume'
   | 'recognizer-error'
+  | 'mic-device-fallback'
   | 'state-transition'
   | 'session-timeout'
   | 'no-speech-timeout';
