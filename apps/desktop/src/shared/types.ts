@@ -12,6 +12,17 @@ export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage,
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '../../../../packages/core/src/types'
 
+export type KnowledgeNoteSort =
+  | "relevance"
+  | "updated-desc"
+  | "updated-asc"
+  | "created-desc"
+  | "created-asc"
+  | "title-asc"
+  | "title-desc"
+
+export type KnowledgeNoteDateFilter = "all" | "7d" | "30d" | "90d" | "year"
+
 export type KnowledgeNoteSeriesSummary = {
   key: string
   label: string

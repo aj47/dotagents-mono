@@ -158,6 +158,7 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - Prefer direct file editing there over special-purpose note tools
 - Store notes at .agents/knowledge/<slug>/<slug>.md with human-readable slugs
 - Related assets may live in the same note folder
+- Use canonical note frontmatter: kind: note, id, title, context, numeric createdAt/updatedAt millisecond timestamps, and comma-separated tags
 - Default most notes to context: search-only; reserve context: auto for a tiny curated subset
 
 PAST CONVERSATIONS:

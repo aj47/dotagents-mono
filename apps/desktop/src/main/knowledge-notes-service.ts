@@ -4,8 +4,10 @@ import type {
   AgentStepSummary,
   KnowledgeNote,
   KnowledgeNoteContext,
+  KnowledgeNoteDateFilter,
   KnowledgeNoteEntryType,
   KnowledgeNoteGroupSummary,
+  KnowledgeNoteSort,
   KnowledgeNoteSeriesSummary,
   KnowledgeNotesOverview,
 } from "@shared/types"
@@ -61,6 +63,17 @@ const DURABLE_NOTE_CANDIDATE_TYPES = new Set(["preference", "constraint", "decis
 const VALID_CONTEXT_VALUES = new Set<KnowledgeNoteContext>(["auto", "search-only"])
 const VALID_ENTRY_TYPE_VALUES = new Set<KnowledgeNoteEntryType>(["note", "entry", "overview"])
 const LEGACY_NOTE_META_PREFIX = "<!-- dotagents-memory-meta:"
+const DAY_MS = 24 * 60 * 60 * 1000
+
+type SearchIndexEntry = {
+  note: KnowledgeNote
+  title: string
+  summary: string
+  body: string
+  tags: string
+  metadata: string
+  allText: string
+}
 
 type KnowledgeOrigin = {
   layer: "global" | "workspace"
@@ -91,6 +104,106 @@ function normalizePathLikeValue(value: string | undefined): string | undefined {
     .join("/")
 
   return normalized || undefined
+}
+
+function normalizeSearchText(text: string | undefined): string {
+  return (text ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function getNoteTimestamp(note: KnowledgeNote, field: "updated" | "created"): number {
+  const fallback = typeof note.updatedAt === "number" && Number.isFinite(note.updatedAt) ? note.updatedAt : 0
+  if (field === "updated") return fallback
+  return typeof note.createdAt === "number" && Number.isFinite(note.createdAt) ? note.createdAt : fallback
+}
+
+function matchesDateFilter(note: KnowledgeNote, filter: KnowledgeNoteDateFilter | undefined): boolean {
+  if (!filter || filter === "all") return true
+  const updatedAt = getNoteTimestamp(note, "updated")
+  const ageMs = Date.now() - updatedAt
+  if (ageMs < 0) return true
+  if (filter === "7d") return ageMs <= 7 * DAY_MS
+  if (filter === "30d") return ageMs <= 30 * DAY_MS
+  if (filter === "90d") return ageMs <= 90 * DAY_MS
+  if (filter === "year") return ageMs <= 365 * DAY_MS
+  return true
+}
+
+function sortKnowledgeNotes(
+  notes: KnowledgeNote[],
+  sort: KnowledgeNoteSort | undefined,
+  relevanceScores?: Map<string, number>,
+): KnowledgeNote[] {
+  const effectiveSort = sort ?? "updated-desc"
+  return [...notes].sort((a, b) => {
+    if (effectiveSort === "relevance") {
+      const scoreDiff = (relevanceScores?.get(b.id) ?? 0) - (relevanceScores?.get(a.id) ?? 0)
+      if (scoreDiff !== 0) return scoreDiff
+      return getNoteTimestamp(b, "updated") - getNoteTimestamp(a, "updated")
+    }
+    if (effectiveSort === "updated-asc") return getNoteTimestamp(a, "updated") - getNoteTimestamp(b, "updated")
+    if (effectiveSort === "created-desc") return getNoteTimestamp(b, "created") - getNoteTimestamp(a, "created")
+    if (effectiveSort === "created-asc") return getNoteTimestamp(a, "created") - getNoteTimestamp(b, "created")
+    if (effectiveSort === "title-asc") return a.title.localeCompare(b.title)
+    if (effectiveSort === "title-desc") return b.title.localeCompare(a.title)
+    return getNoteTimestamp(b, "updated") - getNoteTimestamp(a, "updated")
+  })
+}
+
+function fuzzySubsequenceScore(text: string, token: string): number {
+  if (token.length < 3 || !text) return 0
+  let tokenIndex = 0
+  let firstMatch = -1
+  let lastMatch = -1
+  for (let i = 0; i < text.length && tokenIndex < token.length; i++) {
+    if (text[i] !== token[tokenIndex]) continue
+    if (firstMatch < 0) firstMatch = i
+    lastMatch = i
+    tokenIndex++
+  }
+  if (tokenIndex < token.length || firstMatch < 0) return 0
+  const span = Math.max(1, lastMatch - firstMatch + 1)
+  const density = token.length / span
+  return density >= 0.45 ? 0.35 + density * 0.35 : 0
+}
+
+function tokenScore(field: string, token: string): number {
+  if (!field || !token) return 0
+  if (field.split(" ").includes(token)) return 1.2
+  if (field.includes(token)) return 1
+  if (field.split(" ").some((word) => word.startsWith(token))) return 0.9
+  return fuzzySubsequenceScore(field, token)
+}
+
+function scoreSearchEntry(entry: SearchIndexEntry, query: string): number {
+  const normalizedQuery = normalizeSearchText(query)
+  if (!normalizedQuery) return 0
+
+  const tokens = Array.from(new Set(normalizedQuery.split(" ").filter(Boolean)))
+  let score = entry.allText.includes(normalizedQuery) ? 8 : 0
+  let matchedTokens = 0
+  const fields: Array<[string, number]> = [
+    [entry.title, 12],
+    [entry.tags, 10],
+    [entry.summary, 6],
+    [entry.metadata, 4],
+    [entry.body, 2],
+  ]
+
+  for (const token of tokens) {
+    const best = fields.reduce((max, [field, weight]) => Math.max(max, tokenScore(field, token) * weight), 0)
+    if (best > 0) matchedTokens++
+    score += best
+  }
+
+  if (matchedTokens === tokens.length) return score
+  if (tokens.length > 2 && matchedTokens >= Math.ceil(tokens.length * 0.75) && score >= 8) return score * 0.75
+  return 0
 }
 
 
@@ -140,8 +253,28 @@ function toPublicNote(note: KnowledgeNote): KnowledgeNote {
 
 export class KnowledgeNotesService {
   private notes: KnowledgeNote[] = []
+  private searchIndex: SearchIndexEntry[] = []
   private originById: Map<string, KnowledgeOrigin> = new Map()
   private initialized = false
+
+  private rebuildSearchIndex(): void {
+    this.searchIndex = this.notes.map((rawNote) => {
+      const note = toPublicNote(rawNote)
+      const title = normalizeSearchText(note.title)
+      const summary = normalizeSearchText(note.summary)
+      const body = normalizeSearchText(note.body)
+      const tags = normalizeSearchText(note.tags.join(" "))
+      const metadata = normalizeSearchText([
+        note.id,
+        note.context,
+        note.group,
+        note.series,
+        note.entryType,
+        ...(note.references ?? []),
+      ].filter(Boolean).join(" "))
+      return { note, title, summary, body, tags, metadata, allText: [title, tags, summary, metadata, body].join(" ") }
+    })
+  }
 
   private getLayers(): { globalLayer: AgentsLayerPaths; workspaceLayer: AgentsLayerPaths | null } {
     const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
@@ -183,11 +316,13 @@ export class KnowledgeNotesService {
 
       this.notes = Array.from(mergedById.values())
       this.originById = originById
+      this.rebuildSearchIndex()
     } catch (error) {
       if (isDebugLLM()) {
         logLLM("[KnowledgeNotesService] Error loading notes:", error)
       }
       this.notes = []
+      this.searchIndex = []
       this.originById = new Map()
     }
   }
@@ -318,19 +453,34 @@ export class KnowledgeNotesService {
     return note ? toPublicNote(note) : null
   }
 
-  async getAllNotes(): Promise<KnowledgeNote[]> {
+  async getAllNotes(filter: {
+    context?: KnowledgeNoteContext
+    dateFilter?: KnowledgeNoteDateFilter
+    sort?: KnowledgeNoteSort
+    limit?: number
+  } = {}): Promise<KnowledgeNote[]> {
     await this.initialize()
-    return [...this.notes].sort((a, b) => b.updatedAt - a.updatedAt).map(toPublicNote)
+    const notes = this.notes
+      .map(toPublicNote)
+      .filter((note) => {
+        if (filter.context && note.context !== filter.context) return false
+        if (!matchesDateFilter(note, filter.dateFilter)) return false
+        return true
+      })
+    const sorted = sortKnowledgeNotes(notes, filter.sort === "relevance" ? "updated-desc" : filter.sort)
+    if (typeof filter.limit !== "number" || !Number.isFinite(filter.limit)) return sorted
+    return sorted.slice(0, Math.max(0, Math.floor(filter.limit)))
   }
 
-  async getOverview(filter: { context?: KnowledgeNoteContext } = {}): Promise<KnowledgeNotesOverview> {
+  async getOverview(filter: { context?: KnowledgeNoteContext; dateFilter?: KnowledgeNoteDateFilter } = {}): Promise<KnowledgeNotesOverview> {
     await this.reload()
     const all = this.notes.map(toPublicNote)
-    const scoped = filter.context ? all.filter((note) => note.context === filter.context) : all
+    const dateScoped = all.filter((note) => matchesDateFilter(note, filter.dateFilter))
+    const scoped = filter.context ? dateScoped.filter((note) => note.context === filter.context) : dateScoped
 
     let autoCount = 0
     let searchOnlyCount = 0
-    for (const note of all) {
+    for (const note of dateScoped) {
       if (note.context === "auto") autoCount += 1
       else if (note.context === "search-only") searchOnlyCount += 1
     }
@@ -402,11 +552,14 @@ export class KnowledgeNotesService {
     groupKey: string
     seriesKey?: string
     context?: KnowledgeNoteContext
+    dateFilter?: KnowledgeNoteDateFilter
+    sort?: KnowledgeNoteSort
   }): Promise<KnowledgeNote[]> {
     await this.initialize()
     const notes = this.notes.map(toPublicNote)
     const matches = notes.filter((note) => {
       if (filter.context && note.context !== filter.context) return false
+      if (!matchesDateFilter(note, filter.dateFilter)) return false
       const grouping = inferKnowledgeNoteGrouping(note)
       const noteGroupKey = grouping.group ?? "__ungrouped__"
       if (noteGroupKey !== filter.groupKey) return false
@@ -419,23 +572,31 @@ export class KnowledgeNotesService {
       }
       return true
     })
-    matches.sort((a, b) => b.updatedAt - a.updatedAt)
-    return matches
+    return sortKnowledgeNotes(matches, filter.sort === "relevance" ? "updated-desc" : filter.sort)
   }
 
-  async searchNotes(query: string): Promise<KnowledgeNote[]> {
-    const lowerQuery = query.toLowerCase()
-    const notes = await this.getAllNotes()
-    return notes.filter((note) =>
-      note.title.toLowerCase().includes(lowerQuery)
-      || note.body.toLowerCase().includes(lowerQuery)
-      || (note.summary ?? "").toLowerCase().includes(lowerQuery)
-      || (note.group ?? "").toLowerCase().includes(lowerQuery)
-      || (note.series ?? "").toLowerCase().includes(lowerQuery)
-      || (note.entryType ?? "").toLowerCase().includes(lowerQuery)
-      || note.tags.some((tag) => tag.toLowerCase().includes(lowerQuery))
-      || (note.references ?? []).some((ref) => ref.toLowerCase().includes(lowerQuery)),
-    )
+  async searchNotes(query: string, filter: {
+    context?: KnowledgeNoteContext
+    dateFilter?: KnowledgeNoteDateFilter
+    sort?: KnowledgeNoteSort
+    limit?: number
+  } = {}): Promise<KnowledgeNote[]> {
+    await this.initialize()
+    const scores = new Map<string, number>()
+    const matches = this.searchIndex
+      .filter((entry) => {
+        if (filter.context && entry.note.context !== filter.context) return false
+        if (!matchesDateFilter(entry.note, filter.dateFilter)) return false
+        const score = scoreSearchEntry(entry, query)
+        if (score <= 0) return false
+        scores.set(entry.note.id, score)
+        return true
+      })
+      .map((entry) => entry.note)
+
+    const sorted = sortKnowledgeNotes(matches, filter.sort ?? "relevance", scores)
+    const limit = typeof filter.limit === "number" && Number.isFinite(filter.limit) ? Math.max(0, Math.floor(filter.limit)) : 500
+    return sorted.slice(0, limit)
   }
 
   async saveNote(note: KnowledgeNote): Promise<boolean> {
@@ -457,6 +618,7 @@ export class KnowledgeNotesService {
 
       if (existingIndex >= 0) this.notes[existingIndex] = normalized
       else this.notes.push(normalized)
+      this.rebuildSearchIndex()
 
       this.originById.set(normalized.id, {
         layer: targetLayerName,
@@ -518,6 +680,7 @@ export class KnowledgeNotesService {
       }, backupDir)
       this.notes.splice(index, 1)
       this.originById.delete(id)
+      this.rebuildSearchIndex()
       return true
     } catch (error) {
       this.notes.splice(index, 0, deletedNote)

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import fs from "fs"
 import os from "os"
 import path from "path"
@@ -76,7 +76,38 @@ Body`
     expect(parsed!.references).toEqual(["docs/arch.md", "https://example.com/spec"])
   })
 
-  it("loads canonical note folders, preserves assets, and ignores malformed entries", () => {
+  it("repairs common frontmatter schema mistakes instead of dropping the note", () => {
+    const parsed = parseKnowledgeNoteMarkdown(
+      `---
+id: strategic-direction-harness-engineering
+title: Strategic Direction — Harness Engineering Leverage
+context: search-only
+created: 2026-04-20T10:30:00.000Z
+updated: 2026-04-21T11:45:00.000Z
+summary: Harness strategy
+---
+
+Body`,
+      { fallbackId: "fallback-id" },
+    )
+
+    expect(parsed).toEqual({
+      id: "strategic-direction-harness-engineering",
+      title: "Strategic Direction — Harness Engineering Leverage",
+      context: "search-only",
+      createdAt: Date.parse("2026-04-20T10:30:00.000Z"),
+      updatedAt: Date.parse("2026-04-21T11:45:00.000Z"),
+      tags: [],
+      body: "Body",
+      summary: "Harness strategy",
+      references: undefined,
+      group: undefined,
+      series: undefined,
+      entryType: undefined,
+    })
+  })
+
+  it("loads canonical note folders, preserves assets, and repairs recoverable entries", () => {
     const dir = mkTempDir("dotagents-knowledge-")
     const agentsDir = path.join(dir, ".agents")
     const layer = getAgentsLayerPaths(agentsDir)
@@ -120,8 +151,18 @@ tags: misc
 ---`,
     )
 
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const loaded = loadAgentsKnowledgeNotesLayer(layer)
-    expect(loaded.notes.map((note) => note.id)).toEqual(["project-architecture"])
+    warnSpy.mockRestore()
+
+    expect(loaded.notes.map((note) => note.id).sort()).toEqual(["missing-kind", "project-architecture"])
+    expect(loaded.notes.find((note) => note.id === "missing-kind")).toMatchObject({
+      id: "missing-kind",
+      title: "Missing Kind",
+      context: "auto",
+      updatedAt: 1,
+      tags: ["misc"],
+    })
 
     const origin = loaded.originById.get("project-architecture")
     expect(origin?.filePath).toBe(path.join(knowledgeDir, "project-architecture", "project-architecture.md"))
@@ -162,6 +203,48 @@ Highlights`,
     expect(loaded.originById.get("discord-recap-2026-03-18")?.filePath).toBe(
       path.join(knowledgeDir, "discord", "recaps", "2026-03-18", "2026-03-18.md"),
     )
+  })
+
+  it("loads nested notes below a canonical parent note without treating child notes as assets", () => {
+    const dir = mkTempDir("dotagents-knowledge-nested-parent-")
+    const agentsDir = path.join(dir, ".agents")
+    const layer = getAgentsLayerPaths(agentsDir)
+    const knowledgeDir = getAgentsKnowledgeDir(layer)
+
+    writeFile(
+      path.join(knowledgeDir, "evergreen", "evergreen.md"),
+      `---
+kind: note
+id: evergreen
+title: Evergreen Index
+context: search-only
+updatedAt: 100
+tags: index
+---
+
+Index`,
+    )
+    writeFile(path.join(knowledgeDir, "evergreen", "diagram.png"), "png")
+    writeFile(
+      path.join(knowledgeDir, "evergreen", "auto-note", "auto-note.md"),
+      `---
+kind: note
+id: auto-note
+title: Auto Note
+context: auto
+updatedAt: 200
+tags: important
+---
+
+Auto body`,
+    )
+
+    const loaded = loadAgentsKnowledgeNotesLayer(layer)
+    expect(loaded.notes.map((note) => note.id).sort()).toEqual(["auto-note", "evergreen"])
+    expect(loaded.notes.find((note) => note.id === "auto-note")?.context).toBe("auto")
+    expect(loaded.originById.get("evergreen")?.assetFilePaths).toEqual([
+      path.join(knowledgeDir, "evergreen", "diagram.png"),
+    ])
   })
 
   it("keeps the newest duplicate by updatedAt", () => {

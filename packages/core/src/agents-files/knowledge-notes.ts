@@ -22,6 +22,17 @@ export type LoadedAgentsKnowledgeNotesLayer = {
 const VALID_CONTEXT_VALUES = new Set<KnowledgeNoteContext>(["auto", "search-only"])
 const VALID_ENTRY_TYPE_VALUES = new Set<KnowledgeNoteEntryType>(["note", "entry", "overview"])
 
+type KnowledgeNoteParseOptions = {
+  fallbackId?: string
+  filePath?: string
+  warnOnRepair?: boolean
+}
+
+type ParsedTimestamp = {
+  value: number
+  parsedAsDateString: boolean
+}
+
 function normalizeSingleLine(text: string): string {
   return text.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim()
 }
@@ -109,11 +120,33 @@ function formatListValue(values: string[] | undefined): string {
   return list.map(normalizeSingleLine).filter(Boolean).join(", ")
 }
 
-function parseTimestamp(raw: string | undefined): number | undefined {
+function parseTimestamp(raw: string | undefined): ParsedTimestamp | undefined {
   const trimmed = (raw ?? "").trim()
   if (!trimmed) return undefined
   const parsed = Number(trimmed)
-  return Number.isFinite(parsed) ? parsed : undefined
+  if (Number.isFinite(parsed)) return { value: parsed, parsedAsDateString: false }
+
+  const dateMs = Date.parse(trimmed)
+  if (Number.isFinite(dateMs)) return { value: dateMs, parsedAsDateString: true }
+  return undefined
+}
+
+function tryGetFileMtimeMs(filePath: string | undefined): number | undefined {
+  if (!filePath) return undefined
+  try {
+    const stat = fs.statSync(filePath)
+    const mtime = stat.mtimeMs
+    if (!Number.isFinite(mtime)) return undefined
+    return Math.floor(mtime)
+  } catch {
+    return undefined
+  }
+}
+
+function warnRecoveredKnowledgeNote(options: KnowledgeNoteParseOptions, id: string, repairs: string[]): void {
+  if (!options.warnOnRepair || repairs.length === 0) return
+  const source = options.filePath ? ` at ${options.filePath}` : id ? ` ${id}` : ""
+  console.warn(`[dotagents] Recovered knowledge note frontmatter${source}: ${repairs.join("; ")}`)
 }
 
 function hasOwn(obj: Record<string, string>, key: string): boolean {
@@ -132,6 +165,10 @@ function collectNoteAssetFilePaths(noteDir: string, noteFilePath: string): strin
 
       const entryPath = path.join(dirPath, entry.name)
       if (entry.isDirectory()) {
+        const nestedCanonicalFile = path.join(entryPath, `${entry.name}.md`)
+        if (fs.existsSync(nestedCanonicalFile) && fs.statSync(nestedCanonicalFile).isFile()) {
+          continue
+        }
         scanDirectory(entryPath)
         continue
       }
@@ -208,25 +245,44 @@ export function stringifyKnowledgeNoteMarkdown(note: KnowledgeNote): string {
 
 export function parseKnowledgeNoteMarkdown(
   markdown: string,
-  options: { fallbackId?: string } = {},
+  options: KnowledgeNoteParseOptions = {},
 ): KnowledgeNote | null {
   const doc = parseFrontmatterOrBody(markdown)
   const fm = doc.frontmatter
 
-  if ((fm.kind ?? "").trim() !== "note") return null
+  const repairs: string[] = []
+  const kind = (fm.kind ?? "").trim()
+  if (kind && kind !== "note") return null
+  if (!kind) repairs.push("missing kind; treated as note")
 
   const id = (fm.id ?? options.fallbackId ?? "").trim()
   const title = normalizeSingleLine(fm.title ?? "")
   const context = (fm.context ?? "").trim()
-  const updatedAt = parseTimestamp(fm.updatedAt)
+  const stableNow = tryGetFileMtimeMs(options.filePath) ?? Date.now()
+  const createdRaw = hasOwn(fm, "createdAt") ? fm.createdAt : fm.created
+  const updatedRaw = hasOwn(fm, "updatedAt") ? fm.updatedAt : fm.updated
+  const parsedCreatedAt = parseTimestamp(createdRaw)
+  const parsedUpdatedAt = parseTimestamp(updatedRaw)
 
-  if (!id || !title || !VALID_CONTEXT_VALUES.has(context as KnowledgeNoteContext) || typeof updatedAt !== "number") {
+  if (!id || !title || !VALID_CONTEXT_VALUES.has(context as KnowledgeNoteContext)) {
     return null
   }
 
-  if (!hasOwn(fm, "tags")) return null
+  if (!hasOwn(fm, "createdAt") && hasOwn(fm, "created")) {
+    repairs.push("used created alias for createdAt")
+  }
+  if (!hasOwn(fm, "updatedAt") && hasOwn(fm, "updated")) {
+    repairs.push("used updated alias for updatedAt")
+  }
+  if (parsedCreatedAt?.parsedAsDateString) repairs.push("parsed non-numeric createdAt timestamp")
+  if (parsedUpdatedAt?.parsedAsDateString) repairs.push("parsed non-numeric updatedAt timestamp")
+  if (createdRaw?.trim() && !parsedCreatedAt) repairs.push("invalid createdAt; defaulted from updatedAt/file mtime/current time")
+  if (updatedRaw?.trim() && !parsedUpdatedAt) repairs.push("invalid updatedAt; defaulted from createdAt/file mtime/current time")
+  if (!updatedRaw?.trim()) repairs.push("missing updatedAt; defaulted from createdAt/file mtime/current time")
+  if (!hasOwn(fm, "tags")) repairs.push("missing tags; defaulted to []")
 
-  const createdAt = parseTimestamp(fm.createdAt)
+  const updatedAt = parsedUpdatedAt?.value ?? parsedCreatedAt?.value ?? stableNow
+  const createdAt = parsedCreatedAt?.value ?? updatedAt
   const summary = normalizeSingleLine(fm.summary ?? "") || undefined
   const tags = parseListValue(fm.tags)
   const references = parseListValue(fm.references)
@@ -235,6 +291,8 @@ export function parseKnowledgeNoteMarkdown(
   const entryType = VALID_ENTRY_TYPE_VALUES.has((fm.entryType ?? "").trim() as KnowledgeNoteEntryType)
     ? (fm.entryType ?? "").trim() as KnowledgeNoteEntryType
     : undefined
+
+  warnRecoveredKnowledgeNote(options, id, repairs)
 
   return {
     id,
@@ -264,7 +322,6 @@ function discoverCanonicalNoteDirs(currentDir: string): string[] {
     const canonicalFile = path.join(entryPath, `${entry.name}.md`)
     if (fs.existsSync(canonicalFile) && fs.statSync(canonicalFile).isFile()) {
       matches.push(entryPath)
-      continue
     }
 
     matches.push(...discoverCanonicalNoteDirs(entryPath))
@@ -294,7 +351,7 @@ export function loadAgentsKnowledgeNotesLayer(layer: AgentsLayerPaths): LoadedAg
       const raw = readTextFileIfExistsSync(noteFilePath, "utf8")
       if (raw === null) continue
 
-      const parsed = parseKnowledgeNoteMarkdown(raw, { fallbackId: slug })
+      const parsed = parseKnowledgeNoteMarkdown(raw, { fallbackId: slug, filePath: noteFilePath, warnOnRepair: true })
       if (!parsed) continue
       const normalized = applyInferredGrouping(parsed, relativeDirSegments)
 
