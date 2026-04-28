@@ -37,4 +37,10 @@ describe("agent progress TTS guardrails", () => {
     expect(agentProgressSource).toContain('isLast &&')
   })
 
+  it("suppresses auto-play for historical sessions that mount with progress already complete", () => {
+    expect(agentProgressSource).toContain('const observedLiveProgressRef = useRef(false)')
+    expect(agentProgressSource).toContain('if (!observedLiveProgressRef.current) {')
+    expect(agentProgressSource).toContain('consumeSessionForcedAutoPlay(sessionId)')
+  })
+
 })

@@ -54,3 +54,19 @@ export function clearSessionTTSTracking(sessionId: string): void {
   }
 }
 
+/**
+ * Sessions explicitly authorized for the next auto-play even if their CompactMessage
+ * mounts with an already-final assistant message (e.g. speakOnTrigger after a snoozed
+ * loop completes and the panel reveals the session). The flag is consumed by the
+ * first auto-play attempt for that session.
+ */
+const sessionsWithForcedAutoPlay = new Set<string>()
+
+export function markSessionForcedAutoPlay(sessionId: string): void {
+  sessionsWithForcedAutoPlay.add(sessionId)
+}
+
+export function consumeSessionForcedAutoPlay(sessionId: string): boolean {
+  return sessionsWithForcedAutoPlay.delete(sessionId)
+}
+
