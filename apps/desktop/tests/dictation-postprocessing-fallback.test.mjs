@@ -24,3 +24,14 @@ test('dictation recording falls back to raw transcript when post-processing fail
     /createRecording:[\s\S]*postProcessTranscriptSafely\(json\.text, "createRecording"\)/,
   )
 })
+
+test('agent voice recordings apply transcript post-processing before queueing or processing', () => {
+  assert.match(
+    tipcSource,
+    /createMcpRecording:[\s\S]*postProcessTranscriptSafely\(transcript, "createMcpRecording queued"\)[\s\S]*messageQueueService\.enqueue/,
+  )
+  assert.match(
+    tipcSource,
+    /createMcpRecording:[\s\S]*postProcessTranscriptSafely\(transcript, "createMcpRecording"\)[\s\S]*appendScreenshotToTranscript/,
+  )
+})

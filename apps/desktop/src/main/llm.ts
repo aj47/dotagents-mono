@@ -18,7 +18,7 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
 import { getAcpSessionTitleOverride } from "./acp-session-state"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
-import { getCurrentPresetName } from "@dotagents/shared"
+import { DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT, getCurrentPresetName } from "@dotagents/shared"
 import {
   createAgentTrace,
   endAgentTrace,
@@ -197,14 +197,11 @@ function isInvalidExecuteCommandSkillIdFailure(toolName: string | undefined, res
 export async function postProcessTranscript(transcript: string) {
   const config = configStore.get()
 
-  if (
-    !config.transcriptPostProcessingEnabled ||
-    !config.transcriptPostProcessingPrompt
-  ) {
+  if (!config.transcriptPostProcessingEnabled) {
     return transcript
   }
 
-  let prompt = config.transcriptPostProcessingPrompt
+  let prompt = config.transcriptPostProcessingPrompt?.trim() || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT
 
   if (prompt.includes("{transcript}")) {
     prompt = prompt.replaceAll("{transcript}", transcript)

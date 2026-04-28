@@ -228,10 +228,7 @@ function float32ToWav(samples: Float32Array, sampleRate: number): Buffer {
 async function postProcessTranscriptSafely(transcript: string, context: string): Promise<string> {
   const config = configStore.get()
 
-  if (
-    !config.transcriptPostProcessingEnabled ||
-    !config.transcriptPostProcessingPrompt
-  ) {
+  if (!config.transcriptPostProcessingEnabled) {
     return transcript
   }
 
@@ -2222,6 +2219,8 @@ export const router = {
               transcript = json.text
             }
 
+            transcript = await postProcessTranscriptSafely(transcript, "createMcpRecording queued")
+
             // Save the recording file
             const recordingId = Date.now().toString()
             fs.writeFileSync(
@@ -2402,6 +2401,8 @@ export const router = {
           const json: { text: string } = await transcriptResponse.json()
           transcript = json.text
         }
+
+      transcript = await postProcessTranscriptSafely(transcript, "createMcpRecording")
 
       const messageText = appendScreenshotToTranscript(transcript, input.screenshot)
       let agentInputText = messageText

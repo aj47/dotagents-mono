@@ -37,6 +37,14 @@ export const CHAT_PROVIDERS = [
 
 export type CHAT_PROVIDER_ID = (typeof CHAT_PROVIDERS)[number]["value"];
 
+export const DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT = [
+  "Clean up the transcript for punctuation, capitalization, and obvious speech-to-text mistakes.",
+  "Preserve the original meaning and wording as much as possible.",
+  "Do not answer the transcript or add commentary. Return only the cleaned transcript.",
+  "",
+  "{transcript}",
+].join("\n");
+
 export const TTS_PROVIDERS = [
   { label: "OpenAI", value: "openai" },
   { label: "Groq", value: "groq" },
