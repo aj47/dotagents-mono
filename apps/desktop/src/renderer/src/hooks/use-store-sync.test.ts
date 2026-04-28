@@ -123,6 +123,7 @@ describe('useStoreSync pinned session persistence', () => {
     runtime.commitEffects()
 
     storeState.pinnedSessionIds = new Set(['session-1', 'session-2'])
+    storeState.pinnedSessionIdsRevision += 1
     runtime.render(loaded.useStoreSync)
     runtime.commitEffects()
     await flushPromises()
@@ -150,6 +151,7 @@ describe('useStoreSync pinned session persistence', () => {
     runtime.commitEffects()
 
     storeState.pinnedSessionIds = new Set(['local-session'])
+    storeState.pinnedSessionIdsRevision += 1
     runtime.render(loaded.useStoreSync)
     runtime.commitEffects()
 
@@ -179,10 +181,12 @@ describe('useStoreSync pinned session persistence', () => {
     runtime.commitEffects()
 
     storeState.pinnedSessionIds = new Set(['temporary-session'])
+    storeState.pinnedSessionIdsRevision += 1
     runtime.render(loaded.useStoreSync)
     runtime.commitEffects()
 
     storeState.pinnedSessionIds = new Set()
+    storeState.pinnedSessionIdsRevision += 1
     runtime.render(loaded.useStoreSync)
     runtime.commitEffects()
 
@@ -216,10 +220,12 @@ function createAgentStoreState() {
     setFloatingPanelVisible: vi.fn(),
     updateMessageQueue: vi.fn(),
     pinnedSessionIds: new Set<string>(),
+    pinnedSessionIdsRevision: 0,
     setPinnedSessionIds: vi.fn((sessionIds: Iterable<string>) => {
       state.pinnedSessionIds = new Set(sessionIds)
     }),
     archivedSessionIds: new Set<string>(),
+    archivedSessionIdsRevision: 0,
     setArchivedSessionIds: vi.fn((sessionIds: Iterable<string>) => {
       state.archivedSessionIds = new Set(sessionIds)
     }),

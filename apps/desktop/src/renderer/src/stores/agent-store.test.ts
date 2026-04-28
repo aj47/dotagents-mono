@@ -27,7 +27,9 @@ describe('agent-store delegation merge', () => {
       filter: 'all',
       sortBy: 'recent',
       pinnedSessionIds: new Set(),
+      pinnedSessionIdsRevision: 0,
       archivedSessionIds: new Set(),
+      archivedSessionIdsRevision: 0,
     })
   })
 
@@ -331,6 +333,23 @@ describe('agent-store delegation merge', () => {
     useAgentStore.getState().setPinnedSessionIds(['session-2', 'session-2', 'session-3'])
 
     expect(Array.from(useAgentStore.getState().pinnedSessionIds)).toEqual(['session-2', 'session-3'])
+  })
+
+  it('tracks pin and archive mutations separately from hydration replacements', () => {
+    expect(useAgentStore.getState().pinnedSessionIdsRevision).toBe(0)
+    expect(useAgentStore.getState().archivedSessionIdsRevision).toBe(0)
+
+    useAgentStore.getState().setPinnedSessionIds(['session-1'])
+    useAgentStore.getState().setArchivedSessionIds(['session-2'])
+
+    expect(useAgentStore.getState().pinnedSessionIdsRevision).toBe(0)
+    expect(useAgentStore.getState().archivedSessionIdsRevision).toBe(0)
+
+    useAgentStore.getState().togglePinSession('session-3')
+    useAgentStore.getState().toggleArchiveSession('session-4')
+
+    expect(useAgentStore.getState().pinnedSessionIdsRevision).toBe(1)
+    expect(useAgentStore.getState().archivedSessionIdsRevision).toBe(1)
   })
 
   it('clears focus when snoozing the focused session with no visible alternative', () => {

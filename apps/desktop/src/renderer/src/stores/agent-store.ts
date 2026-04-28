@@ -137,7 +137,12 @@ interface AgentState {
   filter: SessionFilter
   sortBy: SessionSortBy
   pinnedSessionIds: Set<string>
+  // Incremented only by user toggles, not hydration replacements, so config
+  // sync cannot persist an empty/default set created by renderer startup or HMR.
+  pinnedSessionIdsRevision: number
   archivedSessionIds: Set<string>
+  // Incremented only by user toggles, not hydration replacements. See above.
+  archivedSessionIdsRevision: number
 
   // Whether the floating panel window is currently visible. Used by the main
   // window to suppress duplicate TTS auto-play when the panel is playing the
@@ -190,7 +195,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   filter: 'all' as SessionFilter,
   sortBy: 'recent' as SessionSortBy,
   pinnedSessionIds: new Set<string>(),
+  pinnedSessionIdsRevision: 0,
   archivedSessionIds: new Set<string>(),
+  archivedSessionIdsRevision: 0,
 
   isFloatingPanelVisible: false,
 
@@ -677,7 +684,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       } else {
         newPinned.add(sessionId)
       }
-      return { pinnedSessionIds: newPinned }
+      return {
+        pinnedSessionIds: newPinned,
+        pinnedSessionIdsRevision: state.pinnedSessionIdsRevision + 1,
+      }
     })
   },
 
@@ -697,7 +707,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       } else {
         newArchived.add(sessionId)
       }
-      return { archivedSessionIds: newArchived }
+      return {
+        archivedSessionIds: newArchived,
+        archivedSessionIdsRevision: state.archivedSessionIdsRevision + 1,
+      }
     })
   },
 

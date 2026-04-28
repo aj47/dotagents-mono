@@ -26,8 +26,10 @@ export function useStoreSync() {
   const setScrollToSessionId = useAgentStore((s) => s.setScrollToSessionId)
   const updateMessageQueue = useAgentStore((s) => s.updateMessageQueue)
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
+  const pinnedSessionIdsRevision = useAgentStore((s) => s.pinnedSessionIdsRevision)
   const setPinnedSessionIds = useAgentStore((s) => s.setPinnedSessionIds)
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
+  const archivedSessionIdsRevision = useAgentStore((s) => s.archivedSessionIdsRevision)
   const setArchivedSessionIds = useAgentStore((s) => s.setArchivedSessionIds)
   const setFloatingPanelVisible = useAgentStore((s) => s.setFloatingPanelVisible)
   const markConversationCompleted = useConversationStore((s) => s.markConversationCompleted)
@@ -35,10 +37,12 @@ export function useStoreSync() {
   const pinnedSessionIdsHydratedRef = useRef(false)
   const pinnedSessionIdsChangedBeforeHydrationRef = useRef(false)
   const lastPersistedPinnedSessionIdsRef = useRef<string[]>([])
+  const lastPersistedPinnedSessionIdsRevisionRef = useRef(pinnedSessionIdsRevision)
   const initialArchivedSessionIdsRef = useRef(Array.from(archivedSessionIds))
   const archivedSessionIdsHydratedRef = useRef(false)
   const archivedSessionIdsChangedBeforeHydrationRef = useRef(false)
   const lastPersistedArchivedSessionIdsRef = useRef<string[]>([])
+  const lastPersistedArchivedSessionIdsRevisionRef = useRef(archivedSessionIdsRevision)
 
   useEffect(() => {
     const unlisten = rendererHandlers.agentProgressUpdate.listen(
@@ -200,6 +204,7 @@ export function useStoreSync() {
       }
 
       setPinnedSessionIds(nextPinnedSessionIds)
+      lastPersistedPinnedSessionIdsRevisionRef.current = useAgentStore.getState().pinnedSessionIdsRevision
     }).catch(() => {
       if (cancelled) return
 
@@ -217,9 +222,11 @@ export function useStoreSync() {
 
   useEffect(() => {
     if (!pinnedSessionIdsHydratedRef.current) return undefined
+    if (pinnedSessionIdsRevision === lastPersistedPinnedSessionIdsRevisionRef.current) return undefined
 
     const nextPinnedSessionIds = Array.from(pinnedSessionIds)
     if (areStringArraysEqual(nextPinnedSessionIds, lastPersistedPinnedSessionIdsRef.current)) {
+      lastPersistedPinnedSessionIdsRevisionRef.current = pinnedSessionIdsRevision
       return undefined
     }
 
@@ -233,6 +240,7 @@ export function useStoreSync() {
       if (cancelled) return
 
       lastPersistedPinnedSessionIdsRef.current = nextPinnedSessionIds
+      lastPersistedPinnedSessionIdsRevisionRef.current = pinnedSessionIdsRevision
       queryClient.setQueryData(['config'], (previousConfig: Record<string, unknown> | undefined) => ({
         ...(previousConfig ?? {}),
         pinnedSessionIds: nextPinnedSessionIds,
@@ -245,7 +253,7 @@ export function useStoreSync() {
     return () => {
       cancelled = true
     }
-  }, [pinnedSessionIds])
+  }, [pinnedSessionIds, pinnedSessionIdsRevision])
 
   // Archived session IDs: hydration guard
   useEffect(() => {
@@ -280,6 +288,7 @@ export function useStoreSync() {
       }
 
       setArchivedSessionIds(nextArchivedSessionIds)
+      lastPersistedArchivedSessionIdsRevisionRef.current = useAgentStore.getState().archivedSessionIdsRevision
     }).catch(() => {
       if (cancelled) return
 
@@ -298,9 +307,11 @@ export function useStoreSync() {
   // Archived session IDs: persist changes
   useEffect(() => {
     if (!archivedSessionIdsHydratedRef.current) return undefined
+    if (archivedSessionIdsRevision === lastPersistedArchivedSessionIdsRevisionRef.current) return undefined
 
     const nextArchivedSessionIds = Array.from(archivedSessionIds)
     if (areStringArraysEqual(nextArchivedSessionIds, lastPersistedArchivedSessionIdsRef.current)) {
+      lastPersistedArchivedSessionIdsRevisionRef.current = archivedSessionIdsRevision
       return undefined
     }
 
@@ -314,6 +325,7 @@ export function useStoreSync() {
       if (cancelled) return
 
       lastPersistedArchivedSessionIdsRef.current = nextArchivedSessionIds
+      lastPersistedArchivedSessionIdsRevisionRef.current = archivedSessionIdsRevision
       queryClient.setQueryData(['config'], (previousConfig: Record<string, unknown> | undefined) => ({
         ...(previousConfig ?? {}),
         archivedSessionIds: nextArchivedSessionIds,
@@ -326,7 +338,7 @@ export function useStoreSync() {
     return () => {
       cancelled = true
     }
-  }, [archivedSessionIds])
+  }, [archivedSessionIds, archivedSessionIdsRevision])
 
   // Listen for conversation history changes from remote server (mobile sync)
   // This ensures the sidebar refreshes when conversations are created/updated remotely
