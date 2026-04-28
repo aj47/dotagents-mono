@@ -42,6 +42,72 @@ describe("acp-session-state", () => {
     expect(sessionState.getAcpSessionTitleOverride("delegated-session-1")).toBeUndefined()
   })
 
+  it("resolves nested delegated sessions to their root app session", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    sessionState.registerKnownAppSessionId("app-session-1")
+    sessionState.setAcpToAppSessionMapping("level-2-subsession", "app-session-1")
+    sessionState.setAcpToAppSessionMapping("level-3-subsession", "level-2-subsession")
+
+    expect(sessionState.getRootAppSessionForAcpSession("level-3-subsession")).toBe("app-session-1")
+    expect(sessionState.getRootAppSessionForAcpSession("level-2-subsession")).toBe("app-session-1")
+    expect(sessionState.getRootAppSessionForAcpSession("unknown-session")).toBeUndefined()
+  })
+
+  it("does not treat unresolved delegated chain nodes as app sessions", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    sessionState.setAcpToAppSessionMapping("unresolved-level-3-subsession", "unresolved-level-2-subsession")
+    sessionState.setAcpToAppRunIdMapping("unresolved-level-2-subsession", "run-unresolved-2")
+
+    expect(sessionState.getRootAppSessionForAcpSession("unresolved-level-3-subsession")).toBeUndefined()
+  })
+
+  it("does not infer app sessions from unknown terminal mapping values", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    sessionState.setAcpToAppSessionMapping("inferred-level-3-subsession", "inferred-level-2-subsession")
+
+    expect(sessionState.getRootAppSessionForAcpSession("inferred-level-3-subsession")).toBeUndefined()
+  })
+
+  it("resolves direct internal subagent mappings when the parent is explicitly registered as an app session", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    sessionState.setAcpToAppSessionMapping(
+      "internal-subsession-1",
+      "normal-parent-session",
+      42,
+      { registerAppSession: true },
+    )
+
+    expect(sessionState.getRootAppSessionForAcpSession("internal-subsession-1")).toBe("normal-parent-session")
+  })
+
+  it("resolves nested delegated sessions when the terminal session is tracked by a conversation", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    sessionState.setSessionForConversation("conversation-1", "app-session-from-conversation", "test-agent")
+    sessionState.setAcpToAppSessionMapping("level-2-subsession", "app-session-from-conversation")
+    sessionState.setAcpToAppSessionMapping("level-3-subsession", "level-2-subsession")
+
+    expect(sessionState.getRootAppSessionForAcpSession("level-3-subsession")).toBe("app-session-from-conversation")
+  })
+
+  it("caps tracked known app sessions to avoid unbounded persisted growth", async () => {
+    const sessionState = await import("./acp-session-state")
+
+    for (let index = 0; index < 2100; index += 1) {
+      sessionState.registerKnownAppSessionId(`app-session-${index}`)
+    }
+
+    sessionState.setAcpToAppSessionMapping("delegated-old", "app-session-0")
+    sessionState.setAcpToAppSessionMapping("delegated-new", "app-session-2099")
+
+    expect(sessionState.getRootAppSessionForAcpSession("delegated-old")).toBeUndefined()
+    expect(sessionState.getRootAppSessionForAcpSession("delegated-new")).toBe("app-session-2099")
+  })
+
   it("resolves pending app-session mappings for injected MCP tokens and clears them", async () => {
     const sessionState = await import("./acp-session-state")
 

@@ -81,24 +81,32 @@ function readAgentsMarkdownBody(filePath: string): string | null {
 }
 
 export function loadAgentsLayerConfig(layer: AgentsLayerPaths): Partial<Config> {
-  const settings = safeReadJsonFileSync<Partial<Config>>(layer.settingsJsonPath, {
-    backupDir: layer.backupsDir,
-    defaultValue: {},
-  })
-  const mcp = safeReadJsonFileSync<Partial<Config>>(layer.mcpJsonPath, {
-    backupDir: layer.backupsDir,
-    defaultValue: {},
-  })
-  const models = safeReadJsonFileSync<Partial<Config>>(layer.modelsJsonPath, {
-    backupDir: layer.backupsDir,
-    defaultValue: {},
-  })
-  const layout = safeReadJsonFileSync<Partial<Config>>(layer.layoutJsonPath, {
-    backupDir: layer.backupsDir,
-    defaultValue: {},
-  })
+  const settings = omitAppLocalConfigKeys(
+    safeReadJsonFileSync<Partial<Config>>(layer.settingsJsonPath, {
+      backupDir: layer.backupsDir,
+      defaultValue: {},
+    }),
+  )
+  const mcp = omitAppLocalConfigKeys(
+    safeReadJsonFileSync<Partial<Config>>(layer.mcpJsonPath, {
+      backupDir: layer.backupsDir,
+      defaultValue: {},
+    }),
+  )
+  const models = omitAppLocalConfigKeys(
+    safeReadJsonFileSync<Partial<Config>>(layer.modelsJsonPath, {
+      backupDir: layer.backupsDir,
+      defaultValue: {},
+    }),
+  )
+  const layout = omitAppLocalConfigKeys(
+    safeReadJsonFileSync<Partial<Config>>(layer.layoutJsonPath, {
+      backupDir: layer.backupsDir,
+      defaultValue: {},
+    }),
+  )
 
-  return { ...settings, ...models, ...mcp, ...layout }
+  return omitAppLocalConfigKeys({ ...settings, ...models, ...mcp, ...layout })
 }
 
 export function loadAgentsPrompts(layer: AgentsLayerPaths): { systemPrompt: string | null, agentsGuidelines: string | null } {
@@ -151,6 +159,22 @@ const LAYOUT_KEYS = new Set<string>([
   "hidePanelWhenMainFocused",
 ])
 
+// These values reference app-data-local resources. Conversation IDs live under
+// <appData>/<appId>/conversations, so global/workspace `.agents` files should
+// not override or persist them across app IDs.
+const APP_LOCAL_CONFIG_KEYS = new Set<string>([
+  "pinnedSessionIds",
+  "archivedSessionIds",
+])
+
+function omitAppLocalConfigKeys<T extends Partial<Config>>(config: T): Partial<Config> {
+  const next: Partial<Config> = { ...config }
+  for (const key of APP_LOCAL_CONFIG_KEYS) {
+    delete (next as Record<string, unknown>)[key]
+  }
+  return next
+}
+
 function isModelsKey(key: string): boolean {
   if (key === "modelPresets" || key === "currentModelPresetId") return true
 
@@ -185,6 +209,8 @@ export function splitConfigIntoAgentsFiles(config: Config): SplitAgentsConfig {
   const layout: Partial<Config> = {}
 
   for (const [key, value] of Object.entries(config as Record<string, unknown>)) {
+    if (APP_LOCAL_CONFIG_KEYS.has(key)) continue
+
     if (LAYOUT_KEYS.has(key)) {
       ;(layout as Record<string, unknown>)[key] = value
       continue

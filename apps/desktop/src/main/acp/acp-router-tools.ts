@@ -1109,6 +1109,7 @@ async function executeACPAgent(
             resolvedSessionId,
             parentSessionId,
             agentSessionStateManager.getSessionRunId(parentSessionId),
+            { registerAppSession: true },
           );
         }
       }

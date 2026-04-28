@@ -100,6 +100,52 @@ describe("modular-config", () => {
     expect(layout.themePreference).toBe("dark")
   })
 
+  it("keeps app-local conversation pin state out of .agents files", () => {
+    const dir = mkTempDir("dotagents-modular-app-local-")
+    const agentsDir = path.join(dir, ".agents")
+    const layer = getAgentsLayerPaths(agentsDir)
+
+    const config = {
+      textInputEnabled: false,
+      pinnedSessionIds: ["conv-pinned"],
+      archivedSessionIds: ["conv-archived"],
+    } as unknown as Config
+
+    writeAgentsLayerFromConfig(layer, config, { maxBackups: 3 })
+
+    const settings = JSON.parse(fs.readFileSync(layer.settingsJsonPath, "utf8"))
+    expect(settings.textInputEnabled).toBe(false)
+    expect(settings).not.toHaveProperty("pinnedSessionIds")
+    expect(settings).not.toHaveProperty("archivedSessionIds")
+
+    writeJson(layer.settingsJsonPath, {
+      textInputEnabled: true,
+      pinnedSessionIds: ["stale-pin-from-agents"],
+      archivedSessionIds: ["stale-archive-from-agents"],
+    })
+
+    const loaded = loadAgentsLayerConfig(layer)
+    expect(loaded.textInputEnabled).toBe(true)
+    expect(loaded).not.toHaveProperty("pinnedSessionIds")
+    expect(loaded).not.toHaveProperty("archivedSessionIds")
+  })
+
+  it("drops app-local session IDs even when they appear in non-settings layer files", () => {
+    const dir = mkTempDir("dotagents-modular-app-local-non-settings-")
+    const agentsDir = path.join(dir, ".agents")
+    const layer = getAgentsLayerPaths(agentsDir)
+
+    writeJson(layer.settingsJsonPath, { textInputEnabled: true })
+    writeJson(layer.mcpJsonPath, { pinnedSessionIds: ["stale-pin-from-mcp"] })
+    writeJson(layer.modelsJsonPath, { archivedSessionIds: ["stale-archive-from-models"] })
+    writeJson(layer.layoutJsonPath, { pinnedSessionIds: ["stale-pin-from-layout"] })
+
+    const loaded = loadAgentsLayerConfig(layer)
+    expect(loaded.textInputEnabled).toBe(true)
+    expect(loaded).not.toHaveProperty("pinnedSessionIds")
+    expect(loaded).not.toHaveProperty("archivedSessionIds")
+  })
+
   it("does not rewrite layer JSON files when the in-memory value is unchanged", () => {
     const dir = mkTempDir("dotagents-modular-skip-")
     const agentsDir = path.join(dir, ".agents")

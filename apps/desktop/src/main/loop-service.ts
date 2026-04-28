@@ -382,6 +382,11 @@ class LoopService {
             if (appended) {
               conversationId = priorConversationId
               sessionId = priorSessionId
+              await conversationService.renameConversationTitle(
+                conversationId,
+                conversationTitle,
+              )
+              agentSessionTracker.updateSession(sessionId, { conversationTitle, isRepeatTask: true })
               logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
             } else {
               // Append failed after we'd already revived the session; put it
@@ -401,11 +406,16 @@ class LoopService {
       if (!sessionId || !conversationId) {
         const conversation = await conversationService.createConversation(loop.prompt, "user")
         conversationId = conversation.id
+        await conversationService.renameConversationTitle(
+          conversationId,
+          conversationTitle,
+        )
         sessionId = agentSessionTracker.startSession(
           conversationId,
           conversationTitle,
           startSnoozed,
           profileSnapshot,
+            { isRepeatTask: true },
         )
         logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
       }

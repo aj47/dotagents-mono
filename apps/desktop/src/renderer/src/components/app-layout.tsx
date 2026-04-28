@@ -790,15 +790,16 @@ export const Component = () => {
               </div>
             </div>
           ) : (
-            /* Expanded: Settings and Sessions share one scrollable container */
-            <div className="scrollbar-none mt-2 min-h-0 flex-1 overflow-y-auto">
+            /* Expanded: sessions and settings scroll together so settings moves up when the session list shrinks. */
+            <div className="mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
               {/* Sandbox slot indicator */}
-              <div className="px-2 mt-1">
+              <div className="mt-1 shrink-0 px-2">
                 <SandboxSlotIndicator />
               </div>
 
               {/* Sessions Section - shows sessions list */}
               <ActiveAgentsSidebar
+                className="shrink-0"
                 onOpenSavedConversationsDialog={() => setSavedConversationsDialogOpen(true)}
                 selectedAgentId={selectedAgentId}
                 onSelectAgent={setSelectedAgentId}
@@ -810,7 +811,7 @@ export const Component = () => {
               />
 
               {/* Settings Section - Collapsible, collapsed by default */}
-              <div className="px-2">
+              <div className="shrink-0 px-2">
                 <button
                   onClick={() => setSettingsExpanded(!settingsExpanded)}
                   className={cn(
@@ -838,7 +839,7 @@ export const Component = () => {
               </div>
 
               {/* Logo/version pushed down by menu content, scrolls naturally */}
-              <div className="flex flex-col items-center pb-4 pt-2 space-y-2">
+              <div className="flex shrink-0 flex-col items-center space-y-2 pb-4 pt-2">
                 <LoadingSpinner size="lg" />
                 <div>DotAgents</div>
                 <div className="text-xs">{process.env.APP_VERSION}</div>

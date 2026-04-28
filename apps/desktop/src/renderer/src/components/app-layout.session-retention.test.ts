@@ -12,4 +12,10 @@ describe("app layout session retention", () => {
     expect(appLayoutSource).toContain('status: "active"')
     expect(appLayoutSource).toContain("const isVisiblyActive = isFocused || !isSnoozed")
   })
+
+  it("lets settings move up when the expanded session list shrinks", () => {
+    expect(appLayoutSource).toContain("sessions and settings scroll together")
+    expect(appLayoutSource).toContain("mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden")
+    expect(appLayoutSource).toContain('className="shrink-0"')
+  })
 })

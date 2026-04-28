@@ -20,6 +20,10 @@ export interface ACPSubAgentMessage {
   role: 'user' | 'assistant' | 'tool'
   /** Message content */
   content: string
+  /** Structured tool calls when available */
+  toolCalls?: ToolCall[]
+  /** Structured tool results when available */
+  toolResults?: ToolResult[]
   /** Tool name if this is a tool call/result */
   toolName?: string
   /** Tool input (for tool calls) */

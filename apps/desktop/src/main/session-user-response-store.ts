@@ -24,6 +24,8 @@ export function appendSessionUserResponse(params: {
 }): AgentUserResponseEvent {
   const { sessionId, text, runId, timestamp = Date.now() } = params
   const runKey = getRunKey(sessionId, runId)
+  const events = sessionUserResponseEvents.get(sessionId) ?? []
+
   const ordinal = (sessionRunOrdinals.get(runKey) ?? 0) + 1
   sessionRunOrdinals.set(runKey, ordinal)
 
@@ -36,7 +38,6 @@ export function appendSessionUserResponse(params: {
     timestamp,
   }
 
-  const events = sessionUserResponseEvents.get(sessionId) ?? []
   sessionUserResponseEvents.set(sessionId, [...events, event])
 
   logApp("[session-user-response-store] append", {

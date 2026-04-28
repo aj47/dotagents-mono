@@ -15,6 +15,7 @@ import {
 import {
   getSessionForConversation,
   getMainAcpxSessionName,
+  registerKnownAppSessionId,
   setSessionForConversation,
   setAcpToAppSessionMapping,
   updateConversationRuntimeSessionId,
@@ -652,6 +653,7 @@ export async function processTranscriptWithACPAgent(
 
     // Register the ACP session → DotAgents session mapping
     // This is critical for routing tool approval requests to the correct UI session
+    registerKnownAppSessionId(sessionId)
     setAcpToAppSessionMapping(acpSessionId, sessionId, runId)
 
     // Set up progress listener for session updates
@@ -829,6 +831,7 @@ export async function processTranscriptWithACPAgent(
     const result = await acpService.sendPrompt(agentName, preferredSessionName, transcript, promptContext)
     if (result.sessionId && result.sessionId !== acpSessionId) {
       updateConversationRuntimeSessionId(conversationId, result.sessionId)
+      registerKnownAppSessionId(sessionId)
       setAcpToAppSessionMapping(result.sessionId, sessionId, runId)
     }
 

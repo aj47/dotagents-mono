@@ -17,6 +17,7 @@ import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
 import { getAcpSessionTitleOverride } from "./acp-session-state"
+import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
 import { getCurrentPresetName } from "@dotagents/shared"
 import {
   createAgentTrace,
@@ -742,7 +743,13 @@ export async function processTranscriptWithAgentMode(
             }
 
             const trackedSession = agentSessionTracker.getSession(sessionId)
-            if (trackedSession?.conversationTitle !== retitledConversation.title) {
+            const shouldPreserveRepeatTaskTitle = hasRepeatTaskTitlePrefix(
+              trackedSession?.conversationTitle,
+            ) && !hasRepeatTaskTitlePrefix(retitledConversation.title)
+            if (
+              !shouldPreserveRepeatTaskTitle &&
+              trackedSession?.conversationTitle !== retitledConversation.title
+            ) {
               agentSessionTracker.updateSession(sessionId, {
                 conversationTitle: retitledConversation.title,
               })
@@ -753,7 +760,13 @@ export async function processTranscriptWithAgentMode(
           })
       } else if (updatedConversation?.title && sessionId) {
         const trackedSession = agentSessionTracker.getSession(sessionId)
-        if (trackedSession?.conversationTitle !== updatedConversation.title) {
+        const shouldPreserveRepeatTaskTitle = hasRepeatTaskTitlePrefix(
+          trackedSession?.conversationTitle,
+        ) && !hasRepeatTaskTitlePrefix(updatedConversation.title)
+        if (
+          !shouldPreserveRepeatTaskTitle &&
+          trackedSession?.conversationTitle !== updatedConversation.title
+        ) {
           agentSessionTracker.updateSession(sessionId, {
             conversationTitle: updatedConversation.title,
           })
@@ -1492,6 +1505,51 @@ export async function processTranscriptWithAgentMode(
       }
     }
 
+    const missingItems = normalizeMissingItemsList(verification?.missingItems)
+    const verificationReason =
+      typeof verification?.reason === "string" && verification.reason.trim().length > 0
+        ? verification.reason.trim()
+        : ""
+    const onlyMissingInternalCompletionSignal = (() => {
+      const verificationSignals = [verificationReason, ...missingItems]
+        .map((value) => value.toLowerCase().trim())
+        .filter((value) => value.length > 0)
+      if (verificationSignals.length === 0) return false
+
+      const completionSignalPhrases = [MARK_WORK_COMPLETE_TOOL, "completion signal"] as const
+      const mentionsCompletionSignal = verificationSignals.some((signal) =>
+        completionSignalPhrases.some((phrase) => signal.includes(phrase))
+      )
+
+      const stripCompletionSignalPhrases = (signal: string): string => {
+        const withoutSignalTargets = completionSignalPhrases.reduce(
+          (current, phrase) => current.replaceAll(phrase, " "),
+          signal,
+        )
+        const withoutCompletionSignalBoilerplate = withoutSignalTargets
+          .replace(/\b(?:was|is|were|are)\s+not\s+called\b/giu, " ")
+          .replace(/\bnot\s+called\b/giu, " ")
+          .replace(/\bnot\s+invoked\b/giu, " ")
+          .replace(/\b(?:was|is|were|are)\s+missing\b/giu, " ")
+          .replace(/\bmissing\b/giu, " ")
+          .replace(/\b(?:was|is|were|are)\s+not\s+used\b/giu, " ")
+          .replace(/\buse\b/giu, " ")
+          .replace(/\bcall\b/giu, " ")
+        return withoutCompletionSignalBoilerplate
+          .replace(/[^\p{L}\p{N}]+/gu, " ")
+          .trim()
+      }
+
+      const mentionsMissingWork = verificationSignals.some((signal) => {
+        if (!completionSignalPhrases.some((phrase) => signal.includes(phrase))) {
+          return true
+        }
+        return stripCompletionSignalPhrases(signal).length > 0
+      })
+
+      return mentionsCompletionSignal && !mentionsMissingWork
+    })()
+
     const conversationState = normalizeAgentConversationState(
       verification?.conversationState,
       verified ? "complete" : "running",
@@ -1499,26 +1557,26 @@ export async function processTranscriptWithAgentMode(
     const skipPostVerifySummary =
       conversationState === "needs_input" || conversationState === "blocked"
 
-    if (verified) {
+    if (verified || (onlyMissingInternalCompletionSignal && isDeliverableResponseContent(finalContent))) {
+      const completionConversationState: AgentConversationState = onlyMissingInternalCompletionSignal
+        ? "complete"
+        : conversationState
       verifyStep.status = "completed"
-      verifyStep.description = getVerificationOutcomeDescription(conversationState)
+      verifyStep.description = onlyMissingInternalCompletionSignal
+        ? "Verification passed - only the internal completion signal was missing"
+        : getVerificationOutcomeDescription(completionConversationState)
       return {
         shouldContinue: false,
         isComplete: true,
         newFailCount: 0,
         skipPostVerifySummary,
         forcedByLimit: false,
-        conversationState,
+        conversationState: completionConversationState,
       }
     }
 
     // Verification failed; either continue with nudge or force incomplete.
     const newFailCount = currentFailCount + 1
-    const missingItems = normalizeMissingItemsList(verification?.missingItems)
-    const verificationReason =
-      typeof verification?.reason === "string" && verification.reason.trim().length > 0
-        ? verification.reason.trim()
-        : ""
 
     if (newFailCount >= VERIFICATION_FAIL_LIMIT) {
       verifyStep.status = "error"
@@ -2729,11 +2787,11 @@ export async function processTranscriptWithAgentMode(
     const hasErrors = toolResults.some((result) => result.isError)
     const allToolsSuccessful = toolResults.length > 0 && !hasErrors
 
-    // A successful tool batch is forward progress, so it breaks any
-    // verifier-failure streak. This keeps long deep-research runs from being
-    // killed by VERIFICATION_FAIL_LIMIT just because the verifier (correctly)
-    // said "still more work to do" several times before the agent finished.
-    if (allToolsSuccessful) {
+    // A successful real-work tool batch is forward progress, so it breaks any
+    // verifier-failure streak. Communication-only tools such as respond_to_user
+    // are intentionally excluded; otherwise a model that repeatedly talks but
+    // never calls mark_work_complete can reset the verifier budget forever.
+    if (allToolsSuccessful && !onlyCommunicationTools) {
       verificationFailCount = 0
     }
 

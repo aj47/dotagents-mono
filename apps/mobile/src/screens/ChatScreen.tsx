@@ -3255,25 +3255,18 @@ export default function ChatScreen({ route, navigation }: any) {
             const toolResults = m.toolResults ?? [];
             // Filter out meta-tools from display (respond_to_user, mark_work_complete)
             // since their content is already shown as visible message text
-            const displayToolEntries = toolCalls.reduce(
-              (entries, toolCall, origIdx) => {
-                if (HIDDEN_META_TOOLS.has(toolCall.name)) {
-                  return entries;
-                }
-
-                entries.push({
+            const displayToolEntries = (m.toolExecutions?.length
+              ? m.toolExecutions.map((execution, origIdx) => ({
+                  toolCall: execution.toolCall,
+                  origIdx,
+                  result: execution.result,
+                }))
+              : toolCalls.map((toolCall, origIdx) => ({
                   toolCall,
                   origIdx,
                   result: toolResults[origIdx],
-                });
-                return entries;
-              },
-              [] as Array<{
-                toolCall: NonNullable<ChatMessage['toolCalls']>[number];
-                origIdx: number;
-                result: NonNullable<ChatMessage['toolResults']>[number] | undefined;
-              }>
-            );
+                })))
+              .filter((entry) => !HIDDEN_META_TOOLS.has(entry.toolCall.name));
             const fallbackToolEntries =
               displayToolEntries.length === 0 && toolResults.length > 0
                 ? toolResults.map((result, idx) => ({
@@ -3289,14 +3282,13 @@ export default function ChatScreen({ route, navigation }: any) {
               ? fallbackToolEntries
               : displayToolEntries;
             const displayToolCallCount = renderedToolEntries.length;
-            const toolResultCount = toolResults.length;
             const hasToolResults = renderedToolEntries.some(entry => !!entry.result);
             const allSuccess =
               hasToolResults && renderedToolEntries.every(entry => entry.result?.success === true);
             const hasErrors = renderedToolEntries.some(entry => entry.result?.success === false);
             // isPending is true when any displayed tool call has not received its result yet.
             const isPending =
-              renderedToolEntries.some(entry => !entry.result && entry.origIdx >= toolResultCount);
+              renderedToolEntries.some(entry => !entry.result);
 
             // Skip empty messages: no visible content AND no tool calls to display
             // Also skip messages that only have toolResults but no toolCalls (raw result blobs)
@@ -3450,7 +3442,7 @@ export default function ChatScreen({ route, navigation }: any) {
                             ]}
                           >
                             {renderedToolEntries.map(({ toolCall, origIdx, result: tcResult }, tcIdx) => {
-                              const tcPending = !tcResult && origIdx >= toolResultCount;
+                              const tcPending = !tcResult;
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
                               const toolPreview = getIndividualToolCallPreview(toolCall);
@@ -3511,7 +3503,7 @@ export default function ChatScreen({ route, navigation }: any) {
                             hasErrors && styles.toolExecutionError,
                           ]}>
                             {renderedToolEntries.map(({ toolCall, origIdx, result }, idx) => {
-                              const isResultPending = !result && origIdx >= toolResultCount;
+                              const isResultPending = !result;
                               // Use message id or fallback to array index to ensure stable, unique keys
                               // that won't collide when m.id is undefined (which is common)
                               const stableMessageKey = m.id ?? String(i);

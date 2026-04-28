@@ -93,6 +93,7 @@ import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
+import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
 
 function describeAgentSessionId(sessionId?: string | null): "missing" | "pending" | "subsession" | "session" | "unknown" {
   if (!sessionId) return "missing"
@@ -100,6 +101,43 @@ function describeAgentSessionId(sessionId?: string | null): "missing" | "pending
   if (sessionId.startsWith("subsession_")) return "subsession"
   if (sessionId.startsWith("session_")) return "session"
   return "unknown"
+}
+
+async function withRepeatTaskSessionFlag<T extends {
+  conversationId?: string
+  conversationTitle?: string
+}>(session: T): Promise<T & { isRepeatTask?: boolean }> {
+  if (hasRepeatTaskTitlePrefix(session.conversationTitle)) {
+    return { ...session, isRepeatTask: true }
+  }
+
+  const loops = loopService.getLoops()
+  const title = session.conversationTitle?.trim()
+  if (title && loops.some((loop) => loop.name.trim() === title)) {
+    return { ...session, isRepeatTask: true }
+  }
+
+  if (session.conversationId) {
+    try {
+      const conversation = await conversationService.loadConversation(session.conversationId)
+      const firstUserMessage = conversation?.messages
+        ?.find((message) => message.role === "user" && message.content.trim())
+        ?.content.trim()
+      if (
+        firstUserMessage &&
+        loops.some((loop) => loop.prompt.trim() === firstUserMessage)
+      ) {
+        return { ...session, isRepeatTask: true }
+      }
+    } catch (error) {
+      logApp("[tipc] Failed to inspect session conversation for repeat-task grouping", {
+        conversationId: session.conversationId,
+        error,
+      })
+    }
+  }
+
+  return session
 }
 
 const isFinitePanelSize = (value: unknown): value is { width: number; height: number } =>
@@ -1206,9 +1244,14 @@ export const router = {
   }),
 
   getAgentSessions: t.procedure.action(async () => {
-      const recentCompletedSessions = agentSessionTracker.getRecentSessions(4)
+      const activeSessions = await Promise.all(
+        agentSessionTracker.getActiveSessions().map(withRepeatTaskSessionFlag),
+      )
+      const recentCompletedSessions = await Promise.all(
+        agentSessionTracker.getRecentSessions(4).map(withRepeatTaskSessionFlag),
+      )
       return {
-      activeSessions: agentSessionTracker.getActiveSessions(),
+      activeSessions,
       recentCompletedSessions,
       // Backward-compatible alias while renderer code migrates.
       recentSessions: recentCompletedSessions,

@@ -10,6 +10,10 @@ import { logUI } from "@renderer/lib/debug"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import {
+  getFollowUpInputPresentation,
+  type FollowUpInputPresentation,
+} from "@renderer/lib/session-presentation"
+import {
   buildMessageWithImages,
   getClipboardImageFiles,
   MAX_IMAGE_ATTACHMENTS,
@@ -22,9 +26,12 @@ interface OverlayFollowUpInputProps {
   conversationId?: string
   sessionId?: string
   isSessionActive?: boolean
+  isInitializingSession?: boolean
   className?: string
   /** Agent/profile name to display as indicator */
   agentName?: string
+  /** Centralized lifecycle/queue presentation for this composer. */
+  presentation?: FollowUpInputPresentation
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
@@ -39,8 +46,10 @@ export function OverlayFollowUpInput({
   conversationId,
   sessionId,
   isSessionActive = false,
+  isInitializingSession = false,
   className,
   agentName,
+  presentation,
   onMessageSent,
   onStopSession,
 }: OverlayFollowUpInputProps) {
@@ -60,6 +69,11 @@ export function OverlayFollowUpInput({
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
   const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? true
+  const inputPresentation = presentation ?? getFollowUpInputPresentation({
+    conversationState: isSessionActive ? "running" : "complete",
+    isInitializingSession,
+    isQueueEnabled,
+  })
 
   // Make panel focusable when user wants to interact with the input
   // The panel is non-focusable by default in agent mode to avoid stealing focus
@@ -122,15 +136,16 @@ export function OverlayFollowUpInput({
       attachmentCount: imageAttachments.length,
       messageLength: message.length,
       isSessionActive,
+      isInitializingSession,
       isQueueEnabled,
+      inputMode: inputPresentation.mode,
       pending: sendMutation.isPending || isSubmitting || submitInFlightRef.current,
     })
 
     // Allow submission if:
     // 1. Not already pending
     // 2. Either session is not active OR queue is enabled
-    if (!message || sendMutation.isPending || isSubmitting || submitInFlightRef.current) return
-    if (isSessionActive && !isQueueEnabled) return
+    if (!message || inputPresentation.mode === "initializing" || inputPresentation.mode === "disabled" || sendMutation.isPending || isSubmitting || submitInFlightRef.current) return
 
     submitInFlightRef.current = true
     setIsSubmitting(true)
@@ -273,25 +288,13 @@ export function OverlayFollowUpInput({
 
   // When queue is enabled, allow TEXT input even when session is active
   // When queue is disabled, don't allow input while session is active
-  const isDisabled = isSubmitting || sendMutation.isPending || (isSessionActive && !isQueueEnabled)
+  const isDisabled = inputPresentation.isDisabled || isSubmitting || sendMutation.isPending
 
   // When queue is enabled, allow voice recording even when session is active
   // The transcript will be queued after transcription completes
   // When queue is disabled, don't allow voice input while session is active
-  const isVoiceDisabled = isSubmitting || sendMutation.isPending || (isSessionActive && !isQueueEnabled)
+  const isVoiceDisabled = inputPresentation.isDisabled || isSubmitting || sendMutation.isPending
   const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
-
-  // Show appropriate placeholder based on state
-  // Use minimal placeholders - loading states indicated by spinners instead
-  const getPlaceholder = () => {
-    if (isSessionActive && isQueueEnabled) {
-      return "Queue message..."
-    }
-    if (isSessionActive) {
-      return "" // Spinner indicates loading state
-    }
-    return "Continue conversation..."
-  }
 
   return (
     <form
@@ -342,7 +345,7 @@ export function OverlayFollowUpInput({
             onPaste={handlePaste}
             onClick={handleInputInteraction}
             onFocus={handleInputInteraction}
-            placeholder={getPlaceholder()}
+            placeholder={inputPresentation.placeholder}
             className={cn(
               "w-full text-sm bg-transparent border-0 outline-none",
               "placeholder:text-muted-foreground/60",
@@ -392,7 +395,8 @@ export function OverlayFollowUpInput({
             className="flex-shrink-0"
             disabled={!hasMessageContent || isDisabled}
             onMouseDown={handleInputInteraction}
-            title={isSessionActive && isQueueEnabled ? "Queue message" : "Send message"}
+            title={inputPresentation.submitTitle}
+            aria-label={inputPresentation.submitAriaLabel}
           >
             <Send className={cn(
               "h-3.5 w-3.5",
@@ -411,7 +415,7 @@ export function OverlayFollowUpInput({
             disabled={isVoiceDisabled}
             onMouseDown={handleInputInteraction}
             onClick={handleVoiceClick}
-            title={isSessionActive && isQueueEnabled ? "Record voice message (will be queued)" : isSessionActive ? "Voice unavailable while agent is processing" : "Continue with voice"}
+            title={inputPresentation.voiceTitle}
           >
             <Mic className="h-3.5 w-3.5" />
           </Button>

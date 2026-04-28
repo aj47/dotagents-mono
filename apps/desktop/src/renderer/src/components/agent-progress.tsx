@@ -25,11 +25,9 @@ import {
   extractRespondToUserResponseEvents,
   formatArgumentsPreview,
   formatToolArguments,
-  getAgentConversationStateLabel,
   getToolArgumentEntries,
   getIndividualToolCallPreview,
   getToolResultsSummary,
-  normalizeAgentConversationState,
   TOOL_GROUP_PREVIEW_COUNT,
   TOOL_GROUP_MIN_SIZE,
   getToolActivitySummaryLine,
@@ -45,6 +43,10 @@ import { buildContentTTSKey, buildResponseEventTTSKey, hasTTSPlayed, markTTSPlay
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { sanitizeMessageContentForDisplay, sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
 import { toast } from "sonner"
+import {
+  getFollowUpInputPresentation,
+  getSessionPresentation,
+} from "@renderer/lib/session-presentation"
 
 interface AgentProgressProps {
   progress: AgentProgressUpdate | null
@@ -2074,12 +2076,113 @@ function normalizeSubAgentToolArguments(toolInput: unknown): Record<string, unkn
   return { input: toolInput }
 }
 
+function parseDelegatedToolInput(rawInput?: string): unknown {
+  if (!rawInput) return undefined
+  const trimmed = rawInput.trim()
+  if (!trimmed) return undefined
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    return trimmed
+  }
+}
+
+function parseDelegatedToolUseMessage(
+  message: ACPSubAgentMessage,
+): { toolName?: string; toolInput?: unknown } | null {
+  if (message.role !== "tool") {
+    return null
+  }
+
+  const content = (message.content ?? "").trim()
+  if (!/^using tool:/i.test(content)) {
+    return null
+  }
+
+  const nameMatch = content.match(/^using tool:\s*([^\n]+)/i)
+  const inputMatch = content.match(/\ninput:\s*([\s\S]*)$/i)
+
+  return {
+    toolName: message.toolName || nameMatch?.[1]?.trim() || undefined,
+    toolInput: message.toolInput ?? parseDelegatedToolInput(inputMatch?.[1]),
+  }
+}
+
 function isDelegatedToolUseMessage(message: ACPSubAgentMessage): boolean {
-  return message.role === "tool" && !!message.toolName && /^using tool:/i.test((message.content ?? "").trim())
+  return parseDelegatedToolUseMessage(message) !== null
 }
 
 function isDelegatedToolResultMessage(message: ACPSubAgentMessage): boolean {
   return message.role === "tool" && /^tool result:/i.test((message.content ?? "").trim())
+}
+
+function isStructuredToolInvocationMessage(message: ACPSubAgentMessage): boolean {
+  if (message.role !== "tool") return false
+  if (isDelegatedToolResultMessage(message)) return false
+  return !!(message.toolName || message.toolInput !== undefined)
+}
+
+function toCompactToolResult(result: { success: boolean; content: string; error?: string }): CompactToolExecutionResult {
+  return {
+    success: result.success,
+    content: result.content,
+    error: result.error,
+  }
+}
+
+function hasStructuredToolError(result: { error?: string }): boolean {
+  return result.error !== undefined && result.error !== null
+}
+
+function normalizeStructuredToolResultContent(result: { success?: boolean; content?: string; error?: string }): string {
+  if (typeof result.content === "string") {
+    return result.content
+  }
+
+  if (result.success === false || hasStructuredToolError(result)) {
+    return "Tool failed"
+  }
+
+  return "Tool completed"
+}
+
+function buildStructuredSubAgentToolExecution(message: ACPSubAgentMessage): SubAgentToolExecutionData | null {
+  const toolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : []
+  const toolResults = Array.isArray(message.toolResults) ? message.toolResults : []
+  if (toolCalls.length === 0 && toolResults.length === 0) {
+    return null
+  }
+
+  const maxEntries = Math.max(toolCalls.length, toolResults.length)
+  const calls: CompactToolExecutionCall[] = []
+  const results: CompactToolExecutionResult[] = []
+
+  for (let index = 0; index < maxEntries; index += 1) {
+    const call = toolCalls[index]
+    const result = toolResults[index]
+
+    calls.push({
+      name: call?.name?.trim() || "tool_call",
+      arguments: normalizeSubAgentToolArguments(call?.arguments),
+    })
+
+    if (!result) {
+      results.push(undefined)
+      continue
+    }
+
+    results.push(toCompactToolResult({
+      success: !hasStructuredToolError(result) && result.success !== false,
+      content: normalizeStructuredToolResultContent(result),
+      error: result.error,
+    }))
+  }
+
+  return {
+    timestamp: message.timestamp,
+    calls,
+    results,
+  }
 }
 
 function buildDelegatedToolExecution(
@@ -2087,33 +2190,41 @@ function buildDelegatedToolExecution(
   delegationStatus: ACPDelegationProgress["status"],
   resultMessage?: ACPSubAgentMessage,
 ): SubAgentToolExecutionData {
+  const parsedUseMessage = parseDelegatedToolUseMessage(message)
+  const isStructuredToolUseMessage = isStructuredToolInvocationMessage(message)
   const parsedMessage = extractSubAgentToolDisplayContent(message.content ?? "")
   const parsedResult = resultMessage ? extractSubAgentToolDisplayContent(resultMessage.content ?? "") : null
-  const toolName = message.toolName || parsedMessage.toolName || parsedResult?.toolName || "Tool"
-  const isToolUseMessage = isDelegatedToolUseMessage(message)
+  const toolName = parsedUseMessage?.toolName
+    || message.toolName
+    || parsedMessage.toolName
+    || resultMessage?.toolName
+    || parsedResult?.toolName
+    || "Tool"
+  const toolInput = parsedUseMessage?.toolInput ?? message.toolInput
+  const isToolUseMessage = !!parsedUseMessage || isStructuredToolUseMessage
   const isDelegationActive = isDelegationActiveStatus(delegationStatus)
   const isPending = isToolUseMessage && !resultMessage && isDelegationActive
 
   let result: CompactToolExecutionResult
   if (resultMessage) {
-    result = { success: true, content: parsedResult?.summary || "Tool completed" }
+    result = toCompactToolResult({ success: true, content: parsedResult?.summary || "Tool completed" })
   } else if (!isToolUseMessage) {
-    result = { success: true, content: parsedMessage.summary || "Tool completed" }
+    result = toCompactToolResult({ success: true, content: parsedMessage.summary || "Tool completed" })
   } else if (!isDelegationActive) {
     if (delegationStatus === "failed") {
-      result = {
+      result = toCompactToolResult({
         success: false,
         content: "",
         error: "Delegation failed before a tool result was captured.",
-      }
+      })
     } else if (delegationStatus === "cancelled") {
-      result = {
+      result = toCompactToolResult({
         success: false,
         content: "",
         error: "Delegation was cancelled before a tool result was captured.",
-      }
+      })
     } else {
-      result = { success: true, content: "Tool completed" }
+      result = toCompactToolResult({ success: true, content: "Tool completed" })
     }
   } else {
     result = undefined
@@ -2121,7 +2232,7 @@ function buildDelegatedToolExecution(
 
   return {
     timestamp: resultMessage?.timestamp ?? message.timestamp,
-    calls: [{ name: toolName, arguments: normalizeSubAgentToolArguments(message.toolInput) }],
+    calls: [{ name: toolName, arguments: normalizeSubAgentToolArguments(toolInput) }],
     results: [isPending ? undefined : result],
   }
 }
@@ -2131,40 +2242,113 @@ function buildSubAgentConversationItems(
   delegationStatus: ACPDelegationProgress["status"],
 ): SubAgentConversationRenderItem[] {
   const items: SubAgentConversationRenderItem[] = []
+  const pendingStructuredResultSlots: Array<{ itemIndex: number; resultIndex: number }> = []
+
+  const hasRenderableStructuredMessageContent = (message: ACPSubAgentMessage): boolean => {
+    const content = (message.content ?? "").trim()
+    if (!content) return false
+    if (message.role !== "tool") return true
+    return !/^using tool:/i.test(content) && !/^tool result:/i.test(content)
+  }
+
+  const attachStructuredResultToPendingExecution = (result: CompactToolExecutionResult): boolean => {
+    while (pendingStructuredResultSlots.length > 0) {
+      const pendingSlot = pendingStructuredResultSlots.shift()
+      if (!pendingSlot) return false
+      const pendingItem = items[pendingSlot.itemIndex]
+      if (!pendingItem || pendingItem.kind !== "tool_execution") {
+        continue
+      }
+      if (pendingItem.execution.results[pendingSlot.resultIndex]) {
+        continue
+      }
+      pendingItem.execution.results[pendingSlot.resultIndex] = result
+      return true
+    }
+    return false
+  }
+
+  const appendToolExecutionItem = (
+    key: string,
+    execution: SubAgentToolExecutionData,
+    trackStructuredPendingSlots = false,
+  ): void => {
+    const itemIndex = items.length
+    items.push({
+      kind: "tool_execution",
+      key,
+      execution,
+    })
+    if (!trackStructuredPendingSlots) {
+      return
+    }
+    execution.results.forEach((result, resultIndex) => {
+      if (!result) {
+        pendingStructuredResultSlots.push({ itemIndex, resultIndex })
+      }
+    })
+  }
 
   for (let index = 0; index < conversation.length; index += 1) {
     const message = conversation[index]
-    if (message.role !== "tool") {
-      items.push({ kind: "message", key: `msg-${index}`, message })
+    const structuredToolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : []
+    const structuredToolResults = Array.isArray(message.toolResults) ? message.toolResults : []
+    const hasStructuredToolData = structuredToolCalls.length > 0 || structuredToolResults.length > 0
+
+    if (hasStructuredToolData && structuredToolCalls.length === 0 && structuredToolResults.length > 0) {
+      const unattachedResults: CompactToolExecutionResult[] = []
+      for (const rawResult of structuredToolResults) {
+        if (!rawResult) continue
+        const result = toCompactToolResult({
+          success: !hasStructuredToolError(rawResult) && rawResult.success !== false,
+          content: normalizeStructuredToolResultContent(rawResult),
+          error: rawResult.error,
+        })
+        if (!attachStructuredResultToPendingExecution(result)) {
+          unattachedResults.push(result)
+        }
+      }
+
+      if (hasRenderableStructuredMessageContent(message)) {
+        items.push({ kind: "message", key: `msg-structured-${index}`, message })
+      }
+
+      if (unattachedResults.length > 0) {
+        appendToolExecutionItem(`tool-structured-orphan-${index}`, {
+          timestamp: message.timestamp,
+          calls: unattachedResults.map(() => ({ name: "tool_call", arguments: {} })),
+          results: unattachedResults,
+        }, true)
+      }
+      continue
+    }
+
+    const structuredExecution = buildStructuredSubAgentToolExecution(message)
+    if (structuredExecution) {
+      if (hasRenderableStructuredMessageContent(message)) {
+        items.push({ kind: "message", key: `msg-structured-${index}`, message })
+      }
+      appendToolExecutionItem(`tool-structured-${index}`, structuredExecution, true)
       continue
     }
 
     if (isDelegatedToolUseMessage(message)) {
       const nextMessage = conversation[index + 1]
       if (nextMessage && isDelegatedToolResultMessage(nextMessage)) {
-        items.push({
-          kind: "tool_execution",
-          key: `tool-${index}-${index + 1}`,
-          execution: buildDelegatedToolExecution(message, delegationStatus, nextMessage),
-        })
+        appendToolExecutionItem(
+          `tool-${index}-${index + 1}`,
+          buildDelegatedToolExecution(message, delegationStatus, nextMessage),
+        )
         index += 1
         continue
       }
 
-      items.push({
-        kind: "tool_execution",
-        key: `tool-${index}`,
-        execution: buildDelegatedToolExecution(message, delegationStatus),
-      })
+      appendToolExecutionItem(`tool-${index}`, buildDelegatedToolExecution(message, delegationStatus))
       continue
     }
 
-    if (message.toolName || isDelegatedToolResultMessage(message)) {
-      items.push({
-        kind: "tool_execution",
-        key: `tool-${index}`,
-        execution: buildDelegatedToolExecution(message, delegationStatus),
-      })
+    if (isStructuredToolInvocationMessage(message) || isDelegatedToolResultMessage(message)) {
+      appendToolExecutionItem(`tool-${index}`, buildDelegatedToolExecution(message, delegationStatus))
       continue
     }
 
@@ -2683,17 +2867,34 @@ const DelegationSummaryStrip: React.FC<{
   entries: DelegationSummaryEntry[]
   maxItems: number
   onOpenDetails: (runId: string) => void
-}> = ({ entries, maxItems, onOpenDetails }) => {
+  isCollapsed?: boolean
+  onToggleCollapsed?: () => void
+}> = ({ entries, maxItems, onOpenDetails, isCollapsed = false, onToggleCollapsed }) => {
   if (entries.length === 0) {
     return null
   }
 
   const visibleEntries = entries.slice(0, maxItems)
   const activeCount = entries.filter((entry) => entry.isActive).length
+  const hiddenCount = Math.max(entries.length - visibleEntries.length, 0)
 
   return (
     <div className="border-b border-border/30 bg-muted/5 px-1.5 py-1">
-      <div className="mb-1 flex flex-wrap items-center gap-1 text-[9px] text-muted-foreground">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleCollapsed?.()
+        }}
+        className="mb-1 flex w-full flex-wrap items-center gap-1 rounded-sm text-left text-[9px] text-muted-foreground transition-colors hover:bg-muted/30"
+        aria-label={isCollapsed ? "Expand delegations" : "Collapse delegations"}
+        aria-expanded={!isCollapsed}
+      >
+        {isCollapsed ? (
+          <ChevronRight className="h-2.5 w-2.5 shrink-0" />
+        ) : (
+          <ChevronDown className="h-2.5 w-2.5 shrink-0" />
+        )}
         <span className="inline-flex items-center gap-1 font-medium text-foreground/90">
           <Bot className="h-2.5 w-2.5" />
           Delegations
@@ -2706,9 +2907,14 @@ const DelegationSummaryStrip: React.FC<{
             {activeCount} live
           </Badge>
         )}
-      </div>
+        {isCollapsed && hiddenCount > 0 && (
+          <span className="ml-auto text-[8.5px] text-muted-foreground/80">
+            +{hiddenCount} more
+          </span>
+        )}
+      </button>
 
-      <div className="space-y-0.5">
+      {!isCollapsed && <div className="space-y-0.5">
         {visibleEntries.map((entry) => (
           <button
             key={entry.delegation.runId}
@@ -2749,7 +2955,7 @@ const DelegationSummaryStrip: React.FC<{
             </div>
           </button>
         ))}
-      </div>
+      </div>}
     </div>
   )
 }
@@ -2918,6 +3124,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const [showKillConfirmation, setShowKillConfirmation] = useState(false)
   const [isKilling, setIsKilling] = useState(false)
   const { isDark } = useTheme()
+  const configQuery = useConfigQuery()
 
   const clearPendingInitialScrollAttempts = useCallback(() => {
     pendingInitialScrollTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId))
@@ -2972,6 +3179,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // Tab state for Chat/Summary view toggle (only relevant when dual-model is enabled)
   const [activeTab, setActiveTab] = useState<"chat" | "summary">("chat")
   const [selectedDelegationRunId, setSelectedDelegationRunId] = useState<string | null>(null)
+  const [isDelegationSummaryCollapsed, setIsDelegationSummaryCollapsed] = useState(false)
 
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
 
@@ -3203,6 +3411,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     profileName,
     acpSessionInfo,
   } = progress
+  const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? true
 
   // Detect if agent was stopped by kill switch
   const wasStopped = finalContent?.includes("emergency kill switch") ||
@@ -3833,6 +4042,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     [delegationSummaryEntries, selectedDelegationRunId],
   )
 
+  const handleToggleDelegationSummaryCollapsed = useCallback(() => {
+    setIsDelegationSummaryCollapsed((collapsed) => !collapsed)
+  }, [])
+
   useEffect(() => {
     if (selectedDelegationRunId && !selectedDelegation) {
       setSelectedDelegationRunId(null)
@@ -3994,38 +4207,39 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const hasErrors = steps.some(
     (step) => step.status === "error" || step.toolResult?.error,
   )
-  const conversationState = progress.conversationState
-    ? normalizeAgentConversationState(progress.conversationState, isComplete ? "complete" : "running")
-    : progress.pendingToolApproval
-      ? "needs_input"
-      : hasErrors || wasStopped
-        ? "blocked"
-        : isComplete
-          ? "complete"
-          : "running"
-  const conversationStateLabel = getAgentConversationStateLabel(conversationState)
-  const conversationStateBadgeClass = conversationState === "complete"
-    ? "border-green-500 text-green-700 dark:border-green-700 dark:text-green-300"
-    : conversationState === "needs_input"
-      ? "border-amber-500 text-amber-700 dark:border-amber-700 dark:text-amber-300"
-      : conversationState === "blocked"
-        ? "border-red-500 text-red-700 dark:border-red-700 dark:text-red-300"
-        : "border-blue-500 text-blue-700 dark:border-blue-700 dark:text-blue-300"
+  const sessionPresentation = getSessionPresentation({
+    conversationState: progress.conversationState,
+    isComplete,
+    pendingToolApproval: progress.pendingToolApproval,
+    hasErrors,
+    wasStopped,
+    isSnoozed: progress.isSnoozed,
+    isFocused,
+    isSessionExpanded: isExpanded,
+  })
+  const conversationState = sessionPresentation.lifecycleState
+  const conversationStateLabel = sessionPresentation.label
+  const conversationStateBadgeClass = sessionPresentation.badgeClassName
+  const isSessionActiveForInput = conversationState === "running" || conversationState === "needs_input"
+  const followUpInputPresentation = getFollowUpInputPresentation({
+    conversationState,
+    isInitializingSession: isFollowUpInputInitializing,
+    isQueueEnabled,
+  })
 
   // Get status indicator for tile variant
   const getStatusIndicator = () => {
-    const isSnoozed = progress.isSnoozed
     if (conversationState === "needs_input") {
       return <Shield className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
     }
-    if (conversationState === "running") {
-      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_img]:h-3.5 [&_img]:w-3.5" />
-    }
-    if (isSnoozed) {
-      return <Moon className="h-3.5 w-3.5 text-muted-foreground" />
-    }
     if (conversationState === "blocked") {
       return <XCircle className="h-3.5 w-3.5 text-red-500" />
+    }
+    if (conversationState === "running" && sessionPresentation.attentionState === "background") {
+      return <Moon className="h-3.5 w-3.5 text-muted-foreground" />
+    }
+    if (conversationState === "running") {
+      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_img]:h-3.5 [&_img]:w-3.5" />
     }
     return <Check className="h-3.5 w-3.5 text-green-500" />
   }
@@ -4104,6 +4318,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <span className={cn("pointer-events-none truncate font-medium min-w-0", isCollapsed ? "text-xs" : "text-sm")}>
               {getTitle()}
             </span>
+            <Badge variant="outline" className={cn("h-5 shrink-0 px-1.5 text-[10px]", conversationStateBadgeClass)}>
+              {conversationStateLabel}
+            </Badge>
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 app-no-drag-region">
             {canCollapseTile && (
@@ -4181,6 +4398,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
             {/* Message Stream (Chat Tab) */}
             <div className={cn("relative flex-1 min-h-0 flex flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
+              <DelegationSummaryStrip
+                entries={delegationSummaryEntries}
+                maxItems={delegationSummaryMaxItems}
+                onOpenDetails={setSelectedDelegationRunId}
+                isCollapsed={isDelegationSummaryCollapsed}
+                onToggleCollapsed={handleToggleDelegationSummaryCollapsed}
+              />
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
@@ -4438,8 +4662,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           <TileFollowUpInput
             conversationId={progress.conversationId}
             sessionId={progress.sessionId}
-            isSessionActive={!isComplete}
+            isSessionActive={isSessionActiveForInput}
             isInitializingSession={isFollowUpInputInitializing}
+            presentation={followUpInputPresentation}
             agentName={profileName}
             conversationTitle={progress.conversationTitle}
             className="flex-shrink-0"
@@ -4491,6 +4716,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           <span className="text-xs font-medium text-foreground truncate min-w-0">
             {getTitle()}
           </span>
+          <Badge variant="outline" className={cn("h-5 shrink-0 px-1.5 text-[10px]", conversationStateBadgeClass)}>
+            {conversationStateLabel}
+          </Badge>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {/* Profile/agent name — secondary */}
@@ -4600,6 +4828,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           entries={delegationSummaryEntries}
           maxItems={delegationSummaryMaxItems}
           onOpenDetails={setSelectedDelegationRunId}
+          isCollapsed={isDelegationSummaryCollapsed}
+          onToggleCollapsed={handleToggleDelegationSummaryCollapsed}
         />
         <div
           ref={scrollContainerRef}
@@ -4815,7 +5045,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       <OverlayFollowUpInput
         conversationId={progress.conversationId}
         sessionId={progress.sessionId}
-        isSessionActive={!isComplete}
+        isSessionActive={isSessionActiveForInput}
+        presentation={followUpInputPresentation}
         agentName={profileName}
         className="flex-shrink-0"
       />

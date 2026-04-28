@@ -22,6 +22,7 @@ interface PersistedState {
   sessionToRunId: Record<string, string | number>
   sessionToClientSessionToken: Record<string, string>
   pendingClientSessionTokenToAppSession: Record<string, string>
+  knownAppSessions: string[]
 }
 
 const conversationSessions = new Map<string, ACPXConversationSessionInfo>()
@@ -30,6 +31,16 @@ const acpxToRunId = new Map<string, string | number>()
 const acpxToClientSessionToken = new Map<string, string>()
 const pendingClientSessionTokenToAppSession = new Map<string, string>()
 const acpxSessionTitleOverrides = new Map<string, string>()
+const knownAppSessionIds = new Set<string>()
+const MAX_KNOWN_APP_SESSION_IDS = 2048
+
+function trimKnownAppSessionIds(): void {
+  while (knownAppSessionIds.size > MAX_KNOWN_APP_SESSION_IDS) {
+    const [oldestSessionId] = knownAppSessionIds
+    if (!oldestSessionId) break
+    knownAppSessionIds.delete(oldestSessionId)
+  }
+}
 
 function ensureStateDir(): void {
   if (!fs.existsSync(STATE_DIR)) {
@@ -71,6 +82,9 @@ function readPersistedState(): PersistedState | null {
         sessionToRunId: parsed.sessionToRunId ?? {},
         sessionToClientSessionToken: parsed.sessionToClientSessionToken ?? {},
         pendingClientSessionTokenToAppSession: parsed.pendingClientSessionTokenToAppSession ?? {},
+        knownAppSessions: Array.isArray(parsed.knownAppSessions)
+          ? parsed.knownAppSessions.filter((value): value is string => typeof value === "string")
+          : [],
       }
     } catch (error) {
       logApp('[ACPX Session State] Failed to read persisted state:', error)
@@ -82,12 +96,14 @@ function readPersistedState(): PersistedState | null {
 
 function saveState(): void {
   ensureStateDir()
+  trimKnownAppSessionIds()
   const state: PersistedState = {
     conversations: Object.fromEntries(conversationSessions.entries()),
     sessionToAppSession: Object.fromEntries(acpxToAppSession.entries()),
     sessionToRunId: Object.fromEntries(acpxToRunId.entries()),
     sessionToClientSessionToken: Object.fromEntries(acpxToClientSessionToken.entries()),
     pendingClientSessionTokenToAppSession: Object.fromEntries(pendingClientSessionTokenToAppSession.entries()),
+    knownAppSessions: Array.from(knownAppSessionIds),
   }
 
   try {
@@ -110,6 +126,7 @@ function loadState(): void {
   acpxToRunId.clear()
   acpxToClientSessionToken.clear()
   pendingClientSessionTokenToAppSession.clear()
+  knownAppSessionIds.clear()
 
   for (const [conversationId, info] of Object.entries(state.conversations)) {
     conversationSessions.set(conversationId, info)
@@ -126,6 +143,10 @@ function loadState(): void {
   for (const [token, appSessionId] of Object.entries(state.pendingClientSessionTokenToAppSession)) {
     pendingClientSessionTokenToAppSession.set(token, appSessionId)
   }
+  for (const sessionId of state.knownAppSessions) {
+    knownAppSessionIds.add(sessionId)
+  }
+  trimKnownAppSessionIds()
 }
 
 loadState()
@@ -175,16 +196,79 @@ export function clearSessionForConversation(conversationId: string): void {
   saveState()
 }
 
-export function setAcpToAppSessionMapping(acpxSessionId: string, appSessionId: string, runId?: string | number): void {
+function isTrackedConversationSessionId(sessionId: string): boolean {
+  for (const session of conversationSessions.values()) {
+    if (session.sessionId === sessionId) return true
+  }
+  return false
+}
+
+export function setAcpToAppSessionMapping(
+  acpxSessionId: string,
+  appSessionId: string,
+  runId?: string | number,
+  options?: { registerAppSession?: boolean },
+): void {
   acpxToAppSession.set(acpxSessionId, appSessionId)
+  if (options?.registerAppSession || knownAppSessionIds.has(appSessionId) || isTrackedConversationSessionId(appSessionId)) {
+    registerKnownAppSessionIdInternal(appSessionId, { persist: false })
+  }
   if (runId) {
     acpxToRunId.set(acpxSessionId, runId)
   }
   saveState()
 }
 
+function registerKnownAppSessionIdInternal(appSessionId: string, options?: { persist?: boolean }): void {
+  const normalizedSessionId = appSessionId.trim()
+  if (!normalizedSessionId) return
+  if (knownAppSessionIds.has(normalizedSessionId)) {
+    // Refresh insertion order so trimming keeps recently-used IDs.
+    knownAppSessionIds.delete(normalizedSessionId)
+  }
+  knownAppSessionIds.add(normalizedSessionId)
+  trimKnownAppSessionIds()
+  if (options?.persist !== false) {
+    saveState()
+  }
+}
+
+export function registerKnownAppSessionId(appSessionId: string): void {
+  registerKnownAppSessionIdInternal(appSessionId, { persist: true })
+}
+
 export function getAppSessionForAcpSession(acpxSessionId: string): string | undefined {
   return acpxToAppSession.get(acpxSessionId)
+}
+
+function isKnownAcpSessionId(sessionId: string): boolean {
+  if (acpxToAppSession.has(sessionId)) return true
+  if (acpxToRunId.has(sessionId)) return true
+  if (acpxToClientSessionToken.has(sessionId)) return true
+  if (acpxSessionTitleOverrides.has(sessionId)) return true
+
+  return false
+}
+
+export function getRootAppSessionForAcpSession(acpxSessionId: string): string | undefined {
+  let currentSessionId = acpxSessionId
+  const visitedSessionIds = new Set<string>()
+
+  while (!visitedSessionIds.has(currentSessionId)) {
+    visitedSessionIds.add(currentSessionId)
+    const mappedSessionId = acpxToAppSession.get(currentSessionId)
+    if (!mappedSessionId) {
+      if (currentSessionId === acpxSessionId) return undefined
+      if (isKnownAcpSessionId(currentSessionId)) return undefined
+      if (knownAppSessionIds.has(currentSessionId) || isTrackedConversationSessionId(currentSessionId)) {
+        return currentSessionId
+      }
+      return undefined
+    }
+    currentSessionId = mappedSessionId
+  }
+
+  return undefined
 }
 
 export function setAcpSessionTitleOverride(acpxSessionId: string, title: string): void {
@@ -231,6 +315,7 @@ export function setAcpClientSessionTokenMapping(clientSessionToken: string, acpx
 
 export function setPendingAcpClientSessionTokenMapping(clientSessionToken: string, appSessionId: string): void {
   pendingClientSessionTokenToAppSession.set(clientSessionToken, appSessionId)
+  registerKnownAppSessionIdInternal(appSessionId, { persist: false })
   saveState()
 }
 
@@ -278,4 +363,5 @@ export function __resetAcpxSessionStateForTests(): void {
   acpxToClientSessionToken.clear()
   pendingClientSessionTokenToAppSession.clear()
   acpxSessionTitleOverrides.clear()
+  knownAppSessionIds.clear()
 }

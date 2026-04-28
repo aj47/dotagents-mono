@@ -37,6 +37,8 @@ export type ChatMessage = {
   timestamp?: number;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
+  /** Render-only aligned call/result pairs for pending delegation tool activity. */
+  toolExecutions?: Array<{ toolCall: ToolCall; result?: ToolResult }>;
   variant?: 'delegation';
 };
 
@@ -46,6 +48,55 @@ export type { ToolCall, ToolResult, ConversationHistoryMessage } from '@dotagent
 export type { AgentProgressUpdate, AgentProgressStep, OnProgressCallback } from '@dotagents/shared';
 export type { StreamingCheckpoint } from './connectionRecovery';
 
+export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage[] => {
+  return messages.map((message) => {
+    const requestMessage = { ...message };
+    delete requestMessage.toolExecutions;
+
+    if (message.toolExecutions?.length) {
+      delete requestMessage.toolCalls;
+      delete requestMessage.toolResults;
+      return requestMessage;
+    }
+
+    if (!Array.isArray(message.toolResults)) {
+      return requestMessage;
+    }
+
+    const originalToolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : undefined;
+    const toolResults = message.toolResults.filter((result): result is ToolResult => result != null);
+
+    if (toolResults.length === 0) {
+      const rest = { ...requestMessage };
+      delete rest.toolResults;
+      if (Array.isArray(message.toolCalls)) {
+        delete rest.toolCalls;
+      }
+      return rest;
+    }
+
+    const originalCallsAreIndexAligned =
+      Array.isArray(originalToolCalls) && originalToolCalls.length === toolResults.length;
+    const sanitizedToolCalls = originalCallsAreIndexAligned
+      ? originalToolCalls.every((toolCall): toolCall is ToolCall => !!toolCall)
+        ? originalToolCalls
+        : undefined
+      : undefined;
+    const shouldDropToolCalls = !!originalToolCalls && !sanitizedToolCalls;
+
+    const sanitizedMessage: ChatMessage = {
+      ...requestMessage,
+      ...(sanitizedToolCalls ? { toolCalls: sanitizedToolCalls } : {}),
+      toolResults,
+    };
+
+    if (shouldDropToolCalls) {
+      delete sanitizedMessage.toolCalls;
+    }
+
+    return sanitizedMessage;
+  });
+};
 
 
 export class OpenAIClient {
@@ -149,7 +200,11 @@ export class OpenAIClient {
     conversationId?: string
   ): Promise<ChatResponse> {
     const url = this.getUrl('/chat/completions');
-    const body: Record<string, any> = { model: this.cfg.model, messages, stream: true };
+    const body: Record<string, any> = {
+      model: this.cfg.model,
+      messages: sanitizeMessagesForRequest(messages),
+      stream: true,
+    };
 
     if (conversationId) {
       body.conversation_id = conversationId;

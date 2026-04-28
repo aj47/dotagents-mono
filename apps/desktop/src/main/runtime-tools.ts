@@ -17,7 +17,8 @@ import { messageQueueService } from "./message-queue-service"
 import { appendSessionUserResponse } from "./session-user-response-store"
 import { conversationService } from "./conversation-service"
 import { readMoreContext } from "./context-budget"
-import { getAppSessionForAcpSession, setAcpSessionTitleOverride } from "./acp-session-state"
+import { getRootAppSessionForAcpSession, setAcpSessionTitleOverride } from "./acp-session-state"
+import { emitAgentProgress } from "./emit-agent-progress"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -188,7 +189,7 @@ async function getLatestUserMessageForSession(sessionId?: string): Promise<strin
     return null
   }
 
-  const trackedSessionId = getAppSessionForAcpSession(sessionId) ?? sessionId
+  const trackedSessionId = getRootAppSessionForAcpSession(sessionId) ?? sessionId
   const session = agentSessionTracker.getSession(trackedSessionId)
   if (!session?.conversationId) {
     return null
@@ -697,7 +698,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const mappedAppSessionId = getAppSessionForAcpSession(context.sessionId)
+    const mappedAppSessionId = getRootAppSessionForAcpSession(context.sessionId)
     const trackedSessionId = mappedAppSessionId ?? context.sessionId
 
     // Guard: don't store the response if the session was already stopped/cancelled.
@@ -975,7 +976,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const mappedAppSessionId = getAppSessionForAcpSession(context.sessionId)
+    const mappedAppSessionId = getRootAppSessionForAcpSession(context.sessionId)
     const trackedSessionId = mappedAppSessionId ?? context.sessionId
     const session = agentSessionTracker.getSession(trackedSessionId)
     if (!session?.conversationId) {
@@ -1003,6 +1004,26 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     if (mappedAppSessionId) {
       setAcpSessionTitleOverride(context.sessionId, updatedConversation.title)
+      const parentSessionId = mappedAppSessionId
+      const runId = agentSessionStateManager.getSessionRunId(trackedSessionId)
+      const isSessionComplete = session.status === "completed" || session.status === "error" || session.status === "stopped"
+      const conversationState = session.status === "completed"
+        ? "complete"
+        : isSessionComplete
+          ? "blocked"
+          : "running"
+
+      await emitAgentProgress({
+        sessionId: context.sessionId,
+        ...(parentSessionId && parentSessionId !== context.sessionId ? { parentSessionId } : {}),
+        ...(typeof runId === "number" ? { runId } : {}),
+        conversationTitle: updatedConversation.title,
+        currentIteration: 0,
+        maxIterations: 1,
+        steps: [],
+        isComplete: isSessionComplete,
+        conversationState,
+      })
     }
 
     return {

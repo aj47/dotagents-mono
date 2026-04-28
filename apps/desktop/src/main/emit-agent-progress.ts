@@ -17,7 +17,56 @@ const sessionThrottleState = new Map<string, {
   lastSendTime: number
   pendingUpdate: AgentProgressUpdate | null
   runId?: number
+  sentTerminalDelegationKeys: Set<string>
 }>()
+
+function getDelegationIdentity(step: AgentProgressUpdate["steps"][number]): string | undefined {
+  if (step.delegation?.runId) return `run:${step.delegation.runId}`
+  if (step.id) return `step:${step.id}`
+  if (typeof step.delegation?.startTime === "number") {
+    return `start:${step.delegation.startTime}:${step.delegation.agentName ?? ""}:${step.delegation.task ?? ""}`
+  }
+  if (typeof step.timestamp === "number") {
+    return `timestamp:${step.timestamp}:${step.delegation?.agentName ?? ""}:${step.delegation?.task ?? ""}`
+  }
+  return undefined
+}
+
+function getTerminalDelegationKeys(update: AgentProgressUpdate): Set<string> {
+  const keys = new Set<string>()
+  for (const step of (update.steps ?? [])) {
+    const status = step.delegation?.status
+    if (status === "completed" || status === "failed" || status === "cancelled") {
+      const identity = getDelegationIdentity(step)
+      if (!identity) continue
+      keys.add(`${identity}:${status}`)
+    }
+  }
+  return keys
+}
+
+function hasNewTerminalDelegation(update: AgentProgressUpdate, state?: {
+  sentTerminalDelegationKeys: Set<string>
+}): boolean {
+  const terminalKeys = getTerminalDelegationKeys(update)
+  if (terminalKeys.size === 0) return false
+  if (!state) return true
+  for (const key of terminalKeys) {
+    if (!state.sentTerminalDelegationKeys.has(key)) return true
+  }
+  return false
+}
+
+function mergeTerminalDelegationKeys(
+  existing: Set<string> | undefined,
+  update: AgentProgressUpdate,
+): Set<string> {
+  const merged = new Set(existing ?? [])
+  for (const key of getTerminalDelegationKeys(update)) {
+    merged.add(key)
+  }
+  return merged
+}
 
 /**
  * Send the update payload to all visible windows.
@@ -64,12 +113,17 @@ function sendToWindows(update: AgentProgressUpdate): void {
  * Critical updates include: completion, tool approvals, user responses, errors,
  * and the first update for a session.
  */
-function isCriticalUpdate(update: AgentProgressUpdate): boolean {
+function isCriticalUpdate(update: AgentProgressUpdate, state?: {
+  sentTerminalDelegationKeys: Set<string>
+}, options?: {
+  isFirstUpdateForSession?: boolean
+}): boolean {
   if (update.isComplete) return true
   if (update.pendingToolApproval) return true
   if (typeof update.userResponse === "string" && update.userResponse.trim().length > 0) return true
+  if (hasNewTerminalDelegation(update, state)) return true
   // First update for a session — send immediately
-  if (update.sessionId && !sessionThrottleState.has(update.sessionId)) return true
+  if (update.sessionId && options?.isFirstUpdateForSession) return true
   // Steps with error or awaiting_approval status
   if (update.steps?.some(s => s.status === "error" || s.status === "awaiting_approval")) return true
   return false
@@ -102,6 +156,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
   const sessionId = displayUpdate.sessionId || "__global__"
   const incomingRunId = displayUpdate.runId
   let state = sessionThrottleState.get(sessionId)
+  let isFirstUpdateForSession = !state
 
   if (displayUpdate.sessionId && typeof incomingRunId === "number") {
     const currentRunId = agentSessionStateManager.getSessionRunId(displayUpdate.sessionId)
@@ -113,7 +168,13 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
   // Drop stale updates from older runs when session IDs are reused.
   if (typeof incomingRunId === "number") {
     if (!state) {
-      state = { timer: null, lastSendTime: 0, pendingUpdate: null, runId: incomingRunId }
+      state = {
+        timer: null,
+        lastSendTime: 0,
+        pendingUpdate: null,
+        runId: incomingRunId,
+        sentTerminalDelegationKeys: new Set<string>(),
+      }
       sessionThrottleState.set(sessionId, state)
     } else if (typeof state.runId === "number" && incomingRunId < state.runId) {
       return
@@ -121,15 +182,23 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
       if (state.timer) {
         clearTimeout(state.timer)
       }
-      state = { timer: null, lastSendTime: 0, pendingUpdate: null, runId: incomingRunId }
+      isFirstUpdateForSession = true
+      state = {
+        timer: null,
+        lastSendTime: 0,
+        pendingUpdate: null,
+        runId: incomingRunId,
+        sentTerminalDelegationKeys: new Set<string>(),
+      }
       sessionThrottleState.set(sessionId, state)
     } else if (state.runId === undefined) {
+      isFirstUpdateForSession = true
       state.runId = incomingRunId
     }
   }
 
   // Critical updates bypass the throttle entirely
-  if (isCriticalUpdate(displayUpdate)) {
+  if (isCriticalUpdate(displayUpdate, state, { isFirstUpdateForSession })) {
     // Flush any pending throttled update for this session first
     if (state?.timer) {
       clearTimeout(state.timer)
@@ -146,6 +215,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
       lastSendTime: Date.now(),
       pendingUpdate: null,
       runId: typeof incomingRunId === "number" ? incomingRunId : state?.runId,
+      sentTerminalDelegationKeys: mergeTerminalDelegationKeys(state?.sentTerminalDelegationKeys, displayUpdate),
     })
 
     // Clean up throttle state when session completes
@@ -162,6 +232,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
       lastSendTime: 0,
       pendingUpdate: null,
       runId: typeof incomingRunId === "number" ? incomingRunId : undefined,
+      sentTerminalDelegationKeys: new Set<string>(),
     }
     sessionThrottleState.set(sessionId, state)
   }
@@ -177,6 +248,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
     }
     state.pendingUpdate = null
     state.lastSendTime = now
+    state.sentTerminalDelegationKeys = mergeTerminalDelegationKeys(state.sentTerminalDelegationKeys, displayUpdate)
     sendToWindows(displayUpdate)
   } else {
     // Within throttle window — store as pending and schedule a trailing send
@@ -203,6 +275,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
             return
           }
           s.lastSendTime = Date.now()
+          s.sentTerminalDelegationKeys = mergeTerminalDelegationKeys(s.sentTerminalDelegationKeys, s.pendingUpdate)
           sendToWindows(s.pendingUpdate)
           s.pendingUpdate = null
         }

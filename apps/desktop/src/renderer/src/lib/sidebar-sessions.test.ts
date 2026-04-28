@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
+  getSubagentParentSessionIdMap,
+  getSessionIdsWithActiveChildProgress,
   getLatestAgentResponseTimestamp,
   hasUnreadAgentResponse,
   isSidebarSessionCurrentlyViewed,
   isTaskSession,
+  nestSubagentSessionEntries,
   orderActiveSessionsByPinnedFirst,
+  paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
 } from "./sidebar-sessions"
@@ -38,6 +43,172 @@ describe("orderActiveSessionsByPinnedFirst", () => {
   })
 })
 
+describe("getSubagentParentSessionIdMap", () => {
+  it("infers child session parents from delegation progress", () => {
+    const parentMap = getSubagentParentSessionIdMap(
+      new Map([
+        [
+          "parent-1",
+          {
+            steps: [
+              {
+                id: "delegation-subagent-1",
+                type: "tool_call",
+                title: "Delegation",
+                status: "in_progress",
+                timestamp: 1,
+                delegation: {
+                  runId: "subagent-run-1",
+                  subSessionId: "subagent-1",
+                  agentName: "Internal",
+                  task: "Ping",
+                  status: "running",
+                  startTime: 1,
+                },
+              },
+            ],
+          },
+        ],
+      ]),
+    )
+
+    expect(parentMap.get("subagent-1")).toBe("parent-1")
+    expect(parentMap.get("subagent-run-1")).toBe("parent-1")
+  })
+})
+
+describe("getSessionIdsWithActiveChildProgress", () => {
+  it("marks a parent active while an inferred delegation is still running", () => {
+    const activeParents = getSessionIdsWithActiveChildProgress(
+      new Map([
+        [
+          "parent-1",
+          {
+            isComplete: true,
+            steps: [
+              {
+                id: "delegation-1",
+                type: "tool_call",
+                title: "Delegation",
+                status: "in_progress",
+                timestamp: 1,
+                delegation: {
+                  runId: "child-run-1",
+                  subSessionId: "child-1",
+                  agentName: "Internal",
+                  task: "Keep working",
+                  status: "running",
+                  startTime: 1,
+                },
+              },
+            ],
+          },
+        ],
+      ]),
+    )
+
+    expect(activeParents.has("parent-1")).toBe(true)
+  })
+
+  it("bubbles active nested subagent progress up to the root parent", () => {
+    const activeParents = getSessionIdsWithActiveChildProgress(
+      new Map([
+        ["root", { isComplete: true, steps: [] }],
+        [
+          "child-1",
+          {
+            parentSessionId: "root",
+            isComplete: true,
+            steps: [],
+          },
+        ],
+        [
+          "child-2",
+          {
+            parentSessionId: "child-1",
+            isComplete: false,
+            steps: [],
+          },
+        ],
+      ]),
+    )
+
+    expect(activeParents.has("child-1")).toBe(true)
+    expect(activeParents.has("root")).toBe(true)
+    expect(activeParents.has("child-2")).toBe(false)
+  })
+
+  it("does not mark a parent active for completed child delegation progress", () => {
+    const activeParents = getSessionIdsWithActiveChildProgress(
+      new Map([
+        [
+          "parent-1",
+          {
+            isComplete: true,
+            steps: [
+              {
+                id: "delegation-1",
+                type: "completion",
+                title: "Delegation",
+                status: "completed",
+                timestamp: 2,
+                delegation: {
+                  runId: "child-run-1",
+                  subSessionId: "child-1",
+                  agentName: "Internal",
+                  task: "Finished work",
+                  status: "completed",
+                  startTime: 1,
+                  endTime: 2,
+                },
+              },
+            ],
+          },
+        ],
+      ]),
+    )
+
+    expect(activeParents.has("parent-1")).toBe(false)
+  })
+})
+
+describe("nestSubagentSessionEntries", () => {
+  it("places subagent entries directly under their parent with nesting metadata", () => {
+    const ordered = nestSubagentSessionEntries([
+      { session: { id: "session-new" } },
+      { session: { id: "subagent-1", parentSessionId: "parent-1" } },
+      { session: { id: "parent-1" } },
+      { session: { id: "subagent-2", parentSessionId: "parent-1" } },
+    ])
+
+    expect(ordered.map((entry) => entry.session.id)).toEqual([
+      "session-new",
+      "parent-1",
+      "subagent-1",
+      "subagent-2",
+    ])
+    expect(ordered.map((entry) => entry.nestingDepth)).toEqual([0, 0, 1, 1])
+    expect(ordered.map((entry) => entry.isSubagent)).toEqual([
+      false,
+      false,
+      true,
+      true,
+    ])
+  })
+
+  it("leaves orphaned subagent entries at the top level", () => {
+    const ordered = nestSubagentSessionEntries([
+      { session: { id: "orphan-subagent", parentSessionId: "missing-parent" } },
+    ])
+
+    expect(ordered[0]).toMatchObject({
+      session: { id: "orphan-subagent" },
+      isSubagent: false,
+      nestingDepth: 0,
+    })
+  })
+})
+
 describe("filterPastSessionsAgainstActiveSessions", () => {
   it("removes past entries whose conversation is already active", () => {
     const filtered = filterPastSessionsAgainstActiveSessions(
@@ -64,56 +235,75 @@ describe("filterPastSessionsAgainstActiveSessions", () => {
 describe("isSidebarSessionCurrentlyViewed", () => {
   it("marks a past session as viewed when its conversation is open", () => {
     expect(
-      isSidebarSessionCurrentlyViewed(activeSession("history-1", "conversation-1"), {
-        isPast: true,
-        viewedConversationId: "conversation-1",
-      }),
+      isSidebarSessionCurrentlyViewed(
+        activeSession("history-1", "conversation-1"),
+        {
+          isPast: true,
+          viewedConversationId: "conversation-1",
+        },
+      ),
     ).toBe(true)
   })
 
   it("marks an active session as viewed when it is focused or expanded", () => {
     expect(
-      isSidebarSessionCurrentlyViewed(activeSession("session-2", "conversation-2"), {
-        isPast: false,
-        focusedSessionId: "session-2",
-      }),
+      isSidebarSessionCurrentlyViewed(
+        activeSession("session-2", "conversation-2"),
+        {
+          isPast: false,
+          focusedSessionId: "session-2",
+        },
+      ),
     ).toBe(true)
 
     expect(
-      isSidebarSessionCurrentlyViewed(activeSession("session-3", "conversation-3"), {
-        isPast: false,
-        expandedSessionId: "session-3",
-      }),
+      isSidebarSessionCurrentlyViewed(
+        activeSession("session-3", "conversation-3"),
+        {
+          isPast: false,
+          expandedSessionId: "session-3",
+        },
+      ),
     ).toBe(true)
   })
 
   it("does not mark unrelated past sessions as viewed", () => {
     expect(
-      isSidebarSessionCurrentlyViewed(activeSession("history-4", "conversation-4"), {
-        isPast: true,
-        viewedConversationId: "conversation-1",
-      }),
+      isSidebarSessionCurrentlyViewed(
+        activeSession("history-4", "conversation-4"),
+        {
+          isPast: true,
+          viewedConversationId: "conversation-1",
+        },
+      ),
     ).toBe(false)
   })
 
   it("prefers the explicitly viewed conversation over stale focused active rows", () => {
     expect(
-      isSidebarSessionCurrentlyViewed(activeSession("session-5", "conversation-5"), {
-        isPast: false,
-        focusedSessionId: "session-5",
-        viewedConversationId: "conversation-1",
-      }),
+      isSidebarSessionCurrentlyViewed(
+        activeSession("session-5", "conversation-5"),
+        {
+          isPast: false,
+          focusedSessionId: "session-5",
+          viewedConversationId: "conversation-1",
+        },
+      ),
     ).toBe(false)
   })
 })
 
 describe("isTaskSession", () => {
   it("flags sessions whose title carries the [Repeat] prefix", () => {
-    expect(isTaskSession({ id: "s", conversationTitle: "[Repeat] Daily standup" })).toBe(true)
+    expect(
+      isTaskSession({ id: "s", conversationTitle: "[Repeat] Daily standup" }),
+    ).toBe(true)
   })
 
   it("ignores sessions without the prefix", () => {
-    expect(isTaskSession({ id: "s", conversationTitle: "Daily standup" })).toBe(false)
+    expect(isTaskSession({ id: "s", conversationTitle: "Daily standup" })).toBe(
+      false,
+    )
     expect(isTaskSession({ id: "s" })).toBe(false)
   })
 })
@@ -130,6 +320,48 @@ describe("partitionTaskAndUserEntries", () => {
 
     expect(userEntries.map((e) => e.session.id)).toEqual(["u1", "u2"])
     expect(taskEntries.map((e) => e.session.id)).toEqual(["t1", "t2"])
+  })
+
+  it("keeps delegated subagents with their task parent", () => {
+    const entries = [
+      { session: { id: "parent-task", conversationTitle: "[Repeat] Cron" } },
+      { session: { id: "task-subagent", parentSessionId: "parent-task" } },
+      { session: { id: "u1", conversationTitle: "Hello" } },
+    ]
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(entries)
+
+    expect(userEntries.map((e) => e.session.id)).toEqual(["u1"])
+    expect(taskEntries.map((e) => e.session.id)).toEqual([
+      "parent-task",
+      "task-subagent",
+    ])
+  })
+
+  it("uses configured repeat-task titles as a fallback for sessions already retitled without the prefix", () => {
+    const entries = [
+      { session: { id: "t1", conversationTitle: "Conversation Knowledge Review" } },
+      { session: { id: "u1", conversationTitle: "Hello" } },
+    ]
+
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(
+      entries,
+      new Set(["Conversation Knowledge Review"]),
+    )
+
+    expect(userEntries.map((e) => e.session.id)).toEqual(["u1"])
+    expect(taskEntries.map((e) => e.session.id)).toEqual(["t1"])
+  })
+
+  it("uses the backend repeat-task flag when title matching is unavailable", () => {
+    const entries = [
+      { session: { id: "t1", conversationTitle: "Generated Title", isRepeatTask: true } },
+      { session: { id: "u1", conversationTitle: "Generated Title" } },
+    ]
+
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(entries)
+
+    expect(userEntries.map((e) => e.session.id)).toEqual(["u1"])
+    expect(taskEntries.map((e) => e.session.id)).toEqual(["t1"])
   })
 })
 
@@ -159,6 +391,85 @@ describe("partitionPinnedAndUnpinnedTaskEntries", () => {
     expect(pinnedTaskEntries.map((e) => e.session.id)).toEqual(["t1", "t3"])
     expect(unpinnedTaskEntries.map((e) => e.session.id)).toEqual(["t2", "t4"])
   })
+
+  it("keeps delegated subagents with their pinned task parent", () => {
+    const entries = [
+      { session: { id: "parent-task", conversationId: "c1" } },
+      {
+        session: {
+          id: "task-subagent",
+          conversationId: "c2",
+          parentSessionId: "parent-task",
+        },
+      },
+      { session: { id: "other-task", conversationId: "c3" } },
+    ]
+    const { pinnedTaskEntries, unpinnedTaskEntries } =
+      partitionPinnedAndUnpinnedTaskEntries(entries, new Set(["c1"]))
+
+    expect(pinnedTaskEntries.map((e) => e.session.id)).toEqual([
+      "parent-task",
+      "task-subagent",
+    ])
+    expect(unpinnedTaskEntries.map((e) => e.session.id)).toEqual(["other-task"])
+  })
+})
+
+describe("dedupeTaskEntriesByTitle", () => {
+  it("keeps the active run when repeat-task history has the same title", () => {
+    const entries = [
+      { session: { id: "active", conversationTitle: "[Repeat] Chess Trainer", status: "active", startTime: 300 } },
+      { session: { id: "stopped", conversationTitle: "[Repeat] Chess Trainer", status: "stopped", startTime: 200, endTime: 250 } },
+      { session: { id: "completed", conversationTitle: "[Repeat] Chess Trainer", status: "completed", startTime: 100, endTime: 150 } },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["active"])
+  })
+
+  it("keeps the newest historical run when no active run exists", () => {
+    const entries = [
+      { session: { id: "older", conversationTitle: "Serendipity Engine Run", status: "completed", startTime: 100, endTime: 150 } },
+      { session: { id: "newer", conversationTitle: "Serendipity Engine Run", status: "completed", startTime: 200, endTime: 250 } },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["newer"])
+  })
+})
+
+describe("paginateSidebarEntries", () => {
+  it("always keeps active and pinned entries while paginating unpinned saved entries", () => {
+    const entries = [
+      { session: { id: "active", conversationId: "active-c" }, isSavedConversation: false },
+      { session: { id: "pinned", conversationId: "pinned-c" }, isSavedConversation: true },
+      { session: { id: "saved-1", conversationId: "saved-c-1" }, isSavedConversation: true },
+      { session: { id: "saved-2", conversationId: "saved-c-2" }, isSavedConversation: true },
+    ]
+
+    const paginated = paginateSidebarEntries(entries, new Set(["pinned-c"]), 1)
+
+    expect(paginated.visibleEntries.map((entry) => entry.session.id)).toEqual([
+      "active",
+      "pinned",
+      "saved-1",
+    ])
+    expect(paginated.hasMoreEntries).toBe(true)
+  })
+
+  it("keeps saved subagents visible with their pinned parent", () => {
+    const entries = [
+      { session: { id: "parent", conversationId: "parent-c" }, isSavedConversation: true },
+      { session: { id: "child", parentSessionId: "parent" }, isSavedConversation: true },
+      { session: { id: "saved", conversationId: "saved-c" }, isSavedConversation: true },
+    ]
+
+    const paginated = paginateSidebarEntries(entries, new Set(["parent-c"]), 0)
+
+    expect(paginated.visibleEntries.map((entry) => entry.session.id)).toEqual([
+      "parent",
+      "child",
+    ])
+    expect(paginated.hasMoreEntries).toBe(true)
+  })
 })
 
 describe("agent response unread helpers", () => {
@@ -170,7 +481,13 @@ describe("agent response unread helpers", () => {
       steps: [],
       isComplete: false,
       responseEvents: [
-        { id: "response-1", sessionId: "session-1", ordinal: 1, text: "First", timestamp: 100 },
+        {
+          id: "response-1",
+          sessionId: "session-1",
+          ordinal: 1,
+          text: "First",
+          timestamp: 100,
+        },
       ],
       conversationHistory: [
         { role: "user", content: "Hello", timestamp: 200 },
@@ -189,7 +506,13 @@ describe("agent response unread helpers", () => {
       steps: [],
       isComplete: false,
       responseEvents: [
-        { id: "response-2", sessionId: "session-2", ordinal: 1, text: "Look at this", timestamp: 250 },
+        {
+          id: "response-2",
+          sessionId: "session-2",
+          ordinal: 1,
+          text: "Look at this",
+          timestamp: 250,
+        },
       ],
     }
 

@@ -51,6 +51,58 @@ const isDelegationOnlyProgressUpdate = (progress: AgentProgressUpdate): boolean 
   (!progress.conversationHistory || progress.conversationHistory.length === 0)
 )
 
+type ProgressStep = AgentProgressUpdate['steps'][number]
+
+const isTerminalDelegationStatus = (status?: string): boolean => (
+  status === 'completed' || status === 'failed' || status === 'cancelled'
+)
+
+const mergeDelegationStep = (
+  existingStep: ProgressStep | undefined,
+  step: ProgressStep,
+): ProgressStep => {
+  if (!existingStep?.delegation || !step.delegation) return step
+
+  const existingWasTerminal = isTerminalDelegationStatus(existingStep.delegation.status)
+  const incomingIsTerminal = isTerminalDelegationStatus(step.delegation.status)
+
+  if (existingWasTerminal && !incomingIsTerminal) {
+    const incomingConversation = step.delegation.conversation
+    return {
+      ...existingStep,
+      delegation: {
+        ...existingStep.delegation,
+        // Keep terminal metadata stable and only accept late transcript chunks.
+        conversation: incomingConversation && incomingConversation.length > 0
+          ? incomingConversation
+          : existingStep.delegation.conversation,
+      },
+    }
+  }
+
+  const incomingConversation = step.delegation.conversation
+  const shouldPreserveConversation =
+    Array.isArray(incomingConversation) &&
+    incomingConversation.length === 0 &&
+    Array.isArray(existingStep.delegation.conversation) &&
+    existingStep.delegation.conversation.length > 0
+
+  const mergedDelegation = {
+    ...existingStep.delegation,
+    ...step.delegation,
+  }
+
+  if (shouldPreserveConversation) {
+    mergedDelegation.conversation = existingStep.delegation.conversation
+  }
+
+  return {
+    ...existingStep,
+    ...step,
+    delegation: mergedDelegation,
+  }
+}
+
 export type SessionViewMode = 'grid' | 'list' | 'kanban'
 export type SessionFilter = 'all' | 'active' | 'completed' | 'error'
 export type SessionSortBy = 'recent' | 'oldest' | 'status'
@@ -211,14 +263,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             for (const [runId, step] of newDelegationSteps) {
               const existingStep = mergedDelegationSteps.get(runId)
               if (existingStep?.delegation || step.delegation) {
-                mergedDelegationSteps.set(runId, {
-                  ...existingStep,
-                  ...step,
-                  delegation: {
-                    ...existingStep?.delegation,
-                    ...step.delegation,
-                  },
-                })
+                mergedDelegationSteps.set(runId, mergeDelegationStep(existingStep, step))
               } else {
                 mergedDelegationSteps.set(runId, step)
               }

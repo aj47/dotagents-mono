@@ -422,7 +422,7 @@ export async function runInternalSubSession(
       ?? agentSessionTracker.getSessionProfileSnapshot(parentSessionId);
   }
 
-  setAcpToAppSessionMapping(subSessionId, parentSessionId, subSession.parentRunId);
+  setAcpToAppSessionMapping(subSessionId, parentSessionId, subSession.parentRunId, { registerAppSession: true });
 
   // Create isolated session state for this sub-session
   agentSessionStateManager.createSession(subSessionId, effectiveProfileSnapshot);

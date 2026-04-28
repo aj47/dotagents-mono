@@ -11,6 +11,11 @@ const tileSource = readFileSync(
   "utf8",
 )
 
+const presentationSource = readFileSync(
+  new URL("../lib/session-presentation.ts", import.meta.url),
+  "utf8",
+)
+
 describe("desktop follow-up input submit guardrails", () => {
   it("adds an immediate in-flight guard to the overlay composer", () => {
     expect(overlaySource).toContain("const [isSubmitting, setIsSubmitting] = useState(false)")
@@ -21,8 +26,9 @@ describe("desktop follow-up input submit guardrails", () => {
     expect(overlaySource).toContain("await sendMutation.mutateAsync(message)")
     expect(overlaySource).toContain("console.error(\"Failed to submit overlay follow-up message:\", error)")
     expect(overlaySource).toContain(
-      "const isDisabled = isSubmitting || sendMutation.isPending || (isSessionActive && !isQueueEnabled)",
+      "const isDisabled = inputPresentation.isDisabled || isSubmitting || sendMutation.isPending",
     )
+    expect(overlaySource).toContain('inputPresentation.mode === "disabled"')
   })
 
   it("adds the same immediate in-flight guard to the tile composer", () => {
@@ -33,6 +39,20 @@ describe("desktop follow-up input submit guardrails", () => {
     )
     expect(tileSource).toContain("await sendMutation.mutateAsync(message)")
     expect(tileSource).toContain("console.error(\"Failed to submit tile follow-up message:\", error)")
-    expect(tileSource).toMatch(/isInitializingSession \|\|\s+isSubmitting \|\|\s+sendMutation\.isPending/)
+    expect(tileSource).toContain("const isDisabled =")
+    expect(tileSource).toContain('inputPresentation.mode === "initializing"')
+    expect(tileSource).toContain('inputPresentation.mode === "disabled"')
+  })
+
+  it("centralizes placeholders and button labels through session presentation", () => {
+    expect(overlaySource).toContain("getFollowUpInputPresentation")
+    expect(tileSource).toContain("getFollowUpInputPresentation")
+    expect(overlaySource).toContain("placeholder={inputPresentation.placeholder}")
+    expect(tileSource).toContain("placeholder={inputPresentation.placeholder}")
+    expect(overlaySource).toContain("title={inputPresentation.submitTitle}")
+    expect(tileSource).toContain("title={inputPresentation.submitTitle}")
+    expect(presentationSource).toContain('placeholder: "Queue next message..."')
+    expect(presentationSource).toContain('placeholder: "Continue conversation..."')
+    expect(presentationSource).toContain('submitTitle: "Queue next message"')
   })
 })

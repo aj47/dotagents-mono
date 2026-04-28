@@ -49,6 +49,12 @@ const defaultFormData: AgentFormData = {
   autoSpawn: false,
 };
 
+const normalizeConnectionType = (value?: string): ConnectionType => {
+  if (value === 'acp') return 'acpx';
+  if (value === 'acpx' || value === 'remote' || value === 'internal') return value;
+  return 'internal';
+};
+
 export default function AgentEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -85,7 +91,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             description: profile.description || '',
             systemPrompt: profile.systemPrompt || '',
             guidelines: profile.guidelines || '',
-            connectionType: profile.connection?.type || profile.connectionType || 'internal',
+            connectionType: normalizeConnectionType(profile.connection?.type || profile.connectionType),
             connectionCommand: profile.connection?.command || '',
             connectionArgs: profile.connection?.args?.join(' ') || '',
             connectionBaseUrl: profile.connection?.baseUrl || '',

@@ -25,6 +25,7 @@ export interface AgentSession {
   lastActivity?: string
   errorMessage?: string
   isSnoozed?: boolean // When true, session runs in background without stealing focus
+  isRepeatTask?: boolean // True for sessions created by repeat-task/loop execution
   /**
    * Profile snapshot captured at session creation time.
    * This ensures session isolation - changes to the global profile don't affect running sessions.
@@ -215,7 +216,8 @@ class AgentSessionTracker {
     conversationId?: string,
     conversationTitle?: string,
     startSnoozed: boolean = true,
-    profileSnapshot?: SessionProfileSnapshot
+    profileSnapshot?: SessionProfileSnapshot,
+    sessionMetadata: Pick<AgentSession, "isRepeatTask"> = {},
   ): string {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
@@ -228,6 +230,7 @@ class AgentSessionTracker {
       currentIteration: 0,
       maxIterations: 10,
       isSnoozed: startSnoozed, // Start snoozed by default - no floating panel auto-show
+      isRepeatTask: sessionMetadata.isRepeatTask,
       profileSnapshot, // Capture profile settings at session creation for isolation
     }
 
