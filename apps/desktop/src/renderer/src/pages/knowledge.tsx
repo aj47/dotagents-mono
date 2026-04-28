@@ -520,7 +520,7 @@ export function Component() {
 
   useEffect(() => {
     setSelectedIds(new Set())
-  }, [searchQuery, contextFilter, dateFilter, sortOption])
+  }, [searchQuery, contextFilter, dateFilter, sortOption, viewMode])
 
   useEffect(() => {
     setLoadedNotesById(new Map())
@@ -538,6 +538,7 @@ export function Component() {
   const invalidateKnowledgeQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["knowledgeNotesOverview"] })
     queryClient.invalidateQueries({ queryKey: ["knowledgeNotesByGroup"] })
+    queryClient.invalidateQueries({ queryKey: ["knowledgeNotesFlat"] })
   }
 
   const agentsFoldersQuery = useQuery({
@@ -775,7 +776,10 @@ export function Component() {
   }
 
   const handlePromoteToAuto = (id: string) => {
-    const note = loadedNotesById.get(id) ?? searchResults.find((entry) => entry.id === id)
+    const note =
+      loadedNotesById.get(id) ??
+      searchResults.find((entry) => entry.id === id) ??
+      flatNotes.find((entry) => entry.id === id)
     if (!note || note.context === "auto") return
     promoteToAutoMutation.mutate({ id })
   }
