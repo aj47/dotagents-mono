@@ -28,6 +28,8 @@ export interface ToolResult {
 export interface BaseChatMessage {
   role: 'user' | 'assistant' | 'tool';
   content: string;
+  /** Optional renderer-only override. Not intended for persistence or model replay. */
+  displayContent?: string;
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
 }

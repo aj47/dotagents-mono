@@ -85,6 +85,7 @@ function createHookRuntime() {
     useRef,
     useEffect: registerEffect,
     useLayoutEffect: registerEffect,
+    useId: () => "test-id",
     useCallback: <T extends (...args: any[]) => any>(callback: T) => callback,
     useMemo: <T,>(factory: () => T) => factory(),
     memo: (component: any) => component,
@@ -524,6 +525,35 @@ describe("agent progress response history", () => {
     expect(text).toContain("Need your approval")
     expect(text).not.toContain("respond_to_user")
     expect(text).not.toContain("mark_work_complete")
+  })
+
+  it("renders display-only thinking blocks from progress history without replacing stored content", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-thinking-display-content",
+      conversationId: "conversation-thinking-display-content",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: true,
+      finalContent: "",
+      conversationHistory: [
+        {
+          role: "assistant",
+          content: "Stored final answer",
+          displayContent: "<think>\nCodex reasoning summary\n</think>\n\nDisplayed final answer",
+          timestamp: 100,
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("Thinking")
+    expect(text).toContain("Displayed final answer")
+    expect(text).not.toContain("Stored final answer")
   })
 
   it("does not collapse short image responses because of embedded data URL size", async () => {

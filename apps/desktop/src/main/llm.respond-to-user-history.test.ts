@@ -289,6 +289,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     currentConfig.mcpVerifyCompletionEnabled = true
     currentConfig.mcpFinalSummaryEnabled = false
     const { processTranscriptWithAgentMode } = await import("./llm")
+    const progressUpdates: any[] = []
 
     mocks.makeLLMCallWithStreamingAndTools
       .mockResolvedValueOnce({
@@ -311,7 +312,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       [],
       "conv-reasoning-stub",
       "session-reasoning-stub",
-      undefined,
+      (update) => progressUpdates.push(update),
       undefined,
       1,
     )
@@ -319,6 +320,19 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.content).toBe("I inspected the next chunk and added 50 more topics.")
     expect(result.content).not.toContain("<think>")
     expect(result.conversationHistory.some((message) => message.role === "assistant" && message.content.includes("<think>"))).toBe(false)
+    expect(mocks.addMessageToConversation.mock.calls.some((call) => String(call[1] ?? "").includes("<think>"))).toBe(false)
+
+    const progressConversationText = progressUpdates
+      .flatMap((update) => update.conversationHistory ?? [])
+      .map((message) => message.content)
+      .join("\n")
+    expect(progressConversationText).not.toContain("<think>")
+
+    const progressDisplayText = progressUpdates
+      .flatMap((update) => update.conversationHistory ?? [])
+      .map((message) => message.displayContent ?? "")
+      .join("\n")
+    expect(progressDisplayText).toContain("<think>\nI should inspect more transcript chunks, but I am about to stop.\n</think>")
 
     const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
       .map((message: any) => message.content)

@@ -882,7 +882,7 @@ export async function processTranscriptWithAgentMode(
     toolCalls?: MCPToolCall[],
     toolResults?: MCPToolResult[],
     timestamp?: number,
-    options?: { skipModelReplay?: boolean },
+    options?: { skipModelReplay?: boolean; displayContent?: string },
   ) => {
     // Add to in-memory history
     const message: typeof conversationHistory[0] = {
@@ -893,6 +893,7 @@ export async function processTranscriptWithAgentMode(
       timestamp: timestamp || Date.now(),
       branchMessageIndex: nextBranchMessageIndex++,
       ...(options?.skipModelReplay ? { skipModelReplay: true } : {}),
+      ...(options?.displayContent ? { displayContent: options.displayContent } : {}),
     }
     conversationHistory.push(message)
 
@@ -1111,6 +1112,8 @@ export async function processTranscriptWithAgentMode(
     branchMessageIndex?: number
     ephemeral?: boolean
     skipModelReplay?: boolean
+    /** Renderer-only content override; never persisted or replayed to the model. */
+    displayContent?: string
   }> = [
     ...sanitizedPreviousConversationHistory,
     {
@@ -1192,6 +1195,7 @@ export async function processTranscriptWithAgentMode(
       .map((entry) => ({
         role: entry.role,
         content: entry.content,
+        ...(entry.displayContent ? { displayContent: entry.displayContent } : {}),
         toolCalls: entry.toolCalls?.map((tc) => ({
           name: tc.name,
           arguments: tc.arguments,
@@ -2048,6 +2052,9 @@ export async function processTranscriptWithAgentMode(
     // Strip any raw tool-marker tokens (e.g. <|tool_call_begin|>) so they
     // don't leak into the progress UI before the marker-recovery branch runs.
     const displayContent = (reasoningDisplayContent || llmResponse.content || "").replace(/<\|[^|]*\|>/g, "").trim()
+    const displayOnlyMessageOptions = reasoningDisplayContent
+      ? { displayContent }
+      : undefined
     thinkingStep.status = "completed"
     thinkingStep.llmContent = displayContent
     if (displayContent) {
@@ -2148,7 +2155,7 @@ export async function processTranscriptWithAgentMode(
             continue
           }
           finalContent = contentText
-          addMessage("assistant", finalContent)
+          addMessage("assistant", finalContent, undefined, undefined, undefined, displayOnlyMessageOptions)
           emit({
             currentIteration: iteration,
             maxIterations,
@@ -2172,7 +2179,7 @@ export async function processTranscriptWithAgentMode(
             // No tools executed yet: substantive text is likely a progress/status update.
             // Keep iterating and reserve verifier calls for explicit completion signals.
             if (trimmedContent.length > 0) {
-              addMessage("assistant", contentText)
+              addMessage("assistant", contentText, undefined, undefined, undefined, displayOnlyMessageOptions)
             }
             addEphemeralMessage("user", INTERNAL_COMPLETION_NUDGE_TEXT)
             completionSignalHintCount++
@@ -2241,7 +2248,7 @@ export async function processTranscriptWithAgentMode(
 
           if (result.shouldContinue) {
             if (finalContent.trim().length > 0) {
-              addMessage("assistant", finalContent)
+              addMessage("assistant", finalContent, undefined, undefined, undefined, displayOnlyMessageOptions)
             }
             noOpCount = 0
             totalNudgeCount = 0
@@ -2274,7 +2281,14 @@ export async function processTranscriptWithAgentMode(
           }
         } else if (!completionForcedByVerificationLimit) {
           if (finalContent.trim().length > 0) {
-            addMessage("assistant", finalContent)
+            addMessage(
+              "assistant",
+              finalContent,
+              undefined,
+              undefined,
+              undefined,
+              finalContent === contentText ? displayOnlyMessageOptions : undefined,
+            )
           }
         }
 
@@ -2386,7 +2400,7 @@ export async function processTranscriptWithAgentMode(
         // confuses the model further when it appears in prior turns. Skip it so
         // the next attempt starts from a clean state.
         if (trimmedContent.length > 0 && !isGarbledToolCallTextResponse) {
-          addMessage("assistant", contentText)
+          addMessage("assistant", contentText, undefined, undefined, undefined, displayOnlyMessageOptions)
         }
 
         const isIntentOnlyProgressText = isProgressUpdateResponse(contentText)
@@ -2451,7 +2465,7 @@ export async function processTranscriptWithAgentMode(
 
     // Add assistant response with tool calls to conversation history BEFORE executing tools
     // This ensures the tool call request is visible immediately in the UI
-    addMessage("assistant", llmResponse.content || "", llmResponse.toolCalls || [])
+    addMessage("assistant", llmResponse.content || "", llmResponse.toolCalls || [], undefined, undefined, displayOnlyMessageOptions)
 
     // Emit progress update to show tool calls immediately
     emit({
@@ -3317,7 +3331,7 @@ export async function processTranscriptWithAgentMode(
     return {
       content: finalContent,
       conversationHistory: filterEphemeralMessages(conversationHistory).map((entry) => {
-        const { skipModelReplay: _skipModelReplay, ...rest } = entry
+        const { skipModelReplay: _skipModelReplay, displayContent: _displayContent, ...rest } = entry
         return rest
       }),
       totalIterations: iteration,

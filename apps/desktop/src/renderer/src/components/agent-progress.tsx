@@ -3460,7 +3460,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           if (entry.role === "user" && isCompletionNudge(entry.content)) return
           nextMessages.push({
             role: entry.role,
-            content: entry.content,
+            content: entry.displayContent ?? entry.content,
             isComplete: true,
             timestamp: entry.timestamp ?? fallbackBaseTimestamp + localIndex,
             isThinking: false,
