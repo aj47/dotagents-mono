@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react"
-import { useQuery } from "@tanstack/react-query"
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import {
   CheckCircle2,
@@ -275,8 +275,12 @@ export function ActiveAgentsSidebar({
   const [visibleTaskConversationCount, setVisibleTaskConversationCount] = useState(
     SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
   )
+  const [editingConversationId, setEditingConversationId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState("")
+  const skipTitleSaveOnBlurRef = useRef(false)
   const navigate = useNavigate()
   const location = useLocation()
+  const queryClient = useQueryClient()
 
   const { data, refetch } = useQuery<SidebarSessionsResponse>({
     queryKey: ["agentSessions"],
@@ -727,19 +731,144 @@ export function ActiveAgentsSidebar({
     setIsExpanded(newState)
   }
 
+  const clearTitleEditing = useCallback(() => {
+    setEditingConversationId(null)
+    setEditingTitle("")
+  }, [])
+
+  const startTitleEditing = useCallback((session: SidebarSessionRecord) => {
+    if (!session.conversationId) return
+    setEditingConversationId(session.conversationId)
+    setEditingTitle(session.conversationTitle || "Untitled conversation")
+  }, [])
+
+  const saveTitleEdit = useCallback(
+    async (session: SidebarSessionRecord) => {
+      const conversationId = session.conversationId
+      if (!conversationId) {
+        clearTitleEditing()
+        return
+      }
+
+      const nextTitle = editingTitle.trim()
+      const previousTitle = (session.conversationTitle || "Untitled conversation").trim()
+      if (!nextTitle || nextTitle === previousTitle) {
+        clearTitleEditing()
+        return
+      }
+
+      try {
+        const updatedConversation = await tipcClient.renameConversationTitle({
+          conversationId,
+          title: nextTitle,
+        })
+        const updatedTitle = updatedConversation?.title || nextTitle
+        const currentProgress = useAgentStore.getState().agentProgressById.get(session.id)
+        if (currentProgress) {
+          useAgentStore.getState().updateSessionProgress({
+            ...currentProgress,
+            conversationTitle: updatedTitle,
+          })
+        }
+        clearTitleEditing()
+
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
+          queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
+          queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] }),
+        ])
+      } catch (error) {
+        console.error("Failed to rename conversation title:", error)
+      }
+    },
+    [clearTitleEditing, editingTitle, queryClient],
+  )
+
   const renderEditableTitle = useCallback(
-    (session: SidebarSessionRecord, className: string, prefix?: string) => {
+    (session: SidebarSessionRecord, className: string, prefix?: string, canRenameOnClick = false) => {
+      const conversationId = session.conversationId
       const title = session.conversationTitle || "Untitled conversation"
 
+      if (conversationId && editingConversationId === conversationId) {
+        return (
+          <input
+            value={editingTitle}
+            onChange={(event) => setEditingTitle(event.target.value)}
+            onClick={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+            onFocus={(event) => event.currentTarget.select()}
+            onKeyDown={(event) => {
+              event.stopPropagation()
+              if (event.key === "Enter") {
+                event.preventDefault()
+                void saveTitleEdit(session)
+              } else if (event.key === "Escape") {
+                event.preventDefault()
+                skipTitleSaveOnBlurRef.current = true
+                clearTitleEditing()
+              }
+            }}
+            onBlur={() => {
+              if (skipTitleSaveOnBlurRef.current) {
+                skipTitleSaveOnBlurRef.current = false
+                return
+              }
+              void saveTitleEdit(session)
+            }}
+            autoFocus
+            className={cn(
+              "app-no-drag-region h-6 w-full rounded border border-input bg-background px-1.5 text-xs text-foreground shadow-sm outline-none ring-0 focus-visible:border-ring",
+              className,
+            )}
+            aria-label="Rename conversation title"
+          />
+        )
+      }
+
+      if (!conversationId) {
+        return (
+          <span
+            className={cn("min-w-0 truncate text-left", className)}
+            title={title}
+          >
+            {prefix ? `${prefix}${title}` : title}
+          </span>
+        )
+      }
+
+      if (!canRenameOnClick) {
+        return (
+          <span
+            className={cn("min-w-0 truncate text-left", className)}
+            title={conversationId ? "Select conversation to rename" : title}
+          >
+            {prefix ? `${prefix}${title}` : title}
+          </span>
+        )
+      }
+
       return (
-        <span
-          className={cn("min-w-0 truncate text-left", className)}
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            startTitleEditing(session)
+          }}
+          className={cn("min-w-0 truncate text-left cursor-text", className)}
+          title="Rename conversation title"
         >
           {prefix ? `${prefix}${title}` : title}
-        </span>
+        </button>
       )
     },
-    [],
+    [
+      clearTitleEditing,
+      editingConversationId,
+      editingTitle,
+      saveTitleEdit,
+      startTitleEditing,
+    ],
   )
 
   const loadMoreSavedConversations = useCallback(() => {
@@ -974,6 +1103,8 @@ export function ActiveAgentsSidebar({
                     {renderEditableTitle(
                       session,
                       cn("block flex-1", isCurrentView && "text-foreground"),
+                      undefined,
+                      isCurrentView,
                     )}
                   </div>
                   {lastMessageMinutesAgo && (
@@ -1121,6 +1252,7 @@ export function ActiveAgentsSidebar({
                                 : "text-foreground",
                       ),
                       isLifecycleNeedsInput ? "⚠ " : undefined,
+                      isCurrentView,
                     )}
                     {isNestedSubagent && lastMessageMinutesAgo && (
                       <span className="shrink-0 text-[10px] leading-4 tabular-nums text-muted-foreground/60 transition-opacity group-hover:opacity-0">

@@ -15,6 +15,11 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('isCollapsed ? "px-2.5 py-1.5" : "px-3 py-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-1.5"')
     expect(agentProgressSource).toContain('className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 app-no-drag-region"')
+    expect(agentProgressSource).toContain('const tileTitle = getTitle()')
+    expect(agentProgressSource).toContain('aria-label="Rename conversation title"')
+    expect(agentProgressSource).toContain('tipcClient.renameConversationTitle({')
+    expect(agentProgressSource).toContain('"truncate font-medium min-w-0 cursor-text"')
+    expect(agentProgressSource).toContain('"app-no-drag-region h-6 min-w-0 flex-1 rounded border border-input bg-background px-1.5 font-medium text-foreground shadow-sm outline-none ring-0 focus-visible:border-ring"')
   })
 
   it("wraps the tile footer metadata row and preserves trailing status visibility", () => {

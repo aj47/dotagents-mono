@@ -3200,10 +3200,20 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const togglePinSession = useAgentStore((s) => s.togglePinSession)
+  const conversationId = progress?.conversationId
+  const [isTitleEditing, setIsTitleEditing] = useState(false)
+  const [editingTitle, setEditingTitle] = useState("")
+  const skipTitleSaveOnBlurRef = useRef(false)
+
+  useEffect(() => {
+    setIsTitleEditing(false)
+    setEditingTitle("")
+    skipTitleSaveOnBlurRef.current = false
+  }, [conversationId])
 
   // Get queued messages for this conversation (used in overlay variant)
-  const queuedMessages = useMessageQueue(progress?.conversationId)
-  const isQueuePaused = useIsQueuePaused(progress?.conversationId)
+  const queuedMessages = useMessageQueue(conversationId)
+  const isQueuePaused = useIsQueuePaused(conversationId)
   const hasQueuedMessages = queuedMessages.length > 0
 
   // Helper to toggle expansion state for a specific item
@@ -3290,7 +3300,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     onExpand()
   }, [handleRestoreSession, onExpand, progress?.isSnoozed])
 
-  const conversationId = progress?.conversationId
   const isPinned = !!conversationId && pinnedSessionIds.has(conversationId)
 
   // Close button handler for completed agent view
@@ -4266,6 +4275,54 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     return `Session ${progress.sessionId?.substring(0, 8) || "..."}`
   }
 
+  const startTitleEditing = (title: string) => {
+    if (!conversationId) return
+    setEditingTitle(title)
+    setIsTitleEditing(true)
+  }
+
+  const clearTitleEditing = () => {
+    setIsTitleEditing(false)
+    setEditingTitle("")
+  }
+
+  const saveTitleEdit = async (currentTitle: string) => {
+    if (!conversationId) {
+      clearTitleEditing()
+      return
+    }
+
+    const nextTitle = editingTitle.trim()
+    const previousTitle = currentTitle.trim()
+    if (!nextTitle || nextTitle === previousTitle) {
+      clearTitleEditing()
+      return
+    }
+
+    try {
+      const updatedConversation = await tipcClient.renameConversationTitle({
+        conversationId,
+        title: nextTitle,
+      })
+      const updatedTitle = updatedConversation?.title || nextTitle
+      const currentProgress = useAgentStore.getState().agentProgressById.get(progress.sessionId) ?? progress
+      useAgentStore.getState().updateSessionProgress({
+        ...currentProgress,
+        conversationTitle: updatedTitle,
+      })
+      clearTitleEditing()
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
+        queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
+        queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] }),
+      ])
+    } catch (error) {
+      console.error("Failed to rename conversation title:", error)
+      toast.error("Failed to rename session title")
+    }
+  }
+
   const containerClasses = cn(
     "progress-panel flex flex-col w-full rounded-xl overflow-hidden",
     variant === "tile"
@@ -4288,6 +4345,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   if (variant === "tile") {
     const hasPendingApproval = !!progress.pendingToolApproval
     const canCollapseTile = typeof onCollapsedChange === "function"
+    const tileTitle = getTitle()
     return (
       <div
         onClick={onFocus}
@@ -4315,9 +4373,59 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <div className="flex h-6 w-6 shrink-0 items-center justify-center">
               {getStatusIndicator()}
             </div>
-            <span className={cn("pointer-events-none truncate font-medium min-w-0", isCollapsed ? "text-xs" : "text-sm")}>
-              {getTitle()}
-            </span>
+            {isTitleEditing && conversationId ? (
+              <input
+                value={editingTitle}
+                onChange={(event) => setEditingTitle(event.target.value)}
+                onClick={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+                onFocus={(event) => event.currentTarget.select()}
+                onKeyDown={(event) => {
+                  event.stopPropagation()
+                  if (event.key === "Enter") {
+                    event.preventDefault()
+                    void saveTitleEdit(tileTitle)
+                  } else if (event.key === "Escape") {
+                    event.preventDefault()
+                    skipTitleSaveOnBlurRef.current = true
+                    clearTitleEditing()
+                  }
+                }}
+                onBlur={() => {
+                  if (skipTitleSaveOnBlurRef.current) {
+                    skipTitleSaveOnBlurRef.current = false
+                    return
+                  }
+                  void saveTitleEdit(tileTitle)
+                }}
+                autoFocus
+                className={cn(
+                  "app-no-drag-region h-6 min-w-0 flex-1 rounded border border-input bg-background px-1.5 font-medium text-foreground shadow-sm outline-none ring-0 focus-visible:border-ring",
+                  isCollapsed ? "text-xs" : "text-sm",
+                )}
+                aria-label="Rename conversation title"
+              />
+            ) : (
+              <span
+                role={conversationId ? "button" : undefined}
+                tabIndex={conversationId ? 0 : undefined}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  startTitleEditing(tileTitle)
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return
+                  event.preventDefault()
+                  event.stopPropagation()
+                  startTitleEditing(tileTitle)
+                }}
+                className={cn("truncate font-medium min-w-0 cursor-text", isCollapsed ? "text-xs" : "text-sm")}
+                title={conversationId ? "Rename conversation title" : tileTitle}
+              >
+                {tileTitle}
+              </span>
+            )}
             <Badge variant="outline" className={cn("h-5 shrink-0 px-1.5 text-[10px]", conversationStateBadgeClass)}>
               {conversationStateLabel}
             </Badge>

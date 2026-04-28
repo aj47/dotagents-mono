@@ -27,18 +27,25 @@ test("runtime tool surface exposes set_session_title", () => {
   assert.match(handlers, /conversationService\.renameConversationTitle\(/)
 })
 
-test("sidebar keeps session renaming behind an explicit overflow action and persists edits", () => {
+test("sidebar opens an inline title editor from title clicks and persists edits", () => {
   const source = read(
     "apps/desktop/src/renderer/src/components/active-agents-sidebar.tsx",
   )
 
+  assert.match(source, /useQueryClient/)
+  assert.match(source, /const \[editingConversationId, setEditingConversationId\]/)
   assert.match(source, /aria-label="Rename conversation title"/)
   assert.match(source, /tipcClient\.renameConversationTitle\(/)
+  assert.match(source, /updateSessionProgress\(/)
+  assert.match(source, /startTitleEditing\(session\)/)
+  assert.match(source, /title="Rename conversation title"/)
+  assert.match(source, /canRenameOnClick = false/)
+  assert.match(source, /if \(!canRenameOnClick\)/)
+  assert.match(source, /title=\{conversationId \? "Select conversation to rename" : title\}/)
+  assert.match(source, /isCurrentView,/)
+  assert.match(source, /if \(!conversationId\)/)
   assert.match(source, /event\.key === "Enter"/)
   assert.match(source, /event\.key === "Escape"/)
-  assert.match(source, /SessionOverflowMenu/)
-  assert.match(source, /<MoreHorizontal className="h-3 w-3" \/>/)
-  assert.match(source, /<DropdownMenuItem onSelect=\{\(\) => onRename\(\)\}>/)
   assert.match(source, /onMouseDown=\{\(event\) => event\.stopPropagation\(\)\}/)
   assert.match(source, /onPointerDown=\{\(event\) => event\.stopPropagation\(\)\}/)
   assert.match(source, /transition-\[padding-right\] duration-200 group-hover:pr-7/)
@@ -47,14 +54,12 @@ test("sidebar keeps session renaming behind an explicit overflow action and pers
   assert.match(source, /flex min-w-0 items-center gap-1\.5/
   )
   assert.match(source, /group-hover:opacity-0/)
+  assert.doesNotMatch(source, /SessionOverflowMenu/)
+  assert.doesNotMatch(source, /MoreHorizontal/)
+  assert.doesNotMatch(source, /DropdownMenuItem/)
   assert.doesNotMatch(source, /pr-11/)
   assert.doesNotMatch(source, /group-focus-within:pointer-events-auto/)
   assert.doesNotMatch(source, /lastMessageMinutesAgo && !session\.conversationId/)
-  assert.doesNotMatch(
-    source,
-    /title=\{conversationId \? "Rename session title" : title\}/,
-  )
-  assert.doesNotMatch(source, /startTitleEditing\(conversationId, title\)\s*\}/)
 })
 
 test("active session rows prioritize the title with a left-edge status rail", () => {
