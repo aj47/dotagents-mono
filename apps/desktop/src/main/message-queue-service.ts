@@ -1,8 +1,17 @@
-import { QueuedMessage, MessageQueue } from "../shared/types"
+import { QueuedMessage, MessageQueue, AgentSessionRef } from "../shared/types"
 import { logApp } from "./debug"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
+
+export interface EnqueueOptions {
+  /** Session that was active when this message was queued (for resuming the same session). */
+  sessionId?: string
+  /** Cross-agent provenance: the originating agent session, if any. */
+  source?: AgentSessionRef
+  /** Cross-agent provenance: the target agent session, if any. */
+  target?: AgentSessionRef
+}
 
 /**
  * Service for managing message queues per conversation.
@@ -91,16 +100,30 @@ class MessageQueueService {
   }
 
   /**
-   * Add a message to the queue for a conversation
+   * Add a message to the queue for a conversation.
+   * Accepts either a legacy `sessionId` string or an options object that can also
+   * carry cross-agent source/target provenance for messages enqueued via
+   * `send_agent_message`.
    */
-  enqueue(conversationId: string, text: string, sessionId?: string): QueuedMessage {
+  enqueue(
+    conversationId: string,
+    text: string,
+    sessionIdOrOptions?: string | EnqueueOptions,
+  ): QueuedMessage {
+    const options: EnqueueOptions =
+      typeof sessionIdOrOptions === "string"
+        ? { sessionId: sessionIdOrOptions }
+        : sessionIdOrOptions ?? {}
+
     const message: QueuedMessage = {
       id: this.generateMessageId(),
       conversationId,
-      sessionId,
+      sessionId: options.sessionId,
       text,
       createdAt: Date.now(),
       status: "pending",
+      ...(options.source ? { source: options.source } : {}),
+      ...(options.target ? { target: options.target } : {}),
     }
 
     const queue = this.queues.get(conversationId) || []

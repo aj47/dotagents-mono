@@ -517,7 +517,10 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
   },
 
-  send_agent_message: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+  send_agent_message: async (
+    args: Record<string, unknown>,
+    context: BuiltinToolContext,
+  ): Promise<MCPToolResult> => {
     // Validate required parameters with proper type guards
     if (!args.sessionId || typeof args.sessionId !== "string") {
       return {
@@ -585,8 +588,30 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    // Capture cross-agent provenance so the queue/conversation UI can show where
+    // this message came from and let the user navigate back to the source.
+    const sourceSessionId = context?.sessionId
+    const sourceSession = sourceSessionId
+      ? agentSessionTracker.getSession(sourceSessionId)
+      : undefined
+    const source = sourceSessionId
+      ? {
+          sessionId: sourceSessionId,
+          conversationId: sourceSession?.conversationId,
+          agentName: sourceSession?.conversationTitle,
+        }
+      : undefined
+    const target = {
+      sessionId,
+      conversationId: session.conversationId,
+      agentName: session.conversationTitle,
+    }
+
     // Queue message for the target agent's conversation
-    const queuedMessage = messageQueueService.enqueue(session.conversationId, message)
+    const queuedMessage = messageQueueService.enqueue(session.conversationId, message, {
+      source,
+      target,
+    })
 
     return {
       content: [
@@ -597,6 +622,8 @@ const toolHandlers: Record<string, ToolHandler> = {
             sessionId,
             conversationId: session.conversationId,
             queuedMessageId: queuedMessage.id,
+            ...(source ? { source } : {}),
+            target,
             message: `Message queued for agent session ${sessionId} (${session.conversationTitle})`,
           }, null, 2),
         },

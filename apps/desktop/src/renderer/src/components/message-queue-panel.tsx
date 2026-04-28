@@ -1,10 +1,80 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
+import { useNavigate } from "react-router-dom"
 import { cn } from "@renderer/lib/utils"
-import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw } from "lucide-react"
+import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw, ArrowRight, CornerDownRight } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
-import { QueuedMessage } from "@shared/types"
+import { QueuedMessage, AgentSessionRef } from "@shared/types"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { useAgentStore } from "@renderer/stores/agent-store"
+
+/**
+ * Navigate to a referenced agent session: focus the live session if it is
+ * still running, otherwise open the saved conversation. Mirrors the behavior
+ * in ActiveAgentsSidebar so sourceAgent/targetAgent links work consistently.
+ */
+function useNavigateToAgentSessionRef() {
+  const navigate = useNavigate()
+  const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
+  const setExpandedSessionId = useAgentStore((s) => s.setExpandedSessionId)
+  const setViewedConversationId = useAgentStore((s) => s.setViewedConversationId)
+  const activeSessionsById = useAgentStore((s) => s.agentProgressById)
+
+  return useCallback(
+    (ref: AgentSessionRef) => {
+      const isLive = activeSessionsById.has(ref.sessionId)
+      if (isLive) {
+        setViewedConversationId(null)
+        navigate("/", { state: { clearPendingConversation: true } })
+        setFocusedSessionId(ref.sessionId)
+        setExpandedSessionId(ref.sessionId)
+        return
+      }
+      if (ref.conversationId) {
+        setFocusedSessionId(null)
+        setExpandedSessionId(null)
+        setViewedConversationId(ref.conversationId)
+        navigate(`/${ref.conversationId}`)
+      }
+    },
+    [activeSessionsById, navigate, setExpandedSessionId, setFocusedSessionId, setViewedConversationId],
+  )
+}
+
+function AgentSessionLink({
+  ref,
+  prefixIcon,
+  className,
+}: {
+  ref: AgentSessionRef
+  prefixIcon?: React.ReactNode
+  className?: string
+}) {
+  const navigateToRef = useNavigateToAgentSessionRef()
+  const label = ref.agentName?.trim() || ref.sessionId.slice(0, 8)
+  const isClickable = !!ref.conversationId || true
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        navigateToRef(ref)
+      }}
+      disabled={!isClickable}
+      title={`Open ${label} (${ref.sessionId})`}
+      className={cn(
+        "inline-flex max-w-full items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium",
+        "text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors",
+        "underline decoration-dotted underline-offset-2",
+        className,
+      )}
+    >
+      {prefixIcon}
+      <span className="truncate">{label}</span>
+    </button>
+  )
+}
 
 interface MessageQueuePanelProps {
   conversationId: string
@@ -159,6 +229,29 @@ function QueuedMessageItem({
           )}
           <div className="flex min-w-0 flex-1 items-start gap-1.5">
             <div className="min-w-0 flex-1">
+              {(message.source || message.target) && (
+                <div className="mb-0.5 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+                  {message.source && (
+                    <>
+                      <span>From</span>
+                      <AgentSessionLink
+                        ref={message.source}
+                        prefixIcon={<CornerDownRight className="h-3 w-3" />}
+                      />
+                    </>
+                  )}
+                  {message.source && message.target && <span>·</span>}
+                  {message.target && (
+                    <>
+                      <span>To</span>
+                      <AgentSessionLink
+                        ref={message.target}
+                        prefixIcon={<ArrowRight className="h-3 w-3" />}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
               <p
                 className={cn(
                   "text-xs leading-snug",

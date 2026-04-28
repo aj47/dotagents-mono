@@ -648,6 +648,7 @@ export function Component() {
         toolResults: m.toolResults,
         timestamp: m.timestamp,
         branchMessageIndex: branchMessageIndexOffset + branchMessageIndexMap[index],
+        ...(m.sourceAgent ? { sourceAgent: m.sourceAgent } : {}),
       })),
     }
   }, [pendingResumeConversationId, pendingResumeConversationQuery.data, pendingContinuationStartedAt])
