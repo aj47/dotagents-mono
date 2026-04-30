@@ -3096,6 +3096,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         mcpVerifyCompletionEnabled: cfg.mcpVerifyCompletionEnabled ?? true,
         mcpFinalSummaryEnabled: cfg.mcpFinalSummaryEnabled ?? false,
         dualModelEnabled: cfg.dualModelEnabled ?? false,
+        dualModelWeakProviderId: cfg.dualModelWeakProviderId ?? "openai",
+        dualModelWeakModelName: cfg.dualModelWeakModelName,
+        dualModelWeakGroqModel: cfg.dualModelWeakGroqModel,
+        dualModelWeakGeminiModel: cfg.dualModelWeakGeminiModel,
+        dualModelWeakChatgptWebModel: cfg.dualModelWeakChatgptWebModel,
         mcpUnlimitedIterations: cfg.mcpUnlimitedIterations ?? true,
         // Tool Execution
         mcpContextReductionEnabled: cfg.mcpContextReductionEnabled ?? true,
@@ -3314,6 +3319,21 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       if (typeof body.dualModelEnabled === "boolean") {
         updates.dualModelEnabled = body.dualModelEnabled
+      }
+      if (typeof body.dualModelWeakProviderId === "string" && validProviders.includes(body.dualModelWeakProviderId)) {
+        updates.dualModelWeakProviderId = body.dualModelWeakProviderId as "openai" | "groq" | "gemini" | "chatgpt-web"
+      }
+      if (typeof body.dualModelWeakModelName === "string") {
+        updates.dualModelWeakModelName = body.dualModelWeakModelName
+      }
+      if (typeof body.dualModelWeakGroqModel === "string") {
+        updates.dualModelWeakGroqModel = body.dualModelWeakGroqModel
+      }
+      if (typeof body.dualModelWeakGeminiModel === "string") {
+        updates.dualModelWeakGeminiModel = body.dualModelWeakGeminiModel
+      }
+      if (typeof body.dualModelWeakChatgptWebModel === "string") {
+        updates.dualModelWeakChatgptWebModel = body.dualModelWeakChatgptWebModel
       }
 
       if (typeof body.mcpUnlimitedIterations === "boolean") {

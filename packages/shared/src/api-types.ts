@@ -309,6 +309,12 @@ export interface Settings {
   mainAgentName?: string;
   mcpVerifyCompletionEnabled?: boolean;
   mcpFinalSummaryEnabled?: boolean;
+  dualModelEnabled?: boolean;
+  dualModelWeakProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
+  dualModelWeakModelName?: string;
+  dualModelWeakGroqModel?: string;
+  dualModelWeakGeminiModel?: string;
+  dualModelWeakChatgptWebModel?: string;
 
   // Context Reduction & Tool Response Processing
   mcpContextReductionEnabled?: boolean;
@@ -400,9 +406,6 @@ export interface Settings {
   langfusePublicKey?: string;
   langfuseSecretKey?: string;
   langfuseBaseUrl?: string;
-
-  // Dual-Model Settings
-  dualModelEnabled?: boolean;
 
   // Streamer Mode
   streamerModeEnabled?: boolean;
@@ -437,6 +440,12 @@ export interface SettingsUpdate {
   mainAgentName?: string;
   mcpVerifyCompletionEnabled?: boolean;
   mcpFinalSummaryEnabled?: boolean;
+  dualModelEnabled?: boolean;
+  dualModelWeakProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
+  dualModelWeakModelName?: string;
+  dualModelWeakGroqModel?: string;
+  dualModelWeakGeminiModel?: string;
+  dualModelWeakChatgptWebModel?: string;
 
   // Context Reduction & Tool Response Processing
   mcpContextReductionEnabled?: boolean;
@@ -528,9 +537,6 @@ export interface SettingsUpdate {
   langfusePublicKey?: string;
   langfuseSecretKey?: string;
   langfuseBaseUrl?: string;
-
-  // Dual-Model Settings
-  dualModelEnabled?: boolean;
 
   // Streamer Mode
   streamerModeEnabled?: boolean;

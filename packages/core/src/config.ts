@@ -368,6 +368,7 @@ const getConfig = (): LoadedConfig => {
 
     // Dual-Model Agent Mode defaults
     dualModelEnabled: false,
+    dualModelWeakProviderId: "openai",
     dualModelSummarizationFrequency: "every_response",
     dualModelSummaryDetailLevel: "compact",
 

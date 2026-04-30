@@ -19,7 +19,7 @@ const CHATGPT_CODEX_SCOPE = "openid profile email offline_access"
 const CHATGPT_CODEX_REDIRECT_URI = "http://localhost:1455/auth/callback"
 const CHATGPT_CODEX_STORAGE_KEY = `${DEFAULT_CHATGPT_WEB_BASE_URL}/backend-api/codex/responses`
 
-type ChatGptWebModelContext = "mcp" | "transcript"
+type ChatGptWebModelContext = "mcp" | "transcript" | "summary"
 type CodexReasoningEffort = "minimal" | "low" | "medium" | "high"
 
 export interface ChatGptWebMessage {
@@ -509,7 +509,10 @@ async function resolveChatGptWebAuth(signal?: AbortSignal): Promise<ResolvedChat
 function getConfiguredChatGptWebModel(modelContext: ChatGptWebModelContext): string {
   const config = configStore.get()
   if (modelContext === "mcp") {
-    return config.mcpToolsChatgptWebModel || DEFAULT_CHATGPT_WEB_MODEL
+    return config.agentChatgptWebModel || config.mcpToolsChatgptWebModel || DEFAULT_CHATGPT_WEB_MODEL
+  }
+  if (modelContext === "summary") {
+    return config.dualModelWeakChatgptWebModel || config.agentChatgptWebModel || config.mcpToolsChatgptWebModel || DEFAULT_CHATGPT_WEB_MODEL
   }
   return config.transcriptPostProcessingChatgptWebModel || DEFAULT_CHATGPT_WEB_MODEL
 }

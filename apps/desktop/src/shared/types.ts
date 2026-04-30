@@ -1400,10 +1400,12 @@ export type Config = {
 
   // Dual-Model Agent Mode Configuration
   dualModelEnabled?: boolean
-  dualModelStrongPresetId?: string  // Preset ID for strong model
-  dualModelStrongModelName?: string  // Model name within the preset
+  dualModelWeakProviderId?: CHAT_PROVIDER_ID  // Provider for the summarization model
   dualModelWeakPresetId?: string  // Preset ID for weak model
-  dualModelWeakModelName?: string  // Model name within the preset
+  dualModelWeakModelName?: string  // OpenAI-compatible model name within the preset
+  dualModelWeakGroqModel?: string
+  dualModelWeakGeminiModel?: string
+  dualModelWeakChatgptWebModel?: string
   dualModelSummarizationFrequency?: "every_response" | "major_steps_only"
   dualModelSummaryDetailLevel?: "compact" | "detailed"
   dualModelSectionCollapsed?: boolean  // UI state for settings section

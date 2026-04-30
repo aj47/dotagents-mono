@@ -44,6 +44,8 @@ export function ModelSelector({
   const [customInputDraft, setCustomInputDraft] = useState(value || "")
   const searchInputRef = useRef<HTMLInputElement>(null)
   const customInputRef = useRef<HTMLInputElement>(null)
+  const onValueChangeRef = useRef(onValueChange)
+  const lastAutoSelectRef = useRef<string | null>(null)
 
   const configQuery = useConfigQuery()
   const currentPresetId = providerId === "openai"
@@ -51,6 +53,10 @@ export function ModelSelector({
     : undefined
 
   const modelsQuery = useAvailableModelsQuery(providerId, !!providerId, currentPresetId)
+
+  useEffect(() => {
+    onValueChangeRef.current = onValueChange
+  }, [onValueChange])
 
   useEffect(() => {
     logRender('ModelSelector', 'mount/update', {
@@ -136,11 +142,23 @@ export function ModelSelector({
   }, [value, selectableModels, useCustomInput])
 
   useEffect(() => {
-    if (!value && selectableModels.length > 0 && !useCustomInput) {
-      logUI('[ModelSelector] Auto-selecting first model:', selectableModels[0].id)
-      onValueChange(selectableModels[0].id)
+    const firstModelId = selectableModels[0]?.id
+    if (value || useCustomInput || !firstModelId) {
+      if (value || useCustomInput) {
+        lastAutoSelectRef.current = null
+      }
+      return
     }
-  }, [value, selectableModels, useCustomInput, onValueChange])
+
+    const autoSelectKey = `${providerId}:${firstModelId}`
+    if (lastAutoSelectRef.current === autoSelectKey) {
+      return
+    }
+
+    lastAutoSelectRef.current = autoSelectKey
+    logUI('[ModelSelector] Auto-selecting first model:', firstModelId)
+    onValueChangeRef.current(firstModelId)
+  }, [value, selectableModels, useCustomInput, providerId])
 
   // Filter models based on search query
   const filteredModels = selectableModels.filter((model) => {

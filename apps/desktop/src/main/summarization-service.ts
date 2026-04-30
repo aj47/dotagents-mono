@@ -7,11 +7,35 @@
 
 import { generateText } from "ai"
 import { createOpenAI } from "@ai-sdk/openai"
+import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { configStore } from "./config"
 import { logLLM, isDebugLLM } from "./debug"
 import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@dotagents/shared"
 import type { LanguageModel } from "ai"
 import type { AgentStepSummary, ModelPreset } from "../shared/types"
+import { makeChatGptWebCompletion } from "./chatgpt-web-provider"
+
+type SummarizationProviderId = "openai" | "groq" | "gemini" | "chatgpt-web"
+
+interface WeakModelConfig {
+  providerId: SummarizationProviderId
+  model: string
+  apiKey?: string
+  baseUrl?: string
+}
+
+const DEFAULT_SUMMARIZATION_MODELS: Record<SummarizationProviderId, string> = {
+  openai: "gpt-4.1-mini",
+  groq: "openai/gpt-oss-120b",
+  gemini: "gemini-2.5-flash",
+  "chatgpt-web": "gpt-5.4-mini",
+}
+
+function normalizeSummarizationProviderId(providerId: unknown): SummarizationProviderId {
+  return providerId === "groq" || providerId === "gemini" || providerId === "chatgpt-web"
+    ? providerId
+    : "openai"
+}
 
 export interface SummarizationInput {
   sessionId: string
@@ -59,16 +83,46 @@ function getPresetById(presetId: string): ModelPreset | undefined {
 }
 
 /**
- * Get the weak model configuration from settings using presets
+ * Get the weak model configuration from settings.
+ *
+ * OpenAI-compatible summarization keeps using presets because the preset owns
+ * the base URL/API key. Other providers use their provider-level auth and a
+ * provider-specific model field.
  */
-function getWeakModelConfig(): { model: string; apiKey: string; baseUrl: string } | null {
+function getWeakModelConfig(): WeakModelConfig | null {
   const config = configStore.get()
 
   if (!config.dualModelEnabled) {
     return null
   }
 
-  // Get preset ID - fall back to current model preset if not set
+  const providerId = normalizeSummarizationProviderId(config.dualModelWeakProviderId)
+
+  if (providerId === "groq") {
+    return {
+      providerId,
+      model: config.dualModelWeakGroqModel || config.agentGroqModel || config.mcpToolsGroqModel || DEFAULT_SUMMARIZATION_MODELS.groq,
+      apiKey: config.groqApiKey || "",
+      baseUrl: config.groqBaseUrl || "https://api.groq.com/openai/v1",
+    }
+  }
+
+  if (providerId === "gemini") {
+    return {
+      providerId,
+      model: config.dualModelWeakGeminiModel || config.agentGeminiModel || config.mcpToolsGeminiModel || DEFAULT_SUMMARIZATION_MODELS.gemini,
+      apiKey: config.geminiApiKey || "",
+      baseUrl: config.geminiBaseUrl || undefined,
+    }
+  }
+
+  if (providerId === "chatgpt-web") {
+    return {
+      providerId,
+      model: config.dualModelWeakChatgptWebModel || config.agentChatgptWebModel || config.mcpToolsChatgptWebModel || DEFAULT_SUMMARIZATION_MODELS["chatgpt-web"],
+    }
+  }
+
   const presetId = config.dualModelWeakPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
   const preset = getPresetById(presetId)
 
@@ -76,10 +130,15 @@ function getWeakModelConfig(): { model: string; apiKey: string; baseUrl: string 
     return null
   }
 
-  // Get model name - fall back to a default if not set
-  const model = config.dualModelWeakModelName || preset.agentModel || preset.mcpToolsModel || "gpt-4.1-mini"
+  const model =
+    config.dualModelWeakModelName ||
+    preset.summarizationModel ||
+    preset.agentModel ||
+    preset.mcpToolsModel ||
+    DEFAULT_SUMMARIZATION_MODELS.openai
 
   return {
+    providerId,
     model,
     apiKey: preset.apiKey,
     baseUrl: preset.baseUrl,
@@ -89,24 +148,63 @@ function getWeakModelConfig(): { model: string; apiKey: string; baseUrl: string 
 /**
  * Create a language model instance for the weak model
  */
-function createWeakModel(): LanguageModel | null {
-  const modelConfig = getWeakModelConfig()
-  if (!modelConfig) {
+function createWeakModel(modelConfig: WeakModelConfig): LanguageModel | null {
+  const { providerId, model, apiKey, baseUrl } = modelConfig
+
+  if (providerId === "chatgpt-web") {
     return null
   }
 
-  const { model, apiKey, baseUrl } = modelConfig
-
-  if (isDebugLLM()) {
-    logLLM(`[SummarizationService] Creating weak model: ${model} at ${baseUrl}`)
+  if (!apiKey) {
+    return null
   }
 
-  // All presets use OpenAI-compatible API
+  if (providerId === "gemini") {
+    if (isDebugLLM()) {
+      logLLM(`[SummarizationService] Creating Gemini weak model: ${model}`)
+    }
+
+    const google = createGoogleGenerativeAI({
+      apiKey,
+      baseURL: baseUrl,
+    })
+    return google(model)
+  }
+
+  if (isDebugLLM()) {
+    logLLM(`[SummarizationService] Creating ${providerId} weak model: ${model} at ${baseUrl}`)
+  }
+
   const openai = createOpenAI({
     apiKey,
     baseURL: baseUrl,
   })
   return openai.chat(model)
+}
+
+async function generateSummaryText(modelConfig: WeakModelConfig, prompt: string): Promise<string | null> {
+  if (modelConfig.providerId === "chatgpt-web") {
+    if (isDebugLLM()) {
+      logLLM(`[SummarizationService] Creating ChatGPT Codex weak model: ${modelConfig.model}`)
+    }
+
+    return await makeChatGptWebCompletion(
+      [{ role: "user", content: prompt }],
+      { modelContext: "summary" },
+    )
+  }
+
+  const model = createWeakModel(modelConfig)
+  if (!model) {
+    return null
+  }
+
+  const result = await generateText({
+    model,
+    prompt,
+  })
+
+  return result.text || ""
 }
 
 /**
@@ -246,10 +344,20 @@ function parseSummaryResponse(response: string, input: SummarizationInput): Agen
  */
 export function isSummarizationEnabled(): boolean {
   const config = configStore.get()
-  // Check if dual model is enabled and we have a valid weak model preset
-  const presetId = config.dualModelWeakPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
-  const preset = getPresetById(presetId)
-  return config.dualModelEnabled === true && !!preset && !!preset.apiKey
+  if (config.dualModelEnabled !== true) {
+    return false
+  }
+
+  const modelConfig = getWeakModelConfig()
+  if (!modelConfig) {
+    return false
+  }
+
+  if (modelConfig.providerId === "chatgpt-web") {
+    return true
+  }
+
+  return !!modelConfig.apiKey
 }
 
 /**
@@ -285,8 +393,8 @@ export async function summarizeAgentStep(
     return null
   }
 
-  const model = createWeakModel()
-  if (!model) {
+  const modelConfig = getWeakModelConfig()
+  if (!modelConfig) {
     if (isDebugLLM()) {
       logLLM("[SummarizationService] Weak model not configured, skipping summarization")
     }
@@ -300,12 +408,15 @@ export async function summarizeAgentStep(
       logLLM("[SummarizationService] Generating summary for step", input.stepNumber)
     }
 
-    const result = await generateText({
-      model,
-      prompt,
-    })
+    const summaryText = await generateSummaryText(modelConfig, prompt)
+    if (!summaryText) {
+      if (isDebugLLM()) {
+        logLLM("[SummarizationService] Weak model returned no summary text")
+      }
+      return null
+    }
 
-    const summary = parseSummaryResponse(result.text || "", input)
+    const summary = parseSummaryResponse(summaryText, input)
 
     if (isDebugLLM()) {
       logLLM("[SummarizationService] Generated summary:", summary)

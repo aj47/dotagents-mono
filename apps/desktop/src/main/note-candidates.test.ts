@@ -37,6 +37,14 @@ vi.mock("@ai-sdk/openai", () => ({
   })),
 }))
 
+vi.mock("@ai-sdk/google", () => ({
+  createGoogleGenerativeAI: vi.fn(() => vi.fn(() => ({}))),
+}))
+
+vi.mock("./chatgpt-web-provider", () => ({
+  makeChatGptWebCompletion: vi.fn(),
+}))
+
 function enableSummarization() {
   mockConfig = {
     dualModelEnabled: true,
@@ -140,6 +148,61 @@ describe("summarizeAgentStep", () => {
     expect(summary?.noteCandidates).toEqual([])
     expect(summary?.actionSummary).toBe("hello world")
     expect(summary?.importance).toBe("medium")
+  })
+
+  it("supports provider-level Groq summarization without a preset", async () => {
+    mockConfig = {
+      dualModelEnabled: true,
+      dualModelWeakProviderId: "groq",
+      dualModelWeakGroqModel: "llama-3.3-70b-versatile",
+      groqApiKey: "groq-key",
+      groqBaseUrl: "https://api.groq.com/openai/v1",
+      modelPresets: [],
+    }
+    const { generateText } = await import("ai")
+    const { createOpenAI } = await import("@ai-sdk/openai")
+    const { summarizeAgentStep } = await import("./summarization-service")
+
+    vi.mocked(generateText).mockResolvedValue({
+      text: JSON.stringify({
+        actionSummary: "summarized with groq",
+        noteCandidates: [],
+        importance: "medium",
+      }),
+    } as any)
+
+    const summary = await summarizeAgentStep({ sessionId: "s", stepNumber: 3 } as any)
+
+    expect(summary?.actionSummary).toBe("summarized with groq")
+    expect(createOpenAI).toHaveBeenCalledWith({
+      apiKey: "groq-key",
+      baseURL: "https://api.groq.com/openai/v1",
+    })
+  })
+
+  it("routes OpenAI Codex summarization through the summary model context", async () => {
+    mockConfig = {
+      dualModelEnabled: true,
+      dualModelWeakProviderId: "chatgpt-web",
+      dualModelWeakChatgptWebModel: "gpt-5.3-codex-spark",
+      modelPresets: [],
+    }
+    const { makeChatGptWebCompletion } = await import("./chatgpt-web-provider")
+    const { summarizeAgentStep } = await import("./summarization-service")
+
+    vi.mocked(makeChatGptWebCompletion).mockResolvedValue(JSON.stringify({
+      actionSummary: "summarized with codex",
+      noteCandidates: [],
+      importance: "medium",
+    }))
+
+    const summary = await summarizeAgentStep({ sessionId: "s", stepNumber: 4 } as any)
+
+    expect(summary?.actionSummary).toBe("summarized with codex")
+    expect(makeChatGptWebCompletion).toHaveBeenCalledWith(
+      [{ role: "user", content: expect.stringContaining("Respond ONLY with valid JSON") }],
+      { modelContext: "summary" },
+    )
   })
 })
 
