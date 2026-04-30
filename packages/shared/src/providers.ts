@@ -16,8 +16,6 @@ export interface ModelPreset {
   /** @deprecated Use agentModel instead. */
   mcpToolsModel?: string;
   transcriptProcessingModel?: string;
-  /** Model for dual-model summarization (weak model) */
-  summarizationModel?: string;
 }
 
 export const STT_PROVIDERS = [

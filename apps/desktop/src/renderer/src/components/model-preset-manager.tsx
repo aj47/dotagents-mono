@@ -42,7 +42,6 @@ export function ModelPresetManager({
     apiKey: "",
     agentModel: "",
     transcriptProcessingModel: "",
-    summarizationModel: "",
   })
 
   const config = configQuery.data
@@ -89,8 +88,8 @@ export function ModelPresetManager({
   // Save model selection to the current preset (called when user changes model)
   // Save model selection to both global config AND the current preset in a single save
   const saveModelWithPreset = useCallback((
-    modelType: 'agentModel' | 'transcriptProcessingModel' | 'summarizationModel',
-    globalConfigKey: 'agentOpenaiModel' | 'transcriptPostProcessingOpenaiModel' | 'dualModelWeakModelName',
+    modelType: 'agentModel' | 'transcriptProcessingModel',
+    globalConfigKey: 'agentOpenaiModel' | 'transcriptPostProcessingOpenaiModel',
     modelId: string
   ) => {
     if (!currentPresetId || !config) return
@@ -153,10 +152,6 @@ export function ModelPresetManager({
       if (preset.transcriptProcessingModel) {
         updates.transcriptPostProcessingOpenaiModel = preset.transcriptProcessingModel
       }
-      // Apply summarization model if set on the preset (dual-model mode)
-      if (preset.summarizationModel) {
-        updates.dualModelWeakModelName = preset.summarizationModel
-      }
       saveConfig(updates)
       toast.success(`Switched to preset: ${preset.name}`)
     }
@@ -183,7 +178,6 @@ export function ModelPresetManager({
       updatedAt: Date.now(),
       agentModel: newPreset.agentModel || newPreset.mcpToolsModel || "",
       transcriptProcessingModel: newPreset.transcriptProcessingModel || "",
-      summarizationModel: newPreset.summarizationModel || "",
     }
 
     const existingPresets = config?.modelPresets || []
@@ -192,7 +186,7 @@ export function ModelPresetManager({
     })
 
     setIsCreateDialogOpen(false)
-    setNewPreset({ name: "", baseUrl: "", apiKey: "", agentModel: "", transcriptProcessingModel: "", summarizationModel: "" })
+    setNewPreset({ name: "", baseUrl: "", apiKey: "", agentModel: "", transcriptProcessingModel: "" })
     toast.success("Preset created successfully")
   }
 
@@ -428,18 +422,6 @@ export function ModelPresetManager({
                     label="Transcript Processing Model"
                     placeholder="Select model for transcript processing"
                   />
-
-                  <PresetModelSelector
-                    presetId="new-preset"
-                    baseUrl={newPreset.baseUrl || ""}
-                    apiKey={newPreset.apiKey || ""}
-                    value={newPreset.summarizationModel || ""}
-                    onValueChange={(value) =>
-                      setNewPreset({ ...newPreset, summarizationModel: value })
-                    }
-                    label="Summarization Model"
-                    placeholder="Select model for dual-model summarization"
-                  />
                 </div>
               </div>
             )}
@@ -539,18 +521,6 @@ export function ModelPresetManager({
                     }
                     label="Transcript Processing Model"
                     placeholder="Select model for transcript processing"
-                  />
-
-                  <PresetModelSelector
-                    presetId={editingPreset.id}
-                    baseUrl={editingPreset.baseUrl}
-                    apiKey={editingPreset.apiKey}
-                    value={editingPreset.summarizationModel || ""}
-                    onValueChange={(value) =>
-                      setEditingPreset({ ...editingPreset, summarizationModel: value })
-                    }
-                    label="Summarization Model"
-                    placeholder="Select model for dual-model summarization"
                   />
                 </div>
               </div>

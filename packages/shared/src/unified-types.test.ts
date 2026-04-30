@@ -52,11 +52,9 @@ describe('ModelPreset', () => {
       updatedAt: Date.now(),
       mcpToolsModel: 'gpt-4o',
       transcriptProcessingModel: 'gpt-4o-mini',
-      summarizationModel: 'gpt-3.5-turbo',
     }
     assertType<ModelPreset>(preset)
     expect(preset.mcpToolsModel).toBe('gpt-4o')
-    expect(preset.summarizationModel).toBe('gpt-3.5-turbo')
   })
 
   it('accepts mobile shape with isBuiltIn as boolean', () => {

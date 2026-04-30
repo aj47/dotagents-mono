@@ -2300,25 +2300,7 @@ export default function SettingsScreen({ navigation }: any) {
               </CollapsibleSection>
             )}
 
-            {/* 4f. Summarization */}
-            {remoteSettings && (
-              <CollapsibleSection id="summarization" title="Summarization">
-                <View style={styles.row}>
-                  <Text style={styles.label}>Summarization</Text>
-                  <Switch
-                    value={remoteSettings.dualModelEnabled ?? false}
-                    onValueChange={(v) => handleRemoteSettingToggle('dualModelEnabled', v)}
-                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.dualModelEnabled ? theme.colors.primaryForeground : theme.colors.background}
-                  />
-                </View>
-                <Text style={styles.helperText}>
-                  Generate summaries of agent steps for the UI
-                </Text>
-              </CollapsibleSection>
-            )}
-
-            {/* 4g. Tool Execution */}
+            {/* 4f. Tool Execution */}
             {remoteSettings && (
               <CollapsibleSection id="toolExecution" title="Tool Execution">
                 <View style={styles.row}>
