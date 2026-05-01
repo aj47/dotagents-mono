@@ -96,11 +96,8 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 
   if (hasRespondToUser) {
     sections.push(`RESPONDING TO USER:
-- Use respond_to_user whenever you want to communicate directly with the user
-- On voice interfaces this will be spoken aloud; on messaging channels (mobile, WhatsApp) it will be sent as a message
-- Write respond_to_user content naturally and conversationally
-- Markdown is allowed when useful (for example links or image captions)
-- To send images, use respond_to_user.images with either URL/data URL entries or local file paths`)
+- Use respond_to_user for direct user-facing messages
+- Write natural, concise text; Markdown/images are allowed when useful`)
   } else {
     sections.push(`RESPONDING TO USER:
 - No direct user-response tool is available in this run. Put the final user-facing answer in normal assistant text.`)
@@ -108,20 +105,16 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 
   if (hasLoadSkillInstructions) {
     sections.push(`SKILLS:
-- Skills are optional instruction modules listed below.
-- Before using a skill, call load_skill_instructions(skillId) at most once per skill per agent session. If it already returned successfully, reuse the prior instructions and proceed; do not reload unless the previous call failed or the user explicitly asks to reload it.
-- If a skill file appears to exist on disk but load_skill_instructions cannot load it, treat that as a runtime skills-registry or refresh problem first; recommend refresh/restart/import before recreating or rewriting the skill.
-- Do not guess a skill's contents from its name/description.`)
+- Skills are optional modules listed below; before using one, call load_skill_instructions(skillId) at most once per session, reuse successful loads, and retry only after failure or explicit reload request.
+- If a skill exists on disk but cannot load, diagnose runtime skills-registry/refresh first; recommend refresh/restart/import before recreating or rewriting it.
+- Do not infer a skill's contents from name/description.`)
   }
 
   if (hasRespondToUser && hasMarkWorkComplete) {
     sections.push(`COMPLETION SIGNAL:
-- When all requested work is fully complete:
-  1. ALWAYS call respond_to_user with the final user-facing response FIRST
-  2. Then call mark_work_complete with a concise internal completion summary
-- IMPORTANT: Never put the final user-facing answer in plain assistant text — always use respond_to_user
-- Do not send a second recap or post-completion summary unless the user explicitly asked for one
-- Do not call mark_work_complete while work is still in progress or partially done`)
+- When all requested work is fully complete, call respond_to_user with the final answer first, then mark_work_complete with a concise internal summary
+- Never put the final user-facing answer in plain assistant text when respond_to_user is available
+- Do not call mark_work_complete for partial/in-progress work or send a second recap unless asked`)
   } else if (hasRespondToUser) {
     sections.push(`COMPLETION SIGNAL:
 - When all requested work is fully complete, call respond_to_user with the final user-facing response.
@@ -138,19 +131,9 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 
   if (hasExecuteCommand) {
     sections.push(`AGENT FILE & COMMAND EXECUTION:
-- Use execute_command as your primary tool for shell commands, file I/O, and automation
-- For JS/TS repos, infer the package manager from lockfiles before running commands: pnpm-lock.yaml => pnpm, package-lock.json => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun
-- Do not default to npm when a repo lockfile indicates pnpm, yarn, or bun
-- For planning/context-gathering or “what's next” requests, prefer read-only inspection commands like git status, ls, find, rg, sed, head, tail, and cat
-- Do not run package-manager install/test/build/lint/typecheck commands unless the user explicitly asked for verification/package work or you need targeted validation after making code changes
-- Read files: check size first with "wc -l file", then read in chunks with "sed -n '1,100p' file" or "head -n 100 file"
-- For small files (<200 lines): "cat path/to/file" is fine
-- For large files: read specific ranges with "sed -n 'START,ENDp' file" — never cat the whole thing
-- Write files: execute_command with "cat > path/to/file << 'EOF'\\n...content...\\nEOF" or "echo 'content' > file"
-- List directories: execute_command with "ls -la path/"
-- Create directories: execute_command with "mkdir -p path/to/dir"
-- Run scripts: execute_command with "./script.sh" or "python script.py" etc.
-- Output over 10K chars is automatically truncated (first 5K + last 5K preserved)`)
+- Use execute_command for shell/file automation. Infer package manager from lockfiles (pnpm-lock.yaml, package-lock.json, yarn.lock, bun.lock*) and do not default to npm against another lockfile.
+- For planning/status/context, prefer read-only probes (git status, ls, find, rg, sed/head/tail/cat). Do not run install/test/build/lint/typecheck unless asked or validating your code changes.
+- Before reading large files, check size (wc -l) and read targeted ranges with sed/head/tail; avoid cat on large files. Output over 10K chars is truncated.`)
   }
 
   if (hasReadMoreContext) {
@@ -160,30 +143,10 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - Avoid pulling large heads/tails unless a narrower search or window is insufficient`)
   }
 
-  sections.push(`KNOWLEDGE NOTES (durable context):
-- Durable knowledge lives in ~/.agents/knowledge/ and ./.agents/knowledge/
-- Prefer direct file editing there over special-purpose note tools
-- Store notes at .agents/knowledge/<slug>/<slug>.md with human-readable slugs
-- Related assets may live in the same note folder
-- Use canonical note frontmatter: kind: note, id, title, context, numeric createdAt/updatedAt millisecond timestamps, and comma-separated tags
-- Default most notes to context: search-only; reserve context: auto for a tiny curated subset
-
-PAST CONVERSATIONS:
-- Prior DotAgents conversations are stored as JSON in the app-data conversations folder: <appData>/<appId>/conversations/
-- Common locations are ~/Library/Application Support/<appId>/conversations/ on macOS, %APPDATA%/<appId>/conversations/ on Windows, and ~/.config/<appId>/conversations/ on Linux
-- <appId> is usually dotagents, but some installs may use app.dotagents; infer the real local folder instead of assuming one OS-specific path
-- Use index.json to discover relevant conversations, then open matching conv_*.json files for full message history when prior chat context would help
-- If AJ says "pick up where we left off" or "find that conversation about X", proactively search the conversation store with python3 or shell tools, identify the best match, read the last relevant messages, and summarize recovered state before asking follow-up questions
-
-DOTAGENTS CONFIG:
-- Treat ~/.agents/ and ./.agents/ as the canonical editable DotAgents configuration surface
-- Global ~/.agents/ is the default editable layer
-- Workspace ./.agents/ only overrides global ~/.agents/ when DOTAGENTS_WORKSPACE_DIR is explicitly set
-- Prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes instead of narrow app-specific config tools`)
-
-  if (hasLoadSkillInstructions) {
-    sections.push('For exact file locations, merge rules, and safe edit recipes, call load_skill_instructions with skillId: "dotagents-config-admin" before changing unfamiliar DotAgents config.')
-  }
+  sections.push(`LOCAL MEMORY & CONFIG:
+- Durable notes live in ~/.agents/knowledge/ and ./.agents/knowledge/; edit note/config files directly and keep context:auto rare
+- Prior conversations live under <appData>/<appId>/conversations/; infer the appId/path, search index.json then conv_*.json, and recover state before asking when the user wants to resume prior work
+- DotAgents config is layered ~/.agents/ plus workspace ./.agents/ when DOTAGENTS_WORKSPACE_DIR is set; for unfamiliar config edits, load dotagents-config-admin if available`)
 
   return `\n\n${sections.join('\n\n')}`
 }
@@ -251,9 +214,7 @@ function formatLightweightMcpToolInfo(
 function formatRuntimeToolInfo(
   tools: Array<{ name: string; description?: string; inputSchema?: any }>,
 ): string {
-  return tools
-    .map((tool) => `- ${tool.name}${tool.description ? ` — ${tool.description}` : ""}`)
-    .join("\n")
+  return tools.map((tool) => tool.name).join(", ")
 }
 
 /**
@@ -363,7 +324,8 @@ export function constructSystemPrompt(
   // Inject local date/time so the LLM can reason about relative dates and timestamps.
   const now = new Date()
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-  prompt += `\n\nCurrent local time: ${now.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: tz })} (${tz})`
+  const compactNow = now.toLocaleString("sv-SE", { timeZone: tz, hour12: false }).slice(0, 16)
+  prompt += `\n\nNow: ${compactNow} ${tz}`
 
   if (isAgentMode) {
     prompt += getAgentModeAdditions(availableTools)
@@ -436,7 +398,7 @@ export function constructSystemPrompt(
     }
 
     if (runtimeTools.length > 0) {
-      prompt += `\n\nAVAILABLE DOTAGENTS RUNTIME TOOLS (${runtimeTools.length}):\n${formatRuntimeToolInfo(runtimeTools)}`
+      prompt += `\n\nDOTAGENTS TOOLS: ${formatRuntimeToolInfo(runtimeTools)}`
     }
 
     const toolDiscoveryPromptAddition = getToolDiscoveryPromptAddition(availableTools)
