@@ -86,6 +86,12 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 
   const sections = [
     'AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.',
+    `STATUS & CONTINUATION TURNS:
+- When the current user message is asking for status, current state, what happened, why something failed, or the next safe step, answer from existing conversation evidence whenever it is sufficient
+- Do not resume the broader original task or start exploratory work just because tools are available
+- If more evidence is necessary, make at most one narrow read-only probe before responding
+- If an approval boundary is active, mention it explicitly in the status answer and do not offer mutating next actions except as pending approval
+- In the response, state what is known, what is unknown, the latest blocker, and the next safe action while preserving any active approval boundary`,
   ]
 
   if (hasRespondToUser) {
@@ -104,6 +110,7 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
     sections.push(`SKILLS:
 - Skills are optional instruction modules listed below.
 - Before using a skill, call load_skill_instructions(skillId) at most once per skill per agent session. If it already returned successfully, reuse the prior instructions and proceed; do not reload unless the previous call failed or the user explicitly asks to reload it.
+- If a skill file appears to exist on disk but load_skill_instructions cannot load it, treat that as a runtime skills-registry or refresh problem first; recommend refresh/restart/import before recreating or rewriting the skill.
 - Do not guess a skill's contents from its name/description.`)
   }
 
