@@ -1,0 +1,1 @@
+No — I don’t have evidence that it downloaded. The target folder was empty and there were no active `yt-dlp` processes; the blocker was YouTube’s sign-in/bot check.

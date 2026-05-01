@@ -1,0 +1,1 @@
+{"type":"config","name":"Reduce DotAgents system prompt tokens while preserving constraint-retry effectiveness","metricName":"prompt_token_penalty_score","metricUnit":"","bestDirection":"lower"}

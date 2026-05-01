@@ -1,0 +1,4 @@
+- Deduplicate overlapping shell/file-reading guidance between the base prompt and agent-mode execute_command section while preserving package-manager and large-file safety rules.
+- Compress verbose status/continuation and skills-registry guidance into fewer bullets without changing required semantics around approval boundaries, state reconstruction, and refresh-before-recreate.
+- Make rarely needed knowledge-notes / past-conversation / DotAgents-config guidance conditional or shorter in agent-mode prompts, with a compact pointer to the dotagents-config-admin skill where available.
+- Explore a shorter RESPONDING TO USER + COMPLETION SIGNAL section that preserves respond_to_user-first behavior and no-premature-mark-complete constraints.
