@@ -45,4 +45,5 @@ Do not edit after this baseline setup:
 - Token reductions that materially degrade effectiveness should be discarded even if the prompt is shorter.
 
 ## What's Been Tried
-- New session initialized from merged `main` after PR #419. Baseline should measure the promoted constraint-preserving prompt before compression attempts.
+- Baseline (`6afc8599`): `prompt_token_penalty_score=11772`, `system_prompt_tokens_max=2472`, `system_prompt_chars_max=11900`, `constraint_preserving_retry_e2e_score=0.464`, `effectiveness_penalty=9300`. The merged constraint-preserving prompt is token-heavy and the live e2e score remains noisy; compression candidates must reduce tokens without materially worsening e2e effectiveness and should ideally recover above the 0.65 floor.
+- Discarded broad base-prompt compression of knowledge notes, past conversations, and DotAgents config into one local-memory/config section: tokens dropped to `2200` (-11%) but e2e score fell to `0.402`, worsening primary metric to `14600`. Preserve concrete retrieval/config details for now; try lower-risk duplicated agent-mode sections next.

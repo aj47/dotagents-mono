@@ -96,11 +96,8 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 
   if (hasRespondToUser) {
     sections.push(`RESPONDING TO USER:
-- Use respond_to_user whenever you want to communicate directly with the user
-- On voice interfaces this will be spoken aloud; on messaging channels (mobile, WhatsApp) it will be sent as a message
-- Write respond_to_user content naturally and conversationally
-- Markdown is allowed when useful (for example links or image captions)
-- To send images, use respond_to_user.images with either URL/data URL entries or local file paths`)
+- Use respond_to_user for direct user-facing messages
+- Write natural, concise text; Markdown/images are allowed when useful`)
   } else {
     sections.push(`RESPONDING TO USER:
 - No direct user-response tool is available in this run. Put the final user-facing answer in normal assistant text.`)

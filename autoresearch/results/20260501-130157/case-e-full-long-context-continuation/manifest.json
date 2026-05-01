@@ -1,0 +1,30 @@
+{
+  "created_at": "2026-05-01T13:03:47",
+  "mode": "live",
+  "provider": "chatgpt-web",
+  "model": "gpt-5.4-mini",
+  "case_id": "case-e-full-long-context-continuation",
+  "case": {
+    "id": "case-e-full-long-context-continuation",
+    "name": "Full long-context continuation",
+    "source_selection": "messages 0-614, tool outputs truncated",
+    "prompt": "Summarize the actual current state and the next safest action.",
+    "tests": [
+      "full_context_summarization",
+      "task_boundary_tracking",
+      "avoid_hallucinated_completion"
+    ],
+    "context_file": "autoresearch/fixtures/topic-extraction-skill/cases/case-e-full-long-context-continuation.context.md",
+    "message_count": 615
+  },
+  "repo_root": "/Users/ajjoobandi/Development/dotagents-mono",
+  "command": [
+    "pnpm",
+    "--filter",
+    "@dotagents/desktop",
+    "exec",
+    "vitest",
+    "run",
+    "src/main/autoresearch-e2e.live.test.ts"
+  ]
+}
