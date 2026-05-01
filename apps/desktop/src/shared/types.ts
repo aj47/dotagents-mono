@@ -1398,16 +1398,6 @@ export type Config = {
   langfuseSecretKey?: string
   langfuseBaseUrl?: string // Default: https://cloud.langfuse.com (or custom self-hosted URL)
 
-  // Dual-Model Agent Mode Configuration
-  dualModelEnabled?: boolean
-  dualModelStrongPresetId?: string  // Preset ID for strong model
-  dualModelStrongModelName?: string  // Model name within the preset
-  dualModelWeakPresetId?: string  // Preset ID for weak model
-  dualModelWeakModelName?: string  // Model name within the preset
-  dualModelSummarizationFrequency?: "every_response" | "major_steps_only"
-  dualModelSummaryDetailLevel?: "compact" | "detailed"
-  dualModelSectionCollapsed?: boolean  // UI state for settings section
-
   // Repeat Tasks Configuration
   loops?: LoopConfig[]  // Scheduled repeat tasks that run at intervals
 }

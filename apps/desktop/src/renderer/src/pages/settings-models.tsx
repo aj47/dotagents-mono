@@ -38,7 +38,7 @@ import {
   getBuiltInModelPresets,
 } from "@dotagents/shared"
 import { getDefaultSttModel } from "@dotagents/shared/stt-models"
-import { Mic, FileText, Volume2, Bot, Zap, BookOpen, Settings2 } from "lucide-react"
+import { Mic, FileText, Volume2, Bot } from "lucide-react"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 
@@ -156,8 +156,7 @@ export function Component() {
   const transcriptProcessingEnabled = config.transcriptPostProcessingEnabled ?? false
   const usesOpenAiCompatiblePreset =
     agentProviderId === "openai" ||
-    (transcriptProcessingEnabled && transcriptProcessingProviderId === "openai") ||
-    (config.dualModelEnabled ?? false)
+    (transcriptProcessingEnabled && transcriptProcessingProviderId === "openai")
   const transcriptProcessingModel = transcriptProcessingProviderId === "openai"
     ? config.transcriptPostProcessingOpenaiModel
     : transcriptProcessingProviderId === "groq"
@@ -165,11 +164,6 @@ export function Component() {
       : transcriptProcessingProviderId === "gemini"
         ? config.transcriptPostProcessingGeminiModel
         : config.transcriptPostProcessingChatgptWebModel
-  const dualModelEnabled = config.dualModelEnabled ?? false
-  const strongPresetId = config.dualModelStrongPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
-  const weakPresetId = config.dualModelWeakPresetId || config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
-  const strongPreset = getPresetById(strongPresetId)
-  const weakPreset = getPresetById(weakPresetId)
 
   return (
     <div className="mx-auto max-w-4xl px-6 pb-10 pt-8">
@@ -575,101 +569,6 @@ export function Component() {
           </div>
         </ControlGroup>
 
-        <ControlGroup title="Advanced Agent Models" collapsible>
-          <Control
-            label={<ControlLabel label="Enable summarization model" tooltip="Use a separate model for UI and knowledge-note summaries." />}
-            className="px-3"
-          >
-            <Switch checked={dualModelEnabled} onCheckedChange={(checked) => saveConfig({ dualModelEnabled: checked })} />
-          </Control>
-
-          {dualModelEnabled && (
-            <>
-              <div className="px-3 py-3 space-y-3 border-t">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Zap className="h-4 w-4 text-yellow-500" />
-                  Strong Model (Planning)
-                </div>
-                <p className="text-xs text-muted-foreground">Primary model for reasoning and tool calls. Uses the current agent model if not set.</p>
-                <Control label={<ControlLabel label="Preset" tooltip="Select which preset to use." />}>
-                  <Select value={strongPresetId} onValueChange={(value) => saveConfig({ dualModelStrongPresetId: value })}>
-                    <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {allPresets.map((preset) => <SelectItem key={preset.id} value={preset.id}>{preset.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </Control>
-                {strongPreset && (
-                  <Control label={<ControlLabel label="Model" tooltip="Select the strong planning model." />}>
-                    <PresetModelSelector
-                      presetId={strongPresetId}
-                      baseUrl={strongPreset.baseUrl}
-                      apiKey={strongPreset.apiKey}
-                      value={config.dualModelStrongModelName || ""}
-                      onValueChange={(value) => saveConfig({ dualModelStrongModelName: value })}
-                      label="Strong Model"
-                      placeholder="Select model..."
-                    />
-                  </Control>
-                )}
-              </div>
-
-              <div className="px-3 py-3 space-y-3 border-t">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <BookOpen className="h-4 w-4 text-blue-500" />
-                  Summarization Model
-                </div>
-                <p className="text-xs text-muted-foreground">Faster, cheaper model for summarizing agent steps.</p>
-                <Control label={<ControlLabel label="Preset" tooltip="Select which preset to use." />}>
-                  <Select value={weakPresetId} onValueChange={(value) => saveConfig({ dualModelWeakPresetId: value })}>
-                    <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {allPresets.map((preset) => <SelectItem key={preset.id} value={preset.id}>{preset.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </Control>
-                {weakPreset && (
-                  <Control label={<ControlLabel label="Model" tooltip="Select the summarization model." />}>
-                    <PresetModelSelector
-                      presetId={weakPresetId}
-                      baseUrl={weakPreset.baseUrl}
-                      apiKey={weakPreset.apiKey}
-                      value={config.dualModelWeakModelName || ""}
-                      onValueChange={(value) => saveConfig({ dualModelWeakModelName: value })}
-                      label="Summarization Model"
-                      placeholder="Select model..."
-                    />
-                  </Control>
-                )}
-              </div>
-
-              <div className="px-3 py-3 space-y-3 border-t">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Settings2 className="h-4 w-4" />
-                  Summarization Settings
-                </div>
-                <Control label={<ControlLabel label="Frequency" tooltip="How often to generate summaries." />}>
-                  <Select value={config.dualModelSummarizationFrequency || "every_response"} onValueChange={(value) => saveConfig({ dualModelSummarizationFrequency: value as "every_response" | "major_steps_only" })}>
-                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="every_response">Every Response</SelectItem>
-                      <SelectItem value="major_steps_only">Major Steps Only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Control>
-                <Control label={<ControlLabel label="Detail Level" tooltip="How detailed the summaries should be." />}>
-                  <Select value={config.dualModelSummaryDetailLevel || "compact"} onValueChange={(value) => saveConfig({ dualModelSummaryDetailLevel: value as "compact" | "detailed" })}>
-                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="compact">Compact</SelectItem>
-                      <SelectItem value="detailed">Detailed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Control>
-              </div>
-            </>
-          )}
-        </ControlGroup>
       </div>
     </div>
   )
