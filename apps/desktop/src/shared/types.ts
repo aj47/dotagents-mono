@@ -1308,6 +1308,9 @@ export type Config = {
   // Final Summary Configuration
   mcpFinalSummaryEnabled?: boolean
 
+  // Dual-Model Configuration
+  dualModelEnabled?: boolean
+
   // Parallel Tool Execution Configuration
   mcpParallelToolExecution?: boolean
 

@@ -96,15 +96,14 @@ describe("constructSystemPrompt", () => {
 
     const prompt = constructSystemPrompt([], undefined, true)
 
-    expect(prompt).toContain("KNOWLEDGE NOTES (durable context)")
+    expect(prompt).toContain("KNOWLEDGE NOTES:")
     expect(prompt).toContain("DOTAGENTS CONFIG")
-    expect(prompt).toContain("Prefer direct file editing there over special-purpose note tools")
+    expect(prompt).toContain("Prefer direct file editing there to create or update notes")
     expect(prompt).toContain(".agents/knowledge/<slug>/<slug>.md")
     expect(prompt).toContain("kind: note")
     expect(prompt).toContain("createdAt/updatedAt")
     expect(prompt).toContain("PAST CONVERSATIONS")
-    expect(prompt).toContain("If AJ says \"pick up where we left off\"")
-    expect(prompt).toContain("search the conversation store with python3 or shell tools")
+    expect(prompt).toContain("Use index.json to discover relevant conversations")
     expect(prompt).toContain("load the dotagents-config-admin skill before changing unfamiliar DotAgents config")
     expect(prompt).not.toContain('load_skill_instructions with skillId: "dotagents-config-admin"')
     expect(prompt).not.toContain("Use save_memory")
@@ -140,11 +139,9 @@ describe("constructSystemPrompt", () => {
 
     expect(prompt).toContain("AVAILABLE MCP TOOLS (1 tools total)")
     expect(prompt).toContain("- github (1 tools): search_issues")
-    expect(prompt).toContain("AVAILABLE DOTAGENTS RUNTIME TOOLS (2)")
-    expect(prompt).toContain("- respond_to_user — Send a user-facing response")
-    expect(prompt).toContain("- load_skill_instructions — Load a skill")
+    expect(prompt).toContain("DOTAGENTS TOOLS: respond_to_user, load_skill_instructions")
     expect(prompt).not.toContain("AVAILABLE MCP SERVERS")
-    expect(prompt).not.toContain("unknown")
+    expect(prompt).not.toContain("- unknown")
   })
 
   it("only advertises discovery helpers that are actually available", async () => {
@@ -174,17 +171,18 @@ describe("constructSystemPrompt", () => {
       { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
     ] as any, undefined, true)
 
-    expect(withoutExecute).not.toContain("Use execute_command as your primary tool")
+    expect(withoutExecute).not.toContain("AGENT FILE & COMMAND EXECUTION")
 
     const withExecute = constructSystemPrompt([
       { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
       { name: "execute_command", description: "Execute any shell command", inputSchema: { type: "object", properties: {} } },
     ] as any, undefined, true)
 
-    expect(withExecute).toContain("Use execute_command as your primary tool")
-    expect(withExecute).toContain("pnpm-lock.yaml => pnpm")
-    expect(withExecute).toContain("Do not default to npm")
-    expect(withExecute).toContain("Do not run package-manager install/test/build/lint/typecheck commands")
+    expect(withExecute).toContain("AGENT FILE & COMMAND EXECUTION")
+    expect(withExecute).toContain("Use execute_command for shell/file automation")
+    expect(withExecute).toContain("pnpm-lock.yaml")
+    expect(withExecute).toContain("do not default to npm")
+    expect(withExecute).toContain("Do not run install/test/build/lint/typecheck unless asked")
   })
 
   it("does not advertise delegation tools when delegation is unavailable", async () => {
@@ -205,9 +203,9 @@ describe("constructSystemPrompt", () => {
       { name: "load_skill_instructions", description: "Load a skill", inputSchema: { type: "object", properties: {} } },
     ] as any, undefined, true)
 
-    expect(prompt).toContain('load_skill_instructions with skillId: "dotagents-config-admin"')
-    expect(prompt).toContain("at most once per skill per agent session")
-    expect(prompt).toContain("If it already returned successfully, reuse the prior instructions")
+    expect(prompt).toContain("call load_skill_instructions(skillId) at most once per session")
+    expect(prompt).toContain("reuse successful loads")
+    expect(prompt).toContain("Do not infer a skill's contents from name/description")
   })
 
   it("separates MCP tools from DotAgents runtime tools in the minimal prompt", async () => {
