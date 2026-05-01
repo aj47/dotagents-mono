@@ -370,7 +370,7 @@ async function executeToolWithRetries(
   executeToolCall: (toolCall: MCPToolCall, onProgress?: (message: string) => void) => Promise<MCPToolResult>,
   currentSessionId: string,
   onToolProgress: (message: string) => void,
-  maxRetries: number = 2,
+  maxRetries: number = 1,
 ): Promise<ToolExecutionResult> {
   // Check for stop signal before starting
   if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
@@ -1416,15 +1416,15 @@ export async function processTranscriptWithAgentMode(
   // between), end as incomplete. Scales with iteration budget; the high upper
   // clamp keeps long deep-research runs from being killed by a verifier that
   // is correctly saying "still more work to do".
-  const VERIFICATION_FAIL_LIMIT = clamp(Math.ceil(effectiveIterationBudget * 0.8), 5, 1000)
+  const VERIFICATION_FAIL_LIMIT = clamp(Math.ceil(effectiveIterationBudget * 0.6), 5, 1000)
 
   // Max consecutive nudges before forcing an incomplete fallback. Resets on
   // any successful tool batch (see `totalNudgeCount = 0` reset paths below),
   // so this only caps "how stuck can the agent be in one segment".
-  const MAX_NUDGES = clamp(Math.ceil(effectiveIterationBudget * 0.6), 3, 1000)
+  const MAX_NUDGES = clamp(Math.ceil(effectiveIterationBudget * 0.4), 3, 1000)
 
   // Empty response retry limit - after this many retries, break to prevent infinite loops
-  const MAX_EMPTY_RESPONSE_RETRIES = 3
+  const MAX_EMPTY_RESPONSE_RETRIES = 2
 
   /**
    * Result of running verification and handling the outcome
@@ -1635,7 +1635,7 @@ export async function processTranscriptWithAgentMode(
   let totalNudgeCount = 0
   let garbledToolCallCount = 0 // Track consecutive garbled tool-call-as-text responses
   let completionSignalHintCount = 0 // Avoid repeatedly injecting explicit-completion hints
-  const MAX_COMPLETION_SIGNAL_HINTS = 2
+  const MAX_COMPLETION_SIGNAL_HINTS = 1
   // Count *consecutive* verification failures. Resets to 0 on any verifier
   // "yes" (handled inside runVerificationAndHandleResult by returning
   // newFailCount: 0) and on any successful tool batch (see the reset right
@@ -1649,7 +1649,7 @@ export async function processTranscriptWithAgentMode(
   // is critical for experiment-style flows where the agent legitimately needs
   // to retry the same tool with progressively refined inputs.
   const toolFailureCount = new Map<string, number>()
-  const MAX_TOOL_FAILURES = 3 // Max consecutive failures of a tool before excluding it
+  const MAX_TOOL_FAILURES = 2 // Max consecutive failures of a tool before excluding it
   let lastExcludedToolCount = 0 // Track previous excluded count to avoid unnecessary system prompt rebuilds
   let cachedSystemPrompt: string | undefined // Cached rebuilt prompt when tools are excluded
 
@@ -2377,7 +2377,7 @@ export async function processTranscriptWithAgentMode(
         } else {
           garbledToolCallCount = 0
         }
-        const MAX_GARBLED_TOOL_CALL_RETRIES = 3
+        const MAX_GARBLED_TOOL_CALL_RETRIES = 2
         if (totalNudgeCount >= MAX_NUDGES || garbledToolCallCount >= MAX_GARBLED_TOOL_CALL_RETRIES) {
           finalContent = buildIncompleteTaskFallback(contentText)
           addMessage("assistant", finalContent)
@@ -2541,7 +2541,7 @@ export async function processTranscriptWithAgentMode(
           executeToolCall,
           currentSessionId,
           onToolProgress,
-          2, // maxRetries
+          1, // maxRetries
         )
 
         // Update the progress step with the result
@@ -2659,7 +2659,7 @@ export async function processTranscriptWithAgentMode(
           executeToolCall,
           currentSessionId,
           onToolProgress,
-          2, // maxRetries
+          1, // maxRetries
         )
 
         if (execResult.cancelledByKill) {

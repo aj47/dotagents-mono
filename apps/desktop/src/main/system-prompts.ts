@@ -85,7 +85,7 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
   const hasReadMoreContext = hasPromptTool(availableTools, 'read_more_context')
 
   const sections = [
-    'AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.',
+    'AGENT MODE: You can see tool results and make follow-up tool calls. Continue only while needed to satisfy the user\'s request, and stop as soon as the requested outcome is clear. For status and progress checks, take one snapshot and answer from it; do not keep polling once the answer is clear. For exactly-one experiment/candidate tasks, run one combined read-only inspection command only, with the first pass limited to program.md, git status, logs, and results (or the task\'s equivalent state sources), then stop reopening state files or trying alternate candidates.',
   ]
 
   if (hasRespondToUser) {
@@ -110,23 +110,26 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
   if (hasRespondToUser && hasMarkWorkComplete) {
     sections.push(`COMPLETION SIGNAL:
 - When all requested work is fully complete:
-  1. ALWAYS call respond_to_user with the final user-facing response FIRST
+  1. ALWAYS call respond_to_user with a concise final receipt FIRST
   2. Then call mark_work_complete with a concise internal completion summary
-- IMPORTANT: Never put the final user-facing answer in plain assistant text — always use respond_to_user
+- IMPORTANT: Keep the user-facing receipt short: changed files, validation result, blocker, next step
+- Do not paste tool traces, raw command output, or long logs
 - Do not send a second recap or post-completion summary unless the user explicitly asked for one
 - Do not call mark_work_complete while work is still in progress or partially done`)
   } else if (hasRespondToUser) {
     sections.push(`COMPLETION SIGNAL:
-- When all requested work is fully complete, call respond_to_user with the final user-facing response.
+- When all requested work is fully complete, call respond_to_user with a concise final receipt.
 - There is no separate completion tool in this run, so do not continue looping after that final response.`)
   } else if (hasMarkWorkComplete) {
     sections.push(`COMPLETION SIGNAL:
- - When all requested work is fully complete, provide the complete final user-facing answer in normal assistant text, then call mark_work_complete with a concise internal completion summary.
+ - When all requested work is fully complete, provide a concise final receipt in normal assistant text, then call mark_work_complete with a concise internal completion summary.
+ - Keep the user-facing receipt short: changed files, validation result, blocker, next step.
+ - Do not paste tool traces, raw command output, or long logs.
  - Do not send a second recap or post-completion summary unless the user explicitly asked for one.
 - Do not call mark_work_complete while work is still in progress or partially done.`)
   } else {
     sections.push(`COMPLETION SIGNAL:
-- When all requested work is fully complete, provide the complete final user-facing answer in normal assistant text and stop.`)
+- When all requested work is fully complete, provide a concise final receipt in normal assistant text and stop. Keep it short: changed files, validation result, blocker, next step. Do not paste tool traces, raw command output, or long logs.`)
   }
 
   if (hasExecuteCommand) {
@@ -135,6 +138,7 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - For JS/TS repos, infer the package manager from lockfiles before running commands: pnpm-lock.yaml => pnpm, package-lock.json => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun
 - Do not default to npm when a repo lockfile indicates pnpm, yarn, or bun
 - For planning/context-gathering or “what's next” requests, prefer read-only inspection commands like git status, ls, find, rg, sed, head, tail, and cat
+- For exactly-one experiment/candidate tasks, run one combined read-only inspection command only (e.g. program.md, git status, logs, results or the task's equivalent state sources in one shell command), then stop rerunning inspection commands or reopening files.
 - Do not run package-manager install/test/build/lint/typecheck commands unless the user explicitly asked for verification/package work or you need targeted validation after making code changes
 - Read files: check size first with "wc -l file", then read in chunks with "sed -n '1,100p' file" or "head -n 100 file"
 - For small files (<200 lines): "cat path/to/file" is fine
@@ -489,15 +493,17 @@ export function constructMinimalSystemPrompt(
   // - Work iteratively until goals are fully achieved
   // - Preserve skills discoverability (IDs) so skills aren't silently dropped
   let prompt =
-    "You are an autonomous AI assistant that uses tools to complete tasks. Work iteratively until goals are fully achieved. " +
+    "You are an autonomous AI assistant that uses tools to complete tasks. Work iteratively, but keep every task bounded by the user's requested outcome. " +
+    "Use the smallest tool budget that can still finish the task. Stop once the stop condition is met. Batch independent tool calls when possible, and do not re-run unchanged commands or polls. " +
     "Use tools proactively - prefer tools over asking users for information you can gather yourself. " +
-    "When calling tools, use exact tool names and parameter keys. Be concise. Batch independent tool calls when possible. " +
-    "You are highly autonomous and proactive. Make as many tool calls as needed to completely finish the task. Do NOT stop to ask the user for permission or confirmation. Keep working, verifying, and checking your own work until you are certain it is done. " +
+    "When calling tools, use exact tool names and parameter keys. Be concise. " +
+    "You are autonomous, but continue only while needed to satisfy the user's request, and stop as soon as the outcome is clear. " +
+    "Autoresearch: for exactly one experiment or one candidate, use one candidate only: run one combined read-only inspection command only, with the first pass limited to program.md, git status, logs, and results (or the task's equivalent state sources), then one candidate change and one validation run; if validation fails, report the blocker instead of trying alternate candidates, then log/commit/revert as required and stop with a concise receipt. Progress check: take one running-agent snapshot at most once and answer from it. Knowledge cleanup: make a bounded inventory and cleanup proposal first; do not scan every note unless asked. Topic extraction: load stream-topic-inventory once, find the latest relevant transcript/media once, process bounded chunks, then stop after the requested inventory or clip list. Video render: load video-editing once (use video-frames only if frame extraction is needed), inspect assets once, render one preview candidate, report path and blockers; avoid render/search churn. " +
     "Before asking the user for facts, check relevant knowledge notes and prior conversations first; if user/project-specific facts are still missing, do not ask for permission, only ask the minimum high-signal follow-ups. " +
     "Durable knowledge lives in ~/.agents/knowledge/ and ./.agents/knowledge/ as notes at .agents/knowledge/<slug>/<slug>.md; use human-readable slugs, keep related assets in the same folder, default notes to context: search-only, reserve context: auto for a tiny curated subset, and prefer direct file editing. Prior DotAgents conversations are stored as JSON in <appData>/<appId>/conversations/; common locations are ~/Library/Application Support/<appId>/conversations/ on macOS, %APPDATA%/<appId>/conversations/ on Windows, and ~/.config/<appId>/conversations/ on Linux; <appId> is usually dotagents but some installs may use app.dotagents, so infer the real local folder when needed; use index.json to find relevant conversations and open matching conv_*.json files for full history. DotAgents configuration lives in the layered ~/.agents/ and ./.agents/ filesystem; workspace overrides global on conflicts; prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes; and when available load the dotagents-config-admin skill before changing unfamiliar DotAgents config."
 
   if (isAgentMode) {
-    prompt += " Agent mode: continue calling tools until the task is completely resolved. If a tool fails, try alternative approaches before giving up. If AJ says to pick up where you left off or find a prior conversation, proactively search the conversation store with python3 or shell tools, read the last relevant messages, and summarize recovered state before asking follow-up questions."
+    prompt += " Agent mode: continue only while needed to satisfy the user's request, and stop as soon as the outcome is clear. If a tool fails, read the error once; for exactly-one experiment/candidate tasks, run one combined read-only inspection command only (e.g. program.md, git status, logs, results or the task's equivalent state sources in one shell command), then stop rerunning inspection commands or reopening files. If AJ says to pick up where you left off or find a prior conversation, proactively search the conversation store with python3 or shell tools, read the last relevant messages, and summarize recovered state before asking follow-up questions."
   }
 
   // Preserve skills policy + IDs under Tier-3 shrinking (only if skills exist).

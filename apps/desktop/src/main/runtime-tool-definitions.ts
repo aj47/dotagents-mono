@@ -30,7 +30,7 @@ export interface RuntimeToolDefinition {
 export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   {
     name: "list_running_agents",
-    description: "List all currently running agent sessions with their status, iteration count, and activity. Useful for monitoring active agents before terminating them.",
+    description: "Return a single snapshot of currently running agent sessions with their status, iteration count, and activity. Use it at most once for a progress/status check; do not poll repeatedly. Useful for monitoring active agents before terminating them.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -170,13 +170,13 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   },
   {
     name: "execute_command",
-    description: "Execute any shell command. This is the primary tool for file operations, running scripts, and automation. Use for: reading files (cat), writing files (cat/echo with redirection), listing directories (ls), creating directories (mkdir -p), git operations, package-manager/python/node commands, and any shell command. Respect the repo's lockfile/package-manager conventions: pnpm-lock.yaml => pnpm, package-lock.json => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun. Prefer read-only inspection commands first for planning/context tasks. Only run package-manager install/test/build/lint/typecheck commands when the user explicitly asks for verification/package work, or when validating code changes you already made. Omit skillId for normal workspace or repository commands. Only provide skillId when you need to run inside an exact loaded skill ID from Available Skills.",
+    description: "Execute shell/file/git/package commands. Respect lockfiles (pnpm-lock => pnpm, package-lock => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun). For planning, start with one targeted read-only inspection and batch related reads/status checks when safe. For exactly-one experiment/candidate tasks, use one candidate only: run one combined read-only inspection command only, with the first pass limited to program.md, git status, logs, and results (or the task's equivalent state sources), then one candidate change and one validation run; if validation fails, stop and report the blocker instead of trying alternates. Avoid repeated unchanged commands or polling; obey the task budget/stop condition. If a command errors twice, change approach or report the blocker. Run install/test/build/lint/typecheck only when asked or validating your code changes. Omit skillId unless running inside an exact loaded skill ID.",
     inputSchema: {
       type: "object",
       properties: {
         command: {
           type: "string",
-          description: "The shell command to execute. Examples: 'cat file.txt' (read), 'echo content > file.txt' (write), 'ls -la' (list), 'mkdir -p dir' (create dir), 'git status', 'rg TODO apps/desktop/src', 'python script.py'. Prefer read-only inspection commands unless the user asked you to run verification/package-manager work.",
+          description: "Shell command to execute. Examples: 'git status', 'rg TODO apps/desktop/src', 'sed -n 1,120p file', 'python script.py'. Prefer read-only inspection first; for exactly-one experiment/candidate work, use one candidate only and one combined read-only inspection command only, with the first pass limited to program.md, git status, logs, and results (or the task's equivalent state sources), then one candidate change and one validation run; if validation fails, stop and report the blocker instead of trying alternates. Combine related checks, cap output, and do not re-run unchanged commands unless inputs changed.",
         },
         skillId: {
           type: "string",

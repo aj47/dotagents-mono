@@ -196,8 +196,8 @@ const getConfig = (): LoadedConfig => {
     mcpRequireApprovalBeforeToolCall: false,
     mcpAutoPasteEnabled: false,
     mcpAutoPasteDelay: 1000, // 1 second delay by default
-    mcpMaxIterations: 10, // Default max iterations for agent mode
-    mcpUnlimitedIterations: true, // Default to unlimited iterations
+    mcpMaxIterations: 8, // Default max iterations for agent mode
+    mcpUnlimitedIterations: false, // Default to a finite iteration budget to prevent runaway agent loops
     textInputEnabled: true,
 
     // Text input: On Windows, use Ctrl+Shift+T to avoid browser new tab conflict
@@ -314,7 +314,7 @@ const getConfig = (): LoadedConfig => {
 
     // Completion verification defaults
     mcpVerifyCompletionEnabled: true,
-    mcpVerifyContextMaxItems: 10,
+    mcpVerifyContextMaxItems: 8,
     mcpVerifyRetryCount: 1,
 
     // Final summary defaults - off unless explicitly enabled
@@ -507,10 +507,10 @@ export class ConfigStore {
     // Sync active preset credentials to legacy fields on startup
     this.config = syncPresetToLegacyFields(loaded.config) as Config
 
-    // Migration: ensure mcpVerifyCompletionEnabled and mcpUnlimitedIterations
-    // default to true. These were previously false by default and may have been
-    // persisted to ~/.agents/mcp.json, overriding config.json changes.
-    // This is a one-time fix: once the values are true, this is a no-op.
+    // Migration: ensure mcpVerifyCompletionEnabled defaults to true. It was
+    // previously false by default and may have been persisted to ~/.agents/mcp.json,
+    // overriding config.json changes. Do not force mcpUnlimitedIterations back to
+    // true: finite defaults prevent runaway agent loops in bounded tasks.
     try {
       const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
       const mcpJson = safeReadJsonFileSync<Record<string, unknown>>(globalLayer.mcpJsonPath, {
@@ -522,10 +522,6 @@ export class ConfigStore {
         mcpJson.mcpVerifyCompletionEnabled = true
         mcpDirty = true
       }
-      if (mcpJson.mcpUnlimitedIterations === false) {
-        mcpJson.mcpUnlimitedIterations = true
-        mcpDirty = true
-      }
       if (mcpDirty) {
         safeWriteJsonFileSync(globalLayer.mcpJsonPath, mcpJson, {
           backupDir: globalLayer.backupsDir,
@@ -534,7 +530,6 @@ export class ConfigStore {
         })
         // Also update the in-memory config
         this.config.mcpVerifyCompletionEnabled = true
-        this.config.mcpUnlimitedIterations = true
       }
     } catch {
       // best-effort
