@@ -1,3 +1,0 @@
-Tested: the newer yt-dlp path works. With `uvx --from 'yt-dlp[default]' yt-dlp --cookies-from-browser chrome --js-runtimes node --extractor-args 'youtube:player_client=default,web' ... --list-formats`, it successfully solved the JS challenge and listed formats for `SKKLEhBNkdk`.
-
-So the broken part was the old local `yt-dlp`; the `uvx` version is the working one. I have not started an actual download yet.

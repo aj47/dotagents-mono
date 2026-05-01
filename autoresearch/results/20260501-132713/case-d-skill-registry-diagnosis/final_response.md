@@ -1,1 +1,0 @@
-Because `load_skill_instructions` only loads skills that are present in this session’s **Available Skills** registry, and `stream-topic-inventory` isn’t in that registry right now. The file exists on disk, but this running DotAgents session hasn’t refreshed/loaded it into the skill index, so the tool returns “not found.”

@@ -1,1 +1,0 @@
-Tested the updated command with `uvx --from 'yt-dlp[default]' yt-dlp` plus Chrome cookies and `--js-runtimes node`: it successfully extracted the livestream’s formats, so the yt-dlp/alias issue is resolved. The remaining blocker is the actual download, which would create files/changes, so I’m waiting for your explicit approval before running that.

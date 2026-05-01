@@ -1,3 +1,0 @@
-Because the runtime only loads skills that are present in the session’s **Available Skills** registry, and `stream-topic-inventory` isn’t in that registry right now. I verified the file exists at `~/.agents/skills/stream-topic-inventory/skill.md`, but `load_skill_instructions` still returns **Skill not found**, which means the app hasn’t refreshed/discovered it yet.
-
-So the blocker isn’t the skill file—it’s the runtime skill index/cache not being updated. Quitting and reopening DotAgents should make it discoverable.

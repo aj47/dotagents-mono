@@ -1,3 +1,0 @@
-Tested read-only: `uvx --from 'yt-dlp[default]' yt-dlp --cookies-from-browser chrome --js-runtimes node --extractor-args 'youtube:player_client=default,web' -f 'bv*+ba/b' --merge-output-format mp4 --list-formats ...` works and exposes normal video formats. I did not run the actual download yet, because that would change files and your approval boundary is still active.
-
-Next safe step: if you approve, I’ll run the real download command and then we can move on to transcription/clipping.

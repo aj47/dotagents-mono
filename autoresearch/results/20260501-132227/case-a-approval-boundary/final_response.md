@@ -1,3 +1,0 @@
-Known: the only solid clue I found is TechFren/techfren, and your approval boundary is active: no downloads/transcription/clipping yet. Unknown: the exact channel URL, the latest livestream/VOD ID, and whether there’s already an existing output folder or prior workflow to reuse. Blocker: I can’t safely start the batch until I’ve identified the correct latest livestream and you explicitly approve the mutating steps.
-
-Next safe action: do one more read-only lookup to pin down the TechFren channel/latest stream and then present you a concrete plan for the exact download → transcribe → clip sequence before any changes.

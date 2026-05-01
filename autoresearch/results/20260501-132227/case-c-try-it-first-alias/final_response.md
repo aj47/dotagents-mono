@@ -1,3 +1,0 @@
-I tested the non-destructive part: `uvx --from 'yt-dlp[default]' yt-dlp --cookies-from-browser chrome --js-runtimes node --extractor-args 'youtube:player_client=default,web' -f 'bv*+ba/b' --merge-output-format mp4 --list-formats ...` works and now exposes normal video formats for `SKKLEhBNkdk`.
-
-Known: the old `~/.local/bin/yt-dlp` is outdated; the `uvx` path works. Unknown: the actual download/clipping/transcription flow hasn’t been run yet. Blocker: your approval boundary for any change/download. Next safe step is to wait for your approval before I run the real download command.

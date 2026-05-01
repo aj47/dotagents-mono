@@ -1,1 +1,0 @@
-No — it still hasn’t downloaded. The target folder is empty and there are no active `yt-dlp` processes. Latest blocker is YouTube’s sign-in/bot check; per your approval boundary, I haven’t retried a mutating download yet.

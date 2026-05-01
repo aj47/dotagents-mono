@@ -1,3 +1,0 @@
-Because `load_skill_instructions` only loads skills that are in the session’s live **Available Skills** registry, and this session’s registry doesn’t include `stream-topic-inventory` even though the file exists on disk. The evidence points to a stale/cached skill list or missing registration/refresh in the app process, not a bad `skill.md` file.
-
-Blocker: the runtime doesn’t know about that skill yet. Next safe step is to refresh/restart DotAgents so it rebuilds the skills index; I won’t change anything else until you approve it.

@@ -1,3 +1,0 @@
-Because `load_skill_instructions` only loads skills that are in the session’s **Available Skills** registry, and this session doesn’t have `stream-topic-inventory` in that registry. The file exists on disk, but the runtime skill index/registry wasn’t refreshed, so the loader returns “Skill not found.”
-
-Known: `~/.agents/skills/stream-topic-inventory/skill.md` is present and valid. Unknown: whether the app has a refresh/import path or needs a restart to rebuild the skills list. Blocker: the running session can’t see the skill id. Next safe action: refresh/restart the app or re-register the skill so it appears in **Available Skills**.

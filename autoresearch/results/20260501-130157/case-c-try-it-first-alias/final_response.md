@@ -1,3 +1,0 @@
-Last confirmed state: the `uvx --from 'yt-dlp[default]' yt-dlp ... --list-formats` test worked, so the new alias/yt-dlp path is valid and YouTube auth is good. The only thing I can’t confirm is the most recent “test it” command because the tool output came back empty, so I don’t know whether an actual download was attempted or just a no-op.
-
-Next safe step: run a dry-run or a single actual download command once you want me to make a file-writing action.

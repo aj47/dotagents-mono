@@ -1,1 +1,0 @@
-No — nothing downloaded yet. The target folder is still empty and there are no active `yt-dlp` processes, so the last attempt didn’t complete. Blocker remains YouTube’s sign-in/bot check; next safe step is to retry with a valid cookie source once you want me to continue.
