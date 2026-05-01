@@ -164,6 +164,16 @@ export function getCodexReasoningOptions(model: string): { effort: CodexReasonin
   return { effort, summary: "auto" }
 }
 
+type CodexTextVerbosity = "low" | "medium" | "high"
+
+export function getCodexTextVerbosity(): CodexTextVerbosity {
+  const override = configStore.get().codexTextVerbosity
+  if (override === "low" || override === "medium" || override === "high") {
+    return override
+  }
+  return "medium"
+}
+
 function normalizeChatGptWebBaseUrl(baseUrl: string | undefined): string {
   const raw = (baseUrl || DEFAULT_CHATGPT_WEB_BASE_URL).trim()
   if (!raw) return DEFAULT_CHATGPT_WEB_BASE_URL
@@ -779,7 +789,7 @@ export async function makeChatGptWebResponse(
     store: false,
     stream: true,
     input: buildCodexInput(messages),
-    text: { verbosity: "medium" },
+    text: { verbosity: getCodexTextVerbosity() },
     include: ["reasoning.encrypted_content"],
     parallel_tool_calls: true,
   }

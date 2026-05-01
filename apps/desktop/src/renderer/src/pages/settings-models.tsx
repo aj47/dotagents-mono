@@ -222,6 +222,62 @@ export function Component() {
             </div>
           )}
 
+          {agentProviderId === "chatgpt-web" && (
+            <div className="border-t px-3 py-2">
+              <div className="pb-2">
+                <span className="text-sm font-medium">Codex options</span>
+                <p className="text-xs text-muted-foreground">
+                  Tune how the Codex (ChatGPT Web) model thinks and how verbose its replies are.
+                </p>
+              </div>
+              <Control
+                label={<ControlLabel label="Thinking level" tooltip="Reasoning effort sent to Codex reasoning models. 'None' lets the provider answer instantly with no extra reasoning." />}
+              >
+                <Select
+                  value={config.openaiReasoningEffort || "medium"}
+                  onValueChange={(value) =>
+                    saveConfig({
+                      openaiReasoningEffort: value as Config["openaiReasoningEffort"],
+                    })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="minimal">Minimal</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium (default)</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="xhigh">Extra high</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Control>
+              <Control
+                label={<ControlLabel label="Verbosity" tooltip="Output verbosity passed as text.verbosity in the Codex responses payload." />}
+              >
+                <Select
+                  value={config.codexTextVerbosity || "medium"}
+                  onValueChange={(value) =>
+                    saveConfig({
+                      codexTextVerbosity: value as Config["codexTextVerbosity"],
+                    })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium (default)</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Control>
+            </div>
+          )}
+
           {!usesOpenAiCompatiblePreset && agentProviderId === "openai" && (
             <p className="px-3 py-2 text-sm text-muted-foreground">
               OpenAI-compatible preset controls appear here when Agent or Transcript Processing uses that provider.

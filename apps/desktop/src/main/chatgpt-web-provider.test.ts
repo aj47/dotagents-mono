@@ -110,6 +110,46 @@ describe("chatgpt-web provider image input", () => {
   })
 })
 
+describe("chatgpt-web Codex options", () => {
+  async function setupCodexOptionsTest(config: Record<string, unknown>) {
+    vi.doMock("./config", () => ({
+      configStore: {
+        get: vi.fn(() => config),
+        save: vi.fn(),
+      },
+    }))
+    vi.doMock("./oauth-storage", () => ({
+      oauthStorage: {
+        getTokens: vi.fn(),
+        storeTokens: vi.fn(),
+        clearTokens: vi.fn(),
+      },
+    }))
+    vi.doMock("./conversation-image-assets", () => ({
+      CONVERSATION_IMAGE_ASSET_HOST: "conversation-image",
+      getConversationImageAssetPath: vi.fn(),
+    }))
+  }
+
+  it("defaults Codex text verbosity to medium when unset", async () => {
+    await setupCodexOptionsTest({})
+    const { getCodexTextVerbosity } = await import("./chatgpt-web-provider")
+    expect(getCodexTextVerbosity()).toBe("medium")
+  })
+
+  it("returns the configured Codex text verbosity override", async () => {
+    await setupCodexOptionsTest({ codexTextVerbosity: "high" })
+    const { getCodexTextVerbosity } = await import("./chatgpt-web-provider")
+    expect(getCodexTextVerbosity()).toBe("high")
+  })
+
+  it("ignores invalid Codex text verbosity values and falls back to medium", async () => {
+    await setupCodexOptionsTest({ codexTextVerbosity: "verbose" })
+    const { getCodexTextVerbosity } = await import("./chatgpt-web-provider")
+    expect(getCodexTextVerbosity()).toBe("medium")
+  })
+})
+
 describe("chatgpt-web Codex CLI auth fallback", () => {
   it("reads ChatGPT tokens from a Codex CLI auth cache", async () => {
     const { tempDir } = await setupChatGptWebProviderTest()
