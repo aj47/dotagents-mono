@@ -38,6 +38,27 @@ describe("constructSystemPrompt", () => {
     mockAgentProfileService.getCurrentProfile.mockReturnValue(undefined)
   })
 
+  it("formats the injected Now timestamp from explicit date fields", async () => {
+    vi.useFakeTimers()
+    const localeStringSpy = vi
+      .spyOn(Date.prototype, "toLocaleString")
+      .mockReturnValue("1/2/2024, 3:04:05 AM")
+
+    try {
+      vi.setSystemTime(new Date(2024, 0, 2, 3, 4, 5))
+
+      const { constructSystemPrompt } = await import("./system-prompts")
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+      const prompt = constructSystemPrompt([])
+
+      expect(prompt).toContain(`Now: 2024-01-02 03:04:05 ${tz}`)
+    } finally {
+      localeStringSpy.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
   it("injects skillsInstructions only once", async () => {
     const { constructSystemPrompt } = await import("./system-prompts")
 

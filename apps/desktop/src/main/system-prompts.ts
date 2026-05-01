@@ -48,6 +48,28 @@ function getEffectiveSystemPrompt(customSystemPrompt?: string): string {
   return DEFAULT_SYSTEM_PROMPT
 }
 
+function formatDateTimeForPrompt(date: Date, timeZone: string): string {
+  const formatter = new Intl.DateTimeFormat('en-US-u-nu-latn', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+  const parts: Record<string, string> = {}
+
+  for (const part of formatter.formatToParts(date)) {
+    if (part.type !== 'literal') {
+      parts[part.type] = part.value
+    }
+  }
+
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
+}
+
 type PromptTool = {
   name: string
   description?: string
@@ -324,7 +346,7 @@ export function constructSystemPrompt(
   // Inject local date/time so the LLM can reason about relative dates and timestamps.
   const now = new Date()
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-  const compactNow = now.toLocaleString("sv-SE", { timeZone: tz, hour12: false }).slice(0, 16)
+  const compactNow = formatDateTimeForPrompt(now, tz)
   prompt += `\n\nNow: ${compactNow} ${tz}`
 
   if (isAgentMode) {
