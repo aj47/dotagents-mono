@@ -47,6 +47,25 @@ describe("constructSystemPrompt", () => {
     expect(prompt.split(skills).length - 1).toBe(1)
   })
 
+  it("formats the Now timestamp without slicing locale output", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2025-04-05T06:07:08.000Z"))
+    const toLocaleStringSpy = vi.spyOn(Date.prototype, "toLocaleString").mockReturnValue("not-a-fixed-width-timestamp")
+
+    try {
+      const { constructSystemPrompt } = await import("./system-prompts")
+
+      const prompt = constructSystemPrompt([], undefined, false)
+      const nowLine = prompt.match(/^Now: .+$/m)?.[0]
+
+      expect(toLocaleStringSpy).not.toHaveBeenCalled()
+      expect(nowLine).toMatch(/^Now: [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} [A-Za-z_\/+-]+$/)
+    } finally {
+      toLocaleStringSpy.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
   it("teaches the knowledge note storage contract in the default prompt", async () => {
     const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts")
 
