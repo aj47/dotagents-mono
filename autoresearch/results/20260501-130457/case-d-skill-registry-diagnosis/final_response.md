@@ -1,0 +1,3 @@
+Because `load_skill_instructions` only loads skills that are already registered in this session’s **Available Skills** list. `stream-topic-inventory` exists on disk, but it wasn’t included in the session’s injected skill registry/system prompt, so the tool can’t resolve it and returns “not found.”
+
+In short: **file exists, session registry doesn’t**. The app likely needs a skills registry refresh or full restart for the new skill to become loadable.

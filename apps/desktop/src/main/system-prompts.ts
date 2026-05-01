@@ -113,12 +113,9 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 
   if (hasRespondToUser && hasMarkWorkComplete) {
     sections.push(`COMPLETION SIGNAL:
-- When all requested work is fully complete:
-  1. ALWAYS call respond_to_user with the final user-facing response FIRST
-  2. Then call mark_work_complete with a concise internal completion summary
-- IMPORTANT: Never put the final user-facing answer in plain assistant text — always use respond_to_user
-- Do not send a second recap or post-completion summary unless the user explicitly asked for one
-- Do not call mark_work_complete while work is still in progress or partially done`)
+- When all requested work is fully complete, call respond_to_user with the final answer first, then mark_work_complete with a concise internal summary
+- Never put the final user-facing answer in plain assistant text when respond_to_user is available
+- Do not call mark_work_complete for partial/in-progress work or send a second recap unless asked`)
   } else if (hasRespondToUser) {
     sections.push(`COMPLETION SIGNAL:
 - When all requested work is fully complete, call respond_to_user with the final user-facing response.
