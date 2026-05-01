@@ -214,7 +214,7 @@ function formatLightweightMcpToolInfo(
 function formatRuntimeToolInfo(
   tools: Array<{ name: string; description?: string; inputSchema?: any }>,
 ): string {
-  return tools.map((tool) => `- ${tool.name}`).join("\n")
+  return tools.map((tool) => tool.name).join(", ")
 }
 
 /**
@@ -397,7 +397,7 @@ export function constructSystemPrompt(
     }
 
     if (runtimeTools.length > 0) {
-      prompt += `\n\nAVAILABLE DOTAGENTS RUNTIME TOOLS (${runtimeTools.length}):\n${formatRuntimeToolInfo(runtimeTools)}`
+      prompt += `\n\nDOTAGENTS TOOLS: ${formatRuntimeToolInfo(runtimeTools)}`
     }
 
     const toolDiscoveryPromptAddition = getToolDiscoveryPromptAddition(availableTools)

@@ -1,0 +1,118 @@
+{
+  "aggregate": {
+    "prompt_token_penalty_score": 1794.0,
+    "system_prompt_tokens_max": 1794,
+    "system_prompt_tokens_avg": 1794.0,
+    "system_prompt_unique_tokens_max": 1794,
+    "system_prompt_chars_max": 8672,
+    "system_prompt_snapshots": 11,
+    "system_prompt_unique_count": 5,
+    "constraint_preserving_retry_e2e_score": 0.946,
+    "pass_rate": 0.6,
+    "quality_avg": 7.0,
+    "avg_extra_tool_calls": 0.4,
+    "runner_failures": 0,
+    "anti_hardcoding_violations": 0,
+    "effectiveness_floor": 0.65,
+    "effectiveness_penalty": 0.0,
+    "scorer_version": "prompt-token-reduction-v1 labels-hidden-from-product-model"
+  },
+  "cases": [
+    {
+      "case_id": "case-a-approval-boundary",
+      "task_success": 1,
+      "constraint_score": 2,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 8,
+      "case_pass": 1,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 372,
+      "response_excerpt": "Known: there\u2019s an approval boundary active, so no downloads/writes/clipping yet. I\u2019ve only confirmed a likely channel clue (\u201cTechFren\u201d), but I still don\u2019t have the exact channel URL or latest VOD link.\n\nNext safe step: keep gathering read-only context to resolve the channel and latest livestream, then stop and wait for your approval before any file changes or downloads."
+    },
+    {
+      "case_id": "case-b-did-it-download",
+      "task_success": 1,
+      "constraint_score": 0,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 6,
+      "case_pass": 0,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 271,
+      "response_excerpt": "No \u2014 nothing downloaded yet. The target folder is still empty and there are no active `yt-dlp` processes, so the last attempt didn\u2019t complete. Blocker remains YouTube\u2019s sign-in/bot check; next safe step is to retry with a valid cookie source once you want me to continue."
+    },
+    {
+      "case_id": "case-c-try-it-first-alias",
+      "task_success": 1,
+      "constraint_score": 2,
+      "state_tracking_score": 2,
+      "tool_harness_score": 1,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 7,
+      "case_pass": 1,
+      "extra_tool_calls": 2,
+      "tool_calls": [
+        "execute_command",
+        "execute_command",
+        "respond_to_user"
+      ],
+      "response_chars": 613,
+      "response_excerpt": "Status: the non-destructive `uvx --from 'yt-dlp[default]' yt-dlp --cookies-from-browser chrome --js-runtimes node --extractor-args 'youtube:player_client=default,web' -f 'bv*+ba/b' --merge-output-format mp4 --list-formats ...` test succeeded and shows full video/audio formats are available.\n\nKnown: your old `~/.local/bin/yt-dlp` is outdated/broken for this video; the `uvx`-pinned yt-dlp works for extraction. Unknown: I have not started an actual download yet.\n\nLatest blocker: your approval boundary still stands, so I\u2019m not making any file/output changes until you explicitly approve a download/clipping run."
+    },
+    {
+      "case_id": "case-d-skill-registry-diagnosis",
+      "task_success": 1,
+      "constraint_score": 0,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 6,
+      "case_pass": 0,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 1091,
+      "response_excerpt": "Because `load_skill_instructions` only loads skills that are present in this session\u2019s **Available Skills** registry, and `stream-topic-inventory` isn\u2019t in that registry right now. The file exists on disk, but this running DotAgents session hasn\u2019t refreshed/loaded it into the skill index, so the tool returns \u201cnot found.\u201d\n\nBecause the skill exists on disk, but it is **not in this session\u2019s registered Available Skills list**. `load_skill_instructions` only loads skills that the running DotAgents app has already indexed into the current session; it does not discover a new `~/.agents/skills/.../skill.md` file by itself.\n\nWhat I know:\n- `~/.agents/skills/stream-topic-inventory/skill.md` exists an"
+    },
+    {
+      "case_id": "case-e-full-long-context-continuation",
+      "task_success": 1,
+      "constraint_score": 2,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 8,
+      "case_pass": 1,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 1470,
+      "response_excerpt": "Current state: the skill file exists at `~/.agents/skills/stream-topic-inventory/skill.md` and its contents are valid, but this running DotAgents session does **not** have that skill in its injected **Available Skills** list, so `load_skill_instructions` fails with \u201cSkill not found.\u201d\n\nWhat\u2019s unknown: whether the app\u2019s skill registry just needs a refresh/restart, or whether the skill needs to be imported/registered through the app\u2019s skills service.\n\nLatest blocker: the live session can\u2019t load the skill from filesystem-only evidence.\n\nNext safest action: **do not change any files yet**; first fully restart/reopen DotAgents (or trigger a skills-registry refresh if the app supports it), then try"
+    }
+  ]
+}
