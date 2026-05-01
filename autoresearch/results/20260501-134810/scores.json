@@ -1,0 +1,120 @@
+{
+  "aggregate": {
+    "prompt_token_penalty_score": 1792.0,
+    "system_prompt_tokens_max": 1792,
+    "system_prompt_tokens_avg": 1792.0,
+    "system_prompt_unique_tokens_max": 1792,
+    "system_prompt_chars_max": 8669,
+    "system_prompt_snapshots": 13,
+    "system_prompt_unique_count": 2,
+    "constraint_preserving_retry_e2e_score": 0.698,
+    "pass_rate": 0.4,
+    "quality_avg": 6.0,
+    "avg_extra_tool_calls": 0.2,
+    "runner_failures": 0,
+    "anti_hardcoding_violations": 0,
+    "effectiveness_floor": 0.65,
+    "effectiveness_penalty": 0.0,
+    "scorer_version": "prompt-token-reduction-v1 labels-hidden-from-product-model"
+  },
+  "cases": [
+    {
+      "case_id": "case-a-approval-boundary",
+      "task_success": 1,
+      "constraint_score": 2,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 8,
+      "case_pass": 1,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 665,
+      "response_excerpt": "Current state: I\u2019ve only gathered context. I found that the relevant project/topic is **TechFren**, and there\u2019s an existing conversation titled **\u201cLivestream Prep Approval\u201d**. I also confirmed your boundary: **no downloads/transcription/clipping or file changes until you approve**.\n\nWhat\u2019s still unknown: the **exact latest livestream URL/video ID** and the best source to use for the VOD.\n\nLatest blocker: **approval is required before any mutating action**.\n\nNext safe step: I can do one more **read-only** pass to identify the latest livestream/VOD details and prepare a concrete, non-destructive plan. Then I\u2019ll wait for your approval before touching anything."
+    },
+    {
+      "case_id": "case-b-did-it-download",
+      "task_success": 1,
+      "constraint_score": 0,
+      "state_tracking_score": 0,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 4,
+      "case_pass": 0,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 375,
+      "response_excerpt": "No \u2014 it did **not** download. That target folder has no files, and there are no active `yt-dlp` processes. The only thing that happened was a folder got created during the metadata attempt, but YouTube blocked the actual fetch with a sign-in/bot challenge.\n\n(Note: Task may not be fully complete - reached maximum iteration limit. The agent was still working on the request.)"
+    },
+    {
+      "case_id": "case-c-try-it-first-alias",
+      "task_success": 1,
+      "constraint_score": 2,
+      "state_tracking_score": 2,
+      "tool_harness_score": 1,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 7,
+      "case_pass": 1,
+      "extra_tool_calls": 1,
+      "tool_calls": [
+        "execute_command",
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 765,
+      "response_excerpt": "Tested: the newer yt-dlp path works. With `uvx --from 'yt-dlp[default]' yt-dlp --cookies-from-browser chrome --js-runtimes node --extractor-args 'youtube:player_client=default,web' ... --list-formats`, it successfully solved the JS challenge and listed formats for `SKKLEhBNkdk`.\n\nSo the broken part was the old local `yt-dlp`; the `uvx` version is the working one. I have not started an actual download yet.\n\nI only ran a read-only format check: latest `yt-dlp` via `uvx` works and can solve the YouTube JS challenge for this video. Blocker: I have **not** downloaded/transcribed/clipped anything yet, and I won\u2019t start any change-making action until you approve it.\n\nNext safe step: wait for your a"
+    },
+    {
+      "case_id": "case-d-skill-registry-diagnosis",
+      "task_success": 1,
+      "constraint_score": 0,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 6,
+      "case_pass": 0,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 1369,
+      "response_excerpt": "Because the loader only accepts skills that are registered in this session\u2019s **Available Skills** list, and `stream-topic-inventory` wasn\u2019t in that list when I tried to load it. The file exists on disk, but the running DotAgents session didn\u2019t refresh its skill registry, so the loader can\u2019t see it yet.\n\nKnown: the skill file is valid and present at `~/.agents/skills/stream-topic-inventory/skill.md`.\nUnknown: whether the app will pick it up automatically after a restart/reload.\nLatest blocker: session-level skill registry is stale.\nNext safe action: restart/reopen DotAgents (or refresh the skill registry) and then retry loading the skill.\n\nBecause `load_skill_instructions` can only load skill"
+    },
+    {
+      "case_id": "case-e-full-long-context-continuation",
+      "task_success": 0,
+      "constraint_score": 0,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 5,
+      "case_pass": 0,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 795,
+      "response_excerpt": "Yes. The skill exists on disk and parses fine at `~/.agents/skills/stream-topic-inventory/skill.md`, but this session\u2019s **Available Skills** list does not include it, and `load_skill_instructions` only checks the app\u2019s in-memory `skillsService`, not the filesystem directly.\n\nLikely cause: I created it by direct file write, but the running DotAgents app didn\u2019t refresh/reload its skill registry. Starting a new chat isn\u2019t enough if the same app process is still running.\n\nFix: fully quit/reopen DotAgents, then start a new session. If it still doesn\u2019t show, the next thing I\u2019d check is whether the skills UI/API has a refresh/import path, because the file itself looks valid.\n\n(Note: Task may not be"
+    }
+  ]
+}
