@@ -30,6 +30,7 @@ import {
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
 } from "@renderer/lib/sidebar-sessions"
+import { formatSidebarDuration } from "@renderer/lib/sidebar-duration"
 import { useLocation, useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
@@ -125,17 +126,7 @@ function getSessionLastMessageTimestamp(
 }
 
 function formatMinutesAgo(timestamp: number): string | null {
-  if (!timestamp || !Number.isFinite(timestamp)) return null
-  const minutesAgo = Math.max(Math.floor((Date.now() - timestamp) / 60_000), 0)
-  if (minutesAgo < 60) {
-    return minutesAgo === 1 ? "1m" : `${minutesAgo}m`
-  }
-
-  const hours = Math.floor(minutesAgo / 60)
-  const remainderMinutes = minutesAgo % 60
-  const hourLabel = `${hours}h`
-  const minuteLabel = remainderMinutes > 0 ? ` ${remainderMinutes}m` : ""
-  return `${hourLabel}${minuteLabel}`
+  return formatSidebarDuration(timestamp)
 }
 
 function getSidebarSessionPreview(progress?: AgentProgressUpdate | null): string | null {
