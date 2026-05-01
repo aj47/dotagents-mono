@@ -1,0 +1,3 @@
+Tested non-mutating: the `uvx --from 'yt-dlp[default]' yt-dlp ...` path works and resolves the livestream formats with Chrome cookies + `node` JS solving. What’s still unknown is whether the full download/merge will complete cleanly, because I haven’t run the actual download yet.
+
+Blocker: you asked me not to make changes until approval, and an actual download would write files. Next safe step is the real download once you approve it.

@@ -131,19 +131,9 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 
   if (hasExecuteCommand) {
     sections.push(`AGENT FILE & COMMAND EXECUTION:
-- Use execute_command as your primary tool for shell commands, file I/O, and automation
-- For JS/TS repos, infer the package manager from lockfiles before running commands: pnpm-lock.yaml => pnpm, package-lock.json => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun
-- Do not default to npm when a repo lockfile indicates pnpm, yarn, or bun
-- For planning/context-gathering or “what's next” requests, prefer read-only inspection commands like git status, ls, find, rg, sed, head, tail, and cat
-- Do not run package-manager install/test/build/lint/typecheck commands unless the user explicitly asked for verification/package work or you need targeted validation after making code changes
-- Read files: check size first with "wc -l file", then read in chunks with "sed -n '1,100p' file" or "head -n 100 file"
-- For small files (<200 lines): "cat path/to/file" is fine
-- For large files: read specific ranges with "sed -n 'START,ENDp' file" — never cat the whole thing
-- Write files: execute_command with "cat > path/to/file << 'EOF'\\n...content...\\nEOF" or "echo 'content' > file"
-- List directories: execute_command with "ls -la path/"
-- Create directories: execute_command with "mkdir -p path/to/dir"
-- Run scripts: execute_command with "./script.sh" or "python script.py" etc.
-- Output over 10K chars is automatically truncated (first 5K + last 5K preserved)`)
+- Use execute_command for shell/file automation. Infer package manager from lockfiles (pnpm-lock.yaml, package-lock.json, yarn.lock, bun.lock*) and do not default to npm against another lockfile.
+- For planning/status/context, prefer read-only probes (git status, ls, find, rg, sed/head/tail/cat). Do not run install/test/build/lint/typecheck unless asked or validating your code changes.
+- Before reading large files, check size (wc -l) and read targeted ranges with sed/head/tail; avoid cat on large files. Output over 10K chars is truncated.`)
   }
 
   if (hasReadMoreContext) {

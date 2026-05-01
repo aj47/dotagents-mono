@@ -1,0 +1,1 @@
+No — there’s no sign of a successful download yet. The target folder is still empty and no `yt-dlp` process is running, so it didn’t complete.
