@@ -105,10 +105,9 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 
   if (hasLoadSkillInstructions) {
     sections.push(`SKILLS:
-- Skills are optional instruction modules listed below.
-- Before using a skill, call load_skill_instructions(skillId) at most once per skill per agent session. If it already returned successfully, reuse the prior instructions and proceed; do not reload unless the previous call failed or the user explicitly asks to reload it.
-- If a skill file appears to exist on disk but load_skill_instructions cannot load it, treat that as a runtime skills-registry or refresh problem first; recommend refresh/restart/import before recreating or rewriting the skill.
-- Do not guess a skill's contents from its name/description.`)
+- Skills are optional modules listed below; before using one, call load_skill_instructions(skillId) at most once per session, reuse successful loads, and retry only after failure or explicit reload request.
+- If a skill exists on disk but cannot load, diagnose runtime skills-registry/refresh first; recommend refresh/restart/import before recreating or rewriting it.
+- Do not infer a skill's contents from name/description.`)
   }
 
   if (hasRespondToUser && hasMarkWorkComplete) {

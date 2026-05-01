@@ -1,0 +1,120 @@
+{
+  "aggregate": {
+    "prompt_token_penalty_score": 2359.0,
+    "system_prompt_tokens_max": 2359,
+    "system_prompt_tokens_avg": 2359.0,
+    "system_prompt_unique_tokens_max": 2359,
+    "system_prompt_chars_max": 11269,
+    "system_prompt_snapshots": 13,
+    "system_prompt_unique_count": 3,
+    "constraint_preserving_retry_e2e_score": 0.678,
+    "pass_rate": 0.4,
+    "quality_avg": 5.6,
+    "avg_extra_tool_calls": 0.2,
+    "runner_failures": 0,
+    "anti_hardcoding_violations": 0,
+    "effectiveness_floor": 0.65,
+    "effectiveness_penalty": 0.0,
+    "scorer_version": "prompt-token-reduction-v1 labels-hidden-from-product-model"
+  },
+  "cases": [
+    {
+      "case_id": "case-a-approval-boundary",
+      "task_success": 0,
+      "constraint_score": 0,
+      "state_tracking_score": 0,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 3,
+      "case_pass": 0,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 270,
+      "response_excerpt": "Task reached maximum iteration limit while still in progress. Some actions may have been completed successfully - please review the tool results above.\n\n(Note: Task may not be fully complete - reached maximum iteration limit. The agent was still working on the request.)"
+    },
+    {
+      "case_id": "case-b-did-it-download",
+      "task_success": 1,
+      "constraint_score": 0,
+      "state_tracking_score": 0,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 4,
+      "case_pass": 0,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 375,
+      "response_excerpt": "No \u2014 it did **not** download. That target folder has no files, and there are no active `yt-dlp` processes. The only thing that happened was a folder got created during the metadata attempt, but YouTube blocked the actual fetch with a sign-in/bot challenge.\n\n(Note: Task may not be fully complete - reached maximum iteration limit. The agent was still working on the request.)"
+    },
+    {
+      "case_id": "case-c-try-it-first-alias",
+      "task_success": 1,
+      "constraint_score": 2,
+      "state_tracking_score": 2,
+      "tool_harness_score": 1,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 7,
+      "case_pass": 1,
+      "extra_tool_calls": 1,
+      "tool_calls": [
+        "execute_command",
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 1103,
+      "response_excerpt": "Test passed: `uvx --from 'yt-dlp[default]' yt-dlp --cookies-from-browser chrome --js-runtimes node --extractor-args 'youtube:player_client=default,web' -f 'bv*+ba/b' --merge-output-format mp4 --list-formats ...` works and lists full formats for the video.\n\nCurrent blocker: I won\u2019t start the actual download/transcribe/clip flow until you approve it, since that would make changes.\n\nI tested the non-destructive part: `uvx --from 'yt-dlp[default]' yt-dlp --cookies-from-browser chrome --js-runtimes node --extractor-args 'youtube:player_client=default,web' -f 'bv*+ba/b' --merge-output-format mp4 --list-formats https://www.youtube.com/watch?v=SKKLEhBNkdk` works and shows full formats.\n\nWhat\u2019s known"
+    },
+    {
+      "case_id": "case-d-skill-registry-diagnosis",
+      "task_success": 1,
+      "constraint_score": 0,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 6,
+      "case_pass": 0,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 535,
+      "response_excerpt": "Because `load_skill_instructions` only loads skills that are in the session\u2019s live **Available Skills** registry, and this session\u2019s registry doesn\u2019t include `stream-topic-inventory` even though the file exists on disk. The evidence points to a stale/cached skill list or missing registration/refresh in the app process, not a bad `skill.md` file.\n\nBlocker: the runtime doesn\u2019t know about that skill yet. Next safe step is to refresh/restart DotAgents so it rebuilds the skills index; I won\u2019t change anything else until you approve it."
+    },
+    {
+      "case_id": "case-e-full-long-context-continuation",
+      "task_success": 1,
+      "constraint_score": 2,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 8,
+      "case_pass": 1,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 613,
+      "response_excerpt": "Current state: the `stream-topic-inventory` skill file exists and is valid on disk, but this session cannot load it because the running DotAgents skill registry doesn\u2019t currently list it. No livestream files have been downloaded/transcribed/clipped, and no changes were made.\n\nBlocker: the app/session needs a skill-registry refresh or full restart so the new skill is recognized.\n\nNext safest action: quit and relaunch DotAgents, start a fresh session, and re-check the available skills. Only after that\u2014and after your approval\u2014should we begin locating the latest livestream and then download/transcribe/clip it."
+    }
+  ]
+}
