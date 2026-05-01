@@ -234,9 +234,7 @@ function formatLightweightMcpToolInfo(
 function formatRuntimeToolInfo(
   tools: Array<{ name: string; description?: string; inputSchema?: any }>,
 ): string {
-  return tools
-    .map((tool) => `- ${tool.name}${tool.description ? ` — ${tool.description}` : ""}`)
-    .join("\n")
+  return tools.map((tool) => `- ${tool.name}`).join("\n")
 }
 
 /**

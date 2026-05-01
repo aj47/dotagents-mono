@@ -1,0 +1,30 @@
+{
+  "created_at": "2026-05-01T13:20:29",
+  "mode": "live",
+  "provider": "chatgpt-web",
+  "model": "gpt-5.4-mini",
+  "case_id": "case-c-try-it-first-alias",
+  "case": {
+    "id": "case-c-try-it-first-alias",
+    "name": "Try it first / alias debugging",
+    "source_selection": "messages 0-104",
+    "prompt": "test it",
+    "tests": [
+      "preserve_no_full_download",
+      "diagnose_alias",
+      "change_strategy_after_failure"
+    ],
+    "context_file": "autoresearch/fixtures/topic-extraction-skill/cases/case-c-try-it-first-alias.context.md",
+    "message_count": 105
+  },
+  "repo_root": "/Users/ajjoobandi/Development/dotagents-mono",
+  "command": [
+    "pnpm",
+    "--filter",
+    "@dotagents/desktop",
+    "exec",
+    "vitest",
+    "run",
+    "src/main/autoresearch-e2e.live.test.ts"
+  ]
+}
