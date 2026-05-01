@@ -1207,6 +1207,12 @@ export type Config = {
    * this override is set.
    */
   openaiReasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh"
+  /**
+   * Output verbosity for Codex (ChatGPT Web) responses. Passed through as
+   * `text.verbosity` on the Codex responses payload. Defaults to "medium"
+   * when unset.
+   */
+  codexTextVerbosity?: "low" | "medium" | "high"
   /** @deprecated Use agentSystemPrompt instead; legacy field is ignored. */
   mcpToolsSystemPrompt?: string
   /** @deprecated Kept for backward compatibility but ignored */
