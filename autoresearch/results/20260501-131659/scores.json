@@ -1,0 +1,119 @@
+{
+  "aggregate": {
+    "prompt_token_penalty_score": 2134.0,
+    "system_prompt_tokens_max": 2134,
+    "system_prompt_tokens_avg": 2134.0,
+    "system_prompt_unique_tokens_max": 2134,
+    "system_prompt_chars_max": 10425,
+    "system_prompt_snapshots": 12,
+    "system_prompt_unique_count": 5,
+    "constraint_preserving_retry_e2e_score": 0.652,
+    "pass_rate": 0.4,
+    "quality_avg": 5.2,
+    "avg_extra_tool_calls": 0.8,
+    "runner_failures": 0,
+    "anti_hardcoding_violations": 0,
+    "effectiveness_floor": 0.65,
+    "effectiveness_penalty": 0.0,
+    "scorer_version": "prompt-token-reduction-v1 labels-hidden-from-product-model"
+  },
+  "cases": [
+    {
+      "case_id": "case-a-approval-boundary",
+      "task_success": 0,
+      "constraint_score": 0,
+      "state_tracking_score": 0,
+      "tool_harness_score": 1,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 2,
+      "case_pass": 0,
+      "extra_tool_calls": 1,
+      "tool_calls": [
+        "execute_command",
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 270,
+      "response_excerpt": "Task reached maximum iteration limit while still in progress. Some actions may have been completed successfully - please review the tool results above.\n\n(Note: Task may not be fully complete - reached maximum iteration limit. The agent was still working on the request.)"
+    },
+    {
+      "case_id": "case-b-did-it-download",
+      "task_success": 1,
+      "constraint_score": 2,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 8,
+      "case_pass": 1,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 221,
+      "response_excerpt": "No \u2014 it still hasn\u2019t downloaded. The target folder is empty and there are no active `yt-dlp` processes. Latest blocker is YouTube\u2019s sign-in/bot check; per your approval boundary, I haven\u2019t retried a mutating download yet."
+    },
+    {
+      "case_id": "case-c-try-it-first-alias",
+      "task_success": 0,
+      "constraint_score": 0,
+      "state_tracking_score": 0,
+      "tool_harness_score": 1,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 2,
+      "case_pass": 0,
+      "extra_tool_calls": 3,
+      "tool_calls": [
+        "execute_command",
+        "execute_command",
+        "execute_command"
+      ],
+      "response_chars": 270,
+      "response_excerpt": "Task reached maximum iteration limit while still in progress. Some actions may have been completed successfully - please review the tool results above.\n\n(Note: Task may not be fully complete - reached maximum iteration limit. The agent was still working on the request.)"
+    },
+    {
+      "case_id": "case-d-skill-registry-diagnosis",
+      "task_success": 1,
+      "constraint_score": 0,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 6,
+      "case_pass": 0,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 1092,
+      "response_excerpt": "Because `load_skill_instructions` only loads skills that are already registered in this session\u2019s **Available Skills** list, and `stream-topic-inventory` isn\u2019t in that registry. The file exists on disk at `~/.agents/skills/stream-topic-inventory/skill.md`, but the running DotAgents process hasn\u2019t refreshed/imported it, so the loader returns `Skill ... not found`.\n\nBlocker: skill registry refresh, not the skill file itself.\nNext safe action: restart/refresh DotAgents so the session rebuilds its skills list, then try loading it again.\n\nBecause `load_skill_instructions` only loads skills that the current DotAgents session has already indexed and exposed in its **Available Skills** list. In this"
+    },
+    {
+      "case_id": "case-e-full-long-context-continuation",
+      "task_success": 1,
+      "constraint_score": 2,
+      "state_tracking_score": 2,
+      "tool_harness_score": 2,
+      "recovery_score": 0,
+      "response_score": 1,
+      "penalty_score": 0,
+      "quality_without_penalties": 8,
+      "case_pass": 1,
+      "extra_tool_calls": 0,
+      "tool_calls": [
+        "respond_to_user",
+        "respond_to_user"
+      ],
+      "response_chars": 1580,
+      "response_excerpt": "Current state: the `stream-topic-inventory` skill file exists and is valid on disk at `~/.agents/skills/stream-topic-inventory/skill.md`, but this session\u2019s loaded skills registry does **not** include it, so `load_skill_instructions` fails with \u201cSkill not found.\u201d\n\nKnowns: no download/transcription/clipping has been started; no files were changed in the livestream workflow.\nUnknowns: whether DotAgents will pick up the skill after a restart/reload, or whether the app needs an explicit skills refresh/import step.\nLatest blocker: the running app hasn\u2019t recognized the new skill yet.\nNext safest action: fully quit and relaunch DotAgents, then start a fresh session and retry loading the skill. If i"
+    }
+  ]
+}

@@ -346,7 +346,7 @@ export function constructSystemPrompt(
   // Inject local date/time so the LLM can reason about relative dates and timestamps.
   const now = new Date()
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-  prompt += `\n\nCurrent local time: ${now.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: tz })} (${tz})`
+  prompt += `\n\nNow: ${now.toLocaleString("sv-SE", { timeZone: tz, hour12: false })} ${tz}`
 
   if (isAgentMode) {
     prompt += getAgentModeAdditions(availableTools)
