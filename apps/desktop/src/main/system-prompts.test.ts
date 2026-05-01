@@ -125,7 +125,21 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("- respond_to_user — Send a user-facing response")
     expect(prompt).toContain("- load_skill_instructions — Load a skill")
     expect(prompt).not.toContain("AVAILABLE MCP SERVERS")
-    expect(prompt).not.toContain("unknown")
+    expect(prompt).not.toContain("- unknown (")
+  })
+
+  it("allows plain assistant text even when response runtime tools are available", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([
+      { name: "respond_to_user", description: "Send a user-facing response", inputSchema: { type: "object", properties: {} } },
+      { name: "mark_work_complete", description: "Mark work complete", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(prompt).toContain("Normal assistant text is valid user-facing output")
+    expect(prompt).toContain("a normal assistant text final answer is valid and may be the only response")
+    expect(prompt).not.toContain("Never put the final user-facing answer in plain assistant text")
+    expect(prompt).not.toContain("ALWAYS call respond_to_user")
   })
 
   it("only advertises discovery helpers that are actually available", async () => {

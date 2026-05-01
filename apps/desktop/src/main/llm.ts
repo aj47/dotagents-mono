@@ -603,10 +603,6 @@ export async function processTranscriptWithAgentMode(
       storedResponse: storedUserResponse,
       responseEvents,
     })
-    const isKillSwitchCompletion =
-      update.isComplete &&
-      typeof update.finalContent === "string" &&
-      update.finalContent.includes("emergency kill switch")
     const conversationState = resolveProgressConversationState({
       conversationState: update.conversationState,
       isComplete: update.isComplete,
@@ -615,17 +611,12 @@ export async function processTranscriptWithAgentMode(
     })
     const userResponseForUpdate =
       update.userResponse ??
-      normalizedStoredUserResponse ??
-      (update.isComplete && !isKillSwitchCompletion
-        ? update.finalContent
-        : undefined)
+      normalizedStoredUserResponse
     const userResponseSource =
       update.userResponse !== undefined
         ? "update"
         : normalizedStoredUserResponse !== undefined
         ? "store"
-        : update.isComplete && !isKillSwitchCompletion
-        ? "finalContent"
         : "none"
     const shouldEmitUserResponse =
       userResponseForUpdate !== undefined &&
@@ -1138,7 +1129,7 @@ export async function processTranscriptWithAgentMode(
   }
 
   const buildMissingFinalAnswerAfterCompletionNudge = () => {
-    return `You called ${MARK_WORK_COMPLETE_TOOL} without first providing the final user-facing answer. Provide that answer now. If ${RESPOND_TO_USER_TOOL} is available, use it for the final user-facing answer and then call ${MARK_WORK_COMPLETE_TOOL} again only if needed. Do not add a second recap or summary unless the user explicitly asked for one.`
+    return `You called ${MARK_WORK_COMPLETE_TOOL} without first providing the final user-facing answer. Provide that answer now in normal assistant text, or use ${RESPOND_TO_USER_TOOL} only if explicit delivery semantics are needed. Call ${MARK_WORK_COMPLETE_TOOL} again only if needed. Do not add a second recap or summary unless the user explicitly asked for one.`
   }
 
   const extractLatestSelectorRefFromHistory = () => {
@@ -1634,8 +1625,6 @@ export async function processTranscriptWithAgentMode(
   // segment is what's bounded, not the lifetime of the run.
   let totalNudgeCount = 0
   let garbledToolCallCount = 0 // Track consecutive garbled tool-call-as-text responses
-  let completionSignalHintCount = 0 // Avoid repeatedly injecting explicit-completion hints
-  const MAX_COMPLETION_SIGNAL_HINTS = 2
   // Count *consecutive* verification failures. Resets to 0 on any verifier
   // "yes" (handled inside runVerificationAndHandleResult by returning
   // newFailCount: 0) and on any successful tool batch (see the reset right
@@ -2101,9 +2090,6 @@ export async function processTranscriptWithAgentMode(
       noOpCount++
 
       const hasToolsAvailable = activeTools.length > 0
-      const hasCompletionSignalTool = activeTools.some(
-        (tool) => tool.name === MARK_WORK_COMPLETE_TOOL,
-      )
       const contentText = llmResponse.content || ""
       const trimmedContent = contentText.trim()
       const hasToolMarkers = /<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(contentText)
@@ -2165,42 +2151,11 @@ export async function processTranscriptWithAgentMode(
           break
         }
 
-        if (hasCompletionSignalTool) {
-          // When tools have already been executed in this session and the agent is
-          // giving a substantive text summary, skip the completion-hint loop and go
-          // straight to verification. The work is done -- nudging for mark_work_complete
-          // just wastes iterations and risks the nudge/fallback path producing a
-          // generic "couldn't complete" error for tasks that are already finished.
-          const noOpThresholdReached = noOpCount >= 2
-          if (completionSignalHintCount < MAX_COMPLETION_SIGNAL_HINTS && !noOpThresholdReached && !toolsExecutedInSession) {
-            // No tools executed yet: substantive text is likely a progress/status update.
-            // Keep iterating and reserve verifier calls for explicit completion signals.
-            if (trimmedContent.length > 0) {
-              addMessage("assistant", contentText, undefined, undefined, undefined, displayOnlyMessageOptions)
-            }
-            addEphemeralMessage("user", INTERNAL_COMPLETION_NUDGE_TEXT)
-            completionSignalHintCount++
-            // Do NOT reset noOpCount here. Substantive text without tool calls or explicit
-            // completion in a tool-driven task is still a no-op from a progress standpoint.
-            // The single increment at the top of the !hasToolCalls block already counted
-            // this iteration (there is no second increment), so the noOpThresholdReached
-            // check above will trigger the fallthrough naturally.
-            continue
-          }
-
-          // Fall through to the verification/fallback path when:
-          // - tools were already executed (agent is summarizing completed work), or
-          // - hints exhausted / noOp threshold reached without mark_work_complete.
-          // The fallback path will treat the substantive text as a completion candidate
-          // and run verification, which may either continue the loop or finalize.
-        }
-
-        // Fallback/verification path: reached when either (a) the completion signal
-        // tool is unavailable for this session/profile, or (b) the tool is available
-        // but all completion-signal hints have been exhausted without the model calling
-        // mark_work_complete. In case (b) this acts as a safety valve so we don't spin
-        // until maxIterations — we treat the substantive text as a completion candidate
-        // and run verification, which may either continue the loop or finalize.
+        // Treat substantive plain assistant text as a legitimate completion candidate
+        // even when runtime communication/completion tools are available. Older models
+        // needed a completion-tool nudge here, but forcing that extra loop degrades
+        // simple question/answer turns. Verification below still catches genuinely
+        // incomplete work and asks the model to continue when necessary.
         finalContent = contentText
         const noToolsCalledYet = !conversationHistory.some((e) => e.role === "tool")
         let skipPostVerifySummary =
@@ -2250,7 +2205,6 @@ export async function processTranscriptWithAgentMode(
             noOpCount = 0
             totalNudgeCount = 0
             garbledToolCallCount = 0
-            completionSignalHintCount = 0
             continue
           }
         }
@@ -2368,7 +2322,6 @@ export async function processTranscriptWithAgentMode(
         const followsSuccessfulToolResult = lastConversationMessage?.role === "tool" && !/\bERROR:\b/i.test(lastConversationMessage.content || "")
         if (followsSuccessfulToolResult) {
           totalNudgeCount = 0
-          completionSignalHintCount = 0
         }
 
         const isGarbledToolCallTextResponse = isGarbledToolCallText(contentText)
@@ -2452,7 +2405,6 @@ export async function processTranscriptWithAgentMode(
         // nudging to work per "stuck segment" rather than globally across the run.
         // If the agent gets stuck again later, it should have a fresh nudge budget.
         totalNudgeCount = 0
-        completionSignalHintCount = 0
       }
     }
 
@@ -2903,7 +2855,6 @@ export async function processTranscriptWithAgentMode(
           noOpCount = 0
           totalNudgeCount = 0
           garbledToolCallCount = 0
-          completionSignalHintCount = 0
           continue
         }
 
@@ -3108,7 +3059,6 @@ export async function processTranscriptWithAgentMode(
         noOpCount = 0
         totalNudgeCount = 0
         garbledToolCallCount = 0
-        completionSignalHintCount = 0
         continue
       }
 
@@ -3160,7 +3110,6 @@ export async function processTranscriptWithAgentMode(
 		          noOpCount = 0
 		          totalNudgeCount = 0
 		          garbledToolCallCount = 0
-		          completionSignalHintCount = 0
 	          continue
 	        }
 	      }
