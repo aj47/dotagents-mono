@@ -143,30 +143,10 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - Avoid pulling large heads/tails unless a narrower search or window is insufficient`)
   }
 
-  sections.push(`KNOWLEDGE NOTES (durable context):
-- Durable knowledge lives in ~/.agents/knowledge/ and ./.agents/knowledge/
-- Prefer direct file editing there over special-purpose note tools
-- Store notes at .agents/knowledge/<slug>/<slug>.md with human-readable slugs
-- Related assets may live in the same note folder
-- Use canonical note frontmatter: kind: note, id, title, context, numeric createdAt/updatedAt millisecond timestamps, and comma-separated tags
-- Default most notes to context: search-only; reserve context: auto for a tiny curated subset
-
-PAST CONVERSATIONS:
-- Prior DotAgents conversations are stored as JSON in the app-data conversations folder: <appData>/<appId>/conversations/
-- Common locations are ~/Library/Application Support/<appId>/conversations/ on macOS, %APPDATA%/<appId>/conversations/ on Windows, and ~/.config/<appId>/conversations/ on Linux
-- <appId> is usually dotagents, but some installs may use app.dotagents; infer the real local folder instead of assuming one OS-specific path
-- Use index.json to discover relevant conversations, then open matching conv_*.json files for full message history when prior chat context would help
-- If AJ says "pick up where we left off" or "find that conversation about X", proactively search the conversation store with python3 or shell tools, identify the best match, read the last relevant messages, and summarize recovered state before asking follow-up questions
-
-DOTAGENTS CONFIG:
-- Treat ~/.agents/ and ./.agents/ as the canonical editable DotAgents configuration surface
-- Global ~/.agents/ is the default editable layer
-- Workspace ./.agents/ only overrides global ~/.agents/ when DOTAGENTS_WORKSPACE_DIR is explicitly set
-- Prefer direct file editing for settings, models, prompts, agents, skills, tasks, and knowledge notes instead of narrow app-specific config tools`)
-
-  if (hasLoadSkillInstructions) {
-    sections.push('For exact file locations, merge rules, and safe edit recipes, call load_skill_instructions with skillId: "dotagents-config-admin" before changing unfamiliar DotAgents config.')
-  }
+  sections.push(`LOCAL MEMORY & CONFIG:
+- Durable notes live in ~/.agents/knowledge/ and ./.agents/knowledge/; edit note/config files directly and keep context:auto rare
+- Prior conversations live under <appData>/<appId>/conversations/; infer the appId/path, search index.json then conv_*.json, and recover state before asking when the user wants to resume prior work
+- DotAgents config is layered ~/.agents/ plus workspace ./.agents/ when DOTAGENTS_WORKSPACE_DIR is set; for unfamiliar config edits, load dotagents-config-admin if available`)
 
   return `\n\n${sections.join('\n\n')}`
 }
