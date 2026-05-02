@@ -838,7 +838,9 @@ export async function makeChatGptWebResponse(
   let buffer = ""
   let accumulatedText = ""
   let accumulatedReasoningSummary = ""
+  let streamedDisplayText = ""
   let completedResponse: ChatGptWebCompletedEventResponse | undefined
+  let sentReasoningProgress = false
   const pendingToolArguments = new Map<string, string>()
   const completedToolCalls = new Map<string, ChatGptWebToolCall>()
 
@@ -867,17 +869,38 @@ export async function makeChatGptWebResponse(
 
       const event = parseJsonObject(data)
       const eventType = typeof event.type === "string" ? event.type : ""
+      const appendDisplayChunk = (chunk: string) => {
+        if (!chunk) return
+        streamedDisplayText += chunk
+        options.onTextChunk?.(chunk, streamedDisplayText)
+      }
 
       if (eventType === "response.output_text.delta") {
         const delta = typeof event.delta === "string" ? event.delta : ""
         if (delta) {
+          const hadVisibleText = accumulatedText.trim().length > 0
           accumulatedText += delta
-          options.onTextChunk?.(delta, accumulatedText)
+          if (hadVisibleText || accumulatedText.trim().length > 0) {
+            appendDisplayChunk(delta)
+          }
+        }
+      } else if (eventType === "response.output_item.added") {
+        const item = event.item
+        const itemType = item && typeof item === "object"
+          ? (item as { type?: unknown }).type
+          : undefined
+        if (itemType === "reasoning" && !sentReasoningProgress && !accumulatedText.trim() && !accumulatedReasoningSummary) {
+          sentReasoningProgress = true
+          appendDisplayChunk("Thinking...")
         }
       } else if (eventType === "response.reasoning_summary_text.delta") {
         const delta = typeof event.delta === "string" ? event.delta : ""
         if (delta) {
+          const hadReasoningSummary = accumulatedReasoningSummary.length > 0
           accumulatedReasoningSummary += delta
+          if (!accumulatedText.trim()) {
+            appendDisplayChunk(sentReasoningProgress && !hadReasoningSummary ? `\n\n${delta}` : delta)
+          }
         }
       } else if (eventType === "response.function_call_arguments.delta") {
         const itemId = typeof event.item_id === "string" ? event.item_id : ""

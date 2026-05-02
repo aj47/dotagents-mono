@@ -1833,6 +1833,10 @@ export async function processTranscriptWithAgentMode(
         const now = Date.now()
         // Update the thinking step with streaming content (always)
         thinkingStep.llmContent = accumulated
+        if (accumulated.trim()) {
+          thinkingStep.title = "Agent response"
+          thinkingStep.description = "Generating response..."
+        }
 
         // Throttle emit calls to reduce log spam
         if (now - lastStreamEmitTime < STREAM_EMIT_THROTTLE_MS) {
