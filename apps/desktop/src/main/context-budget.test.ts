@@ -56,6 +56,7 @@ vi.mock('./summarization-service', () => ({
 }))
 
 vi.mock('@dotagents/shared', () => ({
+  RESPOND_TO_USER_TOOL: 'respond_to_user',
   sanitizeMessageContentForDisplay: (content: string) => content,
 }))
 
@@ -108,6 +109,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearActualTokenUsage('session-archive-reapply')
     clearActualTokenUsage('session-latest-user')
     clearIterativeSummary('session-archive')
+    clearIterativeSummary('session-batch')
     clearIterativeSummary('session-live-tail')
     clearIterativeSummary('session-protected-tail')
     clearIterativeSummary('session-no-microcompact')
@@ -417,7 +419,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(Number(readResult.messageCount)).toBeGreaterThan(0)
   })
 
-  it('keeps the latest real user request raw when archive frontier trims tool-heavy history', async () => {
+  it('keeps recent real user request anchors raw when archive frontier trims tool-heavy history', async () => {
     makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
     Object.assign(mockConfig, {
       mcpContextTargetRatio: 0.95,
@@ -425,16 +427,22 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     })
 
     const oldRequest = 'list as many project names as you can that i have been working on over the past 2 years'
+    const priorRequest = 'open the map in chrome'
     const currentRequest = 'can you open in excalidraw in chrome'
     const messages = [
       { role: 'system', content: 'system prompt' },
       { role: 'user', content: oldRequest },
       ...Array.from({ length: 12 }, (_, index) => ({
-        role: index % 2 === 0 ? 'assistant' : 'user',
+        role: 'assistant',
         content: `older-work-${index} ${'o'.repeat(120)}`,
       })),
+      { role: 'user', content: priorRequest },
+      ...Array.from({ length: 8 }, (_, index) => ({
+        role: 'user',
+        content: `[execute_command] intermediate tool result ${index} ${'i'.repeat(120)}`,
+      })),
       { role: 'user', content: currentRequest },
-      ...Array.from({ length: 34 }, (_, index) => ({
+      ...Array.from({ length: 26 }, (_, index) => ({
         role: 'user',
         content: index % 2 === 0
           ? `[playwright-extension:browser_snapshot] result-${index} ${'t'.repeat(120)}`
@@ -449,9 +457,9 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     })
 
     expect(result.appliedStrategies).toContain('archive_frontier')
+    expect(result.messages.some((msg) => msg.role === 'user' && msg.content === priorRequest)).toBe(true)
     expect(result.messages.some((msg) => msg.role === 'user' && msg.content === currentRequest)).toBe(true)
     expect(result.messages.some((msg) => msg.role === 'user' && msg.content === oldRequest)).toBe(false)
-    expect(result.messages.some((msg) => msg.role === 'assistant' && msg.content.includes('[Earlier user request - background only]') && msg.content.includes(oldRequest))).toBe(true)
   })
 
   it('reapplies an existing archive frontier even when too few new messages arrived to advance it', async () => {

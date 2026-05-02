@@ -1,5 +1,6 @@
 import type { AgentConversationState, AgentUserResponseEvent } from "@dotagents/shared"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import { collectRecentRealUserRequestIndices } from "./conversation-history-utils"
 import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
 
 type ToolCallLike = {
@@ -99,25 +100,6 @@ Return ONLY JSON with this schema:
 Set isComplete=false only when conversationState=running. Set isComplete=true for complete, needs_input, or blocked.`
 
 const VERIFICATION_JSON_REQUEST_BASE = "Return JSON only. Remember: if the assistant is waiting on the user, use conversationState=needs_input; if it cannot continue because of a blocker, use conversationState=blocked; otherwise use running or complete. Do not treat optional preference/approval questions after unfinished work as needs_input; those should stay running."
-const MAPPED_TOOL_RESULT_PREFIX_RE = /^\[((?=[^\]]*[a-z])[A-Za-z0-9._:/-]+)\]\s(?:ERROR:\s*)?/
-
-function isInternalNudgeLikeContent(content: string): boolean {
-  const trimmed = content.trimStart()
-  return trimmed.includes("Continue only the current unresolved request described above")
-    || trimmed.includes("Continue and finish remaining work")
-    || trimmed.startsWith("Verifier indicates the task is not complete")
-    || (trimmed.startsWith("Reason:") && trimmed.includes("Missing items:"))
-}
-
-function isRealUserRequestContent(content: string): boolean {
-  const trimmed = content.trimStart()
-  if (!trimmed) return false
-  if (MAPPED_TOOL_RESULT_PREFIX_RE.test(trimmed)) return false
-  if (trimmed.startsWith("TOOL FAILED:")) return false
-  if (trimmed.startsWith("Original request:")) return false
-  if (isInternalNudgeLikeContent(trimmed)) return false
-  return true
-}
 
 function collectRelevantPriorUserRequests(
   conversationHistory: ReplayConversationHistoryEntry[],
@@ -128,20 +110,12 @@ function collectRelevantPriorUserRequests(
     ? Math.max(0, Math.min(sinceIndex, conversationHistory.length))
     : conversationHistory.length
   const currentRequest = sanitizeMessageContentForDisplay(transcript).trim()
-  const priorRequests: string[] = []
 
-  for (let i = searchEnd - 1; i >= 0 && priorRequests.length < 1; i--) {
-    const entry = conversationHistory[i]
-    if (entry?.role !== "user") continue
+  const candidates = collectRecentRealUserRequestIndices(conversationHistory, 2, searchEnd)
+    .map((index) => sanitizeMessageContentForDisplay(conversationHistory[index]?.content || "").trim())
+    .filter((request) => request.length > 0 && request !== currentRequest)
 
-    const text = sanitizeMessageContentForDisplay(entry.content || "").trim()
-    if (!isRealUserRequestContent(text)) continue
-    if (currentRequest && text === currentRequest) continue
-
-    priorRequests.unshift(text)
-  }
-
-  return priorRequests
+  return candidates.slice(-1)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

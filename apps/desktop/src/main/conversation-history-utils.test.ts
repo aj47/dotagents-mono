@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest"
 import { INTERNAL_COMPLETION_NUDGE_TEXT } from "../shared/runtime-tool-names"
 import {
+  collectRecentRealUserRequestIndices,
   filterEphemeralMessages,
+  hasMappedToolResultPrefix,
+  isGeneratedContextSummaryContent,
   isInternalNudgeContent,
+  isRealUserRequestContent,
   type ConversationMessage,
 } from "./conversation-history-utils"
 
@@ -62,6 +66,34 @@ describe("conversation-history-utils", () => {
 
     it("does not classify normal user messages as internal nudges", () => {
       expect(isInternalNudgeContent("continue with my tax prep")).toBe(false)
+    })
+  })
+
+  describe("real user request detection", () => {
+    it("distinguishes real requests from tool results, summaries, and internal nudges", () => {
+      expect(isRealUserRequestContent("can you open in excalidraw in chrome")).toBe(true)
+      expect(isRealUserRequestContent("[execute_command] output")).toBe(false)
+      expect(isRealUserRequestContent("TOOL FAILED: execute_command (attempt 1/3)")).toBe(false)
+      expect(isRealUserRequestContent("[Archived Background Summary - not the current task]\nold work")).toBe(false)
+      expect(isRealUserRequestContent("Reason: incomplete\nMissing items:\n- x\nContinue only the current unresolved request described above.")).toBe(false)
+    })
+
+    it("collects the latest real user anchors while skipping tool-like user messages", () => {
+      const history = [
+        { role: "user", content: "old unrelated task" },
+        { role: "user", content: "[execute_command] noisy output" },
+        { role: "assistant", content: "done" },
+        { role: "user", content: "open the map in chrome" },
+        { role: "user", content: "TOOL FAILED: browser_drop" },
+        { role: "user", content: "can you open in excalidraw in chrome" },
+      ]
+
+      expect(collectRecentRealUserRequestIndices(history, 2)).toEqual([3, 5])
+    })
+
+    it("recognizes shared tool and summary markers", () => {
+      expect(hasMappedToolResultPrefix("[playwright-extension:browser_snapshot] result")).toBe(true)
+      expect(isGeneratedContextSummaryContent("[Session Progress Summary]\nsummary")).toBe(true)
     })
   })
 
