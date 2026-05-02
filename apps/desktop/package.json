@@ -1,6 +1,6 @@
 {
   "name": "@dotagents/desktop",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "description": "DotAgents — Voice-first AI agent orchestrator with knowledge, skills, and the .agents protocol",
   "main": "./out/main/index.js",
