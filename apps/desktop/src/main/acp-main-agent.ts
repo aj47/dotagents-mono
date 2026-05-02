@@ -35,7 +35,7 @@ type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationH
 const ACP_RUNTIME_TOOL_PROMPT_CONTEXT = [
   `Plain assistant text is valid user-facing output for ordinary chat, simple questions, and final answers.`,
   `If "${RESPOND_TO_USER_TOOL}" is available, use it when explicit voice/messaging delivery semantics or attachments are needed; do not duplicate the same answer in plain text.`,
-  `When the task is fully complete and "${MARK_WORK_COMPLETE_TOOL}" is available, call it only when an explicit internal completion signal is useful, with a concise internal completion summary. Do not send a second recap unless the user explicitly asked for one.`,
+  `When the task is fully complete and "${MARK_WORK_COMPLETE_TOOL}" is available, first provide the final user-facing answer in plain assistant text or via "${RESPOND_TO_USER_TOOL}". Only then call "${MARK_WORK_COMPLETE_TOOL}" when an explicit internal completion signal is useful, with a concise internal completion summary. Do not send a second recap unless the user explicitly asked for one.`,
 ].join("\n")
 
 const ACP_SETUP_STAGE_META: Record<ACPGetOrCreateSessionStage, { stepId: string; title: (agentName: string) => string }> = {

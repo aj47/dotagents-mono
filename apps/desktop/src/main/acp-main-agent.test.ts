@@ -177,7 +177,8 @@ describe("acp-main-agent", () => {
     const promptContext = mockSendPrompt.mock.calls[0]?.[3]
     expect(promptContext).toContain("Plain assistant text is valid user-facing output")
     expect(promptContext).toContain('If "respond_to_user" is available')
-    expect(promptContext).toContain('call it only when an explicit internal completion signal is useful')
+    expect(promptContext).toContain('first provide the final user-facing answer in plain assistant text or via "respond_to_user"')
+    expect(promptContext).toContain('Only then call "mark_work_complete"')
     expect(promptContext).toContain("System Prompt: Be helpful")
     expect(promptContext).toContain("Guidelines: Stay concise")
   })

@@ -128,8 +128,8 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - There is no separate completion tool in this run, so do not continue looping after that final response.`)
   } else if (hasMarkWorkComplete) {
     sections.push(`COMPLETION SIGNAL:
- - When all requested work is fully complete, provide the complete final user-facing answer in normal assistant text. For tool-driven work, you may then call mark_work_complete with a concise internal completion summary.
- - Do not send a second recap or post-completion summary unless the user explicitly asked for one.
+- When all requested work is fully complete, provide the complete final user-facing answer in normal assistant text first. For tool-driven work, you may then call mark_work_complete with a concise internal completion summary.
+- Do not send a second recap or post-completion summary unless the user explicitly asked for one.
 - Do not call mark_work_complete while work is still in progress or partially done.`)
   } else {
     sections.push(`COMPLETION SIGNAL:
