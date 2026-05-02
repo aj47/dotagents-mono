@@ -9,8 +9,8 @@
  * - Disabled by default; controlled by `config.localTraceLoggingEnabled`.
  * - Writes per-session files under `config.localTraceLogPath` if set, otherwise
  *   `<dataFolder>/traces/<traceId>.jsonl`.
- * - Each call appends one JSON object per line. Failures are swallowed and
- *   logged to console — they never block agent execution.
+ * - Each call queues one JSON object per line. Filesystem failures are logged
+ *   asynchronously and never break agent execution.
  * - Independent of Langfuse: works whether the langfuse package is installed
  *   or not, and whether `langfuseEnabled` is true or false.
  */
@@ -50,7 +50,7 @@ export interface LocalTraceEvent {
 }
 
 let resolvedLogDirectory: string | null = null
-const ensuredDirectories = new Set<string>()
+const pendingWrites = new Map<string, Promise<void>>()
 const spanTraceIds = new Map<string, string>()
 const generationTraceIds = new Map<string, string>()
 
@@ -98,16 +98,44 @@ export function getLocalTraceLogPath(traceId?: string): string {
  */
 export function resetLocalTraceLogger(): void {
   resolvedLogDirectory = null
-  ensuredDirectories.clear()
   spanTraceIds.clear()
   generationTraceIds.clear()
 }
 
-function ensureLogDirectory(filePath: string): void {
-  const dir = path.dirname(filePath)
-  if (ensuredDirectories.has(dir)) return
-  fs.mkdirSync(dir, { recursive: true })
-  ensuredDirectories.add(dir)
+export async function flushLocalTraceLogger(): Promise<void> {
+  while (pendingWrites.size > 0) {
+    await Promise.all(Array.from(pendingWrites.values()))
+  }
+}
+
+async function writeLocalTraceEvent(filePath: string, record: LocalTraceEvent): Promise<void> {
+  await fs.promises.mkdir(path.dirname(filePath), { recursive: true })
+  await fs.promises.appendFile(filePath, JSON.stringify(record) + "\n", "utf8")
+
+  if (isDebugLLM()) {
+    logLLM("[LocalTrace] appended", {
+      type: record.type,
+      traceId: record.traceId,
+      path: filePath,
+    })
+  }
+}
+
+function queueLocalTraceWrite(filePath: string, record: LocalTraceEvent): void {
+  const previousWrite = pendingWrites.get(filePath) ?? Promise.resolve()
+  const queuedWrite = previousWrite
+    .catch(() => undefined)
+    .then(() => writeLocalTraceEvent(filePath, record))
+    .catch((error) => {
+      console.error("[LocalTrace] Failed to append event:", error)
+    })
+
+  pendingWrites.set(filePath, queuedWrite)
+  void queuedWrite.finally(() => {
+    if (pendingWrites.get(filePath) === queuedWrite) {
+      pendingWrites.delete(filePath)
+    }
+  })
 }
 
 function resolveConfiguredTraceDirectory(configuredPath: string): string {
@@ -147,32 +175,19 @@ function rememberEventTraceLink(record: LocalTraceEvent): void {
 /**
  * Append one event to the local JSONL trace log. No-op when disabled.
  *
- * Errors are caught and logged to console — local logging must never
- * break agent execution.
+ * Writes are queued asynchronously. Errors are logged to console — local
+ * logging must never break agent execution.
  */
 export function appendLocalTraceEvent(event: Omit<LocalTraceEvent, "timestamp">): void {
   if (!isLocalTraceLoggingEnabled()) return
 
   const traceId = resolveEventTraceId(event)
   const filePath = getLocalTraceLogPath(traceId)
-  try {
-    ensureLogDirectory(filePath)
-    const record: LocalTraceEvent = {
-      ...event,
-      traceId,
-      timestamp: new Date().toISOString(),
-    }
-    fs.appendFileSync(filePath, JSON.stringify(record) + "\n", "utf8")
-    rememberEventTraceLink(record)
-
-    if (isDebugLLM()) {
-      logLLM("[LocalTrace] appended", {
-        type: record.type,
-        traceId: record.traceId,
-        path: filePath,
-      })
-    }
-  } catch (error) {
-    console.error("[LocalTrace] Failed to append event:", error)
+  const record: LocalTraceEvent = {
+    ...event,
+    traceId,
+    timestamp: new Date().toISOString(),
   }
+  rememberEventTraceLink(record)
+  queueLocalTraceWrite(filePath, record)
 }

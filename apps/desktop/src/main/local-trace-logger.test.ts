@@ -60,6 +60,7 @@ describe("local-trace-logger", () => {
       output: "hello",
       usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
     })
+    await mod.flushLocalTraceLogger()
 
     const expected = path.join(tempDir, "traces", "t1.jsonl")
     expect(fs.existsSync(expected)).toBe(true)
@@ -84,6 +85,7 @@ describe("local-trace-logger", () => {
 
     mod.appendLocalTraceEvent({ type: "trace.start", traceId: "session/one", name: "One" })
     mod.appendLocalTraceEvent({ type: "trace.start", traceId: "session:two", name: "Two" })
+    await mod.flushLocalTraceLogger()
 
     const firstPath = path.join(tempDir, "traces", "session_one.jsonl")
     const secondPath = path.join(tempDir, "traces", "session_two.jsonl")
@@ -101,6 +103,7 @@ describe("local-trace-logger", () => {
     const mod = await import("./local-trace-logger")
     mod.resetLocalTraceLogger()
     mod.appendLocalTraceEvent({ type: "span.start", traceId: "t1", spanId: "s1", name: "tool" })
+    await mod.flushLocalTraceLogger()
 
     const expected = path.join(customPath, "t1.jsonl")
     expect(fs.existsSync(expected)).toBe(true)
@@ -117,8 +120,48 @@ describe("local-trace-logger", () => {
     const mod = await import("./local-trace-logger")
     mod.resetLocalTraceLogger()
     mod.appendLocalTraceEvent({ type: "trace.start", traceId: "t1", name: "Agent" })
+    await mod.flushLocalTraceLogger()
 
     expect(fs.existsSync(path.join(tempDir, "custom", "t1.jsonl"))).toBe(true)
     expect(fs.existsSync(legacyFilePath)).toBe(false)
+  })
+
+  it("uses an updated custom path after reset", async () => {
+    const firstPath = path.join(tempDir, "first")
+    const secondPath = path.join(tempDir, "second")
+    currentConfig = { localTraceLoggingEnabled: true, localTraceLogPath: firstPath }
+
+    const mod = await import("./local-trace-logger")
+    mod.appendLocalTraceEvent({ type: "trace.start", traceId: "t1", name: "First" })
+    await mod.flushLocalTraceLogger()
+
+    currentConfig = { localTraceLoggingEnabled: true, localTraceLogPath: secondPath }
+    mod.resetLocalTraceLogger()
+    mod.appendLocalTraceEvent({ type: "trace.start", traceId: "t2", name: "Second" })
+    await mod.flushLocalTraceLogger()
+
+    expect(fs.existsSync(path.join(firstPath, "t1.jsonl"))).toBe(true)
+    expect(fs.existsSync(path.join(secondPath, "t2.jsonl"))).toBe(true)
+    expect(fs.existsSync(path.join(firstPath, "t2.jsonl"))).toBe(false)
+  })
+
+  it("recreates the trace directory if it is deleted while running", async () => {
+    const mod = await import("./local-trace-logger")
+    currentConfig = { localTraceLoggingEnabled: true }
+
+    mod.appendLocalTraceEvent({ type: "trace.start", traceId: "t1", name: "Agent" })
+    await mod.flushLocalTraceLogger()
+
+    const tracesDir = path.join(tempDir, "traces")
+    fs.rmSync(tracesDir, { recursive: true, force: true })
+
+    mod.appendLocalTraceEvent({ type: "trace.end", traceId: "t1", output: "done" })
+    await mod.flushLocalTraceLogger()
+
+    const expected = path.join(tracesDir, "t1.jsonl")
+    expect(fs.existsSync(expected)).toBe(true)
+    const line = JSON.parse(fs.readFileSync(expected, "utf8").trim())
+    expect(line.type).toBe("trace.end")
+    expect(line.output).toBe("done")
   })
 })

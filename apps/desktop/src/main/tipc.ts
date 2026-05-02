@@ -2874,21 +2874,27 @@ export const router = {
         // lifecycle is best-effort
       }
 
-      // Reinitialize Langfuse if any Langfuse config fields changed
-      // This ensures config changes take effect without requiring app restart
+      // Reinitialize observability helpers if their config fields changed.
+      // This ensures config changes take effect without requiring app restart.
       try {
         const langfuseConfigChanged =
           (prev as any)?.langfuseEnabled !== (merged as any)?.langfuseEnabled ||
           (prev as any)?.langfuseSecretKey !== (merged as any)?.langfuseSecretKey ||
           (prev as any)?.langfusePublicKey !== (merged as any)?.langfusePublicKey ||
           (prev as any)?.langfuseBaseUrl !== (merged as any)?.langfuseBaseUrl
+        const localTraceConfigChanged =
+          (prev as any)?.localTraceLoggingEnabled !== (merged as any)?.localTraceLoggingEnabled ||
+          (prev as any)?.localTraceLogPath !== (merged as any)?.localTraceLogPath
 
         if (langfuseConfigChanged) {
           const { reinitializeLangfuse } = await import("./langfuse-service")
           reinitializeLangfuse()
+        } else if (localTraceConfigChanged) {
+          const { resetLocalTraceLogger } = await import("./local-trace-logger")
+          resetLocalTraceLogger()
         }
       } catch (_e) {
-        // Langfuse reinitialization is best-effort
+        // Observability reinitialization is best-effort
       }
     }),
 
