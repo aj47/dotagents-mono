@@ -401,6 +401,10 @@ export interface Settings {
   langfuseSecretKey?: string;
   langfuseBaseUrl?: string;
 
+  // Local Trace Logging — opt-in per-session JSONL logs on disk (independent of Langfuse Cloud)
+  localTraceLoggingEnabled?: boolean;
+  localTraceLogPath?: string;
+
   // Dual-Model Settings
   dualModelEnabled?: boolean;
 
@@ -528,6 +532,10 @@ export interface SettingsUpdate {
   langfusePublicKey?: string;
   langfuseSecretKey?: string;
   langfuseBaseUrl?: string;
+
+  // Local Trace Logging — opt-in per-session JSONL logs on disk (independent of Langfuse Cloud)
+  localTraceLoggingEnabled?: boolean;
+  localTraceLogPath?: string;
 
   // Dual-Model Settings
   dualModelEnabled?: boolean;

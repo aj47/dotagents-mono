@@ -20,6 +20,10 @@ import {
   type LangfuseSpanClient,
   type LangfuseGenerationClient,
 } from "./langfuse-loader"
+import {
+  appendLocalTraceEvent,
+  resetLocalTraceLogger,
+} from "./local-trace-logger"
 
 // Singleton Langfuse instance
 let langfuseInstance: LangfuseInstance | null = null
@@ -97,6 +101,8 @@ export function reinitializeLangfuse(): void {
   activeTraces.clear()
   activeSpans.clear()
   activeGenerations.clear()
+  // Local trace logger caches the resolved path; reset so config changes apply.
+  resetLocalTraceLogger()
 }
 
 /**
@@ -124,6 +130,20 @@ export function createAgentTrace(
     release?: string
   }
 ): LangfuseTraceClient | null {
+  appendLocalTraceEvent({
+    type: "trace.start",
+    traceId,
+    name: options.name || "Agent Session",
+    input: options.input,
+    metadata: {
+      ...options.metadata,
+      userId: options.userId,
+      sessionId: options.sessionId,
+      tags: options.tags,
+      release: options.release,
+    },
+  })
+
   const langfuse = getLangfuse()
   if (!langfuse) return null
 
@@ -173,6 +193,13 @@ export function endAgentTrace(
     metadata?: Record<string, unknown>
   }
 ): void {
+  appendLocalTraceEvent({
+    type: "trace.end",
+    traceId: sessionId,
+    output: options.output,
+    metadata: options.metadata,
+  })
+
   const trace = activeTraces.get(sessionId)
   if (!trace) return
 
@@ -199,6 +226,15 @@ export function createToolSpan(
     metadata?: Record<string, unknown>
   }
 ): LangfuseSpanClient | null {
+  appendLocalTraceEvent({
+    type: "span.start",
+    traceId,
+    spanId,
+    name: options.name,
+    input: options.input,
+    metadata: options.metadata,
+  })
+
   const trace = activeTraces.get(traceId)
   if (!trace) return null
 
@@ -228,6 +264,15 @@ export function endToolSpan(
     statusMessage?: string
   }
 ): void {
+  appendLocalTraceEvent({
+    type: "span.end",
+    spanId,
+    output: options.output,
+    metadata: options.metadata,
+    level: options.level,
+    statusMessage: options.statusMessage,
+  })
+
   const span = activeSpans.get(spanId)
   if (!span) return
 
@@ -258,6 +303,17 @@ export function createLLMGeneration(
     metadata?: Record<string, unknown>
   }
 ): LangfuseGenerationClient | null {
+  appendLocalTraceEvent({
+    type: "generation.start",
+    traceId: traceId ?? undefined,
+    generationId,
+    name: options.name,
+    model: options.model,
+    modelParameters: options.modelParameters,
+    input: options.input,
+    metadata: options.metadata,
+  })
+
   const langfuse = getLangfuse()
   if (!langfuse) return null
 
@@ -307,6 +363,16 @@ export function endLLMGeneration(
     statusMessage?: string
   }
 ): void {
+  appendLocalTraceEvent({
+    type: "generation.end",
+    generationId,
+    output: options.output,
+    usage: options.usage,
+    metadata: options.metadata,
+    level: options.level,
+    statusMessage: options.statusMessage,
+  })
+
   const generation = activeGenerations.get(generationId)
   if (!generation) return
 

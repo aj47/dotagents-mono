@@ -1356,15 +1356,15 @@ export function Component() {
           </Control>
         </ControlGroup>
 
-        {/* Langfuse Observability */}
+        {/* Observability */}
         <ControlGroup
           collapsible
           defaultCollapsed
-          title="Langfuse Observability"
+          title="Observability"
           forceOpen={isSearching}
           endDescription={(
             <div className="break-words whitespace-normal">
-              Optional tracing for LLM calls, agent sessions, and tools.{" "}
+              Optional tracing for LLM calls, agent sessions, and tools. Send traces to Langfuse or keep them local as JSONL logs.{" "}
               <a
                 href="https://langfuse.com"
                 target="_blank"
@@ -1377,7 +1377,32 @@ export function Component() {
             </div>
           )}
         >
-          <Control label="Enable tracing" className="px-3">
+          <Control
+            label={(
+              <ControlLabel
+                label="Local trace logging"
+                tooltip="Write each agent session trace to its own local JSONL file on this device. Independent of Langfuse Cloud."
+              />
+            )}
+            className="px-3"
+          >
+            <Switch
+              checked={configQuery.data?.localTraceLoggingEnabled ?? false}
+              onCheckedChange={(value) => {
+                saveConfig({ localTraceLoggingEnabled: value })
+              }}
+            />
+          </Control>
+
+          <Control
+            label={(
+              <ControlLabel
+                label="Langfuse tracing"
+                tooltip="Send traces to Langfuse Cloud or a self-hosted Langfuse instance."
+              />
+            )}
+            className="px-3"
+          >
             <Switch
               checked={configQuery.data?.langfuseEnabled ?? false}
               disabled={!isLangfuseInstalled}

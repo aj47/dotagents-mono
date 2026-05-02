@@ -366,6 +366,12 @@ const getConfig = (): LoadedConfig => {
     langfuseSecretKey: undefined,
     langfuseBaseUrl: undefined, // Uses cloud.langfuse.com by default
 
+    // Local trace logging - disabled by default
+    // When enabled, each agent trace/session is appended as JSONL to its own file
+    // (default directory: <dataFolder>/traces). Independent of Langfuse Cloud.
+    localTraceLoggingEnabled: false,
+    localTraceLogPath: undefined,
+
     // Dual-Model Agent Mode defaults
     dualModelEnabled: false,
     dualModelSummarizationFrequency: "every_response",

@@ -125,6 +125,13 @@ function findMaxIterationsInput(node: any) {
   )
 }
 
+function findControlByLabel(node: any, label: string) {
+  return findNode(
+    node,
+    candidate => candidate.type === "Control" && candidate.props?.label === label,
+  )
+}
+
 const GROQ_STT_PROMPT_PLACEHOLDER = "Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
 
 async function flushPromises() {
@@ -140,6 +147,7 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
   const mutate = vi.fn()
   let currentConfig: any = {
     langfuseEnabled: true,
+    localTraceLoggingEnabled: false,
     langfusePublicKey: "pk-lf-old",
     langfuseSecretKey: "sk-lf-old",
     langfuseBaseUrl: "",
@@ -264,6 +272,29 @@ afterEach(() => {
 })
 
 describe("desktop general settings draft behavior", () => {
+  it("saves the local trace logging toggle from general settings", async () => {
+    const runtime = createHookRuntime()
+    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+
+    const tree = runtime.render(Component, {} as any)
+    runtime.commitEffects()
+    await flushPromises()
+
+    const localTraceLoggingControl = findControlByLabel(tree, "Local trace logging")
+    expect(localTraceLoggingControl).toBeTruthy()
+    const toggle = findNode(localTraceLoggingControl, candidate => candidate.type === "Switch")
+    expect(toggle.props.checked).toBe(false)
+
+    toggle.props.onCheckedChange(true)
+
+    expect(mutate).toHaveBeenCalledWith({
+      config: {
+        ...getCurrentConfig(),
+        localTraceLoggingEnabled: true,
+      },
+    })
+  })
+
   it("keeps the public key draft local, debounces saves, and merges with the latest config", async () => {
     const runtime = createHookRuntime()
     const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
