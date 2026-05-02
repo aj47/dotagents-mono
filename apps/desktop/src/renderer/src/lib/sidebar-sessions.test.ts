@@ -475,7 +475,7 @@ describe("dedupeTaskEntriesByTitle", () => {
 })
 
 describe("paginateSidebarEntries", () => {
-  it("always keeps active and pinned entries while paginating unpinned saved entries", () => {
+  it("always keeps active entries while counting pinned saved entries toward the saved limit", () => {
     const entries = [
       { session: { id: "active", conversationId: "active-c" }, isSavedConversation: false },
       { session: { id: "pinned", conversationId: "pinned-c" }, isSavedConversation: true },
@@ -488,23 +488,48 @@ describe("paginateSidebarEntries", () => {
     expect(paginated.visibleEntries.map((entry) => entry.session.id)).toEqual([
       "active",
       "pinned",
-      "saved-1",
     ])
     expect(paginated.hasMoreEntries).toBe(true)
   })
 
-  it("keeps saved subagents visible with their pinned parent", () => {
+  it("does not show pinned saved entries when active rows fill the default page", () => {
+    const entries = [
+      { session: { id: "active-1", conversationId: "active-c-1" }, isSavedConversation: false },
+      { session: { id: "active-2", conversationId: "active-c-2" }, isSavedConversation: false },
+      { session: { id: "active-3", conversationId: "active-c-3" }, isSavedConversation: false },
+      { session: { id: "active-4", conversationId: "active-c-4" }, isSavedConversation: false },
+      { session: { id: "active-pin", conversationId: "active-pin-c" }, isSavedConversation: false },
+      { session: { id: "pinned-1", conversationId: "pinned-c-1" }, isSavedConversation: true },
+      { session: { id: "pinned-2", conversationId: "pinned-c-2" }, isSavedConversation: true },
+    ]
+
+    const paginated = paginateSidebarEntries(
+      entries,
+      new Set(["active-pin-c", "pinned-c-1", "pinned-c-2"]),
+      0,
+    )
+
+    expect(paginated.visibleEntries.map((entry) => entry.session.id)).toEqual([
+      "active-1",
+      "active-2",
+      "active-3",
+      "active-4",
+      "active-pin",
+    ])
+    expect(paginated.hasMoreEntries).toBe(true)
+  })
+
+  it("counts saved subagents with their pinned parent against the saved limit", () => {
     const entries = [
       { session: { id: "parent", conversationId: "parent-c" }, isSavedConversation: true },
       { session: { id: "child", parentSessionId: "parent" }, isSavedConversation: true },
       { session: { id: "saved", conversationId: "saved-c" }, isSavedConversation: true },
     ]
 
-    const paginated = paginateSidebarEntries(entries, new Set(["parent-c"]), 0)
+    const paginated = paginateSidebarEntries(entries, new Set(["parent-c"]), 1)
 
     expect(paginated.visibleEntries.map((entry) => entry.session.id)).toEqual([
       "parent",
-      "child",
     ])
     expect(paginated.hasMoreEntries).toBe(true)
   })
