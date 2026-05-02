@@ -3900,7 +3900,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       })
     }
 
-    if (progress.streamingContent?.isStreaming && progress.streamingContent.text) {
+    if (!progress.isComplete && progress.streamingContent?.text) {
       let latestAssistantText: (typeof enrichedMessages)[number] | undefined
       for (let i = enrichedMessages.length - 1; i >= 0; i--) {
         const message = enrichedMessages[i]
