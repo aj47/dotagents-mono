@@ -194,6 +194,59 @@ function isInvalidExecuteCommandSkillIdFailure(toolName: string | undefined, res
     || (errorText.includes("skill not found") && errorText.includes("omit skillid"))
 }
 
+function isLikelyAnswerOnlyContinuationTurn(
+  transcript: string,
+  previousConversationHistory?: Array<{ role: string; content?: string; toolCalls?: unknown[]; toolResults?: unknown[] }>,
+): boolean {
+  const priorHistory = previousConversationHistory || []
+  const hasPriorEvidence = priorHistory.some((entry) =>
+    entry.role === "tool"
+    || (Array.isArray(entry.toolCalls) && entry.toolCalls.length > 0)
+    || (Array.isArray(entry.toolResults) && entry.toolResults.length > 0),
+  )
+  if (!hasPriorEvidence) return false
+
+  const normalized = transcript.toLowerCase().replace(/\s+/g, " ").trim()
+  if (!normalized) return false
+
+  const words = normalized.split(" ").filter(Boolean)
+  const startsAsQuestionOrStatus = /^(what|why|how|did|does|is|are|can|should|summarize|summary|status|current|continue|next|explain|check|test)\b/.test(normalized)
+  const containsStatusCue = /\b(current state|next safest action|next safe action|what happened|what should|status|summarize|summary|blocker|known|unknown|confirmed|worked|works|failed|done|complete)\b/.test(normalized)
+
+  return words.length <= 40 && (normalized.endsWith("?") || startsAsQuestionOrStatus || containsStatusCue)
+}
+
+function buildAnswerOnlyContinuationDigest(
+  omittedHistory: Array<{ role: string; content?: string }>,
+): string {
+  const formatSnippet = (entry: { role: string; content?: string }) => {
+    const text = sanitizeMessageContentForDisplay(entry.content || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 240)
+    return text ? `- ${entry.role}: ${text}` : ""
+  }
+
+  const userSnippets = omittedHistory
+    .filter((entry) => entry.role === "user")
+    .slice(-3)
+    .map(formatSnippet)
+    .filter(Boolean)
+
+  const evidenceSnippets = omittedHistory
+    .filter((entry) => entry.role === "assistant" || entry.role === "tool")
+    .slice(-5)
+    .map(formatSnippet)
+    .filter(Boolean)
+
+  return [
+    `[Earlier context compacted for this status/continuation turn: ${omittedHistory.length} older messages omitted.]`,
+    `Use this only as background; answer from the recent live messages below when possible.`,
+    userSnippets.length ? `Older user goals/constraints:\n${userSnippets.join("\n")}` : "",
+    evidenceSnippets.length ? `Older evidence snippets:\n${evidenceSnippets.join("\n")}` : "",
+  ].filter(Boolean).join("\n")
+}
+
 export async function postProcessTranscript(transcript: string) {
   const config = configStore.get()
 
@@ -1004,7 +1057,10 @@ export async function processTranscriptWithAgentMode(
       index === self.findIndex((t) => t.name === tool.name),
   )
 
-  const baseAvailableTools = uniqueAvailableTools
+  const hideCompletionSignalTool = isLikelyAnswerOnlyContinuationTurn(transcript, previousConversationHistory)
+  const baseAvailableTools = hideCompletionSignalTool
+    ? uniqueAvailableTools.filter((tool) => tool.name !== MARK_WORK_COMPLETE_TOOL)
+    : uniqueAvailableTools
 
   const { agentProfileService } = await import("./agent-profile-service")
   const mainAgent = agentProfileService.getCurrentProfile()
@@ -1091,6 +1147,27 @@ export async function processTranscriptWithAgentMode(
     ? undefined
     : previousBranchMessageIndex + 1
 
+  const preparedPreviousConversationHistory = (() => {
+    if (!hideCompletionSignalTool || sanitizedPreviousConversationHistory.length <= 10) {
+      return sanitizedPreviousConversationHistory
+    }
+
+    const tailCount = 6
+    const splitIndex = Math.max(0, sanitizedPreviousConversationHistory.length - tailCount)
+    const omittedHistory = sanitizedPreviousConversationHistory.slice(0, splitIndex)
+    const recentHistory = sanitizedPreviousConversationHistory.slice(splitIndex)
+    return [
+      ...omittedHistory.map((entry) => ({ ...entry, skipModelReplay: true })),
+      {
+        role: "assistant" as const,
+        content: buildAnswerOnlyContinuationDigest(omittedHistory),
+        timestamp: Date.now(),
+        ephemeral: true,
+      },
+      ...recentHistory,
+    ]
+  })()
+
   const conversationHistory: Array<{
     role: "user" | "assistant" | "tool"
     content: string
@@ -1103,7 +1180,7 @@ export async function processTranscriptWithAgentMode(
     /** Renderer-only content override; never persisted or replayed to the model. */
     displayContent?: string
   }> = [
-    ...sanitizedPreviousConversationHistory,
+    ...preparedPreviousConversationHistory,
     {
       role: "user",
       content: transcript,
@@ -1118,7 +1195,7 @@ export async function processTranscriptWithAgentMode(
 
   // Track the index where the current user prompt was added
   // This is used to scope tool result checks to only the current turn
-  const currentPromptIndex = sanitizedPreviousConversationHistory.length
+  const currentPromptIndex = preparedPreviousConversationHistory.length
 
   const buildIntentOnlyToolUsageNudge = (contentText: string) => {
     const selectorRef = contentText.match(/@[a-z][0-9]+/i)?.[0]
@@ -1273,6 +1350,8 @@ export async function processTranscriptWithAgentMode(
   ): Array<{ role: "user" | "assistant"; content: string }> => {
     const mapped = conversationHistory
       .map((entry) => {
+        if (entry.skipModelReplay) return null
+
         const rawContent = typeof entry.content === "string" ? entry.content : ""
         const content = sanitizeMessageContentForDisplay(rawContent).trim()
         if (!content) return null
@@ -1731,6 +1810,8 @@ export async function processTranscriptWithAgentMode(
       { role: "system", content: currentSystemPrompt },
       ...conversationHistory
         .map((entry) => {
+          if (entry.skipModelReplay) return null
+
           const rawContent = typeof entry.content === "string" ? entry.content : ""
           const sanitizedContent = sanitizeMessageContentForDisplay(rawContent)
 
@@ -1749,10 +1830,6 @@ export async function processTranscriptWithAgentMode(
           // cause the model to parrot that placeholder back as garbled tool-call text and
           // answer our internal recovery nudges instead of the user's actual request.
           if (entry.role === "assistant" && !sanitizedContent.trim()) {
-            return null
-          }
-
-          if (entry.role === "assistant" && entry.skipModelReplay) {
             return null
           }
 
@@ -3056,6 +3133,17 @@ export async function processTranscriptWithAgentMode(
       } else {
         // Agent provided sufficient content, use it as the final content directly.
         finalContent = lastAssistantContent
+      }
+
+      if (!finalContent.trim() && !existingUserResponse?.trim().length && !forceFinalSummary) {
+        const completionSummary = toolCallsArray
+          .map((toolCall) => toolCall.name === MARK_WORK_COMPLETE_TOOL && typeof (toolCall.arguments as any)?.summary === "string"
+            ? (toolCall.arguments as any).summary.trim()
+            : "")
+          .find((summary) => summary.length > 0)
+        if (completionSummary && isDeliverableResponseContent(completionSummary)) {
+          finalContent = completionSummary
+        }
       }
 
       if (!existingUserResponse?.trim().length && !forceFinalSummary && !finalContent.trim().length) {

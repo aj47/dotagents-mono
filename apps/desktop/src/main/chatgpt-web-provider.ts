@@ -145,23 +145,23 @@ function normalizeCodexReasoningEffort(effort: unknown): CodexReasoningEffort | 
   return undefined
 }
 
-export function getCodexReasoningOptions(model: string): { effort: CodexReasoningEffort; summary: "auto" } | undefined {
+export function getCodexReasoningOptions(model: string): { effort: CodexReasoningEffort; summary?: "auto" } | undefined {
   if (!isCodexReasoningModel(model)) return undefined
 
   const override = configStore.get().openaiReasoningEffort
   if (override === "none") return undefined
 
-  const effort = normalizeCodexReasoningEffort(override) || "medium"
+  const effort = normalizeCodexReasoningEffort(override) || "low"
   if (isDebugLLM()) {
     logLLM("Applying ChatGPT Codex reasoning effort", {
       model,
       effort,
-      summary: "auto",
+      summary: undefined,
       source: override ? "user-config" : "default",
     })
   }
 
-  return { effort, summary: "auto" }
+  return { effort }
 }
 
 type CodexTextVerbosity = "low" | "medium" | "high"
