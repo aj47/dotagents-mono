@@ -246,6 +246,31 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(1)
   })
 
+  it("accepts verified plain assistant text without nudging for a response tool first", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const progressUpdates: any[] = []
+
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({ content: "Yes — that will work.", toolCalls: [] })
+    mocks.verifyCompletionWithFetch.mockResolvedValue({ isComplete: true, conversationState: "complete", confidence: 0.96, missingItems: [] })
+
+    const result = await processTranscriptWithAgentMode("Will this approach work?", availableTools as any, makeExecuteToolCall("session-plain-text", 1), 4, [], "conv-plain-text", "session-plain-text", (update) => progressUpdates.push(update), undefined, 1)
+
+    expect(result.content).toBe("Yes — that will work.")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(1)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+
+    const promptText = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(promptText).not.toContain(INTERNAL_COMPLETION_NUDGE_TEXT)
+
+    const completedUpdate = progressUpdates.find((update) => update.isComplete)
+    expect(completedUpdate?.finalContent).toBe("Yes — that will work.")
+    expect(completedUpdate?.userResponse).toBeUndefined()
+    expect(completedUpdate?.responseEvents).toBeUndefined()
+  })
+
   it("asks for the missing final answer instead of auto-generating a summary after bare mark_work_complete", async () => {
     currentConfig.mcpVerifyCompletionEnabled = true
     currentConfig.mcpFinalSummaryEnabled = false

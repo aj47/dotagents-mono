@@ -116,8 +116,12 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 
   if (hasRespondToUser) {
     sections.push(`RESPONDING TO USER:
-- Use respond_to_user for direct user-facing messages
-- Write natural, concise text; Markdown/images are allowed when useful`)
+- Normal assistant text is valid user-facing output for ordinary chat, simple questions, and final answers
+- Use respond_to_user when you specifically need explicit voice/messaging delivery semantics or need to attach images/videos
+- On voice interfaces this will be spoken aloud; on messaging channels (mobile, WhatsApp) it will be sent as a message
+- Write respond_to_user content naturally and conversationally
+- Markdown is allowed when useful (for example links or image captions)
+- To send images, use respond_to_user.images with either URL/data URL entries or local file paths`)
   } else {
     sections.push(`RESPONDING TO USER:
 - No direct user-response tool is available in this run. Put the final user-facing answer in normal assistant text.`)
@@ -132,17 +136,19 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 
   if (hasRespondToUser && hasMarkWorkComplete) {
     sections.push(`COMPLETION SIGNAL:
-- When all requested work is fully complete, call respond_to_user with the final answer first, then mark_work_complete with a concise internal summary
-- Never put the final user-facing answer in plain assistant text when respond_to_user is available
-- Do not call mark_work_complete for partial/in-progress work or send a second recap unless asked`)
+- When all requested work is fully complete, a normal assistant text final answer is valid and may be the only response
+- For tool-driven work where an explicit completion signal is useful, call mark_work_complete with a concise internal completion summary after delivering the final answer
+- If you use respond_to_user for the final answer, do not duplicate that same answer in plain assistant text
+- Do not send a second recap or post-completion summary unless the user explicitly asked for one
+- Do not call mark_work_complete while work is still in progress or partially done`)
   } else if (hasRespondToUser) {
     sections.push(`COMPLETION SIGNAL:
-- When all requested work is fully complete, call respond_to_user with the final user-facing response.
+- When all requested work is fully complete, provide the final user-facing response in normal assistant text or via respond_to_user when explicit delivery semantics are needed.
 - There is no separate completion tool in this run, so do not continue looping after that final response.`)
   } else if (hasMarkWorkComplete) {
     sections.push(`COMPLETION SIGNAL:
- - When all requested work is fully complete, provide the complete final user-facing answer in normal assistant text, then call mark_work_complete with a concise internal completion summary.
- - Do not send a second recap or post-completion summary unless the user explicitly asked for one.
+- When all requested work is fully complete, provide the complete final user-facing answer in normal assistant text first. For tool-driven work, you may then call mark_work_complete with a concise internal completion summary.
+- Do not send a second recap or post-completion summary unless the user explicitly asked for one.
 - Do not call mark_work_complete while work is still in progress or partially done.`)
   } else {
     sections.push(`COMPLETION SIGNAL:

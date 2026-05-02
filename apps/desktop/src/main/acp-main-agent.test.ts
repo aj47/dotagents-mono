@@ -23,9 +23,11 @@ vi.mock("./acp-service", () => ({
 vi.mock("./acp-session-state", () => ({
   getMainAcpxSessionName: vi.fn((conversationId: string) => `dotagents:main:${conversationId}`),
   getSessionForConversation: vi.fn(() => undefined),
+  registerKnownAppSessionId: vi.fn(),
   setSessionForConversation: vi.fn(),
   touchSession: vi.fn(),
   setAcpToAppSessionMapping: vi.fn(),
+  updateConversationRuntimeSessionId: vi.fn(),
 }))
 
 vi.mock("./emit-agent-progress", () => ({
@@ -173,9 +175,10 @@ describe("acp-main-agent", () => {
     )
 
     const promptContext = mockSendPrompt.mock.calls[0]?.[3]
-    expect(promptContext).toContain("If injected DotAgents runtime tools are available")
-    expect(promptContext).toContain('call "respond_to_user" first with the final user-facing answer')
-    expect(promptContext).toContain('then call "mark_work_complete" with a concise internal completion summary')
+    expect(promptContext).toContain("Plain assistant text is valid user-facing output")
+    expect(promptContext).toContain('If "respond_to_user" is available')
+    expect(promptContext).toContain('first provide the final user-facing answer in plain assistant text or via "respond_to_user"')
+    expect(promptContext).toContain('Only then call "mark_work_complete"')
     expect(promptContext).toContain("System Prompt: Be helpful")
     expect(promptContext).toContain("Guidelines: Stay concise")
   })

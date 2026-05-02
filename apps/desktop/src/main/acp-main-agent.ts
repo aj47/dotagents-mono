@@ -33,10 +33,9 @@ import { resolveMessageTimestamps, type AgentConversationState, type AgentUserRe
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 
 const ACP_RUNTIME_TOOL_PROMPT_CONTEXT = [
-  `If injected DotAgents runtime tools are available, prefer them for user-facing communication and completion signaling.`,
-  `When "${RESPOND_TO_USER_TOOL}" is available, use it for every user-facing response instead of plain assistant text.`,
-  `When the task is fully complete and "${MARK_WORK_COMPLETE_TOOL}" is available, call "${RESPOND_TO_USER_TOOL}" first with the final user-facing answer, then call "${MARK_WORK_COMPLETE_TOOL}" with a concise internal completion summary. Do not send a second recap unless the user explicitly asked for one.`,
-  `Only fall back to plain assistant text if those runtime tools are unavailable or fail repeatedly.`,
+  `Plain assistant text is valid user-facing output for ordinary chat, simple questions, and final answers.`,
+  `If "${RESPOND_TO_USER_TOOL}" is available, use it when explicit voice/messaging delivery semantics or attachments are needed; do not duplicate the same answer in plain text.`,
+  `When the task is fully complete and "${MARK_WORK_COMPLETE_TOOL}" is available, first provide the final user-facing answer in plain assistant text or via "${RESPOND_TO_USER_TOOL}". Only then call "${MARK_WORK_COMPLETE_TOOL}" when an explicit internal completion signal is useful, with a concise internal completion summary. Do not send a second recap unless the user explicitly asked for one.`,
 ].join("\n")
 
 const ACP_SETUP_STAGE_META: Record<ACPGetOrCreateSessionStage, { stepId: string; title: (agentName: string) => string }> = {

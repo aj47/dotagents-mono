@@ -76,7 +76,7 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   {
     name: "respond_to_user",
     description:
-      "Send a response directly to the user. On voice interfaces this will be spoken aloud via TTS; on messaging channels (mobile, WhatsApp, etc.) it will be sent as a message. Regular assistant text is internal and not guaranteed to reach the user; use this tool to explicitly communicate with them. Provide at least one of: non-empty text, one/more images, or one/more videos.",
+      "Send a response through DotAgents' explicit delivery channel. Normal assistant text is valid for ordinary chat and simple final answers; use this tool when you specifically need voice/TTS or messaging-channel delivery semantics, or when sending images/videos. Provide at least one of: non-empty text, one/more images, or one/more videos.",
     inputSchema: {
       type: "object",
       properties: {
