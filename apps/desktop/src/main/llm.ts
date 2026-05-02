@@ -74,12 +74,6 @@ import {
 } from "@dotagents/shared"
 
 const AGENT_PROGRESS_CONVERSATION_HISTORY_WINDOW_SIZE = 120
-const INTERNAL_COMPLETION_SUMMARY_REGEX = /^(?:internal\b|completion metadata\b|internal completion\b|internal stop\b)/i
-
-function isDeliverableCompletionSummary(summary: string): boolean {
-  const trimmed = summary.trim()
-  return isDeliverableResponseContent(trimmed) && !INTERNAL_COMPLETION_SUMMARY_REGEX.test(trimmed)
-}
 
 /**
  * Clean error message by removing stack traces and noise
@@ -222,14 +216,77 @@ function isLikelyAnswerOnlyContinuationTurn(
   return words.length <= 40 && (normalized.endsWith("?") || startsAsQuestionOrStatus || containsStatusCue)
 }
 
+function findPriorAnswerForExactRepeatContinuation(
+  transcript: string,
+  previousConversationHistory?: Array<{ role: string; content?: string; toolCalls?: Array<{ name?: string; arguments?: any }> }>,
+): string | undefined {
+  const normalized = transcript.toLowerCase().replace(/\s+/g, " ").trim()
+  if (!normalized || normalized.split(" ").length > 20) return undefined
+  if (/\b(again|retry|rerun|redo|repeat)\b/.test(normalized)) return undefined
+
+  const history = previousConversationHistory || []
+  const previousUserIndex = history.findLastIndex((entry) =>
+    entry.role === "user"
+    && (entry.content || "").toLowerCase().replace(/\s+/g, " ").trim() === normalized,
+  )
+  if (previousUserIndex < 0) return undefined
+
+  for (let index = history.length - 1; index > previousUserIndex; index -= 1) {
+    const entry = history[index]
+    for (const toolCall of entry.toolCalls || []) {
+      if (toolCall?.name === RESPOND_TO_USER_TOOL) {
+        const response = normalizeUserFacingResponseContent(
+          toolCall.arguments?.text || toolCall.arguments?.response || "",
+        )
+        if (response && isDeliverableResponseContent(response)) return response
+      }
+    }
+
+    if (entry.role === "assistant") {
+      const content = (entry.content || "").replace(/<think>[\s\S]*?<\/think>/gi, "").trim()
+      if (content && isDeliverableResponseContent(content)) return content
+    }
+  }
+
+  return undefined
+}
+
+function isEmptyExecuteCommandCall(toolCall: MCPToolCall): boolean {
+  if (toolCall.name !== "execute_command") return false
+  const args = toolCall.arguments as any
+  return !args || typeof args !== "object" || typeof args.command !== "string" || args.command.trim().length === 0
+}
+
 function buildAnswerOnlyContinuationDigest(
   omittedHistory: Array<{ role: string; content?: string }>,
 ): string {
   const formatSnippet = (entry: { role: string; content?: string }) => {
-    const text = sanitizeMessageContentForDisplay(entry.content || "")
+    let text = sanitizeMessageContentForDisplay(entry.content || "")
       .replace(/\s+/g, " ")
       .trim()
-      .slice(0, 240)
+
+    if (entry.role === "assistant") {
+      text = text
+        .replace(/^<think>\s*\*\*[^*]+\*\*\s*/i, "Thinking: ")
+        .replace(/^<think>\s*/i, "Thinking: ")
+        .replace(/<\/think>/gi, "")
+    } else if (entry.role === "tool") {
+      const toolName = text.match(/^\[([^\]]+)\]/)?.[1]
+      if (toolName === RESPOND_TO_USER_TOOL) {
+        text = `[${RESPOND_TO_USER_TOOL}] delivered user response`
+      } else if (toolName === "set_session_title") {
+        const title = text.match(/"title":\s*"([^"]+)"/)?.[1]
+        text = title ? `[set_session_title] ${title}` : `[set_session_title] updated title`
+      } else {
+        text = text
+          .replace(/^\[([^\]]+)\]\s*\{\s*"success":\s*(true|false),\s*/i, "[$1] ")
+          .replace(/"command":\s*"/g, "command: ")
+          .replace(/",\s*"cwd":\s*"/g, " cwd: ")
+      }
+    }
+
+    const snippetLimit = entry.role === "assistant" && text.startsWith("Thinking:") ? 200 : entry.role === "user" ? 160 : 240
+    text = text.slice(0, snippetLimit)
     return text ? `- ${entry.role}: ${text}` : ""
   }
 
@@ -246,10 +303,10 @@ function buildAnswerOnlyContinuationDigest(
     .filter(Boolean)
 
   return [
-    `[Earlier context compacted for this status/continuation turn: ${omittedHistory.length} older messages omitted.]`,
-    `Use this only as background; answer from the recent live messages below when possible.`,
-    userSnippets.length ? `Older user goals/constraints:\n${userSnippets.join("\n")}` : "",
-    evidenceSnippets.length ? `Older evidence snippets:\n${evidenceSnippets.join("\n")}` : "",
+    `[Older context: ${omittedHistory.length} omitted.]`,
+    `Background; prefer recent messages.`,
+    userSnippets.length ? `Older constraints:\n${userSnippets.join("\n")}` : "",
+    evidenceSnippets.length ? `Older evidence:\n${evidenceSnippets.join("\n")}` : "",
   ].filter(Boolean).join("\n")
 }
 
@@ -2166,6 +2223,27 @@ export async function processTranscriptWithAgentMode(
       }
       logTools("Planned tool calls from LLM", toolCallsArray)
     }
+    const emptyExecuteOnlyForRepeatContinuation = hideCompletionSignalTool
+      && toolCallsArray.length > 0
+      && toolCallsArray.every(isEmptyExecuteCommandCall)
+    if (emptyExecuteOnlyForRepeatContinuation) {
+      const priorAnswer = findPriorAnswerForExactRepeatContinuation(transcript, sanitizedPreviousConversationHistory)
+      if (priorAnswer) {
+        finalContent = priorAnswer
+        addMessage("assistant", finalContent)
+        emit({
+          currentIteration: iteration,
+          maxIterations,
+          steps: progressSteps.slice(-3),
+          isComplete: true,
+          conversationState: "complete",
+          finalContent,
+          conversationHistory: formatConversationForProgress(conversationHistory),
+        })
+        break
+      }
+    }
+
     const completionToolCalled = toolCallsArray.some((toolCall) => toolCall.name === MARK_WORK_COMPLETE_TOOL)
     // Don't treat mark_work_complete as confirmed completion yet.
     // We defer completion until after tool execution confirms the whole batch succeeded.
@@ -3142,18 +3220,12 @@ export async function processTranscriptWithAgentMode(
       }
 
       if (!finalContent.trim() && !existingUserResponse?.trim().length && !forceFinalSummary) {
-        let completionSummary = ""
-        for (let toolCallIndex = toolCallsArray.length - 1; toolCallIndex >= 0; toolCallIndex--) {
-          const toolCall = toolCallsArray[toolCallIndex]
-          const summary = toolCall?.name === MARK_WORK_COMPLETE_TOOL && typeof (toolCall.arguments as any)?.summary === "string"
+        const completionSummary = toolCallsArray
+          .map((toolCall) => toolCall.name === MARK_WORK_COMPLETE_TOOL && typeof (toolCall.arguments as any)?.summary === "string"
             ? (toolCall.arguments as any).summary.trim()
-            : ""
-          if (summary.length > 0) {
-            completionSummary = summary
-            break
-          }
-        }
-        if (completionSummary && isDeliverableCompletionSummary(completionSummary)) {
+            : "")
+          .find((summary) => summary.length > 0)
+        if (completionSummary && isDeliverableResponseContent(completionSummary)) {
           finalContent = completionSummary
         }
       }
