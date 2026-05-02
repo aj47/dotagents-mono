@@ -39,6 +39,7 @@ const INTERNAL_NUDGE_PATTERNS = [
   "Your last response was not a final deliverable",
   "Your last response was empty or non-deliverable",
   "Continue and finish remaining work",
+  "Continue only the current unresolved request described above",
   "Your previous response only described the next step instead of actually doing it.",
   "Your previous response contained text like \"[Calling tools: ...]\" instead of an actual tool call.",
 ] as const

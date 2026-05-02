@@ -397,8 +397,9 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(result.appliedStrategies).toContain('archive_frontier')
     expect(result.messages.length).toBeLessThan(messages.length)
 
-    const summaryMessage = result.messages.find((msg) => msg.content.startsWith('[Session Progress Summary]'))
+    const summaryMessage = result.messages.find((msg) => msg.content.startsWith('[Archived Background Summary - not the current task]'))
     expect(summaryMessage).toBeTruthy()
+    expect(summaryMessage?.content).toContain('Prefer later live user messages when deciding what to do now.')
 
     const contextRef = summaryMessage?.content.match(/Context ref: (ctx_[a-z0-9]+)/)?.[1]
     expect(contextRef).toBeTruthy()
@@ -451,7 +452,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(makeTextCompletionWithFetchMock).toHaveBeenCalledTimes(1)
     expect(second.appliedStrategies).toContain('archive_frontier')
     expect(second.messages.length).toBeLessThan(followUpMessages.length)
-    expect(second.messages.some((msg) => msg.content.startsWith('[Session Progress Summary]'))).toBe(true)
+    expect(second.messages.some((msg) => msg.content.startsWith('[Archived Background Summary - not the current task]'))).toBe(true)
   })
 
   it('keeps search-mode excerpts within maxChars even for long queries', async () => {
@@ -588,7 +589,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(makeTextCompletionWithFetchMock).toHaveBeenCalledTimes(1)
     expect(secondPass.messages.length).toBeLessThan(messages.length)
     expect(secondPass.messages.some((msg) => msg.content.includes('live-marker-43'))).toBe(true)
-    expect(secondPass.messages.some((msg) => msg.content.startsWith('[Session Progress Summary]'))).toBe(true)
+    expect(secondPass.messages.some((msg) => msg.content.startsWith('[Archived Background Summary - not the current task]'))).toBe(true)
   })
 
   it('skips microcompact when context is comfortably under budget', async () => {
@@ -621,7 +622,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     const prompts: string[] = []
     makeTextCompletionWithFetchMock.mockImplementation(async (prompt: string) => {
       prompts.push(prompt)
-      if (prompt.includes('Summarize these AI agent conversation messages that are being archived')) {
+      if (prompt.includes('Summarize these AI agent conversation messages as archived background')) {
         return 'archived work summary'
       }
 

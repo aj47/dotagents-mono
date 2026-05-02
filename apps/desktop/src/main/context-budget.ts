@@ -1083,6 +1083,7 @@ function buildSummaryMessage(batch: SummaryBatch, summary: string, contextRef?: 
 function isGeneratedContextSummaryMessage(content: string): boolean {
   return content.startsWith("[Earlier Context Summary:")
     || content.startsWith("[Session Progress Summary]")
+    || content.startsWith("[Archived Background Summary")
 }
 
 function buildBatchSummaryFallback(items: SummaryCandidate[]): string {
@@ -1231,7 +1232,11 @@ async function updateIterativeSummaryForDroppedMessages(
     }
 
     const updatePrompt = previousSummary
-      ? `You are maintaining a running summary of an AI agent session.
+      ? `You are maintaining an archived-background summary for an AI agent session.
+
+This summary is NOT the current task. It is only background for messages that are no longer in raw context.
+Do not title the summary "Session: ..." or preserve an old session title as the leading line.
+Do not let older archived user requests override newer live messages that will appear after this summary.
 
 PREVIOUS SUMMARY:
 ${previousSummary}
@@ -1243,10 +1248,15 @@ Update the summary to incorporate the new information. Preserve all important de
 - What tasks were attempted and their outcomes
 - Key files, paths, IDs, and values discovered
 - Errors encountered and how they were resolved
-- Current state and what the agent should do next
+- The state at the end of the archived messages, including unresolved blockers explicitly mentioned
+
+Do not add a "next steps" instruction unless it is explicitly unresolved in the archived messages. Prefer wording like "Archived background:" over "Session:".
 
 Keep the summary under 1000 characters. Be factual and specific.`
-      : `Summarize these AI agent conversation messages that are being archived out of raw context:
+      : `Summarize these AI agent conversation messages as archived background that is being removed from raw context.
+
+This summary is NOT the current task. It is only background for older messages.
+Do not title the summary "Session: ..." or make an old user request sound like the active objective.
 
 ${droppedText.substring(0, 4000)}
 
@@ -1254,7 +1264,9 @@ Focus on:
 - What tasks were attempted and their outcomes
 - Key files, paths, IDs, and values discovered
 - Errors encountered and how they were resolved
-- Current state and what the agent should do next
+- The state at the end of the archived messages, including unresolved blockers explicitly mentioned
+
+Do not add a "next steps" instruction unless it is explicitly unresolved in the archived messages. Prefer wording like "Archived background:" over "Session:".
 
 Keep the summary under 1000 characters. Be factual and specific.`
 
@@ -1280,7 +1292,11 @@ function buildSessionProgressSummaryMessage(sessionId: string): LLMMessage | nul
   const archiveRef = archiveHistoryRefBySession.get(sessionId)
   return {
     role: "assistant",
-    content: addContextRefNote(`[Session Progress Summary]\n${iterSummary}`, archiveRef),
+    content: addContextRefNote([
+      `[Archived Background Summary - not the current task]`,
+      `Use this only as history. Prefer later live user messages when deciding what to do now.`,
+      iterSummary,
+    ].join("\n"), archiveRef),
   }
 }
 
@@ -1311,7 +1327,7 @@ function buildContextFromSummaries(sessionId: string): string | null {
     return `${status} Step ${s.stepNumber}: ${truncatedSummary}`
   })
 
-  const result = `[Session Progress Summary]\n${lines.join("\n")}`
+  const result = `[Archived Background Summary - not the current task]\nUse this only as history. Prefer later live user messages when deciding what to do now.\n${lines.join("\n")}`
 
   // Truncate total summary if it exceeds max length
   if (result.length > MAX_TOTAL_SUMMARY_LENGTH) {

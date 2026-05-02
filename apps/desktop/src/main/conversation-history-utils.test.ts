@@ -43,6 +43,14 @@ describe("conversation-history-utils", () => {
     it("detects verification nudges", () => {
       expect(
         isInternalNudgeContent(
+          "Reason: Completion criteria not met.\nMissing items:\n- add the next checklist item\nContinue only the current unresolved request described above. Do not resume older/background tasks unless they are explicitly required to satisfy these missing items."
+        )
+      ).toBe(true)
+    })
+
+    it("keeps detecting legacy verification nudges", () => {
+      expect(
+        isInternalNudgeContent(
           "Reason: Completion criteria not met.\nMissing items:\n- add the next checklist item\nContinue and finish remaining work."
         )
       ).toBe(true)
