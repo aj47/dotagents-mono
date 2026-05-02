@@ -1,3 +1,68 @@
+function findFirstNestedMessage(values: unknown[], seen: WeakSet<object>): string | undefined {
+  for (const value of values) {
+    const nestedMessage = findNestedErrorMessage(value, seen)
+    if (nestedMessage) {
+      return nestedMessage
+    }
+  }
+
+  return undefined
+}
+
+function shouldAppendNestedErrorDetail(message: string): boolean {
+  const normalized = message.trim().toLowerCase()
+
+  if (!normalized) {
+    return false
+  }
+
+  if (/:$/.test(normalized)) {
+    return true
+  }
+
+  return [
+    "terminated",
+    "aborted",
+    "fetch failed",
+    "request failed",
+    "unknown error",
+  ].includes(normalized)
+}
+
+function appendNestedErrorDetail(message: string, nestedMessage: string): string {
+  const trimmedMessage = message.trimEnd()
+  const trimmedNested = nestedMessage.trim()
+
+  if (!trimmedMessage || !trimmedNested) {
+    return trimmedMessage || trimmedNested
+  }
+
+  const lowerMessage = trimmedMessage.toLowerCase()
+  const lowerNested = trimmedNested.toLowerCase()
+
+  if (lowerMessage.includes(lowerNested)) {
+    return trimmedMessage
+  }
+
+  const lastErrorMatch = trimmedMessage.match(/last error:\s*(.+)$/i)
+  if (lastErrorMatch) {
+    const lastErrorText = lastErrorMatch[1]?.trim().replace(/:\s*$/, "")
+    if (lastErrorText) {
+      const lowerLastErrorText = lastErrorText.toLowerCase()
+      if (lowerNested.startsWith(lowerLastErrorText)) {
+        const remainder = trimmedNested.slice(lastErrorText.length).replace(/^:\s*/, "")
+        if (remainder) {
+          return `${trimmedMessage} ${remainder}`
+        }
+        return trimmedMessage
+      }
+    }
+  }
+
+  const separator = /:\s*$/.test(trimmedMessage) ? " " : ": "
+  return `${trimmedMessage}${separator}${trimmedNested}`
+}
+
 function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string | undefined {
   if (error === null || error === undefined) {
     return undefined
@@ -12,18 +77,26 @@ function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string |
   }
 
   if (error instanceof Error) {
+    const candidate = error as Error & {
+      cause?: unknown
+      errors?: unknown
+      lastError?: unknown
+    }
+    const nestedMessage = findFirstNestedMessage(
+      [candidate.cause, candidate.lastError, candidate.errors],
+      seen,
+    )
+
     if (error.message) {
+      if (nestedMessage && shouldAppendNestedErrorDetail(error.message)) {
+        return appendNestedErrorDetail(error.message, nestedMessage)
+      }
+
       return error.message
     }
 
-    const nestedFromCause = findNestedErrorMessage((error as Error & { cause?: unknown }).cause, seen)
-    if (nestedFromCause) {
-      return nestedFromCause
-    }
-
-    const nestedFromErrors = findNestedErrorMessage((error as Error & { errors?: unknown }).errors, seen)
-    if (nestedFromErrors) {
-      return nestedFromErrors
+    if (nestedMessage) {
+      return nestedMessage
     }
   }
 
@@ -46,13 +119,15 @@ function findNestedErrorMessage(error: unknown, seen: WeakSet<object>): string |
       error?: unknown
       cause?: unknown
       errors?: unknown
+      lastError?: unknown
     }
 
-    for (const value of [candidate.message, candidate.error, candidate.cause, candidate.errors]) {
-      const nestedMessage = findNestedErrorMessage(value, seen)
-      if (nestedMessage) {
-        return nestedMessage
-      }
+    const nestedMessage = findFirstNestedMessage(
+      [candidate.message, candidate.error, candidate.cause, candidate.lastError, candidate.errors],
+      seen,
+    )
+    if (nestedMessage) {
+      return nestedMessage
     }
 
     try {
