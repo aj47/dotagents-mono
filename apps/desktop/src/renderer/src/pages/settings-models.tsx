@@ -231,10 +231,10 @@ export function Component() {
                 </p>
               </div>
               <Control
-                label={<ControlLabel label="Thinking level" tooltip="Reasoning effort sent to Codex reasoning models. 'None' lets the provider answer instantly with no extra reasoning." />}
+                label={<ControlLabel label="Thinking level" tooltip="Reasoning effort sent to Codex reasoning models. Defaults to Low when unset. 'None' lets the provider answer with no extra reasoning." />}
               >
                 <Select
-                  value={config.openaiReasoningEffort || "medium"}
+                  value={config.openaiReasoningEffort || "low"}
                   onValueChange={(value) =>
                     saveConfig({
                       openaiReasoningEffort: value as Config["openaiReasoningEffort"],
@@ -247,8 +247,8 @@ export function Component() {
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="minimal">Minimal</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium (default)</SelectItem>
+                    <SelectItem value="low">Low (default)</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
                     <SelectItem value="high">High</SelectItem>
                     <SelectItem value="xhigh">Extra high</SelectItem>
                   </SelectContent>
