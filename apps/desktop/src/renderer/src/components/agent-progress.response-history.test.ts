@@ -324,6 +324,41 @@ afterEach(() => {
 })
 
 describe("agent progress response history", () => {
+  it("keeps the completed streamed response visible while verification is running", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-verifying-stream",
+      conversationId: "conversation-verifying-stream",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [
+        {
+          id: "verify-1",
+          type: "thinking",
+          title: "Verifying completion",
+          status: "in_progress",
+          timestamp: 200,
+        },
+      ],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Question", timestamp: 100 },
+      ],
+      streamingContent: {
+        text: "Streamed answer awaiting verification",
+        isStreaming: false,
+      },
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("Streamed answer awaiting verification")
+    expect(text).toContain("Response")
+  })
+
   it("keeps unresolved mid-turn responses in chronological order within the conversation", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
