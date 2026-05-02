@@ -86,6 +86,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearArchiveFrontier('session-bracket-log')
     clearArchiveFrontier('session-no-microcompact')
     clearArchiveFrontier('session-archive-reapply')
+    clearArchiveFrontier('session-latest-user')
     clearContextRefs('session-truncate')
     clearContextRefs('session-batch')
     clearContextRefs('session-archive')
@@ -95,6 +96,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearContextRefs('session-bracket-log')
     clearContextRefs('session-no-microcompact')
     clearContextRefs('session-archive-reapply')
+    clearContextRefs('session-latest-user')
     clearActualTokenUsage('session-truncate')
     clearActualTokenUsage('session-batch')
     clearActualTokenUsage('session-archive')
@@ -104,11 +106,13 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearActualTokenUsage('session-bracket-log')
     clearActualTokenUsage('session-no-microcompact')
     clearActualTokenUsage('session-archive-reapply')
+    clearActualTokenUsage('session-latest-user')
     clearIterativeSummary('session-archive')
     clearIterativeSummary('session-live-tail')
     clearIterativeSummary('session-protected-tail')
     clearIterativeSummary('session-no-microcompact')
     clearIterativeSummary('session-archive-reapply')
+    clearIterativeSummary('session-latest-user')
     Object.assign(mockConfig, {
       mcpContextReductionEnabled: true,
       mcpContextTargetRatio: 0.5,
@@ -411,6 +415,43 @@ describe('shrinkMessagesForLLM replacement policy', () => {
       kind: 'archived_history',
     }))
     expect(Number(readResult.messageCount)).toBeGreaterThan(0)
+  })
+
+  it('keeps the latest real user request raw when archive frontier trims tool-heavy history', async () => {
+    makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 12000,
+    })
+
+    const oldRequest = 'list as many project names as you can that i have been working on over the past 2 years'
+    const currentRequest = 'can you open in excalidraw in chrome'
+    const messages = [
+      { role: 'system', content: 'system prompt' },
+      { role: 'user', content: oldRequest },
+      ...Array.from({ length: 12 }, (_, index) => ({
+        role: index % 2 === 0 ? 'assistant' : 'user',
+        content: `older-work-${index} ${'o'.repeat(120)}`,
+      })),
+      { role: 'user', content: currentRequest },
+      ...Array.from({ length: 34 }, (_, index) => ({
+        role: 'user',
+        content: index % 2 === 0
+          ? `[playwright-extension:browser_snapshot] result-${index} ${'t'.repeat(120)}`
+          : `TOOL FAILED: playwright-extension:browser_run_code_unsafe (attempt ${index}/3)`,
+      })),
+    ]
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-latest-user',
+      messages,
+      lastNMessages: 3,
+    })
+
+    expect(result.appliedStrategies).toContain('archive_frontier')
+    expect(result.messages.some((msg) => msg.role === 'user' && msg.content === currentRequest)).toBe(true)
+    expect(result.messages.some((msg) => msg.role === 'user' && msg.content === oldRequest)).toBe(false)
+    expect(result.messages.some((msg) => msg.role === 'assistant' && msg.content.includes('[Earlier user request - background only]') && msg.content.includes(oldRequest))).toBe(true)
   })
 
   it('reapplies an existing archive frontier even when too few new messages arrived to advance it', async () => {

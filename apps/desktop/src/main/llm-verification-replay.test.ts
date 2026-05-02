@@ -35,6 +35,29 @@ describe("llm-verification-replay", () => {
     expect(messages.map((message) => message.content).join("\n")).not.toContain("[Calling tools: respond_to_user]")
   })
 
+  it("includes prior real user requests to resolve referential follow-ups without reviving tool noise", () => {
+    const messages = buildVerificationMessagesFromAgentState(makeAgentStateFixture({
+      transcript: "can you open in excalidraw in chrome",
+      finalAssistantText: "Excalidraw is open.",
+      sinceIndex: 5,
+      conversationHistory: [
+        { role: "user", content: "list as many project names as you can" },
+        { role: "assistant", content: "I made a project inventory." },
+        { role: "user", content: "open the map in chrome" },
+        { role: "user", content: "[execute_command] noisy tool result" },
+        { role: "user", content: "TOOL FAILED: playwright-extension:browser_drop" },
+        { role: "user", content: "can you open in excalidraw in chrome" },
+        { role: "assistant", content: "Excalidraw is open." },
+      ],
+    }))
+
+    const priorContext = messages.find((message) => message.content.startsWith("Relevant prior user context"))?.content || ""
+    expect(priorContext).toContain("open the map in chrome")
+    expect(priorContext).not.toContain("list as many project names")
+    expect(priorContext).not.toContain("[execute_command]")
+    expect(priorContext).not.toContain("TOOL FAILED")
+  })
+
   it("adds retry notes to the final verifier request only after a failed attempt", () => {
     const initialRequest = buildVerificationMessagesFromAgentState(
       makeAgentStateFixture({ verificationFailCount: 0 }),

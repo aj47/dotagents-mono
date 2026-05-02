@@ -84,6 +84,7 @@ Rules:
 - If the assistant only gathered context, prepared, or summarized next steps but did not create the main requested artifact, return running even if it asks a style/preference question.
 - If the assistant clearly says it cannot proceed because of a blocker outside its control, return blocked.
 - If the user already has the final answer, requested artifact, or requested summary, return complete.
+- If the current request is a short or referential follow-up, use the provided prior user context only to resolve references like "it", "this", or "the map"; do not replace the current request with an older background task.
 - Empty, vague, or purely procedural replies should return running.
 
 Return ONLY JSON with this schema:
@@ -98,6 +99,50 @@ Return ONLY JSON with this schema:
 Set isComplete=false only when conversationState=running. Set isComplete=true for complete, needs_input, or blocked.`
 
 const VERIFICATION_JSON_REQUEST_BASE = "Return JSON only. Remember: if the assistant is waiting on the user, use conversationState=needs_input; if it cannot continue because of a blocker, use conversationState=blocked; otherwise use running or complete. Do not treat optional preference/approval questions after unfinished work as needs_input; those should stay running."
+const MAPPED_TOOL_RESULT_PREFIX_RE = /^\[((?=[^\]]*[a-z])[A-Za-z0-9._:/-]+)\]\s(?:ERROR:\s*)?/
+
+function isInternalNudgeLikeContent(content: string): boolean {
+  const trimmed = content.trimStart()
+  return trimmed.includes("Continue only the current unresolved request described above")
+    || trimmed.includes("Continue and finish remaining work")
+    || trimmed.startsWith("Verifier indicates the task is not complete")
+    || (trimmed.startsWith("Reason:") && trimmed.includes("Missing items:"))
+}
+
+function isRealUserRequestContent(content: string): boolean {
+  const trimmed = content.trimStart()
+  if (!trimmed) return false
+  if (MAPPED_TOOL_RESULT_PREFIX_RE.test(trimmed)) return false
+  if (trimmed.startsWith("TOOL FAILED:")) return false
+  if (trimmed.startsWith("Original request:")) return false
+  if (isInternalNudgeLikeContent(trimmed)) return false
+  return true
+}
+
+function collectRelevantPriorUserRequests(
+  conversationHistory: ReplayConversationHistoryEntry[],
+  sinceIndex: number | undefined,
+  transcript: string,
+): string[] {
+  const searchEnd = typeof sinceIndex === "number"
+    ? Math.max(0, Math.min(sinceIndex, conversationHistory.length))
+    : conversationHistory.length
+  const currentRequest = sanitizeMessageContentForDisplay(transcript).trim()
+  const priorRequests: string[] = []
+
+  for (let i = searchEnd - 1; i >= 0 && priorRequests.length < 1; i--) {
+    const entry = conversationHistory[i]
+    if (entry?.role !== "user") continue
+
+    const text = sanitizeMessageContentForDisplay(entry.content || "").trim()
+    if (!isRealUserRequestContent(text)) continue
+    if (currentRequest && text === currentRequest) continue
+
+    priorRequests.unshift(text)
+  }
+
+  return priorRequests
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value)
@@ -157,11 +202,23 @@ export function buildVerificationMessagesFromAgentState(
     conversationHistory: fixture.conversationHistory,
     sinceIndex: fixture.sinceIndex,
   })
+  const relevantPriorUserRequests = collectRelevantPriorUserRequests(
+    fixture.conversationHistory,
+    fixture.sinceIndex,
+    fixture.transcript,
+  )
 
   const messages: VerificationMessage[] = [
     { role: "system", content: VERIFICATION_SYSTEM_PROMPT },
     { role: "user", content: `Original request:\n${sanitizeMessageContentForDisplay(fixture.transcript)}` },
   ]
+
+  if (relevantPriorUserRequests.length > 0) {
+    messages.push({
+      role: "user",
+      content: `Relevant prior user context for resolving references only; these are not the active request unless the current request depends on them:\n${relevantPriorUserRequests.map((request) => `- ${request}`).join("\n")}`,
+    })
+  }
 
   if (latestUserFacingResponse?.trim()) {
     messages.push({

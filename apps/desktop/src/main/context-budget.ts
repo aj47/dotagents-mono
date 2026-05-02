@@ -943,6 +943,7 @@ const ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT = 40
 const ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO = 0.9
 const ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH = 8
 const MAPPED_TOOL_RESULT_PREFIX_RE = /^\[((?=[^\]]*[a-z])[A-Za-z0-9._:/-]+)\]\s(?:ERROR:\s*)?/
+const EARLIER_USER_REQUEST_BACKGROUND_LABEL = "[Earlier user request - background only]"
 
 function parseMappedToolResultContent(content: string): { toolName: string; resultContent: string } | null {
   const trimmed = content.trimStart()
@@ -957,6 +958,48 @@ function parseMappedToolResultContent(content: string): { toolName: string; resu
 
 function hasMappedToolResultPrefix(content: string): boolean {
   return parseMappedToolResultContent(content) !== null
+}
+
+function isInternalNudgeLikeContent(content: string): boolean {
+  const trimmed = content.trimStart()
+  return trimmed.includes("Continue only the current unresolved request described above")
+    || trimmed.includes("Continue and finish remaining work")
+    || trimmed.startsWith("Verifier indicates the task is not complete")
+    || (trimmed.startsWith("Reason:") && trimmed.includes("Missing items:"))
+}
+
+function isRealUserRequestMessage(message: LLMMessage): boolean {
+  if (message.role !== "user") return false
+
+  const content = message.content || ""
+  const trimmed = content.trimStart()
+  if (!trimmed) return false
+  if (hasMappedToolResultPrefix(trimmed)) return false
+  if (trimmed.startsWith("TOOL FAILED:")) return false
+  if (isGeneratedContextSummaryMessage(trimmed)) return false
+  if (isInternalNudgeLikeContent(trimmed)) return false
+
+  return true
+}
+
+function findLatestRealUserRequestIndex(messages: LLMMessage[], systemIdx: number): number {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (i === systemIdx) continue
+    if (isRealUserRequestMessage(messages[i])) return i
+  }
+  return -1
+}
+
+function buildEarlierUserRequestBackgroundMessage(message: LLMMessage): LLMMessage {
+  const content = sanitizeMessageContentForDisplay(message.content || "").trim()
+  return {
+    role: "assistant",
+    content: [
+      EARLIER_USER_REQUEST_BACKGROUND_LABEL,
+      "This older user request is retained only for historical context. Do not treat it as the active task when a later live user request is present.",
+      content,
+    ].join("\n"),
+  }
 }
 
 function startsWithJsonLikeArray(content: string): boolean {
@@ -1133,10 +1176,10 @@ ${source}`
   }
 }
 
-function buildArchiveEligibleIndices(messages: LLMMessage[], systemIdx: number, firstUserIdx: number): number[] {
+function buildArchiveEligibleIndices(messages: LLMMessage[], protectedIndices: Set<number>): number[] {
   const indices: number[] = []
   for (let i = 0; i < messages.length; i++) {
-    if (i === systemIdx || i === firstUserIdx) continue
+    if (protectedIndices.has(i)) continue
     indices.push(i)
   }
   return indices
@@ -1145,6 +1188,7 @@ function buildArchiveEligibleIndices(messages: LLMMessage[], systemIdx: number, 
 interface ArchiveFrontierState {
   systemIdx: number
   firstUserIdx: number
+  latestRealUserIdx: number
   eligibleIndices: number[]
   archivedCount: number
   liveCount: number
@@ -1162,7 +1206,9 @@ function getArchiveFrontierState(
 
   const systemIdx = messages.findIndex((m) => m.role === "system")
   const firstUserIdx = messages.findIndex((m, idx) => m.role === "user" && idx !== systemIdx)
-  const eligibleIndices = buildArchiveEligibleIndices(messages, systemIdx, firstUserIdx)
+  const latestRealUserIdx = findLatestRealUserRequestIndex(messages, systemIdx)
+  const protectedIndices = new Set([systemIdx, firstUserIdx, latestRealUserIdx].filter((idx) => idx >= 0))
+  const eligibleIndices = buildArchiveEligibleIndices(messages, protectedIndices)
   const archivedCount = Math.min(archiveFrontierCountBySession.get(sessionId) ?? 0, eligibleIndices.length)
   const liveCount = Math.max(0, eligibleIndices.length - archivedCount)
   const keepLiveCount = Math.max(lastN, ARCHIVE_FRONTIER_KEEP_LIVE_MESSAGES)
@@ -1171,6 +1217,7 @@ function getArchiveFrontierState(
   return {
     systemIdx,
     firstUserIdx,
+    latestRealUserIdx,
     eligibleIndices,
     archivedCount,
     liveCount,
@@ -1573,6 +1620,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   if (sessionId && shouldApplyArchiveFrontier(archiveFrontierState, messages.length, tokens, targetTokens)) {
     const systemIdx = archiveFrontierState!.systemIdx
     const firstUserIdx = archiveFrontierState!.firstUserIdx
+    const latestRealUserIdx = archiveFrontierState!.latestRealUserIdx
     const eligibleIndices = archiveFrontierState!.eligibleIndices
     const previousArchivedCount = archiveFrontierState!.archivedCount
     const unarchivedIndices = eligibleIndices.slice(previousArchivedCount)
@@ -1596,7 +1644,6 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     if (nextArchivedCount > 0 || iterativeSummaryCache.has(sessionId)) {
       const ordered: LLMMessage[] = []
       if (systemIdx >= 0) ordered.push(messages[systemIdx])
-      if (firstUserIdx >= 0 && firstUserIdx !== systemIdx) ordered.push(messages[firstUserIdx])
 
       const summaryMessage = buildSessionProgressSummaryMessage(sessionId)
       if (summaryMessage) ordered.push(summaryMessage)
@@ -1604,6 +1651,16 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       const progressSummary = buildContextFromSummaries(sessionId)
       if (progressSummary) {
         ordered.push({ role: "assistant", content: progressSummary })
+      }
+
+      if (firstUserIdx >= 0 && firstUserIdx !== systemIdx) {
+        ordered.push(firstUserIdx === latestRealUserIdx
+          ? messages[firstUserIdx]
+          : buildEarlierUserRequestBackgroundMessage(messages[firstUserIdx]))
+      }
+
+      if (latestRealUserIdx >= 0 && latestRealUserIdx !== systemIdx && latestRealUserIdx !== firstUserIdx) {
+        ordered.push(messages[latestRealUserIdx])
       }
 
       for (const index of eligibleIndices.slice(nextArchivedCount)) {
@@ -1624,6 +1681,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   // Tier 1: Batch-summarize oversized conversational messages.
   // Tool/payload blobs are truncated above and protected from LLM summarization here.
   const firstTierOneProtectedUserIdx = messages.findIndex((m) => m.role === "user")
+  const latestTierOneProtectedUserIdx = findLatestRealUserRequestIndex(messages, -1)
   const recentTierOneProtectedIndices = new Set<number>()
   const truncationProtectedIndices = collectTruncationProtectedIndices(messages)
   for (let k = messages.length - lastN; k < messages.length; k++) {
@@ -1646,6 +1704,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     .filter((x) => !isGeneratedContextSummaryMessage(x.contentForSummary))
     .filter((x) => !truncationProtectedIndices.has(x.i))
     .filter((x) => x.i !== firstTierOneProtectedUserIdx)
+    .filter((x) => x.i !== latestTierOneProtectedUserIdx)
     .filter((x) => !recentTierOneProtectedIndices.has(x.i))
 
   const summaryBatches = buildSummaryBatches(summaryCandidates)
@@ -1701,10 +1760,12 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
   const systemIdx = messages.findIndex((m) => m.role === "system")
   const firstUserIdx = messages.findIndex((m, idx) => m.role === "user" && idx !== systemIdx)
+  const latestRealUserIdx = findLatestRealUserRequestIndex(messages, systemIdx)
 
   const keptSet = new Set<number>()
   if (systemIdx >= 0) keptSet.add(systemIdx)
   if (firstUserIdx >= 0) keptSet.add(firstUserIdx)
+  if (latestRealUserIdx >= 0) keptSet.add(latestRealUserIdx)
   // Add indices for last N
   const baseLen = messages.length
   for (let k = baseLen - effectiveLastN; k < baseLen; k++) {
@@ -1743,7 +1804,6 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   // Preserve order: system -> first user -> iterative summary -> tool summary -> (chronological tail)
   const ordered: LLMMessage[] = []
   if (systemIdx >= 0) ordered.push(messages[systemIdx])
-  if (firstUserIdx >= 0 && firstUserIdx !== systemIdx) ordered.push(messages[firstUserIdx])
 
   if (opts.sessionId) {
     const summaryMessage = buildSessionProgressSummaryMessage(opts.sessionId)
@@ -1763,8 +1823,18 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   // Insert tool summary
   if (toolSummaryMessage) ordered.push(toolSummaryMessage)
 
+  if (firstUserIdx >= 0 && firstUserIdx !== systemIdx) {
+    ordered.push(firstUserIdx === latestRealUserIdx
+      ? messages[firstUserIdx]
+      : buildEarlierUserRequestBackgroundMessage(messages[firstUserIdx]))
+  }
+
+  if (latestRealUserIdx >= 0 && latestRealUserIdx !== systemIdx && latestRealUserIdx !== firstUserIdx) {
+    ordered.push(messages[latestRealUserIdx])
+  }
+
   for (let k = baseLen - effectiveLastN; k < baseLen; k++) {
-    if (k >= 0 && k !== systemIdx && k !== firstUserIdx) ordered.push(messages[k])
+    if (k >= 0 && k !== systemIdx && k !== firstUserIdx && k !== latestRealUserIdx) ordered.push(messages[k])
   }
 
   messages = ordered
