@@ -80,6 +80,9 @@ describe("desktop package scripts", () => {
     expect(desktopReleaseArtifactsWorkflow).toContain("pnpm --filter @dotagents/shared build")
     expect(desktopReleaseArtifactsWorkflow).toContain("pnpm --filter @dotagents/core build")
     expect(desktopReleaseArtifactsWorkflow).toContain("pnpm --filter @dotagents/mcp-whatsapp build")
+    expect(desktopReleaseScript).toContain("corepack pnpm --filter @dotagents/shared build")
+    expect(desktopReleaseScript).toContain("corepack pnpm --filter @dotagents/core build")
+    expect(desktopReleaseScript).toContain("corepack pnpm --filter @dotagents/mcp-whatsapp build")
   })
 
   it("loads .env-based credentials in the local desktop release flow", () => {

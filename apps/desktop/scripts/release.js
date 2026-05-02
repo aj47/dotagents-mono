@@ -164,6 +164,7 @@ console.log(`📦 Desktop release mode: publish=${publishMode}`)
 run(`rm -rf dist`, { cwd: desktopDir })
 
 run(`corepack pnpm --filter @dotagents/shared build`, { cwd: repoRoot })
+run(`corepack pnpm --filter @dotagents/core build`, { cwd: repoRoot })
 run(`corepack pnpm --filter @dotagents/mcp-whatsapp build`, { cwd: repoRoot })
 run(`corepack pnpm build-rs`, { cwd: desktopDir })
 
