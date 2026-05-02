@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 const tempDirs: string[] = []
 
-async function setupChatGptWebProviderTest() {
+async function setupChatGptWebProviderTest(configOverrides: Record<string, unknown> = {}) {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "dotagents-chatgpt-web-images-"))
   tempDirs.push(tempDir)
 
@@ -14,6 +14,7 @@ async function setupChatGptWebProviderTest() {
       get: vi.fn(() => ({
         chatgptWebBaseUrl: "https://chatgpt.test",
         mcpToolsChatgptWebModel: "gpt-test",
+        ...configOverrides,
       })),
       save: vi.fn(),
     },
@@ -40,6 +41,7 @@ async function setupChatGptWebProviderTest() {
 afterEach(async () => {
   vi.resetModules()
   vi.clearAllMocks()
+  vi.restoreAllMocks()
   await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })))
 })
 
@@ -147,6 +149,50 @@ describe("chatgpt-web Codex options", () => {
     await setupCodexOptionsTest({ codexTextVerbosity: "verbose" })
     const { getCodexTextVerbosity } = await import("./chatgpt-web-provider")
     expect(getCodexTextVerbosity()).toBe("medium")
+  })
+})
+
+describe("chatgpt-web response streaming", () => {
+  it("surfaces reasoning start and reasoning summary deltas through the streaming callback", async () => {
+    await setupChatGptWebProviderTest({ chatgptWebAccessToken: "test-access-token" })
+    const encoder = new TextEncoder()
+    const events = [
+      { type: "response.created" },
+      { type: "response.output_item.added", item: { type: "reasoning", id: "rs_1" } },
+      { type: "response.output_text.delta", delta: "\n" },
+      { type: "response.reasoning_summary_text.delta", delta: "Plan" },
+      { type: "response.reasoning_summary_text.delta", delta: " next" },
+      { type: "response.completed", response: { output: [] } },
+    ]
+    const body = new ReadableStream({
+      start(controller) {
+        for (const event of events) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+        }
+        controller.close()
+      },
+    })
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(body, { status: 200 }) as any)
+
+    const { makeChatGptWebResponse } = await import("./chatgpt-web-provider")
+    const chunks: Array<{ chunk: string; accumulated: string }> = []
+
+    const response = await makeChatGptWebResponse([
+      { role: "system", content: "System prompt" },
+      { role: "user", content: "Hello" },
+    ], {
+      onTextChunk: (chunk, accumulated) => chunks.push({ chunk, accumulated }),
+    })
+
+    expect(chunks).toEqual([
+      { chunk: "Thinking...", accumulated: "Thinking..." },
+      { chunk: "\n\nPlan", accumulated: "Thinking...\n\nPlan" },
+      { chunk: " next", accumulated: "Thinking...\n\nPlan next" },
+    ])
+    expect(response).toMatchObject({
+      text: "",
+      reasoningSummary: "Plan next",
+    })
   })
 })
 
