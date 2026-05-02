@@ -102,6 +102,8 @@ type DisplayItem =
       responseEvent?: AgentUserResponseEvent
       /** Absolute raw-history index to use when branching from this message */
       branchMessageIndex?: number
+      /** Cross-agent provenance for messages injected by another agent session. */
+      sourceAgent?: import("@shared/types").AgentSessionRef
     } }
   | { kind: "tool_execution"; id: string; data: {
       timestamp: number
@@ -631,6 +633,58 @@ function hasActiveTextSelection(container?: HTMLElement | null): boolean {
   )
 }
 
+/**
+ * Small inline link rendered on cross-agent injected user messages.
+ * Lets the user navigate back to the agent session that originated the message
+ * (live session if still active, otherwise the saved conversation).
+ */
+const CrossAgentSourceBadge: React.FC<{
+  sourceAgent: import("@shared/types").AgentSessionRef
+}> = ({ sourceAgent }) => {
+  const navigate = useNavigate()
+  const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
+  const setExpandedSessionId = useAgentStore((s) => s.setExpandedSessionId)
+  const setViewedConversationId = useAgentStore((s) => s.setViewedConversationId)
+  const activeSessionsById = useAgentStore((s) => s.agentProgressById)
+
+  const label = sourceAgent.agentName?.trim() || sourceAgent.sessionId.slice(0, 8)
+  const isLive = activeSessionsById.has(sourceAgent.sessionId)
+  const canNavigate = isLive || !!sourceAgent.conversationId
+
+  return (
+    <button
+      type="button"
+      disabled={!canNavigate}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (isLive) {
+          setViewedConversationId(null)
+          navigate("/", { state: { clearPendingConversation: true } })
+          setFocusedSessionId(sourceAgent.sessionId)
+          setExpandedSessionId(sourceAgent.sessionId)
+          return
+        }
+        if (sourceAgent.conversationId) {
+          setFocusedSessionId(null)
+          setExpandedSessionId(null)
+          setViewedConversationId(sourceAgent.conversationId)
+          navigate(`/${sourceAgent.conversationId}`)
+        }
+      }}
+      title={`Sent from agent ${label} (${sourceAgent.sessionId})`}
+      className={cn(
+        "mb-1 inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
+        "bg-blue-100/80 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+        canNavigate && "hover:bg-blue-200/80 dark:hover:bg-blue-900/60 hover:underline cursor-pointer",
+        !canNavigate && "opacity-70 cursor-default",
+      )}
+    >
+      <Bot className="h-3 w-3 shrink-0" />
+      <span className="truncate">from {label}</span>
+    </button>
+  )
+}
+
 type CompactMessageProps = {
   message: {
     role: "user" | "assistant" | "tool"
@@ -641,6 +695,7 @@ type CompactMessageProps = {
     toolResults?: Array<{ success: boolean; content: string; error?: string }>
     timestamp: number
     responseEvent?: AgentUserResponseEvent
+    sourceAgent?: import("@shared/types").AgentSessionRef
   }
   ttsText?: string
   isLast: boolean
@@ -1005,6 +1060,9 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         onClick={shouldToggleFromContentClick ? handleToggleExpand : undefined}
       >
         <div className="flex-1 min-w-0">
+          {message.role === "user" && message.sourceAgent && (
+            <CrossAgentSourceBadge sourceAgent={message.sourceAgent} />
+          )}
           <div className={cn(
             "leading-relaxed text-left",
             !isExpanded && shouldCollapse && "line-clamp-2"
@@ -3469,6 +3527,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     toolResults?: Array<{ success: boolean; content: string; error?: string }>
     /** Absolute raw-history index to use when branching from this message */
     branchMessageIndex?: number
+    sourceAgent?: import("@shared/types").AgentSessionRef
   }>>(() => {
     const nextMessages: Array<{
       role: "user" | "assistant" | "tool"
@@ -3479,6 +3538,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
       branchMessageIndex?: number
+      sourceAgent?: import("@shared/types").AgentSessionRef
     }> = []
     const fallbackBaseTimestamp =
       conversationHistory?.[conversationHistory.length - 1]?.timestamp ??
@@ -3507,6 +3567,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             toolCalls: entry.toolCalls,
             toolResults: entry.toolResults,
             branchMessageIndex: entry.branchMessageIndex,
+            sourceAgent: entry.sourceAgent,
           })
         })
 

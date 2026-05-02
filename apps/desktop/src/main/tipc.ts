@@ -53,6 +53,7 @@ import {
   MCPServerConfig,
   Conversation,
   ConversationHistoryItem,
+  ConversationMessage,
   AgentProgressUpdate,
   SessionProfileSnapshot,
   LoopConfig,
@@ -531,6 +532,7 @@ async function processWithAgentMode(
           toolResults?: any[]
           timestamp?: number
           branchMessageIndex?: number
+          sourceAgent?: ConversationMessage["sourceAgent"]
         }>
       | undefined
 
@@ -563,6 +565,9 @@ async function processWithAgentMode(
             isError: !tr.success,
           })),
           branchMessageIndex: branchMessageIndexMap[index],
+          // Preserve cross-agent provenance so the live UI can keep showing the
+          // "from <agent>" link on prior queued messages within this conversation.
+          ...(msg.sourceAgent ? { sourceAgent: msg.sourceAgent } : {}),
         }))
 
         logLLM(`[tipc.ts processWithAgentMode] previousConversationHistory roles: [${previousConversationHistory.map(m => m.role).join(', ')}]`)
@@ -897,11 +902,16 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
       try {
         // Only add to conversation history if not already added (prevents duplicates on retry)
         if (!queuedMessage.addedToHistory) {
-          // Add the queued message to the conversation
+          // Add the queued message to the conversation. When the message originated from
+          // another agent session (via send_agent_message), preserve that provenance on
+          // the conversation message so the UI can render a "from <agent>" link.
           const addResult = await conversationService.addMessageToConversation(
             conversationId,
             queuedMessage.text,
             "user",
+            undefined,
+            undefined,
+            queuedMessage.source ? { sourceAgent: queuedMessage.source } : undefined,
           )
           // If adding to history failed (conversation not found/IO error), treat as failure
           // Don't continue processing since the message wasn't recorded

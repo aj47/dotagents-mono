@@ -170,7 +170,8 @@ export interface DetailedToolInfo {
 // AgentStepSummary — re-exported from @dotagents/shared (see above)
 
 // Message Queue Types — re-exported from shared package
-export type { QueuedMessage, MessageQueue } from '@dotagents/shared'
+export type { QueuedMessage, MessageQueue, AgentSessionRef } from '@dotagents/shared'
+import type { AgentSessionRef } from '@dotagents/shared'
 
 // Conversation Types
 export interface ConversationMessage {
@@ -191,6 +192,13 @@ export interface ConversationMessage {
    * Only set when isSummary is true.
    */
   summarizedMessageCount?: number
+  /**
+   * When set, this message was injected into the conversation by another agent
+   * session (e.g. via the send_agent_message tool). Preserved on the message so
+   * the UI can render a "from <agent>" provenance link even after the queued
+   * message has been consumed.
+   */
+  sourceAgent?: AgentSessionRef
 }
 
 export interface ConversationCompactionMetadata {

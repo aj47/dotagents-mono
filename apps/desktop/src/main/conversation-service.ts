@@ -1147,6 +1147,7 @@ export class ConversationService {
     role: "user" | "assistant" | "tool",
     toolCalls?: Array<{ name: string; arguments: any }>,
     toolResults?: Array<{ success: boolean; content: string; error?: string }>,
+    options?: { sourceAgent?: ConversationMessage["sourceAgent"] },
   ): Promise<Conversation | null> {
     return this.enqueueConversationMutation(conversationId, async () => {
       try {
@@ -1175,6 +1176,7 @@ export class ConversationService {
           timestamp: Date.now(),
           toolCalls,
           toolResults,
+          ...(options?.sourceAgent ? { sourceAgent: options.sourceAgent } : {}),
         }
 
         conversation.messages.push(message)

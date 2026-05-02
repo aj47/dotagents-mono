@@ -45,6 +45,12 @@ export interface ConversationHistoryMessage extends BaseChatMessage {
    * action (like branching) needs to target this displayed message.
    */
   branchMessageIndex?: number;
+  /**
+   * Cross-agent provenance: the originating agent session for messages injected
+   * into this conversation by another agent (e.g. via send_agent_message). Lets
+   * the UI render a clickable "from <agent>" link back to the source session.
+   */
+  sourceAgent?: AgentSessionRef;
 }
 
 /**
@@ -62,6 +68,19 @@ export interface ChatApiResponse {
 }
 
 /**
+ * Reference to an agent session that originated or received a cross-agent message.
+ * Used to render clickable provenance links in the queue and conversation UI.
+ */
+export interface AgentSessionRef {
+  /** Session id of the source/target agent (matches AgentSession.id) */
+  sessionId: string;
+  /** Conversation id linked to that session, when available */
+  conversationId?: string;
+  /** Display name (conversation/session title) at the time the link was captured */
+  agentName?: string;
+}
+
+/**
  * Queued message - represents a message waiting to be processed.
  * Used when the agent is busy processing and messages are queued for later.
  */
@@ -76,6 +95,10 @@ export interface QueuedMessage {
   errorMessage?: string;
   /** Indicates the message was added to conversation history before processing failed */
   addedToHistory?: boolean;
+  /** When set, this queued message originated from another agent session (e.g. via send_agent_message). */
+  source?: AgentSessionRef;
+  /** When set, identifies the target agent session this queued message was directed at. */
+  target?: AgentSessionRef;
 }
 
 /**
