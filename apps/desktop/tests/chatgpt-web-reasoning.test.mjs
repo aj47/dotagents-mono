@@ -8,16 +8,17 @@ const providerSource = fs.readFileSync(
   'utf8',
 )
 
-test('ChatGPT Codex provider sends reasoning effort in Responses API payload', () => {
+test('ChatGPT Codex provider sends low reasoning effort without automatic summaries', () => {
   assert.match(providerSource, /type CodexReasoningEffort = "minimal" \| "low" \| "medium" \| "high"/)
   assert.match(providerSource, /export function getCodexReasoningOptions\(model: string\)/)
   assert.match(providerSource, /if \(override === "none"\) return undefined/)
   assert.match(providerSource, /if \(effort === "xhigh"\) return "high"/)
+  assert.match(providerSource, /const effort = normalizeCodexReasoningEffort\(override\) \|\| "low"/)
+  assert.match(providerSource, /return \{ effort \}/)
   assert.match(providerSource, /const reasoning = getCodexReasoningOptions\(model\)/)
   assert.match(providerSource, /payload\.reasoning = reasoning/)
-  // summary: "auto" must be included alongside effort
-  assert.match(providerSource, /summary: "auto"/)
-  assert.match(providerSource, /effort,\s*summary: "auto"/)
+  assert.doesNotMatch(providerSource, /summary: "auto"/)
+  assert.doesNotMatch(providerSource, /effort,\s*summary/)
 })
 
 test('ChatGPT Codex provider handles reasoning summary streaming events', () => {

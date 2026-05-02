@@ -74,6 +74,12 @@ import {
 } from "@dotagents/shared"
 
 const AGENT_PROGRESS_CONVERSATION_HISTORY_WINDOW_SIZE = 120
+const INTERNAL_COMPLETION_SUMMARY_REGEX = /^(?:internal\b|completion metadata\b|internal completion\b|internal stop\b)/i
+
+function isDeliverableCompletionSummary(summary: string): boolean {
+  const trimmed = summary.trim()
+  return isDeliverableResponseContent(trimmed) && !INTERNAL_COMPLETION_SUMMARY_REGEX.test(trimmed)
+}
 
 /**
  * Clean error message by removing stack traces and noise
@@ -3136,12 +3142,18 @@ export async function processTranscriptWithAgentMode(
       }
 
       if (!finalContent.trim() && !existingUserResponse?.trim().length && !forceFinalSummary) {
-        const completionSummary = toolCallsArray
-          .map((toolCall) => toolCall.name === MARK_WORK_COMPLETE_TOOL && typeof (toolCall.arguments as any)?.summary === "string"
+        let completionSummary = ""
+        for (let toolCallIndex = toolCallsArray.length - 1; toolCallIndex >= 0; toolCallIndex--) {
+          const toolCall = toolCallsArray[toolCallIndex]
+          const summary = toolCall?.name === MARK_WORK_COMPLETE_TOOL && typeof (toolCall.arguments as any)?.summary === "string"
             ? (toolCall.arguments as any).summary.trim()
-            : "")
-          .find((summary) => summary.length > 0)
-        if (completionSummary && isDeliverableResponseContent(completionSummary)) {
+            : ""
+          if (summary.length > 0) {
+            completionSummary = summary
+            break
+          }
+        }
+        if (completionSummary && isDeliverableCompletionSummary(completionSummary)) {
           finalContent = completionSummary
         }
       }

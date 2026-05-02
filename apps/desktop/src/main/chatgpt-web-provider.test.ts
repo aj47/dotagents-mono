@@ -133,6 +133,23 @@ describe("chatgpt-web Codex options", () => {
     }))
   }
 
+  it("defaults Codex reasoning effort to low without requesting summaries", async () => {
+    await setupCodexOptionsTest({})
+    const { getCodexReasoningOptions } = await import("./chatgpt-web-provider")
+    expect(getCodexReasoningOptions("gpt-5.1-codex")).toEqual({ effort: "low" })
+  })
+
+  it("honors disabled and explicit Codex reasoning effort overrides", async () => {
+    await setupCodexOptionsTest({ openaiReasoningEffort: "none" })
+    let provider = await import("./chatgpt-web-provider")
+    expect(provider.getCodexReasoningOptions("gpt-5.1-codex")).toBeUndefined()
+
+    vi.resetModules()
+    await setupCodexOptionsTest({ openaiReasoningEffort: "xhigh" })
+    provider = await import("./chatgpt-web-provider")
+    expect(provider.getCodexReasoningOptions("gpt-5.1-codex")).toEqual({ effort: "high" })
+  })
+
   it("defaults Codex text verbosity to medium when unset", async () => {
     await setupCodexOptionsTest({})
     const { getCodexTextVerbosity } = await import("./chatgpt-web-provider")

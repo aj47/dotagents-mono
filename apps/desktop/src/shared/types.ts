@@ -1199,12 +1199,11 @@ export type Config = {
   /** @deprecated Use agentChatgptWebModel instead. */
   mcpToolsChatgptWebModel?: string
   /**
-   * Reasoning effort for OpenAI reasoning-capable models (GPT-5.x). Passed as
-   * `providerOptions.openai.reasoningEffort` on generateText calls. When unset
-   * the provider uses its own default — for GPT-5.4 the documented default is
-   * `none`, which causes the model to answer too quickly (issue #297). The
-   * provider layer applies "medium" automatically for GPT-5.x models unless
-   * this override is set.
+   * Reasoning effort for reasoning-capable OpenAI/Codex models. Passed as
+   * `providerOptions.openai.reasoningEffort` on OpenAI generateText calls and
+   * as `reasoning.effort` on ChatGPT Web Codex responses. When unset, the
+   * OpenAI provider applies "medium" for GPT-5.x models and the ChatGPT Web
+   * Codex provider applies "low" unless this override is set.
    */
   openaiReasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh"
   /**

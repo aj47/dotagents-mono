@@ -130,6 +130,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-windowed-progress",
       "session-reasoning-stub",
       "session-reasoning-only-empty-retry",
+      "session-latest-completion-summary",
     )
   })
 
@@ -308,6 +309,33 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .join("\n")
     expect(secondPrompt).toContain("without first providing the final user-facing answer")
     expect(secondPrompt).toContain("Do not add a second recap or summary")
+  })
+
+  it("uses the latest completion summary when promoting mark_work_complete summary to final content", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = false
+    currentConfig.mcpFinalSummaryEnabled = false
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({ content: "", toolCalls: [
+      { name: "mark_work_complete", arguments: { summary: "Earlier stale answer." } },
+      { name: "mark_work_complete", arguments: { summary: "Latest authoritative answer." } },
+    ] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Finish this",
+      availableTools as any,
+      makeExecuteToolCall("session-latest-completion-summary", 1),
+      4,
+      [],
+      "conv-latest-completion-summary",
+      "session-latest-completion-summary",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Latest authoritative answer.")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(1)
   })
 
   it("does not finalize with a reasoning summary as the user-facing answer", async () => {
