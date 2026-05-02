@@ -1595,7 +1595,7 @@ export async function processTranscriptWithAgentMode(
     const reason = verificationReason
       ? `Reason: ${verificationReason}`
       : "Reason: Completion criteria not met."
-    const userNudge = `${reason}\n${missing ? `Missing items:\n${missing}` : ""}\nContinue and finish remaining work.`
+    const userNudge = `${reason}\n${missing ? `Missing items:\n${missing}` : ""}\nContinue only the current unresolved request described above. Do not resume older/background tasks unless they are explicitly required to satisfy these missing items.`
     addEphemeralMessage("user", userNudge)
     maybeNudgeToolUsage(newFailCount)
 

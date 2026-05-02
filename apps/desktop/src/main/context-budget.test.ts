@@ -56,6 +56,7 @@ vi.mock('./summarization-service', () => ({
 }))
 
 vi.mock('@dotagents/shared', () => ({
+  RESPOND_TO_USER_TOOL: 'respond_to_user',
   sanitizeMessageContentForDisplay: (content: string) => content,
 }))
 
@@ -86,6 +87,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearArchiveFrontier('session-bracket-log')
     clearArchiveFrontier('session-no-microcompact')
     clearArchiveFrontier('session-archive-reapply')
+    clearArchiveFrontier('session-latest-user')
     clearContextRefs('session-truncate')
     clearContextRefs('session-batch')
     clearContextRefs('session-archive')
@@ -95,6 +97,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearContextRefs('session-bracket-log')
     clearContextRefs('session-no-microcompact')
     clearContextRefs('session-archive-reapply')
+    clearContextRefs('session-latest-user')
     clearActualTokenUsage('session-truncate')
     clearActualTokenUsage('session-batch')
     clearActualTokenUsage('session-archive')
@@ -104,11 +107,14 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearActualTokenUsage('session-bracket-log')
     clearActualTokenUsage('session-no-microcompact')
     clearActualTokenUsage('session-archive-reapply')
+    clearActualTokenUsage('session-latest-user')
     clearIterativeSummary('session-archive')
+    clearIterativeSummary('session-batch')
     clearIterativeSummary('session-live-tail')
     clearIterativeSummary('session-protected-tail')
     clearIterativeSummary('session-no-microcompact')
     clearIterativeSummary('session-archive-reapply')
+    clearIterativeSummary('session-latest-user')
     Object.assign(mockConfig, {
       mcpContextReductionEnabled: true,
       mcpContextTargetRatio: 0.5,
@@ -397,8 +403,9 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(result.appliedStrategies).toContain('archive_frontier')
     expect(result.messages.length).toBeLessThan(messages.length)
 
-    const summaryMessage = result.messages.find((msg) => msg.content.startsWith('[Session Progress Summary]'))
+    const summaryMessage = result.messages.find((msg) => msg.content.startsWith('[Archived Background Summary - not the current task]'))
     expect(summaryMessage).toBeTruthy()
+    expect(summaryMessage?.content).toContain('Prefer later live user messages when deciding what to do now.')
 
     const contextRef = summaryMessage?.content.match(/Context ref: (ctx_[a-z0-9]+)/)?.[1]
     expect(contextRef).toBeTruthy()
@@ -410,6 +417,49 @@ describe('shrinkMessagesForLLM replacement policy', () => {
       kind: 'archived_history',
     }))
     expect(Number(readResult.messageCount)).toBeGreaterThan(0)
+  })
+
+  it('keeps recent real user request anchors raw when archive frontier trims tool-heavy history', async () => {
+    makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 12000,
+    })
+
+    const oldRequest = 'list as many project names as you can that i have been working on over the past 2 years'
+    const priorRequest = 'open the map in chrome'
+    const currentRequest = 'can you open in excalidraw in chrome'
+    const messages = [
+      { role: 'system', content: 'system prompt' },
+      { role: 'user', content: oldRequest },
+      ...Array.from({ length: 12 }, (_, index) => ({
+        role: 'assistant',
+        content: `older-work-${index} ${'o'.repeat(120)}`,
+      })),
+      { role: 'user', content: priorRequest },
+      ...Array.from({ length: 8 }, (_, index) => ({
+        role: 'user',
+        content: `[execute_command] intermediate tool result ${index} ${'i'.repeat(120)}`,
+      })),
+      { role: 'user', content: currentRequest },
+      ...Array.from({ length: 26 }, (_, index) => ({
+        role: 'user',
+        content: index % 2 === 0
+          ? `[playwright-extension:browser_snapshot] result-${index} ${'t'.repeat(120)}`
+          : `TOOL FAILED: playwright-extension:browser_run_code_unsafe (attempt ${index}/3)`,
+      })),
+    ]
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-latest-user',
+      messages,
+      lastNMessages: 3,
+    })
+
+    expect(result.appliedStrategies).toContain('archive_frontier')
+    expect(result.messages.some((msg) => msg.role === 'user' && msg.content === priorRequest)).toBe(true)
+    expect(result.messages.some((msg) => msg.role === 'user' && msg.content === currentRequest)).toBe(true)
+    expect(result.messages.some((msg) => msg.role === 'user' && msg.content === oldRequest)).toBe(false)
   })
 
   it('reapplies an existing archive frontier even when too few new messages arrived to advance it', async () => {
@@ -451,7 +501,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(makeTextCompletionWithFetchMock).toHaveBeenCalledTimes(1)
     expect(second.appliedStrategies).toContain('archive_frontier')
     expect(second.messages.length).toBeLessThan(followUpMessages.length)
-    expect(second.messages.some((msg) => msg.content.startsWith('[Session Progress Summary]'))).toBe(true)
+    expect(second.messages.some((msg) => msg.content.startsWith('[Archived Background Summary - not the current task]'))).toBe(true)
   })
 
   it('keeps search-mode excerpts within maxChars even for long queries', async () => {
@@ -588,7 +638,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(makeTextCompletionWithFetchMock).toHaveBeenCalledTimes(1)
     expect(secondPass.messages.length).toBeLessThan(messages.length)
     expect(secondPass.messages.some((msg) => msg.content.includes('live-marker-43'))).toBe(true)
-    expect(secondPass.messages.some((msg) => msg.content.startsWith('[Session Progress Summary]'))).toBe(true)
+    expect(secondPass.messages.some((msg) => msg.content.startsWith('[Archived Background Summary - not the current task]'))).toBe(true)
   })
 
   it('skips microcompact when context is comfortably under budget', async () => {
@@ -621,7 +671,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     const prompts: string[] = []
     makeTextCompletionWithFetchMock.mockImplementation(async (prompt: string) => {
       prompts.push(prompt)
-      if (prompt.includes('Summarize these AI agent conversation messages that are being archived')) {
+      if (prompt.includes('Summarize these AI agent conversation messages as archived background')) {
         return 'archived work summary'
       }
 

@@ -1,5 +1,6 @@
 import type { AgentConversationState, AgentUserResponseEvent } from "@dotagents/shared"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import { collectRecentRealUserRequestIndices } from "./conversation-history-utils"
 import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
 
 type ToolCallLike = {
@@ -84,6 +85,7 @@ Rules:
 - If the assistant only gathered context, prepared, or summarized next steps but did not create the main requested artifact, return running even if it asks a style/preference question.
 - If the assistant clearly says it cannot proceed because of a blocker outside its control, return blocked.
 - If the user already has the final answer, requested artifact, or requested summary, return complete.
+- If the current request is a short or referential follow-up, use the provided prior user context only to resolve references like "it", "this", or "the map"; do not replace the current request with an older background task.
 - Empty, vague, or purely procedural replies should return running.
 
 Return ONLY JSON with this schema:
@@ -98,6 +100,23 @@ Return ONLY JSON with this schema:
 Set isComplete=false only when conversationState=running. Set isComplete=true for complete, needs_input, or blocked.`
 
 const VERIFICATION_JSON_REQUEST_BASE = "Return JSON only. Remember: if the assistant is waiting on the user, use conversationState=needs_input; if it cannot continue because of a blocker, use conversationState=blocked; otherwise use running or complete. Do not treat optional preference/approval questions after unfinished work as needs_input; those should stay running."
+
+function collectRelevantPriorUserRequests(
+  conversationHistory: ReplayConversationHistoryEntry[],
+  sinceIndex: number | undefined,
+  transcript: string,
+): string[] {
+  const searchEnd = typeof sinceIndex === "number"
+    ? Math.max(0, Math.min(sinceIndex, conversationHistory.length))
+    : conversationHistory.length
+  const currentRequest = sanitizeMessageContentForDisplay(transcript).trim()
+
+  const candidates = collectRecentRealUserRequestIndices(conversationHistory, 2, searchEnd)
+    .map((index) => sanitizeMessageContentForDisplay(conversationHistory[index]?.content || "").trim())
+    .filter((request) => request.length > 0 && request !== currentRequest)
+
+  return candidates.slice(-1)
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value)
@@ -157,11 +176,23 @@ export function buildVerificationMessagesFromAgentState(
     conversationHistory: fixture.conversationHistory,
     sinceIndex: fixture.sinceIndex,
   })
+  const relevantPriorUserRequests = collectRelevantPriorUserRequests(
+    fixture.conversationHistory,
+    fixture.sinceIndex,
+    fixture.transcript,
+  )
 
   const messages: VerificationMessage[] = [
     { role: "system", content: VERIFICATION_SYSTEM_PROMPT },
     { role: "user", content: `Original request:\n${sanitizeMessageContentForDisplay(fixture.transcript)}` },
   ]
+
+  if (relevantPriorUserRequests.length > 0) {
+    messages.push({
+      role: "user",
+      content: `Relevant prior user context for resolving references only; these are not the active request unless the current request depends on them:\n${relevantPriorUserRequests.map((request) => `- ${request}`).join("\n")}`,
+    })
+  }
 
   if (latestUserFacingResponse?.trim()) {
     messages.push({
