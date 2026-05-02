@@ -1407,12 +1407,12 @@ export type Config = {
   langfuseSecretKey?: string
   langfuseBaseUrl?: string // Default: https://cloud.langfuse.com (or custom self-hosted URL)
 
-  // Local Trace Logging — opt-in JSONL log on disk (independent of Langfuse Cloud)
-  // When enabled, agent traces, generations and tool spans are appended to a
-  // local JSONL file. Useful when Langfuse Cloud free-tier limits would block
+  // Local Trace Logging — opt-in JSONL logs on disk (independent of Langfuse Cloud)
+  // When enabled, each agent trace/session is appended to its own local JSONL
+  // file. Useful when Langfuse Cloud free-tier limits would block
   // capture and the user only wants local logs for debugging.
   localTraceLoggingEnabled?: boolean
-  localTraceLogPath?: string // Default: <dataFolder>/traces/traces.jsonl
+  localTraceLogPath?: string // Default directory: <dataFolder>/traces
 
   // Repeat Tasks Configuration
   loops?: LoopConfig[]  // Scheduled repeat tasks that run at intervals
