@@ -57,9 +57,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build shared workspace packages
+      - name: Build packaged workspace packages
         run: |
           pnpm --filter @dotagents/shared build
+          pnpm --filter @dotagents/core build
           pnpm --filter @dotagents/mcp-whatsapp build
 
       # The package script `build:win:skip-types` is replicated inline so we can

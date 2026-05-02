@@ -5,6 +5,15 @@ const packageJson = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ) as { scripts?: Record<string, string> }
 
+const rootPackageJson = JSON.parse(
+  readFileSync(new URL("../../../package.json", import.meta.url), "utf8"),
+) as { scripts?: Record<string, string> }
+
+const desktopReleaseArtifactsWorkflow = readFileSync(
+  new URL("../../../.github/workflows/desktop-release-artifacts.yml", import.meta.url),
+  "utf8",
+)
+
 const installScript = readFileSync(
   new URL("../../../scripts/install.sh", import.meta.url),
   "utf8",
@@ -57,6 +66,20 @@ describe("desktop package scripts", () => {
 
   it("keeps desktop releases local instead of relying on a GitHub Actions release workflow", () => {
     expect(existsSync(new URL("../../../.github/workflows/build-release.yml", import.meta.url))).toBe(false)
+  })
+
+  it("builds workspace packages required by packaged desktop runtime", () => {
+    expect(rootPackageJson.scripts?.build).toContain("@dotagents/shared build")
+    expect(rootPackageJson.scripts?.build).toContain("@dotagents/core build")
+    expect(packageJson.scripts?.["build:workspace-deps"]).toContain("@dotagents/shared build")
+    expect(packageJson.scripts?.["build:workspace-deps"]).toContain("@dotagents/core build")
+    expect(packageJson.scripts?.["build:packaged-workspaces"]).toContain("build:workspace-deps")
+    expect(packageJson.scripts?.["build:packaged-workspaces"]).toContain("@dotagents/mcp-whatsapp build")
+    expect(packageJson.scripts?.["build:win:skip-types"]).toContain("build:packaged-workspaces")
+    expect(packageJson.scripts?.["prebuild:linux"]).toContain("build:packaged-workspaces")
+    expect(desktopReleaseArtifactsWorkflow).toContain("pnpm --filter @dotagents/shared build")
+    expect(desktopReleaseArtifactsWorkflow).toContain("pnpm --filter @dotagents/core build")
+    expect(desktopReleaseArtifactsWorkflow).toContain("pnpm --filter @dotagents/mcp-whatsapp build")
   })
 
   it("loads .env-based credentials in the local desktop release flow", () => {
