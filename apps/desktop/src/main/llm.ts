@@ -144,6 +144,26 @@ function getExpectedStopReason(error: unknown, sessionId?: string): string | nul
   const message = error instanceof Error ? error.message : String(error)
   const normalized = message.toLowerCase()
 
+  if (normalized.includes("session stopped by kill switch")) {
+    return "Session stopped by kill switch"
+  }
+
+  if (normalized.includes("aborted by emergency stop")) {
+    return "Aborted by emergency stop"
+  }
+
+  const normalizedName = error instanceof Error ? error.name.toLowerCase() : ""
+  const isKnownStopError =
+    normalizedName === "aborterror" ||
+    normalizedName.includes("abort") ||
+    normalizedName.includes("cancel") ||
+    normalized.includes("abort") ||
+    normalized.includes("cancel")
+
+  if (!isKnownStopError) {
+    return null
+  }
+
   if (
     sessionId &&
     agentSessionStateManager.isSessionRegistered(sessionId) &&
@@ -153,14 +173,6 @@ function getExpectedStopReason(error: unknown, sessionId?: string): string | nul
   }
 
   if (state.shouldStopAgent) {
-    return "Aborted by emergency stop"
-  }
-
-  if (normalized.includes("session stopped by kill switch")) {
-    return "Session stopped by kill switch"
-  }
-
-  if (normalized.includes("aborted by emergency stop")) {
     return "Aborted by emergency stop"
   }
 
