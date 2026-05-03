@@ -132,6 +132,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-reasoning-stub",
       "session-reasoning-only-empty-retry",
       "session-latest-completion-summary",
+      "session-internal-summary-filter",
     )
   })
 
@@ -348,6 +349,37 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .join("\n")
     expect(secondPrompt).toContain("without first providing the final user-facing answer")
     expect(secondPrompt).toContain("Do not add a second recap or summary")
+  })
+
+  it("does not promote internal completion metadata when verification is disabled", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = false
+    currentConfig.mcpFinalSummaryEnabled = false
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "mark_work_complete", arguments: { summary: "Internal completion metadata" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Here is the actual answer." } },
+        { name: "mark_work_complete", arguments: { summary: "Delivered answer" } },
+      ] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Finish this",
+      availableTools as any,
+      makeExecuteToolCall("session-internal-summary-filter", 1),
+      4,
+      [],
+      "conv-internal-summary-filter",
+      "session-internal-summary-filter",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Here is the actual answer.")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
   })
 
   it("uses the latest completion summary when promoting mark_work_complete summary to final content", async () => {
