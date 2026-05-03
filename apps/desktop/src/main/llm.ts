@@ -24,6 +24,11 @@ import {
   endAgentTrace,
   isLangfuseEnabled,
   flushLangfuse,
+  shouldRecordObservations,
+  makeLangfuseTraceId,
+  setActiveRunTrace,
+  clearActiveRunTrace,
+  forceCloseTraceOperations,
 } from "./langfuse-service"
 import {
   isSummarizationEnabled,
@@ -691,14 +696,27 @@ export async function processTranscriptWithAgentMode(
   // Track step summaries for dual-model mode
   const stepSummaries: import("../shared/types").AgentStepSummary[] = []
 
-  // Create Langfuse trace for this agent session if enabled
-  // - traceId: unique ID for this trace (our agent session ID)
-  // - sessionId: groups traces together in Langfuse (our conversation ID)
-  if (isLangfuseEnabled()) {
-    createAgentTrace(currentSessionId, {
+  // Create Langfuse trace for this agent run (issue #441):
+  // - Langfuse traceId: unique per agent run, derived from (agentSessionId, runId).
+  // - Langfuse sessionId: the DotAgents conversation ID, which groups all runs in
+  //   the same multi-turn conversation.
+  // We register the per-run trace ID against the agent session so subsystems
+  // (mcp-service, llm-fetch) can attach observations without changing every
+  // call signature. Local trace logging still records lifecycle events even
+  // when remote Langfuse upload is disabled.
+  const langfuseTraceId = makeLangfuseTraceId({
+    agentSessionId: currentSessionId,
+    runId: effectiveRunId,
+  })
+  setActiveRunTrace(currentSessionId, langfuseTraceId)
+  if (shouldRecordObservations()) {
+    createAgentTrace(langfuseTraceId, {
       name: "Agent Session",
-      sessionId: currentConversationId,  // Groups all agent sessions in this conversation
+      sessionId: currentConversationId,  // Groups all agent runs in this conversation
       metadata: {
+        conversationId: currentConversationId,
+        agentSessionId: currentSessionId,
+        runId: effectiveRunId,
         maxIterations,
         hasHistory: !!previousConversationHistory?.length,
         profileId: effectiveProfileSnapshot?.profileId,
@@ -3514,10 +3532,18 @@ export async function processTranscriptWithAgentMode(
       totalIterations: iteration,
     }
   } finally {
-    // End Langfuse trace for this agent session if enabled
-    // This is in a finally block to ensure traces are closed even on unexpected exceptions
-    if (isLangfuseEnabled()) {
-      endAgentTrace(currentSessionId, {
+    // End Langfuse trace for this agent run.
+    // Force-close any straggling spans/generations first so local trace files
+    // never end up with unbalanced lifecycle events on abort/exception paths
+    // (issue #441 acceptance criteria).
+    if (shouldRecordObservations()) {
+      forceCloseTraceOperations(langfuseTraceId, {
+        level: "ERROR",
+        statusMessage: wasAborted
+          ? "Run aborted before observation completed"
+          : "Run ended before observation completed",
+      })
+      endAgentTrace(langfuseTraceId, {
         output: finalContent,
         metadata: {
           totalIterations: iteration,
@@ -3531,9 +3557,14 @@ export async function processTranscriptWithAgentMode(
           }),
         },
       })
-      // Flush to ensure trace is sent
-      flushLangfuse().catch(() => {})
+      // Await flush so the run's events make it out before the agent loop
+      // returns and the caller proceeds (Langfuse docs recommend explicit
+      // flush at lifecycle boundaries).
+      if (isLangfuseEnabled()) {
+        await flushLangfuse().catch(() => {})
+      }
     }
+    clearActiveRunTrace(currentSessionId, langfuseTraceId)
 
     // Clean up context budget tracking for this session
     clearActualTokenUsage(currentSessionId)

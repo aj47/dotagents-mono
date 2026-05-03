@@ -45,7 +45,8 @@ import { randomUUID } from "crypto"
 import {
   createToolSpan,
   endToolSpan,
-  isLangfuseEnabled,
+  getActiveRunTrace,
+  shouldRecordObservations,
   getAgentTrace,
 } from "./langfuse-service"
 
@@ -2664,10 +2665,15 @@ export class MCPService {
     sessionId?: string,
     profileMcpConfig?: ProfileMcpServerConfig
   ): Promise<MCPToolResult> {
-    // Create Langfuse span for tool call if enabled and we have a trace
-    const spanId = isLangfuseEnabled() && sessionId ? randomUUID() : null
-    if (spanId && sessionId) {
-      createToolSpan(sessionId, spanId, {
+    // Attach the tool span to the active per-run Langfuse trace for this
+    // session (issue #441). The agent run registers its trace ID via
+    // setActiveRunTrace; if no run is active, fall back to no trace so the
+    // span is recorded as orphan rather than misattributed to the long-lived
+    // session ID.
+    const traceId = sessionId ? getActiveRunTrace(sessionId) ?? null : null
+    const spanId = shouldRecordObservations() && traceId ? randomUUID() : null
+    if (spanId && traceId) {
+      createToolSpan(traceId, spanId, {
         name: `Tool: ${toolCall.name}`,
         input: toolCall.arguments as Record<string, unknown>,
         metadata: { toolName: toolCall.name },

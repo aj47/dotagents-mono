@@ -93,6 +93,8 @@ vi.mock('./ai-sdk-provider', () => ({
 // Mock the langfuse-service module
 vi.mock('./langfuse-service', () => ({
   isLangfuseEnabled: vi.fn(() => false),
+  shouldRecordObservations: vi.fn(() => false),
+  getActiveRunTrace: vi.fn(() => undefined),
   createLLMGeneration: vi.fn(() => null),
   endLLMGeneration: vi.fn(),
 }))
