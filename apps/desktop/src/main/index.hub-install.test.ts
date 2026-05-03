@@ -12,6 +12,7 @@ async function loadIndexForHubInstall(
   argv: string[],
   configOverrides: Record<string, unknown> = {},
   gotSingleInstanceLock = true,
+  appOptions: { isPackaged?: boolean } = {},
 ) {
   vi.resetModules()
   process.argv = argv
@@ -66,6 +67,7 @@ async function loadIndexForHubInstall(
       setLoginItemSettings: vi.fn(),
       setActivationPolicy: vi.fn(),
       dock: { show: vi.fn(), hide: vi.fn(), isVisible: vi.fn(() => true) },
+      isPackaged: appOptions.isPackaged ?? true,
       quit,
     },
     Menu: { setApplicationMenu: vi.fn() },
@@ -274,6 +276,21 @@ describe("Hub install handoff routing", () => {
     expect(createMainWindow).not.toHaveBeenCalled()
   })
 
+  it("logs a diagnostic when dev startup fails to acquire the lock", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    const { quit, createMainWindow, requestSingleInstanceLock } =
+      await loadIndexForHubInstall(["electron"], {}, false, {
+        isPackaged: false,
+      })
+
+    expect(requestSingleInstanceLock).toHaveBeenCalledTimes(1)
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("Another DotAgents instance is already running"),
+    )
+    expect(quit).toHaveBeenCalledTimes(1)
+    expect(createMainWindow).not.toHaveBeenCalled()
+  })
+
   it("stops the keyboard listener during before-quit cleanup", async () => {
     const { handlers, quit, stopListeningToKeyboardEvents } =
       await loadIndexForHubInstall(["electron"])
@@ -334,6 +351,7 @@ describe("Hub install handoff routing", () => {
 
     try {
       vi.setSystemTime(new Date("2026-03-20T12:00:00Z"))
+      vi.spyOn(process, "platform", "get").mockReturnValue("darwin")
 
       const { handlers, showMainWindow, windows } = await loadIndexForHubInstall(["electron"])
       const activateHandler = handlers.get("activate")?.[0] as (() => void) | undefined

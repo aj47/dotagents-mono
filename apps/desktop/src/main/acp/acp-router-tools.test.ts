@@ -142,6 +142,39 @@ describe("handleDelegateToAgent", () => {
       { appSessionId: "parent-session-1" },
       expect.stringMatching(/^dotagents:delegation:parent-session-1:/),
     )
-    expect(mockSetAcpToAppSessionMapping).toHaveBeenCalledWith("acp-session-1", "parent-session-1", 7)
+    expect(mockSetAcpToAppSessionMapping).toHaveBeenCalledWith(
+      "acp-session-1",
+      "parent-session-1",
+      7,
+      { registerAppSession: true },
+    )
+  })
+
+  it("returns a stable completed check_agent_status response on repeated polls", async () => {
+    const { handleDelegateToAgent, handleCheckAgentStatus } = await import("./acp-router-tools")
+
+    const delegation = await handleDelegateToAgent({
+      agentName: "test-agent",
+      task: "Say hello",
+      waitForResult: true,
+    }, "parent-session-1") as any
+
+    const firstStatus = await handleCheckAgentStatus({ runId: delegation.runId }) as any
+    const secondStatus = await handleCheckAgentStatus({ runId: delegation.runId }) as any
+
+    expect(firstStatus).toEqual(expect.objectContaining({
+      success: true,
+      status: "completed",
+      task: "Say hello",
+      pollCount: 1,
+      output: "Final user-facing answer",
+    }))
+    expect(secondStatus).toEqual(expect.objectContaining({
+      success: true,
+      status: "completed",
+      task: "Say hello",
+      pollCount: 2,
+      output: "Final user-facing answer",
+    }))
   })
 })

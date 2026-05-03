@@ -32,6 +32,15 @@ const logSubSession = (...args: unknown[]) => {
   console.log(`[${new Date().toISOString()}] [InternalSubSession]`, ...args);
 };
 
+function isExpectedCancellationError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('session stopped by kill switch') ||
+    normalized.includes('aborted by emergency stop')
+  );
+}
+
 // ============================================================================
 // Configuration & Limits
 // ============================================================================
@@ -675,14 +684,23 @@ export async function runInternalSubSession(
     };
 
   } catch (error) {
-    subSession.status = 'failed';
+    const currentSubSession = activeSubSessions.get(subSessionId);
+    const wasCancelled = currentSubSession?.status === 'cancelled' || isExpectedCancellationError(error);
+
+    subSession.status = wasCancelled ? 'cancelled' : 'failed';
     subSession.endTime = Date.now();
-    subSession.error = error instanceof Error ? error.message : String(error);
+    subSession.error = wasCancelled
+      ? 'Sub-session was cancelled'
+      : error instanceof Error ? error.message : String(error);
 
     // Emit final delegation progress showing failure
     emitSubSessionDelegationProgress(subSession, parentSessionId);
 
-    logSubSession(`Sub-session ${subSessionId} failed:`, error);
+    if (wasCancelled) {
+      logSubSession(`Sub-session ${subSessionId} was cancelled`);
+    } else {
+      logSubSession(`Sub-session ${subSessionId} failed:`, error);
+    }
 
     return {
       success: false,
