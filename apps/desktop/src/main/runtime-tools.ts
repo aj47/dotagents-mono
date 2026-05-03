@@ -1191,6 +1191,11 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    const { appendCommandLogEntry } = await import("./command-log-service")
+    const startedAt = new Date()
+    const startedAtIso = startedAt.toISOString()
+    const startedAtMs = startedAt.getTime()
+
     try {
       const execOptions: { cwd?: string; timeout?: number; maxBuffer?: number; shell?: string } = {
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
@@ -1226,6 +1231,21 @@ const toolHandlers: Record<string, ToolHandler> = {
         outputTruncated = true
       }
 
+      const logPath = context.sessionId
+        ? await appendCommandLogEntry({
+            sessionId: context.sessionId,
+            command: effectiveCommand,
+            cwd: effectiveCwd,
+            startedAt: startedAtIso,
+            durationMs: Date.now() - startedAtMs,
+            exitCode: 0,
+            timedOut: false,
+            stdout: stdout || "",
+            stderr: stderr || "",
+            skillName,
+          })
+        : null
+
       return {
         content: [
           {
@@ -1241,6 +1261,7 @@ const toolHandlers: Record<string, ToolHandler> = {
               stdout: truncatedStdout,
               stderr: stderr || "",
               ...(outputTruncated ? { outputTruncated: true, hint: "Output was truncated. Use head -n/tail -n/sed -n 'X,Yp' to read specific sections." } : {}),
+              ...(logPath ? { fullTranscriptLogPath: logPath } : {}),
             }, null, 2),
           },
         ],
@@ -1271,6 +1292,24 @@ const toolHandlers: Record<string, ToolHandler> = {
         ? '\n\nHINT: This command likely failed due to shell escaping issues with special characters or long strings. Try writing the content to a file first (e.g., with write_file or echo > file), then reference the file in your command.'
         : '';
 
+      // SIGTERM with a configured timeout means the runner killed the process.
+      const timedOut = error.signal === "SIGTERM" && timeout > 0
+      const logPath = context.sessionId
+        ? await appendCommandLogEntry({
+            sessionId: context.sessionId,
+            command: effectiveCommand,
+            cwd: effectiveCwd,
+            startedAt: startedAtIso,
+            durationMs: Date.now() - startedAtMs,
+            exitCode: typeof exitCode === "number" ? exitCode : null,
+            timedOut,
+            stdout: error.stdout || "",
+            stderr,
+            skillName,
+            error: errorMessage,
+          })
+        : null
+
       return {
         content: [
           {
@@ -1287,6 +1326,7 @@ const toolHandlers: Record<string, ToolHandler> = {
               exitCode,
               stdout,
               stderr,
+              ...(logPath ? { fullTranscriptLogPath: logPath } : {}),
             }, null, 2),
           },
         ],
