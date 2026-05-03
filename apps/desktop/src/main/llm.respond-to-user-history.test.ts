@@ -128,6 +128,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-review-loop-final-answer",
       "session-clean-final",
       "session-windowed-progress",
+      "session-repeat-stale-answer-scope",
       "session-reasoning-stub",
       "session-reasoning-only-empty-retry",
       "session-latest-completion-summary",
@@ -227,6 +228,44 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       )
       expect(update.conversationHistory.some((message: any) => message.content === "historic message 0")).toBe(false)
     }
+  })
+
+  it("does not reuse a repeat answer from before a later user turn", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const previousHistory = [
+      { role: "user" as const, content: "status?" },
+      { role: "assistant" as const, content: "Old status answer." },
+      { role: "user" as const, content: "Deploy the update" },
+      { role: "tool" as const, content: "[execute_command] deployment succeeded" },
+      { role: "assistant" as const, content: "Deployment is complete." },
+    ]
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "execute_command", arguments: { command: "" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Fresh status answer." } },
+      ] })
+    mocks.verifyCompletionWithFetch.mockResolvedValue({ isComplete: true, conversationState: "complete", confidence: 0.97, missingItems: [] })
+
+    const result = await processTranscriptWithAgentMode(
+      "status?",
+      availableTools as any,
+      makeExecuteToolCall("session-repeat-stale-answer-scope", 1),
+      4,
+      previousHistory as any,
+      "conv-repeat-stale-answer-scope",
+      "session-repeat-stale-answer-scope",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Fresh status answer.")
+    expect(result.content).not.toBe("Deployment is complete.")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
   })
 
   it("keeps a verified explicit final response to one assistant message", async () => {

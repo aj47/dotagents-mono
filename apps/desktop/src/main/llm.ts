@@ -231,8 +231,12 @@ function findPriorAnswerForExactRepeatContinuation(
   )
   if (previousUserIndex < 0) return undefined
 
+  const latestUserIndex = history.findLastIndex((entry) => entry.role === "user")
+  if (previousUserIndex !== latestUserIndex) return undefined
+
   for (let index = history.length - 1; index > previousUserIndex; index -= 1) {
     const entry = history[index]
+    if (entry.role === "user") return undefined
     for (const toolCall of entry.toolCalls || []) {
       if (toolCall?.name === RESPOND_TO_USER_TOOL) {
         const response = normalizeUserFacingResponseContent(
