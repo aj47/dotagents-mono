@@ -6,12 +6,14 @@ import {
   ChevronDown,
   ChevronRight,
   Pin,
+  Play,
   X,
   Clock,
   CornerDownRight,
   Mic,
   Plus,
 } from "lucide-react"
+import { toast } from "sonner"
 import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
@@ -484,12 +486,22 @@ export function ActiveAgentsSidebar({
     archivedSessionIds,
   ])
 
+  const loopByTitleHint = useMemo(() => {
+    const map = new Map<string, LoopConfig>()
+    for (const loop of repeatTasksQuery.data ?? []) {
+      for (const hint of getRepeatTaskTitleHints(loop)) {
+        if (!map.has(hint)) map.set(hint, loop)
+      }
+    }
+    return map
+  }, [repeatTasksQuery.data])
+
   const {
     userSidebarSessions: allUserSidebarSessions,
     pinnedTaskSidebarSessions,
     unpinnedTaskSidebarSessions,
   } = useMemo(() => {
-    const repeatTaskTitleHints = new Set(
+    const repeatTaskTitleHints = new Set<string>(
       (repeatTasksQuery.data ?? []).flatMap(getRepeatTaskTitleHints),
     )
     const { userEntries, taskEntries } = partitionTaskAndUserEntries(
@@ -687,6 +699,35 @@ export function ActiveAgentsSidebar({
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [visibleSidebarSessions, handleSavedConversationOpen, handleActiveSessionSelect])
+
+  const findLoopForSession = useCallback(
+    (session: SidebarSessionRecord): LoopConfig | undefined => {
+      const title = session.conversationTitle?.trim()
+      if (!title) return undefined
+      const direct = loopByTitleHint.get(title)
+      if (direct) return direct
+      const stripped = title.startsWith("Repeat: ") ? title.slice("Repeat: ".length).trim() : null
+      return stripped ? loopByTitleHint.get(stripped) : undefined
+    },
+    [loopByTitleHint],
+  )
+
+  const handleRunRepeatTask = useCallback(
+    async (loop: LoopConfig, e: React.MouseEvent) => {
+      e.stopPropagation()
+      try {
+        const result = await tipcClient.triggerLoop?.({ loopId: loop.id })
+        if (result && !result.success) {
+          toast.error(`Could not trigger "${loop.name}" right now`)
+          return
+        }
+        toast.success(`Running "${loop.name}"...`)
+      } catch {
+        toast.error("Failed to trigger task")
+      }
+    },
+    [],
+  )
 
   const handleStopSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent session focus when clicking stop
@@ -1105,6 +1146,10 @@ export function ActiveAgentsSidebar({
 
             // Active session row
             // Retained completed turns should stay visually active until the user dismisses them.
+            const repeatTaskLoop = findLoopForSession(session)
+            const isInactiveRepeatTask =
+              !!repeatTaskLoop &&
+              (session.status !== "active" || sessionProgress?.isComplete === true)
             const statusRailColor = sidebarStatusPresentation.railClassName
             const shouldPulseStatus = sidebarStatusPresentation.shouldPulse
             const isLifecycleNeedsInput = sidebarStatusPresentation.lifecycleState === "needs_input"
@@ -1261,6 +1306,18 @@ export function ActiveAgentsSidebar({
                     </div>
                   )}
                 </div>
+                {isInactiveRepeatTask && repeatTaskLoop && (
+                  <button
+                    onClick={(e) => handleRunRepeatTask(repeatTaskLoop, e)}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    className="absolute right-7 top-1/2 z-20 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded transition-all hover:bg-emerald-500/20 hover:text-emerald-600 dark:hover:text-emerald-400"
+                    title={`Run "${repeatTaskLoop.name}" now`}
+                    aria-label={`Run ${repeatTaskLoop.name} now`}
+                  >
+                    <Play className="h-3 w-3" />
+                  </button>
+                )}
                 <div
                   className={cn(
                     "bg-background/90 absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0 rounded-sm pl-1 opacity-0 transition-opacity",

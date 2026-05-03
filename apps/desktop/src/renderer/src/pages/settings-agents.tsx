@@ -237,14 +237,24 @@ export function SettingsAgents() {
     setCommandVerification(null)
   }, [editing?.presetKey, editing?.connectionType, editing?.connectionCommand, editing?.connectionArgs, editing?.connectionCwd])
 
-  // Handle URL-driven navigation: ?edit=<agentId> opens edit, ?view=list returns to list
+  // Handle URL-driven navigation: ?edit=<agentId> opens edit, ?create=1 opens
+  // the create form, ?view=list returns to list
   useEffect(() => {
     const editId = searchParams.get("edit")
     const viewMode = searchParams.get("view")
+    const createFlag = searchParams.get("create")
 
     if (viewMode === "list") {
       setEditing(null)
       setIsCreating(false)
+      setSearchParams({}, { replace: true })
+      return
+    }
+
+    if (createFlag && !isCreating) {
+      setIsCreating(true)
+      setEditing(emptyAgent())
+      setCommandVerification(null)
       setSearchParams({}, { replace: true })
       return
     }

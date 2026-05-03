@@ -5,8 +5,9 @@
 
 import React from "react"
 import { useQuery } from "@tanstack/react-query"
+import { useNavigate } from "react-router-dom"
 import { tipcClient } from "@renderer/lib/tipc-client"
-import { Bot, Check } from "lucide-react"
+import { Bot, Check, Edit2, Plus } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import type { AgentProfile } from "../../../shared/types"
 import {
@@ -98,6 +99,7 @@ interface AgentSelectorProps {
 }
 
 export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorProps) {
+  const navigate = useNavigate()
   const { data: agents = [] } = useQuery<AgentProfile[]>({
     queryKey: ["agentProfilesSelector"],
     queryFn: () => tipcClient.getAgentProfiles(),
@@ -167,8 +169,11 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
         {enabledAgents.map((agent) => (
           <DropdownMenuItem
             key={agent.id}
-            onClick={() => onSelectAgent(agent.id)}
-            className="min-w-0 items-center gap-2"
+            onSelect={(event) => {
+              event.preventDefault()
+              onSelectAgent(agent.id)
+            }}
+            className="min-w-0 items-center gap-2 pr-1"
           >
             <div className="h-5 w-5 shrink-0 rounded overflow-hidden flex items-center justify-center">
               {agent.avatarDataUrl ? (
@@ -179,8 +184,34 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
             </div>
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{agent.displayName || agent.name}</span>
             <Check className={cn("h-3.5 w-3.5 shrink-0", selectedAgentId === agent.id ? "opacity-100" : "opacity-0")} />
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                navigate(`/settings/agents?edit=${encodeURIComponent(agent.id)}`)
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              className="ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              title={`Edit ${agent.displayName || agent.name}`}
+              aria-label={`Edit ${agent.displayName || agent.name}`}
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+            </button>
           </DropdownMenuItem>
         ))}
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          onSelect={() => navigate("/settings/agents?create=1")}
+          className="min-w-0 items-center gap-2"
+        >
+          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground">
+            <Plus className="h-4 w-4" />
+          </div>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">New agent…</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

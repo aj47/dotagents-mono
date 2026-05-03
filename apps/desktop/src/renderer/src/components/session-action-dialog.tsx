@@ -31,7 +31,7 @@ interface SessionActionDialogProps {
   onSubmitted?: () => void
 }
 
-const VISUALIZER_BAR_COUNT = 56
+const VISUALIZER_BAR_COUNT = 52
 const INITIAL_VISUALIZER_DATA = Array<number>(VISUALIZER_BAR_COUNT).fill(0.01)
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -326,12 +326,12 @@ export function SessionActionDialog({
                   <span>{statusMessage ?? (recording ? "Listening…" : "Preparing microphone…")}</span>
                 </div>
 
-                <div className="flex h-24 w-full items-end justify-center gap-1 rounded-lg bg-background/80 px-3 py-4">
+                <div className="flex h-20 w-full items-center justify-center gap-0.5 overflow-hidden rounded-lg bg-background/80 px-4 py-3">
                   {voiceBars.map((value, index) => (
                     <div
                       key={index}
-                      className="w-1.5 shrink-0 rounded-full bg-red-500/90 transition-all dark:bg-white"
-                      style={{ height: `${Math.max(12, Math.min(100, value * 100))}%` }}
+                      className="h-full w-0.5 shrink-0 rounded-lg bg-red-500/90 transition-all dark:bg-white"
+                      style={{ height: `${Math.max(16, Math.min(100, value * 100))}%` }}
                     />
                   ))}
                 </div>
