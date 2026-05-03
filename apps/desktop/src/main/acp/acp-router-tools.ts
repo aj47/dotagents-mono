@@ -44,8 +44,6 @@ interface DelegatedRun extends ACPSubAgentState {
   lastEmitTime: number;
   /** Number of explicit check_agent_status calls served for this run */
   statusCheckCount: number;
-  /** Whether the completed output has already been returned by check_agent_status */
-  completedOutputDelivered: boolean;
 }
 
 /**
@@ -124,7 +122,6 @@ function createSubAgentState(args: CreateSubAgentStateArgs): DelegatedRun {
     conversation: [userMessage],
     lastEmitTime: 0,
     statusCheckCount: 0,
-    completedOutputDelivered: false,
   };
   delegatedRuns.set(runId, delegatedRun);
   return delegatedRun;
@@ -1343,17 +1340,13 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
       success: true,
       runId: subAgentState.runId,
       agentName: subAgentState.agentName,
+      task: subAgentState.task,
       workingDirectory: subAgentState.workingDirectory,
       status: subAgentState.status,
       startTime: subAgentState.startTime,
       duration: Date.now() - subAgentState.startTime,
+      pollCount: subAgentState.statusCheckCount,
     };
-
-    if (statusCheckCount === 0) {
-      response.task = subAgentState.task;
-    } else {
-      response.pollCount = subAgentState.statusCheckCount;
-    }
 
     if (subAgentState.progress) {
       response.progress = subAgentState.progress;
@@ -1363,14 +1356,7 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
       const outputText = subAgentState.result.output
         ?.map((msg) => msg.parts.map((p) => p.content).join('\n'))
         .join('\n\n') || '';
-      if (!subAgentState.completedOutputDelivered) {
-        response.output = outputText;
-        subAgentState.completedOutputDelivered = true;
-      } else {
-        response.outputOmitted = true;
-        response.message = 'Completed output was already returned by an earlier check_agent_status call.';
-        response.outputLength = outputText.length;
-      }
+      response.output = outputText;
       response.metadata = subAgentState.result.metadata;
     }
 

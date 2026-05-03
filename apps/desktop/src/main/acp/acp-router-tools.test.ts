@@ -150,7 +150,7 @@ describe("handleDelegateToAgent", () => {
     )
   })
 
-  it("returns completed check_agent_status output only once", async () => {
+  it("returns a stable completed check_agent_status response on repeated polls", async () => {
     const { handleDelegateToAgent, handleCheckAgentStatus } = await import("./acp-router-tools")
 
     const delegation = await handleDelegateToAgent({
@@ -166,16 +166,15 @@ describe("handleDelegateToAgent", () => {
       success: true,
       status: "completed",
       task: "Say hello",
+      pollCount: 1,
       output: "Final user-facing answer",
     }))
     expect(secondStatus).toEqual(expect.objectContaining({
       success: true,
       status: "completed",
+      task: "Say hello",
       pollCount: 2,
-      outputOmitted: true,
-      outputLength: "Final user-facing answer".length,
+      output: "Final user-facing answer",
     }))
-    expect(secondStatus.output).toBeUndefined()
-    expect(secondStatus.task).toBeUndefined()
   })
 })
