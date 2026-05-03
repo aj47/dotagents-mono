@@ -68,7 +68,7 @@ export const acpRouterToolDefinitions = [
   },
   {
     name: 'check_agent_status',
-    description: 'Check the status of a running delegated agent task. If runId is omitted, checks the most recent delegated run (or filters by agentName if provided).',
+    description: 'Check the status of a running delegated agent task. If runId is omitted, checks the most recent delegated run (or filters by agentName if provided). Completed output is returned once; repeated checks return a compact already-delivered notice.',
     inputSchema: {
       type: 'object' as const,
       properties: {

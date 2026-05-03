@@ -42,6 +42,10 @@ interface DelegatedRun extends ACPSubAgentState {
   conversation: ACPSubAgentMessage[];
   /** Last time we emitted a progress update to the UI (for rate limiting) */
   lastEmitTime: number;
+  /** Number of explicit check_agent_status calls served for this run */
+  statusCheckCount: number;
+  /** Whether the completed output has already been returned by check_agent_status */
+  completedOutputDelivered: boolean;
 }
 
 /**
@@ -119,6 +123,8 @@ function createSubAgentState(args: CreateSubAgentStateArgs): DelegatedRun {
     isAsync: args.isAsync,
     conversation: [userMessage],
     lastEmitTime: 0,
+    statusCheckCount: 0,
+    completedOutputDelivered: false,
   };
   delegatedRuns.set(runId, delegatedRun);
   return delegatedRun;
@@ -150,13 +156,23 @@ function createCompletedResult(
 ): DelegationResult {
   subAgentState.status = 'completed';
   const resolvedOutput = getPreferredDelegationOutput(output, conversation);
+  const endTime = Date.now();
+  subAgentState.result = {
+    runId: subAgentState.runId,
+    agentName: subAgentState.agentName,
+    status: 'completed',
+    startTime: subAgentState.startTime,
+    endTime,
+    metadata: { duration: endTime - subAgentState.startTime },
+    output: [{ role: 'assistant', parts: [{ content: resolvedOutput }] }],
+  };
   return {
     success: true,
     runId: subAgentState.runId,
     agentName: subAgentState.agentName,
     status: 'completed',
     output: resolvedOutput,
-    duration: Date.now() - subAgentState.startTime,
+    duration: endTime - subAgentState.startTime,
     conversation,
   };
 }
@@ -170,13 +186,23 @@ function createFailedResult(
   conversation?: ACPSubAgentMessage[]
 ): DelegationResult {
   subAgentState.status = 'failed';
+  const endTime = Date.now();
+  subAgentState.result = {
+    runId: subAgentState.runId,
+    agentName: subAgentState.agentName,
+    status: 'failed',
+    startTime: subAgentState.startTime,
+    endTime,
+    metadata: { duration: endTime - subAgentState.startTime },
+    error,
+  };
   return {
     success: false,
     runId: subAgentState.runId,
     agentName: subAgentState.agentName,
     status: 'failed',
     error,
-    duration: Date.now() - subAgentState.startTime,
+    duration: endTime - subAgentState.startTime,
     conversation,
   };
 }
@@ -1310,16 +1336,24 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
       };
     }
 
+    const statusCheckCount = subAgentState.statusCheckCount ?? 0;
+    subAgentState.statusCheckCount = statusCheckCount + 1;
+
     const response: Record<string, unknown> = {
       success: true,
       runId: subAgentState.runId,
       agentName: subAgentState.agentName,
-      task: subAgentState.task,
       workingDirectory: subAgentState.workingDirectory,
       status: subAgentState.status,
       startTime: subAgentState.startTime,
       duration: Date.now() - subAgentState.startTime,
     };
+
+    if (statusCheckCount === 0) {
+      response.task = subAgentState.task;
+    } else {
+      response.pollCount = subAgentState.statusCheckCount;
+    }
 
     if (subAgentState.progress) {
       response.progress = subAgentState.progress;
@@ -1329,7 +1363,14 @@ export async function handleCheckAgentStatus(args: { runId: string; historyLengt
       const outputText = subAgentState.result.output
         ?.map((msg) => msg.parts.map((p) => p.content).join('\n'))
         .join('\n\n') || '';
-      response.output = outputText;
+      if (!subAgentState.completedOutputDelivered) {
+        response.output = outputText;
+        subAgentState.completedOutputDelivered = true;
+      } else {
+        response.outputOmitted = true;
+        response.message = 'Completed output was already returned by an earlier check_agent_status call.';
+        response.outputLength = outputText.length;
+      }
       response.metadata = subAgentState.result.metadata;
     }
 
