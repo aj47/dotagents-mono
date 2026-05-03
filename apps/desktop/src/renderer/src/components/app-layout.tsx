@@ -708,7 +708,7 @@ export const Component = () => {
                         : "bg-green-500"
                   const title =
                     session.conversationTitle?.trim() || "Untitled conversation"
-                  const initial = title.charAt(0).toUpperCase()
+                  const collapsedTitle = title.replace(/\s+/g, " ")
 
                   return (
                     <button
@@ -716,7 +716,7 @@ export const Component = () => {
                       type="button"
                       onClick={() => handleCollapsedSessionClick(session.id)}
                       className={cn(
-                        "group relative flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                        "group relative flex h-8 w-full items-center justify-center rounded-md px-0.5 transition-all duration-200",
                         isFocused
                           ? "text-foreground bg-blue-500/15"
                           : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
@@ -724,7 +724,9 @@ export const Component = () => {
                       title={title}
                       aria-label={`Open session ${title}`}
                     >
-                      <span className="text-xs font-semibold">{initial}</span>
+                      <span className="max-w-[calc(100%-0.375rem)] line-clamp-2 text-center text-[8px] font-medium leading-[0.6rem] tracking-tight [overflow-wrap:anywhere]">
+                        {collapsedTitle}
+                      </span>
                       <span
                         className={cn(
                           "border-background absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border",

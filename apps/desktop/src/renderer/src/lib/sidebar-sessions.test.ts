@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
+  getSidebarActivityPresentation,
   getSidebarProgressTitle,
   getSubagentParentSessionIdMap,
   getSubagentTitleBySessionIdMap,
@@ -143,6 +144,109 @@ describe("getSidebarProgressTitle", () => {
         delegationTitles,
       ),
     ).toBe("Find the root cause")
+  })
+})
+
+describe("getSidebarActivityPresentation", () => {
+  it("prefers live tool-call state with the tool name over stale response text", () => {
+    const activity = getSidebarActivityPresentation({
+      isComplete: false,
+      userResponse: "Older visible response",
+      steps: [
+        {
+          id: "tool-1",
+          type: "tool_call",
+          title: "Reading file",
+          description: "Inspecting active-agents-sidebar.tsx",
+          status: "in_progress",
+          timestamp: 2,
+          toolCall: { name: "functions.view", arguments: { path: "file.ts" } },
+        },
+      ],
+    })
+
+    expect(activity).toMatchObject({
+      kind: "tool_call",
+      label: "Using view",
+      detail: "Inspecting active-agents-sidebar.tsx",
+      isForegroundActivity: true,
+    })
+  })
+
+  it("surfaces final user-facing responses before summaries or completed tool steps", () => {
+    const activity = getSidebarActivityPresentation({
+      isComplete: true,
+      userResponse: "Here is the final answer.",
+      latestSummary: {
+        id: "summary-1",
+        sessionId: "session-1",
+        stepNumber: 3,
+        timestamp: 3,
+        actionSummary: "Updated files",
+      },
+      steps: [
+        {
+          id: "tool-1",
+          type: "tool_call",
+          title: "Edited code",
+          status: "completed",
+          timestamp: 2,
+          toolCall: { name: "apply_patch", arguments: {} },
+        },
+      ],
+    })
+
+    expect(activity).toMatchObject({
+      kind: "response",
+      label: "Response",
+      detail: "Here is the final answer.",
+      isForegroundActivity: false,
+    })
+  })
+
+  it("marks thinking and delegation as foreground activity", () => {
+    expect(
+      getSidebarActivityPresentation({
+        isComplete: false,
+        steps: [
+          {
+            id: "thinking-1",
+            type: "thinking",
+            title: "Thinking",
+            description: "Planning the state model",
+            status: "in_progress",
+            timestamp: 1,
+          },
+        ],
+      }),
+    ).toMatchObject({ kind: "thinking", label: "Thinking", isForegroundActivity: true })
+
+    expect(
+      getSidebarActivityPresentation({
+        isComplete: false,
+        steps: [
+          {
+            id: "subagent-1",
+            type: "tool_call",
+            title: "Delegating",
+            status: "in_progress",
+            timestamp: 1,
+            delegation: {
+              runId: "run-1",
+              agentName: "explore",
+              task: "Find sidebar state code",
+              status: "running",
+              startTime: 1,
+            },
+          },
+        ],
+      }),
+    ).toMatchObject({
+      kind: "delegation",
+      label: "Subagent",
+      detail: "Find sidebar state code",
+      isForegroundActivity: true,
+    })
   })
 })
 
@@ -656,6 +760,34 @@ describe("agent response unread helpers", () => {
     })
 
     expect(latestTimestamp).toBe(300)
+  })
+
+  it("falls back to summary or step timestamps for untimestamped final responses", () => {
+    const latestTimestamp = getLatestAgentResponseTimestamp({
+      sessionId: "session-untimestamped",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [
+        {
+          id: "completion-1",
+          type: "completion",
+          title: "Done",
+          status: "completed",
+          timestamp: 450,
+        },
+      ],
+      isComplete: true,
+      userResponse: "Here is the final answer.",
+      latestSummary: {
+        id: "summary-untimestamped",
+        sessionId: "session-untimestamped",
+        stepNumber: 1,
+        timestamp: 400,
+        actionSummary: "Completed the run",
+      },
+    })
+
+    expect(latestTimestamp).toBe(450)
   })
 
   it("marks a newer unseen agent response as unread", () => {

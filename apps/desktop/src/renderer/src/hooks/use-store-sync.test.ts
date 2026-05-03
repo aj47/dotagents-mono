@@ -164,8 +164,19 @@ describe('useStoreSync pinned session persistence', () => {
 
     expect(storeState.setPinnedSessionIds).toHaveBeenCalledWith(['local-session'])
     expect(storeState.pinnedSessionIds).toEqual(new Set(['local-session']))
+    // Pre-hydration local changes should not immediately overwrite persisted
+    // config on disk; only post-hydration changes should trigger saves.
+    expect(loaded.tipcClient.saveConfig).not.toHaveBeenCalled()
+
+    // A subsequent post-hydration change should still trigger a save
+    storeState.pinnedSessionIds = new Set(['local-session', 'post-session'])
+    storeState.pinnedSessionIdsRevision += 1
+    runtime.render(loaded.useStoreSync)
+    runtime.commitEffects()
+    await flushPromises()
+
     expect(loaded.tipcClient.saveConfig).toHaveBeenCalledWith({
-      config: { pinnedSessionIds: ['local-session'] },
+      config: { pinnedSessionIds: ['local-session', 'post-session'] },
     })
 
     runtime.cleanupAllEffects()
@@ -200,9 +211,9 @@ describe('useStoreSync pinned session persistence', () => {
     expect(storeState.setPinnedSessionIds).not.toHaveBeenCalledWith(['persisted-session'])
     expect(storeState.setPinnedSessionIds).toHaveBeenCalledWith([])
     expect(storeState.pinnedSessionIds).toEqual(new Set())
-    expect(loaded.tipcClient.saveConfig).toHaveBeenCalledWith({
-      config: { pinnedSessionIds: [] },
-    })
+    // The accidental pre-hydration empty state must not overwrite the persisted
+    // pins on disk. It should stay unsaved until a post-hydration change.
+    expect(loaded.tipcClient.saveConfig).not.toHaveBeenCalled()
 
     runtime.cleanupAllEffects()
   })

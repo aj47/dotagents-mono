@@ -8,7 +8,7 @@ export type SessionLifecycleState = AgentConversationState
 export type SessionAttentionState = "foreground" | "background"
 export type SessionPresentationIntent = "active" | "background" | "success" | "warning" | "danger"
 export type FollowUpInputMode = "initializing" | "queue" | "send" | "disabled"
-export type SidebarStatusIntent = "active" | "background" | "success" | "needs_input" | "blocked"
+export type SidebarStatusIntent = "active" | "background" | "success" | "needs_input" | "blocked" | "response"
 
 export interface SessionPresentationInput {
   conversationState?: unknown
@@ -24,6 +24,8 @@ export interface SessionPresentationInput {
   hasActiveChildProgress?: boolean
   hasUnreadResponse?: boolean
   hasAnalyzingOrPlanningProgress?: boolean
+  hasForegroundActivity?: boolean
+  hasRecentFinalResponse?: boolean
   isQueueEnabled?: boolean
   isInitializingSession?: boolean
 }
@@ -79,7 +81,9 @@ export function deriveAttentionState(input: SessionPresentationInput): SessionAt
     input.isSessionExpanded ||
     input.hasActiveChildProgress ||
     input.hasUnreadResponse ||
-    input.hasAnalyzingOrPlanningProgress
+    input.hasAnalyzingOrPlanningProgress ||
+    input.hasForegroundActivity ||
+    input.hasRecentFinalResponse
   )
 
   if (lifecycleState !== "running") return hasForegroundAttention ? "foreground" : "background"
@@ -169,6 +173,9 @@ export function getSidebarStatusPresentation(input: SessionPresentationInput): S
   }
   if (lifecycleState === "blocked") {
     return { lifecycleState, attentionState, intent: "blocked", railClassName: "bg-red-500", pinnedIconClassName: "text-red-500", shouldPulse: false, isForeground: true }
+  }
+  if (input.hasRecentFinalResponse) {
+    return { lifecycleState, attentionState, intent: "response", railClassName: "bg-emerald-500", pinnedIconClassName: "text-emerald-500", shouldPulse: false, isForeground: true }
   }
   if (lifecycleState === "complete") {
     return { lifecycleState, attentionState, intent: "success", railClassName: "bg-green-500", pinnedIconClassName: "text-green-500", shouldPulse: false, isForeground: false }

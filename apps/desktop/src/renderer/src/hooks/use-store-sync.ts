@@ -204,7 +204,10 @@ export function useStoreSync() {
       pinnedSessionIdsHydratedRef.current = true
 
       if (pinnedSessionIdsChangedBeforeHydrationRef.current) {
-        setPinnedSessionIds(Array.from(useAgentStore.getState().pinnedSessionIds))
+        const currentStoreValue = Array.from(useAgentStore.getState().pinnedSessionIds)
+        lastPersistedPinnedSessionIdsRef.current = currentStoreValue
+        lastPersistedPinnedSessionIdsRevisionRef.current = useAgentStore.getState().pinnedSessionIdsRevision
+        setPinnedSessionIds(currentStoreValue)
         return
       }
 
@@ -216,7 +219,10 @@ export function useStoreSync() {
       pinnedSessionIdsHydratedRef.current = true
 
       if (pinnedSessionIdsChangedBeforeHydrationRef.current) {
-        setPinnedSessionIds(Array.from(useAgentStore.getState().pinnedSessionIds))
+        const currentStoreValue = Array.from(useAgentStore.getState().pinnedSessionIds)
+        lastPersistedPinnedSessionIdsRef.current = currentStoreValue
+        lastPersistedPinnedSessionIdsRevisionRef.current = useAgentStore.getState().pinnedSessionIdsRevision
+        setPinnedSessionIds(currentStoreValue)
       }
     })
 
@@ -288,7 +294,10 @@ export function useStoreSync() {
       archivedSessionIdsHydratedRef.current = true
 
       if (archivedSessionIdsChangedBeforeHydrationRef.current) {
-        setArchivedSessionIds(Array.from(useAgentStore.getState().archivedSessionIds))
+        const currentStoreValue = Array.from(useAgentStore.getState().archivedSessionIds)
+        lastPersistedArchivedSessionIdsRef.current = currentStoreValue
+        lastPersistedArchivedSessionIdsRevisionRef.current = useAgentStore.getState().archivedSessionIdsRevision
+        setArchivedSessionIds(currentStoreValue)
         return
       }
 
@@ -300,7 +309,10 @@ export function useStoreSync() {
       archivedSessionIdsHydratedRef.current = true
 
       if (archivedSessionIdsChangedBeforeHydrationRef.current) {
-        setArchivedSessionIds(Array.from(useAgentStore.getState().archivedSessionIds))
+        const currentStoreValue = Array.from(useAgentStore.getState().archivedSessionIds)
+        lastPersistedArchivedSessionIdsRef.current = currentStoreValue
+        lastPersistedArchivedSessionIdsRevisionRef.current = useAgentStore.getState().archivedSessionIdsRevision
+        setArchivedSessionIds(currentStoreValue)
       }
     })
 

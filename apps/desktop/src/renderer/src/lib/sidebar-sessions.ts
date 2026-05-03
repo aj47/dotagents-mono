@@ -28,7 +28,58 @@ type ProgressTitleLike = Pick<
 
 type ProgressLifecycleLike = Pick<AgentProgressUpdate, "isComplete" | "steps">
 
+type SidebarActivityProgressLike = Pick<
+  AgentProgressUpdate,
+  | "conversationHistory"
+  | "finalContent"
+  | "isComplete"
+  | "latestSummary"
+  | "pendingToolApproval"
+  | "responseEvents"
+  | "retryInfo"
+  | "steps"
+  | "streamingContent"
+  | "userResponse"
+>
+
+export type SidebarActivityKind =
+  | "blocked"
+  | "complete"
+  | "delegation"
+  | "response"
+  | "retrying"
+  | "running"
+  | "streaming"
+  | "summary"
+  | "thinking"
+  | "tool_call"
+  | "tool_result"
+  | "needs_input"
+
+export interface SidebarActivityPresentation {
+  kind: SidebarActivityKind
+  label: string
+  detail: string | null
+  badgeClassName: string
+  isForegroundActivity: boolean
+}
+
 type RepeatTaskTitleHints = ReadonlySet<string>
+
+const SIDEBAR_ACTIVITY_BADGE_CLASSES: Record<SidebarActivityKind, string> = {
+  blocked: "border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-300",
+  complete: "border-green-500/35 bg-green-500/10 text-green-700 dark:text-green-300",
+  delegation: "border-violet-500/35 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  response: "border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  retrying: "border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  running: "border-blue-500/35 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  streaming: "border-blue-500/35 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  summary: "border-muted-foreground/25 bg-muted/40 text-muted-foreground",
+  thinking: "border-blue-500/35 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  tool_call: "border-cyan-500/35 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+  tool_result: "border-sky-500/35 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  needs_input: "border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+}
 
 /**
  * Sessions started by the repeat-task loop service get the shared
@@ -325,6 +376,210 @@ export function getSidebarProgressTitle(
   return fallback?.trim() || undefined
 }
 
+function normalizeSidebarActivityText(value?: string | null): string | null {
+  const normalized = value?.replace(/\s+/g, " ").trim()
+  return normalized || null
+}
+
+function getLatestSidebarStep(
+  progress: Pick<AgentProgressUpdate, "steps">,
+  predicate?: (step: AgentProgressUpdate["steps"][number]) => boolean,
+): AgentProgressUpdate["steps"][number] | null {
+  for (let index = (progress.steps?.length ?? 0) - 1; index >= 0; index -= 1) {
+    const step = progress.steps[index]
+    if (!step) continue
+    if (!predicate || predicate(step)) return step
+  }
+  return null
+}
+
+function formatSidebarToolName(toolName?: string | null): string | null {
+  const normalized = normalizeSidebarActivityText(toolName)
+  if (!normalized) return null
+  return normalized
+    .replace(/^functions\./u, "")
+    .replace(/[-_]+/g, " ")
+}
+
+function getStepDetail(step: AgentProgressUpdate["steps"][number]): string | null {
+  return normalizeSidebarActivityText(
+    step.llmContent ?? step.content ?? step.description ?? step.title,
+  )
+}
+
+function getLatestUserFacingResponse(progress: SidebarActivityProgressLike): string | null {
+  const latestResponseEvent = [...(progress.responseEvents ?? [])]
+    .reverse()
+    .find((event) => normalizeSidebarActivityText(event.text))
+  const responseEventText = normalizeSidebarActivityText(latestResponseEvent?.text)
+  if (responseEventText) return responseEventText
+
+  const userResponse = normalizeSidebarActivityText(progress.userResponse)
+  if (userResponse) return userResponse
+
+  const finalContent = normalizeSidebarActivityText(progress.finalContent)
+  if (finalContent) return finalContent
+
+  for (let index = (progress.conversationHistory?.length ?? 0) - 1; index >= 0; index -= 1) {
+    const message = progress.conversationHistory?.[index]
+    if (message?.role !== "assistant") continue
+    const assistantText = normalizeSidebarActivityText(message.content)
+    if (assistantText) return assistantText
+  }
+
+  return null
+}
+
+function makeSidebarActivityPresentation(
+  kind: SidebarActivityKind,
+  label: string,
+  detail: string | null,
+  isForegroundActivity: boolean,
+): SidebarActivityPresentation {
+  return {
+    kind,
+    label,
+    detail,
+    badgeClassName: SIDEBAR_ACTIVITY_BADGE_CLASSES[kind],
+    isForegroundActivity,
+  }
+}
+
+export function getSidebarActivityPresentation(
+  progress?: SidebarActivityProgressLike | null,
+): SidebarActivityPresentation {
+  if (!progress) {
+    return makeSidebarActivityPresentation("running", "Running", null, false)
+  }
+
+  const pendingApprovalTool = formatSidebarToolName(progress.pendingToolApproval?.toolName)
+  if (pendingApprovalTool) {
+    return makeSidebarActivityPresentation(
+      "needs_input",
+      "Needs input",
+      pendingApprovalTool,
+      true,
+    )
+  }
+
+  const erroredStep = getLatestSidebarStep(progress, (step) =>
+    step.status === "error" || !!step.toolResult?.error,
+  )
+  if (erroredStep) {
+    return makeSidebarActivityPresentation(
+      "blocked",
+      "Error",
+      normalizeSidebarActivityText(erroredStep.toolResult?.error) ?? getStepDetail(erroredStep),
+      true,
+    )
+  }
+
+  if (progress.retryInfo?.isRetrying) {
+    return makeSidebarActivityPresentation(
+      "retrying",
+      "Retrying",
+      normalizeSidebarActivityText(progress.retryInfo.reason),
+      true,
+    )
+  }
+
+  const activeStep = getLatestSidebarStep(progress, (step) =>
+    step.status === "in_progress" || step.status === "awaiting_approval",
+  )
+  if (activeStep?.status === "awaiting_approval") {
+    const approvalTool = formatSidebarToolName(activeStep.approvalRequest?.toolName)
+    return makeSidebarActivityPresentation(
+      "needs_input",
+      "Needs input",
+      approvalTool ?? getStepDetail(activeStep),
+      true,
+    )
+  }
+  if (activeStep?.delegation && isActiveDelegationStatus(activeStep.delegation.status)) {
+    return makeSidebarActivityPresentation(
+      "delegation",
+      "Subagent",
+      getDelegationDisplayTitle(activeStep.delegation) ?? getStepDetail(activeStep),
+      true,
+    )
+  }
+  if (activeStep?.type === "tool_call") {
+    const toolName = formatSidebarToolName(activeStep.toolCall?.name)
+    return makeSidebarActivityPresentation(
+      "tool_call",
+      toolName ? `Using ${toolName}` : "Tool call",
+      getStepDetail(activeStep),
+      true,
+    )
+  }
+  if (activeStep?.type === "tool_result") {
+    return makeSidebarActivityPresentation(
+      "tool_result",
+      "Tool result",
+      getStepDetail(activeStep),
+      true,
+    )
+  }
+  if (activeStep?.type === "thinking") {
+    return makeSidebarActivityPresentation(
+      "thinking",
+      "Thinking",
+      getStepDetail(activeStep),
+      true,
+    )
+  }
+  if (activeStep) {
+    return makeSidebarActivityPresentation(
+      "running",
+      "Running",
+      getStepDetail(activeStep),
+      true,
+    )
+  }
+
+  const streamingText = progress.streamingContent?.isStreaming
+    ? normalizeSidebarActivityText(progress.streamingContent.text)
+    : null
+  if (streamingText) {
+    return makeSidebarActivityPresentation("streaming", "Responding", streamingText, true)
+  }
+
+  const responseText = getLatestUserFacingResponse(progress)
+  if (responseText) {
+    return makeSidebarActivityPresentation("response", "Response", responseText, false)
+  }
+
+  if (progress.isComplete) {
+    return makeSidebarActivityPresentation("complete", "Complete", null, false)
+  }
+
+  const latestStep = getLatestSidebarStep(progress)
+  if (latestStep?.type === "tool_call") {
+    const toolName = formatSidebarToolName(latestStep.toolCall?.name)
+    return makeSidebarActivityPresentation(
+      "tool_call",
+      toolName ? `Used ${toolName}` : "Tool call",
+      getStepDetail(latestStep),
+      false,
+    )
+  }
+  if (latestStep?.type === "tool_result") {
+    return makeSidebarActivityPresentation(
+      "tool_result",
+      "Tool result",
+      getStepDetail(latestStep),
+      false,
+    )
+  }
+
+  const summaryText = normalizeSidebarActivityText(progress.latestSummary?.actionSummary)
+  if (summaryText) {
+    return makeSidebarActivityPresentation("summary", "Updated", summaryText, false)
+  }
+
+  return makeSidebarActivityPresentation("running", "Running", null, false)
+}
+
 export function isProgressLiveForSidebar(progress: ProgressLifecycleLike): boolean {
   return !progress.isComplete || hasActiveDelegationProgress(progress)
 }
@@ -551,6 +806,16 @@ export function getLatestAgentResponseTimestamp(
     if (message.role === "assistant" && message.content.trim()) {
       recordTimestamp(message.timestamp)
     }
+  }
+
+  const hasUntimestampedUserFacingResponse = !!(
+    normalizeSidebarActivityText(progress.userResponse) ||
+    normalizeSidebarActivityText(progress.finalContent)
+  )
+
+  if (hasUntimestampedUserFacingResponse) {
+    recordTimestamp(progress.latestSummary?.timestamp)
+    recordTimestamp(progress.steps?.[progress.steps.length - 1]?.timestamp)
   }
 
   return latestTimestamp
