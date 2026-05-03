@@ -22,7 +22,9 @@ import { formatRepeatTaskTitle } from "@shared/repeat-tasks"
 import {
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
+  getSidebarProgressTitle,
   getSessionIdsWithActiveChildProgress,
+  getSubagentTitleBySessionIdMap,
   getSubagentParentSessionIdMap,
   hasUnreadAgentResponse,
   isSidebarSessionCurrentlyViewed,
@@ -31,6 +33,7 @@ import {
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
+  shouldPromoteProgressToSidebarActiveSession,
 } from "@renderer/lib/sidebar-sessions"
 import { formatSidebarDuration } from "@renderer/lib/sidebar-duration"
 import { useLocation, useNavigate } from "react-router-dom"
@@ -307,38 +310,53 @@ export function ActiveAgentsSidebar({
     const subagentParentSessionIds = getSubagentParentSessionIdMap(
       agentProgressById.entries(),
     )
+    const subagentTitleBySessionId = getSubagentTitleBySessionIdMap(
+      agentProgressById.entries(),
+    )
     const mergedSessions = new Map(
       trackedActiveSessions.map((session) => [session.id, session] as const),
     )
 
     for (const [sessionId, progress] of agentProgressById.entries()) {
-      // Keep errored and user-stopped sessions visible in the sidebar so the
-      // user can still see their final state until they explicitly dismiss
-      // them (see issue #302). Previously these were filtered out, which
-      // made the kill switch appear to silently jump focus elsewhere.
-
       const existingSession = mergedSessions.get(sessionId)
+      if (
+        !shouldPromoteProgressToSidebarActiveSession(progress, {
+          hasTrackedSession: !!existingSession,
+        })
+      ) {
+        continue
+      }
+
       const firstHistoryTimestamp = progress.conversationHistory?.[0]?.timestamp
       const lastHistoryTimestamp = progress.conversationHistory?.[
         progress.conversationHistory.length - 1
       ]?.timestamp
+      const parentSessionId =
+        progress.parentSessionId ??
+        subagentParentSessionIds.get(sessionId) ??
+        existingSession?.parentSessionId
+      const conversationTitle = getSidebarProgressTitle(
+        sessionId,
+        progress,
+        subagentTitleBySessionId,
+        existingSession?.conversationTitle,
+      )
 
       mergedSessions.set(sessionId, {
         id: sessionId,
         conversationId: progress.conversationId ?? existingSession?.conversationId,
-        parentSessionId:
-          progress.parentSessionId ??
-          subagentParentSessionIds.get(sessionId) ??
-          existingSession?.parentSessionId,
-        conversationTitle:
-          progress.conversationTitle ?? existingSession?.conversationTitle,
-        status: "active",
+        parentSessionId,
+        conversationTitle,
+        status: progress.isComplete
+          ? "completed"
+          : (existingSession?.status ?? "active"),
         startTime:
           existingSession?.startTime ??
           firstHistoryTimestamp ??
           lastHistoryTimestamp ??
           Date.now(),
-        endTime: existingSession?.endTime,
+        endTime: existingSession?.endTime ??
+          (progress.isComplete ? lastHistoryTimestamp : undefined),
         currentIteration:
           progress.currentIteration ?? existingSession?.currentIteration,
         maxIterations: progress.maxIterations ?? existingSession?.maxIterations,
@@ -1150,6 +1168,8 @@ export function ActiveAgentsSidebar({
             const isInactiveRepeatTask =
               !!repeatTaskLoop &&
               (session.status !== "active" || sessionProgress?.isComplete === true)
+            const canStopSession =
+              session.status === "active" && sessionProgress?.isComplete !== true
             const statusRailColor = sidebarStatusPresentation.railClassName
             const shouldPulseStatus = sidebarStatusPresentation.shouldPulse
             const isLifecycleNeedsInput = sidebarStatusPresentation.lifecycleState === "needs_input"
@@ -1318,20 +1338,22 @@ export function ActiveAgentsSidebar({
                     <Play className="h-3 w-3" />
                   </button>
                 )}
-                <div
-                  className={cn(
-                    "bg-background/90 absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0 rounded-sm pl-1 opacity-0 transition-opacity",
-                    "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
-                  )}
-                >
-                  <button
-                    onClick={(e) => handleStopSession(session.id, e)}
-                    className="flex h-5 w-5 items-center justify-center hover:bg-destructive/20 hover:text-destructive shrink-0 rounded transition-all"
-                    title="Stop this agent session"
+                {canStopSession && (
+                  <div
+                    className={cn(
+                      "bg-background/90 absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0 rounded-sm pl-1 opacity-0 transition-opacity",
+                      "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
+                    )}
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
+                    <button
+                      onClick={(e) => handleStopSession(session.id, e)}
+                      className="flex h-5 w-5 items-center justify-center hover:bg-destructive/20 hover:text-destructive shrink-0 rounded transition-all"
+                      title="Stop this agent session"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
               </div>
             )
             }

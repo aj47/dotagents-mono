@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest"
 import {
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
+  getSidebarProgressTitle,
   getSubagentParentSessionIdMap,
+  getSubagentTitleBySessionIdMap,
   getSessionIdsWithActiveChildProgress,
   getLatestAgentResponseTimestamp,
   hasUnreadAgentResponse,
+  isProgressLiveForSidebar,
   isSidebarSessionCurrentlyViewed,
   isTaskSession,
   nestSubagentSessionEntries,
@@ -14,6 +17,7 @@ import {
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
+  shouldPromoteProgressToSidebarActiveSession,
 } from "./sidebar-sessions"
 
 const activeSession = (id: string, conversationId?: string) => ({
@@ -74,6 +78,99 @@ describe("getSubagentParentSessionIdMap", () => {
 
     expect(parentMap.get("subagent-1")).toBe("parent-1")
     expect(parentMap.get("subagent-run-1")).toBe("parent-1")
+  })
+})
+
+describe("getSubagentTitleBySessionIdMap", () => {
+  it("uses delegated task text as the title for subagent session ids", () => {
+    const titles = getSubagentTitleBySessionIdMap(
+      new Map([
+        [
+          "parent-1",
+          {
+            steps: [
+              {
+                id: "delegation-subagent-1",
+                type: "tool_call",
+                title: "Delegation",
+                status: "completed",
+                timestamp: 1,
+                delegation: {
+                  runId: "subagent-run-1",
+                  subSessionId: "subagent-1",
+                  agentName: "Internal",
+                  task: "Summarize trace failures",
+                  status: "completed",
+                  startTime: 1,
+                },
+              },
+            ],
+          },
+        ],
+      ]),
+    )
+
+    expect(titles.get("subagent-1")).toBe("Summarize trace failures")
+    expect(titles.get("subagent-run-1")).toBe("Summarize trace failures")
+  })
+})
+
+describe("getSidebarProgressTitle", () => {
+  it("prefers explicit title, then delegation task, then first user message", () => {
+    const delegationTitles = new Map([["subagent-1", "Delegated research task"]])
+
+    expect(
+      getSidebarProgressTitle(
+        "subagent-1",
+        { conversationTitle: "Explicit", steps: [] },
+        delegationTitles,
+      ),
+    ).toBe("Explicit")
+
+    expect(
+      getSidebarProgressTitle("subagent-1", { steps: [] }, delegationTitles),
+    ).toBe("Delegated research task")
+
+    expect(
+      getSidebarProgressTitle(
+        "session-1",
+        {
+          steps: [],
+          conversationHistory: [
+            { role: "user", content: "Find the root cause", timestamp: 1 },
+          ],
+        },
+        delegationTitles,
+      ),
+    ).toBe("Find the root cause")
+  })
+})
+
+describe("sidebar progress lifecycle helpers", () => {
+  it("does not promote completed progress-only rows into active sidebar sessions", () => {
+    const completedProgress = { isComplete: true, steps: [] }
+
+    expect(isProgressLiveForSidebar(completedProgress)).toBe(false)
+    expect(
+      shouldPromoteProgressToSidebarActiveSession(completedProgress, {
+        hasTrackedSession: false,
+      }),
+    ).toBe(false)
+  })
+
+  it("keeps tracked sessions and live progress visible", () => {
+    expect(
+      shouldPromoteProgressToSidebarActiveSession(
+        { isComplete: true, steps: [] },
+        { hasTrackedSession: true },
+      ),
+    ).toBe(true)
+    expect(
+      shouldPromoteProgressToSidebarActiveSession(
+        { isComplete: false, steps: [] },
+        { hasTrackedSession: false },
+      ),
+    ).toBe(true)
   })
 })
 

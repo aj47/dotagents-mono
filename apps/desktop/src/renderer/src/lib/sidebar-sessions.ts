@@ -21,6 +21,13 @@ type TitledSessionLike = SessionLike & {
   isRepeatTask?: boolean
 }
 
+type ProgressTitleLike = Pick<
+  AgentProgressUpdate,
+  "conversationTitle" | "conversationHistory" | "latestSummary" | "steps"
+>
+
+type ProgressLifecycleLike = Pick<AgentProgressUpdate, "isComplete" | "steps">
+
 type RepeatTaskTitleHints = ReadonlySet<string>
 
 /**
@@ -238,6 +245,95 @@ export function getSubagentParentSessionIdMap(
   }
 
   return parentSessionIdsByChildId
+}
+
+function getPossibleDelegationChildSessionIds(
+  delegation: NonNullable<AgentProgressUpdate["steps"][number]["delegation"]>,
+): string[] {
+  return [
+    delegation.subSessionId,
+    delegation.acpSessionId,
+    delegation.runId,
+  ].flatMap((value) => {
+    const normalized = value?.trim()
+    return normalized ? [normalized] : []
+  })
+}
+
+function getDelegationDisplayTitle(
+  delegation: NonNullable<AgentProgressUpdate["steps"][number]["delegation"]>,
+): string | null {
+  const task = delegation.task?.trim()
+  if (task) return task
+
+  const agentName = delegation.agentName?.trim()
+  return agentName ? `${agentName} subagent` : null
+}
+
+export function getSubagentTitleBySessionIdMap(
+  progressEntries: Iterable<[string, Pick<AgentProgressUpdate, "steps">]>,
+): Map<string, string> {
+  const titlesByChildId = new Map<string, string>()
+
+  for (const [, progress] of progressEntries) {
+    for (const step of progress.steps ?? []) {
+      const delegation = step.delegation
+      if (!delegation) continue
+
+      const title = getDelegationDisplayTitle(delegation)
+      if (!title) continue
+
+      for (const childSessionId of getPossibleDelegationChildSessionIds(
+        delegation,
+      )) {
+        if (!titlesByChildId.has(childSessionId)) {
+          titlesByChildId.set(childSessionId, title)
+        }
+      }
+    }
+  }
+
+  return titlesByChildId
+}
+
+export function getSidebarProgressTitle(
+  sessionId: string,
+  progress: ProgressTitleLike,
+  delegationTitlesBySessionId: ReadonlyMap<string, string>,
+  fallback?: string,
+): string | undefined {
+  const explicitTitle = progress.conversationTitle?.trim()
+  if (explicitTitle) return explicitTitle
+
+  const delegationTitle = delegationTitlesBySessionId.get(sessionId)?.trim()
+  if (delegationTitle) return delegationTitle
+
+  const firstUserMessage = progress.conversationHistory?.find(
+    (message) =>
+      message.role === "user" &&
+      typeof message.content === "string" &&
+      message.content.trim(),
+  )
+  const userTitle = typeof firstUserMessage?.content === "string"
+    ? firstUserMessage.content.trim()
+    : undefined
+  if (userTitle) return userTitle
+
+  const summaryTitle = progress.latestSummary?.actionSummary?.trim()
+  if (summaryTitle) return summaryTitle
+
+  return fallback?.trim() || undefined
+}
+
+export function isProgressLiveForSidebar(progress: ProgressLifecycleLike): boolean {
+  return !progress.isComplete || hasActiveDelegationProgress(progress)
+}
+
+export function shouldPromoteProgressToSidebarActiveSession(
+  progress: ProgressLifecycleLike,
+  options: { hasTrackedSession: boolean },
+): boolean {
+  return options.hasTrackedSession || isProgressLiveForSidebar(progress)
 }
 
 function isActiveDelegationStatus(status?: string): boolean {
