@@ -4,16 +4,19 @@ import { INTERNAL_COMPLETION_NUDGE_TEXT } from "../shared/runtime-tool-names"
 let currentConfig: any
 
 const mocks = vi.hoisted(() => ({
+  state: { shouldStopAgent: false, isAgentModeActive: false, agentIterationCount: 0 },
   makeLLMCallWithFetch: vi.fn(),
   makeLLMCallWithStreamingAndTools: vi.fn(),
   verifyCompletionWithFetch: vi.fn(),
+  diagnosticsLogError: vi.fn(),
   emitAgentProgress: vi.fn(() => Promise.resolve()),
   addMessageToConversation: vi.fn(async (...args: any[]) => ({ id: args[0] })),
   maybeAutoGenerateConversationTitle: vi.fn(async () => undefined),
   createSession: vi.fn(),
   startSessionRun: vi.fn(() => 1),
   getSessionProfileSnapshot: vi.fn(() => undefined),
-  shouldStopSession: vi.fn(() => false),
+  isSessionRegistered: vi.fn((_: string) => false),
+  shouldStopSession: vi.fn((_: string) => false),
   updateIterationCount: vi.fn(),
   cleanupSession: vi.fn(),
   isSessionSnoozed: vi.fn(() => false),
@@ -38,9 +41,9 @@ vi.mock("./llm-fetch", () => ({
   makeTextCompletionWithFetch: vi.fn(),
 }))
 vi.mock("./system-prompts", () => ({ constructSystemPrompt: vi.fn(() => "system prompt") }))
-vi.mock("./state", () => ({ state: {}, agentSessionStateManager: mocks }))
+vi.mock("./state", () => ({ state: mocks.state, agentSessionStateManager: mocks }))
 vi.mock("./debug", () => ({ isDebugLLM: () => false, isDebugTools: () => false, logLLM: vi.fn(), logTools: vi.fn(), logApp: vi.fn() }))
-vi.mock("./diagnostics", () => ({ diagnosticsService: { logError: vi.fn(), logWarning: vi.fn(), logInfo: vi.fn() } }))
+vi.mock("./diagnostics", () => ({ diagnosticsService: { logError: mocks.diagnosticsLogError, logWarning: vi.fn(), logInfo: vi.fn() } }))
 vi.mock("./context-budget", () => ({
   shrinkMessagesForLLM: vi.fn(async ({ messages }: any) => ({ messages, estTokensAfter: 0, maxTokens: 0, appliedStrategies: [] })),
   estimateTokensFromMessages: vi.fn(() => 0),
@@ -93,6 +96,13 @@ async function clearResponses(...sessionIds: string[]) {
 describe("processTranscriptWithAgentMode respond_to_user history", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.state.shouldStopAgent = false
+    mocks.state.isAgentModeActive = false
+    mocks.state.agentIterationCount = 0
+    mocks.isSessionRegistered.mockReturnValue(false)
+    mocks.shouldStopSession.mockReturnValue(false)
+    mocks.getSession.mockImplementation((id: string): { id: string; conversationTitle: string } | undefined => ({ id, conversationTitle: "Test conversation" }))
+    mocks.getAcpSessionTitleOverride.mockImplementation((_: string): string | undefined => undefined)
     mocks.makeLLMCallWithFetch.mockReset()
     mocks.makeLLMCallWithStreamingAndTools.mockReset()
     mocks.verifyCompletionWithFetch.mockReset()
@@ -131,7 +141,82 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-reasoning-stub",
       "session-reasoning-only-empty-retry",
       "session-latest-completion-summary",
+      "session-provider-error-after-stop",
+      "session-abort-after-stop",
     )
+  })
+
+  it("logs diagnostics for unrelated provider errors even when a session stop flag is active", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const providerError = new Error("503 Service Unavailable")
+    const sessionId = "session-provider-error-after-stop"
+
+    mocks.isSessionRegistered.mockImplementation((id: string) => Boolean(id === sessionId))
+    mocks.shouldStopSession.mockImplementation(() => mocks.makeLLMCallWithStreamingAndTools.mock.calls.length > 0)
+    mocks.makeLLMCallWithStreamingAndTools.mockRejectedValueOnce(providerError)
+
+    await processTranscriptWithAgentMode(
+      "Finish this",
+      availableTools as any,
+      makeExecuteToolCall(sessionId, 11),
+      3,
+      [],
+      "conv-provider-error-after-stop",
+      sessionId,
+      undefined,
+      undefined,
+      11,
+    )
+
+    expect(mocks.diagnosticsLogError).toHaveBeenCalledWith("llm", "Agent LLM call failed", providerError)
+  })
+
+  it("logs diagnostics for unrelated provider errors even when the global stop flag is active", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const providerError = new Error("provider exploded")
+    mocks.state.shouldStopAgent = true
+    mocks.makeLLMCallWithStreamingAndTools.mockRejectedValueOnce(providerError)
+
+    await expect(processTranscriptWithAgentMode(
+      "Finish this",
+      availableTools as any,
+      makeExecuteToolCall("session-global-provider-error", 12),
+      3,
+      [],
+      "conv-global-provider-error",
+      "session-global-provider-error",
+      undefined,
+      undefined,
+      12,
+    )).rejects.toThrow("provider exploded")
+
+    expect(mocks.diagnosticsLogError).toHaveBeenCalledWith("llm", "Agent LLM call failed", providerError)
+  })
+
+  it("suppresses diagnostics for abort errors when a session stop flag is active", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const abortError = new Error("The operation was aborted")
+    abortError.name = "AbortError"
+    const sessionId = "session-abort-after-stop"
+
+    mocks.isSessionRegistered.mockImplementation((id: string) => Boolean(id === sessionId))
+    mocks.shouldStopSession.mockImplementation(() => mocks.makeLLMCallWithStreamingAndTools.mock.calls.length > 0)
+    mocks.makeLLMCallWithStreamingAndTools.mockRejectedValueOnce(abortError)
+
+    await processTranscriptWithAgentMode(
+      "Finish this",
+      availableTools as any,
+      makeExecuteToolCall(sessionId, 13),
+      3,
+      [],
+      "conv-abort-after-stop",
+      sessionId,
+      undefined,
+      undefined,
+      13,
+    )
+
+    expect(mocks.diagnosticsLogError).not.toHaveBeenCalledWith("llm", "Agent LLM call failed", abortError)
   })
 
   it("preserves earlier numbered respond_to_user content in the next turn prompt", async () => {

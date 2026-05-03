@@ -147,6 +147,42 @@ export interface MCPToolResult {
   isError?: boolean
 }
 
+function summarizeRuntimeToolResultForDebug(toolName: string, result: MCPToolResult): unknown {
+  if (toolName !== "check_agent_status") {
+    return result
+  }
+
+  const text = result.content[0]?.text
+  if (!text) {
+    return { isError: result.isError, contentItems: result.content.length }
+  }
+
+  try {
+    const parsed = JSON.parse(text) as Record<string, unknown>
+    const output = typeof parsed.output === "string" ? parsed.output : undefined
+    return {
+      isError: result.isError,
+      success: parsed.success,
+      runId: parsed.runId,
+      agentName: parsed.agentName,
+      status: parsed.status,
+      duration: parsed.duration,
+      pollCount: parsed.pollCount,
+      hasOutput: output !== undefined,
+      outputLength: output?.length ?? parsed.outputLength,
+      outputOmitted: parsed.outputOmitted,
+      metadata: parsed.metadata,
+    }
+  } catch {
+    return {
+      isError: result.isError,
+      contentItems: result.content.length,
+      textLength: text.length,
+      preview: text.slice(0, 300),
+    }
+  }
+}
+
 export interface LLMToolCallResponse {
   content?: string
   toolCalls?: MCPToolCall[]
@@ -2711,7 +2747,7 @@ export class MCPService {
         const result = await executeRuntimeTool(toolCall.name, toolCall.arguments || {}, sessionId)
         if (result) {
           if (isDebugTools()) {
-            logTools("Runtime tool result", { name: toolCall.name, result })
+            logTools("Runtime tool result", { name: toolCall.name, result: summarizeRuntimeToolResultForDebug(toolCall.name, result) })
           }
           return endSpanAndReturn(result)
         }

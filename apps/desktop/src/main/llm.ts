@@ -140,6 +140,45 @@ function resolveProgressConversationState(update: Pick<AgentProgressUpdate, "con
   return update.isComplete ? "complete" : "running"
 }
 
+function getExpectedStopReason(error: unknown, sessionId?: string): string | null {
+  const message = error instanceof Error ? error.message : String(error)
+  const normalized = message.toLowerCase()
+
+  if (normalized.includes("session stopped by kill switch")) {
+    return "Session stopped by kill switch"
+  }
+
+  if (normalized.includes("aborted by emergency stop")) {
+    return "Aborted by emergency stop"
+  }
+
+  const normalizedName = error instanceof Error ? error.name.toLowerCase() : ""
+  const isKnownStopError =
+    normalizedName === "aborterror" ||
+    normalizedName.includes("abort") ||
+    normalizedName.includes("cancel") ||
+    normalized.includes("abort") ||
+    normalized.includes("cancel")
+
+  if (!isKnownStopError) {
+    return null
+  }
+
+  if (
+    sessionId &&
+    agentSessionStateManager.isSessionRegistered(sessionId) &&
+    agentSessionStateManager.shouldStopSession(sessionId)
+  ) {
+    return "Session stopped by kill switch"
+  }
+
+  if (state.shouldStopAgent) {
+    return "Aborted by emergency stop"
+  }
+
+  return null
+}
+
 function getVerificationOutcomeDescription(state: AgentConversationState): string {
   switch (state) {
     case "complete":
@@ -3471,10 +3510,15 @@ async function makeLLMCall(
     }
     return result
   } catch (error) {
-    if (isDebugLLM()) {
+    const expectedStopReason = getExpectedStopReason(error, sessionId)
+    if (isDebugLLM() && expectedStopReason) {
+      logLLM("LLM call stopped", { sessionId, reason: expectedStopReason })
+    } else if (isDebugLLM()) {
       logLLM("LLM CALL ERROR:", error)
     }
-    diagnosticsService.logError("llm", "Agent LLM call failed", error)
+    if (!expectedStopReason) {
+      diagnosticsService.logError("llm", "Agent LLM call failed", error)
+    }
     throw error
   }
 }
