@@ -160,8 +160,8 @@ function isAnalyzingOrPlanningProgress(progress?: AgentProgressUpdate | null): b
   return activeStepText.includes("analyzing") || activeStepText.includes("planning")
 }
 
-const MIN_VISIBLE_SIDEBAR_SESSIONS = 8
-const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 10
+const DEFAULT_VISIBLE_SIDEBAR_SESSIONS = 5
+const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 5
 
 const IS_MAC = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")
 const SHORTCUT_MOD_SYMBOL = IS_MAC ? "⌘" : "Ctrl"
@@ -511,17 +511,17 @@ export function ActiveAgentsSidebar({
     [allUserSidebarSessions],
   )
 
-  const minimumSavedConversationRowsNeeded = useMemo(
-    () => Math.max(MIN_VISIBLE_SIDEBAR_SESSIONS - activeUserSidebarSessionCount, 0),
+  const defaultSavedConversationRows = useMemo(
+    () => Math.max(DEFAULT_VISIBLE_SIDEBAR_SESSIONS - activeUserSidebarSessionCount, 0),
     [activeUserSidebarSessionCount],
   )
 
-  const displayedSavedConversationCount = Math.max(
-    visibleSavedConversationCount,
-    minimumSavedConversationRowsNeeded,
-  )
+  const displayedSavedConversationCount =
+    visibleSavedConversationCount > 0
+      ? visibleSavedConversationCount
+      : defaultSavedConversationRows
   const canShowLessSavedConversations =
-    visibleSavedConversationCount > minimumSavedConversationRowsNeeded
+    visibleSavedConversationCount > defaultSavedConversationRows
 
   const {
     visibleEntries: userSidebarSessions,
@@ -587,12 +587,6 @@ export function ActiveAgentsSidebar({
   )
 
   const hasAnySessions = sidebarSessions.length > 0
-
-  useEffect(() => {
-    setVisibleSavedConversationCount((prev) =>
-      Math.max(prev, minimumSavedConversationRowsNeeded),
-    )
-  }, [minimumSavedConversationRowsNeeded])
 
   useEffect(() => {
     logStateChange("ActiveAgentsSidebar", "isExpanded", !isExpanded, isExpanded)
@@ -867,41 +861,23 @@ export function ActiveAgentsSidebar({
 
   const loadMoreSavedConversations = useCallback(() => {
     setVisibleSavedConversationCount((prev) =>
-      Math.max(prev, minimumSavedConversationRowsNeeded) +
+      (prev > 0 ? prev : defaultSavedConversationRows) +
         SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
     )
-  }, [minimumSavedConversationRowsNeeded])
+  }, [defaultSavedConversationRows])
 
   const showLessSavedConversations = useCallback(() => {
-    setVisibleSavedConversationCount((prev) =>
-      Math.max(
-        prev - SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
-        minimumSavedConversationRowsNeeded,
-      ),
-    )
-  }, [minimumSavedConversationRowsNeeded])
+    setVisibleSavedConversationCount((prev) => {
+      const next = prev - SIDEBAR_PAST_SESSIONS_PAGE_SIZE
+      return next > defaultSavedConversationRows ? next : 0
+    })
+  }, [defaultSavedConversationRows])
 
   const loadMoreTaskConversations = useCallback(() => {
     setVisibleTaskConversationCount((prev) =>
       prev + SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
     )
   }, [])
-
-  const handleSidebarSessionsScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      if (!hasMoreSavedConversations) return
-
-      const container = e.currentTarget
-      const nearBottom =
-        container.scrollTop + container.clientHeight >=
-        container.scrollHeight - 32
-
-      if (!nearBottom) return
-
-      loadMoreSavedConversations()
-    },
-    [hasMoreSavedConversations, loadMoreSavedConversations],
-  )
 
   const hasLaunchControls =
     !!onStartTextSession || !!onStartVoiceSession || !!onStartPromptSession
@@ -973,10 +949,7 @@ export function ActiveAgentsSidebar({
       )}
 
       {hasAnySessions && (
-        <div
-          className="mt-1 space-y-0.5 overflow-visible pl-2 pr-1"
-          onScroll={handleSidebarSessionsScroll}
-        >
+        <div className="mt-1 space-y-0.5 overflow-visible pl-2 pr-1">
           {(() => {
             const renderSessionRow = (
               {

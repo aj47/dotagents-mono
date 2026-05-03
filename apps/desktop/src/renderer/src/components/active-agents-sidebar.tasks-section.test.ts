@@ -91,6 +91,15 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("mt-1 space-y-0.5 overflow-visible")
   })
 
+  it("defaults regular sessions to five rows and only expands from the explicit show more action", () => {
+    expect(sidebarSource).toContain("const DEFAULT_VISIBLE_SIDEBAR_SESSIONS = 5")
+    expect(sidebarSource).toContain("const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 5")
+    expect(sidebarSource).toContain("DEFAULT_VISIBLE_SIDEBAR_SESSIONS - activeUserSidebarSessionCount")
+    expect(sidebarSource).toContain("prev > 0 ? prev : defaultSavedConversationRows")
+    expect(sidebarSource).not.toContain("handleSidebarSessionsScroll")
+    expect(sidebarSource).not.toContain("onScroll=")
+  })
+
   it("renders show less to the right of show more", () => {
     const showMoreIndex = sidebarSource.indexOf("Show more")
     const showLessIndex = sidebarSource.indexOf("Show less")

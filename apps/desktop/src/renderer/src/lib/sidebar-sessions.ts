@@ -152,36 +152,20 @@ export function paginateSidebarEntries<
   T extends { session: ParentSessionLike; isSavedConversation: boolean },
 >(
   entries: T[],
-  pinnedSessionIds: ReadonlySet<string>,
-  visibleUnpinnedSavedEntryCount: number,
+  _pinnedSessionIds: ReadonlySet<string>,
+  visibleSavedEntryCount: number,
 ): { visibleEntries: T[]; hasMoreEntries: boolean } {
-  const pinnedSavedSessionIds = new Set(
-    entries
-      .filter((entry) => {
-        const conversationId = entry.session.conversationId
-        return entry.isSavedConversation && !!conversationId && pinnedSessionIds.has(conversationId)
-      })
-      .map((entry) => entry.session.id),
-  )
-
   const alwaysVisibleEntries: T[] = []
   const pageableEntries: T[] = []
   for (const entry of entries) {
-    const conversationId = entry.session.conversationId
-    const parentSessionId = entry.session.parentSessionId?.trim()
-    const isPinnedSavedEntry =
-      entry.isSavedConversation && !!conversationId && pinnedSessionIds.has(conversationId)
-    const isChildOfPinnedSavedEntry =
-      entry.isSavedConversation && !!parentSessionId && pinnedSavedSessionIds.has(parentSessionId)
-
-    if (!entry.isSavedConversation || isPinnedSavedEntry || isChildOfPinnedSavedEntry) {
+    if (!entry.isSavedConversation) {
       alwaysVisibleEntries.push(entry)
     } else {
       pageableEntries.push(entry)
     }
   }
 
-  const sliceCount = Math.max(visibleUnpinnedSavedEntryCount, 0)
+  const sliceCount = Math.max(visibleSavedEntryCount, 0)
   return {
     visibleEntries: [
       ...alwaysVisibleEntries,
