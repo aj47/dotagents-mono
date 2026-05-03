@@ -407,7 +407,7 @@ function getStepDetail(step: AgentProgressUpdate["steps"][number]): string | nul
   )
 }
 
-function getLatestUserFacingResponse(progress: SidebarActivityProgressLike): string | null {
+export function getLatestUserFacingResponse(progress: SidebarActivityProgressLike): string | null {
   const latestResponseEvent = [...(progress.responseEvents ?? [])]
     .reverse()
     .find((event) => normalizeSidebarActivityText(event.text))

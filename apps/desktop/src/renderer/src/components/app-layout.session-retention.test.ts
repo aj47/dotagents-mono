@@ -19,6 +19,12 @@ describe("app layout session retention", () => {
     expect(appLayoutSource).toContain(
       'max-w-[calc(100%-0.375rem)] line-clamp-2 text-center text-[8px] font-medium leading-[0.6rem] tracking-tight [overflow-wrap:anywhere]',
     )
+    expect(appLayoutSource).toContain("const handleCollapsedSessionsOverviewClick = useCallback(() => {")
+    expect(appLayoutSource).toContain("setSavedConversationsDialogOpen(true)")
+    expect(appLayoutSource).toContain("handleCollapsedSessionsOverviewClick()")
+    expect(appLayoutSource).toContain("const handleCollapsedSessionClick = useCallback(")
+    expect(appLayoutSource).toContain("setScrollToSessionId(sessionId)")
+    expect(appLayoutSource).toContain('aria-label={`Open session ${title}`}')
     expect(appLayoutSource).not.toContain('const initial = title.charAt(0).toUpperCase()')
   })
 

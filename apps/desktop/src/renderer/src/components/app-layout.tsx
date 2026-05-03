@@ -306,6 +306,10 @@ export const Component = () => {
     [isEmergencyStopping, setFocusedSessionId],
   )
 
+  const handleCollapsedSessionsOverviewClick = useCallback(() => {
+    setSavedConversationsDialogOpen(true)
+  }, [])
+
   const handleCollapsedSessionClick = useCallback(
     (sessionId: string) => {
       navigate("/", { state: { clearPendingConversation: true } })
@@ -645,6 +649,10 @@ export const Component = () => {
                 <NavLink
                   to="/"
                   end
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleCollapsedSessionsOverviewClick()
+                  }}
                   className={cn(
                     "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
                     isSessionsActive
@@ -744,7 +752,7 @@ export const Component = () => {
                   collapsedPreviewSessions.length && (
                   <button
                     type="button"
-                    onClick={() => navigate("/")}
+                    onClick={handleCollapsedSessionsOverviewClick}
                     className={cn(
                       "flex h-8 w-full items-center justify-center rounded-md text-[10px] font-semibold transition-all duration-200",
                       "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
