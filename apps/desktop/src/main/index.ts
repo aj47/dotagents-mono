@@ -223,6 +223,11 @@ if (shouldEnforceSingleInstance) {
 }
 
 if (!gotSingleInstanceLock) {
+  if (!app.isPackaged) {
+    console.error(
+      "[DotAgents] Another DotAgents instance is already running. Quit the installed app or previous dev process before running pnpm dev.",
+    )
+  }
   app.quit()
 } else {
   app.whenReady().then(async () => {

@@ -25,4 +25,13 @@ describe("bundled dotagents config skill", () => {
     expect(parsed?.instructions).toContain("agents/<id>/agent.md")
     expect(parsed?.instructions).toContain("tasks/<id>/task.md")
   })
+
+  it("does not ship the document-processing docx skill", () => {
+    const skillPath = path.resolve(
+      process.cwd(),
+      "resources/bundled-skills/document-processing/docx/SKILL.md",
+    )
+
+    expect(fs.existsSync(skillPath)).toBe(false)
+  })
 })
