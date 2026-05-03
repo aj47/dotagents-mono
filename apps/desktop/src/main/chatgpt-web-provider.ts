@@ -145,7 +145,7 @@ function normalizeCodexReasoningEffort(effort: unknown): CodexReasoningEffort | 
   return undefined
 }
 
-export function getCodexReasoningOptions(model: string): { effort: CodexReasoningEffort } | undefined {
+export function getCodexReasoningOptions(model: string): { effort: CodexReasoningEffort; summary?: "auto" } | undefined {
   if (!isCodexReasoningModel(model)) return undefined
 
   const override = configStore.get().openaiReasoningEffort
@@ -156,6 +156,7 @@ export function getCodexReasoningOptions(model: string): { effort: CodexReasonin
     logLLM("Applying ChatGPT Codex reasoning effort", {
       model,
       effort,
+      summary: undefined,
       source: override ? "user-config" : "default",
     })
   }
