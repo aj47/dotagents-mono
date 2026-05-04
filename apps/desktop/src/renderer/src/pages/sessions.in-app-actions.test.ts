@@ -177,4 +177,12 @@ describe("sessions in-app actions", () => {
     expect(sessionsSource).toContain("isFocused={isFocused}")
     expect(sessionsSource).not.toContain("isFocused={true}")
   })
+
+  it("wires lazy earlier-history loading for active session tiles", () => {
+    expect(sessionsSource).toContain("const [activeHistoryMessageLimit, setActiveHistoryMessageLimit]")
+    expect(sessionsSource).toContain("const shouldLoadExpandedConversationHistory =")
+    expect(sessionsSource).toContain("messageLimit: activeHistoryMessageLimit")
+    expect(sessionsSource).toContain("onLoadEarlierConversationHistory={handleLoadEarlierConversationHistory}")
+    expect(sessionsSource).toContain("isLoadingEarlierConversationHistory={")
+  })
 })

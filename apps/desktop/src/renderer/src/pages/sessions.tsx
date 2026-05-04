@@ -15,7 +15,7 @@ import { orderConversationHistoryByPinnedFirst } from "@renderer/lib/pinned-sess
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
 import { AgentSelector } from "@renderer/components/agent-selector"
 import { useConfigQuery } from "@renderer/lib/query-client"
-import { useSavedConversationQuery, useSavedConversationsQuery } from "@renderer/lib/queries"
+import { useSavedConversationsQuery } from "@renderer/lib/queries"
 import { getAgentShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
@@ -133,19 +133,55 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   const storeProgress = useAgentSessionProgress(sessionId)
   const baseProgress = storeProgress ?? fallbackProgress
   const conversationIdForHydration = baseProgress?.conversationId ?? null
+  const [activeHistoryMessageLimit, setActiveHistoryMessageLimit] = useState(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
+  const activeConversationHistoryCount = baseProgress?.conversationHistory?.length ?? 0
+  const activeConversationHistoryTotalCount = Math.max(
+    baseProgress?.conversationHistoryTotalCount ?? 0,
+    activeConversationHistoryCount,
+  )
   const shouldHydrateFromConversation =
     !!conversationIdForHydration && !hasConversationHistoryForDisplay(baseProgress)
-  const savedConversationQuery = useSavedConversationQuery(
-    shouldHydrateFromConversation ? conversationIdForHydration : null,
-  )
+  const shouldLoadExpandedConversationHistory =
+    !!conversationIdForHydration &&
+    activeConversationHistoryTotalCount > activeConversationHistoryCount &&
+    activeHistoryMessageLimit > activeConversationHistoryCount
+  const savedConversationQuery = useQuery({
+    queryKey: [
+      "conversation",
+      conversationIdForHydration,
+      shouldHydrateFromConversation ? "hydrate" : activeHistoryMessageLimit,
+    ],
+    queryFn: async () => {
+      if (!conversationIdForHydration) return null
+      return tipcClient.loadConversation({
+        conversationId: conversationIdForHydration,
+        ...(shouldHydrateFromConversation ? {} : { messageLimit: activeHistoryMessageLimit }),
+      })
+    },
+    enabled: !!conversationIdForHydration && (
+      shouldHydrateFromConversation || shouldLoadExpandedConversationHistory
+    ),
+    placeholderData: (previousData: any) =>
+      previousData?.id === conversationIdForHydration ? previousData : undefined,
+  })
+
+  useEffect(() => {
+    setActiveHistoryMessageLimit(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
+  }, [conversationIdForHydration])
+
+  const handleLoadEarlierConversationHistory = useCallback(() => {
+    setActiveHistoryMessageLimit((limit) => limit + PENDING_RESUME_HISTORY_PAGE_SIZE)
+  }, [])
+
   const progress = useMemo(
     () => baseProgress
       ? mergeLoadedConversationIntoProgress(
           baseProgress,
           savedConversationQuery.data,
+          { replaceExistingHistory: shouldLoadExpandedConversationHistory },
         )
       : null,
-    [baseProgress, savedConversationQuery.data],
+    [baseProgress, savedConversationQuery.data, shouldLoadExpandedConversationHistory],
   )
   const focusedSessionId = useAgentStore((state) => state.focusedSessionId)
   const setFocusedSessionId = useAgentStore((state) => state.setFocusedSessionId)
@@ -187,6 +223,10 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
       isFocused={isFocused}
       onFocus={handleFocusSession}
       onDismiss={handleDismissSession}
+      onLoadEarlierConversationHistory={handleLoadEarlierConversationHistory}
+      isLoadingEarlierConversationHistory={
+        shouldLoadExpandedConversationHistory && savedConversationQuery.isFetching
+      }
       onVoiceContinue={onVoiceContinue}
     />
   )

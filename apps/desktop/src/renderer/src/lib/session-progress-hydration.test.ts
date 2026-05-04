@@ -78,4 +78,30 @@ describe("session progress hydration", () => {
       progress,
     )
   })
+
+  it("can replace a partial live history with an expanded loaded window", () => {
+    const progress = {
+      ...baseProgress(),
+      conversationHistoryStartIndex: 6,
+      conversationHistoryTotalCount: 7,
+      conversationHistory: [
+        { role: "assistant" as const, content: "Recent answer", timestamp: 30 },
+      ],
+    }
+
+    const hydrated = mergeLoadedConversationIntoProgress(
+      progress,
+      loadedConversation(),
+      { replaceExistingHistory: true },
+    )
+
+    expect(hydrated.conversationHistory).toHaveLength(2)
+    expect(hydrated.conversationHistory?.[0]).toMatchObject({
+      role: "user",
+      content: "Original task",
+      branchMessageIndex: 5,
+    })
+    expect(hydrated.conversationHistoryStartIndex).toBe(5)
+    expect(hydrated.conversationHistoryTotalCount).toBe(7)
+  })
 })

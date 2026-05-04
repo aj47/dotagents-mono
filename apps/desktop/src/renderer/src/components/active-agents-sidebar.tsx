@@ -1351,13 +1351,15 @@ export function ActiveAgentsSidebar({
                   <div
                     className={cn(
                       "bg-background/90 absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0 rounded-sm pl-1 opacity-0 transition-opacity",
-                      "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
+                      "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100",
                     )}
                   >
                     <button
+                      type="button"
                       onClick={(e) => handleStopSession(session.id, e)}
-                      className="flex h-5 w-5 items-center justify-center hover:bg-destructive/20 hover:text-destructive shrink-0 rounded transition-all"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-all hover:bg-destructive/20 hover:text-destructive"
                       title="Stop this agent session"
+                      aria-label="Stop this agent session"
                     >
                       <X className="h-3 w-3" />
                     </button>

@@ -4,6 +4,7 @@ import path from "path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const tempDirs: string[] = []
+let summaryResult = "Compacted conversation summary."
 
 async function setupConversationServiceTest() {
   const conversationsFolder = await fs.mkdtemp(path.join(os.tmpdir(), "dotagents-conv-lazy-"))
@@ -17,7 +18,7 @@ async function setupConversationServiceTest() {
     configPath: path.join(conversationsFolder, "config.json"),
     configStore: { get: vi.fn(), save: vi.fn(), reload: vi.fn(), config: undefined },
   }))
-  vi.doMock("./context-budget", () => ({ summarizeContent: vi.fn((content: string) => content) }))
+  vi.doMock("./context-budget", () => ({ summarizeContent: vi.fn(() => summaryResult) }))
   vi.doMock("./llm-fetch", () => ({ makeTextCompletionWithFetch: vi.fn() }))
 
   const { ConversationService } = await import("./conversation-service")
@@ -25,6 +26,7 @@ async function setupConversationServiceTest() {
 }
 
 afterEach(async () => {
+  summaryResult = "Compacted conversation summary."
   vi.resetModules()
   vi.clearAllMocks()
   await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })))
@@ -108,6 +110,45 @@ describe("conversation lazy loading", () => {
       role: "assistant",
       content: "Stored answer",
       displayContent: "<think>reasoning</think>\n\nStored answer",
+    })
+  })
+
+  it("persists structured compaction checkpoint metadata when compacting on load", async () => {
+    summaryResult = "User identified Bin-Huang/youtube-analytics-cli as the YouTube analytics CLI repo."
+    const service = await setupConversationServiceTest()
+    await service.saveConversation({
+      id: "conv_compaction_checkpoint",
+      title: "Compaction checkpoint",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: Array.from({ length: 25 }, (_, index) => ({
+        id: `m${index}`,
+        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        content: index === 2
+          ? "Remember the YouTube analytics CLI repo is Bin-Huang/youtube-analytics-cli."
+          : `Message ${index}`,
+        timestamp: 1_700_000_000_000 + index,
+      })),
+    }, true)
+
+    const loaded = await service.loadConversationWithCompaction("conv_compaction_checkpoint")
+
+    expect(loaded?.messages).toHaveLength(11)
+    expect(loaded?.messages[0]).toMatchObject({ isSummary: true, content: summaryResult })
+    expect(loaded?.rawMessages).toHaveLength(25)
+    expect(loaded?.compaction).toMatchObject({
+      rawHistoryPreserved: true,
+      storedRawMessageCount: 25,
+      representedMessageCount: 25,
+      summary: summaryResult,
+      firstKeptMessageId: "m15",
+      firstKeptMessageIndex: 15,
+      summarizedMessageCount: 15,
+    })
+    expect(loaded?.compaction?.tokensBefore).toBeGreaterThan(0)
+    expect(loaded?.compaction?.extractedFacts?.[0]).toMatchObject({
+      sourceMessageId: "m2",
+      repoSlugs: ["Bin-Huang/youtube-analytics-cli"],
     })
   })
 })

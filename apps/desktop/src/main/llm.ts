@@ -6,6 +6,7 @@ import {
   MCPToolResult,
 } from "./mcp-service"
 import { AgentProgressStep, AgentProgressUpdate, SessionProfileSnapshot } from "../shared/types"
+import type { ConversationCompactionMetadata } from "../shared/types"
 import { diagnosticsService } from "./diagnostics"
 
 import { makeLLMCallWithFetch, makeTextCompletionWithFetch, verifyCompletionWithFetch, RetryProgressCallback, makeLLMCallWithStreamingAndTools, StreamingCallback } from "./llm-fetch"
@@ -68,6 +69,10 @@ import {
 } from "./llm-continuation-guards"
 import { buildVerificationMessagesFromAgentState } from "./llm-verification-replay"
 import { loadWorkingKnowledgeNotesForPrompt } from "./working-notes-runtime"
+import {
+  buildCompactionCheckpointContextMessage,
+  buildRelevantEarlierConversationContextMessage,
+} from "./conversation-context-builder"
 import {
   normalizeAgentConversationState,
   type AgentConversationState,
@@ -659,6 +664,7 @@ export async function processTranscriptWithAgentMode(
   onProgress?: (update: AgentProgressUpdate) => void, // Optional callback for external progress consumers (e.g., SSE)
   profileSnapshot?: SessionProfileSnapshot, // Profile snapshot for session isolation
   runId?: number,
+  conversationCompaction?: ConversationCompactionMetadata,
 ): Promise<AgentModeResponse> {
   const config = configStore.get()
   const forceFinalSummary = config.mcpFinalSummaryEnabled === true
@@ -1929,9 +1935,18 @@ export async function processTranscriptWithAgentMode(
       conversationHistory: formatConversationForProgress(conversationHistory),
     })
 
+    const checkpointContextMessage = isInternalResumeTranscript
+      ? null
+      : buildCompactionCheckpointContextMessage(conversationCompaction)
+    const relevantEarlierContextMessage = isInternalResumeTranscript
+      ? null
+      : buildRelevantEarlierConversationContextMessage(conversationHistory, transcript)
+
     // Build messages for LLM call
     const messages = [
       { role: "system", content: currentSystemPrompt },
+      ...(checkpointContextMessage ? [checkpointContextMessage] : []),
+      ...(relevantEarlierContextMessage ? [relevantEarlierContextMessage] : []),
       ...conversationHistory
         .map((entry) => {
           if (entry.skipModelReplay) return null

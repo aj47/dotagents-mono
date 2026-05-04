@@ -350,6 +350,97 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     }
   })
 
+  it("injects relevant older repo facts before context budgeting", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const previousHistory = [
+      {
+        role: "user" as const,
+        content: "For the local YouTube analytics CLI skill, the repo is Bin-Huang/youtube-analytics-cli.",
+        timestamp: 100,
+        branchMessageIndex: 7,
+      },
+      ...Array.from({ length: 60 }, (_, index) => ({
+        role: index % 2 === 0 ? "assistant" as const : "user" as const,
+        content: `later unrelated work ${index}`,
+        timestamp: 101 + index,
+      })),
+    ]
+
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({
+      content: "It was Bin-Huang/youtube-analytics-cli.",
+      toolCalls: [],
+    })
+
+    await processTranscriptWithAgentMode(
+      "What GitHub repo did I mention for the YouTube analytics CLI?",
+      availableTools as any,
+      makeExecuteToolCall("session-relevant-earlier-context", 1),
+      2,
+      previousHistory,
+      "conv-relevant-earlier-context",
+      "session-relevant-earlier-context",
+      undefined,
+      undefined,
+      1,
+    )
+
+    const promptText = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(promptText).toContain("[Relevant Earlier Conversation Facts]")
+    expect(promptText).toContain("Bin-Huang/youtube-analytics-cli")
+    expect(promptText).toContain("msg 7")
+  })
+
+  it("injects persisted compaction checkpoint context before dynamic retrieval", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({
+      content: "It was Bin-Huang/youtube-analytics-cli.",
+      toolCalls: [],
+    })
+
+    await processTranscriptWithAgentMode(
+      "Which repo did I mention?",
+      availableTools as any,
+      makeExecuteToolCall("session-checkpoint-context", 1),
+      2,
+      [
+        { role: "assistant", content: "Checkpoint summary", timestamp: 100, branchMessageIndex: 14 },
+        { role: "assistant", content: "Recent answer", timestamp: 101, branchMessageIndex: 15 },
+      ],
+      "conv-checkpoint-context",
+      "session-checkpoint-context",
+      undefined,
+      undefined,
+      1,
+      {
+        rawHistoryPreserved: true,
+        storedRawMessageCount: 25,
+        representedMessageCount: 25,
+        summary: "User identified Bin-Huang/youtube-analytics-cli as the YouTube analytics CLI repo.",
+        summaryMessageId: "summary-1",
+        firstKeptMessageId: "m15",
+        firstKeptMessageIndex: 15,
+        extractedFacts: [{
+          sourceMessageIndex: 2,
+          sourceMessageId: "m2",
+          sourceRole: "user",
+          excerpt: "Remember the YouTube analytics CLI repo is Bin-Huang/youtube-analytics-cli.",
+          repoSlugs: ["Bin-Huang/youtube-analytics-cli"],
+        }],
+      },
+    )
+
+    const promptText = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(promptText).toContain("[Persisted Conversation Checkpoint]")
+    expect(promptText).toContain("summary-1")
+    expect(promptText).toContain("Bin-Huang/youtube-analytics-cli")
+    expect(promptText.indexOf("[Persisted Conversation Checkpoint]")).toBeLessThan(promptText.indexOf("Checkpoint summary"))
+  })
+
   it("does not reuse a repeat answer from before a later user turn", async () => {
     currentConfig.mcpVerifyCompletionEnabled = true
     const { processTranscriptWithAgentMode } = await import("./llm")

@@ -20,8 +20,17 @@ export function hasConversationHistoryForDisplay(
 export function mergeLoadedConversationIntoProgress(
   progress: AgentProgressUpdate,
   conversation: ConversationForProgressHydration | null | undefined,
+  options?: { replaceExistingHistory?: boolean },
 ): AgentProgressUpdate {
-  if (!conversation || hasConversationHistoryForDisplay(progress)) {
+  if (!conversation) {
+    return progress
+  }
+
+  const shouldUseLoadedHistory =
+    !hasConversationHistoryForDisplay(progress) ||
+    options?.replaceExistingHistory === true
+
+  if (!shouldUseLoadedHistory) {
     return progress
   }
 
@@ -43,7 +52,9 @@ export function mergeLoadedConversationIntoProgress(
     conversationTitle: progress.conversationTitle ?? conversation.title,
     conversationHistory,
     conversationHistoryStartIndex:
-      progress.conversationHistoryStartIndex ?? conversation.messageOffset ?? 0,
+      options?.replaceExistingHistory === true
+        ? conversation.messageOffset ?? 0
+        : progress.conversationHistoryStartIndex ?? conversation.messageOffset ?? 0,
     conversationHistoryTotalCount: Math.max(
       progress.conversationHistoryTotalCount ?? 0,
       conversation.totalMessageCount ?? conversation.messages.length,
