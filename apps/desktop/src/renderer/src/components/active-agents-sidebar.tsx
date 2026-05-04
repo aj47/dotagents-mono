@@ -311,7 +311,10 @@ export function ActiveAgentsSidebar({
         parentSessionId,
         conversationTitle,
         status: progress.isComplete
-          ? "completed"
+          ? existingSession?.status === "error" ||
+            existingSession?.status === "stopped"
+            ? existingSession.status
+            : "completed"
           : (existingSession?.status ?? "active"),
         startTime:
           existingSession?.startTime ??

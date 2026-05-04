@@ -323,7 +323,7 @@ export function getSubagentTitleBySessionIdMap(
 ): Map<string, string> {
   const titlesByChildId = new Map<string, string>()
 
-  for (const [, progress] of progressEntries) {
+  for (const [parentSessionId, progress] of progressEntries) {
     for (const step of progress.steps ?? []) {
       const delegation = step.delegation
       if (!delegation) continue
@@ -334,9 +334,13 @@ export function getSubagentTitleBySessionIdMap(
       for (const childSessionId of getPossibleDelegationChildSessionIds(
         delegation,
       )) {
-        if (!titlesByChildId.has(childSessionId)) {
-          titlesByChildId.set(childSessionId, title)
+        if (
+          childSessionId === parentSessionId ||
+          titlesByChildId.has(childSessionId)
+        ) {
+          continue
         }
+        titlesByChildId.set(childSessionId, title)
       }
     }
   }
