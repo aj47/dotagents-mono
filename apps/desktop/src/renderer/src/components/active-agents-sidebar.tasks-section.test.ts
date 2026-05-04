@@ -50,8 +50,8 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("reorderContainerGroupId?: string | null")
     expect(sidebarSource).toContain("const forceSingleLine = options.forceSingleLine ?? false")
     expect(sidebarSource).toContain("!forceSingleLine &&")
-    expect(sidebarSource).toContain("visibleTaskSidebarSessions.map((entry, idx) =>")
-    expect(sidebarSource).toContain("renderSessionRow(entry, tasksOffset + idx, { forceSingleLine: true })")
+    expect(sidebarSource).toContain("visibleTaskSidebarSessions.map((entry) =>")
+    expect(sidebarSource).toContain("renderSessionRow(entry, { forceSingleLine: true })")
   })
 
   it("supports dragging session groups to reorder them", () => {
