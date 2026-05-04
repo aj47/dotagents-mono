@@ -86,8 +86,9 @@ describe("sessions in-app actions", () => {
   })
 
   it("shows sidebar session previews and removes sidebar minimize controls", () => {
-    expect(sidebarSource).toContain("getSidebarSessionPreview")
-    expect(sidebarSource).toContain('className="min-w-0 flex-1 truncate text-[11px] leading-4 text-muted-foreground"')
+    expect(sidebarSource).toContain("getSidebarActivityPresentation")
+    expect(sidebarSource).toContain("const sessionPreview = sidebarActivity.detail")
+    expect(sidebarSource).toContain("title={sessionPreview}")
     expect(sidebarSource).toContain('className="shrink-0 text-[10px] tabular-nums text-muted-foreground/80"')
     expect(sidebarSource).not.toContain("Minimize - run in background")
   })
@@ -100,6 +101,11 @@ describe("sessions in-app actions", () => {
     expect(sessionsSource).toContain("Keep errored AND user-stopped sessions visible")
     expect(sessionsSource).not.toContain('recentStatus === "stopped" || recentStatus === "error"')
     expect(sessionsSource).toContain("setExpandedSessionId(realEntry.sessionId)")
+  })
+
+  it("preserves display-only thinking blocks when saved conversations become session history", () => {
+    expect(sessionsSource).toContain("...(m.displayContent ? { displayContent: m.displayContent } : {}),")
+    expect(tipcSource).toContain("...(msg.displayContent ? { displayContent: msg.displayContent } : {}),")
   })
 
   it("keeps pinned tiles at the top of the active sessions grid and exposes a tile pin control", () => {

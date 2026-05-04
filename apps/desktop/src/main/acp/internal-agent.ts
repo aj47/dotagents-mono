@@ -440,6 +440,7 @@ export async function runInternalSubSession(
   let previousConversationHistory: Array<{
     role: 'user' | 'assistant' | 'tool';
     content: string;
+    displayContent?: string;
     toolCalls?: MCPToolCall[];
     toolResults?: MCPToolResult[];
   }> | undefined;
@@ -458,6 +459,7 @@ export async function runInternalSubSession(
       previousConversationHistory = existingMessages.map(msg => ({
         role: msg.role,
         content: msg.content,
+        ...(msg.displayContent ? { displayContent: msg.displayContent } : {}),
         // Note: toolCalls and toolResults from ConversationMessage use different types
         // but for context purposes, the content is sufficient
       }));
@@ -476,6 +478,7 @@ export async function runInternalSubSession(
         previousConversationHistory = existingMessages.map(msg => ({
           role: msg.role,
           content: msg.content,
+          ...(msg.displayContent ? { displayContent: msg.displayContent } : {}),
           // Note: toolCalls and toolResults from ConversationMessage use different types
           // but for context purposes, the content is sufficient
         }));

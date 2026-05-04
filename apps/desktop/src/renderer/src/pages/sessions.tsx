@@ -663,6 +663,7 @@ export function Component() {
       conversationHistory: conv.messages.map((m, index) => ({
         role: m.role,
         content: m.content,
+        ...(m.displayContent ? { displayContent: m.displayContent } : {}),
         toolCalls: m.toolCalls,
         toolResults: m.toolResults,
         timestamp: m.timestamp,

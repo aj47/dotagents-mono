@@ -928,6 +928,7 @@ function formatConversationHistoryForApi(
   history: Array<{
     role: "user" | "assistant" | "tool"
     content: string
+    displayContent?: string
     toolCalls?: any[]
     toolResults?: any[]
     timestamp?: number
@@ -1013,6 +1014,7 @@ export async function runAgent(options: RunAgentOptions): Promise<{
       previousConversationHistory = messagesToConvert.map((msg, index) => ({
         role: msg.role,
         content: msg.content,
+        ...(msg.displayContent ? { displayContent: msg.displayContent } : {}),
         toolCalls: msg.toolCalls,
         // Preserve timestamp for correct ordering in UI (matching tipc.ts)
         timestamp: msg.timestamp,
