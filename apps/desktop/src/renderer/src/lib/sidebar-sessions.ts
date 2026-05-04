@@ -392,6 +392,23 @@ function normalizeSidebarActivityText(value?: string | null): string | null {
   return normalized || null
 }
 
+/**
+ * Strip `<think>...</think>` markup from raw assistant/step text for sidebar
+ * previews. Prefers prose outside the thought block; falls back to the first
+ * words of the thought (open or closed) so users see meaningful content while
+ * the model is still reasoning instead of a literal `<think>` tag.
+ */
+function stripThinkTagsForSidebarPreview(value?: string | null): string | null {
+  if (!value) return null
+  const withoutClosed = value.replace(/<think>[\s\S]*?<\/think>/gi, "").trim()
+  if (withoutClosed) return withoutClosed
+  const openThink = value.match(/<think>([\s\S]*)$/i)
+  if (openThink && openThink[1].trim()) return openThink[1].trim()
+  const closedThink = value.match(/<think>([\s\S]*?)<\/think>/i)
+  if (closedThink && closedThink[1].trim()) return closedThink[1].trim()
+  return value.trim() || null
+}
+
 function isGenericSidebarConversationTitle(value?: string | null): boolean {
   const normalized = normalizeSidebarActivityText(value)?.toLowerCase()
   return normalized === "continue conversation" || normalized === "untitled conversation"
@@ -425,7 +442,8 @@ function formatSidebarToolName(toolName?: string | null): string | null {
 
 function getStepDetail(step: AgentProgressUpdate["steps"][number]): string | null {
   return normalizeSidebarActivityText(
-    step.llmContent ?? step.content ?? step.description ?? step.title,
+    stripThinkTagsForSidebarPreview(step.llmContent ?? step.content ?? step.description)
+      ?? step.title,
   )
 }
 
@@ -460,19 +478,27 @@ export function getLatestUserFacingResponse(progress: SidebarActivityProgressLik
   const latestResponseEvent = [...(progress.responseEvents ?? [])]
     .reverse()
     .find((event) => normalizeSidebarActivityText(event.text))
-  const responseEventText = normalizeSidebarActivityText(latestResponseEvent?.text)
+  const responseEventText = normalizeSidebarActivityText(
+    stripThinkTagsForSidebarPreview(latestResponseEvent?.text),
+  )
   if (responseEventText) return responseEventText
 
-  const userResponse = normalizeSidebarActivityText(progress.userResponse)
+  const userResponse = normalizeSidebarActivityText(
+    stripThinkTagsForSidebarPreview(progress.userResponse),
+  )
   if (userResponse) return userResponse
 
-  const finalContent = normalizeSidebarActivityText(progress.finalContent)
+  const finalContent = normalizeSidebarActivityText(
+    stripThinkTagsForSidebarPreview(progress.finalContent),
+  )
   if (finalContent) return finalContent
 
   for (let index = (progress.conversationHistory?.length ?? 0) - 1; index >= 0; index -= 1) {
     const message = progress.conversationHistory?.[index]
     if (message?.role !== "assistant") continue
-    const assistantText = normalizeSidebarActivityText(message.content)
+    const assistantText = normalizeSidebarActivityText(
+      stripThinkTagsForSidebarPreview(message.content),
+    )
     if (assistantText) return assistantText
   }
 

@@ -125,7 +125,20 @@ function normalizeSearchText(value: string | undefined): string {
 }
 
 function normalizeConversationText(value: string | undefined): string {
-  return (value ?? "").replace(/\s+/g, " ").trim()
+  if (!value) return ""
+  // Strip <think>...</think> markup so previews surface meaningful prose
+  // (or the first words of an in-flight thought) instead of literal tags.
+  const withoutClosed = value.replace(/<think>[\s\S]*?<\/think>/gi, "").trim()
+  if (withoutClosed) return withoutClosed.replace(/\s+/g, " ").trim()
+  const openThink = value.match(/<think>([\s\S]*)$/i)
+  if (openThink && openThink[1].trim()) {
+    return openThink[1].replace(/\s+/g, " ").trim()
+  }
+  const closedThink = value.match(/<think>([\s\S]*?)<\/think>/i)
+  if (closedThink && closedThink[1].trim()) {
+    return closedThink[1].replace(/\s+/g, " ").trim()
+  }
+  return value.replace(/\s+/g, " ").trim()
 }
 
 function getConversationSnippet(
