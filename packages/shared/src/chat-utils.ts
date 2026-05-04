@@ -46,9 +46,23 @@ export function getToolCallsSummary(toolCalls: ToolCall[]): string {
 /**
  * Generate a compact single-token label for a collapsed tool call.
  * Details belong in expanded tool views, not collapsed rows.
+ *
+ * For `execute_command`, the first command token (e.g. `git`, `pnpm`) is
+ * preferred over the generic tool name so collapsed group previews still
+ * communicate which command was run.
  */
 export function getToolCallPreview(toolCall: ToolCall): string {
-  return toolCall.name?.trim().replace(/\s+/g, '_') || 'tool';
+  const toolName = toolCall.name?.trim() || '';
+  const normalizedName = toolName.toLowerCase();
+  if (normalizedName === 'execute_command' || normalizedName.endsWith(':execute_command')) {
+    const args = normalizeToolArguments(toolCall.arguments);
+    const command = args?.command;
+    if (typeof command === 'string') {
+      const firstToken = command.trim().split(/\s+/)[0];
+      if (firstToken) return firstToken;
+    }
+  }
+  return toolName.replace(/\s+/g, '_') || 'tool';
 }
 
 /**

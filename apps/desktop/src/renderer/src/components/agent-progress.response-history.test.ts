@@ -591,6 +591,110 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("Stored final answer")
   })
 
+  it("renders tool-call turns as a single-line tool summary distinct from the user-facing response", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-tool-processing-labels",
+      conversationId: "conversation-tool-processing-labels",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: true,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Figure this out", timestamp: 100 },
+        {
+          role: "assistant",
+          content: "Need to inspect a few files first",
+          timestamp: 200,
+          toolCalls: [
+            { name: "search_repo", arguments: { query: "session view" } },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 210,
+          toolResults: [
+            { success: true, content: "match" },
+          ],
+        },
+        { role: "assistant", content: "Found the issue", timestamp: 300 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(text).not.toContain("Processing with tools")
+    expect(text).not.toContain("Thinking first")
+    expect(text).not.toContain("Tool activity")
+    expect(text).toContain("search_repo")
+    expect(text).toContain("1 tool")
+    expect(text.indexOf("search_repo")).toBeLessThan(text.indexOf("Found the issue"))
+  })
+
+  it("renders a single-line summary for collapsed groups of multiple tool steps", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-grouped-tool-processing",
+      conversationId: "conversation-grouped-tool-processing",
+      currentIteration: 1,
+      maxIterations: 3,
+      steps: [],
+      isComplete: true,
+      finalContent: "",
+      conversationHistory: [
+        {
+          role: "assistant",
+          content: "First tool thought",
+          timestamp: 100,
+          toolCalls: [
+            { name: "search_repo", arguments: { query: "thinking blocks" } },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 110,
+          toolResults: [
+            { success: true, content: "first result" },
+          ],
+        },
+        {
+          role: "assistant",
+          content: "Second tool thought",
+          timestamp: 120,
+          toolCalls: [
+            { name: "open_file", arguments: { path: "agent-progress.tsx" } },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 130,
+          toolResults: [
+            { success: true, content: "second result" },
+          ],
+        },
+        { role: "assistant", content: "Now here is the answer", timestamp: 200 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(text).not.toContain("Processing with tools")
+    expect(text).not.toContain("Includes thinking")
+    expect(text).toMatch(/2 step(?:\s*s)?/)
+    expect(text).not.toContain("First tool thought")
+    expect(text).not.toContain("Second tool thought")
+    expect(text).toContain("search_repo")
+    expect(text.indexOf("search_repo")).toBeLessThan(text.indexOf("Now here is the answer"))
+  })
+
   it("does not collapse short image responses because of embedded data URL size", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)

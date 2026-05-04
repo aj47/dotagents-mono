@@ -47,6 +47,7 @@ import {
   getFollowUpInputPresentation,
   getSessionPresentation,
 } from "@renderer/lib/session-presentation"
+import { computeTurnDurations, formatTurnDuration, useNowTick } from "@renderer/lib/turn-duration"
 
 interface AgentProgressProps {
   progress: AgentProgressUpdate | null
@@ -794,10 +795,14 @@ type CompactMessageProps = {
   conversationId?: string
   /** Absolute raw-history index to use when branching from this message */
   branchMessageIndex?: number
+  /** Per-turn agent duration (user → final assistant), in ms. Only set on user messages. */
+  turnDurationMs?: number
+  /** True when the per-turn duration is still ticking live. */
+  turnIsLive?: boolean
 }
 
 // Compact message component for space efficiency
-const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", isFocused = false, sessionId, isSnoozed = false, conversationId, branchMessageIndex }) => {
+const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", isFocused = false, sessionId, isSnoozed = false, conversationId, branchMessageIndex, turnDurationMs, turnIsLive }) => {
   const messageVariant = normalizeProgressVariant(variant)
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
@@ -1260,6 +1265,19 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
           )}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Per-turn agent duration — anchored on the user message that started the turn. */}
+          {message.role === "user" && typeof turnDurationMs === "number" && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-0.5 px-1 text-[10px] tabular-nums text-muted-foreground/80",
+                turnIsLive && "animate-pulse text-amber-600 dark:text-amber-400",
+              )}
+              title={turnIsLive ? "Agent turn in progress" : "Agent turn duration"}
+            >
+              <Clock className="h-2.5 w-2.5" aria-hidden="true" />
+              {formatTurnDuration(turnDurationMs)}
+            </span>
+          )}
           {/* TTS playing indicator — click to pause */}
           {(isTTSPlaying || isGeneratingAudio) && (
             <button
@@ -1363,7 +1381,9 @@ const CompactMessage = React.memo(CompactMessageBase, (prev, next) => (
   prev.isSnoozed === next.isSnoozed &&
   prev.message.responseEvent?.id === next.message.responseEvent?.id &&
   prev.conversationId === next.conversationId &&
-  prev.branchMessageIndex === next.branchMessageIndex
+  prev.branchMessageIndex === next.branchMessageIndex &&
+  prev.turnDurationMs === next.turnDurationMs &&
+  prev.turnIsLive === next.turnIsLive
 ))
 
 type CompactToolExecutionCall = { name: string; arguments: any }
@@ -1534,6 +1554,25 @@ const ToolExecutionBubble: React.FC<{
   )
 }
 
+// Compact prose overrides for inline thought blocks: smaller font, tighter
+// spacing, and no extra surrounds beyond the parent's left-border accent.
+const THOUGHT_MARKDOWN_CLASS =
+  "!prose-xs text-[11px] leading-snug [&_p]:my-0.5 [&_p]:text-[11px] [&_p]:leading-snug [&_li]:text-[11px] [&_li]:leading-snug [&_ul]:my-0.5 [&_ol]:my-0.5 [&_pre]:my-1 [&_pre]:text-[10px] [&_code]:text-[10px] [&_h1]:text-[12px] [&_h2]:text-[12px] [&_h3]:text-[11px]"
+
+// Codex reasoning summaries (and similar provider thought streams) often arrive
+// with single newlines between paragraphs. ReactMarkdown ignores single
+// newlines, so we promote them to paragraph breaks while leaving fenced code
+// blocks intact.
+function normalizeThoughtNewlines(text: string): string {
+  if (!text) return text
+  const segments = text.split(/(```[\s\S]*?```)/g)
+  for (let i = 0; i < segments.length; i++) {
+    if (i % 2 === 1) continue
+    segments[i] = segments[i].replace(/([^\n])\n([^\n])/g, "$1\n\n$2")
+  }
+  return segments.join("")
+}
+
 // Unified Assistant + Tool Execution component - combines thought and tool call as one message
 const AssistantWithToolsBubble: React.FC<{
   data: {
@@ -1556,9 +1595,10 @@ const AssistantWithToolsBubble: React.FC<{
   const toolCallEntries = data.calls.map((call, idx) => ({ call, result: data.results[idx] }))
   const resolvedResults = data.results.filter((result): result is NonNullable<typeof result> => Boolean(result))
   const isPending = toolCallEntries.some(({ result }) => !result)
-  const allSuccess = resolvedResults.length > 0 && toolCallEntries.every(({ result }) => result?.success === true)
   const hasThought = data.thought && data.thought.trim().length > 0
   const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
+  const toolCount = data.calls.length
+  const toolCountLabel = `${toolCount} tool${toolCount === 1 ? "" : "s"}`
 
   // Generate result summary for collapsed state
   const collapsedResultSummary = (() => {
@@ -1590,33 +1630,38 @@ const AssistantWithToolsBubble: React.FC<{
     setShowToolDetails(!showToolDetails)
   }
 
-  // Tool names for display
-  const toolNames = data.calls.map(c => c.name).join(', ')
-  const toolCount = data.calls.length
+  const longThought = (data.thought?.length ?? 0) > 100
+  const thoughtCollapsed = longThought && !isExpanded
+  const thoughtContent = hasThought ? normalizeThoughtNewlines(data.thought.trim()) : ""
 
   return (
     <div className={cn(
       "rounded-md text-xs transition-all duration-200",
-      "border border-border/40 bg-muted/30",
-      !isExpanded && shouldCollapse && "hover:brightness-95 dark:hover:brightness-110",
-      shouldCollapse && "cursor-pointer"
+      "border border-sky-200/60 bg-sky-50/30 dark:border-sky-900/40 dark:bg-sky-950/15",
+      longThought && "cursor-pointer",
+      longThought && !isExpanded && "hover:brightness-95 dark:hover:brightness-110",
     )}>
-      {/* Thought content section */}
-      <div
-        className="flex items-start px-2.5 py-1.5 text-left"
-        onClick={handleToggleExpand}
-      >
-        <div className="flex-1 min-w-0">
+      <div className="px-2 py-1 space-y-0.5" onClick={handleToggleExpand}>
+        {hasThought && (
+          <div className={cn(
+            "border-l-2 border-amber-300/60 pl-1.5 leading-snug text-left text-[11px] text-muted-foreground dark:border-amber-700/60",
+            thoughtCollapsed && "line-clamp-2",
+          )}>
+            <MarkdownRenderer
+              content={thoughtContent}
+              className={THOUGHT_MARKDOWN_CLASS}
+            />
+          </div>
+        )}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Wrench className="h-3 w-3 shrink-0 text-sky-600 dark:text-sky-300" aria-hidden="true" />
+          <span className="shrink-0 text-[10px] text-sky-700/70 dark:text-sky-300/70">
+            {isPending ? `${toolCountLabel} running` : toolCountLabel}
+          </span>
           {hasThought && (
-            <div className={cn(
-              "leading-relaxed text-left",
-              !isExpanded && shouldCollapse && "line-clamp-2"
-            )}>
-              <MarkdownRenderer content={data.thought.trim()} />
-            </div>
+            <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
           )}
-
-          <div className={hasThought ? "mt-1" : ""}>
+          <div className="min-w-0 flex-1">
             <CompactToolExecutionList
               calls={data.calls}
               results={data.results}
@@ -1627,6 +1672,11 @@ const AssistantWithToolsBubble: React.FC<{
               executionStats={data.executionStats}
             />
           </div>
+          {longThought && (
+            isExpanded
+              ? <ChevronUp className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+              : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+          )}
         </div>
       </div>
     </div>
@@ -1648,30 +1698,32 @@ const ToolActivityGroupBubble: React.FC<{
 }> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
   const totalCount = group.items.length
   const collapsedPreviewLine = group.previewLines.join(', ')
+  const thinkingCount = group.items.filter((item) => item.kind === "assistant_with_tools" && item.data.thought.trim().length > 0).length
 
   return (
     <div className={cn(
       "rounded-md text-xs transition-all duration-200",
-      "border border-border/40 bg-muted/20",
+      "border border-sky-200/60 bg-sky-50/20 dark:border-sky-900/40 dark:bg-sky-950/10",
       !isExpanded && "hover:brightness-95 dark:hover:brightness-110 cursor-pointer",
     )}>
-      {/* Collapsed header */}
+      {/* Single-line collapsed header */}
       <div
-        className="flex min-w-0 items-center gap-1.5 px-2.5 py-1.5"
+        className="flex min-w-0 items-center gap-1.5 px-2.5 py-1"
         onClick={() => !isExpanded && onToggleExpand()}
       >
-        <Wrench className="h-3 w-3 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-        <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
-          {totalCount} tool step{totalCount === 1 ? "" : "s"}
+        <Wrench className="h-3 w-3 shrink-0 text-sky-600/80 dark:text-sky-300/80" aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono text-[10px] text-sky-900/80 dark:text-sky-100/80">
+          {collapsedPreviewLine || `${totalCount} step${totalCount === 1 ? "" : "s"}`}
         </span>
-        {!isExpanded && collapsedPreviewLine && (
-          <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono text-[10px] text-muted-foreground/70">
-            {collapsedPreviewLine}
-          </span>
+        <span className="shrink-0 text-[10px] text-sky-700/70 dark:text-sky-300/70">
+          {totalCount} step{totalCount === 1 ? "" : "s"}
+        </span>
+        {thinkingCount > 0 && (
+          <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
         )}
         <button
           onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
-          className="ml-auto shrink-0 p-0.5 rounded hover:bg-muted/30 transition-colors"
+          className="shrink-0 p-0.5 rounded hover:bg-muted/30 transition-colors"
           aria-label={isExpanded ? "Collapse tool group" : "Expand tool group"}
         >
           {isExpanded ? (
@@ -2723,7 +2775,7 @@ function isJsonLikeContent(value: string): boolean {
 }
 
 const DelegationInfoRow: React.FC<{
-  label: string
+  label?: string
   content: string
   tone?: DelegationInfoTone
   italic?: boolean
@@ -2776,7 +2828,7 @@ const DelegationInfoRow: React.FC<{
 
   return (
     <div className={containerClassName}>
-      <div className={labelClassName}>{label}</div>
+      {label && <div className={labelClassName}>{label}</div>}
       <div className="min-w-0 flex-1">{renderContent()}</div>
     </div>
   )
@@ -2870,13 +2922,6 @@ const DelegationBubble: React.FC<{
   const sourceLabel = getDelegationSourceLabel(delegation)
   const trackingLabel = getDelegationTrackingLabel(delegation)
   const durationLabel = `${duration}s`
-  const statusBadgeClass = isCompleted
-    ? 'border-green-300/70 bg-green-100/70 text-green-800 dark:border-green-700/70 dark:bg-green-900/40 dark:text-green-200'
-    : isFailed
-    ? 'border-red-300/70 bg-red-100/70 text-red-800 dark:border-red-700/70 dark:bg-red-900/40 dark:text-red-200'
-    : isCancelled
-    ? 'border-amber-300/70 bg-amber-100/70 text-amber-800 dark:border-amber-700/70 dark:bg-amber-900/40 dark:text-amber-200'
-    : 'border-blue-300/70 bg-blue-100/70 text-blue-800 dark:border-blue-700/70 dark:bg-blue-900/40 dark:text-blue-200'
 
   useEffect(() => {
     if (isExpanded && isRunning && hasConversation) {
@@ -2886,78 +2931,55 @@ const DelegationBubble: React.FC<{
 
   return (
     <div ref={containerRef} className={cn("rounded-lg border overflow-hidden", statusColor)}>
-      {/* Header - clickable to collapse/expand entire bubble */}
+      {/* Single-line header - agent name leads, then status, duration, subtitle */}
       <div
         className={cn(
-          "px-2 py-1.5 cursor-pointer hover:opacity-90 transition-opacity",
+          "flex min-w-0 items-center gap-1.5 px-2 py-1 cursor-pointer hover:opacity-90 transition-opacity",
           isExpanded && "border-b",
           headerColor
         )}
         onClick={handleHeaderClick}
       >
-        <div className="flex items-start gap-1.5">
-          <Bot className={cn("mt-0.5 h-3 w-3 flex-shrink-0", iconColor)} />
-          <div className="min-w-0 flex-1">
-            <div className={cn("flex gap-1.5", isCompact ? "flex-col items-start" : "items-start justify-between")}>
-              <div className="min-w-0 flex-1">
-                <div className={cn("text-[11px] font-medium truncate leading-4", textColor)}>
-                  {delegation.agentName}
-                </div>
-                <div className={cn("mt-0.5 text-[10px] leading-4 text-gray-600 dark:text-gray-400", isExpanded ? "line-clamp-2" : "line-clamp-1")}>
-                  {subtitle}
-                </div>
-              </div>
-              <div className={cn("flex items-center gap-1", isCompact ? "w-full justify-between" : "pl-1.5 flex-shrink-0")}>
-                <Badge variant="outline" className={cn("h-4 rounded-full px-1 text-[9px] font-medium", statusBadgeClass)}>
-                  {statusLabel}
-                </Badge>
-                {isExpanded ? (
-                  <ChevronUp className="h-3 w-3 text-gray-400" />
-                ) : (
-                  <ChevronDown className="h-3 w-3 text-gray-400" />
-                )}
-              </div>
-            </div>
-            {/* Compact metadata row – shown inline when collapsed, full when expanded */}
-            <div className={cn("flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[9px] text-gray-500 dark:text-gray-400", isExpanded ? "mt-1" : "mt-0.5")}>
-              <span className="inline-flex items-center gap-1">
-                {isRunning ? (
-                  <Loader2 className={cn("h-2.5 w-2.5 animate-spin", iconColor)} />
-                ) : isCompleted ? (
-                  <Check className={cn("h-2.5 w-2.5", iconColor)} />
-                ) : isFailed ? (
-                  <XCircle className={cn("h-2.5 w-2.5", iconColor)} />
-                ) : (
-                  <OctagonX className={cn("h-2.5 w-2.5", iconColor)} />
-                )}
-                <span>{durationLabel}</span>
-              </span>
-              {isExpanded && <span>{sourceLabel}</span>}
-              {isExpanded && trackingLabel && <span>{trackingLabel}</span>}
-              {hasConversation && (
-                <span>{delegation.conversation!.length} msgs</span>
-              )}
-            </div>
-          </div>
-        </div>
+        <Bot className={cn("h-3 w-3 shrink-0", iconColor)} />
+        <span className={cn("shrink-0 truncate text-[11px] font-medium", textColor)}>
+          {delegation.agentName}
+        </span>
+        {isRunning ? (
+          <Loader2 className={cn("h-2.5 w-2.5 shrink-0 animate-spin", iconColor)} aria-hidden="true" />
+        ) : isCompleted ? (
+          <Check className={cn("h-2.5 w-2.5 shrink-0", iconColor)} aria-hidden="true" />
+        ) : isFailed ? (
+          <XCircle className={cn("h-2.5 w-2.5 shrink-0", iconColor)} aria-hidden="true" />
+        ) : (
+          <OctagonX className={cn("h-2.5 w-2.5 shrink-0", iconColor)} aria-hidden="true" />
+        )}
+        <span className={cn("shrink-0 text-[10px]", mutedTextColor)}>
+          {statusLabel} · {durationLabel}
+        </span>
+        {subtitle && (
+          <span className="min-w-0 flex-1 truncate text-[10px] text-gray-600 dark:text-gray-400">
+            {subtitle}
+          </span>
+        )}
+        {hasConversation && (
+          <span className="shrink-0 text-[10px] text-gray-500 dark:text-gray-400">
+            {delegation.conversation!.length}m
+          </span>
+        )}
+        {isExpanded ? (
+          <ChevronUp className="h-3 w-3 shrink-0 text-gray-400" />
+        ) : (
+          <ChevronDown className="h-3 w-3 shrink-0 text-gray-400" />
+        )}
       </div>
 
       {/* Content - only shown when expanded */}
       {isExpanded && (
         <div className="px-2 py-2 space-y-2">
-          <DelegationInfoRow
-            label="Task"
-            content={delegation.task}
-            tone="muted"
-          />
+          <DelegationInfoRow content={delegation.task} tone="muted" />
 
           {delegation.progressMessage && (
-            <DelegationInfoRow
-              label="Update"
-              content={delegation.progressMessage}
-              tone="default"
-              italic
-            />
+            <DelegationInfoRow content={delegation.progressMessage} tone="default" italic />
           )}
 
           {/* Collapsible conversation panel - persists after completion */}
@@ -2974,53 +2996,45 @@ const DelegationBubble: React.FC<{
 
           {/* Result summary – detect JSON payloads and render formatted */}
           {delegation.resultSummary && (
-            <DelegationInfoRow
-              label="Result"
-              content={delegation.resultSummary}
-              tone="success"
-              formatJson
-            />
+            <DelegationInfoRow content={delegation.resultSummary} tone="success" formatJson />
           )}
 
           {/* Error message */}
           {delegation.error && (
-            <DelegationInfoRow
-              label="Error"
-              content={delegation.error}
-              tone="error"
-            />
+            <DelegationInfoRow content={delegation.error} tone="error" />
           )}
 
-          {/* Status footer */}
-          <div className={cn("flex items-center justify-between gap-1.5 border-t border-black/5 pt-1.5 dark:border-white/10", isCompact && "flex-col items-stretch")}>
-            <span className={cn("text-[10px]", mutedTextColor)}>
-              {statusLabel} · {durationLabel}
-            </span>
-            <div className={cn("flex items-center gap-1.5", isCompact && "w-full flex-col items-stretch")}>
-              {hasConversation && !isConversationOpen && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setIsConversationOpen(true)
-                  }}
-                  className="inline-flex h-7 items-center justify-center rounded-md border border-purple-200/80 px-2 text-[10px] font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800/70 dark:text-purple-300 dark:hover:bg-purple-950/30"
-                >
-                  Transcript
-                </button>
-              )}
-              {onOpenDetails && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onOpenDetails(delegation.runId)
-                  }}
-                  className="inline-flex h-7 items-center justify-center rounded-md border border-border px-2 text-[10px] font-medium text-foreground transition-colors hover:bg-muted"
-                >
-                  Details
-                </button>
-              )}
+          {(hasConversation || onOpenDetails || sourceLabel || trackingLabel) && (
+            <div className={cn("flex items-center justify-between gap-1.5 border-t border-black/5 pt-1.5 dark:border-white/10", isCompact && "flex-col items-stretch")}>
+              <span className={cn("text-[10px] truncate", mutedTextColor)}>
+                {[sourceLabel, trackingLabel].filter(Boolean).join(" · ")}
+              </span>
+              <div className={cn("flex items-center gap-1.5", isCompact && "w-full flex-col items-stretch")}>
+                {hasConversation && !isConversationOpen && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsConversationOpen(true)
+                    }}
+                    className="inline-flex h-7 items-center justify-center rounded-md border border-purple-200/80 px-2 text-[10px] font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800/70 dark:text-purple-300 dark:hover:bg-purple-950/30"
+                  >
+                    Transcript
+                  </button>
+                )}
+                {onOpenDetails && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onOpenDetails(delegation.runId)
+                    }}
+                    className="inline-flex h-7 items-center justify-center rounded-md border border-border px-2 text-[10px] font-medium text-foreground transition-colors hover:bg-muted"
+                  >
+                    Details
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
@@ -3087,36 +3101,29 @@ const DelegationSummaryStrip: React.FC<{
               e.stopPropagation()
               onOpenDetails(entry.delegation.runId)
             }}
-            className="flex w-full items-start gap-1 rounded-md border border-border/60 bg-background/80 px-1.5 py-1 text-left transition-colors hover:bg-muted/40"
+            className="flex w-full min-w-0 items-center gap-1.5 rounded-md border border-border/60 bg-background/80 px-1.5 py-1 text-left transition-colors hover:bg-muted/40"
           >
-            <div className="mt-0.5">
-              {entry.isActive ? (
-                <Loader2 className="h-2.5 w-2.5 animate-spin text-blue-500" />
-              ) : entry.delegation.status === "completed" ? (
-                <Check className="h-2.5 w-2.5 text-green-500" />
-              ) : entry.delegation.status === "failed" ? (
-                <XCircle className="h-2.5 w-2.5 text-red-500" />
-              ) : (
-                <OctagonX className="h-2.5 w-2.5 text-amber-500" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1">
-                <span className="truncate text-[10px] font-medium leading-4 text-foreground">{entry.delegation.agentName}</span>
-                <Badge variant="outline" className="h-4 px-1 text-[9px]">
-                  {entry.statusLabel}
-                </Badge>
-              </div>
-              <p className="mt-0.5 line-clamp-2 text-[9px] leading-3.5 text-muted-foreground">
+            {entry.isActive ? (
+              <Loader2 className="h-2.5 w-2.5 shrink-0 animate-spin text-blue-500" />
+            ) : entry.delegation.status === "completed" ? (
+              <Check className="h-2.5 w-2.5 shrink-0 text-green-500" />
+            ) : entry.delegation.status === "failed" ? (
+              <XCircle className="h-2.5 w-2.5 shrink-0 text-red-500" />
+            ) : (
+              <OctagonX className="h-2.5 w-2.5 shrink-0 text-amber-500" />
+            )}
+            <span className="shrink-0 truncate text-[10px] font-medium leading-4 text-foreground">
+              {entry.delegation.agentName}
+            </span>
+            <span className="shrink-0 text-[9px] text-muted-foreground">{entry.statusLabel}</span>
+            {entry.subtitle && (
+              <span className="min-w-0 flex-1 truncate text-[9px] text-muted-foreground/90">
                 {entry.subtitle}
-              </p>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[8.5px] text-muted-foreground/90">
-                <span>{entry.sourceLabel}</span>
-                {entry.trackingLabel && <span>{entry.trackingLabel}</span>}
-                {entry.messageCount > 0 && <span>{entry.messageCount} messages</span>}
-                {entry.isActive && <span className="text-blue-600 dark:text-blue-400">Live updates</span>}
-              </div>
-            </div>
+              </span>
+            )}
+            {entry.messageCount > 0 && (
+              <span className="shrink-0 text-[9px] text-muted-foreground/80">{entry.messageCount}m</span>
+            )}
           </button>
         ))}
       </div>}
@@ -3880,6 +3887,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
     return copies
   }, [effectiveResponseEvents, messages, progress.isComplete])
+  // Live wall-clock tick for in-progress agent turns. Stops ticking when the
+  // session is complete so completed sessions don't re-render every second.
+  const turnNow = useNowTick(!isComplete)
+  const turnDurations = useMemo(
+    () => computeTurnDurations(enrichedMessages, isComplete, turnNow),
+    [enrichedMessages, isComplete, turnNow],
+  )
   const primaryAgentLabel = useMemo(
     () => acpSessionInfo?.agentTitle ?? acpSessionInfo?.agentName ?? profileName ?? "Agent",
     [acpSessionInfo?.agentName, acpSessionInfo?.agentTitle, profileName],
@@ -4720,6 +4734,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       const isLastAssistant = item.kind === "message" && item.data.role === "assistant" && index === lastAssistantDisplayIndex
 
                       if (item.kind === "message") {
+                        const turnEntry = item.data.role === "user"
+                          ? turnDurations.byUserTimestamp.get(item.data.timestamp)
+                          : undefined
                         return (
                           <CompactMessage
                             key={itemKey}
@@ -4737,6 +4754,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             isSnoozed={progress.isSnoozed}
                             conversationId={progress.conversationId}
                             branchMessageIndex={item.data.branchMessageIndex}
+                            turnDurationMs={turnEntry?.durationMs}
+                            turnIsLive={turnEntry?.isLive}
                           />
                         )
                       } else if (item.kind === "assistant_with_tools") {
@@ -4910,6 +4929,18 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       </div>
                     )}
                   </div>
+                  {turnDurations.totalMs > 0 && (
+                    <span
+                      className={cn(
+                        "shrink-0 inline-flex items-center gap-0.5 whitespace-nowrap tabular-nums",
+                        turnDurations.hasLive && "animate-pulse text-amber-600 dark:text-amber-400",
+                      )}
+                      title={turnDurations.hasLive ? "Total agent time (running)" : "Total agent time"}
+                    >
+                      <Clock className="h-2.5 w-2.5" aria-hidden="true" />
+                      {formatTurnDuration(turnDurations.totalMs)}
+                    </span>
+                  )}
                   {!isComplete && (
                     <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
                   )}
@@ -5033,6 +5064,18 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </span>
             </div>
           )}
+          {turnDurations.totalMs > 0 && (
+            <span
+              className={cn(
+                "text-xs shrink-0 inline-flex items-center gap-0.5 tabular-nums text-muted-foreground",
+                turnDurations.hasLive && "animate-pulse text-amber-600 dark:text-amber-400",
+              )}
+              title={turnDurations.hasLive ? "Total agent time (running)" : "Total agent time"}
+            >
+              <Clock className="h-3 w-3" aria-hidden="true" />
+              {formatTurnDuration(turnDurations.totalMs)}
+            </span>
+          )}
           {!isComplete && (
             <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
               {`${currentIteration}/${isFinite(maxIterations) ? maxIterations : "∞"}`}
@@ -5155,6 +5198,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
                 if (item.kind === "message") {
                   const isLastAssistant = index === lastAssistantDisplayIndex
+                  const turnEntry = item.data.role === "user"
+                    ? turnDurations.byUserTimestamp.get(item.data.timestamp)
+                    : undefined
                   return (
                     <CompactMessage
                       key={itemKey}
@@ -5172,6 +5218,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       isSnoozed={progress.isSnoozed}
                       conversationId={progress.conversationId}
                       branchMessageIndex={item.data.branchMessageIndex}
+                      turnDurationMs={turnEntry?.durationMs}
+                      turnIsLive={turnEntry?.isLive}
                     />
                   )
                 } else if (item.kind === "assistant_with_tools") {
