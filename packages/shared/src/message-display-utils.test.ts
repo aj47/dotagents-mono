@@ -96,4 +96,22 @@ describe('sanitizeAgentProgressUpdateForDisplay', () => {
     expect(result.conversationHistory![1].content).toBe('plain text')
     expect(result.sessionId).toBe('test')
   })
+
+  it('sanitizes display-only history content', () => {
+    const update: AgentProgressUpdate = {
+      ...baseUpdate,
+      conversationHistory: [
+        {
+          role: 'assistant',
+          content: 'Stored answer',
+          displayContent: '<think>reasoning</think>\n\n![pic](data:image/png;base64,x)',
+        },
+      ],
+    }
+
+    const result = sanitizeAgentProgressUpdateForDisplay(update)
+
+    expect(result.conversationHistory![0].content).toBe('Stored answer')
+    expect(result.conversationHistory![0].displayContent).toBe('<think>reasoning</think>\n\n[Image: pic]')
+  })
 })

@@ -49,6 +49,23 @@ describe("session progress hydration", () => {
     expect(hydrated.isComplete).toBe(false)
   })
 
+  it("preserves persisted display-only content while hydrating progress", () => {
+    const conversation = loadedConversation()
+    conversation.messages[1].displayContent = "<think>reasoning</think>\n\nWorking on it"
+
+    const hydrated = mergeLoadedConversationIntoProgress(
+      baseProgress(),
+      conversation,
+    )
+
+    expect(hydrated.conversationHistory?.[1]).toMatchObject({
+      role: "assistant",
+      content: "Working on it",
+      displayContent: "<think>reasoning</think>\n\nWorking on it",
+      branchMessageIndex: 6,
+    })
+  })
+
   it("does not overwrite live progress that already has conversation history", () => {
     const progress = {
       ...baseProgress(),

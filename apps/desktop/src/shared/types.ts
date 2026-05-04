@@ -177,6 +177,12 @@ export interface ConversationMessage {
   id: string
   role: "user" | "assistant" | "tool"
   content: string
+  /**
+   * Optional display-only override for renderer history. This is persisted so
+   * saved sessions can show UI-only annotations such as Codex thinking blocks,
+   * but model replay must continue to use `content`.
+   */
+  displayContent?: string
   timestamp: number
   toolCalls?: ToolCall[]
   toolResults?: ToolResult[]

@@ -30,6 +30,7 @@ export function mergeLoadedConversationIntoProgress(
   const conversationHistory = conversation.messages.map((message, index) => ({
     role: message.role,
     content: message.content,
+    ...(message.displayContent ? { displayContent: message.displayContent } : {}),
     toolCalls: message.toolCalls,
     toolResults: message.toolResults,
     timestamp: message.timestamp,

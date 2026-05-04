@@ -530,6 +530,8 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.content).not.toContain("<think>")
     expect(result.conversationHistory.some((message) => message.role === "assistant" && message.content.includes("<think>"))).toBe(false)
     expect(mocks.addMessageToConversation.mock.calls.some((call) => String(call[1] ?? "").includes("<think>"))).toBe(false)
+    expect(result.conversationHistory.some((message) => message.role === "assistant" && message.displayContent?.includes("<think>"))).toBe(true)
+    expect(mocks.addMessageToConversation.mock.calls.some((call) => String(call[5]?.displayContent ?? "").includes("<think>"))).toBe(true)
 
     const progressConversationText = progressUpdates
       .flatMap((update) => update.conversationHistory ?? [])
@@ -547,6 +549,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .map((message: any) => message.content)
       .join("\n")
     expect(secondPrompt).toContain("without first providing the final user-facing answer")
+    expect(secondPrompt).not.toContain("I should inspect more transcript chunks")
   })
 
   it("treats reasoning-summary-only responses as empty and retries", async () => {

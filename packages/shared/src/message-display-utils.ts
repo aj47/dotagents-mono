@@ -48,11 +48,14 @@ function sanitizeConversationHistoryForDisplay(
   let changed = false
   const sanitized = conversationHistory.map((entry) => {
     const nextContent = sanitizeMessageContentForDisplay(entry.content)
-    if (nextContent === entry.content) {
+    const nextDisplayContent = typeof entry.displayContent === "string"
+      ? sanitizeMessageContentForDisplay(entry.displayContent)
+      : entry.displayContent
+    if (nextContent === entry.content && nextDisplayContent === entry.displayContent) {
       return entry
     }
     changed = true
-    return { ...entry, content: nextContent }
+    return { ...entry, content: nextContent, displayContent: nextDisplayContent }
   })
 
   return changed ? sanitized : conversationHistory

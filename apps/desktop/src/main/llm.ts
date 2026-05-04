@@ -496,6 +496,8 @@ export interface AgentModeResponse {
     toolCalls?: MCPToolCall[]
     toolResults?: MCPToolResult[]
     branchMessageIndex?: number
+    /** Display-only override for renderer history; never replayed to the model. */
+    displayContent?: string
   }>
   totalIterations: number
 }
@@ -649,6 +651,8 @@ export async function processTranscriptWithAgentMode(
     toolResults?: MCPToolResult[]
     timestamp?: number
     branchMessageIndex?: number
+    /** Display-only override for renderer history; never replayed to the model. */
+    displayContent?: string
   }>,
   conversationId?: string, // Conversation ID for linking to conversation history
   sessionId?: string, // Session ID for progress routing and isolation
@@ -862,7 +866,8 @@ export async function processTranscriptWithAgentMode(
     role: "user" | "assistant" | "tool",
     content: string,
     toolCalls?: MCPToolCall[],
-    toolResults?: MCPToolResult[]
+    toolResults?: MCPToolResult[],
+    options?: { displayContent?: string },
   ) => {
     if (!currentConversationId) {
       return // No conversation to save to
@@ -885,7 +890,8 @@ export async function processTranscriptWithAgentMode(
         content,
         role,
         toolCalls,
-        convertedToolResults
+        convertedToolResults,
+        options?.displayContent ? { displayContent: options.displayContent } : undefined,
       )
 
       if (role === "assistant" && currentConversationId && sessionId) {
@@ -1051,7 +1057,13 @@ export async function processTranscriptWithAgentMode(
     conversationHistory.push(message)
 
     // Save to disk asynchronously (fire and forget)
-    saveMessageIncremental(role, content, toolCalls, toolResults).catch(err => {
+    saveMessageIncremental(
+      role,
+      content,
+      toolCalls,
+      toolResults,
+      options?.displayContent ? { displayContent: options.displayContent } : undefined,
+    ).catch(err => {
       logLLM("[addMessage] Failed to save message:", err)
     })
   }
@@ -1289,7 +1301,7 @@ export async function processTranscriptWithAgentMode(
     branchMessageIndex?: number
     ephemeral?: boolean
     skipModelReplay?: boolean
-    /** Renderer-only content override; never persisted or replayed to the model. */
+    /** Renderer-only content override; persisted for UI history, never replayed to the model. */
     displayContent?: string
   }> = [
     ...preparedPreviousConversationHistory,
@@ -3508,7 +3520,7 @@ export async function processTranscriptWithAgentMode(
     return {
       content: finalContent,
       conversationHistory: filterEphemeralMessages(conversationHistory).map((entry) => {
-        const { skipModelReplay: _skipModelReplay, displayContent: _displayContent, ...rest } = entry
+        const { skipModelReplay: _skipModelReplay, ...rest } = entry
         return rest
       }),
       totalIterations: iteration,
