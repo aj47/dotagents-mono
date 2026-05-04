@@ -310,6 +310,139 @@ const SessionModelPicker: React.FC<{
   )
 }
 
+type ReasoningEffort = NonNullable<Config["openaiReasoningEffort"]>
+type CodexVerbosity = NonNullable<Config["codexTextVerbosity"]>
+
+const REASONING_EFFORT_OPTIONS: Array<{ value: ReasoningEffort; label: string }> = [
+  { value: "none", label: "None" },
+  { value: "minimal", label: "Minimal" },
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "xhigh", label: "Extra high" },
+]
+
+const VERBOSITY_OPTIONS: Array<{ value: CodexVerbosity; label: string }> = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+]
+
+const providerSupportsThinking = (providerId: ChatProviderId): boolean =>
+  providerId === "openai" || providerId === "chatgpt-web"
+
+const providerSupportsVerbosity = (providerId: ChatProviderId): boolean =>
+  providerId === "chatgpt-web"
+
+const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
+  const configQuery = useConfigQuery()
+  const config = configQuery.data
+  const providerId = getAgentProviderId(config)
+
+  const currentValue: ReasoningEffort = (config?.openaiReasoningEffort as ReasoningEffort | undefined) ||
+    (providerId === "chatgpt-web" ? "low" : "medium")
+
+  const handleChange = useCallback(async (value: string) => {
+    if (!config || value === currentValue) return
+    try {
+      await tipcClient.saveConfig({
+        config: { ...config, openaiReasoningEffort: value as ReasoningEffort },
+      })
+      await queryClient.invalidateQueries({ queryKey: ["config"] })
+      toast.success("Thinking level updated")
+    } catch (error) {
+      console.error("Failed to update thinking level:", error)
+      toast.error("Failed to update thinking level")
+    }
+  }, [config, currentValue])
+
+  if (!providerSupportsThinking(providerId)) return null
+
+  const currentLabel = REASONING_EFFORT_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
+
+  return (
+    <Select value={currentValue} onValueChange={handleChange} disabled={!config}>
+      <SelectTrigger
+        className={cn(
+          "h-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-muted-foreground/80 shadow-none hover:text-foreground focus:ring-0 focus:ring-offset-0 data-[state=open]:text-foreground [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3",
+          compact ? "text-[10px]" : "text-[10px]",
+        )}
+        title={`Thinking level (${currentLabel})`}
+        aria-label="Change thinking level"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <SelectValue>
+          <span className="flex min-w-0 items-center gap-1 truncate">
+            <Brain className="h-3 w-3 shrink-0 opacity-70" />
+            <span className="truncate">{currentLabel}</span>
+          </span>
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="min-w-[160px]" onClick={(event) => event.stopPropagation()}>
+        {REASONING_EFFORT_OPTIONS.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+const SessionVerbosityPicker: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
+  const configQuery = useConfigQuery()
+  const config = configQuery.data
+  const providerId = getAgentProviderId(config)
+
+  const currentValue: CodexVerbosity = (config?.codexTextVerbosity as CodexVerbosity | undefined) || "medium"
+
+  const handleChange = useCallback(async (value: string) => {
+    if (!config || value === currentValue) return
+    try {
+      await tipcClient.saveConfig({
+        config: { ...config, codexTextVerbosity: value as CodexVerbosity },
+      })
+      await queryClient.invalidateQueries({ queryKey: ["config"] })
+      toast.success("Verbosity updated")
+    } catch (error) {
+      console.error("Failed to update verbosity:", error)
+      toast.error("Failed to update verbosity")
+    }
+  }, [config, currentValue])
+
+  if (!providerSupportsVerbosity(providerId)) return null
+
+  const currentLabel = VERBOSITY_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
+
+  return (
+    <Select value={currentValue} onValueChange={handleChange} disabled={!config}>
+      <SelectTrigger
+        className={cn(
+          "h-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-muted-foreground/80 shadow-none hover:text-foreground focus:ring-0 focus:ring-offset-0 data-[state=open]:text-foreground [&>svg]:ml-1 [&>svg]:h-3 [&>svg]:w-3",
+          compact ? "text-[10px]" : "text-[10px]",
+        )}
+        title={`Verbosity (${currentLabel})`}
+        aria-label="Change verbosity"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <SelectValue>
+          <span className="flex min-w-0 items-center gap-1 truncate">
+            <Volume2 className="h-3 w-3 shrink-0 opacity-70" />
+            <span className="truncate">{currentLabel}</span>
+          </span>
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="min-w-[160px]" onClick={(event) => event.stopPropagation()}>
+        {VERBOSITY_OPTIONS.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
 const COLLAPSIBLE_PAYLOAD_LINE_THRESHOLD = 2
 
 type StructuredPayloadValue = {
@@ -4753,6 +4886,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       <>
                         {profileName && <span className="text-muted-foreground/50">•</span>}
                         <SessionModelPicker modelInfo={modelInfo} compact />
+                        <SessionThinkingPicker compact />
+                        <SessionVerbosityPicker compact />
                       </>
                     )}
                     {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
@@ -4871,6 +5006,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <>
               {profileName && <span className="text-muted-foreground/50">•</span>}
               <SessionModelPicker modelInfo={modelInfo} />
+              <SessionThinkingPicker />
+              <SessionVerbosityPicker />
             </>
           )}
           {/* Context fill indicator */}
