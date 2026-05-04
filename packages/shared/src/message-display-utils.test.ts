@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  normalizeMessagePreviewText,
   sanitizeMessageContentForDisplay,
   sanitizeMessageContentForSpeech,
   sanitizeAgentProgressUpdateForDisplay,
@@ -64,6 +65,21 @@ describe('sanitizeMessageContentForSpeech', () => {
   })
 })
 
+describe('normalizeMessagePreviewText', () => {
+  it('normalizes whitespace in plain preview text', () => {
+    expect(normalizeMessagePreviewText('  Hello\n\nworld  ')).toBe('Hello world')
+  })
+
+  it('prefers prose outside closed think tags', () => {
+    expect(normalizeMessagePreviewText('<think>reasoning</think>\n\nFinal answer')).toBe('Final answer')
+  })
+
+  it('falls back to thought text for open or thought-only tags', () => {
+    expect(normalizeMessagePreviewText('<think>still reasoning')).toBe('still reasoning')
+    expect(normalizeMessagePreviewText('<think>only thought</think>')).toBe('only thought')
+  })
+})
+
 describe('sanitizeAgentProgressUpdateForDisplay', () => {
   const baseUpdate: AgentProgressUpdate = {
     sessionId: 'test',
@@ -95,5 +111,23 @@ describe('sanitizeAgentProgressUpdateForDisplay', () => {
     expect(result.conversationHistory![0].content).toBe('Here: [Image: pic]')
     expect(result.conversationHistory![1].content).toBe('plain text')
     expect(result.sessionId).toBe('test')
+  })
+
+  it('sanitizes display-only history content', () => {
+    const update: AgentProgressUpdate = {
+      ...baseUpdate,
+      conversationHistory: [
+        {
+          role: 'assistant',
+          content: 'Stored answer',
+          displayContent: '<think>reasoning</think>\n\n![pic](data:image/png;base64,x)',
+        },
+      ],
+    }
+
+    const result = sanitizeAgentProgressUpdateForDisplay(update)
+
+    expect(result.conversationHistory![0].content).toBe('Stored answer')
+    expect(result.conversationHistory![0].displayContent).toBe('<think>reasoning</think>\n\n[Image: pic]')
   })
 })

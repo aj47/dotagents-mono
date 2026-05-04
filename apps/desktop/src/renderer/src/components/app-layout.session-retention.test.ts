@@ -6,11 +6,24 @@ const appLayoutSource = readFileSync(new URL("./app-layout.tsx", import.meta.url
 describe("app layout session retention", () => {
   it("keeps store-backed sessions in the collapsed active preview list", () => {
     expect(appLayoutSource).toContain("const trackedActiveSessions = sessionData?.activeSessions ?? []")
-    expect(appLayoutSource).toContain("const recentCompletedSessions =")
-    expect(appLayoutSource).toContain("sessionData?.recentCompletedSessions ?? sessionData?.recentSessions ?? []")
     expect(appLayoutSource).toContain("for (const [sessionId, progress] of agentProgressById.entries())")
-    expect(appLayoutSource).toContain('status: "active"')
+    expect(appLayoutSource).toContain('status: progress.isComplete')
     expect(appLayoutSource).toContain("const isVisiblyActive = isFocused || !isSnoozed")
+  })
+
+  it("shows compact multi-character labels for collapsed session previews", () => {
+    expect(appLayoutSource).toContain('const collapsedTitle = title.replace(/\\s+/g, " ")')
+    expect(appLayoutSource).toContain('rounded-md px-0.5 transition-all duration-200')
+    expect(appLayoutSource).toContain(
+      'max-w-[calc(100%-0.375rem)] line-clamp-2 text-center text-[8px] font-medium leading-[0.6rem] tracking-tight [overflow-wrap:anywhere]',
+    )
+    expect(appLayoutSource).toContain("const handleCollapsedSessionsOverviewClick = useCallback(() => {")
+    expect(appLayoutSource).toContain("setSavedConversationsDialogOpen(true)")
+    expect(appLayoutSource).toContain("handleCollapsedSessionsOverviewClick()")
+    expect(appLayoutSource).toContain("const handleCollapsedSessionClick = useCallback(")
+    expect(appLayoutSource).toContain("setScrollToSessionId(sessionId)")
+    expect(appLayoutSource).toContain('aria-label={`Open session ${title}`}')
+    expect(appLayoutSource).not.toContain('const initial = title.charAt(0).toUpperCase()')
   })
 
   it("lets settings move up when the expanded session list shrinks", () => {

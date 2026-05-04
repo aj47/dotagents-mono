@@ -22,7 +22,11 @@ import { formatRepeatTaskTitle } from "@shared/repeat-tasks"
 import {
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
+  getSidebarActivityPresentation,
+  getLatestAgentResponseTimestamp,
+  getSidebarProgressTitle,
   getSessionIdsWithActiveChildProgress,
+  getSubagentTitleBySessionIdMap,
   getSubagentParentSessionIdMap,
   hasUnreadAgentResponse,
   isSidebarSessionCurrentlyViewed,
@@ -131,39 +135,9 @@ function formatMinutesAgo(timestamp: number): string | null {
   return formatSidebarDuration(timestamp)
 }
 
-function getSidebarSessionPreview(progress?: AgentProgressUpdate | null): string | null {
-  if (!progress) return null
-  if (progress.userResponse) return progress.userResponse
-  if (progress.latestSummary?.actionSummary) return progress.latestSummary.actionSummary
-
-  const latestStep = progress.steps?.[progress.steps.length - 1]
-  if (latestStep?.description) return latestStep.description
-  if (latestStep?.title) return latestStep.title
-
-  if (progress.conversationHistory?.length) {
-    for (let index = progress.conversationHistory.length - 1; index >= 0; index -= 1) {
-      const message = progress.conversationHistory[index]
-      if (message.role !== "assistant" || !message.content) continue
-      return typeof message.content === "string" ? message.content : JSON.stringify(message.content)
-    }
-  }
-
-  if (progress.streamingContent?.text) return progress.streamingContent.text
-  return null
-}
-
-function isAnalyzingOrPlanningProgress(progress?: AgentProgressUpdate | null): boolean {
-  if (!progress || progress.isComplete) return false
-
-  const latestStep = progress.steps?.[progress.steps.length - 1]
-  if (!latestStep || latestStep.status !== "in_progress") return false
-
-  const activeStepText = `${latestStep.title ?? ""} ${latestStep.description ?? ""}`.toLowerCase()
-  return activeStepText.includes("analyzing") || activeStepText.includes("planning")
-}
-
 const DEFAULT_VISIBLE_SIDEBAR_SESSIONS = 5
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 5
+const FINAL_RESPONSE_RETENTION_MS = 10_000
 
 const IS_MAC = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")
 const SHORTCUT_MOD_SYMBOL = IS_MAC ? "⌘" : "Ctrl"
@@ -307,38 +281,48 @@ export function ActiveAgentsSidebar({
     const subagentParentSessionIds = getSubagentParentSessionIdMap(
       agentProgressById.entries(),
     )
+    const subagentTitleBySessionId = getSubagentTitleBySessionIdMap(
+      agentProgressById.entries(),
+    )
     const mergedSessions = new Map(
       trackedActiveSessions.map((session) => [session.id, session] as const),
     )
 
     for (const [sessionId, progress] of agentProgressById.entries()) {
-      // Keep errored and user-stopped sessions visible in the sidebar so the
-      // user can still see their final state until they explicitly dismiss
-      // them (see issue #302). Previously these were filtered out, which
-      // made the kill switch appear to silently jump focus elsewhere.
-
       const existingSession = mergedSessions.get(sessionId)
       const firstHistoryTimestamp = progress.conversationHistory?.[0]?.timestamp
       const lastHistoryTimestamp = progress.conversationHistory?.[
         progress.conversationHistory.length - 1
       ]?.timestamp
+      const parentSessionId =
+        progress.parentSessionId ??
+        subagentParentSessionIds.get(sessionId) ??
+        existingSession?.parentSessionId
+      const conversationTitle = getSidebarProgressTitle(
+        sessionId,
+        progress,
+        subagentTitleBySessionId,
+        existingSession?.conversationTitle,
+      )
 
       mergedSessions.set(sessionId, {
         id: sessionId,
         conversationId: progress.conversationId ?? existingSession?.conversationId,
-        parentSessionId:
-          progress.parentSessionId ??
-          subagentParentSessionIds.get(sessionId) ??
-          existingSession?.parentSessionId,
-        conversationTitle:
-          progress.conversationTitle ?? existingSession?.conversationTitle,
-        status: "active",
+        parentSessionId,
+        conversationTitle,
+        status: progress.isComplete
+          ? existingSession?.status === "error" ||
+            existingSession?.status === "stopped"
+            ? existingSession.status
+            : "completed"
+          : (existingSession?.status ?? "active"),
         startTime:
           existingSession?.startTime ??
           firstHistoryTimestamp ??
           lastHistoryTimestamp ??
           Date.now(),
-        endTime: existingSession?.endTime,
+        endTime: existingSession?.endTime ??
+          (progress.isComplete ? lastHistoryTimestamp : undefined),
         currentIteration:
           progress.currentIteration ?? existingSession?.currentIteration,
         maxIterations: progress.maxIterations ?? existingSession?.maxIterations,
@@ -495,6 +479,39 @@ export function ActiveAgentsSidebar({
     }
     return map
   }, [repeatTasksQuery.data])
+  const [sidebarRetentionNow, setSidebarRetentionNow] = useState(() => Date.now())
+  const recentFinalResponseState = useMemo(() => {
+    const sessionIds = new Set<string>()
+    let nextExpirationAt: number | null = null
+
+    for (const [sessionId, progress] of agentProgressById.entries()) {
+      const sidebarActivity = getSidebarActivityPresentation(progress)
+      if (sidebarActivity.kind !== "response") continue
+
+      const latestResponseTimestamp = getLatestAgentResponseTimestamp(progress)
+      if (latestResponseTimestamp === null) continue
+
+      const expirationAt = latestResponseTimestamp + FINAL_RESPONSE_RETENTION_MS
+      if (expirationAt <= sidebarRetentionNow) continue
+
+      sessionIds.add(sessionId)
+      nextExpirationAt = nextExpirationAt === null
+        ? expirationAt
+        : Math.min(nextExpirationAt, expirationAt)
+    }
+
+    return { sessionIds, nextExpirationAt }
+  }, [agentProgressById, sidebarRetentionNow])
+
+  useEffect(() => {
+    if (recentFinalResponseState.nextExpirationAt === null) return undefined
+
+    const timeoutId = globalThis.setTimeout(() => {
+      setSidebarRetentionNow(Date.now())
+    }, Math.max(0, recentFinalResponseState.nextExpirationAt - Date.now()))
+
+    return () => globalThis.clearTimeout(timeoutId)
+  }, [recentFinalResponseState.nextExpirationAt])
 
   const {
     userSidebarSessions: allUserSidebarSessions,
@@ -1013,13 +1030,15 @@ export function ActiveAgentsSidebar({
               viewedConversationId: isSessionsRoute ? viewedConversationId : null,
             })
             const sessionProgress = agentProgressById.get(session.id)
+            const sidebarActivity = getSidebarActivityPresentation(sessionProgress, {
+              fallbackErrorText: session.status === "error" ? session.errorMessage : null,
+            })
+            const hasRecentFinalResponse = recentFinalResponseState.sessionIds.has(session.id)
             const hasUnreadResponse = hasUnreadAgentResponse(
               sessionProgress,
               agentResponseReadAtBySessionId.get(session.id),
               isCurrentView,
             )
-            const hasAnalyzingOrPlanningProgress =
-              isAnalyzingOrPlanningProgress(sessionProgress)
             const conversationTimestamp =
               sessionProgress?.conversationHistory &&
               sessionProgress.conversationHistory.length > 0
@@ -1058,7 +1077,8 @@ export function ActiveAgentsSidebar({
               isSessionExpanded,
               hasActiveChildProgress,
               hasUnreadResponse,
-              hasAnalyzingOrPlanningProgress,
+              hasForegroundActivity: sidebarActivity.isForegroundActivity,
+              hasRecentFinalResponse,
             })
 
             if (isSavedConversation) {
@@ -1150,6 +1170,8 @@ export function ActiveAgentsSidebar({
             const isInactiveRepeatTask =
               !!repeatTaskLoop &&
               (session.status !== "active" || sessionProgress?.isComplete === true)
+            const canStopSession =
+              session.status === "active" && sessionProgress?.isComplete !== true
             const statusRailColor = sidebarStatusPresentation.railClassName
             const shouldPulseStatus = sidebarStatusPresentation.shouldPulse
             const isLifecycleNeedsInput = sidebarStatusPresentation.lifecycleState === "needs_input"
@@ -1158,7 +1180,8 @@ export function ActiveAgentsSidebar({
             const isActivePinned = session.conversationId
               ? pinnedSessionIds.has(session.conversationId)
               : false
-            const sessionPreview = getSidebarSessionPreview(sessionProgress)
+            const sessionPreview = sidebarActivity.detail
+            const isFinalResponsePreview = hasRecentFinalResponse && !!sessionPreview
             const normalizedNestingDepth = Math.max(
               0,
               Math.min(nestingDepth, 2),
@@ -1168,7 +1191,7 @@ export function ActiveAgentsSidebar({
             const showSessionDetails =
               !forceSingleLine &&
               !isNestedSubagent &&
-              (sessionPreview || lastMessageMinutesAgo)
+              (sidebarActivity.detail || lastMessageMinutesAgo)
 
             return (
               <div
@@ -1262,6 +1285,7 @@ export function ActiveAgentsSidebar({
                               : sidebarStatusPresentation.intent === "background"
                                 ? "text-muted-foreground"
                                 : "text-foreground",
+                        isFinalResponsePreview && !isNestedSubagent && "text-[11px] font-normal text-muted-foreground",
                       ),
                       isLifecycleNeedsInput ? "⚠ " : undefined,
                       isCurrentView,
@@ -1290,7 +1314,12 @@ export function ActiveAgentsSidebar({
                     >
                       {sessionPreview && (
                         <span
-                          className="min-w-0 flex-1 truncate text-[11px] leading-4 text-muted-foreground"
+                          className={cn(
+                            "min-w-0 flex-1 truncate leading-4",
+                            isFinalResponsePreview
+                              ? "text-[12px] font-medium text-foreground"
+                              : "text-[11px] text-muted-foreground",
+                          )}
                           title={sessionPreview}
                         >
                           {sessionPreview}
@@ -1318,20 +1347,22 @@ export function ActiveAgentsSidebar({
                     <Play className="h-3 w-3" />
                   </button>
                 )}
-                <div
-                  className={cn(
-                    "bg-background/90 absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0 rounded-sm pl-1 opacity-0 transition-opacity",
-                    "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
-                  )}
-                >
-                  <button
-                    onClick={(e) => handleStopSession(session.id, e)}
-                    className="flex h-5 w-5 items-center justify-center hover:bg-destructive/20 hover:text-destructive shrink-0 rounded transition-all"
-                    title="Stop this agent session"
+                {canStopSession && (
+                  <div
+                    className={cn(
+                      "bg-background/90 absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0 rounded-sm pl-1 opacity-0 transition-opacity",
+                      "pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
+                    )}
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
+                    <button
+                      onClick={(e) => handleStopSession(session.id, e)}
+                      className="flex h-5 w-5 items-center justify-center hover:bg-destructive/20 hover:text-destructive shrink-0 rounded transition-all"
+                      title="Stop this agent session"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
               </div>
             )
             }

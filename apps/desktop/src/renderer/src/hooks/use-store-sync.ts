@@ -16,6 +16,12 @@ const areStringArraysEqual = (left: string[], right: string[]): boolean => {
   return true
 }
 
+// Module-level snapshots of the store state at the moment this module loads.
+// These survive component remounts (e.g. React Strict Mode, HMR, navigation)
+// so pre-hydration mutations are never lost to a late hydration overwrite.
+let initialPinnedSessionIdsSnapshot: string[] | null = null
+let initialArchivedSessionIdsSnapshot: string[] | null = null
+
 export function useStoreSync() {
   const updateSessionProgress = useAgentStore((s) => s.updateSessionProgress)
   const clearAllProgress = useAgentStore((s) => s.clearAllProgress)
@@ -33,12 +39,20 @@ export function useStoreSync() {
   const setArchivedSessionIds = useAgentStore((s) => s.setArchivedSessionIds)
   const setFloatingPanelVisible = useAgentStore((s) => s.setFloatingPanelVisible)
   const markConversationCompleted = useConversationStore((s) => s.markConversationCompleted)
-  const initialPinnedSessionIdsRef = useRef(Array.from(pinnedSessionIds))
+
+  // Capture the initial store snapshot once per module load so remounts
+  // cannot reset the baseline used to detect pre-hydration user mutations.
+  if (initialPinnedSessionIdsSnapshot === null) {
+    initialPinnedSessionIdsSnapshot = Array.from(pinnedSessionIds)
+  }
+  if (initialArchivedSessionIdsSnapshot === null) {
+    initialArchivedSessionIdsSnapshot = Array.from(archivedSessionIds)
+  }
+
   const pinnedSessionIdsHydratedRef = useRef(false)
   const pinnedSessionIdsChangedBeforeHydrationRef = useRef(false)
   const lastPersistedPinnedSessionIdsRef = useRef<string[]>([])
   const lastPersistedPinnedSessionIdsRevisionRef = useRef(pinnedSessionIdsRevision)
-  const initialArchivedSessionIdsRef = useRef(Array.from(archivedSessionIds))
   const archivedSessionIdsHydratedRef = useRef(false)
   const archivedSessionIdsChangedBeforeHydrationRef = useRef(false)
   const lastPersistedArchivedSessionIdsRef = useRef<string[]>([])
@@ -182,7 +196,7 @@ export function useStoreSync() {
     if (pinnedSessionIdsHydratedRef.current) return
 
     const currentPinnedSessionIds = Array.from(pinnedSessionIds)
-    if (!areStringArraysEqual(currentPinnedSessionIds, initialPinnedSessionIdsRef.current)) {
+    if (!areStringArraysEqual(currentPinnedSessionIds, initialPinnedSessionIdsSnapshot ?? [])) {
       pinnedSessionIdsChangedBeforeHydrationRef.current = true
     }
   }, [pinnedSessionIds])
@@ -204,7 +218,10 @@ export function useStoreSync() {
       pinnedSessionIdsHydratedRef.current = true
 
       if (pinnedSessionIdsChangedBeforeHydrationRef.current) {
-        setPinnedSessionIds(Array.from(useAgentStore.getState().pinnedSessionIds))
+        const currentStoreValue = Array.from(useAgentStore.getState().pinnedSessionIds)
+        lastPersistedPinnedSessionIdsRef.current = currentStoreValue
+        lastPersistedPinnedSessionIdsRevisionRef.current = useAgentStore.getState().pinnedSessionIdsRevision
+        setPinnedSessionIds(currentStoreValue)
         return
       }
 
@@ -216,7 +233,10 @@ export function useStoreSync() {
       pinnedSessionIdsHydratedRef.current = true
 
       if (pinnedSessionIdsChangedBeforeHydrationRef.current) {
-        setPinnedSessionIds(Array.from(useAgentStore.getState().pinnedSessionIds))
+        const currentStoreValue = Array.from(useAgentStore.getState().pinnedSessionIds)
+        lastPersistedPinnedSessionIdsRef.current = currentStoreValue
+        lastPersistedPinnedSessionIdsRevisionRef.current = useAgentStore.getState().pinnedSessionIdsRevision
+        setPinnedSessionIds(currentStoreValue)
       }
     })
 
@@ -265,7 +285,7 @@ export function useStoreSync() {
     if (archivedSessionIdsHydratedRef.current) return
 
     const currentArchivedSessionIds = Array.from(archivedSessionIds)
-    if (!areStringArraysEqual(currentArchivedSessionIds, initialArchivedSessionIdsRef.current)) {
+    if (!areStringArraysEqual(currentArchivedSessionIds, initialArchivedSessionIdsSnapshot ?? [])) {
       archivedSessionIdsChangedBeforeHydrationRef.current = true
     }
   }, [archivedSessionIds])
@@ -288,7 +308,10 @@ export function useStoreSync() {
       archivedSessionIdsHydratedRef.current = true
 
       if (archivedSessionIdsChangedBeforeHydrationRef.current) {
-        setArchivedSessionIds(Array.from(useAgentStore.getState().archivedSessionIds))
+        const currentStoreValue = Array.from(useAgentStore.getState().archivedSessionIds)
+        lastPersistedArchivedSessionIdsRef.current = currentStoreValue
+        lastPersistedArchivedSessionIdsRevisionRef.current = useAgentStore.getState().archivedSessionIdsRevision
+        setArchivedSessionIds(currentStoreValue)
         return
       }
 
@@ -300,7 +323,10 @@ export function useStoreSync() {
       archivedSessionIdsHydratedRef.current = true
 
       if (archivedSessionIdsChangedBeforeHydrationRef.current) {
-        setArchivedSessionIds(Array.from(useAgentStore.getState().archivedSessionIds))
+        const currentStoreValue = Array.from(useAgentStore.getState().archivedSessionIds)
+        lastPersistedArchivedSessionIdsRef.current = currentStoreValue
+        lastPersistedArchivedSessionIdsRevisionRef.current = useAgentStore.getState().archivedSessionIdsRevision
+        setArchivedSessionIds(currentStoreValue)
       }
     })
 

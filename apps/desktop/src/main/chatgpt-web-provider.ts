@@ -152,16 +152,17 @@ export function getCodexReasoningOptions(model: string): { effort: CodexReasonin
   if (override === "none") return undefined
 
   const effort = normalizeCodexReasoningEffort(override) || "low"
+  const summary = "auto" as const
   if (isDebugLLM()) {
     logLLM("Applying ChatGPT Codex reasoning effort", {
       model,
       effort,
-      summary: undefined,
+      summary,
       source: override ? "user-config" : "default",
     })
   }
 
-  return { effort }
+  return { effort, summary }
 }
 
 type CodexTextVerbosity = "low" | "medium" | "high"

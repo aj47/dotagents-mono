@@ -69,6 +69,19 @@ describe("session presentation semantics", () => {
     expect(getSidebarStatusPresentation({ conversationState: "complete" }).railClassName).toBe("bg-green-500")
   })
 
+  it("keeps a recent final response visually prominent before settling to complete", () => {
+    const sidebar = getSidebarStatusPresentation({
+      conversationState: "complete",
+      isComplete: true,
+      hasRecentFinalResponse: true,
+    })
+
+    expect(sidebar.railClassName).toBe("bg-emerald-500")
+    expect(sidebar.pinnedIconClassName).toBe("text-emerald-500")
+    expect(sidebar.shouldPulse).toBe(false)
+    expect(sidebar.isForeground).toBe(true)
+  })
+
   it("derives composer modes from lifecycle and queue availability", () => {
     expect(getFollowUpInputPresentation({ isInitializingSession: true }).mode).toBe("initializing")
     expect(getFollowUpInputPresentation({ conversationState: "running", isQueueEnabled: true })).toMatchObject({
@@ -92,6 +105,8 @@ describe("session presentation semantics", () => {
   it("treats active attention signals as foreground without changing lifecycle", () => {
     expect(deriveAttentionState({ conversationState: "running", isSnoozed: true, hasUnreadResponse: true })).toBe("foreground")
     expect(deriveAttentionState({ conversationState: "running", isSnoozed: true, hasAnalyzingOrPlanningProgress: true })).toBe("foreground")
+    expect(deriveAttentionState({ conversationState: "running", isSnoozed: true, hasForegroundActivity: true })).toBe("foreground")
+    expect(deriveAttentionState({ conversationState: "complete", hasRecentFinalResponse: true })).toBe("foreground")
     expect(deriveLifecycleState({ conversationState: "running", isSnoozed: true, hasUnreadResponse: true })).toBe("running")
   })
 })

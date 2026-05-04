@@ -3,10 +3,14 @@ import { describe, expect, it } from "vitest"
 import {
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
+  getSidebarActivityPresentation,
+  getSidebarProgressTitle,
   getSubagentParentSessionIdMap,
+  getSubagentTitleBySessionIdMap,
   getSessionIdsWithActiveChildProgress,
   getLatestAgentResponseTimestamp,
   hasUnreadAgentResponse,
+  isProgressLiveForSidebar,
   isSidebarSessionCurrentlyViewed,
   isTaskSession,
   nestSubagentSessionEntries,
@@ -74,6 +78,284 @@ describe("getSubagentParentSessionIdMap", () => {
 
     expect(parentMap.get("subagent-1")).toBe("parent-1")
     expect(parentMap.get("subagent-run-1")).toBe("parent-1")
+  })
+})
+
+describe("getSubagentTitleBySessionIdMap", () => {
+  it("uses delegated task text as the title for subagent session ids", () => {
+    const titles = getSubagentTitleBySessionIdMap(
+      new Map([
+        [
+          "parent-1",
+          {
+            steps: [
+              {
+                id: "delegation-subagent-1",
+                type: "tool_call",
+                title: "Delegation",
+                status: "completed",
+                timestamp: 1,
+                delegation: {
+                  runId: "subagent-run-1",
+                  subSessionId: "subagent-1",
+                  agentName: "Internal",
+                  task: "Summarize trace failures",
+                  status: "completed",
+                  startTime: 1,
+                },
+              },
+            ],
+          },
+        ],
+      ]),
+    )
+
+    expect(titles.get("subagent-1")).toBe("Summarize trace failures")
+    expect(titles.get("subagent-run-1")).toBe("Summarize trace failures")
+  })
+})
+
+describe("getSidebarProgressTitle", () => {
+  it("prefers explicit title, then delegation task, then first user message", () => {
+    const delegationTitles = new Map([["subagent-1", "Delegated research task"]])
+
+    expect(
+      getSidebarProgressTitle(
+        "subagent-1",
+        { conversationTitle: "Explicit", steps: [] },
+        delegationTitles,
+      ),
+    ).toBe("Explicit")
+
+    expect(
+      getSidebarProgressTitle("subagent-1", { steps: [] }, delegationTitles),
+    ).toBe("Delegated research task")
+
+    expect(
+      getSidebarProgressTitle(
+        "session-1",
+        {
+          steps: [],
+          conversationHistory: [
+            { role: "user", content: "Find the root cause", timestamp: 1 },
+          ],
+        },
+        delegationTitles,
+      ),
+    ).toBe("Find the root cause")
+  })
+
+  it("ignores generic continuation placeholders when real conversation text exists", () => {
+    expect(
+      getSidebarProgressTitle(
+        "session-1",
+        {
+          conversationTitle: "Continue Conversation",
+          steps: [],
+          conversationHistory: [
+            { role: "user", content: "Fix the failing sidebar error preview", timestamp: 1 },
+          ],
+        },
+        new Map(),
+      ),
+    ).toBe("Fix the failing sidebar error preview")
+  })
+})
+
+describe("getSidebarActivityPresentation", () => {
+  it("prefers live tool-call state with the tool name over stale response text", () => {
+    const activity = getSidebarActivityPresentation({
+      isComplete: false,
+      userResponse: "Older visible response",
+      steps: [
+        {
+          id: "tool-1",
+          type: "tool_call",
+          title: "Reading file",
+          description: "Inspecting active-agents-sidebar.tsx",
+          status: "in_progress",
+          timestamp: 2,
+          toolCall: { name: "functions.view", arguments: { path: "file.ts" } },
+        },
+      ],
+    })
+
+    expect(activity).toMatchObject({
+      kind: "tool_call",
+      label: "Using view",
+      detail: "Inspecting active-agents-sidebar.tsx",
+      isForegroundActivity: true,
+    })
+  })
+
+  it("prefers an active tool call over a newer thinking step", () => {
+    const activity = getSidebarActivityPresentation({
+      isComplete: false,
+      steps: [
+        {
+          id: "tool-1",
+          type: "tool_call",
+          title: "Reading file",
+          description: "Inspecting source",
+          status: "in_progress",
+          timestamp: 2,
+          toolCall: { name: "functions.view", arguments: { path: "file.ts" } },
+        },
+        {
+          id: "thinking-1",
+          type: "thinking",
+          title: "Thinking",
+          description: "Agent is thinking...",
+          status: "in_progress",
+          timestamp: 3,
+        },
+      ],
+    })
+
+    expect(activity).toMatchObject({
+      kind: "tool_call",
+      label: "Using view",
+      detail: "Inspecting source",
+      isForegroundActivity: true,
+    })
+  })
+
+  it("prefers concrete error text over generic errored thinking copy", () => {
+    const activity = getSidebarActivityPresentation({
+      isComplete: true,
+      finalContent: "Error: MCP server failed to connect",
+      steps: [
+        {
+          id: "thinking-1",
+          type: "thinking",
+          title: "Analyzing request",
+          description: "Processing your request and determining next steps",
+          status: "error",
+          timestamp: 1,
+        },
+      ],
+    })
+
+    expect(activity).toMatchObject({
+      kind: "blocked",
+      label: "Error",
+      detail: "MCP server failed to connect",
+      isForegroundActivity: true,
+    })
+  })
+
+  it("uses fallback session error text when session status is blocked but progress has no error step", () => {
+    const activity = getSidebarActivityPresentation(
+      {
+        isComplete: false,
+        steps: [
+          {
+            id: "thinking-1",
+            type: "thinking",
+            title: "Analyzing request",
+            description: "Processing your request and determining next steps",
+            status: "in_progress",
+            timestamp: 1,
+          },
+        ],
+      },
+      { fallbackErrorText: "Request timed out while starting the run" },
+    )
+
+    expect(activity).toMatchObject({
+      kind: "blocked",
+      label: "Error",
+      detail: "Request timed out while starting the run",
+      isForegroundActivity: true,
+    })
+  })
+
+  it("surfaces final user-facing responses before summaries or completed tool steps", () => {
+    const activity = getSidebarActivityPresentation({
+      isComplete: true,
+      userResponse: "Here is the final answer.",
+      latestSummary: {
+        id: "summary-1",
+        sessionId: "session-1",
+        stepNumber: 3,
+        timestamp: 3,
+        actionSummary: "Updated files",
+      },
+      steps: [
+        {
+          id: "tool-1",
+          type: "tool_call",
+          title: "Edited code",
+          status: "completed",
+          timestamp: 2,
+          toolCall: { name: "apply_patch", arguments: {} },
+        },
+      ],
+    })
+
+    expect(activity).toMatchObject({
+      kind: "response",
+      label: "Response",
+      detail: "Here is the final answer.",
+      isForegroundActivity: false,
+    })
+  })
+
+  it("marks thinking and delegation as foreground activity", () => {
+    expect(
+      getSidebarActivityPresentation({
+        isComplete: false,
+        steps: [
+          {
+            id: "thinking-1",
+            type: "thinking",
+            title: "Thinking",
+            description: "Planning the state model",
+            status: "in_progress",
+            timestamp: 1,
+          },
+        ],
+      }),
+    ).toMatchObject({ kind: "thinking", label: "Thinking", isForegroundActivity: true })
+
+    expect(
+      getSidebarActivityPresentation({
+        isComplete: false,
+        steps: [
+          {
+            id: "subagent-1",
+            type: "tool_call",
+            title: "Delegating",
+            status: "in_progress",
+            timestamp: 1,
+            delegation: {
+              runId: "run-1",
+              agentName: "explore",
+              task: "Find sidebar state code",
+              status: "running",
+              startTime: 1,
+            },
+          },
+        ],
+      }),
+    ).toMatchObject({
+      kind: "delegation",
+      label: "Subagent",
+      detail: "Find sidebar state code",
+      isForegroundActivity: true,
+    })
+  })
+})
+
+describe("sidebar progress lifecycle helpers", () => {
+  it("distinguishes live progress from completed progress", () => {
+    const completedProgress = { isComplete: true, steps: [] }
+
+    expect(isProgressLiveForSidebar(completedProgress)).toBe(false)
+  })
+
+  it("treats running progress as live", () => {
+    expect(isProgressLiveForSidebar({ isComplete: false, steps: [] })).toBe(true)
   })
 })
 
@@ -559,6 +841,34 @@ describe("agent response unread helpers", () => {
     })
 
     expect(latestTimestamp).toBe(300)
+  })
+
+  it("falls back to summary or step timestamps for untimestamped final responses", () => {
+    const latestTimestamp = getLatestAgentResponseTimestamp({
+      sessionId: "session-untimestamped",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [
+        {
+          id: "completion-1",
+          type: "completion",
+          title: "Done",
+          status: "completed",
+          timestamp: 450,
+        },
+      ],
+      isComplete: true,
+      userResponse: "Here is the final answer.",
+      latestSummary: {
+        id: "summary-untimestamped",
+        sessionId: "session-untimestamped",
+        stepNumber: 1,
+        timestamp: 400,
+        actionSummary: "Completed the run",
+      },
+    })
+
+    expect(latestTimestamp).toBe(450)
   })
 
   it("marks a newer unseen agent response as unread", () => {

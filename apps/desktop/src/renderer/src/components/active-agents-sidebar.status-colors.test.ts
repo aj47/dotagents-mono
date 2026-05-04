@@ -39,19 +39,37 @@ describe("active agents sidebar status colors", () => {
     expect(sidebarSource).toContain(': "bg-muted-foreground/60"')
   })
 
-  it("passes unread and analyzing/planning attention to the blue foreground status", () => {
+  it("passes unread and derived live activity attention to the blue foreground status", () => {
     expect(sidebarSource).toContain("const hasUnreadResponse = hasUnreadAgentResponse(")
     expect(sidebarSource).toContain("hasUnreadResponse,")
-    expect(sidebarSource).toContain("hasAnalyzingOrPlanningProgress,")
+    expect(sidebarSource).toContain("const sidebarActivity = getSidebarActivityPresentation(sessionProgress, {")
+    expect(sidebarSource).toContain('fallbackErrorText: session.status === "error" ? session.errorMessage : null')
+    expect(sidebarSource).toContain("hasForegroundActivity: sidebarActivity.isForegroundActivity")
     expect(presentationSource).toContain('railClassName: "bg-blue-500"')
     expect(presentationSource).toContain("shouldPulse: true")
   })
 
-  it("treats analyzing/planning progress as an active blue sidebar status", () => {
-    expect(sidebarSource).toContain("function isAnalyzingOrPlanningProgress")
-    expect(sidebarSource).toContain('latestStep.status !== "in_progress"')
-    expect(sidebarSource).toContain('activeStepText.includes("analyzing")')
-    expect(sidebarSource).toContain('activeStepText.includes("planning")')
+  it("uses semantic activity for rail attention and preview without cramped text badges", () => {
+    expect(sidebarSource).toContain("const sessionPreview = sidebarActivity.detail")
+    expect(sidebarSource).not.toContain("showInlineActivityBadge")
+    expect(sidebarSource).not.toContain("sidebarActivity.badgeClassName")
+    expect(sidebarSource).not.toContain("{sidebarActivity.label}")
+  })
+
+  it("retains recent final responses before settling back to the normal complete rail", () => {
+    expect(sidebarSource).toContain("getLatestAgentResponseTimestamp")
+    expect(sidebarSource).toContain("const FINAL_RESPONSE_RETENTION_MS = 10_000")
+    expect(sidebarSource).toContain("const hasRecentFinalResponse = recentFinalResponseState.sessionIds.has(session.id)")
+    expect(sidebarSource).toContain("hasRecentFinalResponse,")
+    expect(presentationSource).toContain('intent: "response", railClassName: "bg-emerald-500"')
+  })
+
+  it("makes the final agent response the visually primary sidebar copy", () => {
+    expect(sidebarSource).toContain('const isFinalResponsePreview = hasRecentFinalResponse && !!sessionPreview')
+    expect(sidebarSource).toContain(
+      'isFinalResponsePreview && !isNestedSubagent && "text-[11px] font-normal text-muted-foreground"',
+    )
+    expect(sidebarSource).toContain('? "text-[12px] font-medium text-foreground"')
   })
 
   it("uses muted gray for background-running and green only for complete/success", () => {

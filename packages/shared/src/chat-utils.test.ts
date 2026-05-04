@@ -69,18 +69,22 @@ describe('getToolCallsSummary', () => {
     expect(getToolCallsSummary([])).toBe('')
   })
 
-  it('returns tool-name-only previews', () => {
+  it('returns the first command token for execute_command and tool-name for others', () => {
     const calls = [
       { name: 'execute_command', arguments: { command: 'pnpm test' } },
       { name: 'read_file', arguments: { path: 'apps/desktop/src/main.ts' } },
     ]
-    expect(getToolCallsSummary(calls)).toBe('execute_command, read_file')
+    expect(getToolCallsSummary(calls)).toBe('pnpm, read_file')
   })
 })
 
 describe('getToolCallPreview', () => {
-  it('returns only the tool name for execute_command', () => {
-    expect(getToolCallPreview({ name: 'execute_command', arguments: { command: 'git status --short' } })).toBe('execute_command')
+  it('returns the first command token for execute_command', () => {
+    expect(getToolCallPreview({ name: 'execute_command', arguments: { command: 'git status --short' } })).toBe('git')
+  })
+
+  it('falls back to the tool name when execute_command has no command argument', () => {
+    expect(getToolCallPreview({ name: 'execute_command', arguments: {} })).toBe('execute_command')
   })
 
   it('omits common structured tool arguments', () => {

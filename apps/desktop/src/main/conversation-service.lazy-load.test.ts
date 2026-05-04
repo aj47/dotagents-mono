@@ -82,4 +82,32 @@ describe("conversation lazy loading", () => {
     expect(loaded?.branchMessageIndexOffset).toBe(3)
     expect(loaded).not.toHaveProperty("rawMessages")
   })
+
+  it("persists display-only message content separately from canonical content", async () => {
+    const service = await setupConversationServiceTest()
+    await service.saveConversation({
+      id: "conv_display_content",
+      title: "Display content",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [{ id: "m1", role: "user", content: "Start", timestamp: 1 }],
+    }, true)
+
+    await service.addMessageToConversation(
+      "conv_display_content",
+      "Stored answer",
+      "assistant",
+      undefined,
+      undefined,
+      { displayContent: "<think>reasoning</think>\n\nStored answer" },
+    )
+
+    const loaded = await service.loadConversation("conv_display_content")
+
+    expect(loaded?.messages[1]).toMatchObject({
+      role: "assistant",
+      content: "Stored answer",
+      displayContent: "<think>reasoning</think>\n\nStored answer",
+    })
+  })
 })

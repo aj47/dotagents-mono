@@ -145,6 +145,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-internal-summary-filter",
       "session-provider-error-after-stop",
       "session-abort-after-stop",
+      "session-prior-display-content",
     )
   })
 
@@ -171,6 +172,39 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     )
 
     expect(mocks.diagnosticsLogError).toHaveBeenCalledWith("llm", "Agent LLM call failed", providerError)
+  })
+
+  it("keeps prior display-only thinking blocks in UI history without replaying them to the model", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({ content: "Current answer", toolCalls: [] })
+
+    const result = await processTranscriptWithAgentMode(
+      "Continue",
+      availableTools as any,
+      makeExecuteToolCall("session-prior-display-content", 14),
+      1,
+      [{
+        role: "assistant",
+        content: "Prior answer",
+        displayContent: "<think>prior reasoning</think>\n\nPrior answer",
+      }],
+      "conv-prior-display-content",
+      "session-prior-display-content",
+      undefined,
+      undefined,
+      14,
+    )
+
+    expect(result.conversationHistory[0]).toMatchObject({
+      role: "assistant",
+      content: "Prior answer",
+      displayContent: "<think>prior reasoning</think>\n\nPrior answer",
+    })
+    const firstPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(firstPrompt).toContain("Prior answer")
+    expect(firstPrompt).not.toContain("prior reasoning")
   })
 
   it("logs diagnostics for unrelated provider errors even when the global stop flag is active", async () => {
@@ -530,6 +564,8 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.content).not.toContain("<think>")
     expect(result.conversationHistory.some((message) => message.role === "assistant" && message.content.includes("<think>"))).toBe(false)
     expect(mocks.addMessageToConversation.mock.calls.some((call) => String(call[1] ?? "").includes("<think>"))).toBe(false)
+    expect(result.conversationHistory.some((message) => message.role === "assistant" && message.displayContent?.includes("<think>"))).toBe(true)
+    expect(mocks.addMessageToConversation.mock.calls.some((call) => String(call[5]?.displayContent ?? "").includes("<think>"))).toBe(true)
 
     const progressConversationText = progressUpdates
       .flatMap((update) => update.conversationHistory ?? [])
@@ -547,6 +583,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .map((message: any) => message.content)
       .join("\n")
     expect(secondPrompt).toContain("without first providing the final user-facing answer")
+    expect(secondPrompt).not.toContain("I should inspect more transcript chunks")
   })
 
   it("treats reasoning-summary-only responses as empty and retries", async () => {

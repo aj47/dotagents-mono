@@ -527,6 +527,7 @@ async function processWithAgentMode(
       | Array<{
           role: "user" | "assistant" | "tool"
           content: string
+          displayContent?: string
           toolCalls?: any[]
           toolResults?: any[]
           timestamp?: number
@@ -549,6 +550,7 @@ async function processWithAgentMode(
         previousConversationHistory = messagesToConvert.map((msg, index) => ({
           role: msg.role,
           content: msg.content,
+          ...(msg.displayContent ? { displayContent: msg.displayContent } : {}),
           toolCalls: msg.toolCalls,
           timestamp: msg.timestamp,
           // Convert toolResults from stored format (content as string) to MCPToolResult format (content as array)

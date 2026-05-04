@@ -110,22 +110,12 @@ export const Component = () => {
   const discordEnabled = configQuery.data?.discordEnabled ?? false
   const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
   const trackedActiveSessions = sessionData?.activeSessions ?? []
-  const recentCompletedSessions =
-    sessionData?.recentCompletedSessions ?? sessionData?.recentSessions ?? []
   const collapsedActiveSessions = useMemo(() => {
-    const recentStatusById = new Map(
-      recentCompletedSessions.map((session) => [session.id, session.status] as const),
-    )
     const mergedSessions = new Map(
       trackedActiveSessions.map((session) => [session.id, session] as const),
     )
 
     for (const [sessionId, progress] of agentProgressById.entries()) {
-      const recentStatus = recentStatusById.get(sessionId)
-      if (recentStatus === "stopped" || recentStatus === "error") {
-        continue
-      }
-
       const existingSession = mergedSessions.get(sessionId)
       const firstHistoryTimestamp = progress.conversationHistory?.[0]?.timestamp
       const lastHistoryTimestamp = progress.conversationHistory?.[
@@ -137,13 +127,16 @@ export const Component = () => {
         conversationId: progress.conversationId ?? existingSession?.conversationId,
         conversationTitle:
           progress.conversationTitle ?? existingSession?.conversationTitle,
-        status: "active",
+        status: progress.isComplete
+          ? "completed"
+          : (existingSession?.status ?? "active"),
         startTime:
           existingSession?.startTime ??
           firstHistoryTimestamp ??
           lastHistoryTimestamp ??
           Date.now(),
-        endTime: existingSession?.endTime,
+        endTime: existingSession?.endTime ??
+          (progress.isComplete ? lastHistoryTimestamp : undefined),
         isSnoozed: progress.isSnoozed ?? existingSession?.isSnoozed,
       })
     }
@@ -165,7 +158,7 @@ export const Component = () => {
         0
       return bTimestamp - aTimestamp
     })
-  }, [trackedActiveSessions, recentCompletedSessions, agentProgressById])
+  }, [trackedActiveSessions, agentProgressById])
   const collapsedPreviewSessions = useMemo(
     () => collapsedActiveSessions.slice(0, 3),
     [collapsedActiveSessions],
@@ -305,6 +298,10 @@ export const Component = () => {
     },
     [isEmergencyStopping, setFocusedSessionId],
   )
+
+  const handleCollapsedSessionsOverviewClick = useCallback(() => {
+    setSavedConversationsDialogOpen(true)
+  }, [])
 
   const handleCollapsedSessionClick = useCallback(
     (sessionId: string) => {
@@ -645,6 +642,10 @@ export const Component = () => {
                 <NavLink
                   to="/"
                   end
+                  onClick={(e) => {
+                    e.preventDefault()
+                    handleCollapsedSessionsOverviewClick()
+                  }}
                   className={cn(
                     "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
                     isSessionsActive
@@ -708,7 +709,7 @@ export const Component = () => {
                         : "bg-green-500"
                   const title =
                     session.conversationTitle?.trim() || "Untitled conversation"
-                  const initial = title.charAt(0).toUpperCase()
+                  const collapsedTitle = title.replace(/\s+/g, " ")
 
                   return (
                     <button
@@ -716,7 +717,7 @@ export const Component = () => {
                       type="button"
                       onClick={() => handleCollapsedSessionClick(session.id)}
                       className={cn(
-                        "group relative flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                        "group relative flex h-8 w-full items-center justify-center rounded-md px-0.5 transition-all duration-200",
                         isFocused
                           ? "text-foreground bg-blue-500/15"
                           : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
@@ -724,7 +725,9 @@ export const Component = () => {
                       title={title}
                       aria-label={`Open session ${title}`}
                     >
-                      <span className="text-xs font-semibold">{initial}</span>
+                      <span className="max-w-[calc(100%-0.375rem)] line-clamp-2 text-center text-[8px] font-medium leading-[0.6rem] tracking-tight [overflow-wrap:anywhere]">
+                        {collapsedTitle}
+                      </span>
                       <span
                         className={cn(
                           "border-background absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border",
@@ -742,7 +745,7 @@ export const Component = () => {
                   collapsedPreviewSessions.length && (
                   <button
                     type="button"
-                    onClick={() => navigate("/")}
+                    onClick={handleCollapsedSessionsOverviewClick}
                     className={cn(
                       "flex h-8 w-full items-center justify-center rounded-md text-[10px] font-semibold transition-all duration-200",
                       "text-muted-foreground hover:bg-accent/50 hover:text-foreground",

@@ -23,6 +23,9 @@ describe("saved conversations dialog layout", () => {
     expect(pastSessionsDialogSource).toContain(
       'className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed break-words [overflow-wrap:anywhere]"',
     )
+    expect(pastSessionsDialogSource).toContain(
+      '{entry.isPinned && (',
+    )
   })
 
   it("wraps delete-all confirmation actions instead of clipping them under zoom", () => {
@@ -47,17 +50,21 @@ describe("saved conversations dialog layout", () => {
     expect(pastSessionsDialogSource).toContain(
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
     )
-    expect(pastSessionsDialogSource).toContain('aria-label={`Delete ${session.title}`}')
+    expect(pastSessionsDialogSource).toContain('aria-label={`Delete ${entry.title}`}')
   })
 
   it("includes a keyboard-accessible pin action and pinned-first sort for saved conversations", () => {
     expect(pastSessionsDialogSource).toContain("orderConversationHistoryByPinnedFirst")
+    expect(pastSessionsDialogSource).toContain("const activeConversationsQuery = useQuery<SessionListResponse>({")
+    expect(pastSessionsDialogSource).toContain('entry.kind === "active" ? "Active conversations" : "Saved conversations"')
     expect(pastSessionsDialogSource).toContain("orderConversationHistoryByPinnedFirst(")
     expect(pastSessionsDialogSource).toContain("KEYBOARD_SHORTCUT_HINT")
     expect(pastSessionsDialogSource).toContain("PIN_SHORTCUT_HINT")
     expect(pastSessionsDialogSource).toContain("VOICE_SHORTCUT_HINT")
-    expect(pastSessionsDialogSource).toContain('aria-label={`${isPinned ? "Unpin" : "Pin"} ${session.title}`}')
+    expect(pastSessionsDialogSource).toContain('aria-label={`${entry.isPinned ? "Unpin" : "Pin"} ${entry.title}`}')
     expect(pastSessionsDialogSource).toContain('onKeyDown={stopConversationRowKeyPropagation}')
-    expect(pastSessionsDialogSource).toContain('data-highlighted={highlightedConversationId === session.id ? "true" : undefined}')
+    expect(pastSessionsDialogSource).toContain('data-highlighted={highlightedConversationId === entry.key ? "true" : undefined}')
+    expect(pastSessionsDialogSource).not.toContain('inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-accent/40 px-1.5 py-0.5 text-[10px] font-medium text-foreground')
+    expect(pastSessionsDialogSource).not.toContain("CheckCircle2")
   })
 })

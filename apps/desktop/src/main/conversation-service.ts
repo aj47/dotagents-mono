@@ -286,6 +286,13 @@ export class ConversationService {
           message.content = nextContent
           changed = true
         }
+        if (typeof message.displayContent === "string") {
+          const nextDisplayContent = await this.materializeInlineDataImagesInContent(conversation.id, message.displayContent)
+          if (nextDisplayContent !== message.displayContent) {
+            message.displayContent = nextDisplayContent
+            changed = true
+          }
+        }
       }
     }
 
@@ -1147,6 +1154,7 @@ export class ConversationService {
     role: "user" | "assistant" | "tool",
     toolCalls?: Array<{ name: string; arguments: any }>,
     toolResults?: Array<{ success: boolean; content: string; error?: string }>,
+    options?: { displayContent?: string },
   ): Promise<Conversation | null> {
     return this.enqueueConversationMutation(conversationId, async () => {
       try {
@@ -1158,10 +1166,26 @@ export class ConversationService {
         const storedMessages = this.getStoredRawMessages(conversation)
 
         const storedContent = await this.materializeInlineDataImagesInContent(conversationId, content)
+        const storedDisplayContent = typeof options?.displayContent === "string" && options.displayContent.trim().length > 0
+          ? await this.materializeInlineDataImagesInContent(conversationId, options.displayContent)
+          : undefined
 
         // Idempotency guard: avoid pushing consecutive duplicate messages
         const last = storedMessages[storedMessages.length - 1]
         if (this.isConsecutiveDuplicate(last, role, storedContent)) {
+          if (storedDisplayContent && last.displayContent !== storedDisplayContent) {
+            last.displayContent = storedDisplayContent
+          }
+          const displayedLast = conversation.messages[conversation.messages.length - 1]
+          if (
+            displayedLast &&
+            displayedLast !== last &&
+            this.isConsecutiveDuplicate(displayedLast, role, storedContent) &&
+            storedDisplayContent &&
+            displayedLast.displayContent !== storedDisplayContent
+          ) {
+            displayedLast.displayContent = storedDisplayContent
+          }
           conversation.updatedAt = Date.now()
           await this.saveConversationUnlocked(conversation)
           return conversation
@@ -1175,6 +1199,7 @@ export class ConversationService {
           timestamp: Date.now(),
           toolCalls,
           toolResults,
+          ...(storedDisplayContent ? { displayContent: storedDisplayContent } : {}),
         }
 
         conversation.messages.push(message)

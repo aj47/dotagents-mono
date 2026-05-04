@@ -64,7 +64,21 @@ function createHookRuntime() {
   const reactMock = { __esModule: true, default: {} as any, useEffect, useRef }
   reactMock.default = reactMock
 
-  return { render, commitEffects, cleanupAllEffects, reactMock }
+  const simulateRemount = () => {
+    refs.length = 0
+    effectIndex = 0
+    refIndex = 0
+    for (const record of effects) {
+      if (typeof record?.cleanup === 'function') record.cleanup()
+      record.hasRun = false
+      record.deps = undefined
+      record.nextDeps = undefined
+      record.callback = undefined
+      record.cleanup = undefined
+    }
+  }
+
+  return { render, commitEffects, cleanupAllEffects, reactMock, simulateRemount }
 }
 
 function createDeferred<T>() {
@@ -164,8 +178,19 @@ describe('useStoreSync pinned session persistence', () => {
 
     expect(storeState.setPinnedSessionIds).toHaveBeenCalledWith(['local-session'])
     expect(storeState.pinnedSessionIds).toEqual(new Set(['local-session']))
+    // Pre-hydration local changes should not immediately overwrite persisted
+    // config on disk; only post-hydration changes should trigger saves.
+    expect(loaded.tipcClient.saveConfig).not.toHaveBeenCalled()
+
+    // A subsequent post-hydration change should still trigger a save
+    storeState.pinnedSessionIds = new Set(['local-session', 'post-session'])
+    storeState.pinnedSessionIdsRevision += 1
+    runtime.render(loaded.useStoreSync)
+    runtime.commitEffects()
+    await flushPromises()
+
     expect(loaded.tipcClient.saveConfig).toHaveBeenCalledWith({
-      config: { pinnedSessionIds: ['local-session'] },
+      config: { pinnedSessionIds: ['local-session', 'post-session'] },
     })
 
     runtime.cleanupAllEffects()
@@ -200,8 +225,60 @@ describe('useStoreSync pinned session persistence', () => {
     expect(storeState.setPinnedSessionIds).not.toHaveBeenCalledWith(['persisted-session'])
     expect(storeState.setPinnedSessionIds).toHaveBeenCalledWith([])
     expect(storeState.pinnedSessionIds).toEqual(new Set())
+    // The accidental pre-hydration empty state must not overwrite the persisted
+    // pins on disk. It should stay unsaved until a post-hydration change.
+    expect(loaded.tipcClient.saveConfig).not.toHaveBeenCalled()
+
+    runtime.cleanupAllEffects()
+  })
+
+  it('does not overwrite user pins when the component remounts during hydration', async () => {
+    const runtime = createHookRuntime()
+    const storeState = createAgentStoreState()
+    const deferredConfig = createDeferred<{ pinnedSessionIds: string[] }>()
+    const loaded = await loadUseStoreSync(runtime, storeState, deferredConfig.promise)
+
+    // First mount
+    runtime.render(loaded.useStoreSync)
+    runtime.commitEffects()
+
+    // User toggles a pin before hydration resolves
+    storeState.pinnedSessionIds = new Set(['user-session'])
+    storeState.pinnedSessionIdsRevision += 1
+    runtime.render(loaded.useStoreSync)
+    runtime.commitEffects()
+
+    // Simulate a React remount (e.g. Strict Mode or HMR): refs and effects reset,
+    // but the module-level snapshot must survive.
+    runtime.simulateRemount()
+
+    // Remount renders with fresh refs
+    runtime.render(loaded.useStoreSync)
+    runtime.commitEffects()
+
+    // Hydration resolves with stale/empty config
+    deferredConfig.resolve({ pinnedSessionIds: [] })
+    await flushPromises()
+
+    runtime.render(loaded.useStoreSync)
+    runtime.commitEffects()
+    await flushPromises()
+
+    // The module-level snapshot still knows the store was mutated pre-hydration,
+    // so the empty config must not overwrite the user's pin.
+    expect(storeState.setPinnedSessionIds).not.toHaveBeenCalledWith([])
+    expect(storeState.pinnedSessionIds).toEqual(new Set(['user-session']))
+    expect(loaded.tipcClient.saveConfig).not.toHaveBeenCalled()
+
+    // A subsequent post-hydration change should still trigger a save
+    storeState.pinnedSessionIds = new Set(['user-session', 'post-session'])
+    storeState.pinnedSessionIdsRevision += 1
+    runtime.render(loaded.useStoreSync)
+    runtime.commitEffects()
+    await flushPromises()
+
     expect(loaded.tipcClient.saveConfig).toHaveBeenCalledWith({
-      config: { pinnedSessionIds: [] },
+      config: { pinnedSessionIds: ['user-session', 'post-session'] },
     })
 
     runtime.cleanupAllEffects()

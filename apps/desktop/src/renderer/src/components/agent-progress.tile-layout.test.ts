@@ -70,8 +70,7 @@ describe("agent progress tile layout", () => {
   })
 
   it("tightens delegated headers, action buttons, and details dialog spacing", () => {
-    expect(agentProgressSource).toContain('"px-2 py-1.5 cursor-pointer hover:opacity-90 transition-opacity"')
-    expect(agentProgressSource).toContain('className={cn("h-4 rounded-full px-1 text-[9px] font-medium", statusBadgeClass)}')
+    expect(agentProgressSource).toContain('"flex min-w-0 items-center gap-1.5 px-2 py-1 cursor-pointer hover:opacity-90 transition-opacity"')
     expect(agentProgressSource).toContain('className="inline-flex h-7 items-center justify-center rounded-md border border-purple-200/80 px-2 text-[10px] font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800/70 dark:text-purple-300 dark:hover:bg-purple-950/30"')
     expect(agentProgressSource).toContain('className="inline-flex h-7 items-center justify-center rounded-md border border-border px-2 text-[10px] font-medium text-foreground transition-colors hover:bg-muted"')
     expect(agentProgressSource).toContain('className="max-h-[76vh] overflow-hidden p-3 sm:max-w-xl"')
@@ -118,10 +117,16 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('<ToolExecutionBubble')
   })
 
-  it("renders collapsed tool previews inline with the group title", () => {
+  it("renders collapsed tool previews inline as the single-line summary", () => {
     expect(agentProgressSource).toContain('const collapsedPreviewLine = group.previewLines.join')
-    expect(agentProgressSource).toContain('!isExpanded && collapsedPreviewLine')
+    expect(agentProgressSource).toContain('{collapsedPreviewLine || `${totalCount} step${totalCount === 1 ? "" : "s"}`}')
     expect(agentProgressSource).toContain('flex-1 truncate whitespace-nowrap font-mono')
+  })
+
+  it("renders a bottom collapse control for expanded tool groups", () => {
+    expect(agentProgressSource).toContain('aria-label="Collapse tool group from bottom"')
+    expect(agentProgressSource).toContain('Collapse group')
+    expect(agentProgressSource).toContain('title="Collapse tool group"')
   })
 
   it("keeps tool group expansion state separate from child rows", () => {
@@ -297,9 +302,6 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('const sessionPresentation = getSessionPresentation({')
     expect(agentProgressSource).toContain('conversationState === "needs_input"')
     expect(agentProgressSource).toContain('conversationState === "blocked"')
-    expect(agentProgressSource).toContain(
-      'Badge variant="outline" className={cn("h-4 rounded-full px-1 text-[9px] font-medium", statusBadgeClass)}'
-    )
     expect(agentProgressSource).toContain('const conversationStateBadgeClass = sessionPresentation.badgeClassName')
   })
 })

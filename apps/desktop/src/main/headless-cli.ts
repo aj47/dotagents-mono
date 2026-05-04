@@ -349,6 +349,7 @@ async function runAgentCLI(prompt: string): Promise<void> {
   let previousConversationHistory: Array<{
     role: "user" | "assistant" | "tool"
     content: string
+    displayContent?: string
     toolCalls?: any[]
     toolResults?: any[]
     timestamp?: number
@@ -369,6 +370,7 @@ async function runAgentCLI(prompt: string): Promise<void> {
       previousConversationHistory = messagesToConvert.map((msg, index) => ({
         role: msg.role,
         content: msg.content,
+        ...(msg.displayContent ? { displayContent: msg.displayContent } : {}),
         toolCalls: msg.toolCalls,
         timestamp: msg.timestamp,
         toolResults: msg.toolResults?.map((tr) => ({

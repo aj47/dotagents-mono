@@ -15,11 +15,15 @@ import { orderConversationHistoryByPinnedFirst } from "@renderer/lib/pinned-sess
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
 import { AgentSelector } from "@renderer/components/agent-selector"
 import { useConfigQuery } from "@renderer/lib/query-client"
-import { useSavedConversationsQuery } from "@renderer/lib/queries"
+import { useSavedConversationQuery, useSavedConversationsQuery } from "@renderer/lib/queries"
 import { getAgentShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { orderActiveSessionsByPinnedFirst } from "@renderer/lib/sidebar-sessions"
+import {
+  hasConversationHistoryForDisplay,
+  mergeLoadedConversationIntoProgress,
+} from "@renderer/lib/session-progress-hydration"
 
 const CLEAR_INACTIVE_EVENT = "sessions:clear-inactive"
 
@@ -127,7 +131,22 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   onVoiceContinue,
 }: ActiveSessionTileProps) {
   const storeProgress = useAgentSessionProgress(sessionId)
-  const progress = storeProgress ?? fallbackProgress
+  const baseProgress = storeProgress ?? fallbackProgress
+  const conversationIdForHydration = baseProgress?.conversationId ?? null
+  const shouldHydrateFromConversation =
+    !!conversationIdForHydration && !hasConversationHistoryForDisplay(baseProgress)
+  const savedConversationQuery = useSavedConversationQuery(
+    shouldHydrateFromConversation ? conversationIdForHydration : null,
+  )
+  const progress = useMemo(
+    () => baseProgress
+      ? mergeLoadedConversationIntoProgress(
+          baseProgress,
+          savedConversationQuery.data,
+        )
+      : null,
+    [baseProgress, savedConversationQuery.data],
+  )
   const focusedSessionId = useAgentStore((state) => state.focusedSessionId)
   const setFocusedSessionId = useAgentStore((state) => state.setFocusedSessionId)
   const isFocused = focusedSessionId === sessionId
@@ -644,6 +663,7 @@ export function Component() {
       conversationHistory: conv.messages.map((m, index) => ({
         role: m.role,
         content: m.content,
+        ...(m.displayContent ? { displayContent: m.displayContent } : {}),
         toolCalls: m.toolCalls,
         toolResults: m.toolResults,
         timestamp: m.timestamp,
