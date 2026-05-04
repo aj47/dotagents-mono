@@ -349,7 +349,7 @@ describe("getSidebarActivityPresentation", () => {
 })
 
 describe("sidebar progress lifecycle helpers", () => {
-  it("does not promote completed progress-only rows into active sidebar sessions", () => {
+  it("keeps completed progress-only rows in the active sidebar until dismissal", () => {
     const completedProgress = { isComplete: true, steps: [] }
 
     expect(isProgressLiveForSidebar(completedProgress)).toBe(false)
@@ -357,7 +357,7 @@ describe("sidebar progress lifecycle helpers", () => {
       shouldPromoteProgressToSidebarActiveSession(completedProgress, {
         hasTrackedSession: false,
       }),
-    ).toBe(false)
+    ).toBe(true)
   })
 
   it("keeps tracked sessions and live progress visible", () => {

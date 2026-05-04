@@ -654,7 +654,11 @@ export function shouldPromoteProgressToSidebarActiveSession(
   progress: ProgressLifecycleLike,
   options: { hasTrackedSession: boolean },
 ): boolean {
-  return options.hasTrackedSession || isProgressLiveForSidebar(progress)
+  // Keep any session with retained in-memory progress in the active sidebar
+  // until the user explicitly dismisses it. This lets completed runs stay in
+  // the active section with their success state instead of immediately
+  // dropping into muted past-session history.
+  return options.hasTrackedSession || progress.isComplete || isProgressLiveForSidebar(progress)
 }
 
 function isActiveDelegationStatus(status?: string): boolean {
