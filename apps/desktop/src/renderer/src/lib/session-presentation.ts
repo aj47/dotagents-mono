@@ -64,9 +64,7 @@ export function deriveLifecycleState(input: SessionPresentationInput): SessionLi
   if (input.hasErrors || input.wasStopped || status === "error" || status === "stopped") return "blocked"
   if (input.isComplete || status === "completed" || status === "complete") return "complete"
 
-  const fallback: SessionLifecycleState = status === "active" || status === "running" || input.hasActiveChildProgress
-    ? "running"
-    : "running"
+  const fallback: SessionLifecycleState = "running"
 
   return input.conversationState
     ? normalizeAgentConversationState(input.conversationState, fallback)

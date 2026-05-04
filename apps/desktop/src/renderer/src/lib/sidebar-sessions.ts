@@ -1,5 +1,6 @@
 import type { AgentProgressUpdate } from "@shared/types"
 import { TASK_SESSION_TITLE_PREFIX, hasRepeatTaskTitlePrefix } from "@shared/repeat-tasks"
+import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
 
 type SessionLike = {
   id: string
@@ -279,16 +280,8 @@ export function getSubagentParentSessionIdMap(
       const delegation = step.delegation
       if (!delegation) continue
 
-      const possibleChildSessionIds = [
-        delegation.subSessionId,
-        delegation.acpSessionId,
-        delegation.runId,
-      ]
-
-      for (const childSessionId of possibleChildSessionIds) {
-        const normalizedChildSessionId = childSessionId?.trim()
+      for (const normalizedChildSessionId of getPossibleDelegationChildSessionIds(delegation)) {
         if (
-          !normalizedChildSessionId ||
           normalizedChildSessionId === parentSessionId ||
           parentSessionIdsByChildId.has(normalizedChildSessionId)
         ) {
@@ -392,23 +385,6 @@ function normalizeSidebarActivityText(value?: string | null): string | null {
   return normalized || null
 }
 
-/**
- * Strip `<think>...</think>` markup from raw assistant/step text for sidebar
- * previews. Prefers prose outside the thought block; falls back to the first
- * words of the thought (open or closed) so users see meaningful content while
- * the model is still reasoning instead of a literal `<think>` tag.
- */
-function stripThinkTagsForSidebarPreview(value?: string | null): string | null {
-  if (!value) return null
-  const withoutClosed = value.replace(/<think>[\s\S]*?<\/think>/gi, "").trim()
-  if (withoutClosed) return withoutClosed
-  const openThink = value.match(/<think>([\s\S]*)$/i)
-  if (openThink && openThink[1].trim()) return openThink[1].trim()
-  const closedThink = value.match(/<think>([\s\S]*?)<\/think>/i)
-  if (closedThink && closedThink[1].trim()) return closedThink[1].trim()
-  return value.trim() || null
-}
-
 function isGenericSidebarConversationTitle(value?: string | null): boolean {
   const normalized = normalizeSidebarActivityText(value)?.toLowerCase()
   return normalized === "continue conversation" || normalized === "untitled conversation"
@@ -442,7 +418,7 @@ function formatSidebarToolName(toolName?: string | null): string | null {
 
 function getStepDetail(step: AgentProgressUpdate["steps"][number]): string | null {
   return normalizeSidebarActivityText(
-    stripThinkTagsForSidebarPreview(step.llmContent ?? step.content ?? step.description)
+    normalizeMessagePreviewText(step.llmContent ?? step.content ?? step.description)
       ?? step.title,
   )
 }
@@ -479,17 +455,17 @@ export function getLatestUserFacingResponse(progress: SidebarActivityProgressLik
     .reverse()
     .find((event) => normalizeSidebarActivityText(event.text))
   const responseEventText = normalizeSidebarActivityText(
-    stripThinkTagsForSidebarPreview(latestResponseEvent?.text),
+    normalizeMessagePreviewText(latestResponseEvent?.text),
   )
   if (responseEventText) return responseEventText
 
   const userResponse = normalizeSidebarActivityText(
-    stripThinkTagsForSidebarPreview(progress.userResponse),
+    normalizeMessagePreviewText(progress.userResponse),
   )
   if (userResponse) return userResponse
 
   const finalContent = normalizeSidebarActivityText(
-    stripThinkTagsForSidebarPreview(progress.finalContent),
+    normalizeMessagePreviewText(progress.finalContent),
   )
   if (finalContent) return finalContent
 
@@ -497,12 +473,26 @@ export function getLatestUserFacingResponse(progress: SidebarActivityProgressLik
     const message = progress.conversationHistory?.[index]
     if (message?.role !== "assistant") continue
     const assistantText = normalizeSidebarActivityText(
-      stripThinkTagsForSidebarPreview(message.content),
+      normalizeMessagePreviewText(message.content),
     )
     if (assistantText) return assistantText
   }
 
   return null
+}
+
+function makeSidebarToolCallPresentation(
+  step: AgentProgressUpdate["steps"][number],
+  isActive: boolean,
+): SidebarActivityPresentation {
+  const toolName = formatSidebarToolName(step.toolCall?.name)
+  const verb = isActive ? "Using" : "Used"
+  return makeSidebarActivityPresentation(
+    "tool_call",
+    toolName ? `${verb} ${toolName}` : "Tool call",
+    getStepDetail(step),
+    isActive,
+  )
 }
 
 function makeSidebarActivityPresentation(
@@ -596,13 +586,7 @@ export function getSidebarActivityPresentation(
     step.status === "in_progress" && step.type === "tool_call",
   )
   if (activeToolCallStep) {
-    const toolName = formatSidebarToolName(activeToolCallStep.toolCall?.name)
-    return makeSidebarActivityPresentation(
-      "tool_call",
-      toolName ? `Using ${toolName}` : "Tool call",
-      getStepDetail(activeToolCallStep),
-      true,
-    )
+    return makeSidebarToolCallPresentation(activeToolCallStep, true)
   }
   if (activeStep?.type === "tool_result") {
     return makeSidebarActivityPresentation(
@@ -647,13 +631,7 @@ export function getSidebarActivityPresentation(
 
   const latestStep = getLatestSidebarStep(progress)
   if (latestStep?.type === "tool_call") {
-    const toolName = formatSidebarToolName(latestStep.toolCall?.name)
-    return makeSidebarActivityPresentation(
-      "tool_call",
-      toolName ? `Used ${toolName}` : "Tool call",
-      getStepDetail(latestStep),
-      false,
-    )
+    return makeSidebarToolCallPresentation(latestStep, false)
   }
   if (latestStep?.type === "tool_result") {
     return makeSidebarActivityPresentation(
@@ -674,17 +652,6 @@ export function getSidebarActivityPresentation(
 
 export function isProgressLiveForSidebar(progress: ProgressLifecycleLike): boolean {
   return !progress.isComplete || hasActiveDelegationProgress(progress)
-}
-
-export function shouldPromoteProgressToSidebarActiveSession(
-  progress: ProgressLifecycleLike,
-  options: { hasTrackedSession: boolean },
-): boolean {
-  // Keep any session with retained in-memory progress in the active sidebar
-  // until the user explicitly dismisses it. This lets completed runs stay in
-  // the active section with their success state instead of immediately
-  // dropping into muted past-session history.
-  return options.hasTrackedSession || progress.isComplete || isProgressLiveForSidebar(progress)
 }
 
 function isActiveDelegationStatus(status?: string): boolean {

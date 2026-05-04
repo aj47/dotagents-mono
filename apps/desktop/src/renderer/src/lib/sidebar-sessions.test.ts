@@ -18,7 +18,6 @@ import {
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
-  shouldPromoteProgressToSidebarActiveSession,
 } from "./sidebar-sessions"
 
 const activeSession = (id: string, conversationId?: string) => ({
@@ -349,30 +348,14 @@ describe("getSidebarActivityPresentation", () => {
 })
 
 describe("sidebar progress lifecycle helpers", () => {
-  it("keeps completed progress-only rows in the active sidebar until dismissal", () => {
+  it("distinguishes live progress from completed progress", () => {
     const completedProgress = { isComplete: true, steps: [] }
 
     expect(isProgressLiveForSidebar(completedProgress)).toBe(false)
-    expect(
-      shouldPromoteProgressToSidebarActiveSession(completedProgress, {
-        hasTrackedSession: false,
-      }),
-    ).toBe(true)
   })
 
-  it("keeps tracked sessions and live progress visible", () => {
-    expect(
-      shouldPromoteProgressToSidebarActiveSession(
-        { isComplete: true, steps: [] },
-        { hasTrackedSession: true },
-      ),
-    ).toBe(true)
-    expect(
-      shouldPromoteProgressToSidebarActiveSession(
-        { isComplete: false, steps: [] },
-        { hasTrackedSession: false },
-      ),
-    ).toBe(true)
+  it("treats running progress as live", () => {
+    expect(isProgressLiveForSidebar({ isComplete: false, steps: [] })).toBe(true)
   })
 })
 

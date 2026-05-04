@@ -29,6 +29,7 @@ import {
 import { toast } from "sonner"
 import { useAgentStore } from "@renderer/stores"
 import type { AgentProgressUpdate } from "@shared/types"
+import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
 
 const INITIAL_SAVED_CONVERSATIONS = 20
 const SEARCH_RESULT_LIMIT = 50
@@ -125,20 +126,7 @@ function normalizeSearchText(value: string | undefined): string {
 }
 
 function normalizeConversationText(value: string | undefined): string {
-  if (!value) return ""
-  // Strip <think>...</think> markup so previews surface meaningful prose
-  // (or the first words of an in-flight thought) instead of literal tags.
-  const withoutClosed = value.replace(/<think>[\s\S]*?<\/think>/gi, "").trim()
-  if (withoutClosed) return withoutClosed.replace(/\s+/g, " ").trim()
-  const openThink = value.match(/<think>([\s\S]*)$/i)
-  if (openThink && openThink[1].trim()) {
-    return openThink[1].replace(/\s+/g, " ").trim()
-  }
-  const closedThink = value.match(/<think>([\s\S]*?)<\/think>/i)
-  if (closedThink && closedThink[1].trim()) {
-    return closedThink[1].replace(/\s+/g, " ").trim()
-  }
-  return value.replace(/\s+/g, " ").trim()
+  return normalizeMessagePreviewText(value) ?? ""
 }
 
 function getConversationSnippet(
@@ -368,8 +356,35 @@ export function SavedConversationsDialog({
 
   const activeConversationEntries = useMemo<ConversationListEntry[]>(() => {
     const trackedActiveSessions = activeConversationsQuery.data?.activeSessions ?? []
+    const mergedSessions = new Map(
+      trackedActiveSessions.map((session) => [session.id, session] as const),
+    )
 
-    return [...trackedActiveSessions]
+    for (const [sessionId, progress] of agentProgressById.entries()) {
+      const existingSession = mergedSessions.get(sessionId)
+      const firstHistoryTimestamp = progress.conversationHistory?.[0]?.timestamp
+      const lastHistoryTimestamp = progress.conversationHistory?.[
+        progress.conversationHistory.length - 1
+      ]?.timestamp
+
+      mergedSessions.set(sessionId, {
+        id: sessionId,
+        conversationId: progress.conversationId ?? existingSession?.conversationId,
+        conversationTitle: progress.conversationTitle ?? existingSession?.conversationTitle,
+        status: progress.isComplete ? "completed" : (existingSession?.status ?? "active"),
+        startTime:
+          existingSession?.startTime ??
+          firstHistoryTimestamp ??
+          lastHistoryTimestamp ??
+          Date.now(),
+        endTime: existingSession?.endTime ?? (progress.isComplete ? lastHistoryTimestamp : undefined),
+        lastActivity: existingSession?.lastActivity,
+        errorMessage: existingSession?.errorMessage,
+        isSnoozed: progress.isSnoozed ?? existingSession?.isSnoozed,
+      })
+    }
+
+    return Array.from(mergedSessions.values())
       .map((session) => {
         const progress = agentProgressById.get(session.id)
         const sidebarActivity = getSidebarActivityPresentation(progress, {

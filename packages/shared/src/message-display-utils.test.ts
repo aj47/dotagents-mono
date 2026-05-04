@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  normalizeMessagePreviewText,
   sanitizeMessageContentForDisplay,
   sanitizeMessageContentForSpeech,
   sanitizeAgentProgressUpdateForDisplay,
@@ -61,6 +62,21 @@ describe('sanitizeMessageContentForSpeech', () => {
   it('leaves plain text unchanged', () => {
     const content = 'Just regular text with no images'
     expect(sanitizeMessageContentForSpeech(content)).toBe(content)
+  })
+})
+
+describe('normalizeMessagePreviewText', () => {
+  it('normalizes whitespace in plain preview text', () => {
+    expect(normalizeMessagePreviewText('  Hello\n\nworld  ')).toBe('Hello world')
+  })
+
+  it('prefers prose outside closed think tags', () => {
+    expect(normalizeMessagePreviewText('<think>reasoning</think>\n\nFinal answer')).toBe('Final answer')
+  })
+
+  it('falls back to thought text for open or thought-only tags', () => {
+    expect(normalizeMessagePreviewText('<think>still reasoning')).toBe('still reasoning')
+    expect(normalizeMessagePreviewText('<think>only thought</think>')).toBe('only thought')
   })
 })
 

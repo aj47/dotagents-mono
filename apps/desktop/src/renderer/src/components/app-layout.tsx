@@ -110,22 +110,12 @@ export const Component = () => {
   const discordEnabled = configQuery.data?.discordEnabled ?? false
   const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
   const trackedActiveSessions = sessionData?.activeSessions ?? []
-  const recentCompletedSessions =
-    sessionData?.recentCompletedSessions ?? sessionData?.recentSessions ?? []
   const collapsedActiveSessions = useMemo(() => {
-    const recentStatusById = new Map(
-      recentCompletedSessions.map((session) => [session.id, session.status] as const),
-    )
     const mergedSessions = new Map(
       trackedActiveSessions.map((session) => [session.id, session] as const),
     )
 
     for (const [sessionId, progress] of agentProgressById.entries()) {
-      const recentStatus = recentStatusById.get(sessionId)
-      if (recentStatus === "stopped" || recentStatus === "error") {
-        continue
-      }
-
       const existingSession = mergedSessions.get(sessionId)
       const firstHistoryTimestamp = progress.conversationHistory?.[0]?.timestamp
       const lastHistoryTimestamp = progress.conversationHistory?.[
@@ -137,13 +127,16 @@ export const Component = () => {
         conversationId: progress.conversationId ?? existingSession?.conversationId,
         conversationTitle:
           progress.conversationTitle ?? existingSession?.conversationTitle,
-        status: "active",
+        status: progress.isComplete
+          ? "completed"
+          : (existingSession?.status ?? "active"),
         startTime:
           existingSession?.startTime ??
           firstHistoryTimestamp ??
           lastHistoryTimestamp ??
           Date.now(),
-        endTime: existingSession?.endTime,
+        endTime: existingSession?.endTime ??
+          (progress.isComplete ? lastHistoryTimestamp : undefined),
         isSnoozed: progress.isSnoozed ?? existingSession?.isSnoozed,
       })
     }
@@ -165,7 +158,7 @@ export const Component = () => {
         0
       return bTimestamp - aTimestamp
     })
-  }, [trackedActiveSessions, recentCompletedSessions, agentProgressById])
+  }, [trackedActiveSessions, agentProgressById])
   const collapsedPreviewSessions = useMemo(
     () => collapsedActiveSessions.slice(0, 3),
     [collapsedActiveSessions],

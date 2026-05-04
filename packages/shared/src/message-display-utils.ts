@@ -38,6 +38,34 @@ export function sanitizeMessageContentForSpeech(content: string): string {
     })
 }
 
+/**
+ * Normalize user-facing preview text for compact conversation/session lists.
+ *
+ * Thinking markup is useful in the full transcript, but sidebar/search previews
+ * should surface readable prose instead of literal `<think>` tags. Prefer text
+ * outside closed thought blocks; for an in-flight/open thought, fall back to the
+ * thought text so the preview remains meaningful while reasoning is streaming.
+ */
+export function normalizeMessagePreviewText(value?: string | null): string | null {
+  if (!value) return null
+
+  const normalize = (text: string) => text.replace(/\s+/g, ' ').trim() || null
+  const openThink = value.match(/<think>([\s\S]*)$/i)
+  if (openThink && !/<\/think>/i.test(openThink[1])) {
+    const openThinkText = normalize(openThink[1])
+    if (openThinkText) return openThinkText
+  }
+
+  const withoutClosed = normalize(value.replace(/<think>[\s\S]*?<\/think>/gi, ''))
+  if (withoutClosed) return withoutClosed
+
+  const closedThink = value.match(/<think>([\s\S]*?)<\/think>/i)
+  const closedThinkText = normalize(closedThink?.[1] ?? '')
+  if (closedThinkText) return closedThinkText
+
+  return normalize(value)
+}
+
 function sanitizeConversationHistoryForDisplay(
   conversationHistory: AgentProgressUpdate["conversationHistory"]
 ): AgentProgressUpdate["conversationHistory"] {

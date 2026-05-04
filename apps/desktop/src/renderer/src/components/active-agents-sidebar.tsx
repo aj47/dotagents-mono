@@ -35,7 +35,6 @@ import {
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
-  shouldPromoteProgressToSidebarActiveSession,
 } from "@renderer/lib/sidebar-sessions"
 import { formatSidebarDuration } from "@renderer/lib/sidebar-duration"
 import { useLocation, useNavigate } from "react-router-dom"
@@ -291,14 +290,6 @@ export function ActiveAgentsSidebar({
 
     for (const [sessionId, progress] of agentProgressById.entries()) {
       const existingSession = mergedSessions.get(sessionId)
-      if (
-        !shouldPromoteProgressToSidebarActiveSession(progress, {
-          hasTrackedSession: !!existingSession,
-        })
-      ) {
-        continue
-      }
-
       const firstHistoryTimestamp = progress.conversationHistory?.[0]?.timestamp
       const lastHistoryTimestamp = progress.conversationHistory?.[
         progress.conversationHistory.length - 1
