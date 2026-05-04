@@ -231,11 +231,24 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           typeof update.runId === 'number' &&
           update.runId > existingProgress.runId
         if (isNewRun) {
-          // New run on a reused session: reset run-scoped UI fields and keep only stable metadata.
+          const hasIncomingHistory = (update.conversationHistory?.length ?? 0) > 0
+          // New run on a reused session: reset run-scoped UI fields and keep stable display metadata.
+          // Early follow-up progress updates can arrive before the backend includes the persisted
+          // conversation window. Preserve the previous transcript until a non-empty refreshed
+          // history arrives so the tile does not collapse to only the live thinking row.
           mergedUpdate = {
             ...update,
             conversationId: update.conversationId ?? existingProgress.conversationId,
             conversationTitle: update.conversationTitle ?? existingProgress.conversationTitle,
+            conversationHistory: hasIncomingHistory
+              ? update.conversationHistory
+              : existingProgress.conversationHistory,
+            conversationHistoryStartIndex: hasIncomingHistory
+              ? update.conversationHistoryStartIndex
+              : existingProgress.conversationHistoryStartIndex,
+            conversationHistoryTotalCount: hasIncomingHistory
+              ? update.conversationHistoryTotalCount
+              : existingProgress.conversationHistoryTotalCount,
             isSnoozed: update.isSnoozed ?? existingProgress.isSnoozed,
             sessionStartIndex: update.sessionStartIndex ?? existingProgress.sessionStartIndex,
           }

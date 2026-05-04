@@ -651,7 +651,7 @@ export function getSidebarActivityPresentation(
     return makeSidebarActivityPresentation("summary", "Updated", summaryText, false)
   }
 
-  return makeSidebarActivityPresentation("running", "Running", null, false)
+  return makeSidebarActivityPresentation("thinking", "Thinking", "Thinking...", true)
 }
 
 export function isProgressLiveForSidebar(progress: ProgressLifecycleLike): boolean {

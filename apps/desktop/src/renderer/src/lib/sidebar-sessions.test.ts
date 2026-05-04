@@ -345,6 +345,20 @@ describe("getSidebarActivityPresentation", () => {
       isForegroundActivity: true,
     })
   })
+
+  it("shows thinking detail for active sessions before the first step or stream arrives", () => {
+    const activity = getSidebarActivityPresentation({
+      isComplete: false,
+      steps: [],
+    })
+
+    expect(activity).toMatchObject({
+      kind: "thinking",
+      label: "Thinking",
+      detail: "Thinking...",
+      isForegroundActivity: true,
+    })
+  })
 })
 
 describe("sidebar progress lifecycle helpers", () => {

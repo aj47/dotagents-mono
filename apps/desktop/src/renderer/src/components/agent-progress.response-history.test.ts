@@ -324,6 +324,29 @@ afterEach(() => {
 })
 
 describe("agent progress response history", () => {
+  it("shows a compact live thinking placeholder when an active turn has no stream text yet", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-live-placeholder",
+      conversationId: "conversation-live-placeholder",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Do the next thing", timestamp: 100 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("Thinking...")
+    expect(text).not.toContain("Generating response...")
+  })
+
   it("keeps the completed streamed response visible while verification is running", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)

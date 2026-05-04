@@ -137,6 +137,7 @@ type DisplayItem =
   | { kind: "streaming"; id: string; data: {
       text: string
       isStreaming: boolean
+      isPlaceholder?: boolean
     } }
   | { kind: "delegation"; id: string; data: ACPDelegationProgress }
   | { kind: "tool_activity_group"; id: string; data: {
@@ -3237,9 +3238,19 @@ const StreamingContentBubble: React.FC<{
   streamingContent: {
     text: string
     isStreaming: boolean
+    isPlaceholder?: boolean
   }
 }> = ({ streamingContent }) => {
   if (!streamingContent.text) return null
+
+  if (streamingContent.isPlaceholder) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-blue-300/70 bg-blue-50/50 px-2.5 py-1.5 text-xs text-blue-800 dark:border-blue-800/60 dark:bg-blue-950/30 dark:text-blue-200">
+        <Loader2 className="h-3 w-3 shrink-0 animate-spin text-blue-600 dark:text-blue-400" aria-hidden="true" />
+        <span className="min-w-0 truncate">{streamingContent.text}</span>
+      </div>
+    )
+  }
 
   const contentNode = streamingContent.isStreaming
     ? (
@@ -3611,7 +3622,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const wasStopped = finalContent?.includes("emergency kill switch") ||
                     steps?.some(step => step.title === "Agent stopped" ||
                                step.description?.includes("emergency kill switch"))
-  const shouldAutoScrollContent = variant !== "tile" || !!isFocused || !!isExpanded
+  const shouldAutoScrollContent = variant !== "tile" || !!isFocused || !!isExpanded || !isComplete
 
   const messages = useMemo<Array<{
     role: "user" | "assistant" | "tool"
@@ -4083,6 +4094,33 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
       if (!historyAlreadyContainsStream) {
         items.push({ kind: "streaming", id: "streaming-content", data: progress.streamingContent })
+      }
+    } else if (!progress.isComplete && !progress.pendingToolApproval && !progress.retryInfo?.isRetrying) {
+      const alreadyHasLiveThinkingMessage = items.some((item) =>
+        item.kind === "message" &&
+        item.data.role === "assistant" &&
+        item.data.isThinking &&
+        !item.data.isComplete,
+      )
+      const alreadyHasCurrentStateFeedback = items.some((item) =>
+        item.kind === "streaming" ||
+        item.kind === "tool_approval" ||
+        item.kind === "retry_status",
+      )
+
+      const activeStep = [...progress.steps].reverse().find((step) => step.status === "in_progress")
+      const isVerificationStep = activeStep?.title?.toLowerCase().includes("verifying")
+
+      if (!alreadyHasLiveThinkingMessage && !alreadyHasCurrentStateFeedback && !isVerificationStep) {
+        const text = activeStep?.type === "tool_call"
+          ? activeStep.title || "Running tool..."
+          : activeStep?.description || "Thinking..."
+
+        items.push({
+          kind: "streaming",
+          id: "live-thinking-placeholder",
+          data: { text, isStreaming: true, isPlaceholder: true },
+        })
       }
     }
 
