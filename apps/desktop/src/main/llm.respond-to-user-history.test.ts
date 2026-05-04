@@ -53,7 +53,7 @@ vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: mocks.emitAgentProg
 vi.mock("./agent-session-tracker", () => ({ agentSessionTracker: mocks }))
 vi.mock("./conversation-service", () => ({ conversationService: { addMessageToConversation: mocks.addMessageToConversation, maybeAutoGenerateConversationTitle: mocks.maybeAutoGenerateConversationTitle } }))
 vi.mock("./acp-session-state", () => ({ getAcpSessionTitleOverride: mocks.getAcpSessionTitleOverride }))
-vi.mock("./langfuse-service", () => ({ isLangfuseEnabled: vi.fn(() => false), createAgentTrace: vi.fn(), endAgentTrace: vi.fn(), flushLangfuse: vi.fn(async () => undefined) }))
+vi.mock("./langfuse-service", () => ({ isLangfuseEnabled: vi.fn(() => false), shouldRecordObservations: vi.fn(() => false), makeLangfuseTraceId: vi.fn((opts: { agentSessionId: string; runId: number }) => `${opts.agentSessionId}__run_${opts.runId}`), setActiveRunTrace: vi.fn(), clearActiveRunTrace: vi.fn(), forceCloseTraceOperations: vi.fn(() => ({ closedSpans: 0, closedGenerations: 0 })), createAgentTrace: vi.fn(), endAgentTrace: vi.fn(), flushLangfuse: vi.fn(async () => undefined) }))
 vi.mock("./summarization-service", () => ({ isSummarizationEnabled: vi.fn(() => false), shouldSummarizeStep: vi.fn(() => false), summarizeAgentStep: vi.fn(), summarizationService: { getSummaries: vi.fn(() => []), getLatestSummary: vi.fn(() => undefined), addSummary: vi.fn() } }))
 vi.mock("./knowledge-notes-service", () => ({ knowledgeNotesService: { createNoteFromSummary: vi.fn(), saveNote: vi.fn() } }))
 vi.mock("./agent-run-utils", () => ({ appendAgentStopNote: vi.fn(), resolveAgentIterationLimits: vi.fn((maxIterations: number) => ({ loopMaxIterations: maxIterations, guardrailBudget: maxIterations })) }))

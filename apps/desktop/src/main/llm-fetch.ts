@@ -37,7 +37,8 @@ import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import {
   createLLMGeneration,
   endLLMGeneration,
-  isLangfuseEnabled,
+  getActiveRunTrace,
+  shouldRecordObservations,
 } from "./langfuse-service"
 import { recordActualTokenUsage } from "./context-budget"
 import { getCurrentChatGptWebModelName, isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
@@ -875,9 +876,10 @@ export async function makeLLMCallWithFetch(
 
         if (isChatGptWebProvider(effectiveProviderId)) {
           const modelName = getCurrentChatGptWebModelName("mcp")
-          const generationId = isLangfuseEnabled() ? randomUUID() : null
+          const traceId = sessionId ? getActiveRunTrace(sessionId) ?? null : null
+          const generationId = shouldRecordObservations() ? randomUUID() : null
           if (generationId) {
-            createLLMGeneration(sessionId || null, generationId, {
+            createLLMGeneration(traceId, generationId, {
               name: "LLM Call",
               model: modelName,
               modelParameters: {
@@ -981,10 +983,12 @@ export async function makeLLMCallWithFetch(
           })
         }
 
-        // Create Langfuse generation if enabled
-        const generationId = isLangfuseEnabled() ? randomUUID() : null
+        // Create per-run trace generation when remote Langfuse OR local trace
+        // logging is enabled (issue #441: local tracing must work standalone).
+        const traceId = sessionId ? getActiveRunTrace(sessionId) ?? null : null
+        const generationId = shouldRecordObservations() ? randomUUID() : null
         if (generationId) {
-          createLLMGeneration(sessionId || null, generationId, {
+          createLLMGeneration(traceId, generationId, {
             name: "LLM Call",
             model: modelName,
             modelParameters: {
@@ -1176,9 +1180,10 @@ export async function makeLLMCallWithStreamingAndTools(
         : undefined
 
       if (isChatGptWebProvider(effectiveProviderId)) {
-        const generationId = isLangfuseEnabled() ? randomUUID() : null
+        const traceId = sessionId ? getActiveRunTrace(sessionId) ?? null : null
+        const generationId = shouldRecordObservations() ? randomUUID() : null
         if (generationId) {
-          createLLMGeneration(sessionId || null, generationId, {
+          createLLMGeneration(traceId, generationId, {
             name: "Streaming LLM Call",
             model: modelName,
             modelParameters: {
@@ -1263,9 +1268,10 @@ export async function makeLLMCallWithStreamingAndTools(
         })
       }
 
-      const generationId = isLangfuseEnabled() ? randomUUID() : null
+      const traceId = sessionId ? getActiveRunTrace(sessionId) ?? null : null
+      const generationId = shouldRecordObservations() ? randomUUID() : null
       if (generationId) {
-        createLLMGeneration(sessionId || null, generationId, {
+        createLLMGeneration(traceId, generationId, {
           name: "Streaming LLM Call",
           model: modelName,
           modelParameters: {
@@ -1401,14 +1407,16 @@ export async function makeTextCompletionWithFetch(
     async () => {
       const abortController = createSessionAbortController(sessionId)
 
-      // Create Langfuse generation if enabled
-      const generationId = isLangfuseEnabled() ? randomUUID() : null
+      // Create per-run trace generation when remote Langfuse OR local trace
+      // logging is enabled (issue #441).
+      const traceId = sessionId ? getActiveRunTrace(sessionId) ?? null : null
+      const generationId = shouldRecordObservations() ? randomUUID() : null
       const modelName = isChatGptWebProvider(effectiveProviderId)
         ? getCurrentChatGptWebModelName("transcript")
         : getCurrentModelName(effectiveProviderId, "transcript")
 
       if (generationId) {
-        createLLMGeneration(sessionId || null, generationId, {
+        createLLMGeneration(traceId, generationId, {
           name: "Text Completion",
           model: modelName,
           modelParameters: { provider: effectiveProviderId },
@@ -1521,8 +1529,10 @@ export async function verifyCompletionWithFetch(
           ? getCurrentChatGptWebModelName("mcp")
           : getCurrentModelName(effectiveProviderId)
 
-        // Create Langfuse generation if enabled
-        const generationId = isLangfuseEnabled() ? randomUUID() : null
+        // Create per-run trace generation when remote Langfuse OR local trace
+        // logging is enabled (issue #441).
+        const traceId = sessionId ? getActiveRunTrace(sessionId) ?? null : null
+        const generationId = shouldRecordObservations() ? randomUUID() : null
         const promptCaching = isChatGptWebProvider(effectiveProviderId)
           ? undefined
           : getPromptCachingConfig(effectiveProviderId)
@@ -1535,7 +1545,7 @@ export async function verifyCompletionWithFetch(
         )
         const { system, messages: convertedMessages } = convertMessages(messages)
         if (generationId) {
-          createLLMGeneration(sessionId || null, generationId, {
+          createLLMGeneration(traceId, generationId, {
             name: "Verification Call",
             model: modelName,
             modelParameters: {
