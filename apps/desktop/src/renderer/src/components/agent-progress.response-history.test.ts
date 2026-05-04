@@ -695,6 +695,76 @@ describe("agent progress response history", () => {
     expect(text.indexOf("search_repo")).toBeLessThan(text.indexOf("Now here is the answer"))
   })
 
+  it("lets expanded tool groups collapse from the bottom", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-bottom-collapse-tool-group",
+      conversationId: "conversation-bottom-collapse-tool-group",
+      currentIteration: 1,
+      maxIterations: 3,
+      steps: [],
+      isComplete: true,
+      finalContent: "",
+      conversationHistory: [
+        {
+          role: "assistant",
+          content: "First tool thought",
+          timestamp: 100,
+          toolCalls: [
+            { name: "search_repo", arguments: { query: "tool group collapse" } },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 110,
+          toolResults: [
+            { success: true, content: "first result" },
+          ],
+        },
+        {
+          role: "assistant",
+          content: "Second tool thought",
+          timestamp: 120,
+          toolCalls: [
+            { name: "open_file", arguments: { path: "agent-progress.tsx" } },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 130,
+          toolResults: [
+            { success: true, content: "second result" },
+          ],
+        },
+      ],
+    }
+
+    let tree = runtime.render(AgentProgress, { progress })
+    const expandButton = findAll(
+      tree,
+      (value) => value?.type === "button" && value.props?.["aria-label"] === "Expand tool group",
+    )[0]
+    expect(expandButton).toBeTruthy()
+
+    expandButton.props.onClick({ stopPropagation: vi.fn() })
+    tree = runtime.render(AgentProgress, { progress })
+
+    expect(getTextContent(tree)).toContain("First tool thought")
+    const bottomCollapseButton = findAll(
+      tree,
+      (value) => value?.type === "button" && value.props?.["aria-label"] === "Collapse tool group from bottom",
+    )[0]
+    expect(bottomCollapseButton).toBeTruthy()
+
+    bottomCollapseButton.props.onClick({ stopPropagation: vi.fn() })
+    tree = runtime.render(AgentProgress, { progress })
+
+    expect(getTextContent(tree)).not.toContain("First tool thought")
+  })
+
   it("does not collapse short image responses because of embedded data URL size", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)

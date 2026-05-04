@@ -1736,8 +1736,22 @@ const ToolActivityGroupBubble: React.FC<{
 
       {/* Expanded: render all child items */}
       {isExpanded && (
-        <div className="px-1.5 pb-1.5 space-y-1">
-          {group.items.map((item, idx) => renderItem(item, idx))}
+        <div className="space-y-1 px-1.5 pb-1.5">
+          <div className="space-y-1">
+            {group.items.map((item, idx) => renderItem(item, idx))}
+          </div>
+          <div className="flex justify-end border-t border-sky-200/50 pt-1 dark:border-sky-900/40">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-sky-700/75 transition-colors hover:bg-sky-100/70 hover:text-sky-900 dark:text-sky-300/75 dark:hover:bg-sky-950/60 dark:hover:text-sky-100"
+              aria-label="Collapse tool group from bottom"
+              title="Collapse tool group"
+            >
+              <ChevronUp className="h-3 w-3" aria-hidden="true" />
+              Collapse group
+            </button>
+          </div>
         </div>
       )}
     </div>

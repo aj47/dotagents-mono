@@ -123,6 +123,12 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('flex-1 truncate whitespace-nowrap font-mono')
   })
 
+  it("renders a bottom collapse control for expanded tool groups", () => {
+    expect(agentProgressSource).toContain('aria-label="Collapse tool group from bottom"')
+    expect(agentProgressSource).toContain('Collapse group')
+    expect(agentProgressSource).toContain('title="Collapse tool group"')
+  })
+
   it("keeps tool group expansion state separate from child rows", () => {
     expect(agentProgressSource).toContain('const groupId = `tool-activity-group:${runItems[0]?.id ?? runStart}`')
     expect(agentProgressSource).toContain('getToolActivityGroupDefaultExpanded')
