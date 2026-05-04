@@ -85,7 +85,7 @@ import { discordService } from "./discord-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
-import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
+import { agentProfileService, createSessionSnapshotFromProfile, refreshSessionSnapshotSkillsFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { getAppSessionForAcpSession } from "./acp-session-state"
@@ -351,10 +351,14 @@ async function processWithAgentMode(
   const effectiveMaxIterations = maxIterationsFromOverride ?? (config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10))
   const allProfiles = agentProfileService.getAll()
   const currentProfile = agentProfileService.getCurrentProfile()
-  const existingProfileSnapshot = existingSessionId
+  const existingProfileSnapshotFromSession = existingSessionId
     ? agentSessionStateManager.getSessionProfileSnapshot(existingSessionId)
       ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
     : undefined
+  const existingProfileSnapshot = refreshSessionSnapshotSkillsFromProfile(
+    existingProfileSnapshotFromSession,
+    currentProfile,
+  )
   const topLevelAcpSelection = resolvePreferredTopLevelAcpAgentSelection({
     currentProfile,
     sessionProfileId: existingProfileSnapshot?.profileId,

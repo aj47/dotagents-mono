@@ -1598,8 +1598,9 @@ const AssistantWithToolsBubble: React.FC<{
   const isPending = toolCallEntries.some(({ result }) => !result)
   const hasThought = data.thought && data.thought.trim().length > 0
   const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
-  const toolCount = data.calls.length
-  const toolCountLabel = `${toolCount} tool${toolCount === 1 ? "" : "s"}`
+  const collapsedToolPreviewLine = data.calls
+    .map((call) => getIndividualToolCallPreview({ name: call.name, arguments: call.arguments ?? {} }))
+    .join(", ")
 
   // Generate result summary for collapsed state
   const collapsedResultSummary = (() => {
@@ -1656,22 +1657,34 @@ const AssistantWithToolsBubble: React.FC<{
         )}
         <div className="flex min-w-0 items-center gap-1.5">
           <Wrench className="h-3 w-3 shrink-0 text-sky-600 dark:text-sky-300" aria-hidden="true" />
-          <span className="shrink-0 text-[10px] text-sky-700/70 dark:text-sky-300/70">
-            {isPending ? `${toolCountLabel} running` : toolCountLabel}
-          </span>
           {hasThought && (
             <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
           )}
           <div className="min-w-0 flex-1">
-            <CompactToolExecutionList
-              calls={data.calls}
-              results={data.results}
-              detailsExpanded={showToolDetails}
-              onToggleDetails={handleToggleToolDetails}
-              rowClassName="px-1 py-0.5"
-              detailsClassName="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2"
-              executionStats={data.executionStats}
-            />
+            {!showToolDetails ? (
+              <button
+                type="button"
+                className="flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] text-sky-700 transition-colors hover:bg-muted/30 dark:text-sky-300"
+                onClick={handleToggleToolDetails}
+                title={collapsedToolPreviewLine}
+              >
+                {isPending && <Loader2 className="h-2.5 w-2.5 shrink-0 animate-spin" aria-hidden="true" />}
+                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium">
+                  {collapsedToolPreviewLine}
+                </span>
+                <ChevronRight className="h-2.5 w-2.5 shrink-0 opacity-40" aria-hidden="true" />
+              </button>
+            ) : (
+              <CompactToolExecutionList
+                calls={data.calls}
+                results={data.results}
+                detailsExpanded={showToolDetails}
+                onToggleDetails={handleToggleToolDetails}
+                rowClassName="px-1 py-0.5"
+                detailsClassName="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2"
+                executionStats={data.executionStats}
+              />
+            )}
           </div>
           {longThought && (
             isExpanded
@@ -1697,7 +1710,6 @@ const ToolActivityGroupBubble: React.FC<{
   /** Render a single child DisplayItem when the group is expanded. */
   renderItem: (item: DisplayItem, index: number) => React.ReactNode
 }> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
-  const totalCount = group.items.length
   const collapsedPreviewLine = group.previewLines.join(', ')
   const thinkingCount = group.items.filter((item) => item.kind === "assistant_with_tools" && item.data.thought.trim().length > 0).length
 
@@ -1714,10 +1726,7 @@ const ToolActivityGroupBubble: React.FC<{
       >
         <Wrench className="h-3 w-3 shrink-0 text-sky-600/80 dark:text-sky-300/80" aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono text-[10px] text-sky-900/80 dark:text-sky-100/80">
-          {collapsedPreviewLine || `${totalCount} step${totalCount === 1 ? "" : "s"}`}
-        </span>
-        <span className="shrink-0 text-[10px] text-sky-700/70 dark:text-sky-300/70">
-          {totalCount} step{totalCount === 1 ? "" : "s"}
+          {collapsedPreviewLine || "Tool activity"}
         </span>
         {thinkingCount > 0 && (
           <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
@@ -4937,7 +4946,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </div>
             )}
 
-            {/* Footer with status/model info — keep model visible even after completion */}
+            {/* Footer with status/model controls — keep controls visible during live runs even before session metadata arrives */}
             {(profileName || modelInfo || contextInfo || !isComplete) && (
               <div
                 className={cn(
@@ -4953,7 +4962,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         {profileName}
                       </span>
                     )}
-                    {modelInfo && (
+                    {(profileName || modelInfo || !isComplete) && (
                       <>
                         {profileName && <span className="text-muted-foreground/50">•</span>}
                         <SessionModelPicker modelInfo={modelInfo} compact />
@@ -5084,15 +5093,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               {profileName}
             </span>
           )}
-          {/* Model and provider info */}
-          {modelInfo && (
-            <>
-              {profileName && <span className="text-muted-foreground/50">•</span>}
-              <SessionModelPicker modelInfo={modelInfo} />
-              <SessionThinkingPicker />
-              <SessionVerbosityPicker />
-            </>
-          )}
+          {/* Model/provider controls stay available even before live session metadata arrives */}
+          <>
+            {profileName && <span className="text-muted-foreground/50">•</span>}
+            <SessionModelPicker modelInfo={modelInfo} />
+            <SessionThinkingPicker />
+            <SessionVerbosityPicker />
+          </>
           {/* Context fill indicator */}
           {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
             <div className="flex items-center gap-1.5">

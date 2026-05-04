@@ -654,7 +654,7 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("Thinking first")
     expect(text).not.toContain("Tool activity")
     expect(text).toContain("search_repo")
-    expect(text).toContain("1 tool")
+    expect(text).not.toContain("1 tool")
     expect(text.indexOf("search_repo")).toBeLessThan(text.indexOf("Found the issue"))
   })
 
@@ -711,7 +711,7 @@ describe("agent progress response history", () => {
 
     expect(text).not.toContain("Processing with tools")
     expect(text).not.toContain("Includes thinking")
-    expect(text).toMatch(/2 step(?:\s*s)?/)
+    expect(text).not.toMatch(/2 step(?:\s*s)?/)
     expect(text).not.toContain("First tool thought")
     expect(text).not.toContain("Second tool thought")
     expect(text).toContain("search_repo")
@@ -864,7 +864,18 @@ describe("agent progress response history", () => {
       ],
     }
 
-    const tree = runtime.render(AgentProgress, { progress })
+    let tree = runtime.render(AgentProgress, { progress })
+    const compactToolSummary = findAll(
+      tree,
+      (value) => value?.type === "button"
+        && typeof value?.props?.title === "string"
+        && value.props.title.includes("visible_pending_tool")
+        && value.props.title.includes("visible_success_tool"),
+    )[0]
+    expect(compactToolSummary).toBeTruthy()
+    compactToolSummary.props.onClick({ stopPropagation: vi.fn() })
+    tree = runtime.render(AgentProgress, { progress })
+
     const pendingRow = findToolRow(tree, "visible_pending_tool")
     const successRow = findToolRow(tree, "visible_success_tool")
 
