@@ -1036,7 +1036,9 @@ export function ActiveAgentsSidebar({
               viewedConversationId: isSessionsRoute ? viewedConversationId : null,
             })
             const sessionProgress = agentProgressById.get(session.id)
-            const sidebarActivity = getSidebarActivityPresentation(sessionProgress)
+            const sidebarActivity = getSidebarActivityPresentation(sessionProgress, {
+              fallbackErrorText: session.status === "error" ? session.errorMessage : null,
+            })
             const hasRecentFinalResponse = recentFinalResponseState.sessionIds.has(session.id)
             const hasUnreadResponse = hasUnreadAgentResponse(
               sessionProgress,

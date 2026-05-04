@@ -145,6 +145,22 @@ describe("getSidebarProgressTitle", () => {
       ),
     ).toBe("Find the root cause")
   })
+
+  it("ignores generic continuation placeholders when real conversation text exists", () => {
+    expect(
+      getSidebarProgressTitle(
+        "session-1",
+        {
+          conversationTitle: "Continue Conversation",
+          steps: [],
+          conversationHistory: [
+            { role: "user", content: "Fix the failing sidebar error preview", timestamp: 1 },
+          ],
+        },
+        new Map(),
+      ),
+    ).toBe("Fix the failing sidebar error preview")
+  })
 })
 
 describe("getSidebarActivityPresentation", () => {
@@ -169,6 +185,88 @@ describe("getSidebarActivityPresentation", () => {
       kind: "tool_call",
       label: "Using view",
       detail: "Inspecting active-agents-sidebar.tsx",
+      isForegroundActivity: true,
+    })
+  })
+
+  it("prefers an active tool call over a newer thinking step", () => {
+    const activity = getSidebarActivityPresentation({
+      isComplete: false,
+      steps: [
+        {
+          id: "tool-1",
+          type: "tool_call",
+          title: "Reading file",
+          description: "Inspecting source",
+          status: "in_progress",
+          timestamp: 2,
+          toolCall: { name: "functions.view", arguments: { path: "file.ts" } },
+        },
+        {
+          id: "thinking-1",
+          type: "thinking",
+          title: "Thinking",
+          description: "Agent is thinking...",
+          status: "in_progress",
+          timestamp: 3,
+        },
+      ],
+    })
+
+    expect(activity).toMatchObject({
+      kind: "tool_call",
+      label: "Using view",
+      detail: "Inspecting source",
+      isForegroundActivity: true,
+    })
+  })
+
+  it("prefers concrete error text over generic errored thinking copy", () => {
+    const activity = getSidebarActivityPresentation({
+      isComplete: true,
+      finalContent: "Error: MCP server failed to connect",
+      steps: [
+        {
+          id: "thinking-1",
+          type: "thinking",
+          title: "Analyzing request",
+          description: "Processing your request and determining next steps",
+          status: "error",
+          timestamp: 1,
+        },
+      ],
+    })
+
+    expect(activity).toMatchObject({
+      kind: "blocked",
+      label: "Error",
+      detail: "MCP server failed to connect",
+      isForegroundActivity: true,
+    })
+  })
+
+  it("uses fallback session error text when session status is blocked but progress has no error step", () => {
+    const activity = getSidebarActivityPresentation(
+      {
+        isComplete: false,
+        steps: [
+          {
+            id: "thinking-1",
+            type: "thinking",
+            title: "Analyzing request",
+            description: "Processing your request and determining next steps",
+            status: "in_progress",
+            timestamp: 1,
+          },
+        ],
+      },
+      { fallbackErrorText: "Request timed out while starting the run" },
+    )
+
+    expect(activity).toMatchObject({
+      kind: "blocked",
+      label: "Error",
+      detail: "Request timed out while starting the run",
       isForegroundActivity: true,
     })
   })

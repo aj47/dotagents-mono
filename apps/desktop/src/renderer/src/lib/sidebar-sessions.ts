@@ -42,6 +42,10 @@ type SidebarActivityProgressLike = Pick<
   | "userResponse"
 >
 
+type SidebarActivityOptions = {
+  fallbackErrorText?: string | null
+}
+
 export type SidebarActivityKind =
   | "blocked"
   | "complete"
@@ -353,8 +357,10 @@ export function getSidebarProgressTitle(
   delegationTitlesBySessionId: ReadonlyMap<string, string>,
   fallback?: string,
 ): string | undefined {
-  const explicitTitle = progress.conversationTitle?.trim()
-  if (explicitTitle) return explicitTitle
+  const explicitTitle = normalizeSidebarActivityText(progress.conversationTitle)
+  if (explicitTitle && !isGenericSidebarConversationTitle(explicitTitle)) {
+    return explicitTitle
+  }
 
   const delegationTitle = delegationTitlesBySessionId.get(sessionId)?.trim()
   if (delegationTitle) return delegationTitle
@@ -373,12 +379,28 @@ export function getSidebarProgressTitle(
   const summaryTitle = progress.latestSummary?.actionSummary?.trim()
   if (summaryTitle) return summaryTitle
 
-  return fallback?.trim() || undefined
+  const fallbackTitle = normalizeSidebarActivityText(fallback)
+  if (fallbackTitle && !isGenericSidebarConversationTitle(fallbackTitle)) {
+    return fallbackTitle
+  }
+
+  return explicitTitle ?? fallbackTitle ?? undefined
 }
 
 function normalizeSidebarActivityText(value?: string | null): string | null {
   const normalized = value?.replace(/\s+/g, " ").trim()
   return normalized || null
+}
+
+function isGenericSidebarConversationTitle(value?: string | null): boolean {
+  const normalized = normalizeSidebarActivityText(value)?.toLowerCase()
+  return normalized === "continue conversation" || normalized === "untitled conversation"
+}
+
+function normalizeSidebarErrorText(value?: string | null): string | null {
+  const normalized = normalizeSidebarActivityText(value)
+  if (!normalized) return null
+  return normalized.replace(/^error:\s*/iu, "").trim() || normalized
 }
 
 function getLatestSidebarStep(
@@ -405,6 +427,33 @@ function getStepDetail(step: AgentProgressUpdate["steps"][number]): string | nul
   return normalizeSidebarActivityText(
     step.llmContent ?? step.content ?? step.description ?? step.title,
   )
+}
+
+function getSidebarErrorDetail(
+  progress: SidebarActivityProgressLike,
+  erroredStep: AgentProgressUpdate["steps"][number],
+  fallbackErrorText?: string | null,
+): string | null {
+  const latestToolErrorStep = getLatestSidebarStep(progress, (step) =>
+    !!normalizeSidebarActivityText(step.toolResult?.error),
+  )
+  const latestToolError = normalizeSidebarErrorText(latestToolErrorStep?.toolResult?.error)
+  if (latestToolError) return latestToolError
+
+  const finalContent = normalizeSidebarActivityText(progress.finalContent)
+  if (finalContent && /^error:/iu.test(finalContent)) {
+    return normalizeSidebarErrorText(finalContent)
+  }
+
+  const userResponse = normalizeSidebarActivityText(progress.userResponse)
+  if (userResponse && /^error:/iu.test(userResponse)) {
+    return normalizeSidebarErrorText(userResponse)
+  }
+
+  const fallbackError = normalizeSidebarErrorText(fallbackErrorText)
+  if (fallbackError) return fallbackError
+
+  return normalizeSidebarErrorText(erroredStep.toolResult?.error) ?? getStepDetail(erroredStep)
 }
 
 export function getLatestUserFacingResponse(progress: SidebarActivityProgressLike): string | null {
@@ -447,8 +496,13 @@ function makeSidebarActivityPresentation(
 
 export function getSidebarActivityPresentation(
   progress?: SidebarActivityProgressLike | null,
+  options?: SidebarActivityOptions,
 ): SidebarActivityPresentation {
   if (!progress) {
+    const fallbackError = normalizeSidebarErrorText(options?.fallbackErrorText)
+    if (fallbackError) {
+      return makeSidebarActivityPresentation("blocked", "Error", fallbackError, true)
+    }
     return makeSidebarActivityPresentation("running", "Running", null, false)
   }
 
@@ -469,9 +523,14 @@ export function getSidebarActivityPresentation(
     return makeSidebarActivityPresentation(
       "blocked",
       "Error",
-      normalizeSidebarActivityText(erroredStep.toolResult?.error) ?? getStepDetail(erroredStep),
+      getSidebarErrorDetail(progress, erroredStep, options?.fallbackErrorText),
       true,
     )
+  }
+
+  const fallbackError = normalizeSidebarErrorText(options?.fallbackErrorText)
+  if (fallbackError) {
+    return makeSidebarActivityPresentation("blocked", "Error", fallbackError, true)
   }
 
   if (progress.retryInfo?.isRetrying) {
@@ -495,20 +554,27 @@ export function getSidebarActivityPresentation(
       true,
     )
   }
-  if (activeStep?.delegation && isActiveDelegationStatus(activeStep.delegation.status)) {
+  const activeDelegationStep = getLatestSidebarStep(progress, (step) =>
+    (step.status === "in_progress" || step.status === "awaiting_approval") &&
+    isActiveDelegationStatus(step.delegation?.status),
+  )
+  if (activeDelegationStep?.delegation) {
     return makeSidebarActivityPresentation(
       "delegation",
       "Subagent",
-      getDelegationDisplayTitle(activeStep.delegation) ?? getStepDetail(activeStep),
+      getDelegationDisplayTitle(activeDelegationStep.delegation) ?? getStepDetail(activeDelegationStep),
       true,
     )
   }
-  if (activeStep?.type === "tool_call") {
-    const toolName = formatSidebarToolName(activeStep.toolCall?.name)
+  const activeToolCallStep = getLatestSidebarStep(progress, (step) =>
+    step.status === "in_progress" && step.type === "tool_call",
+  )
+  if (activeToolCallStep) {
+    const toolName = formatSidebarToolName(activeToolCallStep.toolCall?.name)
     return makeSidebarActivityPresentation(
       "tool_call",
       toolName ? `Using ${toolName}` : "Tool call",
-      getStepDetail(activeStep),
+      getStepDetail(activeToolCallStep),
       true,
     )
   }

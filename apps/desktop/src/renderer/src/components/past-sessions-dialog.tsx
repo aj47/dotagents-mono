@@ -359,7 +359,9 @@ export function SavedConversationsDialog({
     return [...trackedActiveSessions]
       .map((session) => {
         const progress = agentProgressById.get(session.id)
-        const sidebarActivity = getSidebarActivityPresentation(progress)
+        const sidebarActivity = getSidebarActivityPresentation(progress, {
+          fallbackErrorText: session.status === "error" ? session.errorMessage : null,
+        })
         const hasProgressErrors = !!progress?.steps?.some(
           (step) => step.status === "error" || step.toolResult?.error,
         )

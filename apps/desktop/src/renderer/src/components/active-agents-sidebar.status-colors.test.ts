@@ -42,7 +42,8 @@ describe("active agents sidebar status colors", () => {
   it("passes unread and derived live activity attention to the blue foreground status", () => {
     expect(sidebarSource).toContain("const hasUnreadResponse = hasUnreadAgentResponse(")
     expect(sidebarSource).toContain("hasUnreadResponse,")
-    expect(sidebarSource).toContain("const sidebarActivity = getSidebarActivityPresentation(sessionProgress)")
+    expect(sidebarSource).toContain("const sidebarActivity = getSidebarActivityPresentation(sessionProgress, {")
+    expect(sidebarSource).toContain('fallbackErrorText: session.status === "error" ? session.errorMessage : null')
     expect(sidebarSource).toContain("hasForegroundActivity: sidebarActivity.isForegroundActivity")
     expect(presentationSource).toContain('railClassName: "bg-blue-500"')
     expect(presentationSource).toContain("shouldPulse: true")
