@@ -6,7 +6,7 @@ import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
 import { AgentProgress } from "@renderer/components/agent-progress"
 import { MessageCircle, Mic, Plus, CheckCircle2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
-import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
+import type { AgentProfile, AgentProgressUpdate, LoadedConversation } from "@shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { toast } from "sonner"
 
@@ -15,12 +15,13 @@ import { orderConversationHistoryByPinnedFirst } from "@renderer/lib/pinned-sess
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
 import { AgentSelector } from "@renderer/components/agent-selector"
 import { useConfigQuery } from "@renderer/lib/query-client"
-import { useSavedConversationQuery, useSavedConversationsQuery } from "@renderer/lib/queries"
+import { useSavedConversationsQuery } from "@renderer/lib/queries"
 import { getAgentShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { orderActiveSessionsByPinnedFirst } from "@renderer/lib/sidebar-sessions"
 import {
+  getLoadedConversationHistoryStartIndex,
   hasConversationHistoryForDisplay,
   mergeLoadedConversationIntoProgress,
 } from "@renderer/lib/session-progress-hydration"
@@ -133,24 +134,85 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   const storeProgress = useAgentSessionProgress(sessionId)
   const baseProgress = storeProgress ?? fallbackProgress
   const conversationIdForHydration = baseProgress?.conversationId ?? null
+  const [activeHistoryMessageLimit, setActiveHistoryMessageLimit] = useState(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
+  const queryClient = useQueryClient()
+  const baseConversationHistoryCount = baseProgress?.conversationHistory?.length ?? 0
   const shouldHydrateFromConversation =
     !!conversationIdForHydration && !hasConversationHistoryForDisplay(baseProgress)
-  const savedConversationQuery = useSavedConversationQuery(
-    shouldHydrateFromConversation ? conversationIdForHydration : null,
+  const savedConversationQueryKey = [
+    "conversation",
+    conversationIdForHydration,
+    shouldHydrateFromConversation ? "hydrate" : activeHistoryMessageLimit,
+  ] as const
+  const cachedSavedConversation = queryClient.getQueryData<LoadedConversation>(savedConversationQueryKey)
+  const progressForExpandedHistoryDecision = useMemo(
+    () => baseProgress && cachedSavedConversation && !shouldHydrateFromConversation
+      ? mergeLoadedConversationIntoProgress(
+          baseProgress,
+          cachedSavedConversation,
+          { replaceExistingHistory: true },
+        )
+      : baseProgress,
+    [baseProgress, cachedSavedConversation, shouldHydrateFromConversation],
   )
+  const displayedConversationHistoryCount = progressForExpandedHistoryDecision?.conversationHistory?.length ?? 0
+  const displayedConversationHistoryTotalCount = Math.max(
+    progressForExpandedHistoryDecision?.conversationHistoryTotalCount ?? 0,
+    displayedConversationHistoryCount,
+  )
+  const shouldLoadExpandedConversationHistory =
+    !!conversationIdForHydration &&
+    !shouldHydrateFromConversation &&
+    displayedConversationHistoryTotalCount > displayedConversationHistoryCount &&
+    activeHistoryMessageLimit > displayedConversationHistoryCount
+  const savedConversationQuery = useQuery({
+    queryKey: savedConversationQueryKey,
+    queryFn: async () => {
+      if (!conversationIdForHydration) return null
+      return tipcClient.loadConversation({
+        conversationId: conversationIdForHydration,
+        ...(shouldHydrateFromConversation ? {} : { messageLimit: activeHistoryMessageLimit }),
+      })
+    },
+    enabled: !!conversationIdForHydration && (
+      shouldHydrateFromConversation || shouldLoadExpandedConversationHistory
+    ),
+    placeholderData: (previousData: any) =>
+      previousData?.id === conversationIdForHydration ? previousData : undefined,
+  })
+
+  useEffect(() => {
+    setActiveHistoryMessageLimit(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
+  }, [conversationIdForHydration])
+
+  const handleLoadEarlierConversationHistory = useCallback(() => {
+    setActiveHistoryMessageLimit((limit) => limit + PENDING_RESUME_HISTORY_PAGE_SIZE)
+  }, [])
+
   const progress = useMemo(
     () => baseProgress
       ? mergeLoadedConversationIntoProgress(
           baseProgress,
           savedConversationQuery.data,
+          {
+            replaceExistingHistory:
+              !shouldHydrateFromConversation &&
+              !!savedConversationQuery.data &&
+              activeHistoryMessageLimit > baseConversationHistoryCount,
+          },
         )
       : null,
-    [baseProgress, savedConversationQuery.data],
+    [
+      activeHistoryMessageLimit,
+      baseConversationHistoryCount,
+      baseProgress,
+      savedConversationQuery.data,
+      shouldHydrateFromConversation,
+    ],
   )
   const focusedSessionId = useAgentStore((state) => state.focusedSessionId)
   const setFocusedSessionId = useAgentStore((state) => state.setFocusedSessionId)
   const isFocused = focusedSessionId === sessionId
-  const queryClient = useQueryClient()
 
   const handleFocusSession = useCallback(async () => {
     setFocusedSessionId(sessionId)
@@ -187,6 +249,10 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
       isFocused={isFocused}
       onFocus={handleFocusSession}
       onDismiss={handleDismissSession}
+      onLoadEarlierConversationHistory={handleLoadEarlierConversationHistory}
+      isLoadingEarlierConversationHistory={
+        shouldLoadExpandedConversationHistory && savedConversationQuery.isFetching
+      }
       onVoiceContinue={onVoiceContinue}
     />
   )
@@ -658,7 +724,7 @@ export function Component() {
           }]
         : [],
       isComplete: !isInitializing,
-      conversationHistoryStartIndex: conv.messageOffset ?? 0,
+      conversationHistoryStartIndex: getLoadedConversationHistoryStartIndex(conv),
       conversationHistoryTotalCount: conv.totalMessageCount ?? conv.messages.length,
       conversationHistory: conv.messages.map((m, index) => ({
         role: m.role,

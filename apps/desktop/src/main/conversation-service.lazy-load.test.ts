@@ -4,6 +4,7 @@ import path from "path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const tempDirs: string[] = []
+let summaryResult = "Compacted conversation summary."
 
 async function setupConversationServiceTest() {
   const conversationsFolder = await fs.mkdtemp(path.join(os.tmpdir(), "dotagents-conv-lazy-"))
@@ -17,7 +18,7 @@ async function setupConversationServiceTest() {
     configPath: path.join(conversationsFolder, "config.json"),
     configStore: { get: vi.fn(), save: vi.fn(), reload: vi.fn(), config: undefined },
   }))
-  vi.doMock("./context-budget", () => ({ summarizeContent: vi.fn((content: string) => content) }))
+  vi.doMock("./context-budget", () => ({ summarizeContent: vi.fn(() => summaryResult) }))
   vi.doMock("./llm-fetch", () => ({ makeTextCompletionWithFetch: vi.fn() }))
 
   const { ConversationService } = await import("./conversation-service")
@@ -25,6 +26,7 @@ async function setupConversationServiceTest() {
 }
 
 afterEach(async () => {
+  summaryResult = "Compacted conversation summary."
   vi.resetModules()
   vi.clearAllMocks()
   await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })))
@@ -109,5 +111,165 @@ describe("conversation lazy loading", () => {
       content: "Stored answer",
       displayContent: "<think>reasoning</think>\n\nStored answer",
     })
+  })
+
+  it("persists structured compaction checkpoint metadata when compacting on load", async () => {
+    summaryResult = "User identified Bin-Huang/youtube-analytics-cli as the YouTube analytics CLI repo."
+    const service = await setupConversationServiceTest()
+    await service.saveConversation({
+      id: "conv_compaction_checkpoint",
+      title: "Compaction checkpoint",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: Array.from({ length: 25 }, (_, index) => ({
+        id: `m${index}`,
+        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        content: index === 2
+          ? "Remember the YouTube analytics CLI repo is Bin-Huang/youtube-analytics-cli."
+          : `Message ${index}`,
+        timestamp: 1_700_000_000_000 + index,
+      })),
+    }, true)
+
+    const loaded = await service.loadConversationWithCompaction("conv_compaction_checkpoint")
+
+    expect(loaded?.messages).toHaveLength(11)
+    expect(loaded?.messages[0]).toMatchObject({ isSummary: true, content: summaryResult })
+    expect(loaded?.rawMessages).toHaveLength(25)
+    expect(loaded?.compaction).toMatchObject({
+      rawHistoryPreserved: true,
+      storedRawMessageCount: 25,
+      representedMessageCount: 25,
+      summary: summaryResult,
+      firstKeptMessageId: "m15",
+      firstKeptMessageIndex: 15,
+      summarizedMessageCount: 15,
+    })
+    expect(loaded?.compaction?.tokensBefore).toBeGreaterThan(0)
+    expect(loaded?.compaction?.extractedFacts?.[0]).toMatchObject({
+      sourceMessageId: "m2",
+      repoSlugs: ["Bin-Huang/youtube-analytics-cli"],
+    })
+  })
+
+  it("backfills missing checkpoint metadata without refreshing updatedAt", async () => {
+    const service = await setupConversationServiceTest()
+    const rawMessages = Array.from({ length: 25 }, (_, index) => ({
+      id: `m${index}`,
+      role: index % 2 === 0 ? "user" as const : "assistant" as const,
+      content: index === 2
+        ? "Remember the analytics repo is Bin-Huang/youtube-analytics-cli."
+        : `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }))
+    const summaryMessage = {
+      id: "summary-1",
+      role: "assistant" as const,
+      content: "The user mentioned Bin-Huang/youtube-analytics-cli.",
+      timestamp: 1_700_000_000_100,
+      isSummary: true,
+      summarizedMessageCount: 15,
+    }
+
+    await service.saveConversation({
+      id: "conv_checkpoint_backfill",
+      title: "Checkpoint backfill",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [summaryMessage, ...rawMessages.slice(15)],
+      rawMessages,
+    }, true)
+
+    const loaded = await service.loadConversationWithCompaction("conv_checkpoint_backfill")
+
+    expect(loaded?.updatedAt).toBe(200)
+    expect(loaded?.compaction).toMatchObject({
+      compactedAt: summaryMessage.timestamp,
+      firstKeptMessageId: "m15",
+      firstKeptMessageIndex: 15,
+      summarizedMessageCount: 15,
+    })
+    expect(loaded?.compaction?.extractedFacts?.[0]).toMatchObject({
+      sourceMessageId: "m2",
+      repoSlugs: ["Bin-Huang/youtube-analytics-cli"],
+    })
+
+    const reloaded = await service.loadConversation("conv_checkpoint_backfill")
+    expect(reloaded?.updatedAt).toBe(200)
+  })
+
+  it("treats first kept indexes as persisted checkpoint metadata for legacy messages without ids", async () => {
+    const service = await setupConversationServiceTest()
+    const rawMessages = Array.from({ length: 25 }, (_, index) => ({
+      id: undefined as any,
+      role: index % 2 === 0 ? "user" as const : "assistant" as const,
+      content: `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }))
+    const summaryMessage = {
+      id: undefined as any,
+      role: "assistant" as const,
+      content: "Compacted summary.",
+      timestamp: 1_700_000_000_100,
+      isSummary: true,
+      summarizedMessageCount: 15,
+    }
+
+    await service.saveConversation({
+      id: "conv_checkpoint_no_message_ids",
+      title: "Checkpoint without message ids",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [summaryMessage, ...rawMessages.slice(15)],
+      rawMessages,
+      compaction: {
+        rawHistoryPreserved: true,
+        storedRawMessageCount: 25,
+        representedMessageCount: 25,
+        compactedAt: summaryMessage.timestamp,
+        summary: summaryMessage.content,
+        firstKeptMessageIndex: 15,
+        summarizedRange: { startIndex: 0, endIndex: 14 },
+        summarizedMessageCount: 15,
+      },
+    }, true)
+
+    const saveSpy = vi.spyOn(service, "saveConversation")
+
+    const loaded = await service.loadConversationWithCompaction("conv_checkpoint_no_message_ids")
+
+    expect(loaded?.compaction?.firstKeptMessageIndex).toBe(15)
+    expect(saveSpy).not.toHaveBeenCalled()
+  })
+
+  it("clamps checkpoint summarized counts to the preserved raw history bounds", async () => {
+    const service = await setupConversationServiceTest()
+    const rawMessages = Array.from({ length: 3 }, (_, index) => ({
+      id: `m${index}`,
+      role: "user" as const,
+      content: `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }))
+
+    const metadata = (service as any).buildCompactionCheckpointMetadata(
+      undefined,
+      rawMessages,
+      {
+        id: "summary-1",
+        role: "assistant",
+        content: "Summary",
+        timestamp: 1_700_000_000_010,
+        isSummary: true,
+        summarizedMessageCount: 99,
+      },
+      99,
+      12,
+      1_700_000_000_010,
+    )
+
+    expect(metadata.summarizedMessageCount).toBe(3)
+    expect(metadata.firstKeptMessageId).toBeUndefined()
+    expect(metadata.firstKeptMessageIndex).toBeUndefined()
+    expect(metadata.summarizedRange).toMatchObject({ startIndex: 0, endIndex: 2 })
   })
 })

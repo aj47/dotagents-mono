@@ -324,6 +324,70 @@ afterEach(() => {
 })
 
 describe("agent progress response history", () => {
+  it("shows a compact live thinking placeholder when an active turn has no stream text yet", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-live-placeholder",
+      conversationId: "conversation-live-placeholder",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Do the next thing", timestamp: 100 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("Thinking...")
+    expect(text).not.toContain("Generating response...")
+  })
+
+  it("does not add a live thinking placeholder while tool activity is already visible", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-tool-activity-placeholder",
+      conversationId: "conversation-tool-activity-placeholder",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [
+        {
+          id: "tool-step-1",
+          type: "tool_call",
+          title: "Running inspect_workspace",
+          status: "in_progress",
+          timestamp: 200,
+          toolCall: { name: "inspect_workspace", arguments: { path: "apps/desktop" } },
+        },
+      ],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Inspect the workspace", timestamp: 100 },
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 150,
+          toolCalls: [
+            { name: "inspect_workspace", arguments: { path: "apps/desktop" } },
+          ],
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("inspect_workspace")
+    expect(text).not.toContain("Running inspect_workspace")
+    expect(text).not.toContain("Thinking...")
+  })
+
   it("keeps the completed streamed response visible while verification is running", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
@@ -631,7 +695,7 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("Thinking first")
     expect(text).not.toContain("Tool activity")
     expect(text).toContain("search_repo")
-    expect(text).toContain("1 tool")
+    expect(text).not.toContain("1 tool")
     expect(text.indexOf("search_repo")).toBeLessThan(text.indexOf("Found the issue"))
   })
 
@@ -688,7 +752,7 @@ describe("agent progress response history", () => {
 
     expect(text).not.toContain("Processing with tools")
     expect(text).not.toContain("Includes thinking")
-    expect(text).toMatch(/2 step(?:\s*s)?/)
+    expect(text).not.toMatch(/2 step(?:\s*s)?/)
     expect(text).not.toContain("First tool thought")
     expect(text).not.toContain("Second tool thought")
     expect(text).toContain("search_repo")
@@ -841,7 +905,18 @@ describe("agent progress response history", () => {
       ],
     }
 
-    const tree = runtime.render(AgentProgress, { progress })
+    let tree = runtime.render(AgentProgress, { progress })
+    const compactToolSummary = findAll(
+      tree,
+      (value) => value?.type === "button"
+        && typeof value?.props?.title === "string"
+        && value.props.title.includes("visible_pending_tool")
+        && value.props.title.includes("visible_success_tool"),
+    )[0]
+    expect(compactToolSummary).toBeTruthy()
+    compactToolSummary.props.onClick({ stopPropagation: vi.fn() })
+    tree = runtime.render(AgentProgress, { progress })
+
     const pendingRow = findToolRow(tree, "visible_pending_tool")
     const successRow = findToolRow(tree, "visible_success_tool")
 

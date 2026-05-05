@@ -52,6 +52,7 @@ import {
   MCPConfig,
   MCPServerConfig,
   Conversation,
+  ConversationCompactionMetadata,
   ConversationHistoryItem,
   AgentProgressUpdate,
   SessionProfileSnapshot,
@@ -84,7 +85,7 @@ import { discordService } from "./discord-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
-import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
+import { agentProfileService, createSessionSnapshotFromProfile, refreshSessionSnapshotSkillsFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { getAppSessionForAcpSession } from "./acp-session-state"
@@ -350,10 +351,14 @@ async function processWithAgentMode(
   const effectiveMaxIterations = maxIterationsFromOverride ?? (config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10))
   const allProfiles = agentProfileService.getAll()
   const currentProfile = agentProfileService.getCurrentProfile()
-  const existingProfileSnapshot = existingSessionId
+  const existingProfileSnapshotFromSession = existingSessionId
     ? agentSessionStateManager.getSessionProfileSnapshot(existingSessionId)
       ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
     : undefined
+  const existingProfileSnapshot = refreshSessionSnapshotSkillsFromProfile(
+    existingProfileSnapshotFromSession,
+    currentProfile,
+  )
   const topLevelAcpSelection = resolvePreferredTopLevelAcpAgentSelection({
     currentProfile,
     sessionProfileId: existingProfileSnapshot?.profileId,
@@ -522,7 +527,8 @@ async function processWithAgentMode(
 
     // Load previous conversation history if continuing a conversation.
     // IMPORTANT: Load this BEFORE emitting initial progress to ensure consistency.
-    // Do not block follow-up startup on lazy conversation compaction.
+    // For long conversations, compact on load to persist a stable checkpoint while
+    // still replaying preserved raw messages to the prompt builder when available.
     let previousConversationHistory:
       | Array<{
           role: "user" | "assistant" | "tool"
@@ -534,17 +540,22 @@ async function processWithAgentMode(
           branchMessageIndex?: number
         }>
       | undefined
+    let previousConversationCompaction: ConversationCompactionMetadata | undefined
 
     if (conversationId) {
       logLLM(`[tipc.ts processWithAgentMode] Loading conversation history for conversationId: ${conversationId}`)
-      const conversation = await conversationService.loadConversation(conversationId)
+      const conversation = await conversationService.loadConversationWithCompaction(conversationId, sessionId)
 
       if (conversation && conversation.messages.length > 0) {
         logLLM(`[tipc.ts processWithAgentMode] Loaded conversation with ${conversation.messages.length} messages`)
+        previousConversationCompaction = conversation.compaction
 
         // Convert conversation messages to the format expected by agent mode
         // Exclude the last message since it's the current user input that will be added
-        const messagesToConvert = conversation.messages.slice(0, -1)
+        const replayMessages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
+          ? conversation.rawMessages
+          : conversation.messages
+        const messagesToConvert = replayMessages.slice(0, -1)
         const branchMessageIndexMap = getBranchMessageIndexMap(messagesToConvert)
         logLLM(`[tipc.ts processWithAgentMode] Converting ${messagesToConvert.length} messages (excluding last message)`)
         previousConversationHistory = messagesToConvert.map((msg, index) => ({
@@ -596,6 +607,7 @@ async function processWithAgentMode(
       undefined, // onProgress callback (not used here, progress is emitted via emitAgentProgress)
       profileSnapshot, // Pass profile snapshot for session isolation
       runId,
+      previousConversationCompaction,
     )
 
     // Mark session as completed

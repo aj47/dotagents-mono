@@ -183,6 +183,26 @@ export function createSessionSnapshotFromProfile(
 }
 
 /**
+ * Refresh the skills portion of a stored session snapshot from the current
+ * profile. Sessions intentionally snapshot most profile settings for isolation,
+ * but skill toggles are user-facing access controls that should take effect for
+ * follow-up runs without requiring a brand-new conversation.
+ */
+export function refreshSessionSnapshotSkillsFromProfile(
+  snapshot: SessionProfileSnapshot | undefined,
+  profile: AgentProfile | undefined,
+): SessionProfileSnapshot | undefined {
+  if (!snapshot || !profile || snapshot.profileId !== profile.id) return snapshot
+  return {
+    ...snapshot,
+    skillsConfig: profile.skillsConfig,
+    // If a caller cached rendered skill instructions in the snapshot, invalidate
+    // them so the next prompt is rebuilt from the latest enabled skill IDs.
+    skillsInstructions: undefined,
+  }
+}
+
+/**
  * Type for agent profile conversations storage.
  */
 interface AgentProfileConversationsData {

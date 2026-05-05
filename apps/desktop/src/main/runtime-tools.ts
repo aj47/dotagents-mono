@@ -23,7 +23,7 @@ import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
 import path from "path"
-import type { ProfileSkillsConfig } from "../shared/types"
+import type { AgentSkill, ProfileSkillsConfig } from "../shared/types"
 
 const execAsync = promisify(exec)
 
@@ -53,12 +53,58 @@ function buildIgnoredExecuteCommandSkillIdWarning(skillId: string, availableSkil
   }
 }
 
-function isSkillEnabledByConfig(skillId: string, skillsConfig?: ProfileSkillsConfig): boolean {
-  if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true
-  return (skillsConfig.enabledSkillIds ?? []).includes(skillId)
+function uniqueSkillIds(ids: Array<string | undefined>): string[] {
+  return Array.from(new Set(ids.map((id) => id?.trim()).filter((id): id is string => Boolean(id))))
 }
 
-async function isSkillEnabledForRuntimeContext(skillId: string, context: BuiltinToolContext): Promise<boolean> {
+function getSkillFolderIdFromFilePath(filePath?: string): string | undefined {
+  if (!filePath || filePath.startsWith("github:")) return undefined
+
+  const normalized = path.normalize(filePath)
+  const segments = normalized.split(path.sep).filter(Boolean)
+  const agentsIndex = segments.lastIndexOf(".agents")
+  const skillsIndex = agentsIndex >= 0 && segments[agentsIndex + 1] === "skills"
+    ? agentsIndex + 1
+    : segments.lastIndexOf("skills")
+
+  if (skillsIndex >= 0 && skillsIndex < segments.length - 2) {
+    return segments.slice(skillsIndex + 1, -1).join("/")
+  }
+
+  return undefined
+}
+
+function getSkillRuntimeIds(skill: AgentSkill, requestedSkillId?: string): string[] {
+  return uniqueSkillIds([
+    requestedSkillId,
+    skill.id,
+    getSkillFolderIdFromFilePath(skill.filePath),
+  ])
+}
+
+function resolveRuntimeSkill(skillId: string, skillsServiceLike: { getSkill: (id: string) => AgentSkill | undefined; getSkills: () => AgentSkill[] }): AgentSkill | undefined {
+  const trimmedSkillId = skillId.trim()
+  if (!trimmedSkillId) return undefined
+
+  const direct = skillsServiceLike.getSkill(trimmedSkillId)
+  if (direct) return direct
+
+  const normalizedSkillId = trimmedSkillId.toLowerCase()
+  return skillsServiceLike.getSkills().find((skill) => {
+    return skill.name.toLowerCase() === normalizedSkillId
+      || getSkillFolderIdFromFilePath(skill.filePath)?.toLowerCase() === normalizedSkillId
+  })
+}
+
+function isSkillEnabledByConfig(skillIds: string | string[], skillsConfig?: ProfileSkillsConfig): boolean {
+  if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true
+  const ids = Array.isArray(skillIds) ? skillIds : [skillIds]
+  return ids.some((id) => (skillsConfig.enabledSkillIds ?? []).includes(id))
+}
+
+async function isSkillEnabledForRuntimeContext(skillIds: string | string[], context: BuiltinToolContext): Promise<boolean> {
+  const { agentProfileService } = await import("./agent-profile-service")
+
   if (context.sessionId) {
     const stateSnapshot = typeof agentSessionStateManager.getSessionProfileSnapshot === "function"
       ? agentSessionStateManager.getSessionProfileSnapshot(context.sessionId)
@@ -67,13 +113,18 @@ async function isSkillEnabledForRuntimeContext(skillId: string, context: Builtin
       ? agentSessionTracker.getSessionProfileSnapshot(context.sessionId)
       : undefined
     const snapshot = stateSnapshot ?? trackerSnapshot
-    if (snapshot) return isSkillEnabledByConfig(skillId, snapshot.skillsConfig)
+    if (snapshot) {
+      const currentProfile = agentProfileService.getCurrentProfile()
+      if (currentProfile?.id === snapshot.profileId) {
+        return isSkillEnabledByConfig(skillIds, currentProfile.skillsConfig)
+      }
+      return isSkillEnabledByConfig(skillIds, snapshot.skillsConfig)
+    }
   }
 
-  const { agentProfileService } = await import("./agent-profile-service")
   const profile = agentProfileService.getCurrentProfile()
   if (!profile) return false
-  return isSkillEnabledByConfig(skillId, profile.skillsConfig)
+  return isSkillEnabledByConfig(skillIds, profile.skillsConfig)
 }
 
 function disabledSkillToolResult(skillId: string, action: "load" | "execute"): MCPToolResult {
@@ -1099,8 +1150,10 @@ const toolHandlers: Record<string, ToolHandler> = {
       // process is still running.
       skillsService.refreshFromDisk()
 
-      // Find the skill and get its directory
-      let skill = skillsService.getSkill(skillId)
+      // Find the skill and get its directory. Prefer exact IDs, but also accept
+      // the canonical .agents/skills/<id>/ folder ID for imported skills whose
+      // frontmatter id/name drifted from the on-disk folder.
+      let skill = resolveRuntimeSkill(skillId, skillsService)
       if (!skill) {
         const availableSkillIds = skillsService
           .getSkills()
@@ -1109,8 +1162,8 @@ const toolHandlers: Record<string, ToolHandler> = {
         ignoredInvalidSkillIdWarning = buildIgnoredExecuteCommandSkillIdWarning(skillId, availableSkillIds)
       } else {
 
-        if (!(await isSkillEnabledForRuntimeContext(skill.id, context))) {
-          return disabledSkillToolResult(skill.id, "execute")
+        if (!(await isSkillEnabledForRuntimeContext(getSkillRuntimeIds(skill, skillId), context))) {
+          return disabledSkillToolResult(skillId, "execute")
         }
 
         if (!skill.filePath) {
@@ -1126,7 +1179,7 @@ const toolHandlers: Record<string, ToolHandler> = {
           try {
             // Dynamically import skills-service to avoid circular dependency
             const { skillsService: skillsSvc } = await import("./skills-service")
-            skill = await skillsSvc.upgradeGitHubSkillToLocal(skillId)
+            skill = await skillsSvc.upgradeGitHubSkillToLocal(skill.id)
           } catch (upgradeError) {
             return {
               content: [{ type: "text", text: JSON.stringify({ success: false, error: `Failed to upgrade GitHub skill to local: ${upgradeError instanceof Error ? upgradeError.message : String(upgradeError)}` }) }],
@@ -1458,26 +1511,9 @@ const toolHandlers: Record<string, ToolHandler> = {
     // Pick up skills added or edited directly in .agents/skills while the app
     // process is still running.
     skillsService.refreshFromDisk()
-    const skill = skillsService.getSkill(skillId)
+    const skill = resolveRuntimeSkill(skillId, skillsService)
 
     if (!skill) {
-      // Try to find by name as fallback
-      const allSkills = skillsService.getSkills()
-      const skillByName = allSkills.find(s => s.name.toLowerCase() === skillId.toLowerCase())
-
-      if (skillByName) {
-        if (!(await isSkillEnabledForRuntimeContext(skillByName.id, context))) {
-          return disabledSkillToolResult(skillByName.id, "load")
-        }
-
-        return {
-          content: [{
-            type: "text",
-            text: `# ${skillByName.name}\n\n${skillByName.instructions}`,
-          }],
-          isError: false,
-        }
-      }
 
       return {
         content: [{
@@ -1491,8 +1527,8 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    if (!(await isSkillEnabledForRuntimeContext(skill.id, context))) {
-      return disabledSkillToolResult(skill.id, "load")
+    if (!(await isSkillEnabledForRuntimeContext(getSkillRuntimeIds(skill, skillId), context))) {
+      return disabledSkillToolResult(skillId, "load")
     }
 
     return {

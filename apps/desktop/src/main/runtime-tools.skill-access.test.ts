@@ -92,6 +92,41 @@ describe("runtime-tools skill access", () => {
     expect(payload.error).toContain("disabled for this agent")
   })
 
+  it("uses the latest current-profile skill config for an existing session snapshot", async () => {
+    mockGetCurrentProfile.mockReturnValue({
+      id: "main-agent",
+      name: "Main Agent",
+      skillsConfig: { allSkillsDisabledByDefault: true, enabledSkillIds: ["allowed-skill", "disabled-skill"] },
+    })
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("load_skill_instructions", { skillId: "disabled-skill" }, "session-1")
+
+    expect(result?.isError).toBe(false)
+    expect(String(result?.content[0]?.text)).toContain("secret instructions")
+  })
+
+  it("lets current-profile skill disables override a matching session snapshot", async () => {
+    mockGetSessionProfileSnapshot.mockReturnValue({
+      profileId: "main-agent",
+      profileName: "Main Agent",
+      guidelines: "",
+      skillsConfig: { allSkillsDisabledByDefault: true, enabledSkillIds: ["disabled-skill"] },
+    })
+    mockGetCurrentProfile.mockReturnValue({
+      id: "main-agent",
+      name: "Main Agent",
+      skillsConfig: { allSkillsDisabledByDefault: true, enabledSkillIds: ["allowed-skill"] },
+    })
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("load_skill_instructions", { skillId: "disabled-skill" }, "session-1")
+
+    expect(result?.isError).toBe(true)
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(payload).toEqual(expect.objectContaining({ success: false, skillId: "disabled-skill" }))
+  })
+
   it("blocks loading instructions for a disabled skill name fallback", async () => {
     mockGetSkill.mockReturnValue(undefined)
 
@@ -100,7 +135,31 @@ describe("runtime-tools skill access", () => {
 
     expect(result?.isError).toBe(true)
     const payload = JSON.parse(String(result?.content[0]?.text))
-    expect(payload.skillId).toBe("disabled-skill")
+    expect(payload.skillId).toBe("Disabled Skill")
+  })
+
+  it("loads instructions when the enabled ID matches the skill folder instead of frontmatter metadata", async () => {
+    mockGetSkill.mockReturnValue(undefined)
+    mockGetSkills.mockReturnValue([
+      {
+        id: "youtube-studio-analytics",
+        name: "YouTube Studio Analytics",
+        instructions: "youtube analytics instructions",
+        filePath: "/tmp/.agents/skills/youtube-analytics-cli/SKILL.md",
+      },
+    ])
+    mockRefreshFromDisk.mockReturnValue(mockGetSkills())
+    mockGetCurrentProfile.mockReturnValue({
+      id: "main-agent",
+      name: "Main Agent",
+      skillsConfig: { allSkillsDisabledByDefault: true, enabledSkillIds: ["youtube-analytics-cli"] },
+    })
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("load_skill_instructions", { skillId: "youtube-analytics-cli" }, "session-1")
+
+    expect(result?.isError).toBe(false)
+    expect(String(result?.content[0]?.text)).toContain("youtube analytics instructions")
   })
 
   it("refreshes the skill registry before loading instructions", async () => {
@@ -108,6 +167,11 @@ describe("runtime-tools skill access", () => {
       profileId: "main-agent",
       profileName: "Main Agent",
       guidelines: "",
+      skillsConfig: { allSkillsDisabledByDefault: false },
+    })
+    mockGetCurrentProfile.mockReturnValue({
+      id: "main-agent",
+      name: "Main Agent",
       skillsConfig: { allSkillsDisabledByDefault: false },
     })
     mockGetSkill.mockReturnValue({

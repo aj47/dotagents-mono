@@ -199,6 +199,20 @@ export interface ConversationMessage {
   summarizedMessageCount?: number
 }
 
+export interface ConversationCompactionFact {
+  /** Raw-message index this fact was extracted from before compaction. */
+  sourceMessageIndex: number
+  /** Persisted message id for provenance when available. */
+  sourceMessageId?: string
+  sourceRole: "user" | "assistant" | "tool" | string
+  timestamp?: number
+  excerpt: string
+  repoSlugs?: string[]
+  urls?: string[]
+  paths?: string[]
+  identifiers?: string[]
+}
+
 export interface ConversationCompactionMetadata {
   /**
    * Whether the original raw message history is still preserved on disk.
@@ -218,6 +232,25 @@ export interface ConversationCompactionMetadata {
    * Timestamp of the most recent compaction pass that refreshed the active window.
    */
   compactedAt?: number
+  /** Stable checkpoint summary persisted during the latest compaction pass. */
+  summary?: string
+  /** Message id of the synthetic summary message in Conversation.messages. */
+  summaryMessageId?: string
+  /** Message id of the first raw message replayed after the summary checkpoint. */
+  firstKeptMessageId?: string
+  /** Raw-message index of the first message replayed after the summary checkpoint. */
+  firstKeptMessageIndex?: number
+  summarizedRange?: {
+    startMessageId?: string
+    endMessageId?: string
+    startIndex: number
+    endIndex: number
+  }
+  summarizedMessageCount?: number
+  /** Estimated token count for the summarized range before compaction. */
+  tokensBefore?: number
+  /** Deterministic high-signal facts extracted from the summarized range. */
+  extractedFacts?: ConversationCompactionFact[]
   /**
    * Marks conversations whose older raw history was previously discarded and cannot
    * be fully recovered.

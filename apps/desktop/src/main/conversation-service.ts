@@ -15,6 +15,7 @@ import {
   LoadedConversation,
 } from "../shared/types"
 import { summarizeContent } from "./context-budget"
+import { extractHighSignalFactsFromConversationMessages } from "./conversation-context-builder"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
 import { filterVisibleChatMessages, sanitizeMessageContentForDisplay } from "@dotagents/shared"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
@@ -47,6 +48,7 @@ const MAX_SESSION_TITLE_CHARS = 80
 const MAX_AGENT_SESSION_TITLE_WORDS = 10
 const MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS = 500
 const MAX_CONVERSATION_HISTORY_PREVIEW_CHARS = 200
+const COMPACTION_EXTRACTED_FACT_LIMIT = 8
 const createInlineDataImageMarkdownRegex = () =>
   /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
 const DATA_IMAGE_URL_REGEX = /^data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)$/i
@@ -972,6 +974,14 @@ export class ConversationService {
 
     if (!hasSummaryMessages) {
       delete nextCompaction.compactedAt
+      delete nextCompaction.summary
+      delete nextCompaction.summaryMessageId
+      delete nextCompaction.firstKeptMessageId
+      delete nextCompaction.firstKeptMessageIndex
+      delete nextCompaction.summarizedRange
+      delete nextCompaction.summarizedMessageCount
+      delete nextCompaction.tokensBefore
+      delete nextCompaction.extractedFacts
     }
 
     const previousCompactionJson = conversation.compaction
@@ -995,6 +1005,129 @@ export class ConversationService {
     const incomingContent = (content || "").trim()
     const lastContent = (last?.content || "").trim()
     return !!last && last.role === role && lastContent === incomingContent
+  }
+
+  private estimateCompactionTokensFromText(text: string): number {
+    return Math.max(1, Math.ceil(text.length / 4))
+  }
+
+  private getValidCompactionTimestamp(...candidates: Array<number | undefined>): number {
+    for (const candidate of candidates) {
+      if (typeof candidate !== "number" || !Number.isFinite(candidate)) continue
+      if (!Number.isFinite(new Date(candidate).getTime())) continue
+      return candidate
+    }
+    return Date.now()
+  }
+
+  private normalizeSummarizedMessageCount(count: number | undefined, rawMessageCount: number): number {
+    if (typeof count !== "number" || !Number.isFinite(count)) return 0
+    return Math.min(Math.max(0, Math.floor(count)), rawMessageCount)
+  }
+
+  private hasPersistedCompactionCheckpoint(compaction: ConversationCompactionMetadata | undefined): boolean {
+    return !!(
+      compaction?.summary?.trim() &&
+      (
+        compaction.firstKeptMessageId ||
+        typeof compaction.firstKeptMessageIndex === "number" ||
+        compaction.summarizedRange
+      )
+    )
+  }
+
+  private buildCompactionCheckpointMetadata(
+    existing: ConversationCompactionMetadata | undefined,
+    fullMessageHistory: ConversationMessage[],
+    summaryMessage: ConversationMessage,
+    summarizedMessageCount: number,
+    tokensBefore: number,
+    compactedAt: number = Date.now(),
+  ): ConversationCompactionMetadata {
+    const normalizedSummarizedMessageCount = this.normalizeSummarizedMessageCount(
+      summarizedMessageCount,
+      fullMessageHistory.length,
+    )
+    const summarizedMessages = fullMessageHistory.slice(0, normalizedSummarizedMessageCount)
+    const firstKeptMessage = fullMessageHistory[normalizedSummarizedMessageCount]
+    const firstSummarizedMessage = summarizedMessages[0]
+    const lastSummarizedMessage = summarizedMessages[summarizedMessages.length - 1]
+
+    return {
+      ...existing,
+      rawHistoryPreserved: true,
+      storedRawMessageCount: fullMessageHistory.length,
+      representedMessageCount: fullMessageHistory.length,
+      compactedAt,
+      summary: summaryMessage.content,
+      summaryMessageId: summaryMessage.id,
+      firstKeptMessageId: firstKeptMessage?.id,
+      firstKeptMessageIndex: firstKeptMessage ? normalizedSummarizedMessageCount : undefined,
+      summarizedRange: summarizedMessages.length > 0
+        ? {
+          startMessageId: firstSummarizedMessage?.id,
+          endMessageId: lastSummarizedMessage?.id,
+          startIndex: 0,
+          endIndex: summarizedMessages.length - 1,
+        }
+        : undefined,
+      summarizedMessageCount: normalizedSummarizedMessageCount,
+      tokensBefore,
+      extractedFacts: extractHighSignalFactsFromConversationMessages(summarizedMessages, {
+        maxFacts: COMPACTION_EXTRACTED_FACT_LIMIT,
+      }),
+    }
+  }
+
+  private async persistCompactionCheckpointIfMissing(
+    conversation: Conversation,
+    fullMessageHistory: ConversationMessage[],
+  ): Promise<Conversation> {
+    if (this.hasPersistedCompactionCheckpoint(conversation.compaction)) {
+      return conversation
+    }
+
+    const summaryMessage = conversation.messages.find((message) => message.isSummary)
+    if (!summaryMessage) {
+      return conversation
+    }
+
+    const summarizedMessageCount = this.normalizeSummarizedMessageCount(
+      summaryMessage.summarizedMessageCount,
+      fullMessageHistory.length,
+    )
+    if (summarizedMessageCount <= 0) {
+      return conversation
+    }
+
+    const summarizedText = fullMessageHistory
+      .slice(0, summarizedMessageCount)
+      .map((message) => sanitizeMessageContentForDisplay(message.content || ""))
+      .join("\n")
+    const compactedConversation: Conversation = {
+      ...conversation,
+      compaction: this.buildCompactionCheckpointMetadata(
+        conversation.compaction,
+        fullMessageHistory,
+        summaryMessage,
+        summarizedMessageCount,
+        this.estimateCompactionTokensFromText(summarizedText),
+        this.getValidCompactionTimestamp(
+          conversation.compaction?.compactedAt,
+          summaryMessage.timestamp,
+          conversation.updatedAt,
+        ),
+      ),
+      updatedAt: conversation.updatedAt,
+    }
+
+    try {
+      await this.saveConversation(compactedConversation, true)
+      return compactedConversation
+    } catch (error) {
+      logApp(`[conversationService] compactOnLoad: failed to persist checkpoint backfill, returning original:`, error)
+      return conversation
+    }
   }
 
 
@@ -1354,7 +1487,7 @@ export class ConversationService {
       this.getRepresentedMessageCount(conversation) === messageCount &&
       activeNonSummaryCount <= COMPACTION_KEEP_LAST
     ) {
-      return conversation
+      return this.persistCompactionCheckpointIfMissing(conversation, fullMessageHistory)
     }
 
     // Calculate how many messages to summarize
@@ -1427,17 +1560,18 @@ export class ConversationService {
     }
 
     // Create compacted conversation (don't mutate original)
+    const tokensBefore = this.estimateCompactionTokensFromText(summaryInput)
     const compactedConversation: Conversation = {
       ...conversation,
       messages: [summaryMessage, ...messagesToKeep],
       rawMessages: [...fullMessageHistory],
-      compaction: {
-        ...conversation.compaction,
-        rawHistoryPreserved: true,
-        storedRawMessageCount: fullMessageHistory.length,
-        representedMessageCount: fullMessageHistory.length,
-        compactedAt: Date.now(),
-      },
+      compaction: this.buildCompactionCheckpointMetadata(
+        conversation.compaction,
+        fullMessageHistory,
+        summaryMessage,
+        messagesToSummarize.length,
+        tokensBefore,
+      ),
       updatedAt: Date.now(),
     }
 

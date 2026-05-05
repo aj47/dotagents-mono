@@ -7,6 +7,7 @@ describe("agent progress scroll behavior", () => {
   it("pins the active session scroller in the same commit while streaming content grows", () => {
     expect(agentProgressSource).toContain("useLayoutEffect(() => {")
     expect(agentProgressSource).toContain("avoids a one-frame lag where new content renders above")
+    expect(agentProgressSource).toContain('const shouldAutoScrollContent = variant !== "tile" || !!isFocused || !!isExpanded || !isComplete')
     expect(agentProgressSource).toContain("if (shouldAutoScroll) {\n        scrollToBottom(\"auto\")\n      }")
   })
 
