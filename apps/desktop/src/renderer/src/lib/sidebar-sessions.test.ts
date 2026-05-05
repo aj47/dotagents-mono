@@ -504,6 +504,30 @@ describe("nestSubagentSessionEntries", () => {
     })
   })
 
+  it("nests orphaned internal subsessions under the root session for the shared conversation", () => {
+    const ordered = nestSubagentSessionEntries([
+      {
+        session: {
+          id: "subsession_1",
+          conversationId: "conversation-1",
+        },
+      },
+      {
+        session: {
+          id: "session-1",
+          conversationId: "conversation-1",
+        },
+      },
+    ])
+
+    expect(ordered.map((entry) => entry.session.id)).toEqual([
+      "session-1",
+      "subsession_1",
+    ])
+    expect(ordered.map((entry) => entry.isSubagent)).toEqual([false, true])
+    expect(ordered.map((entry) => entry.nestingDepth)).toEqual([0, 1])
+  })
+
   it("nests an active child under a saved pinned parent when both groups are combined", () => {
     const ordered = nestSubagentSessionEntries([
       {

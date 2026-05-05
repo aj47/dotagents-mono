@@ -318,6 +318,10 @@ function getDelegationDisplayTitle(
   return agentName ? `${agentName} subagent` : null
 }
 
+function isLikelyInternalSubSessionId(sessionId: string): boolean {
+  return sessionId.startsWith("subsession_")
+}
+
 export function getSubagentTitleBySessionIdMap(
   progressEntries: Iterable<[string, Pick<AgentProgressUpdate, "steps">]>,
 ): Map<string, string> {
@@ -741,14 +745,25 @@ export function nestSubagentSessionEntries<
 
   const resolveParentEntryId = (entry: T): string | null => {
     const parentSessionId = entry.session.parentSessionId?.trim()
-    if (!parentSessionId || parentSessionId === entry.session.id) return null
-    if (entryIds.has(parentSessionId)) return parentSessionId
-
     const conversationId = entry.session.conversationId?.trim()
+    if (parentSessionId && parentSessionId !== entry.session.id && entryIds.has(parentSessionId)) {
+      return parentSessionId
+    }
+    if (
+      (!parentSessionId || parentSessionId === entry.session.id) &&
+      !isLikelyInternalSubSessionId(entry.session.id)
+    ) {
+      return null
+    }
     if (!conversationId) return null
 
     const conversationEntries = entriesByConversationId.get(conversationId) ?? []
     const parentCandidate =
+      conversationEntries.find((candidate) =>
+        candidate.session.id !== entry.session.id &&
+        !isLikelyInternalSubSessionId(candidate.session.id) &&
+        !candidate.session.parentSessionId?.trim(),
+      ) ??
       conversationEntries.find((candidate) =>
         candidate.session.id !== entry.session.id &&
         !candidate.session.parentSessionId?.trim(),
