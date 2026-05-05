@@ -1,13 +1,14 @@
 /**
  * Shared chat utilities for DotAgents apps (desktop and mobile)
- * 
+ *
  * These utilities provide consistent behavior for chat UI features
  * across both platforms while allowing platform-specific rendering.
  */
 
 import type { AgentProgressUpdate, AgentUserResponseEvent } from './agent-progress';
 import type { ModelInfo, ModelsResponse, OpenAICompatibleModelSummary, OpenAICompatibleModelsResponse } from './api-types';
-import type { CHAT_PROVIDER_ID } from './providers';
+import { CHAT_PROVIDER_IDS, isChatProviderId, type CHAT_PROVIDER_ID } from './providers';
+import { resolveActiveModelId, type ActiveModelConfigLike } from './model-presets';
 import type { ConversationHistoryMessage, ToolCall, ToolResult } from './types';
 
 export type ChatRequestMessageLike = {
@@ -91,6 +92,21 @@ export type BuildDotAgentsChatCompletionResponseOptions = BuildOpenAIChatComplet
 
 export type OpenAICompatibleModelInput = string | OpenAICompatibleModelSummary;
 export type ProviderModelInfoInput = Pick<ModelInfo, 'id' | 'name' | 'description' | 'context_length'>;
+
+export type ModelActionResult = {
+  statusCode: number;
+  body: unknown;
+};
+
+export interface ModelActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void;
+}
+
+export interface ModelActionOptions {
+  getConfig(): ActiveModelConfigLike;
+  fetchAvailableModels(providerId: CHAT_PROVIDER_ID): Promise<ProviderModelInfoInput[]>;
+  diagnostics: ModelActionDiagnostics;
+}
 
 export type ParsedChatCompletionSseEvent =
   | { type: 'done' }
@@ -462,6 +478,49 @@ export function buildProviderModelsResponse(
       context_length: model.context_length,
     })),
   };
+}
+
+function modelActionOk(body: unknown): ModelActionResult {
+  return {
+    statusCode: 200,
+    body,
+  };
+}
+
+function modelActionError(statusCode: number, message: string): ModelActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+  };
+}
+
+function getUnknownErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+export function getModelsAction(options: Pick<ModelActionOptions, 'getConfig'>): ModelActionResult {
+  const model = resolveActiveModelId(options.getConfig());
+  return modelActionOk(buildOpenAICompatibleModelsResponse([model]));
+}
+
+export async function getProviderModelsAction(
+  providerId: string | undefined,
+  options: ModelActionOptions,
+): Promise<ModelActionResult> {
+  try {
+    if (!isChatProviderId(providerId)) {
+      return modelActionError(
+        400,
+        `Invalid provider: ${providerId}. Valid providers: ${CHAT_PROVIDER_IDS.join(', ')}`,
+      );
+    }
+
+    const models = await options.fetchAvailableModels(providerId);
+    return modelActionOk(buildProviderModelsResponse(providerId, models));
+  } catch (caughtError) {
+    options.diagnostics.logError('model-actions', 'Failed to fetch models', caughtError);
+    return modelActionError(500, getUnknownErrorMessage(caughtError, 'Failed to fetch models'));
+  }
 }
 
 export function buildChatCompletionProgressSsePayload(update: AgentProgressUpdate): DotAgentsChatCompletionProgressSsePayload {

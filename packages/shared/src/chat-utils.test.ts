@@ -19,6 +19,8 @@ import {
   buildOpenAIChatCompletionResponse,
   buildOpenAICompatibleModelsResponse,
   buildProviderModelsResponse,
+  getModelsAction,
+  getProviderModelsAction,
   extractUserPromptFromChatCompletionBody,
   extractRespondToUserContentFromArgs,
   extractRespondToUserResponseEvents,
@@ -365,6 +367,89 @@ describe('buildProviderModelsResponse', () => {
         context_length: 128000,
       }],
     })
+  })
+})
+
+describe('model actions', () => {
+  it('uses shared config and provider adapters for model list responses', async () => {
+    const providerModels = [{
+      id: 'gpt-test',
+      name: 'GPT Test',
+      description: 'Test model',
+      context_length: 128000,
+    }]
+    const diagnostics = {
+      logError: () => {
+        throw new Error('unexpected diagnostics log')
+      },
+    }
+    const options = {
+      getConfig: () => ({
+        agentProviderId: 'openai',
+        agentOpenaiModel: 'gpt-active',
+      }),
+      fetchAvailableModels: async (providerId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web') => {
+        expect(providerId).toBe('openai')
+        return providerModels
+      },
+      diagnostics,
+    }
+
+    expect(getModelsAction(options)).toEqual({
+      statusCode: 200,
+      body: buildOpenAICompatibleModelsResponse(['gpt-active']),
+    })
+    expect(await getProviderModelsAction('openai', options)).toEqual({
+      statusCode: 200,
+      body: buildProviderModelsResponse('openai', providerModels),
+    })
+  })
+
+  it('rejects invalid provider ids before fetching provider models', async () => {
+    const options = {
+      getConfig: () => ({}),
+      fetchAvailableModels: async () => {
+        throw new Error('unexpected provider fetch')
+      },
+      diagnostics: {
+        logError: () => {
+          throw new Error('unexpected diagnostics log')
+        },
+      },
+    }
+
+    expect(await getProviderModelsAction('bad-provider', options)).toEqual({
+      statusCode: 400,
+      body: {
+        error: 'Invalid provider: bad-provider. Valid providers: openai, groq, gemini, chatgpt-web',
+      },
+    })
+  })
+
+  it('logs provider fetch failures and returns an error response', async () => {
+    const error = new Error('provider unavailable')
+    const loggedErrors: unknown[] = []
+    const options = {
+      getConfig: () => ({}),
+      fetchAvailableModels: async () => {
+        throw error
+      },
+      diagnostics: {
+        logError: (source: string, message: string, caughtError: unknown) => {
+          loggedErrors.push({ source, message, caughtError })
+        },
+      },
+    }
+
+    expect(await getProviderModelsAction('openai', options)).toEqual({
+      statusCode: 500,
+      body: { error: 'provider unavailable' },
+    })
+    expect(loggedErrors).toEqual([{
+      source: 'model-actions',
+      message: 'Failed to fetch models',
+      caughtError: error,
+    }])
   })
 })
 

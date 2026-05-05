@@ -90,6 +90,12 @@ function getSharedPushNotificationsSource(): string {
   return readFileSync(sharedPushNotificationsPath, "utf8")
 }
 
+function getSharedChatUtilsSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedChatUtilsPath = path.join(testDir, "../../../../packages/shared/src/chat-utils.ts")
+  return readFileSync(sharedChatUtilsPath, "utf8")
+}
+
 function getSharedMessageQueueStoreSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedMessageQueueStorePath = path.join(testDir, "../../../../packages/shared/src/message-queue-store.ts")
@@ -859,6 +865,7 @@ describe("remote-server route registration", () => {
     const modelActionsSource = getModelActionsSource()
     const mcpServerActionsSource = getMcpServerActionsSource()
     const sharedMcpApiSource = getSharedMcpApiSource()
+    const sharedChatUtilsSource = getSharedChatUtilsSource()
     const ttsActionsSource = getTtsActionsSource()
     const pushActionsSource = getPushActionsSource()
     const sharedPushNotificationsSource = getSharedPushNotificationsSource()
@@ -881,10 +888,15 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.unregisterPushToken(req.body)")
     expect(mobileApiRoutesSource).toContain("actions.getPushStatus()")
     expect(mobileApiRoutesSource).toContain("actions.clearPushBadge(req.body)")
-    expect(modelActionsSource).toContain("resolveActiveModelId(configStore.get())")
-    expect(modelActionsSource).toContain("buildOpenAICompatibleModelsResponse([model])")
-    expect(modelActionsSource).toContain("fetchAvailableModels(providerId)")
-    expect(modelActionsSource).toContain("buildProviderModelsResponse(providerId, models)")
+    expect(modelActionsSource).toContain("getModelsAction(modelActionOptions)")
+    expect(modelActionsSource).toContain("getProviderModelsAction(providerId, modelActionOptions)")
+    expect(sharedChatUtilsSource).toContain("export interface ModelActionOptions")
+    expect(sharedChatUtilsSource).toContain("export function getModelsAction")
+    expect(sharedChatUtilsSource).toContain("export async function getProviderModelsAction")
+    expect(sharedChatUtilsSource).toContain("resolveActiveModelId(options.getConfig())")
+    expect(sharedChatUtilsSource).toContain("options.fetchAvailableModels(providerId)")
+    expect(sharedChatUtilsSource).not.toContain("models-service")
+    expect(sharedChatUtilsSource).not.toContain("configStore")
     expect(mcpServerActionsSource).toContain("getMcpServersAction(mcpServerActionOptions)")
     expect(mcpServerActionsSource).toContain("toggleMcpServerAction(serverName, body, mcpServerActionOptions)")
     expect(sharedMcpApiSource).toContain("export interface McpServerActionService")
