@@ -78,6 +78,12 @@ function getSharedOperatorAuditStoreSource(): string {
   return readFileSync(sharedOperatorAuditStorePath, "utf8")
 }
 
+function getSharedMcpApiSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedMcpApiPath = path.join(testDir, "../../../../packages/shared/src/mcp-api.ts")
+  return readFileSync(sharedMcpApiPath, "utf8")
+}
+
 function getSharedMessageQueueStoreSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedMessageQueueStorePath = path.join(testDir, "../../../../packages/shared/src/message-queue-store.ts")
@@ -846,6 +852,7 @@ describe("remote-server route registration", () => {
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const modelActionsSource = getModelActionsSource()
     const mcpServerActionsSource = getMcpServerActionsSource()
+    const sharedMcpApiSource = getSharedMcpApiSource()
     const ttsActionsSource = getTtsActionsSource()
     const pushActionsSource = getPushActionsSource()
 
@@ -871,9 +878,15 @@ describe("remote-server route registration", () => {
     expect(modelActionsSource).toContain("buildOpenAICompatibleModelsResponse([model])")
     expect(modelActionsSource).toContain("fetchAvailableModels(providerId)")
     expect(modelActionsSource).toContain("buildProviderModelsResponse(providerId, models)")
-    expect(mcpServerActionsSource).toContain("buildMcpServersResponse(mcpService.getServerStatus())")
-    expect(mcpServerActionsSource).toContain("parseMcpServerToggleRequestBody(body)")
-    expect(mcpServerActionsSource).toContain("mcpService.setServerRuntimeEnabled(serverName ?? \"\", enabled)")
+    expect(mcpServerActionsSource).toContain("getMcpServersAction(mcpServerActionOptions)")
+    expect(mcpServerActionsSource).toContain("toggleMcpServerAction(serverName, body, mcpServerActionOptions)")
+    expect(sharedMcpApiSource).toContain("export interface McpServerActionService")
+    expect(sharedMcpApiSource).toContain("export function getMcpServersAction")
+    expect(sharedMcpApiSource).toContain("export function toggleMcpServerAction")
+    expect(sharedMcpApiSource).toContain("buildMcpServersResponse(options.service.getServerStatus())")
+    expect(sharedMcpApiSource).toContain("options.service.setServerRuntimeEnabled(normalizedServerName, enabled)")
+    expect(sharedMcpApiSource).not.toContain("mcpService")
+    expect(sharedMcpApiSource).not.toContain("diagnosticsService")
     expect(ttsActionsSource).toContain("parseTtsSpeakRequestBody(body)")
     expect(ttsActionsSource).toContain("generateTTS(")
     expect(ttsActionsSource).toContain("getTtsSpeakFailureStatusCode(message)")

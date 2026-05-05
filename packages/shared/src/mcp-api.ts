@@ -54,6 +54,26 @@ export type McpServerStatusLike = {
 
 export type McpServerStatusMapLike = Record<string, McpServerStatusLike>
 
+export type McpServerActionResult = {
+  statusCode: number
+  body: unknown
+}
+
+export interface McpServerActionService {
+  getServerStatus(): McpServerStatusMapLike
+  setServerRuntimeEnabled(serverName: string, enabled: boolean): boolean
+}
+
+export interface McpServerActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void
+  logInfo?(source: string, message: string): void
+}
+
+export interface McpServerActionOptions {
+  service: McpServerActionService
+  diagnostics: McpServerActionDiagnostics
+}
+
 export type McpServerLogEntryLike = {
   timestamp: number
   message: string
@@ -147,6 +167,62 @@ export function buildMcpServersResponse(
     }))
 
   return { servers }
+}
+
+function mcpServerActionOk(body: unknown): McpServerActionResult {
+  return {
+    statusCode: 200,
+    body,
+  }
+}
+
+function mcpServerActionError(statusCode: number, message: string): McpServerActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+  }
+}
+
+function getUnknownErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
+}
+
+export function getMcpServersAction(options: McpServerActionOptions): McpServerActionResult {
+  try {
+    return mcpServerActionOk(buildMcpServersResponse(options.service.getServerStatus()))
+  } catch (caughtError) {
+    options.diagnostics.logError("mcp-server-actions", "Failed to get MCP servers", caughtError)
+    return mcpServerActionError(500, "Failed to get MCP servers")
+  }
+}
+
+export function toggleMcpServerAction(
+  serverName: string | undefined,
+  body: unknown,
+  options: McpServerActionOptions,
+): McpServerActionResult {
+  try {
+    const parsedRequest = parseMcpServerToggleRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return mcpServerActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+    const { enabled } = parsedRequest.request
+    const normalizedServerName = serverName ?? ""
+
+    const success = options.service.setServerRuntimeEnabled(normalizedServerName, enabled)
+    if (!success) {
+      return mcpServerActionError(404, `Server '${serverName}' not found`)
+    }
+
+    options.diagnostics.logInfo?.(
+      "mcp-server-actions",
+      `Toggled MCP server ${serverName} to ${enabled ? "enabled" : "disabled"}`,
+    )
+    return mcpServerActionOk(buildMcpServerToggleResponse(normalizedServerName, enabled))
+  } catch (caughtError) {
+    options.diagnostics.logError("mcp-server-actions", "Failed to toggle MCP server", caughtError)
+    return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to toggle MCP server"))
+  }
 }
 
 export function buildOperatorMcpStatusResponse(

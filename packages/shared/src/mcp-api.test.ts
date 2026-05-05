@@ -18,10 +18,13 @@ import {
   buildMcpServerToggleResponse,
   buildOperatorMcpStatusResponse,
   formatMcpMaxIterationsValidationMessage,
+  getMcpServersAction,
   normalizeMcpMaxIterationsValue,
   parseInjectedMcpToolCallRequestBody,
   parseMcpMaxIterationsDraft,
   parseMcpServerToggleRequestBody,
+  toggleMcpServerAction,
+  type McpServerStatusMapLike,
 } from "./mcp-api"
 
 describe("MCP API helpers", () => {
@@ -110,6 +113,54 @@ describe("MCP API helpers", () => {
         },
       ],
     })
+  })
+
+  it("runs mobile MCP server actions through shared service adapters", () => {
+    const status: McpServerStatusMapLike = {
+      filesystem: {
+        connected: true,
+        toolCount: 3,
+        runtimeEnabled: true,
+        configDisabled: false,
+      },
+    }
+    const toggles: Array<{ serverName: string; enabled: boolean }> = []
+    const logs: string[] = []
+    const options = {
+      service: {
+        getServerStatus: () => status,
+        setServerRuntimeEnabled: (serverName: string, enabled: boolean) => {
+          toggles.push({ serverName, enabled })
+          return serverName === "filesystem"
+        },
+      },
+      diagnostics: {
+        logError: (_source: string, message: string) => logs.push(message),
+        logInfo: (_source: string, message: string) => logs.push(message),
+      },
+    }
+
+    expect(getMcpServersAction(options)).toEqual({
+      statusCode: 200,
+      body: buildMcpServersResponse(status),
+    })
+    expect(toggleMcpServerAction("filesystem", { enabled: false }, options)).toEqual({
+      statusCode: 200,
+      body: buildMcpServerToggleResponse("filesystem", false),
+    })
+    expect(toggleMcpServerAction("missing", { enabled: true }, options)).toEqual({
+      statusCode: 404,
+      body: { error: "Server 'missing' not found" },
+    })
+    expect(toggleMcpServerAction("filesystem", { enabled: "yes" }, options)).toEqual({
+      statusCode: 400,
+      body: { error: "Missing or invalid 'enabled' boolean" },
+    })
+    expect(toggles).toEqual([
+      { serverName: "filesystem", enabled: false },
+      { serverName: "missing", enabled: true },
+    ])
+    expect(logs).toContain("Toggled MCP server filesystem to disabled")
   })
 
   it("builds compact operator MCP status responses", () => {
