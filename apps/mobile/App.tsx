@@ -10,6 +10,7 @@ import OperationsScreen from './src/screens/OperationsScreen';
 import AgentEditScreen from './src/screens/AgentEditScreen';
 import KnowledgeNoteEditScreen from './src/screens/KnowledgeNoteEditScreen';
 import LoopEditScreen from './src/screens/LoopEditScreen';
+import SkillEditScreen from './src/screens/SkillEditScreen';
 import { AppConfig, ConfigContext, useConfig, saveConfig } from './src/store/config';
 import { SessionContext, useSessions } from './src/store/sessions';
 import { MessageQueueContext, useMessageQueue } from './src/store/message-queue';
@@ -433,6 +434,11 @@ function Navigation() {
                       name="LoopEdit"
                       component={LoopEditScreen}
                       options={{ title: 'Loop' }}
+                    />
+                    <Stack.Screen
+                      name="SkillEdit"
+                      component={SkillEditScreen}
+                      options={{ title: 'Skill' }}
                     />
                   </Stack.Navigator>
                 </NavigationContainer>
