@@ -41,6 +41,33 @@ export type ServerConversationsResponse = {
   conversations: ServerConversation[];
 };
 
+export type ConversationActionResult = {
+  statusCode: number;
+  body: unknown;
+  headers?: Record<string, string>;
+};
+
+type ConversationMaybePromise<T> = T | Promise<T>;
+
+export interface ConversationActionDiagnostics {
+  logInfo(source: string, message: string): void;
+  logError(source: string, message: string, error: unknown): void;
+}
+
+export interface ConversationActionService<TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>> {
+  loadConversation(conversationId: string): ConversationMaybePromise<TConversation | null | undefined>;
+  getConversationHistory(): ConversationMaybePromise<ServerConversation[]>;
+  generateConversationId(): string;
+  saveConversation(conversation: TConversation, preserveTimestamp: boolean): ConversationMaybePromise<void>;
+}
+
+export interface ConversationActionOptions<TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>> {
+  service: ConversationActionService<TConversation>;
+  diagnostics: ConversationActionDiagnostics;
+  validateConversationId(conversationId: string): string | null | undefined;
+  now(): number;
+}
+
 const VALID_ROLES = ['user', 'assistant', 'tool'] as const;
 
 export interface ServerConversationRecordMessage extends ServerConversationMessage {
@@ -297,6 +324,164 @@ export function buildServerConversationFullResponse(
   }
 
   return response;
+}
+
+function conversationActionOk(body: unknown, statusCode = 200, headers?: Record<string, string>): ConversationActionResult {
+  return {
+    statusCode,
+    body,
+    ...(headers ? { headers } : {}),
+  };
+}
+
+function conversationActionError(statusCode: number, message: string, headers?: Record<string, string>): ConversationActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+    ...(headers ? { headers } : {}),
+  };
+}
+
+function getUnknownErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') {
+    return (error as { message: string }).message;
+  }
+  return fallback;
+}
+
+function getConversationIdActionError(
+  conversationId: string | undefined,
+  options: ConversationActionOptions<any>,
+): string | null {
+  if (!conversationId) {
+    return 'Missing or invalid conversation ID';
+  }
+
+  return options.validateConversationId(conversationId) ?? null;
+}
+
+export async function getConversationAction<TConversation extends ServerConversationRecord<any>>(
+  id: string | undefined,
+  options: ConversationActionOptions<TConversation>,
+): Promise<ConversationActionResult> {
+  try {
+    const conversationId = id;
+    const conversationIdError = getConversationIdActionError(conversationId, options);
+    if (conversationIdError) {
+      return conversationActionError(400, conversationIdError);
+    }
+    if (!conversationId) {
+      return conversationActionError(400, 'Missing or invalid conversation ID');
+    }
+
+    const conversation = await options.service.loadConversation(conversationId);
+
+    if (!conversation) {
+      return conversationActionError(404, 'Conversation not found');
+    }
+
+    options.diagnostics.logInfo('conversation-actions', `Fetched conversation ${conversationId} for recovery`);
+
+    return conversationActionOk(buildServerConversationFullResponse(conversation, { includeMetadata: true }));
+  } catch (caughtError) {
+    options.diagnostics.logError('conversation-actions', 'Failed to fetch conversation', caughtError);
+    return conversationActionError(500, getUnknownErrorMessage(caughtError, 'Failed to fetch conversation'));
+  }
+}
+
+export async function getConversationsAction<TConversation extends ServerConversationRecord<any>>(
+  options: ConversationActionOptions<TConversation>,
+): Promise<ConversationActionResult> {
+  try {
+    const conversations = await options.service.getConversationHistory();
+    options.diagnostics.logInfo('conversation-actions', `Listed ${conversations.length} conversations`);
+    return conversationActionOk(buildServerConversationsResponse(conversations));
+  } catch (caughtError) {
+    options.diagnostics.logError('conversation-actions', 'Failed to list conversations', caughtError);
+    return conversationActionError(500, getUnknownErrorMessage(caughtError, 'Failed to list conversations'));
+  }
+}
+
+export async function createConversationAction<TConversation extends ServerConversationRecord<any>>(
+  body: unknown,
+  onChanged: () => void,
+  options: ConversationActionOptions<TConversation>,
+): Promise<ConversationActionResult> {
+  try {
+    const parsedRequest = parseCreateConversationRequestBody(body);
+    if (parsedRequest.ok === false) {
+      return conversationActionError(parsedRequest.statusCode, parsedRequest.error);
+    }
+
+    const conversationId = options.service.generateConversationId();
+    const timestamp = options.now();
+    const conversation = buildNewServerConversation(conversationId, parsedRequest.request, timestamp) as unknown as TConversation;
+
+    await options.service.saveConversation(conversation, true);
+    options.diagnostics.logInfo(
+      'conversation-actions',
+      `Created conversation ${conversationId} with ${conversation.messages.length} messages`,
+    );
+
+    onChanged();
+
+    return conversationActionOk(buildServerConversationFullResponse(conversation), 201);
+  } catch (caughtError) {
+    options.diagnostics.logError('conversation-actions', 'Failed to create conversation', caughtError);
+    return conversationActionError(500, getUnknownErrorMessage(caughtError, 'Failed to create conversation'));
+  }
+}
+
+export async function updateConversationAction<TConversation extends ServerConversationRecord<any>>(
+  id: string | undefined,
+  body: unknown,
+  onChanged: () => void,
+  options: ConversationActionOptions<TConversation>,
+): Promise<ConversationActionResult> {
+  try {
+    const conversationId = id;
+    const conversationIdError = getConversationIdActionError(conversationId, options);
+    if (conversationIdError) {
+      return conversationActionError(400, conversationIdError);
+    }
+    if (!conversationId) {
+      return conversationActionError(400, 'Missing or invalid conversation ID');
+    }
+
+    const parsedRequest = parseUpdateConversationRequestBody(body);
+    if (parsedRequest.ok === false) {
+      return conversationActionError(parsedRequest.statusCode, parsedRequest.error);
+    }
+
+    const timestamp = options.now();
+    let conversation = await options.service.loadConversation(conversationId);
+
+    if (!conversation) {
+      const buildResult = buildNewServerConversationFromUpdateRequest(conversationId, parsedRequest.request, timestamp);
+      if (buildResult.ok === false) {
+        return conversationActionError(buildResult.statusCode, buildResult.error);
+      }
+
+      conversation = buildResult.conversation as unknown as TConversation;
+      await options.service.saveConversation(conversation, true);
+      options.diagnostics.logInfo(
+        'conversation-actions',
+        `Created conversation ${conversationId} via PUT with ${conversation.messages.length} messages`,
+      );
+    } else {
+      conversation = applyServerConversationUpdate(conversation, parsedRequest.request, timestamp);
+      await options.service.saveConversation(conversation, true);
+      options.diagnostics.logInfo('conversation-actions', `Updated conversation ${conversationId}`);
+    }
+
+    onChanged();
+
+    return conversationActionOk(buildServerConversationFullResponse(conversation));
+  } catch (caughtError) {
+    options.diagnostics.logError('conversation-actions', 'Failed to update conversation', caughtError);
+    return conversationActionError(500, getUnknownErrorMessage(caughtError, 'Failed to update conversation'));
+  }
 }
 
 /**

@@ -347,6 +347,12 @@ function getConversationActionsSource(): string {
   return readFileSync(conversationActionsPath, "utf8")
 }
 
+function getSharedConversationSyncSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedConversationSyncPath = path.join(testDir, "../../../../packages/shared/src/conversation-sync.ts")
+  return readFileSync(sharedConversationSyncPath, "utf8")
+}
+
 function getSettingsActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const settingsActionsPath = path.join(testDir, "settings-actions.ts")
@@ -1011,6 +1017,7 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const conversationActionsSource = getConversationActionsSource()
+    const sharedConversationSyncSource = getSharedConversationSyncSource()
 
     expectRegisteredApiRoute(source, "GET", "conversation")
     expectRegisteredApiRoute(source, "GET", "conversationVideoAsset")
@@ -1022,17 +1029,27 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.getConversations()")
     expect(mobileApiRoutesSource).toContain("actions.createConversation(req.body, notifyConversationHistoryChanged)")
     expect(mobileApiRoutesSource).toContain("actions.updateConversation(params.id, req.body, notifyConversationHistoryChanged)")
-    expect(conversationActionsSource).toContain("getConversationIdValidationError(conversationId)")
-    expect(conversationActionsSource).toContain("conversationService.loadConversation(conversationId)")
-    expect(conversationActionsSource).toContain("buildServerConversationFullResponse(conversation, { includeMetadata: true })")
+    expect(conversationActionsSource).toContain("getConversationAction(id, conversationActionOptions)")
+    expect(conversationActionsSource).toContain("getConversationsAction(conversationActionOptions)")
+    expect(conversationActionsSource).toContain("createConversationAction(body, onChanged, conversationActionOptions)")
+    expect(conversationActionsSource).toContain("updateConversationAction(id, body, onChanged, conversationActionOptions)")
+    expect(sharedConversationSyncSource).toContain("export interface ConversationActionOptions")
+    expect(sharedConversationSyncSource).toContain("export async function getConversationAction")
+    expect(sharedConversationSyncSource).toContain("export async function getConversationsAction")
+    expect(sharedConversationSyncSource).toContain("export async function createConversationAction")
+    expect(sharedConversationSyncSource).toContain("export async function updateConversationAction")
+    expect(sharedConversationSyncSource).toContain("options.validateConversationId(conversationId)")
+    expect(sharedConversationSyncSource).toContain("options.service.loadConversation(conversationId)")
+    expect(sharedConversationSyncSource).toContain("buildServerConversationFullResponse(conversation, { includeMetadata: true })")
+    expect(sharedConversationSyncSource).toContain("buildServerConversationsResponse(conversations)")
+    expect(sharedConversationSyncSource).toContain("parseCreateConversationRequestBody(body)")
+    expect(sharedConversationSyncSource).toContain("buildNewServerConversation(conversationId, parsedRequest.request, timestamp)")
+    expect(sharedConversationSyncSource).toContain("parseUpdateConversationRequestBody(body)")
+    expect(sharedConversationSyncSource).toContain("applyServerConversationUpdate(conversation, parsedRequest.request, timestamp)")
+    expect(sharedConversationSyncSource).not.toContain('from "./conversation-service"')
     expect(conversationActionsSource).toContain("getConversationVideoAssetPath(conversationId, fileName ?? \"\")")
     expect(conversationActionsSource).toContain("getConversationVideoByteRange(rangeHeader, stat.size)")
     expect(conversationActionsSource).toContain("fs.createReadStream(assetPath")
-    expect(conversationActionsSource).toContain("buildServerConversationsResponse(conversations)")
-    expect(conversationActionsSource).toContain("parseCreateConversationRequestBody(body)")
-    expect(conversationActionsSource).toContain("buildNewServerConversation(conversationId, parsedRequest.request, now)")
-    expect(conversationActionsSource).toContain("parseUpdateConversationRequestBody(body)")
-    expect(conversationActionsSource).toContain("applyServerConversationUpdate(conversation, parsedRequest.request, now)")
   })
 
   it("registers the operator remote-operations endpoints", () => {

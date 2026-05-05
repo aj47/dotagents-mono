@@ -4,13 +4,11 @@ import { getConversationVideoAssetPath } from "./conversation-video-assets"
 import { conversationService } from "./conversation-service"
 import { diagnosticsService } from "./diagnostics"
 import {
-  applyServerConversationUpdate,
-  buildNewServerConversation,
-  buildNewServerConversationFromUpdateRequest,
-  buildServerConversationFullResponse,
-  buildServerConversationsResponse,
-  parseCreateConversationRequestBody,
-  parseUpdateConversationRequestBody,
+  createConversationAction,
+  getConversationAction,
+  getConversationsAction,
+  updateConversationAction,
+  type ConversationActionOptions,
 } from "@dotagents/shared/conversation-sync"
 import {
   getConversationVideoByteRange,
@@ -19,6 +17,20 @@ import {
 import type { MobileApiActionResult } from "@dotagents/shared/remote-server-route-contracts"
 
 export type ConversationActionResult = MobileApiActionResult
+
+type DesktopConversationActionConversation = NonNullable<Awaited<ReturnType<typeof conversationService.loadConversation>>>
+
+const conversationActionOptions: ConversationActionOptions<DesktopConversationActionConversation> = {
+  service: {
+    loadConversation: (conversationId) => conversationService.loadConversation(conversationId),
+    getConversationHistory: () => conversationService.getConversationHistory(),
+    generateConversationId: () => conversationService.generateConversationIdPublic(),
+    saveConversation: (conversation, preserveTimestamp) => conversationService.saveConversation(conversation, preserveTimestamp),
+  },
+  diagnostics: diagnosticsService,
+  validateConversationId: getConversationIdValidationError,
+  now: () => Date.now(),
+}
 
 function ok(body: unknown, statusCode = 200, headers?: Record<string, string>): ConversationActionResult {
   return {
@@ -37,31 +49,7 @@ function error(statusCode: number, message: string, headers?: Record<string, str
 }
 
 export async function getConversation(id: string | undefined): Promise<ConversationActionResult> {
-  try {
-    const conversationId = id
-
-    if (!conversationId || typeof conversationId !== "string") {
-      return error(400, "Missing or invalid conversation ID")
-    }
-
-    const conversationIdError = getConversationIdValidationError(conversationId)
-    if (conversationIdError) {
-      return error(400, conversationIdError)
-    }
-
-    const conversation = await conversationService.loadConversation(conversationId)
-
-    if (!conversation) {
-      return error(404, "Conversation not found")
-    }
-
-    diagnosticsService.logInfo("conversation-actions", `Fetched conversation ${conversationId} for recovery`)
-
-    return ok(buildServerConversationFullResponse(conversation, { includeMetadata: true }))
-  } catch (caughtError: any) {
-    diagnosticsService.logError("conversation-actions", "Failed to fetch conversation", caughtError)
-    return error(500, caughtError?.message || "Failed to fetch conversation")
-  }
+  return getConversationAction(id, conversationActionOptions)
 }
 
 export async function getConversationVideoAsset(
@@ -120,40 +108,14 @@ export async function getConversationVideoAsset(
 }
 
 export async function getConversations(): Promise<ConversationActionResult> {
-  try {
-    const conversations = await conversationService.getConversationHistory()
-    diagnosticsService.logInfo("conversation-actions", `Listed ${conversations.length} conversations`)
-    return ok(buildServerConversationsResponse(conversations))
-  } catch (caughtError: any) {
-    diagnosticsService.logError("conversation-actions", "Failed to list conversations", caughtError)
-    return error(500, caughtError?.message || "Failed to list conversations")
-  }
+  return getConversationsAction(conversationActionOptions)
 }
 
 export async function createConversation(
   body: unknown,
   onChanged: () => void,
 ): Promise<ConversationActionResult> {
-  try {
-    const parsedRequest = parseCreateConversationRequestBody(body)
-    if (parsedRequest.ok === false) {
-      return error(parsedRequest.statusCode, parsedRequest.error)
-    }
-
-    const conversationId = conversationService.generateConversationIdPublic()
-    const now = Date.now()
-    const conversation = buildNewServerConversation(conversationId, parsedRequest.request, now)
-
-    await conversationService.saveConversation(conversation, true)
-    diagnosticsService.logInfo("conversation-actions", `Created conversation ${conversationId} with ${conversation.messages.length} messages`)
-
-    onChanged()
-
-    return ok(buildServerConversationFullResponse(conversation), 201)
-  } catch (caughtError: any) {
-    diagnosticsService.logError("conversation-actions", "Failed to create conversation", caughtError)
-    return error(500, caughtError?.message || "Failed to create conversation")
-  }
+  return createConversationAction(body, onChanged, conversationActionOptions)
 }
 
 export async function updateConversation(
@@ -161,46 +123,5 @@ export async function updateConversation(
   body: unknown,
   onChanged: () => void,
 ): Promise<ConversationActionResult> {
-  try {
-    const conversationId = id
-
-    if (!conversationId || typeof conversationId !== "string") {
-      return error(400, "Missing or invalid conversation ID")
-    }
-
-    const conversationIdError = getConversationIdValidationError(conversationId)
-    if (conversationIdError) {
-      return error(400, conversationIdError)
-    }
-
-    const parsedRequest = parseUpdateConversationRequestBody(body)
-    if (parsedRequest.ok === false) {
-      return error(parsedRequest.statusCode, parsedRequest.error)
-    }
-
-    const now = Date.now()
-    let conversation = await conversationService.loadConversation(conversationId)
-
-    if (!conversation) {
-      const buildResult = buildNewServerConversationFromUpdateRequest(conversationId, parsedRequest.request, now)
-      if (buildResult.ok === false) {
-        return error(buildResult.statusCode, buildResult.error)
-      }
-
-      conversation = buildResult.conversation
-      await conversationService.saveConversation(conversation, true)
-      diagnosticsService.logInfo("conversation-actions", `Created conversation ${conversationId} via PUT with ${conversation.messages.length} messages`)
-    } else {
-      conversation = applyServerConversationUpdate(conversation, parsedRequest.request, now)
-      await conversationService.saveConversation(conversation, true)
-      diagnosticsService.logInfo("conversation-actions", `Updated conversation ${conversationId}`)
-    }
-
-    onChanged()
-
-    return ok(buildServerConversationFullResponse(conversation))
-  } catch (caughtError: any) {
-    diagnosticsService.logError("conversation-actions", "Failed to update conversation", caughtError)
-    return error(500, caughtError?.message || "Failed to update conversation")
-  }
+  return updateConversationAction(id, body, onChanged, conversationActionOptions)
 }

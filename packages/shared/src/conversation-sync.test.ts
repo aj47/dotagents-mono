@@ -6,13 +6,17 @@ import {
   buildNewServerConversationFromUpdateRequest,
   buildServerConversationFullResponse,
   buildServerConversationsResponse,
+  createConversationAction,
   fetchFullConversation,
   fromServerConversationMessage,
+  getConversationAction,
+  getConversationsAction,
   parseCreateConversationRequestBody,
   parseUpdateConversationRequestBody,
   serverConversationToStubSession,
   syncConversations,
   toServerConversationMessage,
+  updateConversationAction,
 } from './conversation-sync';
 
 function createLocalSession(overrides: Partial<Session> = {}): Session {
@@ -196,6 +200,163 @@ describe('server conversation API helpers', () => {
     expect(buildServerConversationsResponse(conversations)).toEqual({
       conversations,
     });
+  });
+
+  it('runs shared conversation sync actions through service adapters', async () => {
+    const conversations = [{
+      id: 'conv-1',
+      title: 'Server Chat',
+      createdAt: 1,
+      updatedAt: 2,
+      messageCount: 1,
+      lastMessage: 'hello',
+      preview: 'hello',
+    }];
+    const fullConversation = {
+      id: 'conv-1',
+      title: 'Server Chat',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'msg-1', role: 'user' as const, content: 'hello', timestamp: 2 }],
+      metadata: { model: 'test' },
+    };
+    const savedConversations = new Map([[fullConversation.id, fullConversation]]);
+    const changed = vi.fn();
+    const logs: unknown[] = [];
+    const options = {
+      service: {
+        loadConversation: async (conversationId: string) => savedConversations.get(conversationId),
+        getConversationHistory: async () => conversations,
+        generateConversationId: () => 'conv-new',
+        saveConversation: async (conversation: typeof fullConversation) => {
+          savedConversations.set(conversation.id, conversation);
+        },
+      },
+      diagnostics: {
+        logInfo: (source: string, message: string) => logs.push({ level: 'info', source, message }),
+        logError: () => {
+          throw new Error('unexpected diagnostics log');
+        },
+      },
+      validateConversationId: () => null,
+      now: () => 10,
+    };
+
+    await expect(getConversationsAction(options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildServerConversationsResponse(conversations),
+    });
+    await expect(getConversationAction('conv-1', options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildServerConversationFullResponse(fullConversation, { includeMetadata: true }),
+    });
+    await expect(createConversationAction({
+      messages: [{ role: 'user', content: 'new conversation' }],
+    }, changed, options)).resolves.toMatchObject({
+      statusCode: 201,
+      body: {
+        id: 'conv-new',
+        title: 'new conversation',
+        messages: [{ role: 'user', content: 'new conversation', timestamp: 10 }],
+      },
+    });
+    await expect(updateConversationAction('conv-1', {
+      title: 'Updated',
+      messages: [{ role: 'assistant', content: 'updated reply' }],
+    }, changed, options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        id: 'conv-1',
+        title: 'Updated',
+        messages: [{ role: 'assistant', content: 'updated reply', timestamp: 10 }],
+      },
+    });
+    expect(changed).toHaveBeenCalledTimes(2);
+    expect(logs).toEqual([
+      { level: 'info', source: 'conversation-actions', message: 'Listed 1 conversations' },
+      { level: 'info', source: 'conversation-actions', message: 'Fetched conversation conv-1 for recovery' },
+      { level: 'info', source: 'conversation-actions', message: 'Created conversation conv-new with 1 messages' },
+      { level: 'info', source: 'conversation-actions', message: 'Updated conversation conv-1' },
+    ]);
+  });
+
+  it('returns shared conversation sync validation and not-found errors', async () => {
+    const changed = vi.fn();
+    const options = {
+      service: {
+        loadConversation: async () => null,
+        getConversationHistory: async () => [],
+        generateConversationId: () => 'conv-new',
+        saveConversation: async () => undefined,
+      },
+      diagnostics: {
+        logInfo: () => {
+          throw new Error('unexpected info log');
+        },
+        logError: () => {
+          throw new Error('unexpected error log');
+        },
+      },
+      validateConversationId: (conversationId: string) => conversationId === 'bad/id' ? 'Invalid conversation ID format' : null,
+      now: () => 10,
+    };
+
+    await expect(getConversationAction(undefined, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: 'Missing or invalid conversation ID' },
+    });
+    await expect(getConversationAction('bad/id', options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: 'Invalid conversation ID format' },
+    });
+    await expect(getConversationAction('missing', options)).resolves.toEqual({
+      statusCode: 404,
+      body: { error: 'Conversation not found' },
+    });
+    await expect(createConversationAction({}, changed, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: 'Missing or invalid messages array' },
+    });
+    await expect(updateConversationAction('missing', {}, changed, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: 'Conversation not found and no messages provided to create it' },
+    });
+    expect(changed).not.toHaveBeenCalled();
+  });
+
+  it('logs shared conversation sync failures and returns route errors', async () => {
+    const caughtFailure = new Error('storage failed');
+    const loggedErrors: unknown[] = [];
+    const options = {
+      service: {
+        loadConversation: async () => {
+          throw caughtFailure;
+        },
+        getConversationHistory: async () => [],
+        generateConversationId: () => 'conv-new',
+        saveConversation: async () => undefined,
+      },
+      diagnostics: {
+        logInfo: () => undefined,
+        logError: (source: string, message: string, caughtError: unknown) => {
+          loggedErrors.push({ source, message, caughtError });
+        },
+      },
+      validateConversationId: () => null,
+      now: () => 10,
+    };
+
+    await expect(getConversationAction('conv-1', options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: 'storage failed' },
+    });
+    expect(loggedErrors).toEqual([
+      {
+        source: 'conversation-actions',
+        message: 'Failed to fetch conversation',
+        caughtError: caughtFailure,
+      },
+    ]);
   });
 });
 
