@@ -1011,12 +1011,22 @@ export class ConversationService {
     return Math.max(1, Math.ceil(text.length / 4))
   }
 
+  private getValidCompactionTimestamp(...candidates: Array<number | undefined>): number {
+    for (const candidate of candidates) {
+      if (typeof candidate !== "number" || !Number.isFinite(candidate)) continue
+      if (!Number.isFinite(new Date(candidate).getTime())) continue
+      return candidate
+    }
+    return Date.now()
+  }
+
   private buildCompactionCheckpointMetadata(
     existing: ConversationCompactionMetadata | undefined,
     fullMessageHistory: ConversationMessage[],
     summaryMessage: ConversationMessage,
     summarizedMessageCount: number,
     tokensBefore: number,
+    compactedAt: number = Date.now(),
   ): ConversationCompactionMetadata {
     const summarizedMessages = fullMessageHistory.slice(0, summarizedMessageCount)
     const firstKeptMessage = fullMessageHistory[summarizedMessageCount]
@@ -1028,7 +1038,7 @@ export class ConversationService {
       rawHistoryPreserved: true,
       storedRawMessageCount: fullMessageHistory.length,
       representedMessageCount: fullMessageHistory.length,
-      compactedAt: Date.now(),
+      compactedAt,
       summary: summaryMessage.content,
       summaryMessageId: summaryMessage.id,
       firstKeptMessageId: firstKeptMessage?.id,
@@ -1079,12 +1089,17 @@ export class ConversationService {
         summaryMessage,
         summarizedMessageCount,
         this.estimateCompactionTokensFromText(summarizedText),
+        this.getValidCompactionTimestamp(
+          conversation.compaction?.compactedAt,
+          summaryMessage.timestamp,
+          conversation.updatedAt,
+        ),
       ),
-      updatedAt: Date.now(),
+      updatedAt: conversation.updatedAt,
     }
 
     try {
-      await this.saveConversation(compactedConversation)
+      await this.saveConversation(compactedConversation, true)
       return compactedConversation
     } catch (error) {
       logApp(`[conversationService] compactOnLoad: failed to persist checkpoint backfill, returning original:`, error)

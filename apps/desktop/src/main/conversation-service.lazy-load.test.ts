@@ -151,4 +151,50 @@ describe("conversation lazy loading", () => {
       repoSlugs: ["Bin-Huang/youtube-analytics-cli"],
     })
   })
+
+  it("backfills missing checkpoint metadata without refreshing updatedAt", async () => {
+    const service = await setupConversationServiceTest()
+    const rawMessages = Array.from({ length: 25 }, (_, index) => ({
+      id: `m${index}`,
+      role: index % 2 === 0 ? "user" as const : "assistant" as const,
+      content: index === 2
+        ? "Remember the analytics repo is Bin-Huang/youtube-analytics-cli."
+        : `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }))
+    const summaryMessage = {
+      id: "summary-1",
+      role: "assistant" as const,
+      content: "The user mentioned Bin-Huang/youtube-analytics-cli.",
+      timestamp: 1_700_000_000_100,
+      isSummary: true,
+      summarizedMessageCount: 15,
+    }
+
+    await service.saveConversation({
+      id: "conv_checkpoint_backfill",
+      title: "Checkpoint backfill",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [summaryMessage, ...rawMessages.slice(15)],
+      rawMessages,
+    }, true)
+
+    const loaded = await service.loadConversationWithCompaction("conv_checkpoint_backfill")
+
+    expect(loaded?.updatedAt).toBe(200)
+    expect(loaded?.compaction).toMatchObject({
+      compactedAt: summaryMessage.timestamp,
+      firstKeptMessageId: "m15",
+      firstKeptMessageIndex: 15,
+      summarizedMessageCount: 15,
+    })
+    expect(loaded?.compaction?.extractedFacts?.[0]).toMatchObject({
+      sourceMessageId: "m2",
+      repoSlugs: ["Bin-Huang/youtube-analytics-cli"],
+    })
+
+    const reloaded = await service.loadConversation("conv_checkpoint_backfill")
+    expect(reloaded?.updatedAt).toBe(200)
+  })
 })

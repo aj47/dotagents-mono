@@ -21,6 +21,7 @@ import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { orderActiveSessionsByPinnedFirst } from "@renderer/lib/sidebar-sessions"
 import {
+  getLoadedConversationHistoryStartIndex,
   hasConversationHistoryForDisplay,
   mergeLoadedConversationIntoProgress,
 } from "@renderer/lib/session-progress-hydration"
@@ -698,7 +699,7 @@ export function Component() {
           }]
         : [],
       isComplete: !isInitializing,
-      conversationHistoryStartIndex: conv.messageOffset ?? 0,
+      conversationHistoryStartIndex: getLoadedConversationHistoryStartIndex(conv),
       conversationHistoryTotalCount: conv.totalMessageCount ?? conv.messages.length,
       conversationHistory: conv.messages.map((m, index) => ({
         role: m.role,

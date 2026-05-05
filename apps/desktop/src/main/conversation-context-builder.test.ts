@@ -35,6 +35,54 @@ describe("buildRelevantEarlierConversationContextMessage", () => {
     expect(context?.content).toContain("[Relevant Earlier Conversation Facts]")
     expect(context?.content).toContain("Bin-Huang/youtube-analytics-cli")
     expect(context?.content).toContain("msg 7")
+    expect(context?.content).toContain("quoted historical data")
+  })
+
+  it("checks the message just before the recent live tail", () => {
+    const history = [
+      {
+        role: "user",
+        content: "Remember the docs repo is dotagents/docs-site.",
+      },
+      ...Array.from({ length: 19 }, (_, index) => ({
+        role: index % 2 === 0 ? "assistant" : "user",
+        content: `recent filler ${index}`,
+      })),
+      {
+        role: "user",
+        content: "Which docs repo did I mention?",
+      },
+    ]
+
+    const context = buildRelevantEarlierConversationContextMessage(
+      history,
+      "Which docs repo did I mention?",
+    )
+
+    expect(context?.content).toContain("dotagents/docs-site")
+  })
+
+  it("omits invalid timestamps instead of throwing while formatting sources", () => {
+    const history = [
+      {
+        role: "user",
+        content: "The repo was dotagents/out-of-range.",
+        timestamp: Number.MAX_VALUE,
+        branchMessageIndex: 3,
+      },
+      { role: "assistant", content: "Noted." },
+      { role: "user", content: "Which repo was out of range?" },
+    ]
+
+    const context = buildRelevantEarlierConversationContextMessage(
+      history,
+      "Which repo was out of range?",
+      { recentMessageCount: 1 },
+    )
+
+    expect(context?.content).toContain("dotagents/out-of-range")
+    expect(context?.content).toContain("Source: msg 3;")
+    expect(context?.content).not.toContain("Invalid Date")
   })
 
   it("does not inject context for small histories whose relevant messages are still in the live tail", () => {
@@ -69,6 +117,8 @@ describe("buildRelevantEarlierConversationContextMessage", () => {
     expect(context?.content).toContain("summary-1")
     expect(context?.content).toContain("First kept raw message")
     expect(context?.content).toContain("Bin-Huang/youtube-analytics-cli")
+    expect(context?.content).toContain("raw history index 2 (m2)")
+    expect(context?.content).toContain("quoted historical data")
   })
 
   it("extracts deterministic high-signal facts for checkpoint persistence", () => {

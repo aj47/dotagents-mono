@@ -104,4 +104,42 @@ describe("session progress hydration", () => {
     expect(hydrated.conversationHistoryStartIndex).toBe(5)
     expect(hydrated.conversationHistoryTotalCount).toBe(7)
   })
+
+  it("keeps newer in-memory messages when replacing with a loaded disk window", () => {
+    const progress = {
+      ...baseProgress(),
+      conversationHistoryStartIndex: 6,
+      conversationHistoryTotalCount: 8,
+      conversationHistory: [
+        { role: "assistant" as const, content: "Live answer", timestamp: 30 },
+        { role: "user" as const, content: "Live follow-up", timestamp: 31 },
+      ],
+    }
+
+    const hydrated = mergeLoadedConversationIntoProgress(
+      progress,
+      loadedConversation(),
+      { replaceExistingHistory: true },
+    )
+
+    expect(hydrated.conversationHistoryStartIndex).toBe(5)
+    expect(hydrated.conversationHistory?.map((message) => message.content)).toEqual([
+      "Original task",
+      "Live answer",
+      "Live follow-up",
+    ])
+    expect(hydrated.conversationHistoryTotalCount).toBe(8)
+  })
+
+  it("infers the loaded window start when a limited result is missing messageOffset", () => {
+    const conversation = loadedConversation()
+    delete conversation.messageOffset
+
+    const hydrated = mergeLoadedConversationIntoProgress(
+      baseProgress(),
+      conversation,
+    )
+
+    expect(hydrated.conversationHistoryStartIndex).toBe(5)
+  })
 })
