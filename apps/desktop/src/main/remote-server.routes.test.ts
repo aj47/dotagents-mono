@@ -96,6 +96,12 @@ function getSharedChatUtilsSource(): string {
   return readFileSync(sharedChatUtilsPath, "utf8")
 }
 
+function getSharedTtsApiSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedTtsApiPath = path.join(testDir, "../../../../packages/shared/src/tts-api.ts")
+  return readFileSync(sharedTtsApiPath, "utf8")
+}
+
 function getSharedMessageQueueStoreSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedMessageQueueStorePath = path.join(testDir, "../../../../packages/shared/src/message-queue-store.ts")
@@ -867,6 +873,7 @@ describe("remote-server route registration", () => {
     const sharedMcpApiSource = getSharedMcpApiSource()
     const sharedChatUtilsSource = getSharedChatUtilsSource()
     const ttsActionsSource = getTtsActionsSource()
+    const sharedTtsApiSource = getSharedTtsApiSource()
     const pushActionsSource = getPushActionsSource()
     const sharedPushNotificationsSource = getSharedPushNotificationsSource()
 
@@ -906,9 +913,14 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain("options.service.setServerRuntimeEnabled(normalizedServerName, enabled)")
     expect(sharedMcpApiSource).not.toContain("mcpService")
     expect(sharedMcpApiSource).not.toContain("diagnosticsService")
-    expect(ttsActionsSource).toContain("parseTtsSpeakRequestBody(body)")
-    expect(ttsActionsSource).toContain("generateTTS(")
-    expect(ttsActionsSource).toContain("getTtsSpeakFailureStatusCode(message)")
+    expect(ttsActionsSource).toContain("synthesizeSpeechAction(body, ttsActionOptions)")
+    expect(sharedTtsApiSource).toContain("export interface TtsActionOptions")
+    expect(sharedTtsApiSource).toContain("export async function synthesizeSpeechAction")
+    expect(sharedTtsApiSource).toContain("parseTtsSpeakRequestBody(body)")
+    expect(sharedTtsApiSource).toContain("options.generateSpeech(parsedRequest.request, options.getConfig())")
+    expect(sharedTtsApiSource).toContain("options.encodeAudioBody(result.audio)")
+    expect(sharedTtsApiSource).not.toContain("tts-service")
+    expect(sharedTtsApiSource).not.toContain("configStore")
     expect(pushActionsSource).toContain("registerPushTokenAction(body, pushActionOptions)")
     expect(pushActionsSource).toContain("unregisterPushTokenAction(body, pushActionOptions)")
     expect(pushActionsSource).toContain("getPushStatusAction(pushActionOptions)")

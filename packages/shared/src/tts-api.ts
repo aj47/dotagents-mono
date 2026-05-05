@@ -112,6 +112,23 @@ export type ParsedTtsSpeakRequest =
     error: string;
   };
 
+export type TtsActionResult = {
+  statusCode: number;
+  body?: unknown;
+  headers?: Record<string, string>;
+};
+
+export interface TtsActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void;
+}
+
+export interface TtsActionOptions<TConfig extends GenerateTtsConfigLike = GenerateTtsConfigLike> {
+  getConfig(): TConfig;
+  generateSpeech(request: TtsSpeakRequest, config: TConfig): Promise<GenerateTtsOutput>;
+  encodeAudioBody(audio: ArrayBuffer): unknown;
+  diagnostics: TtsActionDiagnostics;
+}
+
 function getUtf8ByteLength(value: string): number {
   return new TextEncoder().encode(value).length;
 }
@@ -173,6 +190,43 @@ export function parseTtsSpeakRequestBody(
 
 export function getTtsSpeakFailureStatusCode(message: string): 400 | 502 {
   return /not enabled|validation failed|Unsupported TTS provider|API key is required/i.test(message) ? 400 : 502;
+}
+
+function ttsActionError(statusCode: number, message: string): TtsActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+  };
+}
+
+function getUnknownErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+export async function synthesizeSpeechAction<TConfig extends GenerateTtsConfigLike>(
+  body: unknown,
+  options: TtsActionOptions<TConfig>,
+): Promise<TtsActionResult> {
+  try {
+    const parsedRequest = parseTtsSpeakRequestBody(body);
+    if (parsedRequest.ok === false) {
+      return ttsActionError(parsedRequest.statusCode, parsedRequest.error);
+    }
+
+    const result = await options.generateSpeech(parsedRequest.request, options.getConfig());
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': result.mimeType,
+        'X-TTS-Provider': result.provider,
+      },
+      body: options.encodeAudioBody(result.audio),
+    };
+  } catch (caughtError) {
+    options.diagnostics.logError('tts-actions', 'TTS request failed', caughtError);
+    const message = getUnknownErrorMessage(caughtError, 'TTS generation failed');
+    return ttsActionError(getTtsSpeakFailureStatusCode(message), message);
+  }
 }
 
 export function getOpenAITTSMimeType(responseFormat: OpenAITtsResponseFormat): string {

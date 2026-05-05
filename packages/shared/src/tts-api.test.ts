@@ -9,6 +9,7 @@ import {
   getOpenAITTSMimeType,
   getTtsSpeakFailureStatusCode,
   parseTtsSpeakRequestBody,
+  synthesizeSpeechAction,
   type TtsFetchLike,
 } from './tts-api';
 
@@ -96,6 +97,114 @@ describe('getTtsSpeakFailureStatusCode', () => {
     expect(getTtsSpeakFailureStatusCode('Unsupported TTS provider: nope')).toBe(400);
     expect(getTtsSpeakFailureStatusCode('API key is required')).toBe(400);
     expect(getTtsSpeakFailureStatusCode('upstream timeout')).toBe(502);
+  });
+});
+
+describe('synthesizeSpeechAction', () => {
+  it('uses shared parsing and adapters to produce TTS route responses', async () => {
+    const config = { ttsProviderId: 'custom' };
+    const encodedBody = { encoded: true };
+    const calls: unknown[] = [];
+    const result = await synthesizeSpeechAction(
+      { text: 'Hello', providerId: 'edge', voice: 'nova', speed: 1.2 },
+      {
+        getConfig: () => config,
+        generateSpeech: async (request, actionConfig) => {
+          calls.push({ request, actionConfig });
+          return {
+            audio: arrayBufferFromBytes([1, 2, 3]),
+            mimeType: 'audio/wav',
+            processedText: 'Hello.',
+            provider: request.providerId ?? 'fallback',
+          };
+        },
+        encodeAudioBody: (audio) => {
+          expect(Array.from(new Uint8Array(audio))).toEqual([1, 2, 3]);
+          return encodedBody;
+        },
+        diagnostics: {
+          logError: () => {
+            throw new Error('unexpected diagnostics log');
+          },
+        },
+      },
+    );
+
+    expect(calls).toEqual([{
+      request: {
+        text: 'Hello',
+        providerId: 'edge',
+        voice: 'nova',
+        model: undefined,
+        speed: 1.2,
+      },
+      actionConfig: config,
+    }]);
+    expect(result).toEqual({
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'audio/wav',
+        'X-TTS-Provider': 'edge',
+      },
+      body: encodedBody,
+    });
+  });
+
+  it('returns shared request validation errors before generation', async () => {
+    const result = await synthesizeSpeechAction(
+      { text: '' },
+      {
+        getConfig: () => ({}),
+        generateSpeech: async () => {
+          throw new Error('unexpected generation');
+        },
+        encodeAudioBody: () => {
+          throw new Error('unexpected encoding');
+        },
+        diagnostics: {
+          logError: () => {
+            throw new Error('unexpected diagnostics log');
+          },
+        },
+      },
+    );
+
+    expect(result).toEqual({
+      statusCode: 400,
+      body: { error: "Missing or invalid 'text'" },
+    });
+  });
+
+  it('logs generation failures and maps provider errors to route status codes', async () => {
+    const error = new Error('Unsupported TTS provider: local');
+    const loggedErrors: unknown[] = [];
+    const result = await synthesizeSpeechAction(
+      { text: 'Hello' },
+      {
+        getConfig: () => ({}),
+        generateSpeech: async () => {
+          throw error;
+        },
+        encodeAudioBody: () => {
+          throw new Error('unexpected encoding');
+        },
+        diagnostics: {
+          logError: (source, message, caughtError) => {
+            loggedErrors.push({ source, message, caughtError });
+          },
+        },
+      },
+    );
+
+    expect(result).toEqual({
+      statusCode: 400,
+      body: { error: 'Unsupported TTS provider: local' },
+    });
+    expect(loggedErrors).toEqual([{
+      source: 'tts-actions',
+      message: 'TTS request failed',
+      caughtError: error,
+    }]);
   });
 });
 
