@@ -805,19 +805,24 @@ let streamedText = '';
 let onNewLine = true;
 let httpStatus = 0;
 let curlExit = 0;
+let streamHadError = false;
 
 function ensureNewline() {
   if (!onNewLine) { process.stdout.write('\n'); onNewLine = true; }
 }
 
 function writeTextDelta(next) {
-  if (typeof next !== 'string' || next.length === 0) return;
+  if (typeof next !== 'string') return;
+  if (next.length === 0) {
+    streamedText = '';
+    return;
+  }
   let delta = '';
   if (!streamedText) {
     delta = next;
   } else if (next.startsWith(streamedText)) {
     delta = next.slice(streamedText.length);
-  } else if (!streamedText.startsWith(next)) {
+  } else {
     ensureNewline();
     delta = next;
   }
@@ -825,7 +830,7 @@ function writeTextDelta(next) {
     process.stdout.write(delta);
     onNewLine = delta.endsWith('\n');
   }
-  if (!streamedText || !streamedText.startsWith(next)) streamedText = next;
+  streamedText = next;
 }
 
 function writeFinalContent(content) {
@@ -847,6 +852,7 @@ function writeFinalContent(content) {
     process.stdout.write(content);
     onNewLine = content.endsWith('\n');
   }
+  streamedText = content;
   ensureNewline();
 }
 
@@ -859,9 +865,10 @@ rl.on('line', (line) => {
     curlExit = parseInt(line.slice('CURL_EXIT:'.length), 10) || 0;
     return;
   }
-  if (!line.startsWith('data: ')) return;
+  if (!line.startsWith('data:')) return;
+  const data = line.replace(/^data: ?/, '');
   let d;
-  try { d = JSON.parse(line.slice(6)); } catch { return; }
+  try { d = JSON.parse(data); } catch { return; }
 
   if (d.type === 'progress') {
     const p = d.data || {};
@@ -892,10 +899,15 @@ rl.on('line', (line) => {
     ensureNewline();
     const m = (d.data && d.data.message) || 'Unknown';
     process.stdout.write(red + 'Error: ' + m + reset + '\n');
+    streamHadError = true;
+    process.exitCode = 1;
   }
 });
 
 rl.on('close', () => {
+  if (streamHadError) {
+    process.exitCode = 1;
+  }
   if (curlExit !== 0) {
     ensureNewline();
     process.stderr.write(red + '✗ Network error talking to daemon (curl exit ' + curlExit + ')' + reset + '\n');
@@ -1404,19 +1416,24 @@ let streamedText = '';
 let onNewLine = true;
 let httpStatus = 0;
 let curlExit = 0;
+let streamHadError = false;
 
 function ensureNewline() {
   if (!onNewLine) { process.stdout.write('\n'); onNewLine = true; }
 }
 
 function writeTextDelta(next) {
-  if (typeof next !== 'string' || next.length === 0) return;
+  if (typeof next !== 'string') return;
+  if (next.length === 0) {
+    streamedText = '';
+    return;
+  }
   let delta = '';
   if (!streamedText) {
     delta = next;
   } else if (next.startsWith(streamedText)) {
     delta = next.slice(streamedText.length);
-  } else if (!streamedText.startsWith(next)) {
+  } else {
     ensureNewline();
     delta = next;
   }
@@ -1424,7 +1441,7 @@ function writeTextDelta(next) {
     process.stdout.write(delta);
     onNewLine = delta.endsWith('\n');
   }
-  if (!streamedText || !streamedText.startsWith(next)) streamedText = next;
+  streamedText = next;
 }
 
 function writeFinalContent(content) {
@@ -1446,6 +1463,7 @@ function writeFinalContent(content) {
     process.stdout.write(content);
     onNewLine = content.endsWith('\n');
   }
+  streamedText = content;
   ensureNewline();
 }
 
@@ -1458,9 +1476,10 @@ rl.on('line', (line) => {
     curlExit = parseInt(line.slice('CURL_EXIT:'.length), 10) || 0;
     return;
   }
-  if (!line.startsWith('data: ')) return;
+  if (!line.startsWith('data:')) return;
+  const data = line.replace(/^data: ?/, '');
   let d;
-  try { d = JSON.parse(line.slice(6)); } catch { return; }
+  try { d = JSON.parse(data); } catch { return; }
 
   if (d.type === 'progress') {
     const p = d.data || {};
@@ -1491,10 +1510,15 @@ rl.on('line', (line) => {
     ensureNewline();
     const m = (d.data && d.data.message) || 'Unknown';
     process.stdout.write(red + 'Error: ' + m + reset + '\n');
+    streamHadError = true;
+    process.exitCode = 1;
   }
 });
 
 rl.on('close', () => {
+  if (streamHadError) {
+    process.exitCode = 1;
+  }
   if (curlExit !== 0) {
     ensureNewline();
     process.stderr.write(red + '✗ Network error talking to daemon (curl exit ' + curlExit + ')' + reset + '\n');
@@ -1504,10 +1528,12 @@ rl.on('close', () => {
         if (e) process.stderr.write(dim + '  ' + e + reset + '\n');
       }
     } catch {}
+    process.exitCode = 1;
   } else if (httpStatus && httpStatus >= 400) {
     ensureNewline();
     process.stderr.write(red + '✗ Daemon returned HTTP ' + httpStatus + reset + '\n');
     process.stderr.write(dim + '  Hint: /status for health, /logs for recent errors.' + reset + '\n');
+    process.exitCode = 1;
   }
 });
 NODE

@@ -16,6 +16,15 @@ const scriptPath = fileURLToPath(
   new URL("../../../../scripts/dotagents-cli.sh", import.meta.url),
 )
 
+function childProcessEnv(home: string | undefined): NodeJS.ProcessEnv {
+  const env: Record<string, string> = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) env[key] = value
+  }
+  env.HOME = home ?? ""
+  return env as NodeJS.ProcessEnv
+}
+
 describeCliSmoke("dotagents CLI one-shot chat", () => {
   let server: http.Server | undefined
   let tmpHome: string | undefined
@@ -38,9 +47,12 @@ describeCliSmoke("dotagents CLI one-shot chat", () => {
   })
 
   afterEach(async () => {
-    await new Promise<void>(
-      (resolve) => server?.close(() => resolve()) ?? resolve(),
-    )
+    if (server) {
+      const closingServer = server
+      await new Promise<void>((resolve, reject) => {
+        closingServer.close((error) => (error ? reject(error) : resolve()))
+      })
+    }
     server = undefined
 
     if (tmpHome) {
@@ -50,19 +62,11 @@ describeCliSmoke("dotagents CLI one-shot chat", () => {
   })
 
   it("posts a chat message and renders streamed SSE output", async () => {
-    const env = Object.fromEntries(
-      Object.entries(process.env).map(([key, value]) => [key, String(value)]),
-    ) as Record<string, string>
-    const childEnv = {
-      ...env,
-      HOME: tmpHome ?? "",
-    }
-
     const { stdout, stderr } = await execFileAsync(
       "bash",
       [scriptPath, "chat", "hello from test"],
       {
-        env: childEnv as any,
+        env: childProcessEnv(tmpHome),
         timeout: 10_000,
         maxBuffer: 1024 * 1024,
       },
@@ -73,6 +77,19 @@ describeCliSmoke("dotagents CLI one-shot chat", () => {
     expect(stdout).toContain("Health:")
     expect(stdout).toContain("Mock thinking")
     expect(stdout).toContain("hello from mock daemon")
+  })
+
+  it("fails when the daemon streams an error frame", async () => {
+    await expect(
+      execFileAsync("bash", [scriptPath, "chat", "trigger stream error"], {
+        env: childProcessEnv(tmpHome),
+        timeout: 10_000,
+        maxBuffer: 1024 * 1024,
+      }),
+    ).rejects.toMatchObject({
+      code: 1,
+      stdout: expect.stringContaining("Error: mock stream failure"),
+    })
   })
 
   async function startMockDaemon(): Promise<number> {
@@ -96,11 +113,26 @@ describeCliSmoke("dotagents CLI one-shot chat", () => {
       }
 
       if (req.url === "/v1/chat/completions" && req.method === "POST") {
-        req.resume()
+        let body = ""
+        req.setEncoding("utf8")
+        req.on("data", (chunk) => {
+          body += chunk
+        })
         req.on("end", () => {
           res.writeHead(200, { "content-type": "text/event-stream" })
+          if (body.includes("trigger stream error")) {
+            res.write(
+              `data:${JSON.stringify({
+                type: "error",
+                data: { message: "mock stream failure" },
+              })}\n\n`,
+            )
+            res.end()
+            return
+          }
+
           res.write(
-            `data: ${JSON.stringify({
+            `data:${JSON.stringify({
               type: "progress",
               data: {
                 steps: [
