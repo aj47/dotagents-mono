@@ -80,8 +80,13 @@ import type {
   ServerConversationFull,
   Settings,
   SettingsUpdate,
+  SkillCreateRequest,
+  SkillDeleteResponse,
+  SkillMutationResponse,
+  SkillResponse,
   SkillToggleResponse,
   SkillsResponse,
+  SkillUpdateRequest,
   TtsSpeakRequest,
   TtsSpeakResponse,
   UpdateConversationRequest,
@@ -1114,6 +1119,30 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   // Skills Management
   async getSkills(): Promise<SkillsResponse> {
     return this.request<SkillsResponse>(API_PATHS.skills);
+  }
+
+  async getSkill(id: string): Promise<SkillResponse> {
+    return this.request<SkillResponse>(API_BUILDERS.skill(id));
+  }
+
+  async createSkill(data: SkillCreateRequest): Promise<SkillMutationResponse> {
+    return this.request<SkillMutationResponse>(API_PATHS.skills, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateSkill(id: string, data: SkillUpdateRequest): Promise<SkillMutationResponse> {
+    return this.request<SkillMutationResponse>(API_BUILDERS.skill(id), {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSkill(id: string): Promise<SkillDeleteResponse> {
+    return this.request<SkillDeleteResponse>(API_BUILDERS.skill(id), {
+      method: 'DELETE',
+    });
   }
 
   async toggleSkillForProfile(skillId: string): Promise<SkillToggleResponse> {

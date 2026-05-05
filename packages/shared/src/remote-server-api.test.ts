@@ -65,6 +65,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_BUILDERS.operatorMcpToolToggle('filesystem/local:read')).toBe('/operator/mcp/tools/filesystem%2Flocal%3Aread/toggle');
     expect(REMOTE_SERVER_API_BUILDERS.operatorMcpServerLogs('filesystem/local', 5)).toBe('/operator/mcp/filesystem%2Flocal/logs?count=5');
     expect(REMOTE_SERVER_API_BUILDERS.operatorMcpServerLogsClear('filesystem/local')).toBe('/operator/mcp/filesystem%2Flocal/logs/clear');
+    expect(REMOTE_SERVER_API_BUILDERS.skill('skill/name')).toBe('/skills/skill%2Fname');
     expect(buildRemoteServerApiQueryPath(REMOTE_SERVER_API_PATHS.operatorErrors, {
       count: 3,
       empty: undefined,

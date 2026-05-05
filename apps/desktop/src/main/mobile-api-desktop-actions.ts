@@ -58,8 +58,12 @@ import {
   updateSettings,
 } from "./settings-actions"
 import {
+  createSkill,
+  deleteSkill,
+  getSkill,
   getSkills,
   toggleProfileSkill,
+  updateSkill,
 } from "./skill-actions"
 import { synthesizeSpeech } from "./tts-actions"
 
@@ -89,6 +93,10 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   updateConversation,
   triggerEmergencyStop,
   getSkills,
+  getSkill,
+  createSkill,
+  updateSkill,
+  deleteSkill,
   toggleProfileSkill,
   getKnowledgeNotes,
   getKnowledgeNote,

@@ -12,6 +12,8 @@ import {
   buildModelPresetUpdatePatch,
   buildModelPresetUpdateAuditContext,
   buildModelPresetsResponse,
+  createOperatorModelPresetAction,
+  deleteOperatorModelPresetAction,
   buildPresetModelSelectionUpdates,
   filterModelOptionsByQuery,
   formatModelPresetSummary,
@@ -22,12 +24,16 @@ import {
   getMergedModelPresets,
   getMcpToolsModelSettingKey,
   getModelPresetActivationUpdates,
+  getOperatorModelPresetsAction,
   normalizeModelPresetString,
   parseModelPresetCreateRequestBody,
   resolveActiveModelId,
   resolveAgentProviderId,
   resolveConfiguredAgentModel,
+  updateOperatorModelPresetAction,
   upsertModelPresetOverride,
+  type ModelPresetActionConfigLike,
+  type ModelPresetActionOptions,
 } from './model-presets';
 import { DEFAULT_MODEL_PRESET_ID, type ModelPreset } from './providers';
 
@@ -520,5 +526,184 @@ describe('model preset helpers', () => {
       apiKey: 'sk-new',
       agentModel: 'model-b',
     });
+  });
+
+  it('runs operator model preset actions through config adapters', async () => {
+    let config: ModelPresetActionConfigLike = {
+      openaiApiKey: 'sk-legacy',
+      currentModelPresetId: DEFAULT_MODEL_PRESET_ID,
+      modelPresets: [],
+    };
+    const savedConfigs: ModelPresetActionConfigLike[] = [];
+    const options: ModelPresetActionOptions = {
+      config: {
+        get: () => config,
+        save: async (nextConfig) => {
+          config = nextConfig;
+          savedConfigs.push(nextConfig);
+        },
+      },
+      diagnostics: {
+        logError: () => {
+          throw new Error('unexpected diagnostics log');
+        },
+      },
+      createPresetId: () => 'custom-1',
+      now: () => 123,
+    };
+
+    await expect(getOperatorModelPresetsAction('MASK', options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildModelPresetsResponse(config, 'MASK'),
+    });
+
+    await expect(createOperatorModelPresetAction({
+      name: 'Custom',
+      baseUrl: 'https://example.com/v1',
+      apiKey: 'sk-test',
+      agentModel: 'model-a',
+    }, 'MASK', options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        preset: {
+          id: 'custom-1',
+          apiKey: 'MASK',
+          hasApiKey: true,
+          agentModel: 'model-a',
+        },
+      },
+      auditContext: {
+        action: 'model-preset-create',
+        success: true,
+        details: {
+          presetId: 'custom-1',
+          hasApiKey: true,
+        },
+      },
+    });
+
+    config = { ...config, currentModelPresetId: 'custom-1' };
+
+    await expect(updateOperatorModelPresetAction('custom-1', {
+      agentModel: 'model-b',
+    }, 'MASK', options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        currentModelPresetId: 'custom-1',
+        preset: {
+          id: 'custom-1',
+          agentModel: 'model-b',
+        },
+      },
+      auditContext: {
+        action: 'model-preset-update',
+        success: true,
+      },
+    });
+    expect(config).toMatchObject({
+      currentModelPresetId: 'custom-1',
+      openaiBaseUrl: 'https://example.com/v1',
+      openaiApiKey: 'sk-test',
+      agentOpenaiModel: 'model-b',
+      mcpToolsOpenaiModel: 'model-b',
+    });
+
+    await expect(deleteOperatorModelPresetAction('custom-1', 'MASK', options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        currentModelPresetId: DEFAULT_MODEL_PRESET_ID,
+        deletedPresetId: 'custom-1',
+      },
+      auditContext: {
+        action: 'model-preset-delete',
+        success: true,
+        details: {
+          presetId: 'custom-1',
+          switchedToDefault: true,
+        },
+      },
+    });
+    expect(config.modelPresets?.some((preset) => preset.id === 'custom-1')).toBe(false);
+    expect(savedConfigs).toHaveLength(3);
+  });
+
+  it('returns operator model preset action validation errors', async () => {
+    const options: ModelPresetActionOptions = {
+      config: {
+        get: () => ({
+          modelPresets: [],
+        }),
+        save: async () => undefined,
+      },
+      diagnostics: {
+        logError: () => {
+          throw new Error('unexpected diagnostics log');
+        },
+      },
+      createPresetId: () => 'custom-1',
+      now: () => 123,
+    };
+
+    await expect(createOperatorModelPresetAction({}, 'MASK', options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: 'Preset name is required' },
+    });
+    await expect(updateOperatorModelPresetAction(undefined, {}, 'MASK', options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: 'Missing preset ID' },
+    });
+    await expect(updateOperatorModelPresetAction('missing', {}, 'MASK', options)).resolves.toEqual({
+      statusCode: 404,
+      body: { error: 'Model preset not found' },
+    });
+    await expect(deleteOperatorModelPresetAction(DEFAULT_MODEL_PRESET_ID, 'MASK', options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: 'Built-in presets cannot be deleted' },
+    });
+  });
+
+  it('logs operator model preset action failures with audit context', async () => {
+    const caughtFailure = new Error('save failed');
+    const loggedErrors: unknown[] = [];
+    const options: ModelPresetActionOptions = {
+      config: {
+        get: () => ({
+          modelPresets: [],
+        }),
+        save: async () => {
+          throw caughtFailure;
+        },
+      },
+      diagnostics: {
+        logError: (source: string, message: string, caughtError: unknown) => {
+          loggedErrors.push({ source, message, caughtError });
+        },
+      },
+      createPresetId: () => 'custom-1',
+      now: () => 123,
+    };
+
+    await expect(createOperatorModelPresetAction({
+      name: 'Custom',
+      baseUrl: 'https://example.com/v1',
+    }, 'MASK', options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: 'save failed' },
+      auditContext: {
+        action: 'model-preset-create',
+        success: false,
+        failureReason: 'save failed',
+      },
+    });
+    expect(loggedErrors).toEqual([
+      {
+        source: 'operator-model-preset-actions',
+        message: 'Failed to create model preset',
+        caughtError: caughtFailure,
+      },
+    ]);
   });
 });

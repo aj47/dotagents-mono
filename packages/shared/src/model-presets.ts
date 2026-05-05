@@ -96,6 +96,32 @@ export interface ModelPresetMutationAuditContext {
   failureReason?: string;
 }
 
+export type ModelPresetActionResult = {
+  statusCode: number;
+  body: unknown;
+  auditContext?: ModelPresetMutationAuditContext;
+};
+
+type ModelPresetMaybePromise<T> = T | Promise<T>;
+
+export interface ModelPresetActionConfigLike extends ModelPresetConfigLike, Partial<ModelPresetActivationUpdates> {}
+
+export interface ModelPresetActionStore<TConfig extends ModelPresetActionConfigLike = ModelPresetActionConfigLike> {
+  get(): TConfig;
+  save(config: TConfig): ModelPresetMaybePromise<void>;
+}
+
+export interface ModelPresetActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void;
+}
+
+export interface ModelPresetActionOptions<TConfig extends ModelPresetActionConfigLike = ModelPresetActionConfigLike> {
+  config: ModelPresetActionStore<TConfig>;
+  diagnostics: ModelPresetActionDiagnostics;
+  createPresetId(): string;
+  now(): number;
+}
+
 function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === 'object' && !Array.isArray(body) ? body as Record<string, unknown> : {};
 }
@@ -226,6 +252,186 @@ export function buildModelPresetMutationFailureAuditContext(
     ...(presetId ? { details: { presetId } } : {}),
     failureReason,
   };
+}
+
+function modelPresetActionOk(
+  body: unknown,
+  auditContext?: ModelPresetMutationAuditContext,
+): ModelPresetActionResult {
+  return {
+    statusCode: 200,
+    body,
+    ...(auditContext ? { auditContext } : {}),
+  };
+}
+
+function modelPresetActionError(
+  statusCode: number,
+  message: string,
+  auditContext?: ModelPresetMutationAuditContext,
+): ModelPresetActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+    ...(auditContext ? { auditContext } : {}),
+  };
+}
+
+function getUnknownErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') {
+    return (error as { message: string }).message;
+  }
+  return fallback;
+}
+
+export async function getOperatorModelPresetsAction<TConfig extends ModelPresetActionConfigLike>(
+  secretMask: string,
+  options: ModelPresetActionOptions<TConfig>,
+): Promise<ModelPresetActionResult> {
+  try {
+    return modelPresetActionOk(buildModelPresetsResponse(options.config.get(), secretMask));
+  } catch (caughtError) {
+    options.diagnostics.logError(
+      'operator-model-preset-actions',
+      'Failed to build model preset summaries',
+      caughtError,
+    );
+    return modelPresetActionError(500, 'Failed to build model preset summaries');
+  }
+}
+
+export async function createOperatorModelPresetAction<TConfig extends ModelPresetActionConfigLike>(
+  body: unknown,
+  secretMask: string,
+  options: ModelPresetActionOptions<TConfig>,
+): Promise<ModelPresetActionResult> {
+  try {
+    const parsedRequest = parseModelPresetCreateRequestBody(body);
+    if (parsedRequest.ok === false) {
+      return modelPresetActionError(parsedRequest.statusCode, parsedRequest.error);
+    }
+
+    const preset = buildCustomModelPresetFromRequest(
+      options.createPresetId(),
+      parsedRequest.request,
+      options.now(),
+    );
+
+    const cfg = options.config.get();
+    const nextConfig = {
+      ...cfg,
+      modelPresets: [...getSavedModelPresets(cfg), preset],
+    } as TConfig;
+    await options.config.save(nextConfig);
+
+    return modelPresetActionOk(
+      buildModelPresetMutationResponse(nextConfig, secretMask, { preset }),
+      buildModelPresetCreateAuditContext(preset),
+    );
+  } catch (caughtError) {
+    const message = getUnknownErrorMessage(caughtError, '');
+    options.diagnostics.logError('operator-model-preset-actions', 'Failed to create model preset', caughtError);
+    return modelPresetActionError(
+      500,
+      message || 'Failed to create model preset',
+      buildModelPresetMutationFailureAuditContext('model-preset-create', message),
+    );
+  }
+}
+
+export async function updateOperatorModelPresetAction<TConfig extends ModelPresetActionConfigLike>(
+  presetId: string | undefined,
+  body: unknown,
+  secretMask: string,
+  options: ModelPresetActionOptions<TConfig>,
+): Promise<ModelPresetActionResult> {
+  if (!presetId) {
+    return modelPresetActionError(400, 'Missing preset ID');
+  }
+
+  try {
+    const cfg = options.config.get();
+    const existingPreset = getMergedModelPresetById(cfg, presetId);
+    if (!existingPreset) {
+      return modelPresetActionError(404, 'Model preset not found');
+    }
+
+    const patch = buildModelPresetUpdatePatch(body, existingPreset, secretMask);
+    const nextPresets = upsertModelPresetOverride(cfg, presetId, patch);
+    const updatedPreset = getMergedModelPresetById({ ...cfg, modelPresets: nextPresets }, presetId);
+    if (!updatedPreset) {
+      return modelPresetActionError(404, 'Model preset not found');
+    }
+
+    const updates = { modelPresets: nextPresets } as Partial<TConfig>;
+    if ((cfg.currentModelPresetId || DEFAULT_MODEL_PRESET_ID) === presetId) {
+      Object.assign(updates, getModelPresetActivationUpdates(updatedPreset) as Partial<TConfig>);
+    }
+
+    const nextConfig = { ...cfg, ...updates } as TConfig;
+    await options.config.save(nextConfig);
+
+    return modelPresetActionOk(
+      buildModelPresetMutationResponse(nextConfig, secretMask, { preset: updatedPreset }),
+      buildModelPresetUpdateAuditContext(presetId, patch),
+    );
+  } catch (caughtError) {
+    const message = getUnknownErrorMessage(caughtError, '');
+    options.diagnostics.logError('operator-model-preset-actions', 'Failed to update model preset', caughtError);
+    return modelPresetActionError(
+      500,
+      message || 'Failed to update model preset',
+      buildModelPresetMutationFailureAuditContext('model-preset-update', message, presetId),
+    );
+  }
+}
+
+export async function deleteOperatorModelPresetAction<TConfig extends ModelPresetActionConfigLike>(
+  presetId: string | undefined,
+  secretMask: string,
+  options: ModelPresetActionOptions<TConfig>,
+): Promise<ModelPresetActionResult> {
+  if (!presetId) {
+    return modelPresetActionError(400, 'Missing preset ID');
+  }
+
+  try {
+    const cfg = options.config.get();
+    const preset = getMergedModelPresetById(cfg, presetId);
+    if (!preset) {
+      return modelPresetActionError(404, 'Model preset not found');
+    }
+    if (preset.isBuiltIn) {
+      return modelPresetActionError(400, 'Built-in presets cannot be deleted');
+    }
+
+    const defaultPreset = getMergedModelPresetById(cfg, DEFAULT_MODEL_PRESET_ID);
+    const updates = {
+      modelPresets: getSavedModelPresets(cfg).filter((candidate) => candidate.id !== presetId),
+    } as Partial<TConfig>;
+    const switchedToDefault = (cfg.currentModelPresetId || DEFAULT_MODEL_PRESET_ID) === presetId;
+    if (switchedToDefault && defaultPreset) {
+      Object.assign(updates, getModelPresetActivationUpdates(defaultPreset) as Partial<TConfig>);
+    }
+
+    const nextConfig = { ...cfg, ...updates } as TConfig;
+    await options.config.save(nextConfig);
+
+    return modelPresetActionOk(
+      buildModelPresetMutationResponse(nextConfig, secretMask, { deletedPresetId: presetId }),
+      buildModelPresetDeleteAuditContext(presetId, switchedToDefault),
+    );
+  } catch (caughtError) {
+    const message = getUnknownErrorMessage(caughtError, '');
+    options.diagnostics.logError('operator-model-preset-actions', 'Failed to delete model preset', caughtError);
+    return modelPresetActionError(
+      500,
+      message || 'Failed to delete model preset',
+      buildModelPresetMutationFailureAuditContext('model-preset-delete', message, presetId),
+    );
+  }
 }
 
 export function getModelPresetActivationUpdates(preset: ModelPreset): ModelPresetActivationUpdates {

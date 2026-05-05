@@ -2,12 +2,18 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildDisabledRuntimeSkillPayload,
+  buildSkillDeleteResponse,
+  buildSkillMutationResponse,
+  buildSkillResponse,
   getSkillsAction,
   buildSkillsResponse,
   buildSkillToggleResponse,
+  createSkillAction,
+  deleteSkillAction,
   buildIgnoredExecuteCommandSkillIdWarning,
   buildRuntimeSkillInstructionsText,
   buildRuntimeSkillNotFoundPayload,
+  getSkillAction,
   getGitHubSkillCandidateRelativePaths,
   getEnabledSkillIdsForProfile,
   getSkillFolderIdFromFilePath,
@@ -19,10 +25,12 @@ import {
   parseRuntimeSkillIdArg,
   resolveRuntimeSkill,
   toggleProfileSkillAction,
+  updateSkillAction,
   uniqueSkillIds,
   validateGitHubSkillIdentifierPart,
   validateGitHubSkillRef,
   validateGitHubSkillSubPath,
+  type SkillActionService,
   type RuntimeSkillLike,
   type RuntimeSkillRegistryLike,
 } from "./skills-api"
@@ -46,6 +54,27 @@ describe("skills API helpers", () => {
       updatedAt: 4,
     },
   ]
+
+  function createSkillActionService(overrides: Partial<SkillActionService> = {}): SkillActionService {
+    return {
+      getSkills: () => skills,
+      getSkill: (id: string) => skills.find((skill) => skill.id === id),
+      createSkill: () => {
+        throw new Error("unexpected create")
+      },
+      updateSkill: () => {
+        throw new Error("unexpected update")
+      },
+      deleteSkill: () => {
+        throw new Error("unexpected delete")
+      },
+      getCurrentProfile: () => undefined,
+      toggleProfileSkill: () => {
+        throw new Error("unexpected toggle")
+      },
+      ...overrides,
+    }
+  }
 
   it("enables all skills when a profile has default skill semantics", () => {
     expect(getEnabledSkillIdsForProfile(skills, undefined)).toEqual(["research", "writing"])
@@ -101,6 +130,47 @@ describe("skills API helpers", () => {
   })
 
   it("builds skill toggle responses from updated profile state", () => {
+    expect(buildSkillResponse(skills[0], {
+      skillsConfig: {
+        allSkillsDisabledByDefault: true,
+        enabledSkillIds: ["research"],
+      },
+    })).toEqual({
+      skill: {
+        id: "research",
+        name: "Research",
+        description: "Find context",
+        instructions: "Use sources",
+        enabled: true,
+        enabledForProfile: true,
+        source: "local",
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    })
+    expect(buildSkillMutationResponse(skills[0], {
+      skillsConfig: {
+        allSkillsDisabledByDefault: true,
+        enabledSkillIds: [],
+      },
+    })).toEqual({
+      success: true,
+      skill: {
+        id: "research",
+        name: "Research",
+        description: "Find context",
+        instructions: "Use sources",
+        enabled: true,
+        enabledForProfile: false,
+        source: "local",
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    })
+    expect(buildSkillDeleteResponse("research")).toEqual({
+      success: true,
+      id: "research",
+    })
     expect(buildSkillToggleResponse("research", {
       skillsConfig: {
         allSkillsDisabledByDefault: true,
@@ -121,8 +191,7 @@ describe("skills API helpers", () => {
         enabledSkillIds: ["writing"],
       },
     }
-    const service = {
-      getSkills: () => skills,
+    const service = createSkillActionService({
       getCurrentProfile: () => profile,
       toggleProfileSkill: (profileId: string, skillId: string, allSkillIds: string[]) => {
         expect(profileId).toBe("profile-1")
@@ -136,7 +205,7 @@ describe("skills API helpers", () => {
           },
         }
       },
-    }
+    })
     const diagnostics = {
       logError: () => {
         throw new Error("unexpected diagnostics log")
@@ -157,14 +226,90 @@ describe("skills API helpers", () => {
     })
   })
 
+  it("runs shared skill CRUD actions through service adapters", () => {
+    const profile = {
+      id: "profile-1",
+      skillsConfig: {
+        allSkillsDisabledByDefault: true,
+        enabledSkillIds: ["created"],
+      },
+    }
+    const created = {
+      id: "created",
+      name: "Created",
+      description: "New skill",
+      instructions: "Do it",
+      source: "local" as const,
+      createdAt: 5,
+      updatedAt: 5,
+    }
+    const updated = {
+      ...skills[0],
+      description: "Updated description",
+      updatedAt: 6,
+    }
+    const service = createSkillActionService({
+      getCurrentProfile: () => profile,
+      createSkill: (name: string, description: string, instructions: string) => {
+        expect({ name, description, instructions }).toEqual({
+          name: "Created",
+          description: "New skill",
+          instructions: "Do it",
+        })
+        return created
+      },
+      enableSkillForCurrentProfile: (skillId: string) => {
+        expect(skillId).toBe("created")
+        return profile
+      },
+      updateSkill: (skillId: string, updates: Record<string, unknown>) => {
+        expect(skillId).toBe("research")
+        expect(updates).toEqual({ description: "Updated description" })
+        return updated
+      },
+      deleteSkill: (skillId: string) => {
+        expect(skillId).toBe("research")
+        return true
+      },
+    })
+    const diagnostics = {
+      logError: () => {
+        throw new Error("unexpected diagnostics log")
+      },
+    }
+
+    expect(getSkillAction("research", { service, diagnostics })).toEqual({
+      statusCode: 200,
+      body: buildSkillResponse(skills[0], profile),
+    })
+    expect(createSkillAction({
+      name: " Created ",
+      description: "New skill",
+      instructions: "Do it",
+    }, { service, diagnostics })).toEqual({
+      statusCode: 200,
+      body: buildSkillMutationResponse(created, profile),
+    })
+    expect(updateSkillAction("research", {
+      description: "Updated description",
+    }, { service, diagnostics })).toEqual({
+      statusCode: 200,
+      body: buildSkillMutationResponse(updated, profile),
+    })
+    expect(deleteSkillAction("research", { service, diagnostics })).toEqual({
+      statusCode: 200,
+      body: buildSkillDeleteResponse("research"),
+    })
+  })
+
   it("returns shared skill action validation errors before mutating profile state", () => {
-    const service = {
-      getSkills: () => skills,
+    const service = createSkillActionService({
       getCurrentProfile: () => null,
+      deleteSkill: () => false,
       toggleProfileSkill: () => {
         throw new Error("unexpected toggle")
       },
-    }
+    })
     const diagnostics = {
       logError: () => {
         throw new Error("unexpected diagnostics log")
@@ -179,18 +324,45 @@ describe("skills API helpers", () => {
       statusCode: 400,
       body: { error: "No current profile set" },
     })
+    expect(getSkillAction(undefined, { service, diagnostics })).toEqual({
+      statusCode: 400,
+      body: { error: "Skill id is required" },
+    })
+    expect(getSkillAction("missing", { service, diagnostics })).toEqual({
+      statusCode: 404,
+      body: { error: "Skill not found" },
+    })
+    expect(createSkillAction({ name: "" }, { service, diagnostics })).toEqual({
+      statusCode: 400,
+      body: { error: "Skill name is required" },
+    })
+    expect(updateSkillAction("research", {}, { service, diagnostics })).toEqual({
+      statusCode: 400,
+      body: { error: "No skill updates provided" },
+    })
+    expect(updateSkillAction("missing", { name: "Missing" }, { service, diagnostics })).toEqual({
+      statusCode: 404,
+      body: { error: "Skill not found" },
+    })
+    expect(deleteSkillAction(undefined, { service, diagnostics })).toEqual({
+      statusCode: 400,
+      body: { error: "Skill id is required" },
+    })
+    expect(deleteSkillAction("missing", { service, diagnostics })).toEqual({
+      statusCode: 404,
+      body: { error: "Skill not found" },
+    })
   })
 
   it("logs shared skill action failures and returns route errors", () => {
     const error = new Error("toggle failed")
     const loggedErrors: unknown[] = []
-    const service = {
-      getSkills: () => skills,
+    const service = createSkillActionService({
       getCurrentProfile: () => ({ id: "profile-1" }),
       toggleProfileSkill: () => {
         throw error
       },
-    }
+    })
     const diagnostics = {
       logError: (source: string, message: string, caughtError: unknown) => {
         loggedErrors.push({ source, message, caughtError })

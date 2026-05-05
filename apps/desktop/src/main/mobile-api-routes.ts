@@ -204,6 +204,33 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // GET /v1/skills/:id - Get one skill
+  fastify.get(API_ROUTES.skill, async (req, reply) => {
+    const params = req.params as { id?: string }
+    const result = actions.getSkill(params.id)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
+  // POST /v1/skills - Create a new skill
+  fastify.post(API_ROUTES.skills, async (req, reply) => {
+    const result = actions.createSkill(req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
+  // PATCH /v1/skills/:id - Update a skill
+  fastify.patch(API_ROUTES.skill, async (req, reply) => {
+    const params = req.params as { id?: string }
+    const result = actions.updateSkill(params.id, req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
+  // DELETE /v1/skills/:id - Delete a skill
+  fastify.delete(API_ROUTES.skill, async (req, reply) => {
+    const params = req.params as { id?: string }
+    const result = actions.deleteSkill(params.id)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // POST /v1/skills/:id/toggle-profile - Toggle skill for current profile
   fastify.post(API_ROUTES.skillToggleProfile, async (req, reply) => {
     const params = req.params as { id?: string }

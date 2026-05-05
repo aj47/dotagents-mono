@@ -1,4 +1,13 @@
-import type { Skill, SkillsResponse, SkillToggleResponse } from "./api-types"
+import type {
+  Skill,
+  SkillCreateRequest,
+  SkillDeleteResponse,
+  SkillMutationResponse,
+  SkillResponse,
+  SkillsResponse,
+  SkillToggleResponse,
+  SkillUpdateRequest,
+} from "./api-types"
 
 export type SkillApiLike = {
   id: string
@@ -33,7 +42,15 @@ export interface SkillActionDiagnostics {
 
 export interface SkillActionService {
   getSkills(): SkillApiLike[]
+  getSkill(id: string): SkillApiLike | undefined
+  createSkill(name: string, description: string, instructions: string): SkillApiLike
+  updateSkill(
+    id: string,
+    updates: Partial<Pick<SkillApiLike, "name" | "description" | "instructions">>,
+  ): SkillApiLike
+  deleteSkill(id: string): boolean
   getCurrentProfile(): SkillActionProfileLike | null | undefined
+  enableSkillForCurrentProfile?(skillId: string): SkillActionProfileLike | null | undefined
   toggleProfileSkill(profileId: string, skillId: string, allSkillIds: string[]): SkillActionProfileLike | null | undefined
 }
 
@@ -335,6 +352,29 @@ export function buildSkillsResponse(
   }
 }
 
+export function buildSkillResponse(skill: SkillApiLike, currentProfile?: SkillProfileLike | null): SkillResponse {
+  return {
+    skill: formatSkillForApi(skill, isSkillEnabledForProfile(skill.id, currentProfile)),
+  }
+}
+
+export function buildSkillMutationResponse(
+  skill: SkillApiLike,
+  currentProfile?: SkillProfileLike | null,
+): SkillMutationResponse {
+  return {
+    success: true,
+    skill: formatSkillForApi(skill, isSkillEnabledForProfile(skill.id, currentProfile)),
+  }
+}
+
+export function buildSkillDeleteResponse(skillId: string): SkillDeleteResponse {
+  return {
+    success: true,
+    id: skillId,
+  }
+}
+
 export function buildSkillToggleResponse(
   skillId: string,
   profile?: SkillProfileLike | null,
@@ -368,6 +408,70 @@ function getUnknownErrorMessage(error: unknown, fallback: string): string {
   return fallback
 }
 
+function getRequestRecord(body: unknown): Record<string, unknown> {
+  return body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {}
+}
+
+function getNonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined
+}
+
+function getOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined
+}
+
+export type SkillCreateParseResult =
+  | { ok: true; request: SkillCreateRequest & { name: string; description: string; instructions: string } }
+  | { ok: false; error: string }
+
+export function parseSkillCreateRequestBody(body: unknown): SkillCreateParseResult {
+  const record = getRequestRecord(body)
+  const name = getNonEmptyString(record.name)
+  if (!name) {
+    return { ok: false, error: "Skill name is required" }
+  }
+
+  return {
+    ok: true,
+    request: {
+      name,
+      description: getOptionalString(record.description) ?? "",
+      instructions: getOptionalString(record.instructions) ?? "",
+    },
+  }
+}
+
+export type SkillUpdateParseResult =
+  | { ok: true; request: SkillUpdateRequest }
+  | { ok: false; error: string }
+
+export function parseSkillUpdateRequestBody(body: unknown): SkillUpdateParseResult {
+  const record = getRequestRecord(body)
+  const request: SkillUpdateRequest = {}
+
+  if ("name" in record) {
+    const name = getNonEmptyString(record.name)
+    if (!name) {
+      return { ok: false, error: "Skill name must be a non-empty string" }
+    }
+    request.name = name
+  }
+
+  if ("description" in record) {
+    request.description = getOptionalString(record.description) ?? ""
+  }
+
+  if ("instructions" in record) {
+    request.instructions = getOptionalString(record.instructions) ?? ""
+  }
+
+  if (Object.keys(request).length === 0) {
+    return { ok: false, error: "No skill updates provided" }
+  }
+
+  return { ok: true, request }
+}
+
 export function getSkillsAction(options: SkillActionOptions): SkillActionResult {
   try {
     const skills = options.service.getSkills()
@@ -376,6 +480,100 @@ export function getSkillsAction(options: SkillActionOptions): SkillActionResult 
   } catch (caughtError) {
     options.diagnostics.logError("skill-actions", "Failed to get skills", caughtError)
     return skillActionError(500, "Failed to get skills")
+  }
+}
+
+export function getSkillAction(
+  skillId: string | undefined,
+  options: SkillActionOptions,
+): SkillActionResult {
+  try {
+    if (!skillId) {
+      return skillActionError(400, "Skill id is required")
+    }
+
+    const skill = options.service.getSkill(skillId)
+    if (!skill) {
+      return skillActionError(404, "Skill not found")
+    }
+
+    return skillActionOk(buildSkillResponse(skill, options.service.getCurrentProfile()))
+  } catch (caughtError) {
+    options.diagnostics.logError("skill-actions", "Failed to get skill", caughtError)
+    return skillActionError(500, "Failed to get skill")
+  }
+}
+
+export function createSkillAction(
+  body: unknown,
+  options: SkillActionOptions,
+): SkillActionResult {
+  const parsed = parseSkillCreateRequestBody(body)
+  if (parsed.ok === false) {
+    return skillActionError(400, parsed.error)
+  }
+
+  try {
+    const skill = options.service.createSkill(
+      parsed.request.name,
+      parsed.request.description,
+      parsed.request.instructions,
+    )
+    const currentProfile = options.service.enableSkillForCurrentProfile?.(skill.id)
+      ?? options.service.getCurrentProfile()
+    return skillActionOk(buildSkillMutationResponse(skill, currentProfile))
+  } catch (caughtError) {
+    options.diagnostics.logError("skill-actions", "Failed to create skill", caughtError)
+    return skillActionError(500, getUnknownErrorMessage(caughtError, "Failed to create skill"))
+  }
+}
+
+export function updateSkillAction(
+  skillId: string | undefined,
+  body: unknown,
+  options: SkillActionOptions,
+): SkillActionResult {
+  if (!skillId) {
+    return skillActionError(400, "Skill id is required")
+  }
+
+  const parsed = parseSkillUpdateRequestBody(body)
+  if (parsed.ok === false) {
+    return skillActionError(400, parsed.error)
+  }
+
+  try {
+    const existing = options.service.getSkill(skillId)
+    if (!existing) {
+      return skillActionError(404, "Skill not found")
+    }
+
+    const skill = options.service.updateSkill(skillId, parsed.request)
+    return skillActionOk(buildSkillMutationResponse(skill, options.service.getCurrentProfile()))
+  } catch (caughtError) {
+    options.diagnostics.logError("skill-actions", "Failed to update skill", caughtError)
+    return skillActionError(500, getUnknownErrorMessage(caughtError, "Failed to update skill"))
+  }
+}
+
+export function deleteSkillAction(
+  skillId: string | undefined,
+  options: SkillActionOptions,
+): SkillActionResult {
+  if (!skillId) {
+    return skillActionError(400, "Skill id is required")
+  }
+
+  try {
+    const success = options.service.deleteSkill(skillId)
+    if (!success) {
+      return skillActionError(404, "Skill not found")
+    }
+
+    return skillActionOk(buildSkillDeleteResponse(skillId))
+  } catch (caughtError) {
+    options.diagnostics.logError("skill-actions", "Failed to delete skill", caughtError)
+    return skillActionError(500, getUnknownErrorMessage(caughtError, "Failed to delete skill"))
   }
 }
 

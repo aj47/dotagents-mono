@@ -856,6 +856,32 @@ export interface SkillsResponse {
   currentProfileId?: string;
 }
 
+export interface SkillResponse {
+  skill: Skill;
+}
+
+export interface SkillCreateRequest {
+  name: string;
+  description?: string;
+  instructions?: string;
+}
+
+export interface SkillUpdateRequest {
+  name?: string;
+  description?: string;
+  instructions?: string;
+}
+
+export interface SkillMutationResponse {
+  success: true;
+  skill: Skill;
+}
+
+export interface SkillDeleteResponse {
+  success: true;
+  id: string;
+}
+
 export interface SkillToggleResponse {
   success: true;
   skillId: string;

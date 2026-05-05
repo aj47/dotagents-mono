@@ -75,6 +75,10 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   ) => RemoteServerMaybePromise<MobileApiActionResult>;
   triggerEmergencyStop: () => RemoteServerMaybePromise<MobileApiActionResult>;
   getSkills: () => MobileApiActionResult;
+  getSkill: (id?: string) => MobileApiActionResult;
+  createSkill: (body: unknown) => MobileApiActionResult;
+  updateSkill: (id: string | undefined, body: unknown) => MobileApiActionResult;
+  deleteSkill: (id?: string) => MobileApiActionResult;
   toggleProfileSkill: (id?: string) => MobileApiActionResult;
   getKnowledgeNotes: () => RemoteServerMaybePromise<MobileApiActionResult>;
   getKnowledgeNote: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
