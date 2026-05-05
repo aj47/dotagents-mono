@@ -111,6 +111,45 @@ export type RepeatTaskNextDelayResult = {
   clampedIntervalMinutes?: number
 }
 
+export type RepeatTaskActionResult = {
+  statusCode: number
+  body: unknown
+}
+
+type RepeatTaskMaybePromise<T> = T | Promise<T>
+
+export interface RepeatTaskActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void
+}
+
+export interface RepeatTaskLoopService<TLoop extends RepeatTaskApiRecord = RepeatTaskApiRecord> {
+  getLoops(): TLoop[]
+  getLoopStatuses(): RepeatTaskStatusLike[]
+  getLoop(id: string): TLoop | undefined
+  saveLoop(loop: TLoop): boolean
+  startLoop(id: string): void
+  stopLoop(id: string): void
+  triggerLoop(id: string): RepeatTaskMaybePromise<boolean>
+  getLoopStatus(id: string): RepeatTaskStatusLike | undefined
+  deleteLoop(id: string): boolean
+}
+
+export interface RepeatTaskConfigLike<TLoop extends RepeatTaskApiRecord = RepeatTaskApiRecord> {
+  loops?: TLoop[]
+}
+
+export interface RepeatTaskActionOptions<
+  TLoop extends RepeatTaskApiRecord = RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop> = RepeatTaskConfigLike<TLoop>,
+> {
+  loadLoopService(): RepeatTaskMaybePromise<RepeatTaskLoopService<TLoop> | null | undefined>
+  getConfig(): TConfig
+  saveConfig(config: TConfig): void
+  createId(): string
+  getProfileName?: (profileId?: string) => string | undefined
+  diagnostics: RepeatTaskActionDiagnostics
+}
+
 export const REPEAT_TASK_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const
 export const DEFAULT_REPEAT_TASK_SCHEDULE_TIMES = ["09:00"] as const
 export const DEFAULT_REPEAT_TASK_WEEKDAYS = [1, 2, 3, 4, 5] as const
@@ -472,6 +511,269 @@ export function buildRepeatTaskRunResponse(id: string): LoopRunResponse {
 
 export function buildRepeatTaskDeleteResponse(id: string): LoopDeleteResponse {
   return { success: true, id }
+}
+
+function repeatTaskActionOk(body: unknown, statusCode = 200): RepeatTaskActionResult {
+  return {
+    statusCode,
+    body,
+  }
+}
+
+function repeatTaskActionError(statusCode: number, message: string): RepeatTaskActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+  }
+}
+
+function getUnknownErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string") {
+    return (error as { message: string }).message
+  }
+  return fallback
+}
+
+export async function getRepeatTasksAction<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+  try {
+    const loopService = await options.loadLoopService()
+    const loops = loopService?.getLoops() ?? (options.getConfig().loops || [])
+    const statuses = loopService?.getLoopStatuses() ?? []
+
+    return repeatTaskActionOk(buildRepeatTasksResponse(loops, {
+      statuses,
+      getProfileName: options.getProfileName,
+    }))
+  } catch (caughtError) {
+    options.diagnostics.logError("repeat-task-actions", "Failed to get repeat tasks", caughtError)
+    return repeatTaskActionError(500, "Failed to get repeat tasks")
+  }
+}
+
+export async function toggleRepeatTaskAction<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+  try {
+    const taskId = id ?? ""
+    const loopService = await options.loadLoopService()
+
+    if (loopService) {
+      const existing = loopService.getLoop(taskId)
+      if (!existing) {
+        return repeatTaskActionError(404, "Repeat task not found")
+      }
+
+      const updated = { ...existing, enabled: !existing.enabled }
+      const saved = loopService.saveLoop(updated)
+      if (!saved) {
+        return repeatTaskActionError(500, "Failed to persist repeat task toggle")
+      }
+
+      if (updated.enabled) {
+        loopService.startLoop(taskId)
+      } else {
+        loopService.stopLoop(taskId)
+      }
+
+      return repeatTaskActionOk(buildRepeatTaskToggleResponse(taskId, updated.enabled))
+    }
+
+    const cfg = options.getConfig()
+    const loops = cfg.loops || []
+    const loopIndex = loops.findIndex(loop => loop.id === id)
+
+    if (loopIndex === -1) {
+      return repeatTaskActionError(404, "Repeat task not found")
+    }
+
+    const updatedLoops = [...loops]
+    updatedLoops[loopIndex] = {
+      ...updatedLoops[loopIndex],
+      enabled: !updatedLoops[loopIndex].enabled,
+    }
+
+    options.saveConfig({ ...cfg, loops: updatedLoops } as TConfig)
+
+    return repeatTaskActionOk(buildRepeatTaskToggleResponse(taskId, updatedLoops[loopIndex].enabled))
+  } catch (caughtError) {
+    options.diagnostics.logError("repeat-task-actions", "Failed to toggle repeat task", caughtError)
+    return repeatTaskActionError(500, getUnknownErrorMessage(caughtError, "Failed to toggle repeat task"))
+  }
+}
+
+export async function runRepeatTaskAction<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+  try {
+    const taskId = id ?? ""
+    const loopService = await options.loadLoopService()
+
+    if (loopService) {
+      const loopExists = loopService.getLoop(taskId)
+      if (!loopExists) {
+        return repeatTaskActionError(404, "Repeat task not found")
+      }
+
+      const triggered = await loopService.triggerLoop(taskId)
+
+      if (!triggered) {
+        return repeatTaskActionError(409, "Task is already running")
+      }
+
+      return repeatTaskActionOk(buildRepeatTaskRunResponse(taskId))
+    }
+
+    return repeatTaskActionError(503, "Repeat task service is unavailable")
+  } catch (caughtError) {
+    options.diagnostics.logError("repeat-task-actions", "Failed to run repeat task", caughtError)
+    return repeatTaskActionError(500, getUnknownErrorMessage(caughtError, "Failed to run repeat task"))
+  }
+}
+
+export async function createRepeatTaskAction<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(body: unknown, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+  try {
+    const parsedRequest = parseRepeatTaskCreateRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return repeatTaskActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const newLoop = buildRepeatTaskFromCreateRequest(options.createId(), parsedRequest.request) as TLoop
+
+    const loopService = await options.loadLoopService()
+    if (loopService) {
+      const saved = loopService.saveLoop(newLoop)
+      if (!saved) {
+        return repeatTaskActionError(500, "Failed to persist repeat task")
+      }
+
+      if (newLoop.enabled) {
+        loopService.startLoop(newLoop.id)
+      }
+    } else {
+      const cfg = options.getConfig()
+      const loops = [...(cfg.loops || []), newLoop]
+      options.saveConfig({ ...cfg, loops } as TConfig)
+    }
+
+    const savedLoop = loopService?.getLoop(newLoop.id) ?? newLoop
+    return repeatTaskActionOk(buildRepeatTaskResponse(savedLoop, {
+      profileName: options.getProfileName?.(savedLoop.profileId),
+      status: loopService?.getLoopStatus(savedLoop.id),
+    }))
+  } catch (caughtError) {
+    options.diagnostics.logError("repeat-task-actions", "Failed to create repeat task", caughtError)
+    return repeatTaskActionError(500, getUnknownErrorMessage(caughtError, "Failed to create repeat task"))
+  }
+}
+
+export async function updateRepeatTaskAction<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(id: string | undefined, body: unknown, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+  try {
+    const parsedRequest = parseRepeatTaskUpdateRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return repeatTaskActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const taskId = id ?? ""
+    const loopService = await options.loadLoopService()
+    let existing: TLoop | undefined
+    let cfg: TConfig | undefined
+    let loops: TLoop[] = []
+    let loopIndex = -1
+
+    if (loopService) {
+      existing = loopService.getLoop(taskId)
+    } else {
+      cfg = options.getConfig()
+      loops = cfg.loops || []
+      loopIndex = loops.findIndex(loop => loop.id === id)
+      existing = loopIndex >= 0 ? loops[loopIndex] : undefined
+    }
+
+    if (!existing) {
+      return repeatTaskActionError(404, "Repeat task not found")
+    }
+
+    const updated = applyRepeatTaskUpdate(existing, parsedRequest.request)
+
+    if (loopService) {
+      const saved = loopService.saveLoop(updated)
+      if (!saved) {
+        return repeatTaskActionError(500, "Failed to persist repeat task")
+      }
+
+      if (updated.enabled) {
+        loopService.stopLoop(taskId)
+        loopService.startLoop(taskId)
+      } else {
+        loopService.stopLoop(taskId)
+      }
+    } else if (cfg && loopIndex >= 0) {
+      const updatedLoops = [...loops]
+      updatedLoops[loopIndex] = updated
+      options.saveConfig({ ...cfg, loops: updatedLoops } as TConfig)
+    }
+
+    const savedLoop = loopService?.getLoop(taskId) ?? updated
+    return repeatTaskActionOk(buildRepeatTaskMutationResponse(savedLoop, {
+      profileName: options.getProfileName?.(savedLoop.profileId),
+      status: loopService?.getLoopStatus(savedLoop.id),
+    }))
+  } catch (caughtError) {
+    options.diagnostics.logError("repeat-task-actions", "Failed to update repeat task", caughtError)
+    return repeatTaskActionError(500, getUnknownErrorMessage(caughtError, "Failed to update repeat task"))
+  }
+}
+
+export async function deleteRepeatTaskAction<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+  try {
+    const taskId = id ?? ""
+    const loopService = await options.loadLoopService()
+
+    if (loopService) {
+      const existing = loopService.getLoop(taskId)
+      if (!existing) {
+        return repeatTaskActionError(404, "Repeat task not found")
+      }
+
+      const deleted = loopService.deleteLoop(taskId)
+      if (!deleted) {
+        return repeatTaskActionError(500, "Failed to delete repeat task")
+      }
+
+      return repeatTaskActionOk(buildRepeatTaskDeleteResponse(taskId))
+    }
+
+    const cfg = options.getConfig()
+    const loops = cfg.loops || []
+    const loopIndex = loops.findIndex(loop => loop.id === id)
+
+    if (loopIndex === -1) {
+      return repeatTaskActionError(404, "Repeat task not found")
+    }
+
+    const updatedLoops = loops.filter(loop => loop.id !== id)
+    options.saveConfig({ ...cfg, loops: updatedLoops } as TConfig)
+
+    return repeatTaskActionOk(buildRepeatTaskDeleteResponse(taskId))
+  } catch (caughtError) {
+    options.diagnostics.logError("repeat-task-actions", "Failed to delete repeat task", caughtError)
+    return repeatTaskActionError(500, getUnknownErrorMessage(caughtError, "Failed to delete repeat task"))
+  }
 }
 
 export function describeSchedule(schedule: RepeatTaskSchedule): string {

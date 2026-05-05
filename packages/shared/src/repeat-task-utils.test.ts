@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   applyRepeatTaskUpdate,
+  createRepeatTaskAction,
   buildRepeatTaskMutationResponse,
   buildRepeatTaskDeleteResponse,
   buildRepeatTaskResponse,
@@ -10,6 +11,7 @@ import {
   buildRepeatTasksResponse,
   buildRepeatTaskToggleResponse,
   computeNextScheduledRun,
+  deleteRepeatTaskAction,
   describeLoopCadence,
   describeRepeatTaskScheduleForLog,
   describeSchedule,
@@ -20,6 +22,7 @@ import {
   getLoopScheduleDaysOfWeek,
   getLoopScheduleMode,
   getLoopScheduleTimes,
+  getRepeatTasksAction,
   isContinuousRepeatTask,
   mergeRepeatTaskLayers,
   parseLoopIntervalDraft,
@@ -27,7 +30,10 @@ import {
   parseRepeatTaskScheduleInput,
   parseRepeatTaskUpdateRequestBody,
   formatRepeatTaskForApi,
+  runRepeatTaskAction,
   sanitizeScheduleTimes,
+  toggleRepeatTaskAction,
+  updateRepeatTaskAction,
 } from "./repeat-task-utils"
 
 describe("repeat task schedule helpers", () => {
@@ -515,5 +521,176 @@ describe("repeat task schedule helpers", () => {
         },
       ],
     })
+  })
+
+  it("runs shared repeat task route actions through loop service adapters", async () => {
+    const loop = {
+      id: "loop_1",
+      name: "Morning check",
+      prompt: "summarize overnight work",
+      intervalMinutes: 60,
+      enabled: true,
+      profileId: "profile_1",
+    }
+    const loopsById = new Map([[loop.id, loop]])
+    const statuses = [{ id: "loop_1", lastRunAt: 20, isRunning: false, nextRunAt: 40 }]
+    const started: string[] = []
+    const stopped: string[] = []
+    const triggered: string[] = []
+    const loopService = {
+      getLoops: () => Array.from(loopsById.values()),
+      getLoopStatuses: () => statuses,
+      getLoop: (id: string) => loopsById.get(id),
+      saveLoop: (nextLoop: typeof loop) => {
+        loopsById.set(nextLoop.id, nextLoop)
+        return true
+      },
+      startLoop: (id: string) => started.push(id),
+      stopLoop: (id: string) => stopped.push(id),
+      triggerLoop: (id: string) => {
+        triggered.push(id)
+        return true
+      },
+      getLoopStatus: (id: string) => statuses.find(status => status.id === id),
+      deleteLoop: (id: string) => loopsById.delete(id),
+    }
+    const diagnostics = {
+      logError: () => {
+        throw new Error("unexpected diagnostics log")
+      },
+    }
+    const options = {
+      loadLoopService: async () => loopService,
+      getConfig: () => ({ loops: [] }),
+      saveConfig: () => {
+        throw new Error("unexpected config save")
+      },
+      createId: () => "loop_new",
+      getProfileName: (profileId?: string) => profileId === "profile_1" ? "Research Agent" : undefined,
+      diagnostics,
+    }
+
+    await expect(getRepeatTasksAction(options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTasksResponse([loop], {
+        statuses,
+        getProfileName: options.getProfileName,
+      }),
+    })
+    await expect(toggleRepeatTaskAction("loop_1", options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskToggleResponse("loop_1", false),
+    })
+    await expect(runRepeatTaskAction("loop_1", options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskRunResponse("loop_1"),
+    })
+    await expect(createRepeatTaskAction({
+      name: "New task",
+      prompt: "Do it",
+      enabled: true,
+    }, options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: { loop: { id: "loop_new", name: "New task", prompt: "Do it", enabled: true } },
+    })
+    await expect(updateRepeatTaskAction("loop_1", { name: "Updated", enabled: true }, options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: { success: true, loop: { id: "loop_1", name: "Updated", enabled: true } },
+    })
+    await expect(deleteRepeatTaskAction("loop_new", options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskDeleteResponse("loop_new"),
+    })
+    expect(started).toEqual(["loop_new", "loop_1"])
+    expect(stopped).toEqual(["loop_1", "loop_1"])
+    expect(triggered).toEqual(["loop_1"])
+  })
+
+  it("runs shared repeat task route actions against fallback config storage", async () => {
+    const loop = {
+      id: "loop_1",
+      name: "Morning check",
+      prompt: "summarize overnight work",
+      intervalMinutes: 60,
+      enabled: true,
+    }
+    let config = { loops: [loop] }
+    const diagnostics = {
+      logError: () => {
+        throw new Error("unexpected diagnostics log")
+      },
+    }
+    const options = {
+      loadLoopService: async () => null,
+      getConfig: () => config,
+      saveConfig: (nextConfig: typeof config) => {
+        config = nextConfig
+      },
+      createId: () => "loop_new",
+      diagnostics,
+    }
+
+    await expect(toggleRepeatTaskAction("loop_1", options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskToggleResponse("loop_1", false),
+    })
+    expect(config.loops[0].enabled).toBe(false)
+
+    await expect(runRepeatTaskAction("loop_1", options)).resolves.toEqual({
+      statusCode: 503,
+      body: { error: "Repeat task service is unavailable" },
+    })
+    await expect(createRepeatTaskAction({ name: "New task", prompt: "Do it" }, options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: { loop: { id: "loop_new", name: "New task" } },
+    })
+    await expect(updateRepeatTaskAction("loop_new", { prompt: "Updated prompt" }, options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: { success: true, loop: { id: "loop_new", prompt: "Updated prompt" } },
+    })
+    await expect(deleteRepeatTaskAction("loop_new", options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskDeleteResponse("loop_new"),
+    })
+  })
+
+  it("logs shared repeat task failures and preserves route error mapping", async () => {
+    const caughtFailure = new Error("storage failed")
+    const loggedErrors: unknown[] = []
+    const diagnostics = {
+      logError: (source: string, message: string, caughtError: unknown) => {
+        loggedErrors.push({ source, message, caughtError })
+      },
+    }
+
+    await expect(getRepeatTasksAction({
+      loadLoopService: () => {
+        throw caughtFailure
+      },
+      getConfig: () => ({ loops: [] }),
+      saveConfig: () => undefined,
+      createId: () => "loop_new",
+      diagnostics,
+    })).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "Failed to get repeat tasks" },
+    })
+    await expect(toggleRepeatTaskAction("missing", {
+      loadLoopService: () => null,
+      getConfig: () => ({ loops: [] }),
+      saveConfig: () => undefined,
+      createId: () => "loop_new",
+      diagnostics,
+    })).resolves.toEqual({
+      statusCode: 404,
+      body: { error: "Repeat task not found" },
+    })
+    expect(loggedErrors).toEqual([
+      {
+        source: "repeat-task-actions",
+        message: "Failed to get repeat tasks",
+        caughtError: caughtFailure,
+      },
+    ])
   })
 })

@@ -305,6 +305,12 @@ function getRepeatTaskActionsSource(): string {
   return readFileSync(repeatTaskActionsPath, "utf8")
 }
 
+function getSharedRepeatTaskUtilsSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedRepeatTaskUtilsPath = path.join(testDir, "../../../../packages/shared/src/repeat-task-utils.ts")
+  return readFileSync(sharedRepeatTaskUtilsPath, "utf8")
+}
+
 function getSkillActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const skillActionsPath = path.join(testDir, "skill-actions.ts")
@@ -1502,6 +1508,7 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const repeatTaskActionsSource = getRepeatTaskActionsSource()
+    const sharedRepeatTaskUtilsSource = getSharedRepeatTaskUtilsSource()
 
     expectRegisteredApiRoute(source, "GET", "loops")
     expectRegisteredApiRoute(source, "POST", "loopToggle")
@@ -1516,27 +1523,41 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.updateRepeatTask(params.id, req.body)")
     expect(mobileApiRoutesSource).toContain("actions.deleteRepeatTask(params.id)")
     expect(repeatTaskActionsSource).toContain("await import(\"./loop-service\")")
-    expect(repeatTaskActionsSource).toContain("buildRepeatTasksResponse(loops")
-    expect(repeatTaskActionsSource).toContain("buildRepeatTaskToggleResponse(id ?? \"\", updated.enabled)")
-    expect(repeatTaskActionsSource).toContain("buildRepeatTaskRunResponse(id ?? \"\")")
-    expect(repeatTaskActionsSource).toContain("parseRepeatTaskCreateRequestBody(body)")
-    expect(repeatTaskActionsSource).toContain("buildRepeatTaskFromCreateRequest(id, parsedRequest.request)")
-    expect(repeatTaskActionsSource).toContain("parseRepeatTaskUpdateRequestBody(body)")
-    expect(repeatTaskActionsSource).toContain("applyRepeatTaskUpdate(existing, parsedRequest.request)")
-    expect(repeatTaskActionsSource).toContain("buildRepeatTaskDeleteResponse(id ?? \"\")")
+    expect(repeatTaskActionsSource).toContain("getRepeatTasksAction(repeatTaskActionOptions)")
+    expect(repeatTaskActionsSource).toContain("toggleRepeatTaskAction(id, repeatTaskActionOptions)")
+    expect(repeatTaskActionsSource).toContain("runRepeatTaskAction(id, repeatTaskActionOptions)")
+    expect(repeatTaskActionsSource).toContain("createRepeatTaskAction(body, repeatTaskActionOptions)")
+    expect(repeatTaskActionsSource).toContain("updateRepeatTaskAction(id, body, repeatTaskActionOptions)")
+    expect(repeatTaskActionsSource).toContain("deleteRepeatTaskAction(id, repeatTaskActionOptions)")
+    expect(sharedRepeatTaskUtilsSource).toContain("export interface RepeatTaskActionOptions")
+    expect(sharedRepeatTaskUtilsSource).toContain("export async function getRepeatTasksAction")
+    expect(sharedRepeatTaskUtilsSource).toContain("export async function toggleRepeatTaskAction")
+    expect(sharedRepeatTaskUtilsSource).toContain("export async function runRepeatTaskAction")
+    expect(sharedRepeatTaskUtilsSource).toContain("export async function createRepeatTaskAction")
+    expect(sharedRepeatTaskUtilsSource).toContain("export async function updateRepeatTaskAction")
+    expect(sharedRepeatTaskUtilsSource).toContain("export async function deleteRepeatTaskAction")
+    expect(sharedRepeatTaskUtilsSource).toContain("buildRepeatTasksResponse(loops")
+    expect(sharedRepeatTaskUtilsSource).toContain("buildRepeatTaskToggleResponse(taskId, updated.enabled)")
+    expect(sharedRepeatTaskUtilsSource).toContain("buildRepeatTaskRunResponse(taskId)")
+    expect(sharedRepeatTaskUtilsSource).toContain("parseRepeatTaskCreateRequestBody(body)")
+    expect(sharedRepeatTaskUtilsSource).toContain("buildRepeatTaskFromCreateRequest(options.createId(), parsedRequest.request)")
+    expect(sharedRepeatTaskUtilsSource).toContain("parseRepeatTaskUpdateRequestBody(body)")
+    expect(sharedRepeatTaskUtilsSource).toContain("applyRepeatTaskUpdate(existing, parsedRequest.request)")
+    expect(sharedRepeatTaskUtilsSource).toContain("buildRepeatTaskDeleteResponse(taskId)")
+    expect(sharedRepeatTaskUtilsSource).not.toContain('from "./loop-service"')
   })
 
   it("does not report repeat task toggles as successful when loop persistence fails", () => {
-    const source = getRepeatTaskActionsSource()
-    const toggleLoopSection = getSection(source, "export async function toggleRepeatTask", "export async function runRepeatTask")
+    const source = getSharedRepeatTaskUtilsSource()
+    const toggleLoopSection = getSection(source, "export async function toggleRepeatTaskAction", "export async function runRepeatTaskAction")
 
     expect(toggleLoopSection).toContain("const saved = loopService.saveLoop(updated)")
     expect(toggleLoopSection).toContain('if (!saved) {')
-    expect(toggleLoopSection).toContain('return error(500, "Failed to persist repeat task toggle")')
+    expect(toggleLoopSection).toContain('return repeatTaskActionError(500, "Failed to persist repeat task toggle")')
 
     const saveIndex = toggleLoopSection.indexOf("const saved = loopService.saveLoop(updated)")
-    const failureIndex = toggleLoopSection.indexOf('return error(500, "Failed to persist repeat task toggle")')
-    const successIndex = toggleLoopSection.indexOf("return ok(buildRepeatTaskToggleResponse(")
+    const failureIndex = toggleLoopSection.indexOf('return repeatTaskActionError(500, "Failed to persist repeat task toggle")')
+    const successIndex = toggleLoopSection.indexOf("return repeatTaskActionOk(buildRepeatTaskToggleResponse(")
 
     expect(saveIndex).toBeGreaterThanOrEqual(0)
     expect(failureIndex).toBeGreaterThan(saveIndex)
@@ -1544,16 +1565,16 @@ describe("remote-server route registration", () => {
   })
 
   it("does not report repeat task creation as successful when loop persistence fails", () => {
-    const source = getRepeatTaskActionsSource()
-    const createLoopSection = getSection(source, "export async function createRepeatTask", "export async function updateRepeatTask")
+    const source = getSharedRepeatTaskUtilsSource()
+    const createLoopSection = getSection(source, "export async function createRepeatTaskAction", "export async function updateRepeatTaskAction")
 
     expect(createLoopSection).toContain("const saved = loopService.saveLoop(newLoop)")
     expect(createLoopSection).toContain('if (!saved) {')
-    expect(createLoopSection).toContain('return error(500, "Failed to persist repeat task")')
+    expect(createLoopSection).toContain('return repeatTaskActionError(500, "Failed to persist repeat task")')
 
     const saveIndex = createLoopSection.indexOf("const saved = loopService.saveLoop(newLoop)")
-    const failureIndex = createLoopSection.indexOf('return error(500, "Failed to persist repeat task")')
-    const successIndex = createLoopSection.indexOf("return ok(buildRepeatTaskResponse(savedLoop")
+    const failureIndex = createLoopSection.indexOf('return repeatTaskActionError(500, "Failed to persist repeat task")')
+    const successIndex = createLoopSection.indexOf("return repeatTaskActionOk(buildRepeatTaskResponse(savedLoop")
 
     expect(saveIndex).toBeGreaterThanOrEqual(0)
     expect(failureIndex).toBeGreaterThan(saveIndex)
@@ -1561,16 +1582,16 @@ describe("remote-server route registration", () => {
   })
 
   it("does not report repeat task updates as successful when loop persistence fails", () => {
-    const source = getRepeatTaskActionsSource()
-    const updateLoopSection = getSection(source, "export async function updateRepeatTask", "export async function deleteRepeatTask")
+    const source = getSharedRepeatTaskUtilsSource()
+    const updateLoopSection = getSection(source, "export async function updateRepeatTaskAction", "export async function deleteRepeatTaskAction")
 
     expect(updateLoopSection).toContain("const saved = loopService.saveLoop(updated)")
     expect(updateLoopSection).toContain('if (!saved) {')
-    expect(updateLoopSection).toContain('return error(500, "Failed to persist repeat task")')
+    expect(updateLoopSection).toContain('return repeatTaskActionError(500, "Failed to persist repeat task")')
 
     const saveIndex = updateLoopSection.indexOf("const saved = loopService.saveLoop(updated)")
-    const failureIndex = updateLoopSection.indexOf('return error(500, "Failed to persist repeat task")')
-    const successIndex = updateLoopSection.indexOf("return ok(buildRepeatTaskMutationResponse(savedLoop")
+    const failureIndex = updateLoopSection.indexOf('return repeatTaskActionError(500, "Failed to persist repeat task")')
+    const successIndex = updateLoopSection.indexOf("return repeatTaskActionOk(buildRepeatTaskMutationResponse(savedLoop")
 
     expect(saveIndex).toBeGreaterThanOrEqual(0)
     expect(failureIndex).toBeGreaterThan(saveIndex)
