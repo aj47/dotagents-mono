@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentProgressUpdate } from '@shared/types'
 import { useAgentStore } from './agent-store'
 
@@ -14,7 +14,18 @@ const createBaseUpdate = (): AgentProgressUpdate => ({
 })
 
 describe('agent-store delegation merge', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   beforeEach(() => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    })
+
     useAgentStore.setState({
       agentProgressById: new Map(),
       agentResponseReadAtBySessionId: new Map(),
@@ -110,6 +121,39 @@ describe('agent-store delegation merge', () => {
     expect(stored?.conversationTitle).toBe('Delegated research')
     expect(stored?.steps).toHaveLength(1)
     expect(stored?.conversationHistory).toHaveLength(1)
+  })
+
+  it('preserves prior conversation history when a follow-up starts a new run without history yet', () => {
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      runId: 1,
+      isComplete: true,
+      conversationHistoryStartIndex: 0,
+      conversationHistoryTotalCount: 2,
+      conversationHistory: [
+        { role: 'user', content: 'Original question', timestamp: 1 },
+        { role: 'assistant', content: 'Original answer', timestamp: 2 },
+      ],
+      userResponse: 'Original answer',
+    })
+
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      runId: 2,
+      isComplete: false,
+      conversationHistory: [],
+      streamingContent: { text: 'Thinking...', isStreaming: true },
+    })
+
+    const stored = useAgentStore.getState().agentProgressById.get('session-1')
+    expect(stored?.isComplete).toBe(false)
+    expect(stored?.runId).toBe(2)
+    expect(stored?.conversationHistory?.map((message) => message.content)).toEqual([
+      'Original question',
+      'Original answer',
+    ])
+    expect(stored?.conversationHistoryTotalCount).toBe(2)
+    expect(stored?.userResponse).toBeUndefined()
   })
 
   it('does not regress a terminal delegation back to running when stale progress arrives late', () => {

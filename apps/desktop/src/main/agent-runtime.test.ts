@@ -148,6 +148,7 @@ describe("AgentRuntime", () => {
       undefined,
       storedProfileSnapshot,
       undefined,
+      undefined,
     )
   })
 })

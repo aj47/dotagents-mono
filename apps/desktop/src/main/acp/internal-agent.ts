@@ -539,6 +539,14 @@ export async function runInternalSubSession(
         parentSessionId,
       };
 
+      // processTranscriptWithAgentMode emits its own progress for currentSessionId,
+      // but it does not know the delegated parent. Emit the tagged update too so
+      // renderer state keeps the parent/child relationship even after the parent
+      // starts a follow-up run and its old delegation steps are reset.
+      emitAgentProgress(taggedUpdate).catch(err => {
+        logSubSession('Failed to emit tagged sub-session progress:', err);
+      });
+
       // Forward to caller's progress callback
       onProgress?.(taggedUpdate);
 

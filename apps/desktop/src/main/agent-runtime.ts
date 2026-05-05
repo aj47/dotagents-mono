@@ -6,7 +6,11 @@ import {
   type MCPToolResult,
 } from "./mcp-service"
 import { agentSessionStateManager } from "./state"
-import type { AgentProgressUpdate, SessionProfileSnapshot } from "../shared/types"
+import type {
+  AgentProgressUpdate,
+  ConversationCompactionMetadata,
+  SessionProfileSnapshot,
+} from "../shared/types"
 
 type ToolProgressCallback = (message: string) => void
 
@@ -65,6 +69,7 @@ export interface AgentRuntimeRunOptions extends AgentRuntimeExecuteToolOptions {
   onProgress?: (update: AgentProgressUpdate) => void
   profileSnapshot?: SessionProfileSnapshot
   runId?: number
+  previousConversationCompaction?: ConversationCompactionMetadata
   initializeMcp?: boolean
   registerExistingProcesses?: boolean
 }
@@ -154,6 +159,7 @@ export class AgentRuntime {
       options.onProgress,
       effectiveProfileSnapshot,
       options.runId,
+      options.previousConversationCompaction,
     )
   }
 }
