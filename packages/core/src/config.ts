@@ -4,7 +4,7 @@ import os from "os"
 import type { Config, ModelPreset } from "./types"
 import type { PathResolver } from "./interfaces/path-resolver"
 import { container, ServiceTokens } from "./service-container"
-import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID, DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT } from "@dotagents/shared"
+import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID, DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT } from "@dotagents/shared/providers"
 
 import {
   getAgentsLayerPaths,

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   STT_PROVIDERS,
   CHAT_PROVIDERS,
+  CHAT_PROVIDER_IDS,
   TTS_PROVIDERS,
   OPENAI_TTS_VOICES,
   OPENAI_TTS_MODELS,
@@ -12,13 +13,22 @@ import {
   GEMINI_TTS_MODELS,
   EDGE_TTS_VOICES,
   EDGE_TTS_MODELS,
+  DEFAULT_EDGE_TTS_VOICE,
   KITTEN_TTS_VOICES,
   SUPERTONIC_TTS_VOICES,
   SUPERTONIC_TTS_LANGUAGES,
   OPENAI_COMPATIBLE_PRESETS,
   DEFAULT_MODEL_PRESET_ID,
+  getTtsModelSettingKey,
+  getTtsModelsForProvider,
+  getTtsVoiceSettingKey,
+  getTtsVoicesForProvider,
+  getTranscriptPostProcessingModelSettingKey,
   getBuiltInModelPresets,
   getCurrentPresetName,
+  isChatProviderId,
+  migrateDeprecatedEdgeTtsVoice,
+  resolveEdgeTtsVoice,
 } from './providers'
 import type { ModelPreset } from './providers'
 
@@ -47,6 +57,14 @@ describe('CHAT_PROVIDERS', () => {
     expect(values).toContain('groq')
     expect(values).toContain('gemini')
     expect(values).toContain('chatgpt-web')
+  })
+
+  it('exports shared chat provider ids and validation', () => {
+    expect(CHAT_PROVIDER_IDS).toEqual(['openai', 'groq', 'gemini', 'chatgpt-web'])
+    expect(isChatProviderId('openai')).toBe(true)
+    expect(isChatProviderId('chatgpt-web')).toBe(true)
+    expect(isChatProviderId('edge')).toBe(false)
+    expect(isChatProviderId(undefined)).toBe(false)
   })
 })
 
@@ -86,9 +104,14 @@ describe('Voice lists', () => {
     expect(KITTEN_TTS_VOICES).toHaveLength(8)
   })
 
-  it('EDGE_TTS_VOICES has at least 4 voices', () => {
-    expect(EDGE_TTS_VOICES.length).toBeGreaterThanOrEqual(4)
+  it('EDGE_TTS_VOICES includes supported mobile/desktop voices and fallback helpers', () => {
+    expect(EDGE_TTS_VOICES.length).toBeGreaterThanOrEqual(6)
     expect(EDGE_TTS_VOICES.map(v => v.value)).toContain('en-US-AriaNeural')
+    expect(EDGE_TTS_VOICES.map(v => v.value)).toContain('en-US-BrianNeural')
+    expect(resolveEdgeTtsVoice('en-GB-SoniaNeural')).toBe('en-GB-SoniaNeural')
+    expect(resolveEdgeTtsVoice('en-US-DavisNeural')).toBe(DEFAULT_EDGE_TTS_VOICE)
+    expect(migrateDeprecatedEdgeTtsVoice('en-US-DavisNeural')).toBe(DEFAULT_EDGE_TTS_VOICE)
+    expect(migrateDeprecatedEdgeTtsVoice('custom-voice')).toBe('custom-voice')
   })
 
   it('SUPERTONIC_TTS_VOICES has 10 voices (5 male + 5 female)', () => {
@@ -104,6 +127,31 @@ describe('Voice lists', () => {
     expect(values).toContain('en')
     expect(values).toContain('ko')
     expect(values).toContain('es')
+  })
+
+  it('returns TTS model and voice options by provider', () => {
+    expect(getTtsModelsForProvider('openai')).toBe(OPENAI_TTS_MODELS)
+    expect(getTtsModelsForProvider('kitten')).toEqual([])
+    expect(getTtsVoicesForProvider('groq', 'canopylabs/orpheus-arabic-saudi')).toBe(GROQ_TTS_VOICES_ARABIC)
+    expect(getTtsVoicesForProvider('groq', 'canopylabs/orpheus-v1-english')).toBe(GROQ_TTS_VOICES_ENGLISH)
+    expect(getTtsVoicesForProvider('kitten')).toBe(KITTEN_TTS_VOICES)
+    expect(getTtsVoicesForProvider('supertonic')).toBe(SUPERTONIC_TTS_VOICES)
+  })
+
+  it('maps TTS providers to settings keys', () => {
+    expect(getTtsModelSettingKey('edge')).toBe('edgeTtsModel')
+    expect(getTtsModelSettingKey('supertonic')).toBeUndefined()
+    expect(getTtsVoiceSettingKey('kitten')).toBe('kittenVoiceId')
+    expect(getTtsVoiceSettingKey('supertonic')).toBe('supertonicVoice')
+    expect(getTtsVoiceSettingKey('unknown')).toBeUndefined()
+  })
+
+  it('maps transcript post-processing providers to settings keys', () => {
+    expect(getTranscriptPostProcessingModelSettingKey('openai')).toBe('transcriptPostProcessingOpenaiModel')
+    expect(getTranscriptPostProcessingModelSettingKey('groq')).toBe('transcriptPostProcessingGroqModel')
+    expect(getTranscriptPostProcessingModelSettingKey('gemini')).toBe('transcriptPostProcessingGeminiModel')
+    expect(getTranscriptPostProcessingModelSettingKey('chatgpt-web')).toBe('transcriptPostProcessingChatgptWebModel')
+    expect(getTranscriptPostProcessingModelSettingKey('unknown')).toBeUndefined()
   })
 })
 

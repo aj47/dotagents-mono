@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 
 import { sanitizeAgentProfileConnection } from './agent-profile-connection-sanitize.ts'
 
-test('drops stale hidden baseUrl data from ACP connections during save sanitization', () => {
+test('normalizes legacy local ACP connections while dropping stale hidden baseUrl data during save sanitization', () => {
   const connection = sanitizeAgentProfileConnection(
     { connectionType: 'acp' },
     {
@@ -16,7 +16,7 @@ test('drops stale hidden baseUrl data from ACP connections during save sanitizat
   )
 
   assert.deepEqual(connection, {
-    type: 'acp',
+    type: 'acpx',
     command: 'auggie',
     args: ['--acp'],
     cwd: '/workspace/agent',

@@ -17,7 +17,8 @@ import {
 import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "./conversation-context-builder"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
-import { filterVisibleChatMessages, sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import { filterVisibleChatMessages } from "@dotagents/shared/chat-utils"
+import { sanitizeMessageContentForDisplay } from "@dotagents/shared/message-display-utils"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
 import {
   buildConversationImageAssetUrl,

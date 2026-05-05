@@ -1,5 +1,3 @@
-// Re-export directly from source so desktop main-process code sees in-repo changes
-// immediately without depending on a prebuilt @dotagents/core package artifact.
 import {
   AGENTS_KNOWLEDGE_DIR,
   getAgentsKnowledgeDir,
@@ -11,7 +9,7 @@ import {
   parseKnowledgeNoteMarkdown,
   loadAgentsKnowledgeNotesLayer,
   writeKnowledgeNoteFile,
-} from "../../../../../packages/core/src/agents-files/knowledge-notes"
+} from "@dotagents/core"
 
 export {
   AGENTS_KNOWLEDGE_DIR,
@@ -25,4 +23,4 @@ export {
   loadAgentsKnowledgeNotesLayer,
   writeKnowledgeNoteFile,
 }
-export type { AgentsKnowledgeNoteOrigin, LoadedAgentsKnowledgeNotesLayer } from "../../../../../packages/core/src/agents-files/knowledge-notes"
+export type { AgentsKnowledgeNoteOrigin, LoadedAgentsKnowledgeNotesLayer } from "@dotagents/core"

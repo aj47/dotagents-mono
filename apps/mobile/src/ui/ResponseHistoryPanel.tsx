@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
-import { preprocessTextForTTS } from '@dotagents/shared';
+import { DEFAULT_EDGE_TTS_VOICE } from '@dotagents/shared/providers';
+import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import { useTheme } from './ThemeProvider';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
@@ -28,8 +29,10 @@ export interface ResponseHistoryEntry {
 
 interface ResponseHistoryPanelProps {
   responses: ResponseHistoryEntry[];
-  ttsProvider?: 'native' | 'edge';
+  ttsProvider?: 'native' | 'openai' | 'groq' | 'gemini' | 'edge' | 'kitten' | 'supertonic';
   edgeTtsVoice?: string;
+  remoteTtsVoice?: string;
+  remoteTtsModel?: string;
   ttsRate?: number;
   ttsPitch?: number;
   ttsVoiceId?: string;
@@ -69,7 +72,9 @@ function AnimatedResponseItem({
 export function ResponseHistoryPanel({
   responses,
   ttsProvider = 'native',
-  edgeTtsVoice = 'en-US-AriaNeural',
+  edgeTtsVoice = DEFAULT_EDGE_TTS_VOICE,
+  remoteTtsVoice,
+  remoteTtsModel,
   ttsRate = 1.0,
   ttsPitch = 1.0,
   ttsVoiceId,
@@ -144,15 +149,16 @@ export function ResponseHistoryPanel({
     };
 
     safeSetSpeakingIndex(index);
-    if (ttsProvider === 'edge') {
-      // Edge TTS on all platforms routes through the paired desktop's
-      // /v1/tts/speak endpoint. Fall back to native Speech when no pairing.
+    if (ttsProvider !== 'native') {
+      // Remote desktop TTS routes through the paired desktop's /v1/tts/speak
+      // endpoint. Fall back to native Speech when no pairing is available.
       if (remoteBaseUrl && remoteApiKey) {
         void speakRemoteTts(processedText, {
           baseUrl: remoteBaseUrl,
           apiKey: remoteApiKey,
-          providerId: 'edge',
-          voice: edgeTtsVoice,
+          providerId: ttsProvider,
+          voice: remoteTtsVoice ?? edgeTtsVoice,
+          model: remoteTtsModel,
           rate: ttsRate,
           onDone: clearIfCurrentRequest,
           onStopped: clearIfCurrentRequest,

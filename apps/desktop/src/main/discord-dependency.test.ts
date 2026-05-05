@@ -39,6 +39,11 @@ describe("discord dependency helpers", () => {
     expect(discordServiceSource).toContain("void this.handleMessage(message).catch(")
   })
 
+  it("does not import remote server lifecycle just to run an agent reply", () => {
+    expect(discordServiceSource).toContain('import { runAgent } from "./remote-agent-runner"')
+    expect(discordServiceSource).not.toContain('import { runAgent } from "./remote-server"')
+  })
+
   it("awaits in-flight startPromise in stop() to close the enable→disable race", () => {
     // Regression guard for the race described in PR #305 review:
     // startInternal() assigns `this.client` only after `client.login()`

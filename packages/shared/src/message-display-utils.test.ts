@@ -1,9 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import {
   normalizeMessagePreviewText,
+  normalizeAssistantResponseForDedupe,
   sanitizeMessageContentForDisplay,
+  sanitizeMessageMediaContentForPreview,
   sanitizeMessageContentForSpeech,
   sanitizeAgentProgressUpdateForDisplay,
+  hasMarkdownMediaPayload,
+  stripMarkdownMediaPayloads,
 } from './message-display-utils'
 import type { AgentProgressUpdate } from './agent-progress'
 
@@ -62,6 +66,65 @@ describe('sanitizeMessageContentForSpeech', () => {
   it('leaves plain text unchanged', () => {
     const content = 'Just regular text with no images'
     expect(sanitizeMessageContentForSpeech(content)).toBe(content)
+  })
+})
+
+describe('sanitizeMessageMediaContentForPreview', () => {
+  it('collapses whitespace around plain text', () => {
+    expect(sanitizeMessageMediaContentForPreview('  hello\n\nworld  ')).toBe('hello world')
+  })
+
+  it('replaces markdown images with [Image]', () => {
+    expect(sanitizeMessageMediaContentForPreview('See ![pic](https://example.com/img.png) here')).toBe('See [Image] here')
+  })
+
+  it('replaces data URL images with [Image]', () => {
+    expect(sanitizeMessageMediaContentForPreview('![](data:image/png;base64,abc)')).toBe('[Image]')
+  })
+
+  it('replaces markdown video links with [Video]', () => {
+    const content = 'Watch [demo](assets://conversation-video/conv_1/abcdef1234567890.mp4) now'
+    expect(sanitizeMessageMediaContentForPreview(content)).toBe('Watch [Video] now')
+  })
+})
+
+describe('stripMarkdownMediaPayloads', () => {
+  it('removes known markdown image and video payloads while preserving text', () => {
+    const content = [
+      'Before',
+      '![pic](data:image/png;base64,abc)',
+      '[clip](assets://conversation-video/conv_1/abcdef1234567890.mp4)',
+      '[recording](assets://recording/recording_1/demo.mp4)',
+      'After',
+    ].join(' ')
+
+    expect(stripMarkdownMediaPayloads(content)).toBe('Before    After')
+  })
+
+  it('does not strip arbitrary markdown images by default', () => {
+    const content = 'See ![diagram](file://local/path.png) here'
+    expect(stripMarkdownMediaPayloads(content)).toBe(content)
+  })
+
+  it('can strip any markdown image for response-event fuzzy matching', () => {
+    const content = 'See ![diagram](file://local/path.png) here'
+    expect(stripMarkdownMediaPayloads(content, { stripAllImages: true })).toBe('See  here')
+  })
+})
+
+describe('hasMarkdownMediaPayload', () => {
+  it('detects known image and video media payloads', () => {
+    expect(hasMarkdownMediaPayload('![pic](assets://conversation-image/conv_1/img.png)')).toBe(true)
+    expect(hasMarkdownMediaPayload('[clip](assets://recording/recording_1/demo.mp4)')).toBe(true)
+    expect(hasMarkdownMediaPayload('[clip](https://example.com/demo.webm?download=1)')).toBe(true)
+    expect(hasMarkdownMediaPayload('No media here')).toBe(false)
+  })
+})
+
+describe('normalizeAssistantResponseForDedupe', () => {
+  it('normalizes whitespace for response matching', () => {
+    expect(normalizeAssistantResponseForDedupe('  hello\n\nworld  ')).toBe('hello world')
+    expect(normalizeAssistantResponseForDedupe(undefined)).toBe('')
   })
 })
 

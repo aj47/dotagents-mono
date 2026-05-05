@@ -21,7 +21,7 @@ function extractBetween(startMarker, endMarker) {
 test('avoids decorative emoji chrome in the mobile remote provider selection subsection', () => {
   const providerSection = extractBetween(
     '<CollapsibleSection id="providerSelection" title="Provider Selection">',
-    '<CollapsibleSection id="profileModel" title="Profile & Model">'
+    '<CollapsibleSection id="providerSetup" title="Provider Setup">'
   );
 
   assert.doesNotMatch(providerSection, /🎤|📝|🤖|🔊/);
@@ -32,6 +32,23 @@ test('avoids decorative emoji chrome in the mobile remote provider selection sub
   assert.match(providerSection, />Agent</);
   assert.doesNotMatch(providerSection, />Agent\/MCP Tools</);
   assert.match(providerSection, />Text-to-Speech \(TTS\)</);
+});
+
+test('lets mobile configure desktop provider credentials without echoing secrets', () => {
+  const providerSetupSection = extractBetween(
+    '<CollapsibleSection id="providerSetup" title="Provider Setup">',
+    '<CollapsibleSection id="profileModel" title="Profile & Model">'
+  );
+
+  assert.match(settingsSource, /PROVIDER_CREDENTIAL_SECTIONS/);
+  assert.match(settingsSource, /openaiApiKey/);
+  assert.match(settingsSource, /groqApiKey/);
+  assert.match(settingsSource, /geminiApiKey/);
+  assert.match(providerSetupSection, /handleRemoteSecretDraftChange\(provider\.apiKey, v\)/);
+  assert.match(providerSetupSection, /commitRemoteSecretDraft\(provider\.apiKey\)/);
+  assert.match(providerSetupSection, /handleRemoteSettingUpdate\(provider\.baseUrl, v\)/);
+  assert.match(providerSetupSection, /placeholder=\{hasConfiguredKey \? 'Configured' : provider\.apiKeyPlaceholder\}/);
+  assert.doesNotMatch(providerSetupSection, /value=\{remoteSettings\[provider\.apiKey\]/);
 });
 
 test('keeps profile/model actions text-first and explicitly labeled', () => {
@@ -50,7 +67,124 @@ test('keeps profile/model actions text-first and explicitly labeled', () => {
   assert.match(profileModelSection, />Transcript Processing</);
   assert.match(profileModelSection, />Enabled</);
   assert.match(profileModelSection, />Provider</);
+  assert.match(settingsSource, /getTranscriptPostProcessingModelSettingKey/);
+  assert.match(settingsSource, /transcriptPostProcessingOpenaiModel: settings\.transcriptPostProcessingOpenaiModel \|\| ''/);
+  assert.match(settingsSource, /updates\.transcriptPostProcessingGroqModel = inputDrafts\.transcriptPostProcessingGroqModel \?\? ''/);
+  assert.match(profileModelSection, /const modelKey = getTranscriptPostProcessingModelSettingKey\(providerId\)/);
+  assert.match(profileModelSection, /handleRemoteSettingUpdate\(modelKey, v\)/);
   assert.match(profileModelSection, />Prompt</);
+});
+
+test('lets mobile manage OpenAI-compatible desktop endpoints without echoing secrets', () => {
+  const profileModelSection = extractBetween(
+    '<CollapsibleSection id="profileModel" title="Profile & Model">',
+    '<CollapsibleSection id="streamerMode" title="Streamer Mode">'
+  );
+  const presetEditorSection = extractBetween(
+    '{/* Preset Editor Modal */}',
+    '{/* TTS Model Picker Modal */}'
+  );
+
+  assert.match(settingsSource, /ModelPresetSummary/);
+  assert.match(profileModelSection, /openPresetEditor\('edit', currentPreset\)/);
+  assert.match(profileModelSection, /openPresetEditor\('create'\)/);
+  assert.match(profileModelSection, />New Endpoint</);
+  assert.match(profileModelSection, /'Key set'/);
+  assert.match(settingsSource, /settingsClient\.createModelPreset\(payload\)/);
+  assert.match(settingsSource, /settingsClient\.updateModelPreset\(presetDraft\.id, payload\)/);
+  assert.match(settingsSource, /settingsClient\.deleteModelPreset\(presetDraft\.id!\)/);
+  assert.match(settingsSource, /refreshRemoteSettingsSnapshot/);
+  assert.match(presetEditorSection, /placeholder=\{presetDraft\.hasApiKey \? 'Configured' : 'sk-\.\.\.'\}/);
+  assert.doesNotMatch(presetEditorSection, /value=\{remoteSettings.*apiKey/);
+});
+
+test('lets mobile configure local desktop TTS provider details', () => {
+  const ttsSection = extractBetween(
+    '<CollapsibleSection id="textToSpeech" title="Text-to-Speech">',
+    '<CollapsibleSection id="agentSettings" title="Agent Settings">'
+  );
+
+  assert.doesNotMatch(ttsSection, /Configure voice in desktop settings/);
+  assert.match(settingsSource, /getTtsVoicesForProvider/);
+  assert.match(settingsSource, /handleRemoteSettingUpdate\('supertonicLanguage', language\.value\)/);
+  assert.match(settingsSource, /handleRemoteSettingUpdate\('supertonicSpeed', v\)/);
+  assert.match(settingsSource, /handleRemoteSettingUpdate\('supertonicSteps', Math\.round\(v\)\)/);
+  assert.match(settingsSource, /normalizeTtsVoiceUpdateValue\(key, voice\.value\)/);
+  assert.match(settingsSource, /getLocalSpeechModelStatuses/);
+  assert.match(settingsSource, /downloadLocalSpeechModel\(providerId\)/);
+  assert.match(ttsSection, /formatLocalModelProgress\(status\)/);
+  assert.match(ttsSection, /handleLocalSpeechModelDownload\(localProviderId\)/);
+  assert.match(ttsSection, /handleRemoteTtsTest/);
+  assert.match(settingsSource, /speakRemoteTts\('Hello\. This is a test of the selected desktop text to speech voice\.'/);
+});
+
+test('lets mobile configure the local Parakeet STT model', () => {
+  const speechToTextSection = extractBetween(
+    '<CollapsibleSection id="speechToText" title="Speech-to-Text">',
+    '<CollapsibleSection id="textToSpeech" title="Text-to-Speech">'
+  );
+
+  assert.match(speechToTextSection, /remoteSettings\.sttProviderId === 'parakeet'/);
+  assert.match(speechToTextSection, />Parakeet Model</);
+  assert.match(speechToTextSection, /localSpeechModelStatuses\.parakeet/);
+  assert.match(speechToTextSection, /handleLocalSpeechModelDownload\('parakeet'\)/);
+  assert.match(speechToTextSection, /handleRemoteSettingUpdate\('parakeetNumThreads', threadCount\)/);
+  assert.match(settingsSource, /setLocalSpeechModelStatuses\(\(current\) => \(\{/);
+});
+
+test('lets mobile configure cloud desktop STT model details', () => {
+  const speechToTextSection = extractBetween(
+    '<CollapsibleSection id="speechToText" title="Speech-to-Text">',
+    '<CollapsibleSection id="textToSpeech" title="Text-to-Speech">'
+  );
+
+  assert.match(settingsSource, /KNOWN_STT_MODEL_IDS/);
+  assert.match(settingsSource, /getDefaultSttModel/);
+  assert.match(settingsSource, /openaiSttLanguage: settings\.openaiSttLanguage \|\| ''/);
+  assert.match(settingsSource, /updates\.openaiSttLanguage = inputDrafts\.openaiSttLanguage \?\? ''/);
+  assert.match(settingsSource, /updates\.groqSttLanguage = inputDrafts\.groqSttLanguage \?\? ''/);
+  assert.match(speechToTextSection, /remoteSettings\.sttProviderId === 'openai' \|\| remoteSettings\.sttProviderId === 'groq'/);
+  assert.match(speechToTextSection, /const languageKey = providerId === 'openai' \? 'openaiSttLanguage' : 'groqSttLanguage'/);
+  assert.match(speechToTextSection, /handleRemoteSettingUpdate\(languageKey, v\)/);
+  assert.match(speechToTextSection, /const modelKey = providerId === 'openai' \? 'openaiSttModel' : 'groqSttModel'/);
+  assert.match(speechToTextSection, /handleRemoteSettingUpdate\(modelKey, modelId\)/);
+  assert.match(speechToTextSection, />Groq Prompt</);
+  assert.match(speechToTextSection, /handleRemoteSettingUpdate\('groqSttPrompt', v\)/);
+});
+
+test('lets mobile configure desktop local trace logging', () => {
+  const langfuseSection = extractBetween(
+    '<CollapsibleSection id="langfuse" title="Langfuse">',
+    '<CollapsibleSection id="skills" title="Skills">'
+  );
+
+  assert.match(settingsSource, /localTraceLogPath: settings\.localTraceLogPath \|\| ''/);
+  assert.match(settingsSource, /updates\.localTraceLogPath = inputDrafts\.localTraceLogPath \?\? ''/);
+  assert.match(langfuseSection, /value=\{remoteSettings\.localTraceLoggingEnabled \?\? false\}/);
+  assert.match(langfuseSection, /handleRemoteSettingToggle\('localTraceLoggingEnabled', v\)/);
+  assert.match(langfuseSection, /remoteSettings\.localTraceLoggingEnabled &&/);
+  assert.match(langfuseSection, /handleRemoteSettingUpdate\('localTraceLogPath', v\)/);
+  assert.match(langfuseSection, />Langfuse tracing</);
+});
+
+test('lets mobile configure desktop Discord integration settings without echoing the token', () => {
+  const discordSection = extractBetween(
+    '<CollapsibleSection id="discord" title="Discord">',
+    '<CollapsibleSection id="langfuse" title="Langfuse">'
+  );
+
+  assert.match(settingsSource, /DISCORD_LIST_SETTING_SECTIONS/);
+  assert.match(settingsSource, /discordBotToken: settings\.discordBotToken === SECRET_MASK \? '' : \(settings\.discordBotToken \|\| ''\)/);
+  assert.match(settingsSource, /updates\.discordBotToken = inputDrafts\.discordBotToken \?\? ''/);
+  assert.match(settingsSource, /updates\[key\] = parseConfigListInput\(inputDrafts\[key\] \?\? '', \{ unique: true \}\)/);
+  assert.match(discordSection, /handleRemoteSettingToggle\('discordEnabled', v\)/);
+  assert.match(discordSection, /placeholder=\{remoteSettings\.discordBotToken === SECRET_MASK \? 'Configured' : 'Paste your Discord bot token'\}/);
+  assert.doesNotMatch(discordSection, /value=\{remoteSettings\.discordBotToken/);
+  assert.match(discordSection, /handleRemoteSettingUpdate\('discordDefaultProfileId', profile\.id\)/);
+  assert.match(discordSection, /handleRemoteSettingToggle\('discordDmEnabled', v\)/);
+  assert.match(discordSection, /handleRemoteSettingToggle\('discordRequireMention', v\)/);
+  assert.match(discordSection, /handleRemoteListSettingUpdate\(section\.key, v\)/);
+  assert.match(discordSection, /handleRemoteSettingToggle\('discordLogMessages', v\)/);
 });
 
 test('keeps the mobile remote-settings error banner text-first and wrap-safe', () => {

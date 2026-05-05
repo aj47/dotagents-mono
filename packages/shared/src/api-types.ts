@@ -3,6 +3,9 @@
  * These are interface/type definitions only - no implementation classes
  */
 
+import type { QueuedMessage, ToolCall, ToolResult } from './types';
+import type { ModelPreset } from './providers';
+
 export interface Profile {
   id: string;
   name: string;
@@ -44,6 +47,17 @@ export interface ModelsResponse {
   models: ModelInfo[];
 }
 
+export interface OpenAICompatibleModelSummary {
+  id: string;
+  object: 'model';
+  owned_by?: string;
+}
+
+export interface OpenAICompatibleModelsResponse {
+  object: 'list';
+  data: OpenAICompatibleModelSummary[];
+}
+
 export type OperatorHealthStatus = 'pass' | 'warning' | 'fail';
 export type OperatorHealthOverall = 'healthy' | 'warning' | 'critical';
 
@@ -61,6 +75,26 @@ export interface OperatorTunnelStatus {
   starting: boolean;
   mode: 'quick' | 'named' | null;
   url?: string;
+  error?: string;
+}
+
+export interface OperatorTunnelSetupTunnel {
+  id: string;
+  name: string;
+  createdAt?: string;
+}
+
+export interface OperatorTunnelSetupSummary {
+  installed: boolean;
+  loggedIn: boolean;
+  mode: 'quick' | 'named';
+  autoStart: boolean;
+  namedTunnelConfigured: boolean;
+  configuredTunnelId?: string;
+  configuredHostname?: string;
+  credentialsPathConfigured: boolean;
+  tunnelCount: number;
+  tunnels: OperatorTunnelSetupTunnel[];
   error?: string;
 }
 
@@ -98,6 +132,54 @@ export interface OperatorMCPServerSummary {
   connected: boolean;
   toolCount: number;
   enabled: boolean;
+  runtimeEnabled: boolean;
+  configDisabled: boolean;
+  error?: string;
+}
+
+export interface OperatorMCPServerLogEntry {
+  timestamp: number;
+  message: string;
+}
+
+export interface OperatorMCPServerLogsResponse {
+  server: string;
+  count: number;
+  logs: OperatorMCPServerLogEntry[];
+}
+
+export interface OperatorMCPServerTestResponse {
+  success: boolean;
+  action: 'mcp-test';
+  server: string;
+  message: string;
+  error?: string;
+  toolCount?: number;
+}
+
+export interface OperatorMCPToolSummary {
+  name: string;
+  description: string;
+  sourceKind: 'mcp' | 'runtime';
+  sourceName: string;
+  sourceLabel: string;
+  serverName?: string;
+  enabled: boolean;
+  serverEnabled: boolean;
+}
+
+export interface OperatorMCPToolsResponse {
+  count: number;
+  server?: string;
+  tools: OperatorMCPToolSummary[];
+}
+
+export interface OperatorMCPToolToggleResponse {
+  success: boolean;
+  action: 'mcp-tool-toggle';
+  tool: string;
+  enabled: boolean;
+  message: string;
   error?: string;
 }
 
@@ -122,6 +204,19 @@ export interface OperatorConversationsResponse {
   conversations: OperatorConversationItem[];
 }
 
+export interface OperatorMessageQueueSummary {
+  conversationId: string;
+  isPaused: boolean;
+  messageCount: number;
+  messages: QueuedMessage[];
+}
+
+export interface OperatorMessageQueuesResponse {
+  count: number;
+  totalMessages: number;
+  queues: OperatorMessageQueueSummary[];
+}
+
 export interface OperatorLogSummary {
   total: number;
   lastTimestamp?: number;
@@ -142,6 +237,18 @@ export interface OperatorDiscordIntegrationSummary {
   lastError?: string;
   lastEventAt?: number;
   logs: OperatorLogSummary;
+}
+
+export interface OperatorDiscordLogEntry {
+  id: string;
+  level: string;
+  message: string;
+  timestamp: number;
+}
+
+export interface OperatorDiscordLogsResponse {
+  count: number;
+  logs: OperatorDiscordLogEntry[];
 }
 
 export interface OperatorWhatsAppIntegrationSummary {
@@ -250,6 +357,29 @@ export interface OperatorActionResponse {
   details?: Record<string, unknown>;
 }
 
+export interface OperatorRunAgentRequest {
+  prompt: string;
+  conversationId?: string;
+  profileId?: string;
+}
+
+export interface OperatorRunAgentResponse {
+  success: boolean;
+  action: 'run-agent';
+  conversationId: string;
+  content: string;
+  messageCount: number;
+  error?: string;
+}
+
+export interface EmergencyStopResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  processesKilled?: number;
+  processesRemaining?: number;
+}
+
 export interface OperatorAuditSource {
   ip?: string;
   origin?: string;
@@ -277,6 +407,59 @@ export interface OperatorApiKeyRotationResponse extends OperatorActionResponse {
   restartScheduled: boolean;
 }
 
+export type LocalSpeechModelProviderId = 'parakeet' | 'kitten' | 'supertonic';
+
+export interface LocalSpeechModelStatus {
+  downloaded: boolean;
+  downloading: boolean;
+  progress: number;
+  error?: string;
+  path?: string;
+}
+
+export interface LocalSpeechModelStatusesResponse {
+  models: Record<LocalSpeechModelProviderId, LocalSpeechModelStatus>;
+}
+
+export interface ModelPresetSummary extends Omit<ModelPreset, 'apiKey'> {
+  /**
+   * Redacted API key value. Servers must never return the raw key here.
+   */
+  apiKey?: string;
+  hasApiKey?: boolean;
+}
+
+export interface ModelPresetsResponse {
+  currentModelPresetId: string;
+  presets: ModelPresetSummary[];
+}
+
+export interface ModelPresetCreateRequest {
+  name: string;
+  baseUrl: string;
+  apiKey?: string;
+  agentModel?: string;
+  mcpToolsModel?: string;
+  transcriptProcessingModel?: string;
+}
+
+export interface ModelPresetUpdateRequest {
+  name?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  agentModel?: string;
+  mcpToolsModel?: string;
+  transcriptProcessingModel?: string;
+}
+
+export interface ModelPresetMutationResponse {
+  success: boolean;
+  currentModelPresetId: string;
+  presets: ModelPresetSummary[];
+  preset?: ModelPresetSummary;
+  deletedPresetId?: string;
+}
+
 export interface PredefinedPromptSummary {
   id: string;
   name: string;
@@ -298,8 +481,14 @@ export interface Settings {
   mcpToolsGeminiModel?: string;
   mcpToolsChatgptWebModel?: string;
   currentModelPresetId?: string;
-  availablePresets?: Array<{ id: string; name: string; baseUrl: string; isBuiltIn: boolean }>;
+  availablePresets?: ModelPresetSummary[];
   predefinedPrompts?: PredefinedPromptSummary[];
+  openaiApiKey?: string;
+  openaiBaseUrl?: string;
+  groqApiKey?: string;
+  groqBaseUrl?: string;
+  geminiApiKey?: string;
+  geminiBaseUrl?: string;
 
   // Agent Execution Settings
   mcpRequireApprovalBeforeToolCall?: boolean;
@@ -319,7 +508,13 @@ export interface Settings {
   // Speech-to-Text Configuration
   sttProviderId?: 'openai' | 'groq' | 'parakeet';
   sttLanguage?: string;
+  openaiSttLanguage?: string;
+  openaiSttModel?: string;
+  groqSttLanguage?: string;
+  groqSttModel?: string;
+  groqSttPrompt?: string;
   transcriptionPreviewEnabled?: boolean;
+  parakeetNumThreads?: number;
 
   // Transcript Post-Processing
   transcriptPostProcessingEnabled?: boolean;
@@ -351,6 +546,11 @@ export interface Settings {
   edgeTtsModel?: string;
   edgeTtsVoice?: string;
   edgeTtsRate?: number;
+  kittenVoiceId?: number;
+  supertonicVoice?: string;
+  supertonicLanguage?: string;
+  supertonicSpeed?: number;
+  supertonicSteps?: number;
 
   // Remote Server Configuration
   remoteServerEnabled?: boolean;
@@ -432,6 +632,12 @@ export interface SettingsUpdate {
   mcpToolsGeminiModel?: string;
   mcpToolsChatgptWebModel?: string;
   currentModelPresetId?: string;
+  openaiApiKey?: string;
+  openaiBaseUrl?: string;
+  groqApiKey?: string;
+  groqBaseUrl?: string;
+  geminiApiKey?: string;
+  geminiBaseUrl?: string;
 
   // Agent Execution Settings
   mcpRequireApprovalBeforeToolCall?: boolean;
@@ -451,7 +657,13 @@ export interface SettingsUpdate {
   // Speech-to-Text Configuration
   sttProviderId?: 'openai' | 'groq' | 'parakeet';
   sttLanguage?: string;
+  openaiSttLanguage?: string;
+  openaiSttModel?: string;
+  groqSttLanguage?: string;
+  groqSttModel?: string;
+  groqSttPrompt?: string;
   transcriptionPreviewEnabled?: boolean;
+  parakeetNumThreads?: number;
 
   // Transcript Post-Processing
   transcriptPostProcessingEnabled?: boolean;
@@ -483,6 +695,11 @@ export interface SettingsUpdate {
   edgeTtsModel?: string;
   edgeTtsVoice?: string;
   edgeTtsRate?: number;
+  kittenVoiceId?: number;
+  supertonicVoice?: string;
+  supertonicLanguage?: string;
+  supertonicSpeed?: number;
+  supertonicSteps?: number;
 
   // Remote Server Configuration
   remoteServerEnabled?: boolean;
@@ -553,11 +770,12 @@ export interface SettingsUpdate {
 
 // Conversation Sync Types
 export interface ServerConversationMessage {
+  id?: string;
   role: 'user' | 'assistant' | 'tool';
   content: string;
   timestamp?: number;
-  toolCalls?: unknown[];
-  toolResults?: unknown[];
+  toolCalls?: ToolCall[];
+  toolResults?: ToolResult[];
 }
 
 export interface ServerConversation {
@@ -606,6 +824,20 @@ export interface PushStatusResponse {
   platforms: string[];
 }
 
+export interface TtsSpeakRequest {
+  text: string;
+  providerId?: string;
+  voice?: string;
+  model?: string;
+  speed?: number;
+}
+
+export interface TtsSpeakResponse {
+  audio: ArrayBuffer;
+  mimeType: string;
+  provider?: string;
+}
+
 // Skills Types
 export interface Skill {
   id: string;
@@ -622,6 +854,12 @@ export interface Skill {
 export interface SkillsResponse {
   skills: Skill[];
   currentProfileId?: string;
+}
+
+export interface SkillToggleResponse {
+  success: true;
+  skillId: string;
+  enabledForProfile: boolean;
 }
 
 // Knowledge Note Types
@@ -645,6 +883,39 @@ export interface KnowledgeNote {
 
 export interface KnowledgeNotesResponse {
   notes: KnowledgeNote[];
+}
+
+export interface KnowledgeNoteResponse {
+  note: KnowledgeNote;
+}
+
+export interface KnowledgeNoteMutationResponse {
+  success: true;
+  note: KnowledgeNote;
+}
+
+export interface KnowledgeNoteDeleteResponse {
+  success: true;
+  id: string;
+}
+
+export interface KnowledgeNoteCreateRequest {
+  id?: string;
+  title?: string;
+  body: string;
+  summary?: string;
+  context?: KnowledgeNoteContext;
+  tags?: string[];
+  references?: string[];
+}
+
+export interface KnowledgeNoteUpdateRequest {
+  title?: string;
+  body?: string;
+  summary?: string;
+  context?: KnowledgeNoteContext;
+  tags?: string[];
+  references?: string[];
 }
 
 // Agent Profiles Types (renamed to Api* to avoid conflict with desktop's AgentProfile)
@@ -688,6 +959,16 @@ export interface ApiAgentProfileFull extends ApiAgentProfile {
 
 export interface ApiAgentProfilesResponse {
   profiles: ApiAgentProfile[];
+}
+
+export interface AgentProfileToggleResponse {
+  success: true;
+  id: string;
+  enabled: boolean;
+}
+
+export interface AgentProfileDeleteResponse {
+  success: true;
 }
 
 export interface AgentProfileCreateRequest {
@@ -740,6 +1021,7 @@ export interface Loop {
   continueInSession?: boolean;
   lastSessionId?: string;
   runContinuously?: boolean;
+  maxIterations?: number;
   lastRunAt?: number;
   isRunning: boolean;
   nextRunAt?: number;
@@ -748,4 +1030,55 @@ export interface Loop {
 
 export interface LoopsResponse {
   loops: Loop[];
+}
+
+export interface LoopCreateRequest {
+  name: string;
+  prompt: string;
+  intervalMinutes: number;
+  enabled: boolean;
+  profileId?: string;
+  runOnStartup?: boolean;
+  speakOnTrigger?: boolean;
+  continueInSession?: boolean;
+  lastSessionId?: string;
+  runContinuously?: boolean;
+  maxIterations?: number;
+  schedule?: LoopSchedule | null;
+}
+
+export interface LoopUpdateRequest {
+  name?: string;
+  prompt?: string;
+  intervalMinutes?: number;
+  enabled?: boolean;
+  profileId?: string | null;
+  runOnStartup?: boolean;
+  speakOnTrigger?: boolean;
+  continueInSession?: boolean;
+  lastSessionId?: string | null;
+  runContinuously?: boolean;
+  maxIterations?: number | null;
+  schedule?: LoopSchedule | null;
+}
+
+export interface LoopMutationResponse {
+  success: true;
+  loop: Loop;
+}
+
+export interface LoopDeleteResponse {
+  success: true;
+  id: string;
+}
+
+export interface LoopToggleResponse {
+  success: true;
+  id: string;
+  enabled: boolean;
+}
+
+export interface LoopRunResponse {
+  success: true;
+  id: string;
 }

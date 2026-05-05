@@ -20,8 +20,16 @@ import {
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
 import { ModelPreset, Config } from "@shared/types"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Key, Globe, Bot, FileText, Settings2 } from "lucide-react"
-import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } from "@dotagents/shared"
+import { Plus, Trash2, Key, Globe, Bot, Settings2 } from "lucide-react"
+import {
+  buildCustomModelPresetFromRequest,
+  buildModelPresetDeleteUpdates,
+  buildModelPresetEditUpdates,
+  buildPresetModelSelectionUpdates,
+  getMergedModelPresets,
+  getModelPresetActivationUpdates,
+} from "@dotagents/shared/model-presets"
+import { DEFAULT_MODEL_PRESET_ID } from "@dotagents/shared/providers"
 import { PresetModelSelector } from "./preset-model-selector"
 
 export function ModelPresetManager({
@@ -46,35 +54,10 @@ export function ModelPresetManager({
 
   const config = configQuery.data
 
-  // Combine built-in presets with custom presets from config
-  const allPresets = useMemo(() => {
-    const builtIn = getBuiltInModelPresets()
-    const custom = config?.modelPresets || []
-
-    // Merge built-in presets with any saved data (API keys, model preferences, etc.)
-    const mergedBuiltIn = builtIn.map(preset => {
-      const saved = custom.find(c => c.id === preset.id)
-      if (saved) {
-        // Merge all saved properties (apiKey, agentModel, transcriptProcessingModel, etc.)
-        const merged = { ...preset, ...saved }
-        // For builtin-openai, fallback to legacy openaiApiKey if saved preset has empty apiKey
-        // This handles the case where saveModelWithPreset persisted a preset with apiKey: ''
-        if (preset.id === DEFAULT_MODEL_PRESET_ID && !merged.apiKey && config?.openaiApiKey) {
-          merged.apiKey = config.openaiApiKey
-        }
-        return merged
-      }
-      // For builtin-openai, seed with legacy openaiApiKey if no saved preset exists
-      if (preset.id === DEFAULT_MODEL_PRESET_ID && config?.openaiApiKey) {
-        return { ...preset, apiKey: config.openaiApiKey }
-      }
-      return preset
-    })
-
-    // Add custom (non-built-in) presets
-    const customOnly = custom.filter(c => !c.isBuiltIn)
-    return [...mergedBuiltIn, ...customOnly]
-  }, [config?.modelPresets, config?.openaiApiKey])
+  const allPresets = useMemo(
+    () => (config ? getMergedModelPresets(config) : []),
+    [config?.modelPresets, config?.openaiApiKey],
+  )
 
   const currentPresetId = config?.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
   const currentPreset = allPresets.find(p => p.id === currentPresetId)
@@ -94,65 +77,13 @@ export function ModelPresetManager({
   ) => {
     if (!currentPresetId || !config) return
 
-    const existingPresets = config.modelPresets || []
-    const presetIndex = existingPresets.findIndex(p => p.id === currentPresetId)
-
-    let updatedPresets: ModelPreset[]
-
-    if (presetIndex >= 0) {
-      // Update existing preset entry
-      updatedPresets = existingPresets.map(p =>
-        p.id === currentPresetId
-          ? { ...p, [modelType]: modelId, updatedAt: Date.now() }
-          : p
-      )
-    } else {
-      // Create new entry for built-in preset that hasn't been customized yet
-      const builtInPreset = getBuiltInModelPresets().find(p => p.id === currentPresetId)
-      if (builtInPreset) {
-        updatedPresets = [
-          ...existingPresets,
-          {
-            ...builtInPreset,
-            // Don't auto-seed API key from global config - each preset should have its own key
-            // configured explicitly to avoid credential misuse across different providers
-            apiKey: '',
-            [modelType]: modelId,
-            updatedAt: Date.now(),
-          }
-        ]
-      } else {
-        // Fallback: just save the global config without preset
-        saveConfig({ [globalConfigKey]: modelId })
-        return
-      }
-    }
-
-    // Save BOTH the global config field AND the preset in a single call
-    saveConfig({
-      [globalConfigKey]: modelId,
-      modelPresets: updatedPresets
-    })
+    saveConfig(buildPresetModelSelectionUpdates(config, currentPresetId, modelType, globalConfigKey, modelId) as Partial<Config>)
   }, [currentPresetId, config, saveConfig])
 
   const handlePresetChange = (presetId: string) => {
     const preset = allPresets.find(p => p.id === presetId)
     if (preset) {
-      const updates: Partial<Config> = {
-        currentModelPresetId: presetId,
-        // Also update the legacy fields for backward compatibility
-        openaiBaseUrl: preset.baseUrl,
-        openaiApiKey: preset.apiKey,
-      }
-      // Apply model preferences if they are set on the preset
-      const agentModel = preset.agentModel || preset.mcpToolsModel
-      if (agentModel) {
-        updates.agentOpenaiModel = agentModel
-      }
-      if (preset.transcriptProcessingModel) {
-        updates.transcriptPostProcessingOpenaiModel = preset.transcriptProcessingModel
-      }
-      saveConfig(updates)
+      saveConfig(getModelPresetActivationUpdates(preset))
       toast.success(`Switched to preset: ${preset.name}`)
     }
   }
@@ -167,18 +98,14 @@ export function ModelPresetManager({
       return
     }
 
-    const id = `custom-${Date.now()}`
-    const preset: ModelPreset = {
-      id,
+    const now = Date.now()
+    const preset = buildCustomModelPresetFromRequest(`custom-${now}`, {
       name: newPreset.name.trim(),
       baseUrl: newPreset.baseUrl.trim(),
       apiKey: newPreset.apiKey || "",
-      isBuiltIn: false,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
       agentModel: newPreset.agentModel || newPreset.mcpToolsModel || "",
       transcriptProcessingModel: newPreset.transcriptProcessingModel || "",
-    }
+    }, now)
 
     const existingPresets = config?.modelPresets || []
     saveConfig({
@@ -191,54 +118,22 @@ export function ModelPresetManager({
   }
 
   const handleUpdatePreset = () => {
-    if (!editingPreset) return
+    if (!editingPreset || !config) return
 
-    const existingPresets = config?.modelPresets || []
-    const updatedPresets = existingPresets.map(p =>
-      p.id === editingPreset.id
-        ? { ...editingPreset, updatedAt: Date.now() }
-        : p
-    )
-
-    // If it's a built-in preset, we need to add it to save the API key
-    const isNewBuiltInSave = editingPreset.isBuiltIn && !existingPresets.find(p => p.id === editingPreset.id)
-    const finalPresets = isNewBuiltInSave
-      ? [...existingPresets, { ...editingPreset, updatedAt: Date.now() }]
-      : updatedPresets
-
-    const updates: Partial<Config> = { modelPresets: finalPresets }
-
-    // If editing the current preset, also update legacy fields
-    if (editingPreset.id === currentPresetId) {
-      updates.openaiBaseUrl = editingPreset.baseUrl
-      updates.openaiApiKey = editingPreset.apiKey
-    }
-
-    saveConfig(updates)
+    saveConfig(buildModelPresetEditUpdates(config, editingPreset, currentPresetId) as Partial<Config>)
     setIsEditDialogOpen(false)
     setEditingPreset(null)
     toast.success("Preset updated successfully")
   }
 
   const handleDeletePreset = (preset: ModelPreset) => {
+    if (!config) return
     if (preset.isBuiltIn) {
       toast.error("Cannot delete built-in presets")
       return
     }
     if (confirm(`Delete preset "${preset.name}"?`)) {
-      const existingPresets = config?.modelPresets || []
-      const updates: Partial<Config> = {
-        modelPresets: existingPresets.filter(p => p.id !== preset.id),
-      }
-      // If deleting current preset, switch to default
-      if (preset.id === currentPresetId) {
-        const defaultPreset = allPresets.find(p => p.id === DEFAULT_MODEL_PRESET_ID)
-        updates.currentModelPresetId = DEFAULT_MODEL_PRESET_ID
-        // Also update the legacy fields for backward compatibility
-        updates.openaiBaseUrl = defaultPreset?.baseUrl || ""
-        updates.openaiApiKey = defaultPreset?.apiKey || ""
-      }
-      saveConfig(updates)
+      saveConfig(buildModelPresetDeleteUpdates(config, preset.id, currentPresetId) as Partial<Config>)
       toast.success("Preset deleted")
     }
   }

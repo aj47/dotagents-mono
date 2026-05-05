@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { INTERNAL_COMPLETION_NUDGE_TEXT } from "../shared/runtime-tool-names"
+import { INTERNAL_COMPLETION_NUDGE_TEXT } from "@dotagents/shared/mcp-api"
 import {
   collectRecentRealUserRequestIndices,
   filterEphemeralMessages,

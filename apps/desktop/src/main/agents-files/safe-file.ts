@@ -3,7 +3,7 @@ import {
   safeWriteFileSync,
   safeWriteJsonFileSync,
   safeReadJsonFileSync,
-} from "../../../../../packages/core/src/agents-files/safe-file"
+} from "@dotagents/core"
 
 export {
   readTextFileIfExistsSync,
@@ -11,4 +11,4 @@ export {
   safeWriteJsonFileSync,
   safeReadJsonFileSync,
 }
-export type { SafeWriteOptions } from "../../../../../packages/core/src/agents-files/safe-file"
+export type { SafeWriteOptions } from "@dotagents/core"

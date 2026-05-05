@@ -14,7 +14,8 @@ import { discordService } from "./discord-service"
 import { getDiscordLifecycleAction } from "./discord-config"
 import { emergencyStopAll } from "./emergency-stop"
 import { getErrorMessage } from "./error-utils"
-import { SessionProfileSnapshot, AgentProgressUpdate, Config } from "@shared/types"
+import type { SessionProfileSnapshot } from "@dotagents/core"
+import type { AgentProgressUpdate, Config } from "@shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 
 // ANSI color codes (no external deps)

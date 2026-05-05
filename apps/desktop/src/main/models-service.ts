@@ -2,7 +2,7 @@ import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId } from "./models-dev-service"
 import type { ModelsDevModel } from "./models-dev-service"
-import { isKnownSttModel, KNOWN_STT_MODEL_IDS } from "@dotagents/shared"
+import { isKnownSttModel, KNOWN_STT_MODEL_IDS } from "@dotagents/shared/stt-models"
 import type { ModelInfo, EnhancedModelInfo } from "../shared/types"
 
 // Re-export ModelInfo for backward compatibility

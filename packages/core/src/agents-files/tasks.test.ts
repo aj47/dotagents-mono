@@ -11,13 +11,16 @@ describe("agents-files/tasks", () => {
       intervalMinutes: 15,
       enabled: true,
       runContinuously: true,
+      maxIterations: 3,
     }
 
     const markdown = stringifyTaskMarkdown(task)
     expect(markdown).toContain("runContinuously: true")
+    expect(markdown).toContain("maxIterations: 3")
 
     const parsed = parseTaskMarkdown(markdown)
     expect(parsed?.runContinuously).toBe(true)
+    expect(parsed?.maxIterations).toBe(3)
   })
 
   it("omits runContinuously when false or missing", () => {

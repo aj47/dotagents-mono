@@ -7,7 +7,7 @@
  */
 
 // Re-export shared types
-export type { ModelPreset } from '@dotagents/shared'
+export type { ModelPreset } from '@dotagents/shared/providers'
 
 // ============================================================================
 // Config — an opaque record for config persistence logic.
@@ -50,6 +50,10 @@ export interface AgentSkill {
   updatedAt: number
   source?: "local" | "imported"
   filePath?: string
+}
+
+export interface AgentSkillsData {
+  skills: AgentSkill[]
 }
 
 // ============================================================================
@@ -103,6 +107,8 @@ export interface LoopConfig {
   lastSessionId?: string
   /** Start the next run immediately after the previous run finishes. */
   runContinuously?: boolean
+  /** Optional per-task override for agent loop iterations. */
+  maxIterations?: number
   /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
   schedule?: LoopSchedule
 }
@@ -154,6 +160,24 @@ export type ProfileSkillsConfig = {
   allSkillsDisabledByDefault?: boolean
 }
 
+export type Profile = {
+  id: string
+  name: string
+  guidelines: string
+  createdAt: number
+  updatedAt: number
+  isDefault?: boolean
+  mcpServerConfig?: ProfileMcpServerConfig
+  modelConfig?: ProfileModelConfig
+  skillsConfig?: ProfileSkillsConfig
+  systemPrompt?: string
+}
+
+export type ProfilesData = {
+  profiles: Profile[]
+  currentProfileId?: string
+}
+
 export type SessionProfileSnapshot = {
   profileId: string
   profileName: string
@@ -190,6 +214,13 @@ export type PreferredAgentProfileRole = "chat-agent" | "delegation-target" | "ex
 export type LegacyAgentProfileRole = "user-profile"
 export type AgentProfileRole = PreferredAgentProfileRole | LegacyAgentProfileRole
 
+export function normalizeAgentProfileRole(role: AgentProfileRole | string | undefined): PreferredAgentProfileRole | undefined {
+  if (!role) return undefined
+  if (role === "user-profile") return "chat-agent"
+  if (role === "chat-agent" || role === "delegation-target" || role === "external-agent") return role
+  return undefined
+}
+
 export type AgentProfile = {
   id: string
   name: string
@@ -214,4 +245,9 @@ export type AgentProfile = {
   autoSpawn?: boolean
   createdAt: number
   updatedAt: number
+}
+
+export type AgentProfilesData = {
+  profiles: AgentProfile[]
+  currentProfileId?: string
 }

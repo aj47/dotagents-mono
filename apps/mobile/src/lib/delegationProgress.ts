@@ -1,4 +1,4 @@
-import type { ACPDelegationProgress, AgentProgressStep } from '@dotagents/shared';
+import type { ACPDelegationProgress, AgentProgressStep } from '@dotagents/shared/agent-progress';
 import type { ChatMessage } from './openaiClient';
 
 const formatStatus = (status: ACPDelegationProgress['status']): string => {

@@ -1,4 +1,4 @@
-import { extractRespondToUserContentFromArgs as extractSharedRespondToUserContentFromArgs } from "@dotagents/shared"
+import { extractRespondToUserContentFromArgs as extractSharedRespondToUserContentFromArgs } from "@dotagents/shared/chat-utils"
 import { describe, expect, it } from "vitest"
 
 import {

@@ -16,6 +16,12 @@ export interface TTSPreprocessingOptions {
   removeThinkingBlocks?: boolean
 }
 
+export interface TTSPreprocessingConfigLike {
+  ttsRemoveCodeBlocks?: boolean
+  ttsRemoveUrls?: boolean
+  ttsConvertMarkdown?: boolean
+}
+
 const DEFAULT_OPTIONS: TTSPreprocessingOptions = {
   removeCodeBlocks: true,
   removeUrls: true,
@@ -24,6 +30,51 @@ const DEFAULT_OPTIONS: TTSPreprocessingOptions = {
   convertNumbers: true,
   maxLength: 4000, // Reasonable limit for TTS
   removeThinkingBlocks: true,
+}
+
+/**
+ * Converts app-level TTS preprocessing config into regex preprocessor options.
+ */
+export function getTTSPreprocessingOptionsFromConfig(
+  config: TTSPreprocessingConfigLike,
+): Pick<TTSPreprocessingOptions, "removeCodeBlocks" | "removeUrls" | "convertMarkdown"> {
+  return {
+    removeCodeBlocks: config.ttsRemoveCodeBlocks ?? true,
+    removeUrls: config.ttsRemoveUrls ?? true,
+    convertMarkdown: config.ttsConvertMarkdown ?? true,
+  }
+}
+
+/**
+ * Builds the LLM prompt used to convert assistant text into speech-friendly text.
+ */
+export function buildTTSPreprocessingPrompt(config: TTSPreprocessingConfigLike): string {
+  const instructions: string[] = []
+
+  if (config.ttsRemoveCodeBlocks ?? true) {
+    instructions.push("- Remove code blocks and replace with brief description if relevant")
+  }
+  if (config.ttsRemoveUrls ?? true) {
+    instructions.push("- Remove URLs but mention if a link was shared")
+  }
+  if (config.ttsConvertMarkdown ?? true) {
+    instructions.push("- Convert markdown formatting to natural speech")
+    instructions.push("- Strip bullet/list markers silently; do not say or add words like \"item\" for list entries")
+  }
+
+  instructions.push("- Expand abbreviations and acronyms appropriately (e.g., \"Dr.\" → \"Doctor\", \"API\" → \"A P I\")")
+  instructions.push("- Convert technical symbols to spoken words (e.g., \"&&\" → \"and\", \"=>\" → \"arrow\")")
+  instructions.push("- Remove or describe any content that wouldn't make sense when spoken aloud")
+  instructions.push("- Keep the core meaning but optimize for listening")
+  instructions.push("- Do NOT add any commentary, just output the converted text")
+
+  return `Convert this AI response to natural spoken text.
+${instructions.join("\n")}
+
+Only output the converted text, nothing else.
+
+Text to convert:
+`
 }
 
 /**
@@ -202,4 +253,3 @@ export function validateTTSText(text: string): {
     processedLength: text.length,
   }
 }
-

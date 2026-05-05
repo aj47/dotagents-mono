@@ -67,12 +67,12 @@ import {
 } from "lucide-react"
 import { Spinner } from "@renderer/components/ui/spinner"
 import { MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry, DetailedToolInfo } from "@shared/types"
-import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@shared/runtime-tool-names"
+import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@dotagents/shared/mcp-api"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
 import { OAUTH_MCP_EXAMPLES } from "@shared/oauth-examples"
-import { parseShellCommand } from "@dotagents/shared"
+import { parseShellCommand } from "@dotagents/shared/shell-parse"
 
 
 

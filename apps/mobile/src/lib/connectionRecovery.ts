@@ -15,7 +15,7 @@ export {
   formatConnectionStatus,
   checkServerConnection,
   DEFAULT_RECOVERY_CONFIG,
-} from '@dotagents/shared';
+} from '@dotagents/shared/connection-recovery';
 
 export type {
   ConnectionStatus,
@@ -24,7 +24,7 @@ export type {
   StreamingCheckpoint,
   OnStatusChange,
   ConnectionCheckResult,
-} from '@dotagents/shared';
+} from '@dotagents/shared/connection-recovery';
 
 // Import types needed for the class implementation
 import type {
@@ -33,8 +33,8 @@ import type {
   RecoveryState,
   StreamingCheckpoint,
   OnStatusChange,
-} from '@dotagents/shared';
-import { DEFAULT_RECOVERY_CONFIG, calculateBackoff } from '@dotagents/shared';
+} from '@dotagents/shared/connection-recovery';
+import { DEFAULT_RECOVERY_CONFIG, calculateBackoff } from '@dotagents/shared/connection-recovery';
 
 export class ConnectionRecoveryManager {
   private config: ConnectionRecoveryConfig;
@@ -268,4 +268,3 @@ export class ConnectionRecoveryManager {
     return this.state.conversationId;
   }
 }
-

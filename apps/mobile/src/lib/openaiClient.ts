@@ -3,11 +3,18 @@ import type {
   ToolResult,
   ConversationHistoryMessage,
   ChatApiResponse,
+} from '@dotagents/shared/types';
+import type {
   AgentProgressUpdate,
   AgentProgressStep,
   OnProgressCallback,
-} from '@dotagents/shared';
-import { normalizeApiBaseUrl } from '@dotagents/shared';
+} from '@dotagents/shared/agent-progress';
+import {
+  buildChatCompletionRequestBody,
+  parseChatCompletionSseEvent,
+} from '@dotagents/shared/chat-utils';
+import { normalizeApiBaseUrl } from '@dotagents/shared/connection-recovery';
+import { REMOTE_SERVER_API_BUILDERS, REMOTE_SERVER_API_PATHS } from '@dotagents/shared/remote-server-api';
 import { Platform } from 'react-native';
 import EventSource from 'react-native-sse';
 import {
@@ -46,60 +53,10 @@ export type ChatMessage = {
 
 export type ChatResponse = ChatApiResponse;
 
-export type { ToolCall, ToolResult, ConversationHistoryMessage } from '@dotagents/shared';
-export type { AgentProgressUpdate, AgentProgressStep, OnProgressCallback } from '@dotagents/shared';
+export type { ToolCall, ToolResult, ConversationHistoryMessage } from '@dotagents/shared/types';
+export type { AgentProgressUpdate, AgentProgressStep, OnProgressCallback } from '@dotagents/shared/agent-progress';
 export type { StreamingCheckpoint } from './connectionRecovery';
-
-export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage[] => {
-  return messages.map((message) => {
-    const requestMessage = { ...message };
-    delete requestMessage.toolExecutions;
-    delete requestMessage.displayContent;
-
-    if (message.toolExecutions?.length) {
-      delete requestMessage.toolCalls;
-      delete requestMessage.toolResults;
-      return requestMessage;
-    }
-
-    if (!Array.isArray(message.toolResults)) {
-      return requestMessage;
-    }
-
-    const originalToolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : undefined;
-    const toolResults = message.toolResults.filter((result): result is ToolResult => result != null);
-
-    if (toolResults.length === 0) {
-      const rest = { ...requestMessage };
-      delete rest.toolResults;
-      if (Array.isArray(message.toolCalls)) {
-        delete rest.toolCalls;
-      }
-      return rest;
-    }
-
-    const originalCallsAreIndexAligned =
-      Array.isArray(originalToolCalls) && originalToolCalls.length === toolResults.length;
-    const sanitizedToolCalls = originalCallsAreIndexAligned
-      ? originalToolCalls.every((toolCall): toolCall is ToolCall => !!toolCall)
-        ? originalToolCalls
-        : undefined
-      : undefined;
-    const shouldDropToolCalls = !!originalToolCalls && !sanitizedToolCalls;
-
-    const sanitizedMessage: ChatMessage = {
-      ...requestMessage,
-      ...(sanitizedToolCalls ? { toolCalls: sanitizedToolCalls } : {}),
-      toolResults,
-    };
-
-    if (shouldDropToolCalls) {
-      delete sanitizedMessage.toolCalls;
-    }
-
-    return sanitizedMessage;
-  });
-};
+export { sanitizeMessagesForRequest } from '@dotagents/shared/chat-utils';
 
 
 export class OpenAIClient {
@@ -186,7 +143,7 @@ export class OpenAIClient {
   }
 
   async health(): Promise<boolean> {
-    const url = this.getUrl('/models');
+    const url = this.getUrl(REMOTE_SERVER_API_PATHS.models);
     try {
       const res = await fetch(url, { headers: this.authHeaders() });
       return res.ok;
@@ -202,16 +159,12 @@ export class OpenAIClient {
     onProgress?: OnProgressCallback,
     conversationId?: string
   ): Promise<ChatResponse> {
-    const url = this.getUrl('/chat/completions');
-    const body: Record<string, any> = {
+    const url = this.getUrl(REMOTE_SERVER_API_PATHS.chatCompletions);
+    const body: Record<string, any> = buildChatCompletionRequestBody({
       model: this.cfg.model,
-      messages: sanitizeMessagesForRequest(messages),
-      stream: true,
-    };
-
-    if (conversationId) {
-      body.conversation_id = conversationId;
-    }
+      messages,
+      conversationId,
+    });
 
     console.log('[OpenAIClient] Starting chat request');
     console.log('[OpenAIClient] URL:', url);
@@ -425,56 +378,46 @@ export class OpenAIClient {
 
         const data = event.data;
 
-        if (data === '[DONE]' || data === '"[DONE]"') {
-          console.log('[OpenAIClient] Received [DONE] signal');
-          return;
-        }
-
-        try {
-          const obj = JSON.parse(data);
-
-          if (obj.type === 'progress' && obj.data) {
-            const update = obj.data as AgentProgressUpdate;
-            onProgress?.(update);
-            // Only call onToken as a fallback when onProgress is NOT provided
-            if (!onProgress && update.streamingContent?.text) {
-              onToken?.(update.streamingContent.text);
-            }
-            return;
+        for (const parsed of parseChatCompletionSseEvent(data)) {
+          if (parsed.type === 'done') {
+            console.log('[OpenAIClient] Received [DONE] signal');
+            continue;
           }
 
-          if (obj.type === 'done' && obj.data) {
-            console.log('[OpenAIClient] Received done event, data keys:', Object.keys(obj.data));
-            if (obj.data.content !== undefined) {
-              finalContent = obj.data.content;
+          if (parsed.type === 'progress') {
+            onProgress?.(parsed.update);
+            // Only call onToken as a fallback when onProgress is NOT provided
+            if (!onProgress && parsed.update.streamingContent?.text) {
+              onToken?.(parsed.update.streamingContent.text);
             }
-            if (obj.data.conversation_id) {
-              conversationId = obj.data.conversation_id;
-            }
-            if (obj.data.conversation_history) {
-              conversationHistory = obj.data.conversation_history;
+            continue;
+          }
+
+          if (parsed.type === 'complete') {
+            console.log('[OpenAIClient] Received done event');
+            finalContent = parsed.content;
+            conversationId = parsed.conversationId;
+            conversationHistory = parsed.conversationHistory;
+            if (parsed.conversationHistory) {
               console.log('[OpenAIClient] conversation_history received:', conversationHistory?.length || 0, 'messages');
             } else {
               console.log('[OpenAIClient] WARNING: No conversation_history in done event');
             }
+            continue;
+          }
+
+          if (parsed.type === 'error') {
+            console.error('[OpenAIClient] Error event:', parsed.message);
+            recovery?.markDisconnected(parsed.message);
+            safeReject(new Error(parsed.message));
             return;
           }
 
-          if (obj.type === 'error' && obj.data) {
-            const errorMessage = obj.data.message || 'Server error';
-            console.error('[OpenAIClient] Error event:', errorMessage);
-            recovery?.markDisconnected(errorMessage);
-            safeReject(new Error(errorMessage));
-            return;
+          if (parsed.type === 'token') {
+            onToken?.(parsed.token);
+            finalContent += parsed.token;
           }
-
-          const delta = obj?.choices?.[0]?.delta;
-          const token = delta?.content;
-          if (typeof token === 'string' && token.length > 0) {
-            onToken?.(token);
-            finalContent += token;
-          }
-        } catch {}
+        }
       });
 
       es.addEventListener('error', (event) => {
@@ -854,53 +797,42 @@ export class OpenAIClient {
   ): { content?: string; conversationId?: string; conversationHistory?: ConversationHistoryMessage[]; error?: Error } | null {
     if (!event.trim()) return null;
 
-    const lines = event.split(/\r?\n/).map(l => l.replace(/^data:\s?/, '').trim()).filter(Boolean);
     let result: { content?: string; conversationId?: string; conversationHistory?: ConversationHistoryMessage[]; error?: Error } | null = null;
 
-    for (const line of lines) {
-      if (line === '[DONE]' || line === '"[DONE]"') {
+    for (const parsed of parseChatCompletionSseEvent(event)) {
+      if (parsed.type === 'done') continue;
+
+      if (parsed.type === 'progress') {
+        onProgress?.(parsed.update);
+        // Only call onToken as a fallback when onProgress is NOT provided.
+        // When onProgress IS provided, it already handles streaming content display
+        // via convertProgressToMessages(). Calling both causes duplicate state updates.
+        if (!onProgress && parsed.update.streamingContent?.text) {
+          onToken?.(parsed.update.streamingContent.text);
+        }
         continue;
       }
 
-      try {
-        const obj = JSON.parse(line);
+      if (parsed.type === 'complete') {
+        result = {
+          content: parsed.content,
+          conversationId: parsed.conversationId,
+          conversationHistory: parsed.conversationHistory,
+        };
+        continue;
+      }
 
-        // Handle DotAgents-specific SSE event types
-        if (obj.type === 'progress' && obj.data) {
-          const update = obj.data as AgentProgressUpdate;
-          onProgress?.(update);
-          // Only call onToken as a fallback when onProgress is NOT provided.
-          // When onProgress IS provided, it already handles streaming content display
-          // via convertProgressToMessages(). Calling both causes duplicate state updates.
-          if (!onProgress && update.streamingContent?.text) {
-            onToken?.(update.streamingContent.text);
-          }
-          continue;
-        }
+      if (parsed.type === 'error') {
+        console.error('[OpenAIClient] Error event:', parsed.message);
+        // Return error in result so callers can handle it
+        return { error: new Error(parsed.message) };
+      }
 
-        if (obj.type === 'done' && obj.data) {
-          result = {
-            content: obj.data.content || '',
-            conversationId: obj.data.conversation_id,
-            conversationHistory: obj.data.conversation_history,
-          };
-          continue;
-        }
-
-        if (obj.type === 'error' && obj.data) {
-          console.error('[OpenAIClient] Error event:', obj.data.message);
-          // Return error in result so callers can handle it
-          return { error: new Error(obj.data.message || 'Server error') };
-        }
-
-        const delta = obj?.choices?.[0]?.delta;
-        const token = delta?.content;
-        if (typeof token === 'string' && token.length > 0) {
-          onToken?.(token);
-          // Initialize result if null to avoid "Cannot spread null" error on first token
-          result = { ...(result || {}), content: (result?.content || '') + token };
-        }
-      } catch {}
+      if (parsed.type === 'token') {
+        onToken?.(parsed.token);
+        // Initialize result if null to avoid "Cannot spread null" error on first token
+        result = { ...(result || {}), content: (result?.content || '') + parsed.token };
+      }
     }
 
     return result;
@@ -926,7 +858,7 @@ export class OpenAIClient {
     }>;
     metadata?: any;
   } | null> {
-    const url = this.getUrl(`/conversations/${conversationId}`);
+    const url = this.getUrl(REMOTE_SERVER_API_BUILDERS.conversation(conversationId));
     console.log('[OpenAIClient] Fetching conversation for recovery:', url);
 
     try {
@@ -955,7 +887,7 @@ export class OpenAIClient {
   }
 
   async killSwitch(): Promise<{ success: boolean; message?: string; error?: string; processesKilled?: number }> {
-    const url = this.getUrl('/emergency-stop');
+    const url = this.getUrl(REMOTE_SERVER_API_PATHS.emergencyStop);
     console.log('[OpenAIClient] Triggering emergency stop:', url);
 
     try {

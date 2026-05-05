@@ -24,7 +24,8 @@ import { getPreferredDelegationOutput } from '../agent-run-utils';
 import { configStore } from '../config';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
 import { stringifySubAgentToolResultContent } from '@shared/delegation-tool-display'
-import type { AgentProgressUpdate, SessionProfileSnapshot, ACPDelegationProgress, ACPSubAgentMessage, ConversationMessage, AgentProfile } from '../../shared/types';
+import type { AgentProfile, SessionProfileSnapshot } from '@dotagents/core';
+import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, ConversationMessage } from '../../shared/types';
 import type { MCPToolCall, MCPToolResult } from '../mcp-service';
 
 const logSubSession = (...args: unknown[]) => {

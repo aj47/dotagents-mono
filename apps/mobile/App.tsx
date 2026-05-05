@@ -18,7 +18,7 @@ import { TunnelConnectionContext, useTunnelConnectionProvider } from './src/stor
 import { ProfileContext, useProfileProvider } from './src/store/profile';
 import { usePushNotifications, NotificationData, clearNotifications, clearServerBadge } from './src/lib/pushNotifications';
 import { SettingsApiClient } from './src/lib/settingsApi';
-import { pickPreferredWebGoogleVoice } from './src/lib/ttsVoices';
+import { pickPreferredWebGoogleVoice } from '@dotagents/shared/tts-voice-picker';
 import { View, Image, Text, StyleSheet, AppState, AppStateStatus, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/ui/ThemeProvider';

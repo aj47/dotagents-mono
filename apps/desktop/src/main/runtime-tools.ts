@@ -8,7 +8,7 @@
  * and have direct access to the app's services.
  */
 
-import { mcpService, type MCPTool, type MCPToolResult } from "./mcp-service"
+import { mcpService, type MCPToolResult } from "./mcp-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentSessionStateManager, toolApprovalManager } from "./state"
 import { emergencyStopAll } from "./emergency-stop"
@@ -23,7 +23,53 @@ import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
 import path from "path"
-import type { AgentSkill, ProfileSkillsConfig } from "../shared/types"
+import {
+  buildAgentSessionMissingConversationPayload,
+  buildAgentSessionNotFoundPayload,
+  buildGetToolSchemaPayload,
+  buildKillAgentSessionPayload,
+  buildKillAllAgentsNoopPayload,
+  buildKillAllAgentsPayload,
+  buildListRunningAgentsPayload,
+  buildListServerToolsPayload,
+  buildMarkWorkCompletePayload,
+  buildSetSessionTitleMissingConversationPayload,
+  buildSetSessionTitlePayload,
+  buildSetSessionTitleProgressUpdate,
+  buildSetSessionTitleRenameFailedPayload,
+  buildSendAgentMessageQueuedPayload,
+  parseReadMoreContextArgs,
+  parseSendAgentMessageArgs,
+  parseSetSessionTitleArgs,
+} from "@dotagents/shared/runtime-tool-utils"
+import {
+  buildDisabledRuntimeSkillPayload,
+  buildIgnoredExecuteCommandSkillIdWarning,
+  buildRuntimeSkillInstructionsText,
+  buildRuntimeSkillNotFoundPayload,
+  getSkillRuntimeIds,
+  isSkillEnabledByConfig,
+  parseRuntimeSkillIdArg,
+  resolveRuntimeSkill,
+} from "@dotagents/shared/skills-api"
+import {
+  buildRuntimeCommandFailurePayload,
+  buildRuntimeCommandPolicyBlockPayload,
+  buildRuntimeCommandSuccessPayload,
+  detectContextGatheringCommandBlock,
+  detectPreferredPackageManager,
+  detectPackageManagerMismatch,
+  normalizeExecuteCommandWorkspacePaths,
+  parseExecuteCommandArgs,
+  truncateRuntimeCommandOutput,
+} from "@dotagents/shared/runtime-command-utils"
+import {
+  materializeParsedRespondToUserResponse,
+  parseRespondToUserArgs,
+  validateRespondToUserImageFile,
+  validateRespondToUserImagePath,
+  validateRespondToUserVideoFile,
+} from "@dotagents/shared/conversation-media-assets"
 
 const execAsync = promisify(exec)
 
@@ -41,65 +87,6 @@ import { runtimeToolDefinitions } from "./runtime-tool-definitions"
 
 interface BuiltinToolContext {
   sessionId?: string
-}
-
-function buildIgnoredExecuteCommandSkillIdWarning(skillId: string, availableSkillIds: string[]) {
-  return {
-    ignoredInvalidSkillId: skillId,
-    warning: `Ignored invalid execute_command.skillId: ${skillId}. Ran the command in the default workspace instead.`,
-    guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
-    retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
-    availableSkillIds,
-  }
-}
-
-function uniqueSkillIds(ids: Array<string | undefined>): string[] {
-  return Array.from(new Set(ids.map((id) => id?.trim()).filter((id): id is string => Boolean(id))))
-}
-
-function getSkillFolderIdFromFilePath(filePath?: string): string | undefined {
-  if (!filePath || filePath.startsWith("github:")) return undefined
-
-  const normalized = path.normalize(filePath)
-  const segments = normalized.split(path.sep).filter(Boolean)
-  const agentsIndex = segments.lastIndexOf(".agents")
-  const skillsIndex = agentsIndex >= 0 && segments[agentsIndex + 1] === "skills"
-    ? agentsIndex + 1
-    : segments.lastIndexOf("skills")
-
-  if (skillsIndex >= 0 && skillsIndex < segments.length - 2) {
-    return segments.slice(skillsIndex + 1, -1).join("/")
-  }
-
-  return undefined
-}
-
-function getSkillRuntimeIds(skill: AgentSkill, requestedSkillId?: string): string[] {
-  return uniqueSkillIds([
-    requestedSkillId,
-    skill.id,
-    getSkillFolderIdFromFilePath(skill.filePath),
-  ])
-}
-
-function resolveRuntimeSkill(skillId: string, skillsServiceLike: { getSkill: (id: string) => AgentSkill | undefined; getSkills: () => AgentSkill[] }): AgentSkill | undefined {
-  const trimmedSkillId = skillId.trim()
-  if (!trimmedSkillId) return undefined
-
-  const direct = skillsServiceLike.getSkill(trimmedSkillId)
-  if (direct) return direct
-
-  const normalizedSkillId = trimmedSkillId.toLowerCase()
-  return skillsServiceLike.getSkills().find((skill) => {
-    return skill.name.toLowerCase() === normalizedSkillId
-      || getSkillFolderIdFromFilePath(skill.filePath)?.toLowerCase() === normalizedSkillId
-  })
-}
-
-function isSkillEnabledByConfig(skillIds: string | string[], skillsConfig?: ProfileSkillsConfig): boolean {
-  if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true
-  const ids = Array.isArray(skillIds) ? skillIds : [skillIds]
-  return ids.some((id) => (skillsConfig.enabledSkillIds ?? []).includes(id))
 }
 
 async function isSkillEnabledForRuntimeContext(skillIds: string | string[], context: BuiltinToolContext): Promise<boolean> {
@@ -128,111 +115,13 @@ async function isSkillEnabledForRuntimeContext(skillIds: string | string[], cont
 }
 
 function disabledSkillToolResult(skillId: string, action: "load" | "execute"): MCPToolResult {
-  const actionText = action === "load" ? "load instructions for" : "run commands inside"
   return {
     content: [{
       type: "text",
-      text: JSON.stringify({
-        success: false,
-        skillId,
-        error: `Skill '${skillId}' is disabled for this agent. Enable it in Settings > Skills before trying to ${actionText} this skill.`,
-      }),
+      text: JSON.stringify(buildDisabledRuntimeSkillPayload(skillId, action)),
     }],
     isError: true,
   }
-}
-
-type PackageManagerName = "pnpm" | "npm" | "yarn" | "bun"
-
-interface PreferredPackageManager {
-  name: PackageManagerName
-  lockfile: string
-  directory: string
-}
-
-const PACKAGE_MANAGER_LOCKFILES: Array<{ name: PackageManagerName; lockfiles: string[] }> = [
-  { name: "pnpm", lockfiles: ["pnpm-lock.yaml"] },
-  { name: "npm", lockfiles: ["package-lock.json"] },
-  { name: "yarn", lockfiles: ["yarn.lock"] },
-  { name: "bun", lockfiles: ["bun.lock", "bun.lockb"] },
-]
-
-const PACKAGE_MANAGER_TOKEN_FAMILY: Record<string, PackageManagerName> = {
-  npm: "npm",
-  npx: "npm",
-  pnpm: "pnpm",
-  pnpx: "pnpm",
-  yarn: "yarn",
-  bun: "bun",
-  bunx: "bun",
-}
-
-const PACKAGE_MANAGER_COMMAND_REGEX = /(^|&&|\|\||;)\s*(npm|npx|pnpm|pnpx|yarn|bun|bunx)(?=\s|$)/g
-const CONTEXT_GATHERING_REQUEST_REGEX = /\b(gather (?:as much )?context|what(?:'s| is) next|next steps?|what should (?:the )?user work on next|immediate next steps?)\b/i
-const USER_REQUEST_ALLOWS_VALIDATION_REGEX = /\b(test|tests|testing|verify|verification|validate|validation|build|compile|lint|typecheck|smoke test|run the app|run the tests|fix|change|edit|implement|update|refactor|install|dependency|dependencies)\b/i
-const HIGH_IMPACT_PACKAGE_MANAGER_COMMAND_REGEX = /(^|&&|\|\||;)\s*(npm|npx|pnpm|pnpx|yarn|bun|bunx)\b/i
-const VALIDATION_OR_DEPENDENCY_COMMAND_REGEX = /\b(test|tests|vitest|jest|playwright(?:\s+test)?|cypress|lint|eslint|typecheck|tsc\b|build|compile|install|add|remove|uninstall|update|upgrade)\b/i
-const POSIX_WORKSPACE_PATH_REGEX = /(?:\/Users|\/home)\/[^/\s'"`;|&()]+(?:\/[A-Za-z0-9._-]+)+/g
-const POSIX_HOME_PREFIX_REGEX = /^(\/Users\/[^/]+|\/home\/[^/]+)/
-
-async function detectPreferredPackageManager(startDir: string): Promise<PreferredPackageManager | null> {
-  let currentDir = path.resolve(startDir)
-
-  while (true) {
-    for (const candidate of PACKAGE_MANAGER_LOCKFILES) {
-      for (const lockfile of candidate.lockfiles) {
-        const lockfilePath = path.join(currentDir, lockfile)
-        if (await pathExists(lockfilePath)) {
-          return {
-            name: candidate.name,
-            lockfile,
-            directory: currentDir,
-          }
-        }
-      }
-    }
-
-    const parentDir = path.dirname(currentDir)
-    if (parentDir === currentDir) {
-      return null
-    }
-    currentDir = parentDir
-  }
-}
-
-function getPackageManagerRetrySuggestion(packageManager: PackageManagerName): string {
-  switch (packageManager) {
-    case "pnpm":
-      return "Retry with pnpm for installs/scripts and pnpm exec for one-off CLIs. Do not use npm or npx in this workspace."
-    case "npm":
-      return "Retry with npm for installs/scripts and npx for one-off CLIs in this workspace."
-    case "yarn":
-      return "Retry with yarn for installs/scripts and yarn dlx for one-off CLIs in this workspace."
-    case "bun":
-      return "Retry with bun for installs/scripts and bunx for one-off CLIs in this workspace."
-  }
-}
-
-function detectPackageManagerMismatch(command: string, preferredPackageManager: PreferredPackageManager | null) {
-  if (!preferredPackageManager) {
-    return null
-  }
-
-  for (const match of command.matchAll(PACKAGE_MANAGER_COMMAND_REGEX)) {
-    const token = match[2]
-    const family = PACKAGE_MANAGER_TOKEN_FAMILY[token]
-    if (family && family !== preferredPackageManager.name) {
-      return {
-        detectedPackageManager: preferredPackageManager.name,
-        packageManagerLockfile: path.join(preferredPackageManager.directory, preferredPackageManager.lockfile),
-        offendingToken: token,
-        error: `This workspace uses ${preferredPackageManager.name} (detected via ${preferredPackageManager.lockfile}), so '${token}' is the wrong package manager here.`,
-        retrySuggestion: getPackageManagerRetrySuggestion(preferredPackageManager.name),
-      }
-    }
-  }
-
-  return null
 }
 
 async function getLatestUserMessageForSession(sessionId?: string): Promise<string | null> {
@@ -262,36 +151,6 @@ async function getLatestUserMessageForSession(sessionId?: string): Promise<strin
   return latestUserMessage?.content?.trim() ?? null
 }
 
-function detectContextGatheringCommandBlock(command: string, latestUserMessage: string | null) {
-  if (!latestUserMessage) {
-    return null
-  }
-
-  if (!CONTEXT_GATHERING_REQUEST_REGEX.test(latestUserMessage)) {
-    return null
-  }
-
-  if (USER_REQUEST_ALLOWS_VALIDATION_REGEX.test(latestUserMessage)) {
-    return null
-  }
-
-  if (!HIGH_IMPACT_PACKAGE_MANAGER_COMMAND_REGEX.test(command) || !VALIDATION_OR_DEPENDENCY_COMMAND_REGEX.test(command)) {
-    return null
-  }
-
-  const blockedCommandCategory = /\b(install|add|remove|uninstall|update|upgrade)\b/i.test(command)
-    ? "dependency-mutation"
-    : "package-manager-validation"
-
-  return {
-    blockedCommandCategory,
-    latestUserRequestExcerpt: latestUserMessage.slice(0, 240),
-    error: "The latest user request is a planning/context question, so package-manager test/build/install commands are blocked for this turn.",
-    guidance: "For context-gathering or 'what's next' requests, prefer read-only inspection commands such as git status, ls, find, rg, sed, head, tail, or cat.",
-    retrySuggestion: "Retry with read-only inspection commands. Only run package-manager test/build/install/lint/typecheck commands when the user explicitly asks for verification or after you have made code changes that need targeted validation.",
-  }
-}
-
 async function pathExists(targetPath: string): Promise<boolean> {
   try {
     await fs.access(targetPath)
@@ -301,189 +160,25 @@ async function pathExists(targetPath: string): Promise<boolean> {
   }
 }
 
-function getUserHomePrefix(targetPath: string): string | null {
-  const match = targetPath.match(POSIX_HOME_PREFIX_REGEX)
-  return match ? match[0] : null
-}
-
-function getWorkspaceRelativePath(targetPath: string): string | null {
-  const homePrefix = getUserHomePrefix(targetPath)
-  return homePrefix ? targetPath.slice(homePrefix.length) : null
-}
-
-function sharesWorkspaceRelativePath(candidatePath: string, workingDirectory: string): boolean {
-  const candidateRelativePath = getWorkspaceRelativePath(candidatePath)
-  const workingDirectoryRelativePath = getWorkspaceRelativePath(workingDirectory)
-
-  if (!candidateRelativePath || !workingDirectoryRelativePath) {
-    return false
-  }
-
-  return candidateRelativePath === workingDirectoryRelativePath
-    || candidateRelativePath.startsWith(`${workingDirectoryRelativePath}/`)
-    || workingDirectoryRelativePath.startsWith(`${candidateRelativePath}/`)
-}
-
-async function normalizeExecuteCommandWorkspacePaths(
-  rawCommand: string,
-  workingDirectory: string,
-): Promise<{ command: string; normalizedPaths?: Array<{ from: string; to: string }> }> {
-  const currentHomePrefix = getUserHomePrefix(workingDirectory)
-  if (!currentHomePrefix) {
-    return { command: rawCommand }
-  }
-
-  const candidatePaths = Array.from(new Set(
-    rawCommand.match(POSIX_WORKSPACE_PATH_REGEX) ?? [],
-  ))
-
-  if (candidatePaths.length === 0) {
-    return { command: rawCommand }
-  }
-
-  let normalizedCommand = rawCommand
-  const normalizedPaths: Array<{ from: string; to: string }> = []
-
-  for (const candidatePath of candidatePaths) {
-    if (!sharesWorkspaceRelativePath(candidatePath, workingDirectory)) {
-      continue
-    }
-
-    if (await pathExists(candidatePath)) {
-      continue
-    }
-
-    const candidateHomePrefix = getUserHomePrefix(candidatePath)
-    if (!candidateHomePrefix || candidateHomePrefix === currentHomePrefix) {
-      continue
-    }
-
-    const rewrittenPath = currentHomePrefix + candidatePath.slice(candidateHomePrefix.length)
-    if (!(await pathExists(rewrittenPath))) {
-      continue
-    }
-
-    normalizedCommand = normalizedCommand.split(candidatePath).join(rewrittenPath)
-    normalizedPaths.push({ from: candidatePath, to: rewrittenPath })
-  }
-
-  return normalizedPaths.length > 0
-    ? { command: normalizedCommand, normalizedPaths }
-    : { command: rawCommand }
-}
-
-const MAX_RESPOND_TO_USER_IMAGES = 4
-const MAX_RESPOND_TO_USER_VIDEOS = 2
-const MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES = 8 * 1024 * 1024
-const MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES = 12 * 1024 * 1024
-const MAX_RESPOND_TO_USER_VIDEO_FILE_BYTES = 250 * 1024 * 1024
-const MAX_RESPOND_TO_USER_TOTAL_VIDEO_BYTES = 500 * 1024 * 1024
-const MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES = 12 * 1024 * 1024
-const DATA_IMAGE_BASE64_PREFIX_REGEX = /^data:image\/[a-z0-9.+-]+;base64,/i
-
-const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".gif": "image/gif",
-  ".webp": "image/webp",
-  ".bmp": "image/bmp",
-}
-
-const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
-  ".mp4": "video/mp4",
-  ".m4v": "video/mp4",
-  ".webm": "video/webm",
-  ".mov": "video/quicktime",
-  ".ogv": "video/ogg",
-}
-
-const escapeMarkdownAltText = (value: string) => value.replace(/[\[\]\\]/g, "").trim()
-
-const getImageMimeTypeFromPath = (imagePath: string): string | undefined =>
-  IMAGE_MIME_BY_EXTENSION[path.extname(imagePath).toLowerCase()]
-
-const getVideoMimeTypeFromPath = (videoPath: string): string | undefined =>
-  VIDEO_MIME_BY_EXTENSION[path.extname(videoPath).toLowerCase()]
-
-const isAllowedRespondToUserImageUrl = (url: string): boolean => {
-  const normalized = url.trim().toLowerCase()
-  return (
-    normalized.startsWith("https://") ||
-    normalized.startsWith("http://") ||
-    DATA_IMAGE_BASE64_PREFIX_REGEX.test(normalized)
-  )
-}
-
-const isAllowedRespondToUserVideoUrl = (url: string): boolean => {
-  const normalized = url.trim().toLowerCase()
-  if (normalized.startsWith("assets://conversation-video/")) return true
-  if (!normalized.startsWith("https://") && !normalized.startsWith("http://")) return false
-  // Only allow http(s) URLs that actually look like video files so tool output
-  // matches what the UI can render as a video card.
-  try {
-    const ext = normalized.lastIndexOf(".")
-    if (ext < 0) return false
-    const extension = normalized.slice(ext).replace(/[?#].*$/, "")
-    return extension in VIDEO_MIME_BY_EXTENSION
-  } catch {
-    return false
-  }
-}
-
-const getDecodedBase64ByteLength = (rawBase64: string): number => {
-  const normalized = rawBase64.replace(/\s+/g, "")
-  if (!normalized) {
-    return 0
-  }
-  const padding = normalized.endsWith("==")
-    ? 2
-    : normalized.endsWith("=")
-      ? 1
-      : 0
-  return Math.max(0, Math.floor((normalized.length * 3) / 4) - padding)
-}
-
-const getDataImageBytesFromUrl = (url: string): number | null => {
-  const trimmed = url.trim()
-  if (!DATA_IMAGE_BASE64_PREFIX_REGEX.test(trimmed)) {
-    return null
-  }
-  const commaIndex = trimmed.indexOf(",")
-  if (commaIndex < 0 || commaIndex === trimmed.length - 1) {
-    return 0
-  }
-  const base64Payload = trimmed.slice(commaIndex + 1)
-  return getDecodedBase64ByteLength(base64Payload)
-}
-
-const getUtf8ByteLength = (value: string): number =>
-  Buffer.byteLength(value, "utf8")
-
 async function resolveValidImagePath(rawPath: string): Promise<{ resolvedPath: string; fileBytes: number }> {
   const resolvedPath = path.isAbsolute(rawPath)
     ? rawPath
     : path.resolve(process.cwd(), rawPath)
 
-  if (path.extname(resolvedPath).toLowerCase() === ".svg") {
-    throw new Error(`SVG images are not supported for conversation assets; use a raster image path: ${rawPath}`)
+  const pathValidation = validateRespondToUserImagePath(rawPath, resolvedPath)
+  if (pathValidation.success === false) {
+    throw new Error(pathValidation.error)
   }
 
   const stat = await fs.stat(resolvedPath)
-  if (!stat.isFile()) {
-    throw new Error(`Image path is not a file: ${rawPath}`)
-  }
-  if (stat.size <= 0) {
-    throw new Error(`Image file is empty: ${rawPath}`)
-  }
-  if (stat.size > MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES) {
-    const maxMb = Math.round(MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES / (1024 * 1024))
-    throw new Error(`Image file is larger than ${maxMb}MB: ${rawPath}`)
-  }
-
-  const mimeType = getImageMimeTypeFromPath(resolvedPath)
-  if (!mimeType) {
-    throw new Error(`Unsupported image extension for path: ${rawPath}`)
+  const fileValidation = validateRespondToUserImageFile({
+    rawPath,
+    resolvedPath,
+    isFile: stat.isFile(),
+    fileBytes: stat.size,
+  })
+  if (fileValidation.success === false) {
+    throw new Error(fileValidation.error)
   }
 
   return { resolvedPath, fileBytes: stat.size }
@@ -495,20 +190,14 @@ async function resolveValidVideoPath(rawPath: string): Promise<{ resolvedPath: s
     : path.resolve(process.cwd(), rawPath)
 
   const stat = await fs.stat(resolvedPath)
-  if (!stat.isFile()) {
-    throw new Error(`Video path is not a file: ${rawPath}`)
-  }
-  if (stat.size <= 0) {
-    throw new Error(`Video file is empty: ${rawPath}`)
-  }
-  if (stat.size > MAX_RESPOND_TO_USER_VIDEO_FILE_BYTES) {
-    const maxMb = Math.round(MAX_RESPOND_TO_USER_VIDEO_FILE_BYTES / (1024 * 1024))
-    throw new Error(`Video file is larger than ${maxMb}MB: ${rawPath}`)
-  }
-
-  const mimeType = getVideoMimeTypeFromPath(resolvedPath)
-  if (!mimeType) {
-    throw new Error(`Unsupported video extension for path: ${rawPath}`)
+  const fileValidation = validateRespondToUserVideoFile({
+    rawPath,
+    resolvedPath,
+    isFile: stat.isFile(),
+    fileBytes: stat.size,
+  })
+  if (fileValidation.success === false) {
+    throw new Error(fileValidation.error)
   }
 
   return { resolvedPath, fileBytes: stat.size }
@@ -523,45 +212,13 @@ type ToolHandler = (
 const toolHandlers: Record<string, ToolHandler> = {
   list_running_agents: async (): Promise<MCPToolResult> => {
     const activeSessions = agentSessionTracker.getActiveSessions()
-
-    if (activeSessions.length === 0) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              agents: [],
-              count: 0,
-              message: "No agents currently running",
-            }, null, 2),
-          },
-        ],
-        isError: false,
-      }
-    }
-
-    const agents = activeSessions.map((session) => ({
-      sessionId: session.id,
-      conversationId: session.conversationId,
-      title: session.conversationTitle,
-      status: session.status,
-      currentIteration: session.currentIteration,
-      maxIterations: session.maxIterations,
-      lastActivity: session.lastActivity,
-      startTime: session.startTime,
-      isSnoozed: session.isSnoozed,
-      // Calculate runtime in seconds
-      runtimeSeconds: Math.floor((Date.now() - session.startTime) / 1000),
-    }))
+    const payload = buildListRunningAgentsPayload(activeSessions)
 
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify({
-            agents,
-            count: agents.length,
-          }, null, 2),
+          text: JSON.stringify(payload, null, 2),
         },
       ],
       isError: false,
@@ -569,15 +226,15 @@ const toolHandlers: Record<string, ToolHandler> = {
   },
 
   send_agent_message: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    // Validate required parameters with proper type guards
-    if (!args.sessionId || typeof args.sessionId !== "string") {
+    const parsedArgs = parseSendAgentMessageArgs(args)
+    if (parsedArgs.success === false) {
       return {
         content: [
           {
             type: "text",
             text: JSON.stringify({
               success: false,
-              error: "sessionId is required and must be a string",
+              error: parsedArgs.error,
             }),
           },
         ],
@@ -585,23 +242,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    if (!args.message || typeof args.message !== "string") {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: "message is required and must be a string",
-            }),
-          },
-        ],
-        isError: true,
-      }
-    }
-
-    const sessionId = args.sessionId
-    const message = args.message
+    const { sessionId, message } = parsedArgs
 
     // Get target session
     const session = agentSessionTracker.getSession(sessionId)
@@ -610,10 +251,7 @@ const toolHandlers: Record<string, ToolHandler> = {
         content: [
           {
             type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: `Agent session not found: ${sessionId}`,
-            }),
+            text: JSON.stringify(buildAgentSessionNotFoundPayload(sessionId)),
           },
         ],
         isError: true,
@@ -626,10 +264,7 @@ const toolHandlers: Record<string, ToolHandler> = {
         content: [
           {
             type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: "Target agent session has no linked conversation",
-            }),
+            text: JSON.stringify(buildAgentSessionMissingConversationPayload()),
           },
         ],
         isError: true,
@@ -643,13 +278,12 @@ const toolHandlers: Record<string, ToolHandler> = {
       content: [
         {
           type: "text",
-          text: JSON.stringify({
-            success: true,
+          text: JSON.stringify(buildSendAgentMessageQueuedPayload({
             sessionId,
             conversationId: session.conversationId,
             queuedMessageId: queuedMessage.id,
-            message: `Message queued for agent session ${sessionId} (${session.conversationTitle})`,
-          }, null, 2),
+            conversationTitle: session.conversationTitle,
+          }), null, 2),
         },
       ],
       isError: false,
@@ -664,7 +298,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       const session = agentSessionTracker.getSession(sessionId)
       if (!session) {
         return {
-          content: [{ type: "text", text: JSON.stringify({ success: false, error: `Agent session not found: ${sessionId}` }) }],
+          content: [{ type: "text", text: JSON.stringify(buildAgentSessionNotFoundPayload(sessionId)) }],
           isError: true,
         }
       }
@@ -672,7 +306,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       toolApprovalManager.cancelSessionApprovals(sessionId)
       agentSessionTracker.stopSession(sessionId)
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: true, sessionId, message: `Agent session ${sessionId} (${session.conversationTitle}) terminated` }, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify(buildKillAgentSessionPayload({ sessionId, conversationTitle: session.conversationTitle }), null, 2) }],
         isError: false,
       }
     }
@@ -681,19 +315,18 @@ const toolHandlers: Record<string, ToolHandler> = {
     const activeSessions = agentSessionTracker.getActiveSessions()
     if (activeSessions.length === 0) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: true, message: "No agents were running", sessionsTerminated: 0 }, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify(buildKillAllAgentsNoopPayload(), null, 2) }],
         isError: false,
       }
     }
     toolApprovalManager.cancelAllApprovals()
     const { before, after } = await emergencyStopAll()
     return {
-      content: [{ type: "text", text: JSON.stringify({
-        success: true,
-        message: `Emergency stop: ${activeSessions.length} session(s) terminated`,
+      content: [{ type: "text", text: JSON.stringify(buildKillAllAgentsPayload({
         sessionsTerminated: activeSessions.length,
-        processesKilled: before - after,
-      }, null, 2) }],
+        processesBefore: before,
+        processesAfter: after,
+      }), null, 2) }],
       isError: false,
     }
   },
@@ -706,45 +339,10 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const text = typeof args.text === "string" ? args.text.trim() : ""
-    if (args.text !== undefined && typeof args.text !== "string") {
+    const parsedArgs = parseRespondToUserArgs(args)
+    if (parsedArgs.success === false) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "text must be a string if provided" }) }],
-        isError: true,
-      }
-    }
-
-    if (args.images !== undefined && !Array.isArray(args.images)) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "images must be an array if provided" }) }],
-        isError: true,
-      }
-    }
-
-    if (args.videos !== undefined && !Array.isArray(args.videos)) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "videos must be an array if provided" }) }],
-        isError: true,
-      }
-    }
-
-    const imageInputs = Array.isArray(args.images)
-      ? args.images
-      : []
-    const videoInputs = Array.isArray(args.videos)
-      ? args.videos
-      : []
-
-    if (imageInputs.length > MAX_RESPOND_TO_USER_IMAGES) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: `You can include up to ${MAX_RESPOND_TO_USER_IMAGES} images.` }) }],
-        isError: true,
-      }
-    }
-
-    if (videoInputs.length > MAX_RESPOND_TO_USER_VIDEOS) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: `You can include up to ${MAX_RESPOND_TO_USER_VIDEOS} videos.` }) }],
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: parsedArgs.error }) }],
         isError: true,
       }
     }
@@ -763,222 +361,27 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     const conversationId = activeSession.conversationId
-    if ((imageInputs.length > 0 || videoInputs.length > 0) && !conversationId) {
+    if ((parsedArgs.imageInputs.length > 0 || parsedArgs.videoInputs.length > 0) && !conversationId) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "Media assets require an active conversation" }) }],
         isError: true,
       }
     }
 
-    const imageMarkdownBlocks: string[] = []
-    const videoMarkdownBlocks: string[] = []
-    let localImageCount = 0
-    let localVideoCount = 0
-    let embeddedImageBytes = 0
-    let localVideoBytes = 0
+    const materializedResponse = await materializeParsedRespondToUserResponse(parsedArgs, {
+      storeDataImageUrlAsAsset: (url) =>
+        conversationService.storeDataImageUrlAsConversationAsset(conversationId!, url),
+      resolveImagePath: resolveValidImagePath,
+      storeImagePathAsAsset: (resolvedPath) =>
+        conversationService.storeImagePathAsConversationAsset(conversationId!, resolvedPath),
+      resolveVideoPath: resolveValidVideoPath,
+      storeVideoPathAsAsset: (resolvedPath) =>
+        conversationService.storeVideoPathAsConversationAsset(conversationId!, resolvedPath),
+    })
 
-    for (let index = 0; index < imageInputs.length; index++) {
-      const rawItem = imageInputs[index]
-      if (!rawItem || typeof rawItem !== "object" || Array.isArray(rawItem)) {
-        return {
-          content: [{ type: "text", text: JSON.stringify({ success: false, error: `images[${index}] must be an object` }) }],
-          isError: true,
-        }
-      }
-
-      const imageItem = rawItem as Record<string, unknown>
-      const url = typeof imageItem.url === "string" ? imageItem.url.trim() : ""
-      const imagePath = typeof imageItem.path === "string" ? imageItem.path.trim() : ""
-      const preferredAlt = typeof imageItem.alt === "string" ? imageItem.alt.trim() : ""
-
-      if (!url && !imagePath) {
-        return {
-          content: [{ type: "text", text: JSON.stringify({ success: false, error: `images[${index}] must include either url or path` }) }],
-          isError: true,
-        }
-      }
-
-      if (url && imagePath) {
-        return {
-          content: [{ type: "text", text: JSON.stringify({ success: false, error: `images[${index}] cannot include both url and path` }) }],
-          isError: true,
-        }
-      }
-
-      const fallbackAlt = imagePath
-        ? path.basename(imagePath)
-        : `Image ${index + 1}`
-      const safeAlt = escapeMarkdownAltText(preferredAlt || fallbackAlt) || `Image ${index + 1}`
-
-      if (url) {
-        if (!isAllowedRespondToUserImageUrl(url)) {
-          return {
-            content: [{ type: "text", text: JSON.stringify({ success: false, error: `images[${index}].url must be http(s) or data:image` }) }],
-            isError: true,
-          }
-        }
-        const dataImageBytes = getDataImageBytesFromUrl(url)
-        if (dataImageBytes !== null) {
-          if (dataImageBytes <= 0) {
-            return {
-              content: [{ type: "text", text: JSON.stringify({ success: false, error: `images[${index}].url contains an invalid data:image payload` }) }],
-              isError: true,
-            }
-          }
-          if (dataImageBytes > MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES) {
-            const maxMb = Math.round(MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES / (1024 * 1024))
-            return {
-              content: [{ type: "text", text: JSON.stringify({ success: false, error: `images[${index}].url exceeds the ${maxMb}MB limit` }) }],
-              isError: true,
-            }
-          }
-          if (embeddedImageBytes + dataImageBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
-            const maxMb = Math.round(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES / (1024 * 1024))
-            return {
-              content: [{ type: "text", text: JSON.stringify({ success: false, error: `Total embedded image payload exceeds the ${maxMb}MB limit` }) }],
-              isError: true,
-            }
-          }
-          embeddedImageBytes += dataImageBytes
-          try {
-            const assetUrl = await conversationService.storeDataImageUrlAsConversationAsset(conversationId!, url)
-            imageMarkdownBlocks.push(`![${safeAlt}](${assetUrl})`)
-          } catch (error) {
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({
-                  success: false,
-                  error: error instanceof Error
-                    ? `Failed to store images[${index}].url: ${error.message}`
-                    : `Failed to store images[${index}].url`,
-                }),
-              }],
-              isError: true,
-            }
-          }
-          continue
-        }
-        imageMarkdownBlocks.push(`![${safeAlt}](${url})`)
-        continue
-      }
-
-      try {
-        const { resolvedPath, fileBytes } = await resolveValidImagePath(imagePath)
-        if (embeddedImageBytes + fileBytes > MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES) {
-          const maxMb = Math.round(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES / (1024 * 1024))
-          return {
-            content: [{ type: "text", text: JSON.stringify({ success: false, error: `Total embedded image payload exceeds the ${maxMb}MB limit` }) }],
-            isError: true,
-          }
-        }
-        embeddedImageBytes += fileBytes
-        const assetUrl = await conversationService.storeImagePathAsConversationAsset(conversationId!, resolvedPath)
-        imageMarkdownBlocks.push(`![${safeAlt}](${assetUrl})`)
-        localImageCount++
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: error instanceof Error
-                ? `Failed to load images[${index}].path: ${error.message}`
-                : `Failed to load images[${index}].path`,
-            }),
-          }],
-          isError: true,
-        }
-      }
-    }
-
-    for (let index = 0; index < videoInputs.length; index++) {
-      const rawItem = videoInputs[index]
-      if (!rawItem || typeof rawItem !== "object" || Array.isArray(rawItem)) {
-        return {
-          content: [{ type: "text", text: JSON.stringify({ success: false, error: `videos[${index}] must be an object` }) }],
-          isError: true,
-        }
-      }
-
-      const videoItem = rawItem as Record<string, unknown>
-      const url = typeof videoItem.url === "string" ? videoItem.url.trim() : ""
-      const videoPath = typeof videoItem.path === "string" ? videoItem.path.trim() : ""
-      const preferredLabel = typeof videoItem.label === "string" ? videoItem.label.trim() : ""
-
-      if (!url && !videoPath) {
-        return {
-          content: [{ type: "text", text: JSON.stringify({ success: false, error: `videos[${index}] must include either url or path` }) }],
-          isError: true,
-        }
-      }
-
-      if (url && videoPath) {
-        return {
-          content: [{ type: "text", text: JSON.stringify({ success: false, error: `videos[${index}] cannot include both url and path` }) }],
-          isError: true,
-        }
-      }
-
-      const fallbackLabel = videoPath ? path.basename(videoPath) : `Video ${index + 1}`
-      const safeLabel = escapeMarkdownAltText(preferredLabel || fallbackLabel) || `Video ${index + 1}`
-
-      if (url) {
-        if (!isAllowedRespondToUserVideoUrl(url)) {
-          return {
-            content: [{ type: "text", text: JSON.stringify({ success: false, error: `videos[${index}].url must be a valid http(s) video URL (recognized extension: mp4, m4v, webm, mov, ogv) or an assets://conversation-video/ URL` }) }],
-            isError: true,
-          }
-        }
-        videoMarkdownBlocks.push(`[${safeLabel}](${url})`)
-        continue
-      }
-
-      try {
-        const { resolvedPath, fileBytes } = await resolveValidVideoPath(videoPath)
-        if (localVideoBytes + fileBytes > MAX_RESPOND_TO_USER_TOTAL_VIDEO_BYTES) {
-          const maxMb = Math.round(MAX_RESPOND_TO_USER_TOTAL_VIDEO_BYTES / (1024 * 1024))
-          return {
-            content: [{ type: "text", text: JSON.stringify({ success: false, error: `Total local video payload exceeds the ${maxMb}MB limit` }) }],
-            isError: true,
-          }
-        }
-        localVideoBytes += fileBytes
-        const assetUrl = await conversationService.storeVideoPathAsConversationAsset(conversationId!, resolvedPath)
-        videoMarkdownBlocks.push(`[${safeLabel}](${assetUrl})`)
-        localVideoCount++
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: error instanceof Error
-                ? `Failed to load videos[${index}].path: ${error.message}`
-                : `Failed to load videos[${index}].path`,
-            }),
-          }],
-          isError: true,
-        }
-      }
-    }
-
-    const imageMarkdown = imageMarkdownBlocks.join("\n\n")
-    const videoMarkdown = videoMarkdownBlocks.join("\n\n")
-    const responseContent = [text, imageMarkdown, videoMarkdown].filter(Boolean).join("\n\n")
-    const responseContentBytes = getUtf8ByteLength(responseContent)
-
-    if (!responseContent.trim()) {
+    if (materializedResponse.success === false) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "respond_to_user requires text, images, and/or videos" }) }],
-        isError: true,
-      }
-    }
-
-    if (responseContentBytes > MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES) {
-      const maxMb = Math.round(MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES / (1024 * 1024))
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: `Response content exceeds the ${maxMb}MB limit` }) }],
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: materializedResponse.error }) }],
         isError: true,
       }
     }
@@ -986,7 +389,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     appendSessionUserResponse({
       sessionId: trackedSessionId,
       runId: agentSessionStateManager.getSessionRunId(trackedSessionId),
-      text: responseContent,
+      text: materializedResponse.responseContent,
     })
 
     return {
@@ -996,15 +399,15 @@ const toolHandlers: Record<string, ToolHandler> = {
           text: JSON.stringify({
             success: true,
             message: "Response recorded for delivery to user.",
-            textLength: text.length,
-            responseContentLength: responseContent.length,
-            responseContentBytes,
-            imageCount: imageMarkdownBlocks.length,
-            videoCount: videoMarkdownBlocks.length,
-            localImageCount,
-            localVideoCount,
-            embeddedImageBytes,
-            localVideoBytes,
+            textLength: parsedArgs.text.length,
+            responseContentLength: materializedResponse.responseContent.length,
+            responseContentBytes: materializedResponse.responseContentBytes,
+            imageCount: materializedResponse.imageCount,
+            videoCount: materializedResponse.videoCount,
+            localImageCount: materializedResponse.localImageCount,
+            localVideoCount: materializedResponse.localVideoCount,
+            embeddedImageBytes: materializedResponse.embeddedImageBytes,
+            localVideoBytes: materializedResponse.localVideoBytes,
           }, null, 2),
         },
       ],
@@ -1020,9 +423,10 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    if (typeof args.title !== "string" || args.title.trim() === "") {
+    const parsedArgs = parseSetSessionTitleArgs(args)
+    if (parsedArgs.success === false) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "title must be a non-empty string" }) }],
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: parsedArgs.error }) }],
         isError: true,
       }
     }
@@ -1032,19 +436,19 @@ const toolHandlers: Record<string, ToolHandler> = {
     const session = agentSessionTracker.getSession(trackedSessionId)
     if (!session?.conversationId) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not linked to a conversation" }) }],
+        content: [{ type: "text", text: JSON.stringify(buildSetSessionTitleMissingConversationPayload()) }],
         isError: true,
       }
     }
 
     const updatedConversation = await conversationService.renameConversationTitle(
       session.conversationId,
-      args.title,
+      parsedArgs.title,
     )
 
     if (!updatedConversation) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Failed to update conversation title" }) }],
+        content: [{ type: "text", text: JSON.stringify(buildSetSessionTitleRenameFailedPayload()) }],
         isError: true,
       }
     }
@@ -1057,88 +461,48 @@ const toolHandlers: Record<string, ToolHandler> = {
       setAcpSessionTitleOverride(context.sessionId, updatedConversation.title)
       const parentSessionId = mappedAppSessionId
       const runId = agentSessionStateManager.getSessionRunId(trackedSessionId)
-      const isSessionComplete = session.status === "completed" || session.status === "error" || session.status === "stopped"
-      const conversationState = session.status === "completed"
-        ? "complete"
-        : isSessionComplete
-          ? "blocked"
-          : "running"
 
-      await emitAgentProgress({
+      await emitAgentProgress(buildSetSessionTitleProgressUpdate({
         sessionId: context.sessionId,
-        ...(parentSessionId && parentSessionId !== context.sessionId ? { parentSessionId } : {}),
-        ...(typeof runId === "number" ? { runId } : {}),
+        parentSessionId,
+        runId,
         conversationTitle: updatedConversation.title,
-        currentIteration: 0,
-        maxIterations: 1,
-        steps: [],
-        isComplete: isSessionComplete,
-        conversationState,
-      })
+        sessionStatus: session.status,
+      }))
     }
 
     return {
-      content: [{ type: "text", text: JSON.stringify({ success: true, title: updatedConversation.title }, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify(buildSetSessionTitlePayload(updatedConversation.title), null, 2) }],
       isError: false,
     }
   },
 
   mark_work_complete: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    if (typeof args.summary !== "string" || args.summary.trim() === "") {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "summary must be a non-empty string" }) }],
-        isError: true,
-      }
-    }
-
-    if (args.confidence !== undefined && (typeof args.confidence !== "number" || Number.isNaN(args.confidence))) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "confidence must be a number if provided" }) }],
-        isError: true,
-      }
-    }
-
-    const summary = args.summary.trim()
-    const confidence = typeof args.confidence === "number"
-      ? Math.max(0, Math.min(1, args.confidence))
-      : undefined
+    const payload = buildMarkWorkCompletePayload(args)
 
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify({
-            success: true,
-            markedComplete: true,
-            summary,
-            confidence,
-            message: "Completion signal recorded. The runtime will verify completion and finalize the turn without requiring another user-facing response.",
-          }, null, 2),
+          text: JSON.stringify(payload, null, 2),
         },
       ],
-      isError: false,
+      isError: payload.success === false,
     }
   },
 
   execute_command: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     const { skillsService } = await import("./skills-service")
 
-    // Validate required command parameter
-    if (!args.command || typeof args.command !== "string") {
+    const parsedArgs = parseExecuteCommandArgs(args)
+    if (parsedArgs.success === false) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "command parameter is required and must be a string" }) }],
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: parsedArgs.error }) }],
         isError: true,
       }
     }
 
-    const command = args.command as string
-    const skillId = typeof args.skillId === "string" ? args.skillId.trim() : undefined
-    // Validate timeout: must be a finite non-negative number, otherwise use default
-    // This prevents NaN or negative values from disabling the timeout entirely
-    const rawTimeout = args.timeout
-    const timeout = (typeof rawTimeout === "number" && Number.isFinite(rawTimeout) && rawTimeout >= 0)
-      ? rawTimeout
-      : 30000
+    const { command, skillId, timeout } = parsedArgs
 
     // Determine the working directory
     let cwd: string | undefined
@@ -1194,26 +558,39 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     const effectiveCwd = cwd || process.cwd()
-    const normalizedCommandResult = await normalizeExecuteCommandWorkspacePaths(command, effectiveCwd)
+    const normalizedCommandResult = await normalizeExecuteCommandWorkspacePaths(command, effectiveCwd, pathExists)
     const effectiveCommand = normalizedCommandResult.command
-    const preferredPackageManager = await detectPreferredPackageManager(effectiveCwd)
-    const packageManagerMismatch = detectPackageManagerMismatch(effectiveCommand, preferredPackageManager)
+    const preferredPackageManager = await detectPreferredPackageManager(effectiveCwd, {
+      resolve: path.resolve,
+      join: path.join,
+      dirname: path.dirname,
+    }, pathExists)
+    const packageManagerMismatch = detectPackageManagerMismatch(
+      effectiveCommand,
+      preferredPackageManager
+        ? {
+          name: preferredPackageManager.name,
+          lockfile: preferredPackageManager.lockfile,
+          packageManagerLockfile: path.join(preferredPackageManager.directory, preferredPackageManager.lockfile),
+        }
+        : null,
+    )
 
     if (packageManagerMismatch) {
+      const payload = buildRuntimeCommandPolicyBlockPayload({
+        command: effectiveCommand,
+        originalCommand: command,
+        cwd: effectiveCwd,
+        skillName,
+        ignoredInvalidSkillIdWarning,
+        normalizedPaths: normalizedCommandResult.normalizedPaths,
+      }, packageManagerMismatch)
+
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify({
-              success: false,
-              command: effectiveCommand,
-              originalCommand: effectiveCommand === command ? undefined : command,
-              cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
-              ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
-              ...packageManagerMismatch,
-            }, null, 2),
+            text: JSON.stringify(payload, null, 2),
           },
         ],
         isError: true,
@@ -1224,20 +601,20 @@ const toolHandlers: Record<string, ToolHandler> = {
     const contextGatheringCommandBlock = detectContextGatheringCommandBlock(effectiveCommand, latestUserMessage)
 
     if (contextGatheringCommandBlock) {
+      const payload = buildRuntimeCommandPolicyBlockPayload({
+        command: effectiveCommand,
+        originalCommand: command,
+        cwd: effectiveCwd,
+        skillName,
+        ignoredInvalidSkillIdWarning,
+        normalizedPaths: normalizedCommandResult.normalizedPaths,
+      }, contextGatheringCommandBlock)
+
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify({
-              success: false,
-              command: effectiveCommand,
-              originalCommand: effectiveCommand === command ? undefined : command,
-              cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
-              ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
-              ...contextGatheringCommandBlock,
-            }, null, 2),
+            text: JSON.stringify(payload, null, 2),
           },
         ],
         isError: true,
@@ -1260,41 +637,24 @@ const toolHandlers: Record<string, ToolHandler> = {
 
       const { stdout, stderr } = await execAsync(effectiveCommand, execOptions)
 
-      // Truncate large outputs to prevent context bloat
-      // Keep first 5K + last 5K chars so agent sees both beginning and end
-      const MAX_OUTPUT_CHARS = 10000
-      const HALF = Math.floor(MAX_OUTPUT_CHARS / 2)
-      let truncatedStdout = stdout || ""
-      let outputTruncated = false
-      if (truncatedStdout.length > MAX_OUTPUT_CHARS) {
-        const totalLines = truncatedStdout.split("\n").length
-        const totalBytes = truncatedStdout.length
-        const head = truncatedStdout.substring(0, HALF)
-        const tail = truncatedStdout.substring(truncatedStdout.length - HALF)
-        truncatedStdout = head +
-          `\n\n... [OUTPUT TRUNCATED: ${totalBytes} bytes, ~${totalLines} lines total. ` +
-          `Showing first ${HALF} + last ${HALF} chars. ` +
-          `Use head/tail/sed to read specific ranges, e.g.: sed -n '100,200p' file] ...\n\n` +
-          tail
-        outputTruncated = true
-      }
+      const truncatedStdout = truncateRuntimeCommandOutput(stdout || "")
+      const payload = buildRuntimeCommandSuccessPayload({
+        command: effectiveCommand,
+        originalCommand: command,
+        cwd: effectiveCwd,
+        skillName,
+        ignoredInvalidSkillIdWarning,
+        normalizedPaths: normalizedCommandResult.normalizedPaths,
+        stdout: truncatedStdout.output,
+        stderr,
+        outputTruncated: truncatedStdout.outputTruncated,
+      })
 
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify({
-              success: true,
-              command: effectiveCommand,
-              originalCommand: effectiveCommand === command ? undefined : command,
-              cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
-              ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
-              stdout: truncatedStdout,
-              stderr: stderr || "",
-              ...(outputTruncated ? { outputTruncated: true, hint: "Output was truncated. Use head -n/tail -n/sed -n 'X,Yp' to read specific sections." } : {}),
-            }, null, 2),
+            text: JSON.stringify(payload, null, 2),
           },
         ],
         isError: false,
@@ -1306,41 +666,26 @@ const toolHandlers: Record<string, ToolHandler> = {
       const errorMessage = error.message || String(error)
       const exitCode = error.code
 
-      // Truncate large error outputs too
-      const MAX_OUTPUT_CHARS = 10000
-      const HALF = Math.floor(MAX_OUTPUT_CHARS / 2)
-      if (stdout.length > MAX_OUTPUT_CHARS) {
-        const totalLines = stdout.split("\n").length
-        const head = stdout.substring(0, HALF)
-        const tail = stdout.substring(stdout.length - HALF)
-        stdout = head +
-          `\n\n... [OUTPUT TRUNCATED: ${stdout.length} bytes, ~${totalLines} lines. Use head/tail/sed to read specific ranges] ...\n\n` +
-          tail
-      }
-
-      // Detect shell escaping issues and add guidance
-      const hasShellEscapingIssue = /unexpected (EOF|end of file)|unterminated (string|quote)|syntax error near/i.test(stderr + errorMessage);
-      const hint = hasShellEscapingIssue
-        ? '\n\nHINT: This command likely failed due to shell escaping issues with special characters or long strings. Try writing the content to a file first (e.g., with write_file or echo > file), then reference the file in your command.'
-        : '';
+      const truncatedStdout = truncateRuntimeCommandOutput(stdout, { errorOutput: true })
+      stdout = truncatedStdout.output
+      const payload = buildRuntimeCommandFailurePayload({
+        command: effectiveCommand,
+        originalCommand: command,
+        cwd: effectiveCwd,
+        skillName,
+        ignoredInvalidSkillIdWarning,
+        normalizedPaths: normalizedCommandResult.normalizedPaths,
+        errorMessage,
+        exitCode,
+        stdout,
+        stderr,
+      })
 
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify({
-              success: false,
-              command: effectiveCommand,
-              originalCommand: effectiveCommand === command ? undefined : command,
-              cwd: effectiveCwd,
-              skillName,
-              ...(ignoredInvalidSkillIdWarning ?? {}),
-              ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
-              error: errorMessage + hint,
-              exitCode,
-              stdout,
-              stderr,
-            }, null, 2),
+            text: JSON.stringify(payload, null, 2),
           },
         ],
         isError: true,
@@ -1349,164 +694,43 @@ const toolHandlers: Record<string, ToolHandler> = {
   },
 
   list_server_tools: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    // Validate serverName parameter
-    if (typeof args.serverName !== "string" || args.serverName.trim() === "") {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "serverName must be a non-empty string" }) }],
-        isError: true,
-      }
-    }
-
-    const serverName = args.serverName.trim()
-    const allTools = mcpService.getAvailableTools()
-
-    // Filter tools by server name
-    const serverTools = allTools.filter((tool) => {
-      const toolServerName = tool.name.includes(":") ? tool.name.split(":")[0] : "unknown"
-      return toolServerName === serverName
-    })
-
-    if (serverTools.length === 0) {
-      // Check if the server exists but has no tools
-      const serverStatus = mcpService.getServerStatus()
-      if (serverStatus[serverName]) {
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: true,
-              serverName,
-              connected: serverStatus[serverName].connected,
-              tools: [],
-              count: 0,
-              message: serverStatus[serverName].connected
-                ? "Server is connected but has no tools available"
-                : "Server is not connected",
-            }, null, 2),
-          }],
-          isError: false,
-        }
-      }
-
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            success: false,
-            error: `Server '${serverName}' not found. Check the configured server list in the prompt, app UI, or .agents/mcp.json.`,
-          }, null, 2),
-        }],
-        isError: true,
-      }
-    }
-
-    // Return tools with brief descriptions (no full schemas)
-    const toolList = serverTools.map((tool) => {
-      const toolName = tool.name.includes(":") ? tool.name.split(":")[1] : tool.name
-      return {
-        name: tool.name,
-        shortName: toolName,
-        description: tool.description,
-      }
-    })
+    const result = buildListServerToolsPayload(
+      args,
+      mcpService.getAvailableTools(),
+      mcpService.getServerStatus(),
+    )
 
     return {
       content: [{
         type: "text",
-        text: JSON.stringify({
-          success: true,
-          serverName,
-          tools: toolList,
-          count: toolList.length,
-          hint: "Use get_tool_schema to get full parameter details for a specific tool",
-        }, null, 2),
+        text: JSON.stringify(result.payload, null, 2),
       }],
-      isError: false,
+      isError: result.isError,
     }
   },
 
   get_tool_schema: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
-    // Validate toolName parameter
-    if (typeof args.toolName !== "string" || args.toolName.trim() === "") {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "toolName must be a non-empty string" }) }],
-        isError: true,
-      }
-    }
-
-    const toolName = args.toolName.trim()
-    const allTools = mcpService.getAvailableTools()
-
-    // Find the tool (try exact match first, then partial match)
-    let tool = allTools.find((t) => t.name === toolName)
-
-    // If not found, try matching just the tool name part (without server prefix)
-    if (!tool && !toolName.includes(":")) {
-      // Find ALL matching tools to detect ambiguity
-      const matchingTools = allTools.filter((t) => {
-        const shortName = t.name.includes(":") ? t.name.split(":")[1] : t.name
-        return shortName === toolName
-      })
-
-      if (matchingTools.length > 1) {
-        // Ambiguous match - multiple servers have a tool with this name
-        return {
-          content: [{
-            type: "text",
-            text: JSON.stringify({
-              success: false,
-              error: `Ambiguous tool name '${toolName}' - found in multiple servers. Please use the fully-qualified name.`,
-              matchingTools: matchingTools.map((t) => t.name),
-              hint: "Use one of the fully-qualified tool names listed above (e.g., 'server:tool_name')",
-            }, null, 2),
-          }],
-          isError: true,
-        }
-      }
-
-      // Single match - use it
-      tool = matchingTools[0]
-    }
-
-    if (!tool) {
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            success: false,
-            error: `Tool '${toolName}' not found. Use list_server_tools to see available tools for a server.`,
-            availableTools: allTools.slice(0, 10).map((t) => t.name),
-            hint: allTools.length > 10 ? `...and ${allTools.length - 10} more tools` : undefined,
-          }, null, 2),
-        }],
-        isError: true,
-      }
-    }
+    const result = buildGetToolSchemaPayload(args, mcpService.getAvailableTools())
 
     return {
       content: [{
         type: "text",
-        text: JSON.stringify({
-          success: true,
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema,
-        }, null, 2),
+        text: JSON.stringify(result.payload, null, 2),
       }],
-      isError: false,
+      isError: result.isError,
     }
   },
 
   load_skill_instructions: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
-    // Validate skillId parameter
-    if (typeof args.skillId !== "string" || args.skillId.trim() === "") {
+    const parsedArgs = parseRuntimeSkillIdArg(args)
+    if (parsedArgs.success === false) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "skillId must be a non-empty string" }) }],
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: parsedArgs.error }) }],
         isError: true,
       }
     }
 
-    const skillId = args.skillId.trim()
+    const skillId = parsedArgs.skillId
     const { skillsService } = await import("./skills-service")
     // Pick up skills added or edited directly in .agents/skills while the app
     // process is still running.
@@ -1518,10 +742,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       return {
         content: [{
           type: "text",
-          text: JSON.stringify({
-            success: false,
-            error: `Skill '${skillId}' not found. Check the Available Skills section in the system prompt for valid skill IDs.`,
-          }),
+          text: JSON.stringify(buildRuntimeSkillNotFoundPayload(skillId)),
         }],
         isError: true,
       }
@@ -1534,7 +755,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     return {
       content: [{
         type: "text",
-        text: `# ${skill.name}\n\n${skill.instructions}`,
+        text: buildRuntimeSkillInstructionsText(skill),
       }],
       isError: false,
     }
@@ -1548,20 +769,15 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    if (typeof args.contextRef !== "string" || args.contextRef.trim() === "") {
+    const parsedArgs = parseReadMoreContextArgs(args)
+    if (parsedArgs.success === false) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "contextRef must be a non-empty string" }) }],
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: parsedArgs.error }) }],
         isError: true,
       }
     }
 
-    const result = readMoreContext(context.sessionId, args.contextRef.trim(), {
-      mode: typeof args.mode === "string" ? args.mode as "overview" | "head" | "tail" | "window" | "search" : undefined,
-      offset: typeof args.offset === "number" ? args.offset : undefined,
-      length: typeof args.length === "number" ? args.length : undefined,
-      query: typeof args.query === "string" ? args.query : undefined,
-      maxChars: typeof args.maxChars === "number" ? args.maxChars : undefined,
-    })
+    const result = readMoreContext(context.sessionId, parsedArgs.contextRef, parsedArgs.options)
 
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],

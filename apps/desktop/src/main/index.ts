@@ -252,7 +252,7 @@ if (!gotSingleInstanceLock) {
       try {
         // Start remote server (force enabled for --qr mode, bypassing config check)
         const serverResult = await startRemoteServerForced()
-        if (!serverResult.running) {
+        if (serverResult.running === false) {
           console.error(
             "[QR Mode] Failed to start remote server:",
             serverResult.error || "Unknown error",
@@ -412,7 +412,7 @@ if (!gotSingleInstanceLock) {
         const serverResult = await startRemoteServerForced({
           bindAddressOverride: "0.0.0.0",
         })
-        if (!serverResult.running) {
+        if (serverResult.running === false) {
           console.error(
             "[Headless] Failed to start remote server:",
             serverResult.error || "Unknown error",
@@ -597,7 +597,7 @@ if (!gotSingleInstanceLock) {
       if (cfg.remoteServerEnabled) {
         startRemoteServer()
           .then(async (result) => {
-            if (!result.running) {
+            if (result.running === false) {
               logApp(
                 `Remote server failed to start: ${result.error || "Unknown error"}`,
               )

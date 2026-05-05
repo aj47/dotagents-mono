@@ -4,8 +4,14 @@ import Slider from '@react-native-community/slider';
 import * as Speech from 'expo-speech';
 import { useTheme } from './ThemeProvider';
 import { Theme, spacing, radius } from './theme';
-import { isEnglishVoice, sortVoicesForTtsPicker } from '../lib/ttsVoices';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
+import {
+  EDGE_TTS_VOICES,
+} from '@dotagents/shared/providers';
+import {
+  isEnglishTtsVoice as isEnglishVoice,
+  sortVoicesForTtsPicker,
+} from '@dotagents/shared/tts-voice-picker';
 
 export type Voice = {
   identifier: string;
@@ -13,20 +19,6 @@ export type Voice = {
   quality: string;
   language: string;
 };
-
-// Free Edge TTS neural voices (web-only playback via public Microsoft endpoint)
-const EDGE_TTS_VOICE_OPTIONS: ReadonlyArray<{
-  identifier: string;
-  name: string;
-  language: string;
-}> = [
-  { identifier: 'en-US-AriaNeural', name: 'Aria (Edge Neural)', language: 'en-US' },
-  { identifier: 'en-US-GuyNeural', name: 'Guy (Edge Neural)', language: 'en-US' },
-  { identifier: 'en-US-JennyNeural', name: 'Jenny (Edge Neural)', language: 'en-US' },
-  { identifier: 'en-US-BrianNeural', name: 'Brian (Edge Neural)', language: 'en-US' },
-  { identifier: 'en-GB-SoniaNeural', name: 'Sonia (Edge Neural)', language: 'en-GB' },
-  { identifier: 'en-GB-RyanNeural', name: 'Ryan (Edge Neural)', language: 'en-GB' },
-];
 
 type UnifiedVoice =
   | { provider: 'native'; identifier: string; name: string; quality: string; language: string }
@@ -74,11 +66,11 @@ export function TTSSettings({
   // native via expo-audio + expo-file-system).
   const edgeVoices: UnifiedVoice[] = useMemo(
     () =>
-      EDGE_TTS_VOICE_OPTIONS.map((v) => ({
+      EDGE_TTS_VOICES.map((v) => ({
         provider: 'edge' as const,
-        identifier: v.identifier,
-        name: v.name,
-        language: v.language,
+        identifier: v.value,
+        name: v.label,
+        language: v.value.split('-').slice(0, 2).join('-'),
       })),
     [],
   );
@@ -531,4 +523,3 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.primary,
     },
   });
-

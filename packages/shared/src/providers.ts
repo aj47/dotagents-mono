@@ -34,6 +34,11 @@ export const CHAT_PROVIDERS = [
 ] as const;
 
 export type CHAT_PROVIDER_ID = (typeof CHAT_PROVIDERS)[number]["value"];
+export const CHAT_PROVIDER_IDS: readonly CHAT_PROVIDER_ID[] = CHAT_PROVIDERS.map(provider => provider.value);
+
+export function isChatProviderId(value: unknown): value is CHAT_PROVIDER_ID {
+  return typeof value === "string" && CHAT_PROVIDER_IDS.includes(value as CHAT_PROVIDER_ID);
+}
 
 export const DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT = [
   "Clean up the transcript for punctuation, capitalization, and obvious speech-to-text mistakes.",
@@ -53,6 +58,23 @@ export const TTS_PROVIDERS = [
 ] as const;
 
 export type TTS_PROVIDER_ID = (typeof TTS_PROVIDERS)[number]["value"];
+export type ProviderOption<Value extends string | number = string> = {
+  readonly label: string;
+  readonly value: Value;
+};
+export type TtsModelSettingKey = "openaiTtsModel" | "groqTtsModel" | "geminiTtsModel" | "edgeTtsModel";
+export type TtsVoiceSettingKey =
+  | "openaiTtsVoice"
+  | "groqTtsVoice"
+  | "geminiTtsVoice"
+  | "edgeTtsVoice"
+  | "kittenVoiceId"
+  | "supertonicVoice";
+export type TranscriptPostProcessingModelSettingKey =
+  | "transcriptPostProcessingOpenaiModel"
+  | "transcriptPostProcessingGroqModel"
+  | "transcriptPostProcessingGeminiModel"
+  | "transcriptPostProcessingChatgptWebModel";
 
 // OpenAI TTS Voice Options
 export const OPENAI_TTS_VOICES = [
@@ -133,6 +155,11 @@ export const GEMINI_TTS_MODELS = [
 ] as const;
 
 // Edge TTS (Microsoft Edge cloud TTS) options
+export const DEFAULT_EDGE_TTS_VOICE = "en-US-AriaNeural";
+export const DEPRECATED_EDGE_TTS_VOICES = [
+  "en-US-DavisNeural",
+] as const;
+
 export const EDGE_TTS_MODELS = [
   { label: "Edge Neural (Free)", value: "edge-tts" },
 ] as const;
@@ -141,9 +168,28 @@ export const EDGE_TTS_VOICES = [
   { label: "Aria (US, Female)", value: "en-US-AriaNeural" },
   { label: "Guy (US, Male)", value: "en-US-GuyNeural" },
   { label: "Jenny (US, Female)", value: "en-US-JennyNeural" },
+  { label: "Brian (US, Male)", value: "en-US-BrianNeural" },
   { label: "Sonia (UK, Female)", value: "en-GB-SoniaNeural" },
   { label: "Ryan (UK, Male)", value: "en-GB-RyanNeural" },
 ] as const;
+
+const EDGE_TTS_VOICE_VALUES = new Set<string>(EDGE_TTS_VOICES.map((voice) => voice.value));
+const DEPRECATED_EDGE_TTS_VOICE_VALUES = new Set<string>(DEPRECATED_EDGE_TTS_VOICES);
+
+export function isSupportedEdgeTtsVoice(voice: string | undefined | null): boolean {
+  return Boolean(voice && EDGE_TTS_VOICE_VALUES.has(voice));
+}
+
+export function resolveEdgeTtsVoice(voice: string | undefined | null): string {
+  if (isSupportedEdgeTtsVoice(voice)) {
+    return voice as string;
+  }
+  return DEFAULT_EDGE_TTS_VOICE;
+}
+
+export function migrateDeprecatedEdgeTtsVoice(voice: string | undefined): string | undefined {
+  return voice && DEPRECATED_EDGE_TTS_VOICE_VALUES.has(voice) ? DEFAULT_EDGE_TTS_VOICE : voice;
+}
 
 // Kitten TTS Voice Options (8 voices, sid 0-7)
 export const KITTEN_TTS_VOICES = [
@@ -179,6 +225,94 @@ export const SUPERTONIC_TTS_LANGUAGES = [
   { label: "Portuguese", value: "pt" },
   { label: "French", value: "fr" },
 ] as const;
+
+export function getTtsModelsForProvider(providerId?: string): readonly ProviderOption<string>[] {
+  switch (providerId) {
+    case "openai":
+      return OPENAI_TTS_MODELS;
+    case "groq":
+      return GROQ_TTS_MODELS;
+    case "gemini":
+      return GEMINI_TTS_MODELS;
+    case "edge":
+      return EDGE_TTS_MODELS;
+    default:
+      return [];
+  }
+}
+
+export function getTtsVoicesForProvider(
+  providerId?: string,
+  ttsModel?: string,
+): readonly ProviderOption<string | number>[] {
+  switch (providerId) {
+    case "openai":
+      return OPENAI_TTS_VOICES;
+    case "groq":
+      return ttsModel === "canopylabs/orpheus-arabic-saudi" ? GROQ_TTS_VOICES_ARABIC : GROQ_TTS_VOICES_ENGLISH;
+    case "gemini":
+      return GEMINI_TTS_VOICES;
+    case "edge":
+      return EDGE_TTS_VOICES;
+    case "kitten":
+      return KITTEN_TTS_VOICES;
+    case "supertonic":
+      return SUPERTONIC_TTS_VOICES;
+    default:
+      return [];
+  }
+}
+
+export function getTtsModelSettingKey(providerId?: string): TtsModelSettingKey | undefined {
+  switch (providerId) {
+    case "openai":
+      return "openaiTtsModel";
+    case "groq":
+      return "groqTtsModel";
+    case "gemini":
+      return "geminiTtsModel";
+    case "edge":
+      return "edgeTtsModel";
+    default:
+      return undefined;
+  }
+}
+
+export function getTtsVoiceSettingKey(providerId?: string): TtsVoiceSettingKey | undefined {
+  switch (providerId) {
+    case "openai":
+      return "openaiTtsVoice";
+    case "groq":
+      return "groqTtsVoice";
+    case "gemini":
+      return "geminiTtsVoice";
+    case "edge":
+      return "edgeTtsVoice";
+    case "kitten":
+      return "kittenVoiceId";
+    case "supertonic":
+      return "supertonicVoice";
+    default:
+      return undefined;
+  }
+}
+
+export function getTranscriptPostProcessingModelSettingKey(
+  providerId?: string,
+): TranscriptPostProcessingModelSettingKey | undefined {
+  switch (providerId) {
+    case "openai":
+      return "transcriptPostProcessingOpenaiModel";
+    case "groq":
+      return "transcriptPostProcessingGroqModel";
+    case "gemini":
+      return "transcriptPostProcessingGeminiModel";
+    case "chatgpt-web":
+      return "transcriptPostProcessingChatgptWebModel";
+    default:
+      return undefined;
+  }
+}
 
 // OpenAI Compatible Provider Presets
 export const OPENAI_COMPATIBLE_PRESETS = [

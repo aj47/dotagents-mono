@@ -45,21 +45,27 @@ import {
   BrowserWindow,
 } from "electron"
 import path from "path"
-import { configStore, recordingsFolder, conversationsFolder, trySaveConfig } from "./config"
+import { configStore, recordingsFolder, conversationsFolder } from "./config"
 import {
   Config,
   RecordingHistoryItem,
   MCPConfig,
   MCPServerConfig,
   Conversation,
-  ConversationCompactionMetadata,
   ConversationHistoryItem,
   AgentProgressUpdate,
-  SessionProfileSnapshot,
-  LoopConfig,
 } from "../shared/types"
-import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared"
-import { getBranchMessageIndexMap } from "@shared/conversation-progress"
+import type {
+  AgentProfile,
+  AgentProfileConnection,
+  AgentProfileRole,
+  AgentProfileToolConfig,
+  LoopConfig,
+  ProfileModelConfig,
+  ProfileSkillsConfig,
+  SessionProfileSnapshot,
+} from "@dotagents/core"
+import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared/stt-models"
 import { inferTransportType, normalizeMcpConfig } from "../shared/mcp-utils"
 import { conversationService } from "./conversation-service"
 import { RendererHandlers } from "./renderer-handlers"
@@ -67,8 +73,7 @@ import {
   postProcessTranscript,
   processTranscriptWithTools,
 } from "./llm"
-import { mcpService, WHATSAPP_SERVER_NAME, getInternalWhatsAppServerPath, type MCPToolCall, type MCPToolResult } from "./mcp-service"
-import { agentRuntime } from "./agent-runtime"
+import { mcpService, WHATSAPP_SERVER_NAME, getInternalWhatsAppServerPath } from "./mcp-service"
 import {
   saveCustomPosition,
   updatePanelPosition,
@@ -85,16 +90,25 @@ import { discordService } from "./discord-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
-import { agentProfileService, createSessionSnapshotFromProfile, refreshSessionSnapshotSkillsFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
-import { resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
-import { processTranscriptWithACPAgent } from "./acp-main-agent"
-import { getAppSessionForAcpSession } from "./acp-session-state"
+import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
+import { processWithAgentMode } from "./agent-loop-runner"
+import {
+  processQueuedMessages,
+  pauseMessageQueueByConversationId,
+  removeQueuedMessageById,
+  retryQueuedMessageById,
+  resumeMessageQueueByConversationId,
+  updateQueuedMessageTextById,
+} from "./message-queue-actions"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
-import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
+import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
+import { stopAgentSessionById } from "./agent-session-actions"
+
+export { runAgentLoopSession } from "./agent-loop-runner"
 
 function describeAgentSessionId(sessionId?: string | null): "missing" | "pending" | "subsession" | "session" | "unknown" {
   if (!sessionId) return "missing"
@@ -245,406 +259,6 @@ function getRemoteSttModel(config: Config): string {
   return getConfiguredSttModel(config) || DEFAULT_STT_MODELS.openai
 }
 
-async function initializeMcpWithProgress(config: Config, sessionId: string, runId?: number): Promise<void> {
-  const shouldStop = () => agentSessionStateManager.shouldStopSession(sessionId)
-  const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
-
-  if (shouldStop()) {
-    return
-  }
-
-  const initStatus = mcpService.getInitializationStatus()
-
-  await emitAgentProgress({
-    sessionId,
-    runId,
-    currentIteration: 0,
-    maxIterations: effectiveMaxIterations,
-    steps: [
-      {
-        id: `mcp_init_${Date.now()}`,
-        type: "thinking",
-        title: "Preparing agent tools",
-        description: initStatus.progress.currentServer
-          ? `Connecting ${initStatus.progress.currentServer} (${initStatus.progress.current}/${initStatus.progress.total})`
-          : `Checking tool connections (${initStatus.progress.current}/${initStatus.progress.total})`,
-        status: "in_progress",
-        timestamp: Date.now(),
-      },
-    ],
-    isComplete: false,
-  })
-
-  const progressInterval = setInterval(async () => {
-    if (shouldStop()) {
-      clearInterval(progressInterval)
-      return
-    }
-
-    const currentStatus = mcpService.getInitializationStatus()
-    if (currentStatus.isInitializing) {
-      await emitAgentProgress({
-        sessionId,
-        runId,
-        currentIteration: 0,
-        maxIterations: effectiveMaxIterations,
-        steps: [
-          {
-            id: `mcp_init_${Date.now()}`,
-            type: "thinking",
-            title: "Preparing agent tools",
-            description: currentStatus.progress.currentServer
-              ? `Connecting ${currentStatus.progress.currentServer} (${currentStatus.progress.current}/${currentStatus.progress.total})`
-              : `Checking tool connections (${currentStatus.progress.current}/${currentStatus.progress.total})`,
-            status: "in_progress",
-            timestamp: Date.now(),
-          },
-        ],
-        isComplete: false,
-      })
-    } else {
-      clearInterval(progressInterval)
-    }
-  }, 500)
-
-  try {
-    await mcpService.initialize()
-  } finally {
-    clearInterval(progressInterval)
-  }
-
-  if (shouldStop()) {
-    return
-  }
-
-  await emitAgentProgress({
-    sessionId,
-    runId,
-    currentIteration: 0,
-    maxIterations: effectiveMaxIterations,
-    steps: [
-      {
-        id: `mcp_init_complete_${Date.now()}`,
-        type: "thinking",
-        title: "Agent tools ready",
-        description: `${mcpService.getAvailableTools().length} tools available`,
-        status: "completed",
-        timestamp: Date.now(),
-      },
-    ],
-    isComplete: false,
-  })
-}
-
-// Unified agent mode processing function
-async function processWithAgentMode(
-  text: string,
-  conversationId?: string,
-  existingSessionId?: string, // Optional: reuse existing session instead of creating new one
-  startSnoozed: boolean = false, // Whether to start session snoozed (default: false to show panel)
-  maxIterationsOverride?: number,
-): Promise<string> {
-  const config = configStore.get()
-  const maxIterationsFromOverride = typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)
-    ? maxIterationsOverride
-    : undefined
-  const effectiveMaxIterations = maxIterationsFromOverride ?? (config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10))
-  const allProfiles = agentProfileService.getAll()
-  const currentProfile = agentProfileService.getCurrentProfile()
-  const existingProfileSnapshotFromSession = existingSessionId
-    ? agentSessionStateManager.getSessionProfileSnapshot(existingSessionId)
-      ?? agentSessionTracker.getSessionProfileSnapshot(existingSessionId)
-    : undefined
-  const existingProfileSnapshot = refreshSessionSnapshotSkillsFromProfile(
-    existingProfileSnapshotFromSession,
-    currentProfile,
-  )
-  const topLevelAcpSelection = resolvePreferredTopLevelAcpAgentSelection({
-    currentProfile,
-    sessionProfileId: existingProfileSnapshot?.profileId,
-    mainAgentMode: config.mainAgentMode,
-    mainAgentName: config.mainAgentName,
-    profileAgents: allProfiles,
-    legacyAgents: config.acpAgents || [],
-  })
-
-  // Route via ACP when the selected profile itself is ACP-backed, or when global ACP main-agent mode is enabled.
-  if (topLevelAcpSelection) {
-    if ("error" in topLevelAcpSelection) {
-      logLLM(`[processWithAgentMode] ${topLevelAcpSelection.error}`)
-      return topLevelAcpSelection.error
-    }
-
-    const resolvedMainAgentName = topLevelAcpSelection.resolvedName
-    if (
-      topLevelAcpSelection.source === "main-agent"
-      && topLevelAcpSelection.repairedName
-      && topLevelAcpSelection.repairedName !== config.mainAgentName
-    ) {
-      // Persist the repaired selection so future runs don't fail on stale names.
-      const saveError = trySaveConfig({ ...config, mainAgentName: resolvedMainAgentName })
-      if (saveError) {
-        logLLM(
-          `[processWithAgentMode] Failed to persist repaired ACP main agent name "${resolvedMainAgentName}": ${saveError.message}`
-        )
-      }
-      logLLM(
-        `[processWithAgentMode] ACP main agent \"${config.mainAgentName}\" not found. ` +
-        `Auto-switched to \"${resolvedMainAgentName}\".`
-      )
-    }
-
-    logLLM(`[processWithAgentMode] ACP routing via ${topLevelAcpSelection.source}, agent: ${resolvedMainAgentName}`)
-
-    // Create conversation title for session tracking
-    const conversationTitle = text
-    const profileSnapshot = existingProfileSnapshot
-      ?? (currentProfile ? createSessionSnapshotFromProfile(currentProfile) : undefined)
-
-    // Start tracking this agent session (or reuse existing one)
-    const sessionId = existingSessionId
-      || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
-    const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
-
-    try {
-      // Process with ACP agent
-      const result = await processTranscriptWithACPAgent(text, {
-        agentName: resolvedMainAgentName,
-        conversationId: conversationId || sessionId,
-        sessionId,
-        runId,
-        profileSnapshot,
-      })
-
-      // Mark session as completed
-      if (result.success) {
-        logLLM(`[processWithAgentMode] ACP mode completed successfully for session ${sessionId}, conversation ${conversationId}`)
-        agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
-      } else {
-        logLLM(`[processWithAgentMode] ACP mode failed for session ${sessionId}: ${result.error}`)
-        agentSessionTracker.errorSession(sessionId, result.error || "Unknown error")
-      }
-
-      logLLM(`[processWithAgentMode] ACP mode returning, queue processing should trigger in .finally()`)
-      return result.response || result.error || "No response from agent"
-    } finally {
-      agentSessionStateManager.cleanupSession(sessionId)
-    }
-  }
-
-  // NOTE: Don't clear all agent progress here - we support multiple concurrent sessions
-  // Each session manages its own progress lifecycle independently
-
-  // Agent mode state is managed per-session via agentSessionStateManager
-
-  // Determine profile snapshot for session isolation
-  // If reusing an existing session, use its stored snapshot to maintain isolation
-  // Only capture a new snapshot from the current global profile when creating a new session
-  let profileSnapshot: SessionProfileSnapshot | undefined = existingProfileSnapshot
-
-  // Only capture a new snapshot if we don't have one from an existing session
-  if (!profileSnapshot && currentProfile) {
-    profileSnapshot = createSessionSnapshotFromProfile(currentProfile)
-  }
-
-  // Start tracking this agent session (or reuse existing one)
-  let conversationTitle = text
-  // When creating a new session from keybind/UI, start unsnoozed so panel shows immediately
-  const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
-  const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
-
-  try {
-    // Initialize MCP with progress feedback
-    await initializeMcpWithProgress(config, sessionId, runId)
-
-    const beforeExecuteToolCall = async (toolCall: MCPToolCall): Promise<MCPToolResult | void> => {
-      // Handle inline tool approval if enabled in config
-      if (config.mcpRequireApprovalBeforeToolCall) {
-        // Request approval and wait for user response via the UI
-        const { approvalId, promise: approvalPromise } = toolApprovalManager.requestApproval(
-          sessionId,
-          toolCall.name,
-          toolCall.arguments
-        )
-
-        // Emit progress update with pending approval to show approve/deny buttons
-        await emitAgentProgress({
-          sessionId,
-          runId,
-          currentIteration: 0, // Will be updated by the agent loop
-          maxIterations: effectiveMaxIterations,
-          steps: [],
-          isComplete: false,
-          pendingToolApproval: {
-            approvalId,
-            toolName: toolCall.name,
-            arguments: toolCall.arguments,
-          },
-        })
-
-        // Wait for user response
-        const approved = await approvalPromise
-
-        // Clear the pending approval from the UI by explicitly setting pendingToolApproval to undefined
-        await emitAgentProgress({
-          sessionId,
-          runId,
-          currentIteration: 0,
-          maxIterations: effectiveMaxIterations,
-          steps: [],
-          isComplete: false,
-          pendingToolApproval: undefined, // Explicitly clear to sync state across all windows
-        })
-
-        if (!approved) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Tool call denied by user: ${toolCall.name}`,
-              },
-            ],
-            isError: true,
-          }
-        }
-      }
-
-      return undefined
-    }
-
-    // Load previous conversation history if continuing a conversation.
-    // IMPORTANT: Load this BEFORE emitting initial progress to ensure consistency.
-    // For long conversations, compact on load to persist a stable checkpoint while
-    // still replaying preserved raw messages to the prompt builder when available.
-    let previousConversationHistory:
-      | Array<{
-          role: "user" | "assistant" | "tool"
-          content: string
-          displayContent?: string
-          toolCalls?: any[]
-          toolResults?: any[]
-          timestamp?: number
-          branchMessageIndex?: number
-        }>
-      | undefined
-    let previousConversationCompaction: ConversationCompactionMetadata | undefined
-
-    if (conversationId) {
-      logLLM(`[tipc.ts processWithAgentMode] Loading conversation history for conversationId: ${conversationId}`)
-      const conversation = await conversationService.loadConversationWithCompaction(conversationId, sessionId)
-
-      if (conversation && conversation.messages.length > 0) {
-        logLLM(`[tipc.ts processWithAgentMode] Loaded conversation with ${conversation.messages.length} messages`)
-        previousConversationCompaction = conversation.compaction
-
-        // Convert conversation messages to the format expected by agent mode
-        // Exclude the last message since it's the current user input that will be added
-        const replayMessages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
-          ? conversation.rawMessages
-          : conversation.messages
-        const messagesToConvert = replayMessages.slice(0, -1)
-        const branchMessageIndexMap = getBranchMessageIndexMap(messagesToConvert)
-        logLLM(`[tipc.ts processWithAgentMode] Converting ${messagesToConvert.length} messages (excluding last message)`)
-        previousConversationHistory = messagesToConvert.map((msg, index) => ({
-          role: msg.role,
-          content: msg.content,
-          ...(msg.displayContent ? { displayContent: msg.displayContent } : {}),
-          toolCalls: msg.toolCalls,
-          timestamp: msg.timestamp,
-          // Convert toolResults from stored format (content as string) to MCPToolResult format (content as array)
-          toolResults: msg.toolResults?.map((tr) => ({
-            content: [
-              {
-                type: "text" as const,
-                // Use content for successful results, error message for failures
-                text: tr.success ? tr.content : (tr.error || tr.content),
-              },
-            ],
-            isError: !tr.success,
-          })),
-          branchMessageIndex: branchMessageIndexMap[index],
-        }))
-
-        logLLM(`[tipc.ts processWithAgentMode] previousConversationHistory roles: [${previousConversationHistory.map(m => m.role).join(', ')}]`)
-      } else {
-        logLLM(`[tipc.ts processWithAgentMode] No conversation found or conversation is empty`)
-      }
-    } else {
-      logLLM(`[tipc.ts processWithAgentMode] No conversationId provided, starting fresh conversation`)
-    }
-
-    // Focus interactive sessions in the panel window.
-    // Background/snoozed sessions (e.g. scheduled loops) should not steal focus.
-    if (!startSnoozed) {
-      try {
-        getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)
-      } catch (e) {
-        logApp("[tipc] Failed to focus new agent session:", e)
-      }
-    }
-
-    const agentResult = await agentRuntime.runAgentTurn({
-      transcript: text,
-      maxIterations: effectiveMaxIterations, // Use configured max iterations or Infinity if unlimited mode
-      previousConversationHistory,
-      conversationId, // Pass conversation ID for linking to conversation history
-      sessionId, // Pass session ID for progress routing and isolation
-      profileSnapshot, // Pass profile snapshot for session isolation
-      runId,
-      previousConversationCompaction,
-      initializeMcp: false, // Already initialized above with progress feedback.
-      skipApprovalCheck: true, // TIPC handles inline approval before delegating to MCP.
-      beforeExecuteToolCall,
-    })
-
-    // Mark session as completed
-    agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
-
-    return agentResult.content
-  } catch (error) {
-    // Mark session as errored
-    const errorMessage = getErrorMessage(error)
-    agentSessionTracker.errorSession(sessionId, errorMessage)
-
-    // Emit error progress update to the UI so users see the error message
-    await emitAgentProgress({
-      sessionId,
-      runId,
-      conversationId: conversationId || "",
-      conversationTitle: conversationTitle,
-      currentIteration: 1,
-      maxIterations: effectiveMaxIterations,
-      steps: [{
-        id: `error_${Date.now()}`,
-        type: "thinking",
-        title: "Error",
-        description: errorMessage,
-        status: "error",
-        timestamp: Date.now(),
-      }],
-      isComplete: true,
-      finalContent: `Error: ${errorMessage}`,
-      // Intentionally omit conversationHistory: the renderer agent-store
-      // preserves existingProgress.conversationHistory when this field is
-      // missing, so the user's prior transcript remains visible in the UI.
-      // Emitting a 2-item synthetic history here would clobber it.
-    })
-
-    throw error
-  } finally {
-
-  }
-}
-
-export async function runAgentLoopSession(
-  text: string,
-  conversationId: string,
-  existingSessionId: string,
-  startSnoozed: boolean = true,
-  maxIterationsOverride?: number,
-): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed, maxIterationsOverride)
-}
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"
 import { summarizationService } from "./summarization-service"
@@ -849,123 +463,6 @@ function mergeConflictMaps(
   }
 
   return merged
-}
-
-/**
- * Process queued messages for a conversation after the current session completes.
- * This function peeks at messages and only removes them after successful processing.
- * Uses a per-conversation lock to prevent concurrent processing of the same queue.
- */
-async function processQueuedMessages(conversationId: string): Promise<void> {
-  logLLM(`[processQueuedMessages] Starting queue processing for ${conversationId}`)
-
-  // Try to acquire processing lock - if another processor is already running, skip
-  if (!messageQueueService.tryAcquireProcessingLock(conversationId)) {
-    logLLM(`[processQueuedMessages] Failed to acquire lock for ${conversationId}`)
-    return
-  }
-  logLLM(`[processQueuedMessages] Acquired lock for ${conversationId}`)
-
-  try {
-    while (true) {
-      // Check if queue is paused (e.g., by kill switch) before processing next message
-      if (messageQueueService.isQueuePaused(conversationId)) {
-        logLLM(`[processQueuedMessages] Queue is paused for ${conversationId}, stopping processing`)
-        return
-      }
-
-      // Peek at the next message without removing it
-      const queuedMessage = messageQueueService.peek(conversationId)
-      if (!queuedMessage) {
-        logLLM(`[processQueuedMessages] No more pending messages in queue for ${conversationId}`)
-        // Debug: log the actual queue state
-        const allMessages = messageQueueService.getQueue(conversationId)
-        if (allMessages.length > 0) {
-          logLLM(`[processQueuedMessages] Queue has ${allMessages.length} messages but peek returned null. First message status: ${allMessages[0]?.status}`)
-        }
-        return // No more messages in queue
-      }
-
-      logLLM(`[processQueuedMessages] Processing queued message ${queuedMessage.id} for ${conversationId}`)
-
-      // Mark as processing - if this fails, the message was removed/modified between peek and now
-      const markingSucceeded = messageQueueService.markProcessing(conversationId, queuedMessage.id)
-      if (!markingSucceeded) {
-        logLLM(`[processQueuedMessages] Message ${queuedMessage.id} was removed/modified before processing, re-checking queue`)
-        continue
-      }
-
-      try {
-        // Only add to conversation history if not already added (prevents duplicates on retry)
-        if (!queuedMessage.addedToHistory) {
-          // Add the queued message to the conversation
-          const addResult = await conversationService.addMessageToConversation(
-            conversationId,
-            queuedMessage.text,
-            "user",
-          )
-          // If adding to history failed (conversation not found/IO error), treat as failure
-          // Don't continue processing since the message wasn't recorded
-          if (!addResult) {
-            throw new Error("Failed to add message to conversation history")
-          }
-          // Mark as added to history so retries don't duplicate
-          messageQueueService.markAddedToHistory(conversationId, queuedMessage.id)
-        }
-
-        // Determine if we should start snoozed based on panel visibility
-        // If the panel is currently visible, the user is actively watching - don't snooze
-        // If the panel is hidden, process in background to avoid unwanted pop-ups
-        const panelWindow = WINDOWS.get("panel")
-        const isPanelVisible = panelWindow?.isVisible() ?? false
-        const shouldStartSnoozed = !isPanelVisible
-        logLLM(`[processQueuedMessages] Panel visible: ${isPanelVisible}, startSnoozed: ${shouldStartSnoozed}`)
-
-        // Prefer the exact session captured at enqueue time for strict same-session semantics.
-        // If revive fails, fall back to conversation lookup for backward compatibility and continuity.
-        let existingSessionId: string | undefined
-        const fallbackSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
-        const candidateSessionIds = [queuedMessage.sessionId, fallbackSessionId].filter(
-          (sessionId, index, list): sessionId is string =>
-            typeof sessionId === "string" && sessionId.length > 0 && list.indexOf(sessionId) === index,
-        )
-
-        for (const candidateSessionId of candidateSessionIds) {
-          // Only start snoozed if panel is not visible
-          const revived = agentSessionTracker.reviveSession(candidateSessionId, shouldStartSnoozed)
-          if (revived) {
-            existingSessionId = candidateSessionId
-            logLLM(`[processQueuedMessages] Revived session ${existingSessionId} for conversation ${conversationId}, snoozed: ${shouldStartSnoozed}`)
-            break
-          }
-
-          if (candidateSessionId === queuedMessage.sessionId) {
-            logLLM(`[processQueuedMessages] Preferred queued session ${candidateSessionId} could not be revived, trying fallback lookup`)
-          }
-        }
-
-        // Process with agent mode
-        // If panel is visible, user is watching - show the execution
-        // If panel is hidden, run in background without pop-ups
-        await processWithAgentMode(queuedMessage.text, conversationId, existingSessionId, shouldStartSnoozed)
-
-        // Only remove the message after successful processing
-        messageQueueService.markProcessed(conversationId, queuedMessage.id)
-
-        // Continue to check for more queued messages
-      } catch (error) {
-        logLLM(`[processQueuedMessages] Error processing queued message ${queuedMessage.id}:`, error)
-        // Mark the message as failed so users can see it in the UI
-        const errorMessage = getErrorMessage(error)
-        messageQueueService.markFailed(conversationId, queuedMessage.id, errorMessage)
-        // Stop processing - user needs to handle the failed message
-        break
-      }
-    }
-  } finally {
-    // Always release the lock when done
-    messageQueueService.releaseProcessingLock(conversationId)
-  }
 }
 
 type OpenFileResult = {
@@ -1298,103 +795,7 @@ export const router = {
   stopAgentSession: t.procedure
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
-      const requestedSessionId = input.sessionId
-      const requestedSessionKind = describeAgentSessionId(requestedSessionId)
-      const mappedAppSessionId = getAppSessionForAcpSession(requestedSessionId)
-      const trackedSession = agentSessionTracker.getSession(requestedSessionId)
-      const mappedTrackedSession = mappedAppSessionId
-        ? agentSessionTracker.getSession(mappedAppSessionId)
-        : undefined
-
-      logApp("[stopAgentSession] Stop requested", {
-        requestedSessionId,
-        requestedSessionKind,
-        mappedAppSessionId: mappedAppSessionId ?? null,
-        trackerSessionFound: Boolean(trackedSession),
-        trackerSessionStatus: trackedSession?.status ?? null,
-        trackerConversationId: trackedSession?.conversationId ?? null,
-        mappedTrackerSessionFound: Boolean(mappedTrackedSession),
-        mappedTrackerSessionStatus: mappedTrackedSession?.status ?? null,
-        mappedTrackerConversationId: mappedTrackedSession?.conversationId ?? null,
-      })
-
-      // Stop the session in the state manager (aborts LLM requests, kills processes)
-      agentSessionStateManager.stopSession(input.sessionId)
-
-      // Cancel any pending tool approvals for this session so executeToolCall doesn't hang
-      toolApprovalManager.cancelSessionApprovals(input.sessionId)
-
-      // Cancel any internal sub-sessions spawned by this session
-      try {
-        const { getChildSubSessions, cancelSubSession } = await import("./acp/internal-agent")
-        const childSessions = getChildSubSessions(input.sessionId)
-        const runningChildSessionIds = childSessions
-          .filter((child) => child.status === "running")
-          .map((child) => child.id)
-        for (const child of childSessions) {
-          if (child.status === "running") {
-            cancelSubSession(child.id)
-            logLLM(`[stopAgentSession] Cancelled internal sub-session ${child.id}`)
-          }
-        }
-        logApp("[stopAgentSession] Internal sub-session scan complete", {
-          requestedSessionId,
-          childSessionCount: childSessions.length,
-          runningChildSessionIds,
-        })
-      } catch (error) {
-        logApp("[stopAgentSession] Error cancelling internal sub-sessions:", error)
-      }
-
-      // Pause the message queue for this conversation to prevent processing the next queued message
-      // The user can resume the queue later if they want to continue
-      const session = agentSessionTracker.getSession(input.sessionId)
-      if (session?.conversationId) {
-        messageQueueService.pauseQueue(session.conversationId)
-        logLLM(`[stopAgentSession] Paused queue for conversation ${session.conversationId}`)
-        logApp("[stopAgentSession] Queue paused", {
-          requestedSessionId,
-          pausedConversationId: session.conversationId,
-          pausedByTrackedSessionId: session.id,
-          queueLength: messageQueueService.getQueue(session.conversationId).length,
-        })
-      } else {
-        logApp("[stopAgentSession] Queue pause skipped because requested session is not tracked", {
-          requestedSessionId,
-          requestedSessionKind,
-          mappedAppSessionId: mappedAppSessionId ?? null,
-          mappedConversationId: mappedTrackedSession?.conversationId ?? null,
-        })
-      }
-
-      const runId = agentSessionStateManager.getSessionRunId(input.sessionId)
-
-      // Immediately emit a final progress update with isComplete: true
-      // This ensures the UI updates immediately without waiting for the agent loop
-      // to detect the stop signal and emit its own final update
-      await emitAgentProgress({
-        sessionId: input.sessionId,
-        runId,
-        currentIteration: 0,
-        maxIterations: 0,
-        steps: [
-          {
-            id: `stop_${Date.now()}`,
-            type: "completion",
-            title: "Agent stopped",
-            description: "Agent mode was stopped by emergency kill switch. Queue paused.",
-            status: "error",
-            timestamp: Date.now(),
-          },
-        ],
-        isComplete: true,
-        finalContent: "(Agent mode was stopped by emergency kill switch)",
-      })
-
-      // Mark the session as stopped in the tracker (removes from active sessions UI)
-      agentSessionTracker.stopSession(input.sessionId)
-
-      return { success: true }
+      return stopAgentSessionById(input.sessionId)
     }),
 
   snoozeAgentSession: t.procedure
@@ -3762,7 +3163,7 @@ export const router = {
   updateProfile: t.procedure
     .input<{ id: string; name?: string; guidelines?: string; systemPrompt?: string }>()
     .action(async ({ input }) => {
-        const updates: Partial<import("@shared/types").AgentProfile> = {}
+        const updates: Partial<AgentProfile> = {}
       if (input.name !== undefined) { updates.displayName = input.name }
       if (input.guidelines !== undefined) updates.guidelines = input.guidelines
       if (input.systemPrompt !== undefined) updates.systemPrompt = input.systemPrompt
@@ -4135,7 +3536,7 @@ export const router = {
   removeFromMessageQueue: t.procedure
     .input<{ conversationId: string; messageId: string }>()
     .action(async ({ input }) => {
-          return messageQueueService.removeFromQueue(input.conversationId, input.messageId)
+          return removeQueuedMessageById(input.conversationId, input.messageId).success
     }),
 
   clearMessageQueue: t.procedure
@@ -4153,61 +3554,13 @@ export const router = {
   updateQueuedMessageText: t.procedure
     .input<{ conversationId: string; messageId: string; text: string }>()
     .action(async ({ input }) => {
-    
-      // Check if this was a failed message before updating
-      const queue = messageQueueService.getQueue(input.conversationId)
-      const message = queue.find((m) => m.id === input.messageId)
-      const wasFailed = message?.status === "failed"
-
-      const success = messageQueueService.updateMessageText(input.conversationId, input.messageId, input.text)
-      if (!success) return false
-
-      // If this was a failed message that's now reset to pending,
-      // check if conversation is idle and trigger queue processing
-      if (wasFailed) {
-              const activeSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
-        if (activeSessionId) {
-          const session = agentSessionTracker.getSession(activeSessionId)
-          if (session && session.status === "active") {
-            // Session is active, queue will be processed when it completes
-            return true
-          }
-        }
-
-        // Conversation is idle, trigger queue processing
-        processQueuedMessages(input.conversationId).catch((err) => {
-          logLLM("[updateQueuedMessageText] Error processing queued messages:", err)
-        })
-      }
-
-      return true
+      return updateQueuedMessageTextById(input.conversationId, input.messageId, input.text).success
     }),
 
   retryQueuedMessage: t.procedure
     .input<{ conversationId: string; messageId: string }>()
     .action(async ({ input }) => {
-        
-      // Use resetToPending to reset failed message status without modifying text
-      // This works even for addedToHistory messages since we're not changing the text
-      const success = messageQueueService.resetToPending(input.conversationId, input.messageId)
-      if (!success) return false
-
-      // Check if conversation is idle (no active session)
-      const activeSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
-      if (activeSessionId) {
-        const session = agentSessionTracker.getSession(activeSessionId)
-        if (session && session.status === "active") {
-          // Session is active, queue will be processed when it completes
-          return true
-        }
-      }
-
-      // Conversation is idle, trigger queue processing
-      processQueuedMessages(input.conversationId).catch((err) => {
-        logLLM("[retryQueuedMessage] Error processing queued messages:", err)
-      })
-
-      return true
+      return retryQueuedMessageById(input.conversationId, input.messageId).success
     }),
 
   isMessageQueuePaused: t.procedure
@@ -4219,33 +3572,14 @@ export const router = {
   pauseMessageQueue: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-      messageQueueService.pauseQueue(input.conversationId)
-      return true
+      return pauseMessageQueueByConversationId(input.conversationId).success
     }),
 
   resumeMessageQueue: t.procedure
     .input<{ conversationId: string }>()
     .action(async ({ input }) => {
-        
-      // Resume the queue
-      messageQueueService.resumeQueue(input.conversationId)
 
-      // Check if conversation is idle (no active session) and trigger queue processing
-      const activeSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
-      if (activeSessionId) {
-        const session = agentSessionTracker.getSession(activeSessionId)
-        if (session && session.status === "active") {
-          // Session is active, queue will be processed when it completes
-          return true
-        }
-      }
-
-      // Conversation is idle, trigger queue processing
-      processQueuedMessages(input.conversationId).catch((err) => {
-        logLLM("[resumeMessageQueue] Error processing queued messages:", err)
-      })
-
-      return true
+      return resumeMessageQueueByConversationId(input.conversationId).success
     }),
 
   verifyExternalAgentCommand: t.procedure
@@ -4301,10 +3635,10 @@ export const router = {
         guidelines?: string
 
         properties?: Record<string, string>
-        modelConfig?: import("@shared/types").ProfileModelConfig
-        toolConfig?: import("@shared/types").AgentProfileToolConfig
-        skillsConfig?: import("@shared/types").ProfileSkillsConfig
-        connection: import("@shared/types").AgentProfileConnection
+        modelConfig?: ProfileModelConfig
+        toolConfig?: AgentProfileToolConfig
+        skillsConfig?: ProfileSkillsConfig
+        connection: AgentProfileConnection
         isStateful?: boolean
         enabled: boolean
         isUserProfile?: boolean
@@ -4320,7 +3654,7 @@ export const router = {
   updateAgentProfile: t.procedure
     .input<{
       id: string
-      updates: Partial<import("@shared/types").AgentProfile>
+      updates: Partial<AgentProfile>
     }>()
     .action(async ({ input }) => {
       return agentProfileService.update(input.id, input.updates)
@@ -4360,7 +3694,7 @@ export const router = {
     }),
 
   getAgentProfilesByRole: t.procedure
-    .input<{ role: import("@shared/types").AgentProfileRole }>()
+    .input<{ role: AgentProfileRole }>()
     .action(async ({ input }) => {
       return agentProfileService.getByRole(input.role)
     }),

@@ -205,7 +205,20 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
   vi.doMock("../lib/tipc-client", () => tipcClientMock)
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
   vi.doMock("lucide-react", () => ({ ExternalLink: Null, AlertCircle: Null, FolderOpen: Null, FolderUp: Null, FileText: Null, Search: Null }))
-  vi.doMock("@dotagents/shared", () => ({ __esModule: true, STT_PROVIDER_ID: {}, SUPPORTED_LANGUAGES: [] }))
+  vi.doMock("@dotagents/shared", () => ({
+    __esModule: true,
+    MCP_MAX_ITERATIONS_DEFAULT: 10,
+    MCP_MAX_ITERATIONS_MAX: 100,
+    MCP_MAX_ITERATIONS_MIN: 1,
+    STT_PROVIDER_ID: {},
+    SUPPORTED_LANGUAGES: [],
+    parseMcpMaxIterationsDraft: (value: string) => {
+      const parsedValue = Number.parseInt(value, 10)
+      if (Number.isNaN(parsedValue)) return null
+      if (parsedValue < 1 || parsedValue > 100) return null
+      return parsedValue
+    },
+  }))
   vi.doMock("@shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))
   vi.doMock("../shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))
   vi.doMock("@renderer/hooks/use-audio-devices", () => ({

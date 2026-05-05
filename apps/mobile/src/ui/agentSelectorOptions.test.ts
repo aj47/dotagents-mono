@@ -25,7 +25,7 @@ describe('buildSelectorProfiles', () => {
       } as any,
       [
         { id: 'acpx-1', name: 'augustus', displayName: 'Augustus', enabled: true, connectionType: 'acpx' },
-        { id: 'stdio-1', name: 'stdio-helper', displayName: 'STDIO Helper', enabled: true, connectionType: 'stdio' },
+        { id: 'stdio-1', name: 'stdio-helper', displayName: 'STDIO Helper', connectionType: 'stdio' },
         { id: 'internal-1', name: 'helper', displayName: 'Helper', enabled: true, connectionType: 'internal' },
       ] as any
     );

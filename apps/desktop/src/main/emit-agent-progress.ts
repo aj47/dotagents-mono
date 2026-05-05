@@ -5,7 +5,7 @@ import { AgentProgressUpdate } from "../shared/types"
 import { isPanelAutoShowSuppressed, agentSessionStateManager } from "./state"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
-import { sanitizeAgentProgressUpdateForDisplay } from "@dotagents/shared"
+import { sanitizeAgentProgressUpdateForDisplay } from "@dotagents/shared/message-display-utils"
 
 // Throttle interval for non-critical progress updates (ms).
 // Updates within this window are collapsed — only the latest is sent.

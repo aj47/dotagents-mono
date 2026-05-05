@@ -49,17 +49,16 @@ test('caps live transcript height so the recording overlay is less likely to cov
 });
 
 test('derives visible assistant content from respond_to_user output and suppresses raw tool payloads', () => {
-  assert.match(screenSource, /const getVisibleMessageContent = \(message: ChatMessage\): string =>/);
-  assert.match(screenSource, /extractRespondToUserContentFromArgs\(call\.arguments\)/);
-  assert.match(screenSource, /looksLikeToolPayloadContent\(renderContent\)/);
-  assert.match(screenSource, /const TOOL_PAYLOAD_PREFIX_REGEX = \/\^\(\?:using tool:\|tool result:\)\/i;/);
-  assert.match(screenSource, /\^tool_call\$/);
-  assert.match(screenSource, /if \(stripped\.length > 0\) \{\s+return stripped;\s+\}\s+return stripped === rawContent \? rawContent : '';/);
-  assert.doesNotMatch(screenSource, /const TOOL_PAYLOAD_PREFIX_REGEX = .*input:\|output:/);
-  assert.doesNotMatch(screenSource, /const looksLikeToolPayloadContent = \(content\?: string\): boolean => \{[\s\S]*?JSON\.parse\(trimmedContent\)/);
+  assert.match(screenSource, /getVisibleMessageContent,/);
+  assert.match(screenSource, /getRespondToUserContentFromMessage,/);
+  assert.match(screenSource, /looksLikeToolPayloadContent,/);
+  assert.match(screenSource, /const visibleMessageContent = getVisibleMessageContent\(m\);/);
+  assert.doesNotMatch(screenSource, /const getVisibleMessageContent = \(message: ChatMessage\): string =>/);
+  assert.doesNotMatch(screenSource, /const TOOL_PAYLOAD_PREFIX_REGEX =/);
+  assert.doesNotMatch(screenSource, /extractRespondToUserContentFromArgs\(call\.arguments\)/);
+  assert.doesNotMatch(screenSource, /const looksLikeToolPayloadContent = \(content\?: string\): boolean =>/);
   assert.doesNotMatch(screenSource, /lastMessage\.content = \(lastMessage\.content \|\| ''\) \+\s*\(lastMessage\.content \? '\\n' : ''\) \+ historyMsg\.content/);
   assert.doesNotMatch(screenSource, /lastMessage\.content = \(lastMessage\.content \|\| ''\) \+\s*\(lastMessage\.content \? '\\n' : ''\) \+ msg\.content/);
-  assert.doesNotMatch(screenSource, /return stripped \|\| rawContent;/);
 });
 
 test('bases assistant collapse decisions on visible content instead of raw tool payload metadata', () => {
@@ -68,6 +67,12 @@ test('bases assistant collapse decisions on visible content instead of raw tool 
   assert.match(screenSource, /const effectiveShouldCollapse = hasRespondToUserContent \? false : shouldCollapse;/);
   assert.doesNotMatch(screenSource, /const shouldCollapse = shouldCollapseMessage\(m\.content, m\.toolCalls, m\.toolResults\);/);
   assert.match(screenSource, /const shouldShowCollapsedTextPreview =\s+visibleMessageContent\.length > 0 &&\s+!isExpanded &&\s+effectiveShouldCollapse;/);
+});
+
+test('uses shared media sanitization for collapsed mobile message previews', () => {
+  assert.match(screenSource, /sanitizeMessageMediaContentForPreview/);
+  assert.match(screenSource, /const getCollapsedMessagePreview = \(content: string\) =>\s+sanitizeMessageMediaContentForPreview\(/);
+  assert.doesNotMatch(screenSource, /assets:\\\/\\\/conversation-video\\\/\[\^\)\]\+/);
 });
 
 test('derives tool execution card status from displayed non-meta tool entries', () => {
@@ -83,7 +88,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
 });
 
 test('keeps Codex thinking blocks display-only on mobile', () => {
-  assert.match(screenSource, /const getRenderableMessageContent = \(message: ChatMessage\): string =>\s+message\.displayContent \?\? message\.content \?\? '';/);
+  assert.match(screenSource, /getRenderableMessageContent,/);
+  assert.doesNotMatch(screenSource, /const getRenderableMessageContent = \(message: ChatMessage\): string =>/);
   assert.match(screenSource, /displayContent: historyMsg\.displayContent/);
   assert.match(screenSource, /preserveDisplayContentFromProgress\(finalTurnMessages, progressMsgs\)/);
 });
@@ -115,6 +121,17 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.match(screenSource, /now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS/);
 });
 
+test('routes every desktop TTS provider through the paired remote TTS endpoint', () => {
+  assert.match(screenSource, /type RemoteDesktopTtsProvider = 'native' \| NonNullable<Settings\['ttsProviderId'\]>/);
+  assert.match(screenSource, /setRemoteTtsProvider\(settings\.ttsProviderId \|\| 'native'\)/);
+  assert.match(screenSource, /getRemoteDesktopTtsVoice\(settings\)/);
+  assert.match(screenSource, /getRemoteDesktopTtsModel\(settings\)/);
+  assert.match(screenSource, /effectiveTtsProvider !== 'native' && config\.baseUrl && config\.apiKey/);
+  assert.match(screenSource, /providerId: effectiveTtsProvider/);
+  assert.match(screenSource, /model: effectiveRemoteTtsModel/);
+  assert.doesNotMatch(screenSource, /effectiveTtsProvider === 'edge'/);
+});
+
 test('replaces the empty mobile chat home state with quick-start launchers', () => {
   assert.match(screenSource, /!sessionStore\.isLoadingMessages && messages\.length === 0 && \(/);
   assert.match(screenSource, /<View style=\{styles\.chatHomeCard\}>/);
@@ -129,6 +146,19 @@ test('loads saved prompts from the settings API for the mobile quick-start launc
   assert.match(screenSource, /settingsClient\.getSettings\(\)/);
   assert.match(screenSource, /settings\.predefinedPrompts \|\| \[\]/);
   assert.match(screenSource, /isSlashCommandPrompt/);
+});
+
+test('lets mobile edit and delete desktop saved prompts from quick-start cards', () => {
+  assert.match(screenSource, /prompt\?: PredefinedPromptSummary;/);
+  assert.match(screenSource, /const \[editingPrompt, setEditingPrompt\] = useState<PredefinedPromptSummary \| null>\(null\);/);
+  assert.match(screenSource, /openEditPromptModal\(item\.prompt!\)/);
+  assert.match(screenSource, /handleDeletePrompt\(item\.prompt!\)/);
+  assert.match(screenSource, /settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
+  assert.match(screenSource, /prompt\.id === editingPrompt\.id/);
+  assert.match(screenSource, /predefinedPrompts\.filter\(\(candidate\) => candidate\.id !== prompt\.id\)/);
+  assert.match(screenSource, /editingPrompt \? 'Edit Prompt' : 'Add New Prompt'/);
+  assert.match(screenSource, /editingPrompt \? 'Save Changes' : 'Add Prompt'/);
+  assert.match(screenSource, /styles\.chatHomeShortcutActions/);
 });
 
 test('loads predefined prompts, skills, and tasks directly into mobile quick-start launchers', () => {

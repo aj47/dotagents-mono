@@ -15,14 +15,16 @@ import type {
   ClientCapabilities,
 } from "@modelcontextprotocol/sdk/types.js"
 import { configStore, dataFolder, trySaveConfig } from "./config"
+import type {
+  ProfilesData,
+  ProfileMcpServerConfig,
+} from "@dotagents/core"
 import {
   MCPConfig,
   MCPServerConfig,
   MCPTransportType,
   Config,
   ServerLogEntry,
-  ProfilesData,
-  ProfileMcpServerConfig,
   DetailedToolInfo,
 } from "../shared/types"
 import { requestElicitation, handleElicitationComplete, cancelAllElicitations } from "./mcp-elicitation"

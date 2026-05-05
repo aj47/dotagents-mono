@@ -6,10 +6,10 @@ import {
   type MCPToolResult,
 } from "./mcp-service"
 import { agentSessionStateManager } from "./state"
+import type { SessionProfileSnapshot } from "@dotagents/core"
 import type {
   AgentProgressUpdate,
   ConversationCompactionMetadata,
-  SessionProfileSnapshot,
 } from "../shared/types"
 
 type ToolProgressCallback = (message: string) => void

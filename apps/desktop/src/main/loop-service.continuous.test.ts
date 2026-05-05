@@ -22,9 +22,10 @@ describe("continuous repeat tasks", () => {
   })
 
   it("reschedules continuous tasks without waiting for the interval", () => {
-    const getNextDelaySection = getSection(loopServiceSource, "  private getNextDelayMs(", "  private getIntervalMs(")
+    const getNextDelaySection = getSection(loopServiceSource, "  private getNextDelayMs(", "}\n}\n\nexport const loopService")
 
-    expect(getNextDelaySection).toContain("if (isContinuousLoop(loop))")
-    expect(getNextDelaySection).toContain("return 0")
+    expect(loopServiceSource).toContain("getNextRepeatTaskDelayMs")
+    expect(getNextDelaySection).toContain("const scheduling = getNextRepeatTaskDelayMs(loop, now)")
+    expect(getNextDelaySection).toContain("return scheduling.delayMs")
   })
 })

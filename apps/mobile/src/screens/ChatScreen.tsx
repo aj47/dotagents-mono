@@ -39,31 +39,48 @@ import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
-import { ExtendedSettingsApiClient } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient, type Settings } from '../lib/settingsApi';
 import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import {
   extractRespondToUserResponseEvents,
-  preprocessTextForTTS,
+  getNextAgentUserResponseEventOrdinal,
   shouldCollapseMessage,
+  sortAgentUserResponseEvents,
   formatToolArguments,
   getIndividualToolCallPreview,
   getToolResultsSummary,
-  getAgentConversationStateLabel,
-  extractRespondToUserContentFromArgs,
   RESPOND_TO_USER_TOOL,
+  getRenderableMessageContent,
+  getRespondToUserContentFromMessage,
+  getVisibleMessageContent,
   isToolOnlyMessage,
+  looksLikeToolPayloadContent,
+} from '@dotagents/shared/chat-utils';
+import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
+import {
+  getAgentConversationStateLabel,
   normalizeAgentConversationState,
-  groupToolActivity,
   type AgentConversationState,
-  type AgentUserResponseEvent,
-  type HandsFreePhase,
-  type Loop,
-  type PredefinedPromptSummary,
-  type Skill,
+} from '@dotagents/shared/conversation-state';
+import {
+  DEFAULT_EDGE_TTS_VOICE,
+  getTtsModelSettingKey,
+  getTtsVoiceSettingKey,
+} from '@dotagents/shared/providers';
+import {
+  groupToolActivity,
   type ToolActivityGroup,
-} from '@dotagents/shared';
+} from '@dotagents/shared/tool-activity-grouping';
+import { sanitizeMessageMediaContentForPreview } from '@dotagents/shared/message-display-utils';
+import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
+import type { HandsFreePhase } from '@dotagents/shared/types';
+import type {
+  Loop,
+  PredefinedPromptSummary,
+  Skill,
+} from '@dotagents/shared/api-types';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../ui/ThemeProvider';
@@ -171,6 +188,7 @@ type QuickStartShortcut = {
   description?: string;
   source: 'command' | 'saved-prompt' | 'skill' | 'task' | 'action';
   action?: 'add-prompt';
+  prompt?: PredefinedPromptSummary;
   task?: Loop;
 };
 
@@ -231,16 +249,6 @@ const extractRespondToUserHistory = (
 ): AgentUserResponseEvent[] =>
   extractRespondToUserResponseEvents(messages, { idPrefix: 'mobile-history' });
 
-const sortResponseEvents = (events: AgentUserResponseEvent[]): AgentUserResponseEvent[] =>
-  [...events].sort((a, b) => {
-    if ((a.runId ?? 0) !== (b.runId ?? 0)) return (a.runId ?? 0) - (b.runId ?? 0);
-    if (a.ordinal !== b.ordinal) return a.ordinal - b.ordinal;
-    return a.timestamp - b.timestamp;
-  });
-
-const getNextResponseEventOrdinal = (events: AgentUserResponseEvent[]): number =>
-  events.reduce((maxOrdinal, event) => Math.max(maxOrdinal, event.ordinal), 0) + 1;
-
 const getMessageLogMeta = (content: string) => ({
   length: content.length,
   inlineImageCount: (content.match(/!\[[^\]]*\]\((?:data:image\/[^)]+)\)/gi) || []).length,
@@ -270,144 +278,9 @@ const mergeVoiceText = (base?: string, live?: string) => {
 };
 
 const getCollapsedMessagePreview = (content: string) =>
-  content
-    .replace(/!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi, '[Image]')
-    .replace(/(^|[^!])\[[^\]]*\]\((?:assets:\/\/conversation-video\/[^)]+|https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?)\)/gi, '$1[Video]')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-const TOOL_PAYLOAD_PREFIX_REGEX = /^(?:using tool:|tool result:)/i;
-
-const getRespondToUserContentFromMessage = (message: ChatMessage): string | null => {
-  if (message.role !== 'assistant' || !message.toolCalls?.length) {
-    return null;
-  }
-
-  for (const call of message.toolCalls) {
-    if (call.name !== RESPOND_TO_USER_TOOL) {
-      continue;
-    }
-
-    const extractedContent = extractRespondToUserContentFromArgs(call.arguments);
-    if (extractedContent) {
-      return extractedContent;
-    }
-  }
-
-  return null;
-};
-
-const TOOL_RESULT_BRACKET_REGEX = /^\[[\w_.-]+\]\s*[{\[#]/;
-
-// Match [tool_name] {json...} or [tool_name] [...] patterns anywhere in text
-// Used to strip raw tool call / tool result text that leaks into visible content
-const INLINE_TOOL_BRACKET_REGEX = /\[[\w_.-]+\]\s*(?:\{[\s\S]*?\}|\[[\s\S]*?\])/g;
-
-// Match garbled tool-call-as-text patterns (model hallucinating tool call syntax)
-const GARBLED_TOOL_CALL_REGEX = /(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.|recipient_name.*functions\.)/i;
-
-const looksLikeToolPayloadContent = (content?: string): boolean => {
-  const trimmedContent = content?.trim();
-  if (!trimmedContent) {
-    return false;
-  }
-
-  if (/<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(trimmedContent)) {
-    return true;
-  }
-
-  if (TOOL_PAYLOAD_PREFIX_REGEX.test(trimmedContent)) {
-    return true;
-  }
-
-  if (/^tool_call$/i.test(trimmedContent)) {
-    return true;
-  }
-
-  // Catch raw tool result content like "[tool_name] { json }" or "[tool_name] # markdown"
-  if (TOOL_RESULT_BRACKET_REGEX.test(trimmedContent)) {
-    return true;
-  }
-
-  // Catch garbled tool call text
-  if (GARBLED_TOOL_CALL_REGEX.test(trimmedContent)) {
-    return true;
-  }
-
-  return false;
-};
-
-/**
- * Strip raw tool call / tool result text that leaks into visible message content.
- * Removes patterns like "[execute_command] {"command":"ls"}" or
- * "[tool_name] [{"key":"value"}]" that backends sometimes include as text.
- */
-const stripRawToolTextFromContent = (content: string): string => {
-  if (!content) return content;
-
-  // Remove [tool_name] {json} or [tool_name] [array] patterns
-  let cleaned = content.replace(INLINE_TOOL_BRACKET_REGEX, '');
-
-  // Remove tool marker tags like <|tool_call_begin|> etc.
-  cleaned = cleaned.replace(/<\|[^|]*\|>/g, '');
-
-  // Remove garbled multi_tool_use patterns
-  cleaned = cleaned.replace(/(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.)[\s\S]*$/i, '');
-
-  return cleaned.trim();
-};
-
-const getRenderableMessageContent = (message: ChatMessage): string =>
-  message.displayContent ?? message.content ?? '';
-
-const getVisibleMessageContent = (message: ChatMessage): string => {
-  // Tool role messages are raw tool results — always hide their content
-  // (they should have been merged into the preceding assistant message)
-  if (message.role === 'tool') {
-    return '';
-  }
-
-  if (message.role !== 'assistant') {
-    return getRenderableMessageContent(message);
-  }
-
-  const respondToUserContent = getRespondToUserContentFromMessage(message);
-  if (respondToUserContent) {
-    return respondToUserContent;
-  }
-
-  const hasToolMetadata =
-    (message.toolCalls?.length ?? 0) > 0 ||
-    (message.toolResults?.length ?? 0) > 0;
-
-  const renderContent = getRenderableMessageContent(message);
-  const displayMessage = { ...message, content: renderContent };
-
-  if (isToolOnlyMessage(displayMessage)) {
-    return '';
-  }
-
-  if (hasToolMetadata && looksLikeToolPayloadContent(renderContent)) {
-    return '';
-  }
-
-  // Hide standalone messages that are raw tool results (no structured metadata
-  // but content looks like "[tool_name] { json }" from unmerged tool responses)
-  if (looksLikeToolPayloadContent(renderContent)) {
-    return '';
-  }
-
-  // Strip any remaining inline tool call text (e.g. "[execute_command] {json}")
-  // that might be embedded within otherwise valid content
-  const rawContent = renderContent;
-  const stripped = stripRawToolTextFromContent(rawContent);
-  if (stripped.length > 0) {
-    return stripped;
-  }
-
-  return stripped === rawContent ? rawContent : '';
-};
+  sanitizeMessageMediaContentForPreview(
+    content.replace(/^#{1,6}\s+/gm, ''),
+  );
 
 const shouldTreatMessageAsToolOnly = (message: ChatMessage): boolean => {
   const hasToolMetadata =
@@ -476,6 +349,27 @@ const applyUserResponseToMessages = (
   return updatedMessages;
 };
 
+type RemoteDesktopTtsProvider = 'native' | NonNullable<Settings['ttsProviderId']>;
+
+function getRemoteDesktopTtsVoice(settings: Settings): string | undefined {
+  const key = getTtsVoiceSettingKey(settings.ttsProviderId || 'openai');
+  const value = key ? settings[key] : undefined;
+  return value === undefined ? undefined : String(value);
+}
+
+function getRemoteDesktopTtsModel(settings: Settings): string | undefined {
+  const key = getTtsModelSettingKey(settings.ttsProviderId || 'openai');
+  const value = key ? settings[key] : undefined;
+  return typeof value === 'string' ? value : undefined;
+}
+
+function getRemoteDesktopTtsRate(settings: Settings): number {
+  if (settings.ttsProviderId === 'openai') return settings.openaiTtsSpeed ?? 1.0;
+  if (settings.ttsProviderId === 'edge') return settings.edgeTtsRate ?? 1.0;
+  if (settings.ttsProviderId === 'supertonic') return settings.supertonicSpeed ?? 1.05;
+  return 1.0;
+}
+
 export default function ChatScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -504,20 +398,23 @@ export default function ChatScreen({ route, navigation }: any) {
   const [availableTasks, setAvailableTasks] = useState<Loop[]>([]);
   const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
   const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
-  const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
-  const [remoteEdgeTtsVoice, setRemoteEdgeTtsVoice] = useState('en-US-AriaNeural');
-  const [remoteEdgeTtsRate, setRemoteEdgeTtsRate] = useState(1.0);
+  const [remoteTtsProvider, setRemoteTtsProvider] = useState<RemoteDesktopTtsProvider>('native');
+  const [remoteTtsVoice, setRemoteTtsVoice] = useState<string | undefined>(DEFAULT_EDGE_TTS_VOICE);
+  const [remoteTtsModel, setRemoteTtsModel] = useState<string | undefined>();
+  const [remoteTtsRate, setRemoteTtsRate] = useState(1.0);
   // Effective TTS provider/voice/rate — local mobile config takes precedence over
-  // any value pulled from the connected desktop's settings. Edge TTS only plays on web.
-  const effectiveTtsProvider: 'native' | 'edge' =
+  // any value pulled from the connected desktop's settings.
+  const effectiveTtsProvider: RemoteDesktopTtsProvider =
     config.ttsProvider === 'edge' ? 'edge' : remoteTtsProvider;
-  const effectiveEdgeTtsVoice =
+  const effectiveRemoteTtsVoice =
     config.ttsProvider === 'edge' && config.edgeTtsVoice
       ? config.edgeTtsVoice
-      : remoteEdgeTtsVoice;
-  const effectiveEdgeTtsRate =
-    config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteEdgeTtsRate;
+      : remoteTtsVoice;
+  const effectiveRemoteTtsModel = config.ttsProvider === 'edge' ? undefined : remoteTtsModel;
+  const effectiveRemoteTtsRate =
+    config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteTtsRate;
   const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
+  const [editingPrompt, setEditingPrompt] = useState<PredefinedPromptSummary | null>(null);
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptContent, setNewPromptContent] = useState('');
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
@@ -749,9 +646,31 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [runningPromptTaskId, settingsClient]);
 
+  const openAddPromptModal = useCallback(() => {
+    setEditingPrompt(null);
+    setNewPromptName('');
+    setNewPromptContent('');
+    setAddPromptModalVisible(true);
+  }, []);
+
+  const openEditPromptModal = useCallback((prompt: PredefinedPromptSummary) => {
+    setEditingPrompt(prompt);
+    setNewPromptName(prompt.name);
+    setNewPromptContent(prompt.content);
+    setAddPromptModalVisible(true);
+  }, []);
+
+  const closePromptModal = useCallback(() => {
+    if (isSavingPrompt) return;
+    setAddPromptModalVisible(false);
+    setEditingPrompt(null);
+    setNewPromptName('');
+    setNewPromptContent('');
+  }, [isSavingPrompt]);
+
   const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
     if (item.action === 'add-prompt') {
-      setAddPromptModalVisible(true);
+      openAddPromptModal();
       return;
     }
     if (item.source === 'task' && item.task) {
@@ -759,7 +678,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
     handleInsertQuickStartPrompt(item.content);
-  }, [handleInsertQuickStartPrompt, handleRunPromptTask]);
+  }, [handleInsertQuickStartPrompt, handleRunPromptTask, openAddPromptModal]);
 
   const handleToggleCurrentSessionPinned = useCallback(() => {
     const currentSessionId = sessionStore.currentSessionId;
@@ -1122,14 +1041,15 @@ export default function ChatScreen({ route, navigation }: any) {
 			voiceLog('tts-started', `Assistant speech started (${reason}).`);
 		}
 
-		if (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
-			// Edge TTS routes through the paired desktop's /v1/tts/speak.
+		if (effectiveTtsProvider !== 'native' && config.baseUrl && config.apiKey) {
+			// Remote desktop TTS routes through the paired desktop's /v1/tts/speak.
 			void speakRemoteTts(processedText, {
 				baseUrl: config.baseUrl,
 				apiKey: config.apiKey,
-				providerId: 'edge',
-				voice: effectiveEdgeTtsVoice,
-				rate: effectiveEdgeTtsRate,
+				providerId: effectiveTtsProvider,
+				voice: effectiveRemoteTtsVoice,
+				model: effectiveRemoteTtsModel,
+				rate: effectiveRemoteTtsRate,
 				onDone: settle,
 				onError: settle,
 				onStopped: settle,
@@ -1150,15 +1070,15 @@ export default function ChatScreen({ route, navigation }: any) {
 		}
 		Speech.speak(processedText, speechOptions);
 		return true;
-		  }, [config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, voiceLog]);
+		  }, [config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveRemoteTtsModel, effectiveRemoteTtsRate, effectiveRemoteTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, voiceLog]);
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
 	    respondToUserHistoryRef.current = events;
-	    nextResponseEventOrdinalRef.current = getNextResponseEventOrdinal(events);
+	    nextResponseEventOrdinalRef.current = getNextAgentUserResponseEventOrdinal(events);
 	  }, []);
 
 	  const replaceResponseHistory = useCallback((events: AgentUserResponseEvent[]) => {
-	    const sortedEvents = sortResponseEvents(events);
+	    const sortedEvents = sortAgentUserResponseEvents(events);
 	    syncResponseHistoryRefs(sortedEvents);
 	    setRespondToUserHistory(sortedEvents);
 	  }, [syncResponseHistoryRefs]);
@@ -1189,7 +1109,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	      merged.set(event.id, event);
 	    }
 
-	    const mergedEvents = sortResponseEvents(Array.from(merged.values()));
+	    const mergedEvents = sortAgentUserResponseEvents(Array.from(merged.values()));
 	    syncResponseHistoryRefs(mergedEvents);
 	    setRespondToUserHistory(mergedEvents);
 	  }, [syncResponseHistoryRefs]);
@@ -1232,14 +1152,10 @@ export default function ChatScreen({ route, navigation }: any) {
 
     if (!unseenEvents.length) return;
 
-    queuedResponseEventsRef.current = [
+    queuedResponseEventsRef.current = sortAgentUserResponseEvents([
       ...queuedResponseEventsRef.current,
       ...unseenEvents,
-    ].sort((a, b) => {
-      if ((a.runId ?? 0) !== (b.runId ?? 0)) return (a.runId ?? 0) - (b.runId ?? 0);
-      if (a.ordinal !== b.ordinal) return a.ordinal - b.ordinal;
-      return a.timestamp - b.timestamp;
-    });
+    ]);
 
     processAutoSpeechQueue();
   }, [config.ttsEnabled, processAutoSpeechQueue]);
@@ -1276,14 +1192,15 @@ export default function ChatScreen({ route, navigation }: any) {
 	      voiceLog('tts-started', 'Assistant speech started from message playback.');
 	    }
     setSpeakingMessageIndex(index);
-    if (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
-      // Edge TTS routes through the paired desktop's /v1/tts/speak.
+    if (effectiveTtsProvider !== 'native' && config.baseUrl && config.apiKey) {
+      // Remote desktop TTS routes through the paired desktop's /v1/tts/speak.
       void speakRemoteTts(processedText, {
         baseUrl: config.baseUrl,
         apiKey: config.apiKey,
-        providerId: 'edge',
-        voice: effectiveEdgeTtsVoice,
-        rate: effectiveEdgeTtsRate,
+        providerId: effectiveTtsProvider,
+        voice: effectiveRemoteTtsVoice,
+        model: effectiveRemoteTtsModel,
+        rate: effectiveRemoteTtsRate,
         onDone: () => {
           intendedSpeakingIndexRef.current = null;
           if (handsFree) {
@@ -1356,8 +1273,9 @@ export default function ChatScreen({ route, navigation }: any) {
 		config.ttsRate,
 		config.ttsPitch,
 		config.ttsVoiceId,
-		effectiveEdgeTtsRate,
-		effectiveEdgeTtsVoice,
+		effectiveRemoteTtsModel,
+		effectiveRemoteTtsRate,
+		effectiveRemoteTtsVoice,
 		effectiveTtsProvider,
 		handsFree,
 		handsFreeController,
@@ -1505,9 +1423,10 @@ export default function ChatScreen({ route, navigation }: any) {
           const settings = settingsResult.value;
           const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
           setPredefinedPrompts(nextPrompts);
-          setRemoteTtsProvider(settings.ttsProviderId === 'edge' ? 'edge' : 'native');
-          setRemoteEdgeTtsVoice(settings.edgeTtsVoice || 'en-US-AriaNeural');
-          setRemoteEdgeTtsRate(settings.edgeTtsRate ?? 1.0);
+          setRemoteTtsProvider(settings.ttsProviderId || 'native');
+          setRemoteTtsVoice(getRemoteDesktopTtsVoice(settings) || DEFAULT_EDGE_TTS_VOICE);
+          setRemoteTtsModel(getRemoteDesktopTtsModel(settings));
+          setRemoteTtsRate(getRemoteDesktopTtsRate(settings));
         } else {
           setPredefinedPrompts([]);
         }
@@ -1525,26 +1444,37 @@ export default function ChatScreen({ route, navigation }: any) {
     };
   }, [isFocused, settingsClient]);
 
-  const handleSaveNewPrompt = async () => {
+  const handleSavePrompt = async () => {
     if (!settingsClient || !newPromptName.trim() || !newPromptContent.trim()) return;
     setIsSavingPrompt(true);
     try {
       const now = Date.now();
-      const newPrompt: PredefinedPromptSummary = {
-        id: `prompt-${now}-${Math.random().toString(36).substr(2, 9)}`,
-        name: newPromptName.trim(),
-        content: newPromptContent.trim(),
-        createdAt: now,
-        updatedAt: now,
-      };
+      const name = newPromptName.trim();
+      const content = newPromptContent.trim();
+      const updatedPrompts = editingPrompt
+        ? predefinedPrompts.map((prompt) =>
+          prompt.id === editingPrompt.id
+            ? { ...prompt, name, content, updatedAt: now }
+            : prompt
+        )
+        : [
+          {
+            id: `prompt-${now}-${Math.random().toString(36).substr(2, 9)}`,
+            name,
+            content,
+            createdAt: now,
+            updatedAt: now,
+          },
+          ...predefinedPrompts,
+        ];
 
-      const updatedPrompts = [newPrompt, ...predefinedPrompts];
       await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
-      setPredefinedPrompts(updatedPrompts);
+      setPredefinedPrompts([...updatedPrompts].sort((a, b) => b.updatedAt - a.updatedAt));
       setAddPromptModalVisible(false);
+      setEditingPrompt(null);
       setNewPromptName('');
       setNewPromptContent('');
-      Alert.alert('Success', 'Prompt saved to your desktop prompt library.');
+      Alert.alert('Success', editingPrompt ? 'Prompt updated in your desktop prompt library.' : 'Prompt saved to your desktop prompt library.');
     } catch (error: any) {
       console.error('[ChatScreen] Error saving prompt:', error);
       Alert.alert('Error', error.message || 'Failed to save prompt.');
@@ -1552,6 +1482,37 @@ export default function ChatScreen({ route, navigation }: any) {
       setIsSavingPrompt(false);
     }
   };
+
+  const handleDeletePrompt = useCallback((prompt: PredefinedPromptSummary) => {
+    if (!settingsClient) return;
+
+    const deletePrompt = async () => {
+      setIsSavingPrompt(true);
+      try {
+        const updatedPrompts = predefinedPrompts.filter((candidate) => candidate.id !== prompt.id);
+        await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
+        setPredefinedPrompts(updatedPrompts);
+      } catch (error: any) {
+        console.error('[ChatScreen] Error deleting prompt:', error);
+        Alert.alert('Error', error.message || 'Failed to delete prompt.');
+      } finally {
+        setIsSavingPrompt(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (message?: string) => boolean }).confirm;
+      if (confirmFn?.(`Delete prompt "${prompt.name}"?`)) {
+        void deletePrompt();
+      }
+      return;
+    }
+
+    Alert.alert('Delete Prompt', `Delete "${prompt.name}" from your desktop prompt library?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => { void deletePrompt(); } },
+    ]);
+  }, [predefinedPrompts, settingsClient]);
 
   // Reset auto-scroll when session changes
   useEffect(() => {
@@ -2214,7 +2175,7 @@ export default function ChatScreen({ route, navigation }: any) {
         latestConversationState = resolveConversationStateFromProgress(update, 'running');
         setConversationState(latestConversationState);
         if (update.responseEvents?.length) {
-	          lastResponseEvents = [...update.responseEvents].sort((a, b) => a.ordinal - b.ordinal);
+	          lastResponseEvents = sortAgentUserResponseEvents(update.responseEvents);
 	          mergeResponseEvents(lastResponseEvents);
 	          enqueueResponseEventsForSpeech(lastResponseEvents);
 	          lastUserResponse = lastResponseEvents[lastResponseEvents.length - 1]?.text;
@@ -2674,7 +2635,7 @@ export default function ChatScreen({ route, navigation }: any) {
         latestConversationState = resolveConversationStateFromProgress(update, 'running');
         setConversationState(latestConversationState);
         if (update.responseEvents?.length) {
-	          lastResponseEvents = [...update.responseEvents].sort((a, b) => a.ordinal - b.ordinal);
+	          lastResponseEvents = sortAgentUserResponseEvents(update.responseEvents);
 	          mergeResponseEvents(lastResponseEvents);
 	          enqueueResponseEventsForSpeech(lastResponseEvents);
 	          lastUserResponse = lastResponseEvents[lastResponseEvents.length - 1]?.text;
@@ -2907,6 +2868,7 @@ export default function ChatScreen({ route, navigation }: any) {
           content: prompt.content,
           description: prompt.content,
           source: isSlashCommandPrompt(prompt) ? 'command' as const : 'saved-prompt' as const,
+          prompt,
         }));
 
       const skillItems = availableSkills.map((skill) => ({
@@ -3215,6 +3177,32 @@ export default function ChatScreen({ route, navigation }: any) {
 		                      {item.description ? (
 		                        <Text style={styles.chatHomeShortcutDescription} numberOfLines={2}>{item.description}</Text>
 		                      ) : null}
+                          {item.prompt ? (
+                            <View style={styles.chatHomeShortcutActions}>
+                              <Pressable
+                                style={styles.chatHomeShortcutActionButton}
+                                onPress={(event) => {
+                                  event.stopPropagation();
+                                  openEditPromptModal(item.prompt!);
+                                }}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Edit prompt ${item.title}`}
+                              >
+                                <Text style={styles.chatHomeShortcutActionText}>Edit</Text>
+                              </Pressable>
+                              <Pressable
+                                style={styles.chatHomeShortcutActionButton}
+                                onPress={(event) => {
+                                  event.stopPropagation();
+                                  handleDeletePrompt(item.prompt!);
+                                }}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Delete prompt ${item.title}`}
+                              >
+                                <Text style={[styles.chatHomeShortcutActionText, styles.chatHomeShortcutActionDangerText]}>Delete</Text>
+                              </Pressable>
+                            </View>
+                          ) : null}
 	                    </Pressable>
 	                  ))}
 	                </View>
@@ -3717,8 +3705,9 @@ export default function ChatScreen({ route, navigation }: any) {
           <ResponseHistoryPanel
             responses={respondToUserHistory}
             ttsProvider={effectiveTtsProvider}
-            edgeTtsVoice={effectiveEdgeTtsVoice}
-            ttsRate={config.ttsRate ?? 1.0}
+            remoteTtsVoice={effectiveRemoteTtsVoice}
+            remoteTtsModel={effectiveRemoteTtsModel}
+            ttsRate={effectiveRemoteTtsRate}
             ttsPitch={config.ttsPitch ?? 1.0}
             ttsVoiceId={config.ttsVoiceId}
             remoteBaseUrl={config.baseUrl}
@@ -4125,7 +4114,7 @@ export default function ChatScreen({ route, navigation }: any) {
         visible={addPromptModalVisible}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setAddPromptModalVisible(false)}
+        onRequestClose={closePromptModal}
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -4133,7 +4122,7 @@ export default function ChatScreen({ route, navigation }: any) {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Add New Prompt</Text>
+              <Text style={styles.modalTitle}>{editingPrompt ? 'Edit Prompt' : 'Add New Prompt'}</Text>
 
               <Text style={styles.modalLabel}>Name</Text>
               <TextInput
@@ -4158,7 +4147,7 @@ export default function ChatScreen({ route, navigation }: any) {
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={styles.modalCancelButton}
-                  onPress={() => setAddPromptModalVisible(false)}
+                  onPress={closePromptModal}
                   disabled={isSavingPrompt}
                 >
                   <Text style={styles.modalCancelButtonText}>Cancel</Text>
@@ -4168,10 +4157,12 @@ export default function ChatScreen({ route, navigation }: any) {
                     styles.modalSaveButton,
                     (!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt) && styles.modalSaveButtonDisabled
                   ]}
-                  onPress={handleSaveNewPrompt}
+                  onPress={handleSavePrompt}
                   disabled={!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt}
                 >
-                  <Text style={styles.modalSaveButtonText}>{isSavingPrompt ? 'Saving...' : 'Add Prompt'}</Text>
+                  <Text style={styles.modalSaveButtonText}>
+                    {isSavingPrompt ? 'Saving...' : editingPrompt ? 'Save Changes' : 'Add Prompt'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -4402,7 +4393,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       gap: spacing.sm,
     },
     chatHomeShortcutCard: {
-      minHeight: 72,
+      minHeight: 84,
       minWidth: '47%',
       flexGrow: 1,
       flexBasis: '47%',
@@ -4413,6 +4404,7 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.background,
       justifyContent: 'center',
+      gap: spacing.xs,
     },
     chatHomeShortcutCardAdd: {
       borderStyle: 'dashed',
@@ -4441,6 +4433,30 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.mutedForeground,
       marginTop: 3,
       lineHeight: 15,
+    },
+    chatHomeShortcutActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      marginTop: spacing.xs,
+    },
+    chatHomeShortcutActionButton: {
+      minHeight: 32,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 5,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      justifyContent: 'center',
+    },
+    chatHomeShortcutActionText: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    chatHomeShortcutActionDangerText: {
+      color: theme.colors.destructive,
     },
     modalOverlay: {
       flex: 1,

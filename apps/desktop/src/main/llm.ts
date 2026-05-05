@@ -5,7 +5,8 @@ import {
   LLMToolCallResponse,
   MCPToolResult,
 } from "./mcp-service"
-import { AgentProgressStep, AgentProgressUpdate, SessionProfileSnapshot } from "../shared/types"
+import type { SessionProfileSnapshot } from "@dotagents/core"
+import type { AgentProgressStep, AgentProgressUpdate } from "../shared/types"
 import type { ConversationCompactionMetadata } from "../shared/types"
 import { diagnosticsService } from "./diagnostics"
 
@@ -19,7 +20,7 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
 import { getAcpSessionTitleOverride } from "./acp-session-state"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
-import { DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT, getCurrentPresetName } from "@dotagents/shared"
+import { DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT, getCurrentPresetName } from "@dotagents/shared/providers"
 import {
   createAgentTrace,
   endAgentTrace,
@@ -48,8 +49,8 @@ import {
 import {
   MARK_WORK_COMPLETE_TOOL,
   RESPOND_TO_USER_TOOL,
-  INTERNAL_COMPLETION_NUDGE_TEXT,
-} from "../shared/runtime-tool-names"
+} from "@dotagents/shared/chat-utils"
+import { INTERNAL_COMPLETION_NUDGE_TEXT } from "@dotagents/shared/mcp-api"
 import {
   appendAgentStopNote,
   resolveAgentIterationLimits,
@@ -58,7 +59,7 @@ import { filterEphemeralMessages, isInternalNudgeContent } from "./conversation-
 import {
   filterNamedItemsToAllowedTools,
 } from "./llm-tool-gating"
-import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import { sanitizeMessageContentForDisplay } from "@dotagents/shared/message-display-utils"
 import {
   isDeliverableResponseContent,
   isGarbledToolCallText,
@@ -76,7 +77,7 @@ import {
 import {
   normalizeAgentConversationState,
   type AgentConversationState,
-} from "@dotagents/shared"
+} from "@dotagents/shared/conversation-state"
 
 const AGENT_PROGRESS_CONVERSATION_HISTORY_WINDOW_SIZE = 120
 const INTERNAL_COMPLETION_SUMMARY_REGEX = /^(?:internal\b|completion metadata\b|internal completion\b|internal stop\b)/i

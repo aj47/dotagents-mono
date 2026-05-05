@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentProgressStep } from '@dotagents/shared';
+import type { AgentProgressStep } from '@dotagents/shared/agent-progress';
 import { createDelegationProgressMessages } from './delegationProgress';
 
 describe('createDelegationProgressMessages', () => {

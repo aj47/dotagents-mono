@@ -1,0 +1,323 @@
+import type { Skill, SkillsResponse, SkillToggleResponse } from "./api-types"
+
+export type SkillApiLike = {
+  id: string
+  name: string
+  description: string
+  instructions?: string
+  source?: "local" | "imported"
+  createdAt: number
+  updatedAt: number
+}
+
+export type SkillProfileLike = {
+  id?: string
+  skillsConfig?: {
+    enabledSkillIds?: string[]
+    allSkillsDisabledByDefault?: boolean
+  }
+}
+
+export type GitHubSkillIdentifier = {
+  owner: string
+  repo: string
+  path?: string
+  ref: string
+  refAndPath?: string[]
+}
+
+export type RuntimeSkillLike = {
+  id: string
+  name?: string
+  filePath?: string
+}
+
+export type RuntimeSkillInstructionsLike = RuntimeSkillLike & {
+  instructions?: string
+}
+
+export type RuntimeSkillRegistryLike<TSkill extends RuntimeSkillLike> = {
+  getSkill: (id: string) => TSkill | undefined
+  getSkills: () => TSkill[]
+}
+
+export type RuntimeSkillAction = "load" | "execute"
+
+export type RuntimeSkillIdArgs =
+  | {
+      success: false
+      error: string
+    }
+  | {
+      success: true
+      skillId: string
+    }
+
+export type RuntimeSkillErrorPayload = {
+  success: false
+  skillId?: string
+  error: string
+}
+
+export type IgnoredExecuteCommandSkillIdWarning = {
+  ignoredInvalidSkillId: string
+  warning: string
+  guidance: string
+  retrySuggestion: string
+  availableSkillIds: string[]
+}
+
+export const GITHUB_SKILL_MARKDOWN_FILENAMES = ["SKILL.md", "skill.md"] as const
+export const GITHUB_SKILL_COLLECTION_DIRS = ["skills", ".claude/skills", ".codex/skills"] as const
+
+export function isGitHubSkillMarkdownFileName(filename: string): boolean {
+  return (GITHUB_SKILL_MARKDOWN_FILENAMES as readonly string[]).includes(filename)
+}
+
+export function getGitHubSkillCandidateRelativePaths(repo: string): string[] {
+  const repoName = repo.trim()
+  return [
+    ...GITHUB_SKILL_MARKDOWN_FILENAMES,
+    ...GITHUB_SKILL_COLLECTION_DIRS.map((dir) => `${dir}/${repoName}/SKILL.md`),
+  ]
+}
+
+export function validateGitHubSkillRef(ref: string): boolean {
+  if (ref.startsWith("-")) {
+    return false
+  }
+  return /^[a-zA-Z0-9._\-/]+$/.test(ref)
+}
+
+export function validateGitHubSkillIdentifierPart(
+  part: string,
+  type: "owner" | "repo",
+): boolean {
+  void type
+  if (!part || part.length === 0 || part.length > 100) {
+    return false
+  }
+  if (part.startsWith("-")) {
+    return false
+  }
+  return /^[a-zA-Z0-9._-]+$/.test(part)
+}
+
+export function validateGitHubSkillSubPath(subPath: string): boolean {
+  if (!subPath) {
+    return true
+  }
+  if (subPath.startsWith("/") || subPath.startsWith("\\") || /^[a-zA-Z]:[\\/]/.test(subPath)) {
+    return false
+  }
+
+  const segments = subPath.split(/[/\\]/)
+  return segments.every((segment) => segment !== "..")
+}
+
+export function parseGitHubSkillIdentifier(input: string): GitHubSkillIdentifier {
+  const trimmedInput = input.trim().replace(/\/+$/, "")
+
+  if (trimmedInput.startsWith("https://github.com/") || trimmedInput.startsWith("http://github.com/")) {
+    const url = new URL(trimmedInput)
+    const parts = url.pathname.split("/").filter(Boolean)
+
+    if (parts.length < 2) {
+      throw new Error("Invalid GitHub URL: must include owner and repo")
+    }
+
+    const owner = parts[0]
+    const repo = parts[1]
+    let ref = "main"
+    let subPath: string | undefined
+    let refAndPath: string[] | undefined
+
+    if (parts.length > 2 && (parts[2] === "tree" || parts[2] === "blob")) {
+      if (parts.length > 3) {
+        refAndPath = parts.slice(3)
+        ref = parts[3]
+        if (parts.length > 4) {
+          subPath = parts.slice(4).join("/")
+        }
+      }
+    } else if (parts.length > 2) {
+      subPath = parts.slice(2).join("/")
+    }
+
+    return { owner, repo, path: subPath, ref, refAndPath }
+  }
+
+  const parts = trimmedInput.split("/").filter(Boolean)
+
+  if (parts.length < 2) {
+    throw new Error("Invalid GitHub identifier: expected 'owner/repo' or 'owner/repo/path'")
+  }
+
+  const owner = parts[0]
+  const repo = parts[1]
+  const subPath = parts.length > 2 ? parts.slice(2).join("/") : undefined
+
+  return { owner, repo, path: subPath, ref: "main" }
+}
+
+export function buildIgnoredExecuteCommandSkillIdWarning(
+  skillId: string,
+  availableSkillIds: string[],
+): IgnoredExecuteCommandSkillIdWarning {
+  return {
+    ignoredInvalidSkillId: skillId,
+    warning: `Ignored invalid execute_command.skillId: ${skillId}. Ran the command in the default workspace instead.`,
+    guidance: "skillId must be an exact loaded skill id from Available Skills. Omit skillId for normal workspace or repository commands. Never use repo names, file paths, URLs, or GitHub slugs as skillId.",
+    retrySuggestion: "Retry the same command without skillId unless you explicitly need to run inside a loaded skill directory.",
+    availableSkillIds,
+  }
+}
+
+export function parseRuntimeSkillIdArg(args: Record<string, unknown>): RuntimeSkillIdArgs {
+  if (typeof args.skillId !== "string" || args.skillId.trim() === "") {
+    return {
+      success: false,
+      error: "skillId must be a non-empty string",
+    }
+  }
+
+  return {
+    success: true,
+    skillId: args.skillId.trim(),
+  }
+}
+
+export function buildDisabledRuntimeSkillPayload(
+  skillId: string,
+  action: RuntimeSkillAction,
+): RuntimeSkillErrorPayload {
+  const actionText = action === "load" ? "load instructions for" : "run commands inside"
+  return {
+    success: false,
+    skillId,
+    error: `Skill '${skillId}' is disabled for this agent. Enable it in Settings > Skills before trying to ${actionText} this skill.`,
+  }
+}
+
+export function buildRuntimeSkillNotFoundPayload(skillId: string): RuntimeSkillErrorPayload {
+  return {
+    success: false,
+    error: `Skill '${skillId}' not found. Check the Available Skills section in the system prompt for valid skill IDs.`,
+  }
+}
+
+export function buildRuntimeSkillInstructionsText(skill: RuntimeSkillInstructionsLike): string {
+  return `# ${skill.name}\n\n${skill.instructions}`
+}
+
+export function uniqueSkillIds(ids: Array<string | undefined>): string[] {
+  return Array.from(new Set(ids.map((id) => id?.trim()).filter((id): id is string => Boolean(id))))
+}
+
+export function getSkillFolderIdFromFilePath(filePath?: string): string | undefined {
+  if (!filePath || filePath.startsWith("github:")) return undefined
+
+  const segments = filePath
+    .replace(/\\/g, "/")
+    .split("/")
+    .filter(Boolean)
+  const agentsIndex = segments.lastIndexOf(".agents")
+  const skillsIndex = agentsIndex >= 0 && segments[agentsIndex + 1] === "skills"
+    ? agentsIndex + 1
+    : segments.lastIndexOf("skills")
+
+  if (skillsIndex >= 0 && skillsIndex < segments.length - 2) {
+    return segments.slice(skillsIndex + 1, -1).join("/")
+  }
+
+  return undefined
+}
+
+export function getSkillRuntimeIds(skill: RuntimeSkillLike, requestedSkillId?: string): string[] {
+  return uniqueSkillIds([
+    requestedSkillId,
+    skill.id,
+    getSkillFolderIdFromFilePath(skill.filePath),
+  ])
+}
+
+export function resolveRuntimeSkill<TSkill extends RuntimeSkillLike>(
+  skillId: string,
+  skillsServiceLike: RuntimeSkillRegistryLike<TSkill>,
+): TSkill | undefined {
+  const trimmedSkillId = skillId.trim()
+  if (!trimmedSkillId) return undefined
+
+  const direct = skillsServiceLike.getSkill(trimmedSkillId)
+  if (direct) return direct
+
+  const normalizedSkillId = trimmedSkillId.toLowerCase()
+  return skillsServiceLike.getSkills().find((skill) => {
+    return (typeof skill.name === "string" && skill.name.toLowerCase() === normalizedSkillId)
+      || getSkillFolderIdFromFilePath(skill.filePath)?.toLowerCase() === normalizedSkillId
+  })
+}
+
+export function isSkillEnabledByConfig(
+  skillIds: string | string[],
+  skillsConfig?: SkillProfileLike["skillsConfig"],
+): boolean {
+  if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true
+  const ids = Array.isArray(skillIds) ? skillIds : [skillIds]
+  return ids.some((id) => (skillsConfig.enabledSkillIds ?? []).includes(id))
+}
+
+export function getEnabledSkillIdsForProfile(
+  skills: SkillApiLike[],
+  profile?: SkillProfileLike | null,
+): string[] {
+  const skillsConfig = profile?.skillsConfig
+  const allEnabledByDefault = !skillsConfig || !skillsConfig.allSkillsDisabledByDefault
+  return allEnabledByDefault
+    ? skills.map((skill) => skill.id)
+    : skillsConfig.enabledSkillIds ?? []
+}
+
+export function isSkillEnabledForProfile(skillId: string, profile?: SkillProfileLike | null): boolean {
+  const skillsConfig = profile?.skillsConfig
+  return !skillsConfig || !skillsConfig.allSkillsDisabledByDefault
+    ? true
+    : (skillsConfig.enabledSkillIds ?? []).includes(skillId)
+}
+
+export function formatSkillForApi(skill: SkillApiLike, enabledForProfile: boolean): Skill {
+  return {
+    id: skill.id,
+    name: skill.name,
+    description: skill.description,
+    instructions: skill.instructions,
+    enabled: true,
+    enabledForProfile,
+    source: skill.source,
+    createdAt: skill.createdAt,
+    updatedAt: skill.updatedAt,
+  }
+}
+
+export function buildSkillsResponse(
+  skills: SkillApiLike[],
+  currentProfile?: SkillProfileLike | null,
+): SkillsResponse {
+  const enabledSkillIds = getEnabledSkillIdsForProfile(skills, currentProfile)
+
+  return {
+    skills: skills.map((skill) => formatSkillForApi(skill, enabledSkillIds.includes(skill.id))),
+    currentProfileId: currentProfile?.id,
+  }
+}
+
+export function buildSkillToggleResponse(
+  skillId: string,
+  profile?: SkillProfileLike | null,
+): SkillToggleResponse {
+  return {
+    success: true,
+    skillId,
+    enabledForProfile: isSkillEnabledForProfile(skillId, profile),
+  }
+}

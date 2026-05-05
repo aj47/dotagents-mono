@@ -44,6 +44,12 @@ import {
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import { buildKnowledgeNoteSections } from "@renderer/lib/knowledge-note-groups"
+import {
+  formatKnowledgeNoteReferencesInput,
+  formatKnowledgeNoteTagsInput,
+  parseKnowledgeNoteReferencesInput,
+  parseKnowledgeNoteTagsInput,
+} from "@dotagents/shared/knowledge-note-form"
 
 const contextBadgeClasses: Record<KnowledgeNoteContext, string> = {
   auto: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
@@ -85,18 +91,14 @@ type EditFormState = {
   referencesInput: string
 }
 
-const toCommaSeparated = (values?: string[]) => values?.join(", ") ?? ""
-const toLineSeparated = (values?: string[]) => values?.join("\n") ?? ""
-const parseCommaSeparated = (input: string) => input.split(",").map((value) => value.trim()).filter(Boolean)
-const parseReferenceList = (input: string) => input.split(/[\n,]/).map((value) => value.trim()).filter(Boolean)
 const summarizeNote = (note: KnowledgeNote) => (note.summary?.trim() || note.body.trim()).slice(0, 140)
 const toEditForm = (note: KnowledgeNote): EditFormState => ({
   title: note.title,
   context: note.context,
   summary: note.summary ?? "",
   body: note.body,
-  tagsInput: toCommaSeparated(note.tags),
-  referencesInput: toLineSeparated(note.references),
+  tagsInput: formatKnowledgeNoteTagsInput(note.tags),
+  referencesInput: formatKnowledgeNoteReferencesInput(note.references),
 })
 
 function KnowledgeNoteCard({
@@ -760,7 +762,7 @@ export function Component() {
       return
     }
 
-    const references = parseReferenceList(editForm.referencesInput)
+    const references = parseKnowledgeNoteReferencesInput(editForm.referencesInput)
     updateMutation.mutate({
       id: editingNote.id,
       updates: {
@@ -768,7 +770,7 @@ export function Component() {
         context: editForm.context,
         summary: editForm.summary.trim() || undefined,
         body,
-        tags: parseCommaSeparated(editForm.tagsInput),
+        tags: parseKnowledgeNoteTagsInput(editForm.tagsInput),
         references: references.length ? references : undefined,
         updatedAt: Date.now(),
       },

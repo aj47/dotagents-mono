@@ -5,7 +5,7 @@ import { AppConfig, saveConfig, useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as Linking from 'expo-linking';
+import { parseDotAgentsConfigDeepLink } from '@dotagents/shared/remote-pairing';
 import { checkServerConnection } from '../lib/connectionRecovery';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import {
@@ -16,26 +16,6 @@ import {
 import { resolveQrScannerActivation } from './connection-settings-qr';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
-
-function parseQRCode(data: string): { baseUrl?: string; apiKey?: string; model?: string } | null {
-  try {
-    const parsed = Linking.parse(data);
-    // Handle dotagents://config?baseUrl=...&apiKey=...&model=...
-    if (parsed.scheme === 'dotagents' && (parsed.path === 'config' || parsed.hostname === 'config')) {
-      const { baseUrl, apiKey, model } = parsed.queryParams || {};
-      if (baseUrl || apiKey || model) {
-        return {
-          baseUrl: typeof baseUrl === 'string' ? baseUrl : undefined,
-          apiKey: typeof apiKey === 'string' ? apiKey : undefined,
-          model: typeof model === 'string' ? model : undefined,
-        };
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to parse QR code:', e);
-  }
-  return null;
-}
 
 export default function ConnectionSettingsScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
@@ -190,7 +170,7 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
     if (scanned) return;
     setScanned(true);
 
-    const params = parseQRCode(data);
+    const params = parseDotAgentsConfigDeepLink(data);
     if (params) {
       setDraft(prev => ({
         ...prev,
@@ -510,4 +490,3 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
   });
 }
-

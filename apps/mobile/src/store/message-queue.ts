@@ -7,7 +7,22 @@
  */
 
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
-import { QueuedMessage } from '@dotagents/shared';
+import {
+  buildQueuedMessage,
+  clearQueuedMessages,
+  enqueueQueuedMessage,
+  getQueuedMessages,
+  hasQueuedMessages as hasMessageQueueItems,
+  markQueuedMessageFailed,
+  markQueuedMessageProcessed,
+  markQueuedMessageProcessing,
+  peekNextQueuedMessage,
+  removeQueuedMessage,
+  resetQueuedMessageToPending,
+  updateQueuedMessageText,
+  type MessageQueueMap,
+  type QueuedMessage,
+} from '@dotagents/shared/message-queue-utils';
 
 // Generate unique message ID
 function generateMessageId(): string {
@@ -56,233 +71,95 @@ export function useMessageQueue(): MessageQueueStore {
   const [queues, setQueues] = useState<Map<string, QueuedMessage[]>>(new Map());
   const queuesRef = useRef<Map<string, QueuedMessage[]>>(queues);
 
-  // Wrapper that updates both state AND ref synchronously, so subsequent reads
-  // within the same tick see the updated value (fixes stale state issue)
-  const updateQueues = useCallback((updater: (prev: Map<string, QueuedMessage[]>) => Map<string, QueuedMessage[]>) => {
-    setQueues(prev => {
-      const newValue = updater(prev);
-      queuesRef.current = newValue;  // Sync ref immediately
-      return newValue;
-    });
+  const replaceQueues = useCallback((newValue: MessageQueueMap) => {
+    queuesRef.current = newValue;
+    setQueues(newValue);
   }, []);
 
   const enqueue = useCallback((conversationId: string, text: string): QueuedMessage => {
-    const message: QueuedMessage = {
+    const message = buildQueuedMessage({
       id: generateMessageId(),
       conversationId,
       text,
       createdAt: Date.now(),
-      status: 'pending',
-    };
-
-    updateQueues(prev => {
-      const newMap = new Map(prev);
-      const queue = [...(prev.get(conversationId) || []), message];
-      newMap.set(conversationId, queue);
-      return newMap;
     });
+    const result = enqueueQueuedMessage(queuesRef.current, message);
+    replaceQueues(result.queues);
 
     console.log('[MessageQueue] Enqueued message:', message.id);
     return message;
-  }, [updateQueues]);
+  }, [replaceQueues]);
   
   const getQueue = useCallback((conversationId: string): QueuedMessage[] => {
-    return queuesRef.current.get(conversationId) || [];
+    return getQueuedMessages(queuesRef.current, conversationId);
   }, []);
   
   const removeFromQueue = useCallback((conversationId: string, messageId: string): boolean => {
-    // Check synchronously using ref to determine if removal will succeed
-    const queue = queuesRef.current.get(conversationId);
-    if (!queue) return false;
+    const result = removeQueuedMessage(queuesRef.current, conversationId, messageId);
+    if (!result.ok) return false;
 
-    const index = queue.findIndex(m => m.id === messageId);
-    if (index === -1) return false;
-
-    // Don't allow removing a message that's currently processing
-    if (queue[index].status === 'processing') return false;
-
-    // Removal will succeed - perform the state update
-    updateQueues(prev => {
-      const currentQueue = prev.get(conversationId);
-      if (!currentQueue) return prev;
-
-      const newQueue = currentQueue.filter(m => m.id !== messageId);
-      const newMap = new Map(prev);
-      if (newQueue.length === 0) {
-        newMap.delete(conversationId);
-      } else {
-        newMap.set(conversationId, newQueue);
-      }
-      return newMap;
-    });
-
+    replaceQueues(result.queues);
     console.log('[MessageQueue] Removed message:', messageId);
     return true;
-  }, [updateQueues]);
+  }, [replaceQueues]);
 
   const clearQueue = useCallback((conversationId: string): void => {
-    updateQueues(prev => {
-      const queue = prev.get(conversationId);
-      if (!queue) return prev;
-
-      // Don't clear if there's a processing message
-      if (queue.some(m => m.status === 'processing')) return prev;
-
-      const newMap = new Map(prev);
-      newMap.delete(conversationId);
-      return newMap;
-    });
-    console.log('[MessageQueue] Cleared queue for:', conversationId);
-  }, [updateQueues]);
+    const result = clearQueuedMessages(queuesRef.current, conversationId);
+    if (result.ok) {
+      replaceQueues(result.queues);
+      console.log('[MessageQueue] Cleared queue for:', conversationId);
+    }
+  }, [replaceQueues]);
 
   const updateText = useCallback((conversationId: string, messageId: string, text: string): boolean => {
-    // Check synchronously using ref to determine if update will succeed
-    const queue = queuesRef.current.get(conversationId);
-    if (!queue) return false;
+    const result = updateQueuedMessageText(queuesRef.current, conversationId, messageId, text);
+    if (!result.ok) return false;
 
-    const index = queue.findIndex(m => m.id === messageId);
-    if (index === -1) return false;
-
-    // Don't allow editing a message that's processing or already added to history
-    const msg = queue[index];
-    if (msg.status === 'processing' || msg.addedToHistory) return false;
-
-    // Update will succeed - perform the state update
-    updateQueues(prev => {
-      const currentQueue = prev.get(conversationId);
-      if (!currentQueue) return prev;
-
-      const idx = currentQueue.findIndex(m => m.id === messageId);
-      if (idx === -1) return prev;
-
-      const newQueue = [...currentQueue];
-      newQueue[idx] = { ...newQueue[idx], text };
-      const newMap = new Map(prev);
-      newMap.set(conversationId, newQueue);
-      return newMap;
-    });
-
+    replaceQueues(result.queues);
     return true;
-  }, [updateQueues]);
+  }, [replaceQueues]);
   
   const peek = useCallback((conversationId: string): QueuedMessage | null => {
-    const queue = queuesRef.current.get(conversationId);
-    if (!queue || queue.length === 0) return null;
-    // Only return first message if it's pending (FIFO ordering)
-    const first = queue[0];
-    return first.status === 'pending' ? first : null;
+    return peekNextQueuedMessage(queuesRef.current, conversationId);
   }, []);
 
   const markProcessing = useCallback((conversationId: string, messageId: string): boolean => {
-    // Check synchronously using ref to determine if marking will succeed
-    const queue = queuesRef.current.get(conversationId);
-    if (!queue) return false;
+    const result = markQueuedMessageProcessing(queuesRef.current, conversationId, messageId);
+    if (!result.ok) return false;
 
-    const index = queue.findIndex(m => m.id === messageId);
-    if (index === -1) return false;
-
-    // Mark will succeed - perform the state update
-    updateQueues(prev => {
-      const currentQueue = prev.get(conversationId);
-      if (!currentQueue) return prev;
-
-      const idx = currentQueue.findIndex(m => m.id === messageId);
-      if (idx === -1) return prev;
-
-      const newQueue = [...currentQueue];
-      newQueue[idx] = { ...newQueue[idx], status: 'processing' };
-      const newMap = new Map(prev);
-      newMap.set(conversationId, newQueue);
-      return newMap;
-    });
-
+    replaceQueues(result.queues);
     return true;
-  }, [updateQueues]);
+  }, [replaceQueues]);
 
   const markProcessed = useCallback((conversationId: string, messageId: string): boolean => {
-    // Check synchronously using ref to determine if marking will succeed
-    const queue = queuesRef.current.get(conversationId);
-    if (!queue) return false;
+    const result = markQueuedMessageProcessed(queuesRef.current, conversationId, messageId);
+    if (!result.ok) return false;
 
-    const index = queue.findIndex(m => m.id === messageId);
-    if (index === -1) return false;
-
-    // Mark will succeed - perform the state update
-    updateQueues(prev => {
-      const currentQueue = prev.get(conversationId);
-      if (!currentQueue) return prev;
-
-      const newQueue = currentQueue.filter(m => m.id !== messageId);
-      const newMap = new Map(prev);
-      if (newQueue.length === 0) {
-        newMap.delete(conversationId);
-      } else {
-        newMap.set(conversationId, newQueue);
-      }
-      return newMap;
-    });
-
+    replaceQueues(result.queues);
     console.log('[MessageQueue] Marked processed:', messageId);
     return true;
-  }, [updateQueues]);
+  }, [replaceQueues]);
 
   const markFailed = useCallback((conversationId: string, messageId: string, errorMessage: string): boolean => {
-    // Check synchronously using ref to determine if marking will succeed
-    const queue = queuesRef.current.get(conversationId);
-    if (!queue) return false;
+    const result = markQueuedMessageFailed(queuesRef.current, conversationId, messageId, errorMessage);
+    if (!result.ok) return false;
 
-    const index = queue.findIndex(m => m.id === messageId);
-    if (index === -1) return false;
-
-    // Mark will succeed - perform the state update
-    updateQueues(prev => {
-      const currentQueue = prev.get(conversationId);
-      if (!currentQueue) return prev;
-
-      const idx = currentQueue.findIndex(m => m.id === messageId);
-      if (idx === -1) return prev;
-
-      const newQueue = [...currentQueue];
-      newQueue[idx] = { ...newQueue[idx], status: 'failed', errorMessage };
-      const newMap = new Map(prev);
-      newMap.set(conversationId, newQueue);
-      return newMap;
-    });
-
+    replaceQueues(result.queues);
     console.log('[MessageQueue] Marked failed:', messageId, errorMessage);
     return true;
-  }, [updateQueues]);
+  }, [replaceQueues]);
 
   const resetToPending = useCallback((conversationId: string, messageId: string): boolean => {
-    // Check synchronously using ref to determine if reset will succeed
-    const queue = queuesRef.current.get(conversationId);
-    if (!queue) return false;
+    const result = resetQueuedMessageToPending(queuesRef.current, conversationId, messageId);
+    if (!result.ok) return false;
 
-    const index = queue.findIndex(m => m.id === messageId);
-    if (index === -1) return false;
-
-    // Reset will succeed - perform the state update
-    updateQueues(prev => {
-      const currentQueue = prev.get(conversationId);
-      if (!currentQueue) return prev;
-
-      const idx = currentQueue.findIndex(m => m.id === messageId);
-      if (idx === -1) return prev;
-
-      const newQueue = [...currentQueue];
-      newQueue[idx] = { ...newQueue[idx], status: 'pending', errorMessage: undefined };
-      const newMap = new Map(prev);
-      newMap.set(conversationId, newQueue);
-      return newMap;
-    });
-
+    replaceQueues(result.queues);
     console.log('[MessageQueue] Reset to pending:', messageId);
     return true;
-  }, [updateQueues]);
+  }, [replaceQueues]);
 
   const hasQueuedMessages = useCallback((conversationId: string): boolean => {
-    const queue = queuesRef.current.get(conversationId);
-    return !!queue && queue.length > 0;
+    return hasMessageQueueItems(queuesRef.current, conversationId);
   }, []);
 
   return {
@@ -309,4 +186,3 @@ export function useMessageQueueContext(): MessageQueueStore {
   if (!ctx) throw new Error('MessageQueueContext missing');
   return ctx;
 }
-

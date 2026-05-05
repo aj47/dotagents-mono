@@ -221,11 +221,6 @@ async function loadAgentProgress(
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
-  vi.doMock("../../../shared/runtime-tool-names", () => ({
-    INTERNAL_COMPLETION_NUDGE_TEXT: "__complete__",
-    RESPOND_TO_USER_TOOL: "respond_to_user",
-    MARK_WORK_COMPLETE_TOOL: "mark_work_complete",
-  }))
   vi.doMock("lucide-react", () => ({
     ChevronDown: icon("ChevronDown"),
     ChevronUp: icon("ChevronUp"),
@@ -309,8 +304,16 @@ async function loadAgentProgress(
   }))
   vi.doMock("@renderer/lib/tts-manager", () => ttsManagerMock)
   vi.doMock("@dotagents/shared/message-display-utils", () => ({
+    hasMarkdownMediaPayload: (text: string) =>
+      /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/i.test(text) ||
+      /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/i.test(text),
+    normalizeAssistantResponseForDedupe: (text: string | undefined) => (text ?? "").replace(/\s+/g, " ").trim(),
     sanitizeMessageContentForDisplay: (text: string) => text.replace(/!\[([^\]]*)\]\(data:image\/[^)]+\)/gi, (_match: string, alt: string) => `[Image: ${alt}]`),
     sanitizeMessageContentForSpeech: (text: string) => text,
+    stripMarkdownMediaPayloads: (text: string) =>
+      text
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+        .replace(/(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/gi, "$1"),
   }))
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 

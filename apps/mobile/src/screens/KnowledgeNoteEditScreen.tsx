@@ -12,6 +12,12 @@ import {
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
+import {
+  formatKnowledgeNoteReferencesInput,
+  formatKnowledgeNoteTagsInput,
+  parseKnowledgeNoteReferencesInput,
+  parseKnowledgeNoteTagsInput,
+} from '@dotagents/shared/knowledge-note-form';
 
 const CONTEXT_OPTIONS: { label: string; value: KnowledgeNoteContext; description: string }[] = [
   { label: 'Search only', value: 'search-only', description: 'Keep this note available for search and explicit retrieval.' },
@@ -38,18 +44,14 @@ const defaultFormData: KnowledgeNoteFormData = {
   referencesInput: '',
 };
 
-const tagsToInput = (tags?: string[]) => (Array.isArray(tags) ? tags.join(', ') : '');
-const referencesToInput = (references?: string[]) => (Array.isArray(references) ? references.join(', ') : '');
-const parseCsvValues = (input: string) => Array.from(new Set(input.split(',').map(value => value.trim()).filter(Boolean)));
-
 const toFormData = (note: KnowledgeNote): KnowledgeNoteFormData => ({
   noteId: note.id,
   title: note.title,
   context: note.context ?? 'search-only',
   summary: note.summary ?? '',
   body: note.body,
-  tagsInput: tagsToInput(note.tags),
-  referencesInput: referencesToInput(note.references),
+  tagsInput: formatKnowledgeNoteTagsInput(note.tags),
+  referencesInput: formatKnowledgeNoteReferencesInput(note.references, 'comma'),
 });
 
 export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
@@ -139,8 +141,8 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
     setError(null);
 
     try {
-      const tags = parseCsvValues(formData.tagsInput);
-      const references = parseCsvValues(formData.referencesInput);
+      const tags = parseKnowledgeNoteTagsInput(formData.tagsInput);
+      const references = parseKnowledgeNoteReferencesInput(formData.referencesInput);
 
       if (isEditing && effectiveNoteId) {
         const updatePayload: KnowledgeNoteUpdateRequest = {

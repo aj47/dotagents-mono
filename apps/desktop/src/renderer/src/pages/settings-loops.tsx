@@ -20,6 +20,18 @@ import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { LoopConfig, LoopSchedule } from "@shared/types"
 import { toast } from "sonner"
+import {
+  DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
+  DEFAULT_REPEAT_TASK_WEEKDAYS,
+  REPEAT_TASK_DAY_LABELS,
+  describeLoopCadence,
+  formatLoopIntervalDraft,
+  getLoopScheduleDaysOfWeek,
+  getLoopScheduleMode,
+  getLoopScheduleTimes,
+  parseLoopIntervalDraft,
+  sanitizeScheduleTimes,
+} from "@dotagents/shared/repeat-task-utils"
 
 type ScheduleMode = "continuous" | "interval" | "daily" | "weekly"
 
@@ -38,8 +50,6 @@ interface EditingLoop {
   scheduleDaysOfWeek: number[]  // 0-6 Sun..Sat (used by weekly)
 }
 
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-
 interface LoopRuntimeStatus {
   id: string
   isRunning: boolean
@@ -56,31 +66,8 @@ const emptyLoop: EditingLoop = {
   speakOnTrigger: false,
   continueInSession: false,
   scheduleMode: "interval",
-  scheduleTimes: ["09:00"],
-  scheduleDaysOfWeek: [1, 2, 3, 4, 5],
-}
-
-const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
-
-function sanitizeScheduleTimes(times: string[]): string[] {
-  const out: string[] = []
-  for (const t of times) {
-    const trimmed = t.trim()
-    if (TIME_RE.test(trimmed) && !out.includes(trimmed)) out.push(trimmed)
-  }
-  return out.sort()
-}
-
-function describeSchedule(schedule: LoopSchedule): string {
-  const times = schedule.times.join(", ")
-  if (schedule.type === "daily") return `Daily at ${times}`
-  const days = schedule.daysOfWeek.map((d) => DAY_LABELS[d] ?? String(d)).join(", ")
-  return `${days} at ${times}`
-}
-
-function describeLoopCadence(loop: LoopConfig): string {
-  if (loop.runContinuously) return "Continuous"
-  return loop.schedule ? describeSchedule(loop.schedule) : `Every ${formatInterval(loop.intervalMinutes)}`
+  scheduleTimes: [...DEFAULT_REPEAT_TASK_SCHEDULE_TIMES],
+  scheduleDaysOfWeek: [...DEFAULT_REPEAT_TASK_WEEKDAYS],
 }
 
 const INTERVAL_PRESETS = [
@@ -96,42 +83,6 @@ function formatLastRun(timestamp?: number): string {
   if (!timestamp) return "Never"
   const date = new Date(timestamp)
   return date.toLocaleString()
-}
-
-function formatInterval(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`
-  if (minutes < 1440) {
-    const hours = Math.floor(minutes / 60)
-    const remainingMinutes = minutes % 60
-    if (remainingMinutes === 0) return `${hours}h`
-    return `${hours}h ${remainingMinutes}m`
-  }
-  const days = Math.floor(minutes / 1440)
-  const remainingMinutes = minutes % 1440
-  if (remainingMinutes === 0) return `${days}d`
-  const hours = Math.floor(remainingMinutes / 60)
-  const mins = remainingMinutes % 60
-  if (hours === 0) return `${days}d ${mins}m`
-  if (mins === 0) return `${days}d ${hours}h`
-  return `${days}d ${hours}h ${mins}m`
-}
-
-function formatLoopIntervalDraft(minutes?: number): string {
-  const normalizedMinutes = typeof minutes === "number" && Number.isFinite(minutes)
-    ? Math.floor(minutes)
-    : 0
-
-  return normalizedMinutes >= 1 ? String(normalizedMinutes) : "1"
-}
-
-function parseLoopIntervalDraft(draft: string): number | null {
-  const trimmedDraft = draft.trim()
-  if (!/^[0-9]+$/.test(trimmedDraft)) return null
-
-  const parsed = Number(trimmedDraft)
-  if (!Number.isInteger(parsed) || parsed < 1) return null
-
-  return parsed
 }
 
 // Sentinel used by the session picker to represent "no pinned session";
@@ -264,11 +215,9 @@ export function SettingsLoops() {
 
   const handleEdit = (loop: LoopConfig) => {
     setIsCreating(false)
-    const scheduleMode: ScheduleMode = loop.runContinuously ? "continuous" : (loop.schedule?.type ?? "interval")
-    const scheduleTimes = loop.schedule?.times.length ? [...loop.schedule.times] : ["09:00"]
-    const scheduleDaysOfWeek = loop.schedule?.type === "weekly"
-      ? [...loop.schedule.daysOfWeek]
-      : [1, 2, 3, 4, 5]
+    const scheduleMode: ScheduleMode = getLoopScheduleMode(loop)
+    const scheduleTimes = getLoopScheduleTimes(loop)
+    const scheduleDaysOfWeek = getLoopScheduleDaysOfWeek(loop)
     setEditing({
       id: loop.id,
       name: loop.name,
@@ -636,7 +585,12 @@ export function SettingsLoops() {
                   variant="ghost"
                   size="sm"
                   className="h-7 gap-1 px-2 text-xs"
-                  onClick={() => setEditing({ ...editing, scheduleTimes: [...editing.scheduleTimes, "09:00"] })}
+                  onClick={() =>
+                    setEditing({
+                      ...editing,
+                      scheduleTimes: [...editing.scheduleTimes, DEFAULT_REPEAT_TASK_SCHEDULE_TIMES[0]],
+                    })
+                  }
                 >
                   <Plus className="h-3.5 w-3.5" />Add time
                 </Button>
@@ -648,7 +602,7 @@ export function SettingsLoops() {
             <div className="space-y-2">
               <Label>Days of week</Label>
               <div className="flex flex-wrap gap-1.5">
-                {DAY_LABELS.map((label, dayIdx) => {
+                {REPEAT_TASK_DAY_LABELS.map((label, dayIdx) => {
                   const active = editing.scheduleDaysOfWeek.includes(dayIdx)
                   return (
                     <Button

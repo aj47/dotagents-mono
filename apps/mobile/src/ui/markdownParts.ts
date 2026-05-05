@@ -1,4 +1,4 @@
-import { isRenderableVideoUrl } from '@dotagents/shared';
+import { isRenderableVideoUrl } from '@dotagents/shared/conversation-media-assets';
 
 export type MarkdownRenderPart =
   | { type: 'markdown'; content: string }

@@ -8,6 +8,7 @@ import type { Config } from "@shared/types"
 import { AlertTriangle, Loader2, CheckCircle2, XCircle, RefreshCw, LogOut, QrCode as QrCodeIcon, EyeOff } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { QRCodeSVG } from "qrcode.react"
+import { formatConfigListInput, parseConfigListInput } from "@dotagents/shared/config-list-input"
 
 /**
  * Mask a phone number for streamer mode
@@ -21,17 +22,6 @@ function maskPhoneNumber(phone: string | undefined): string {
 }
 
 const WHATSAPP_ALLOWLIST_SAVE_DEBOUNCE_MS = 400
-
-function formatWhatsappAllowFrom(values: string[] | undefined): string {
-  return (values || []).join(", ")
-}
-
-function parseWhatsappAllowFromDraft(value: string): string[] {
-  return value
-    .split(",")
-    .map(entry => entry.trim())
-    .filter(Boolean)
-}
 
 interface WhatsAppStatus {
   available: boolean
@@ -57,7 +47,7 @@ export function Component() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [qrCodeData, setQrCodeData] = useState<string | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
-  const [allowFromDraft, setAllowFromDraft] = useState(() => formatWhatsappAllowFrom(cfg?.whatsappAllowFrom))
+  const [allowFromDraft, setAllowFromDraft] = useState(() => formatConfigListInput(cfg?.whatsappAllowFrom))
   const allowFromSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -79,7 +69,7 @@ export function Component() {
       allowFromSaveTimeoutRef.current = null
     }
 
-    saveConfig({ whatsappAllowFrom: parseWhatsappAllowFromDraft(draft) })
+    saveConfig({ whatsappAllowFrom: parseConfigListInput(draft) })
   }, [saveConfig])
 
   const scheduleAllowFromSave = useCallback((draft: string) => {
@@ -89,12 +79,12 @@ export function Component() {
 
     allowFromSaveTimeoutRef.current = setTimeout(() => {
       allowFromSaveTimeoutRef.current = null
-      saveConfig({ whatsappAllowFrom: parseWhatsappAllowFromDraft(draft) })
+      saveConfig({ whatsappAllowFrom: parseConfigListInput(draft) })
     }, WHATSAPP_ALLOWLIST_SAVE_DEBOUNCE_MS)
   }, [saveConfig])
 
   useEffect(() => {
-    setAllowFromDraft(formatWhatsappAllowFrom(cfg?.whatsappAllowFrom))
+    setAllowFromDraft(formatConfigListInput(cfg?.whatsappAllowFrom))
   }, [cfg?.whatsappAllowFrom])
 
   useEffect(() => {
@@ -433,4 +423,3 @@ export function Component() {
     </div>
   )
 }
-

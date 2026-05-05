@@ -27,3 +27,20 @@ test('keeps LoopEdit profile options full-width and touch-friendly for narrow sc
   assert.match(screenSource, /profileOption:\s*\{[\s\S]*?createMinimumTouchTargetStyle\(\{[\s\S]*?minSize:\s*44,[\s\S]*?horizontalMargin:\s*0,[\s\S]*?\}\),[\s\S]*?width:\s*'100%' as const,[\s\S]*?justifyContent:\s*'space-between',/);
   assert.match(screenSource, /profileOptionInfo:\s*\{[\s\S]*?flex:\s*1,[\s\S]*?minWidth:\s*0\s*\}/);
 });
+
+test('exposes desktop repeat task execution options on mobile', () => {
+  assert.match(screenSource, /runOnStartup:\s*loop\.runOnStartup \?\? false/);
+  assert.match(screenSource, /speakOnTrigger:\s*loop\.speakOnTrigger \?\? false/);
+  assert.match(screenSource, /continueInSession:\s*loop\.continueInSession \?\? false/);
+  assert.match(screenSource, /lastSessionId:\s*loop\.lastSessionId \|\| ''/);
+  assert.match(screenSource, /maxIterations:\s*loop\.maxIterations \? String\(loop\.maxIterations\) : ''/);
+  assert.match(screenSource, /runOnStartup:\s*formData\.runOnStartup/);
+  assert.match(screenSource, /speakOnTrigger:\s*formData\.speakOnTrigger/);
+  assert.match(screenSource, /continueInSession:\s*formData\.continueInSession/);
+  assert.match(screenSource, /lastSessionId:\s*formData\.continueInSession \? \(lastSessionId \|\| null\) : null/);
+  assert.match(screenSource, /maxIterations:\s*parsedMaxIterations \?\? null/);
+  assert.match(screenSource, /Run on startup/);
+  assert.match(screenSource, /Speak on trigger/);
+  assert.match(screenSource, /Continue in same session/);
+  assert.match(screenSource, /Max iterations \(optional\)/);
+});

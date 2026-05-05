@@ -21,7 +21,7 @@ import {
   writeAgentsPrompts,
   writeAgentsLayerFromConfig,
   findAgentsDirUpward,
-} from "../../../../../packages/core/src/agents-files/modular-config"
+} from "@dotagents/core"
 
 export {
   AGENTS_DIR_NAME,
@@ -45,4 +45,4 @@ export {
   writeAgentsLayerFromConfig,
   findAgentsDirUpward,
 }
-export type { AgentsLayerPaths, SplitAgentsConfig } from "../../../../../packages/core/src/agents-files/modular-config"
+export type { AgentsLayerPaths, SplitAgentsConfig } from "@dotagents/core"

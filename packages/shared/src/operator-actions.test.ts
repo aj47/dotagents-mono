@@ -1,0 +1,1522 @@
+import { describe, expect, it } from "vitest"
+
+import {
+  appendOperatorAuditLogEntry,
+  authorizeRemoteServerRequest,
+  buildOperatorActionErrorResponse,
+  buildOperatorActionAuditContext,
+  buildOperatorAgentSessionStopResponse,
+  buildOperatorApiKeyRotationAuditContext,
+  buildOperatorApiKeyRotationFailureAuditContext,
+  buildOperatorApiKeyRotationResponse,
+  buildOperatorAuditActionFromPath,
+  buildOperatorAuditEventEntry,
+  buildOperatorAuditResponse,
+  buildOperatorResponseAuditContext,
+  buildRejectedOperatorDeviceAuditEntry,
+  buildOperatorConversationsResponse,
+  buildOperatorDiscordClearLogsActionResponse,
+  buildOperatorDiscordConnectActionResponse,
+  buildOperatorDiscordDisconnectActionResponse,
+  buildOperatorDiscordIntegrationSummary,
+  buildOperatorDiscordLogsResponse,
+  buildOperatorDownloadedAssetActionResponse,
+  buildOperatorHealthSnapshot,
+  buildOperatorLogSummary,
+  buildOperatorLogsResponse,
+  buildOperatorMessageQueueClearResponse,
+  buildOperatorMessageQueuePauseResponse,
+  buildOperatorMessageQueueResumeResponse,
+  buildOperatorQueuedMessageRemoveResponse,
+  buildOperatorQueuedMessageRetryResponse,
+  buildOperatorQueuedMessageUpdateResponse,
+  buildOperatorMcpClearLogsAuditContext,
+  buildOperatorMcpClearLogsFailureAuditContext,
+  buildOperatorMcpClearLogsResponse,
+  buildOperatorMcpStartAuditContext,
+  buildOperatorMcpStartFailureAuditContext,
+  buildOperatorMcpStartResponse,
+  buildOperatorMcpTestAuditContext,
+  buildOperatorMcpTestFailureAuditContext,
+  buildOperatorMcpTestResponse,
+  buildOperatorMcpRestartAuditContext,
+  buildOperatorMcpRestartFailureAuditContext,
+  buildOperatorMcpRestartResponse,
+  buildOperatorMcpStopAuditContext,
+  buildOperatorMcpStopFailureAuditContext,
+  buildOperatorMcpStopResponse,
+  buildOperatorOpenReleasesActionResponse,
+  buildOperatorPushNotificationsSummary,
+  buildOperatorRecentErrorSummary,
+  buildOperatorRecentErrorsResponse,
+  buildOperatorRemoteServerStatus,
+  buildOperatorRestartAppActionResponse,
+  buildOperatorRestartRemoteServerActionResponse,
+  buildOperatorRuntimeStatus,
+  buildOperatorRunAgentResponse,
+  buildOperatorSessionsSummary,
+  buildOperatorSystemMetrics,
+  buildOperatorTunnelStartActionResponse,
+  buildOperatorTunnelStartRemoteServerRequiredResponse,
+  buildOperatorTunnelStopActionResponse,
+  buildOperatorTunnelSetupSummary,
+  buildOperatorTunnelStatus,
+  buildOperatorUpdaterCheckActionResponse,
+  buildOperatorUpdaterDownloadLatestActionResponse,
+  buildOperatorUpdaterStatus,
+  buildOperatorWhatsAppActionErrorResponse,
+  buildOperatorWhatsAppActionSuccessResponse,
+  buildOperatorWhatsAppIntegrationSummary,
+  buildOperatorWhatsAppServerUnavailableActionResponse,
+  clampOperatorCount,
+  getConfiguredCloudflareTunnelStartPlan,
+  getRemoteServerBearerToken,
+  getOperatorAuditDeviceId,
+  getOperatorAuditPath,
+  getOperatorAuditSource,
+  getOperatorMcpToolResultText,
+  getSanitizedWhatsAppOperatorDetails,
+  getSensitiveOperatorSettingsKeys,
+  isLoopbackOperatorAccessIp,
+  isOperatorAuditEntry,
+  isProtectedOperatorAccessPath,
+  isSensitiveOperatorSettingsKey,
+  mergeOperatorWhatsAppStatusPayload,
+  normalizeOperatorLogLevel,
+  OPERATOR_AUDIT_DEVICE_HEADER_KEYS,
+  parseOperatorJsonRecord,
+  parseOperatorAuditLogEntries,
+  parseOperatorMcpRestartRequestBody,
+  parseOperatorMcpServerActionRequestBody,
+  parseOperatorQueuedMessageUpdateRequestBody,
+  parseOperatorRunAgentRequestBody,
+  sanitizeOperatorAuditDetails,
+  sanitizeOperatorAuditText,
+  serializeOperatorAuditLogEntries,
+  SENSITIVE_OPERATOR_SETTINGS_KEYS,
+} from "./operator-actions"
+
+describe("operator action API helpers", () => {
+  it("parses run-agent request bodies", () => {
+    expect(parseOperatorRunAgentRequestBody({
+      prompt: "  Do it  ",
+      conversationId: "conv-1",
+      profileId: "profile-1",
+    })).toEqual({
+      ok: true,
+      request: {
+        prompt: "Do it",
+        conversationId: "conv-1",
+        profileId: "profile-1",
+      },
+    })
+
+    expect(parseOperatorRunAgentRequestBody({ prompt: " " })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "Missing prompt",
+    })
+  })
+
+  it("builds run-agent responses", () => {
+    expect(buildOperatorRunAgentResponse({
+      conversationId: "conv-1",
+      content: "Done",
+      conversationHistory: [{ role: "user", content: "Do it" }, { role: "assistant", content: "Done" }],
+    })).toEqual({
+      success: true,
+      action: "run-agent",
+      conversationId: "conv-1",
+      content: "Done",
+      messageCount: 2,
+    })
+  })
+
+  it("parses queued message update bodies", () => {
+    expect(parseOperatorQueuedMessageUpdateRequestBody({ text: "  retry this  " })).toEqual({
+      ok: true,
+      request: { text: "retry this" },
+    })
+    expect(parseOperatorQueuedMessageUpdateRequestBody({ text: " " })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "Message text is required",
+    })
+    expect(parseOperatorQueuedMessageUpdateRequestBody(null)).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "Request body must be an object",
+    })
+  })
+
+  it("parses and formats MCP restart actions", () => {
+    expect(parseOperatorMcpServerActionRequestBody({ server: " filesystem " })).toEqual({
+      ok: true,
+      request: { server: "filesystem" },
+    })
+    expect(parseOperatorMcpRestartRequestBody({ server: " filesystem " })).toEqual({
+      ok: true,
+      request: { server: "filesystem" },
+    })
+    expect(parseOperatorMcpRestartRequestBody({ server: "" })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "Missing server name",
+    })
+    expect(buildOperatorMcpRestartResponse("filesystem")).toEqual({
+      success: true,
+      action: "mcp-restart",
+      server: "filesystem",
+    })
+    expect(buildOperatorMcpStartResponse("filesystem")).toEqual({
+      success: true,
+      action: "mcp-start",
+      server: "filesystem",
+      message: "Started filesystem",
+    })
+    expect(buildOperatorMcpStopResponse("filesystem")).toEqual({
+      success: true,
+      action: "mcp-stop",
+      server: "filesystem",
+      message: "Stopped filesystem",
+    })
+    expect(buildOperatorMcpClearLogsResponse("filesystem")).toEqual({
+      success: true,
+      action: "mcp-clear-logs",
+      message: "Cleared logs for filesystem",
+      details: { server: "filesystem" },
+    })
+    expect(buildOperatorMcpTestResponse("filesystem", { success: true, toolCount: 3 })).toEqual({
+      success: true,
+      action: "mcp-test",
+      server: "filesystem",
+      message: "Connection test successful for filesystem",
+      toolCount: 3,
+    })
+    expect(buildOperatorMcpTestResponse("filesystem", { success: false, error: "Command missing" })).toEqual({
+      success: false,
+      action: "mcp-test",
+      server: "filesystem",
+      message: "Command missing",
+      error: "Command missing",
+    })
+    expect(buildOperatorMcpRestartAuditContext("filesystem")).toEqual({
+      action: "mcp-restart",
+      success: true,
+      details: { server: "filesystem" },
+    })
+    expect(buildOperatorMcpStartAuditContext("filesystem")).toEqual({
+      action: "mcp-start",
+      success: true,
+      details: { server: "filesystem" },
+    })
+    expect(buildOperatorMcpStopAuditContext("filesystem")).toEqual({
+      action: "mcp-stop",
+      success: true,
+      details: { server: "filesystem" },
+    })
+    expect(buildOperatorMcpClearLogsAuditContext("filesystem")).toEqual({
+      action: "mcp-clear-logs",
+      success: true,
+      details: { server: "filesystem" },
+    })
+    expect(buildOperatorMcpTestAuditContext({
+      success: false,
+      action: "mcp-test",
+      server: "filesystem",
+      message: "Command missing",
+      error: "Command missing",
+    })).toEqual({
+      action: "mcp-test",
+      success: false,
+      details: { server: "filesystem" },
+      failureReason: "Command missing",
+    })
+    expect(buildOperatorMcpRestartFailureAuditContext("restart-failed")).toEqual({
+      action: "mcp-restart",
+      success: false,
+      failureReason: "restart-failed",
+    })
+    expect(buildOperatorMcpStartFailureAuditContext("start-failed")).toEqual({
+      action: "mcp-start",
+      success: false,
+      failureReason: "start-failed",
+    })
+    expect(buildOperatorMcpStopFailureAuditContext("stop-failed")).toEqual({
+      action: "mcp-stop",
+      success: false,
+      failureReason: "stop-failed",
+    })
+    expect(buildOperatorMcpClearLogsFailureAuditContext("clear-failed")).toEqual({
+      action: "mcp-clear-logs",
+      success: false,
+      failureReason: "clear-failed",
+    })
+    expect(buildOperatorMcpTestFailureAuditContext("test-failed")).toEqual({
+      action: "mcp-test",
+      success: false,
+      failureReason: "test-failed",
+    })
+  })
+
+  it("builds audit context from operator action responses", () => {
+    expect(buildOperatorActionAuditContext({
+      success: true,
+      action: "restart-app",
+      message: "Application restart scheduled",
+      details: { scheduled: true },
+    })).toEqual({
+      action: "restart-app",
+      success: true,
+      details: { scheduled: true },
+    })
+
+    expect(buildOperatorActionAuditContext({
+      success: false,
+      action: "tunnel-start",
+      message: "Failed to start Cloudflare tunnel",
+      error: "cloudflared not found",
+    })).toEqual({
+      action: "tunnel-start",
+      success: false,
+      failureReason: "cloudflared not found",
+    })
+  })
+
+  it("builds API key rotation responses and audit contexts without auditing the raw key", () => {
+    expect(buildOperatorApiKeyRotationResponse("raw-api-key")).toEqual({
+      success: true,
+      action: "rotate-api-key",
+      message: "Remote server API key rotated",
+      scheduled: true,
+      restartScheduled: true,
+      apiKey: "raw-api-key",
+    })
+
+    expect(buildOperatorApiKeyRotationAuditContext()).toEqual({
+      action: "rotate-api-key",
+      success: true,
+      details: {
+        restartScheduled: true,
+      },
+    })
+
+    expect(JSON.stringify(buildOperatorApiKeyRotationAuditContext())).not.toContain("raw-api-key")
+
+    expect(buildOperatorApiKeyRotationFailureAuditContext()).toEqual({
+      action: "rotate-api-key",
+      success: false,
+      failureReason: "rotate-api-key-route-error",
+    })
+  })
+
+  it("clamps operator counts and normalizes log levels", () => {
+    expect(clampOperatorCount(undefined, 20, 100)).toBe(20)
+    expect(clampOperatorCount("12.8", 20, 100)).toBe(12)
+    expect(clampOperatorCount(0, 20, 100)).toBe(1)
+    expect(clampOperatorCount(150, 20, 100)).toBe(100)
+
+    expect(normalizeOperatorLogLevel("warning")).toBe("warning")
+    expect(normalizeOperatorLogLevel("debug")).toBeUndefined()
+  })
+
+  it("identifies sensitive operator settings keys", () => {
+    expect(SENSITIVE_OPERATOR_SETTINGS_KEYS).toContain("remoteServerApiKey")
+    expect(SENSITIVE_OPERATOR_SETTINGS_KEYS).toContain("discordBotToken")
+    expect(isSensitiveOperatorSettingsKey("langfuseSecretKey")).toBe(true)
+    expect(isSensitiveOperatorSettingsKey("theme")).toBe(false)
+    expect(getSensitiveOperatorSettingsKeys({
+      remoteServerApiKey: "masked",
+      theme: "dark",
+      whatsappEnabled: true,
+    })).toEqual(["remoteServerApiKey", "whatsappEnabled"])
+  })
+
+  it("sanitizes operator audit text and details", () => {
+    expect(sanitizeOperatorAuditText("  hello\n\nworld  ")).toBe("hello world")
+    expect(sanitizeOperatorAuditText("x".repeat(5), 3)).toBe("xxx")
+    expect(sanitizeOperatorAuditText("   ")).toBeUndefined()
+
+    expect(sanitizeOperatorAuditDetails({
+      prompt: "  run   diagnostics  ",
+      apiKey: "raw-secret",
+      nested: {
+        ok: true,
+        password: "hidden",
+        deeper: { ignored: "too deep" },
+      },
+      items: Array.from({ length: 25 }, (_, index) => index),
+    })).toEqual({
+      prompt: "run diagnostics",
+      nested: { ok: true },
+      items: Array.from({ length: 20 }, (_, index) => index),
+    })
+
+    expect(sanitizeOperatorAuditDetails({ token: "raw-secret" })).toBeUndefined()
+  })
+
+  it("extracts sanitized operator audit request metadata", () => {
+    const request = {
+      url: "/v1/operator/status?verbose=true",
+      ip: " 192.168.1.2\n",
+      headers: {
+        "x-dotagents-device-id": " device-1 ",
+        origin: " https://mobile.example\n",
+        "user-agent": " DotAgents Mobile ",
+      },
+    }
+
+    expect(OPERATOR_AUDIT_DEVICE_HEADER_KEYS).toEqual(["x-device-id", "x-dotagents-device-id"])
+    expect(getOperatorAuditPath(request)).toBe("/v1/operator/status")
+    expect(getOperatorAuditDeviceId(request)).toBe("device-1")
+    expect(getOperatorAuditSource(request)).toEqual({
+      ip: "192.168.1.2",
+      origin: "https://mobile.example",
+      userAgent: "DotAgents Mobile",
+    })
+    expect(getOperatorAuditPath({ url: "" })).toBe("/")
+    expect(getOperatorAuditDeviceId({ headers: {} })).toBeUndefined()
+    expect(getOperatorAuditSource({ headers: {} })).toBeUndefined()
+  })
+
+  it("validates operator audit log entries", () => {
+    const entry = {
+      timestamp: 1,
+      action: "settings-sensitive-update",
+      path: "/v1/settings",
+      success: true,
+    }
+
+    expect(isOperatorAuditEntry(entry)).toBe(true)
+
+    expect(isOperatorAuditEntry({
+      timestamp: "1",
+      action: "settings-sensitive-update",
+      path: "/v1/settings",
+      success: true,
+    })).toBe(false)
+
+    expect(serializeOperatorAuditLogEntries([entry])).toBe(`${JSON.stringify(entry)}\n`)
+    expect(serializeOperatorAuditLogEntries([])).toBe("")
+    expect(parseOperatorAuditLogEntries([
+      JSON.stringify({ timestamp: 0, action: "old", path: "/v1/operator/old", success: true }),
+      "not-json",
+      JSON.stringify(entry),
+      "",
+    ].join("\n"), 1)).toEqual([entry])
+    expect(parseOperatorAuditLogEntries("  ")).toEqual([])
+
+    expect(appendOperatorAuditLogEntry([{
+      timestamp: 0,
+      action: "old",
+      path: "/v1/operator/old",
+      success: true,
+    }], entry, 1)).toEqual({
+      entries: [entry],
+      shouldRewrite: true,
+    })
+    expect(appendOperatorAuditLogEntry([], entry, 1)).toEqual({
+      entries: [entry],
+      shouldRewrite: false,
+    })
+  })
+
+  it("identifies protected operator access paths and loopback IPs", () => {
+    expect(isProtectedOperatorAccessPath("/v1/settings")).toBe(true)
+    expect(isProtectedOperatorAccessPath("/v1/emergency-stop")).toBe(true)
+    expect(isProtectedOperatorAccessPath("/v1/operator/status")).toBe(true)
+    expect(isProtectedOperatorAccessPath("/v1/chat/completions")).toBe(false)
+
+    expect(isLoopbackOperatorAccessIp("127.0.0.1")).toBe(true)
+    expect(isLoopbackOperatorAccessIp("::1")).toBe(true)
+    expect(isLoopbackOperatorAccessIp("::ffff:127.0.0.1")).toBe(true)
+    expect(isLoopbackOperatorAccessIp("192.168.1.2")).toBe(false)
+    expect(isLoopbackOperatorAccessIp(undefined)).toBe(false)
+  })
+
+  it("authorizes remote server bearer tokens and trusted operator devices", () => {
+    expect(getRemoteServerBearerToken({ authorization: "Bearer api-key" })).toBe("api-key")
+    expect(getRemoteServerBearerToken({ authorization: ["Bearer first", "Bearer second"] })).toBe("first")
+    expect(getRemoteServerBearerToken({ authorization: "Basic api-key" })).toBe("")
+
+    const baseRequest = {
+      method: "GET",
+      url: "/v1/operator/status",
+      ip: "192.168.1.2",
+      headers: {
+        authorization: "Bearer api-key",
+      },
+    }
+
+    expect(authorizeRemoteServerRequest({ ...baseRequest, method: "OPTIONS" }, {
+      currentApiKey: undefined,
+      trustedDeviceIds: ["device-1"],
+    })).toEqual({ ok: true, skipAuth: true })
+
+    expect(authorizeRemoteServerRequest(baseRequest, {
+      currentApiKey: "other-key",
+      trustedDeviceIds: ["device-1"],
+    })).toEqual({
+      ok: false,
+      statusCode: 401,
+      error: "Unauthorized",
+    })
+
+    expect(authorizeRemoteServerRequest(baseRequest, {
+      currentApiKey: "api-key",
+      trustedDeviceIds: [],
+    })).toEqual({ ok: true })
+
+    expect(authorizeRemoteServerRequest({
+      ...baseRequest,
+      url: "/v1/chat/completions",
+    }, {
+      currentApiKey: "api-key",
+      trustedDeviceIds: ["device-1"],
+    })).toEqual({ ok: true })
+
+    expect(authorizeRemoteServerRequest({
+      ...baseRequest,
+      ip: "127.0.0.1",
+    }, {
+      currentApiKey: "api-key",
+      trustedDeviceIds: ["device-1"],
+    })).toEqual({ ok: true })
+
+    expect(authorizeRemoteServerRequest(baseRequest, {
+      currentApiKey: "api-key",
+      trustedDeviceIds: ["device-1"],
+    })).toEqual({
+      ok: false,
+      statusCode: 403,
+      error: "Trusted device ID required for operator access",
+      auditFailureReason: "Missing trusted device ID",
+    })
+
+    expect(authorizeRemoteServerRequest({
+      ...baseRequest,
+      headers: {
+        ...baseRequest.headers,
+        "x-dotagents-device-id": "device-2",
+      },
+    }, {
+      currentApiKey: "api-key",
+      trustedDeviceIds: ["device-1"],
+    })).toEqual({
+      ok: false,
+      statusCode: 403,
+      error: "Device not allowed for operator access",
+      auditFailureReason: "Device is not allowed for operator access",
+    })
+
+    expect(authorizeRemoteServerRequest({
+      ...baseRequest,
+      headers: {
+        ...baseRequest.headers,
+        "x-dotagents-device-id": "device-1",
+      },
+    }, {
+      currentApiKey: "api-key",
+      trustedDeviceIds: [" device-1 "],
+    })).toEqual({ ok: true })
+  })
+
+  it("builds rejected device audit entries", () => {
+    expect(buildRejectedOperatorDeviceAuditEntry({
+      timestamp: 10,
+      path: "/v1/operator/status",
+      deviceId: " device-1 ",
+      source: { ip: "192.168.1.2" },
+      failureReason: "x".repeat(140),
+    })).toEqual({
+      timestamp: 10,
+      action: "device-access-denied",
+      path: "/v1/operator/status",
+      success: false,
+      deviceId: "device-1",
+      source: { ip: "192.168.1.2" },
+      failureReason: "x".repeat(120),
+    })
+  })
+
+  it("builds sanitized operator audit event entries", () => {
+    expect(buildOperatorAuditEventEntry({
+      timestamp: 10,
+      action: "settings-sensitive-update",
+      path: "/v1/settings",
+      success: false,
+      deviceId: " device-1 ",
+      source: { ip: "192.168.1.2" },
+      details: {
+        prompt: " run diagnostics ",
+        apiKey: "secret",
+      },
+      failureReason: "x".repeat(140),
+    })).toEqual({
+      timestamp: 10,
+      action: "settings-sensitive-update",
+      path: "/v1/settings",
+      success: false,
+      deviceId: "device-1",
+      source: { ip: "192.168.1.2" },
+      details: { prompt: "run diagnostics" },
+      failureReason: "x".repeat(120),
+    })
+  })
+
+  it("builds health, recent error, and log responses", () => {
+    const entries = [
+      { timestamp: 1, level: "info" as const, component: "remote", message: "Started" },
+      { timestamp: 2, level: "error" as const, component: "mcp", message: "Failed" },
+    ]
+
+    expect(buildOperatorHealthSnapshot({
+      overall: "warning",
+      checks: { mcp: { status: "warning", message: "Needs attention" } },
+    }, 123)).toEqual({
+      checkedAt: 123,
+      overall: "warning",
+      checks: { mcp: { status: "warning", message: "Needs attention" } },
+    })
+
+    expect(buildOperatorRecentErrorsResponse(entries)).toEqual({
+      count: 2,
+      errors: entries,
+    })
+    expect(buildOperatorRecentErrorSummary(entries, 3, 1)).toEqual({
+      total: 2,
+      errorsInLastFiveMinutes: 1,
+    })
+    expect(buildOperatorLogsResponse(entries, "error")).toEqual({
+      count: 1,
+      level: "error",
+      logs: [entries[1]],
+    })
+  })
+
+  it("builds remote server and tunnel statuses without empty optional fields", () => {
+    expect(buildOperatorRemoteServerStatus({
+      running: true,
+      bind: "0.0.0.0",
+      port: 3210,
+      url: "http://0.0.0.0:3210",
+      connectableUrl: "http://192.168.1.2:3210",
+      lastError: "",
+    })).toEqual({
+      running: true,
+      bind: "0.0.0.0",
+      port: 3210,
+      url: "http://0.0.0.0:3210",
+      connectableUrl: "http://192.168.1.2:3210",
+    })
+
+    expect(buildOperatorTunnelStatus({
+      running: false,
+      starting: true,
+      mode: null,
+      url: null,
+      error: "Not installed",
+    })).toEqual({
+      running: false,
+      starting: true,
+      mode: null,
+      error: "Not installed",
+    })
+  })
+
+  it("builds tunnel setup summaries from desktop environment state", () => {
+    expect(buildOperatorTunnelSetupSummary({
+      config: {
+        cloudflareTunnelMode: "named",
+        cloudflareTunnelAutoStart: true,
+        cloudflareTunnelId: "tunnel-1",
+        cloudflareTunnelHostname: "agent.example.com",
+        cloudflareTunnelCredentialsPath: "/tmp/creds.json",
+      },
+      installed: true,
+      loggedIn: true,
+      listResult: {
+        success: true,
+        tunnels: [
+          { id: "tunnel-1", name: "agent", created_at: "2026-01-01T00:00:00Z" },
+        ],
+      },
+    })).toEqual({
+      installed: true,
+      loggedIn: true,
+      mode: "named",
+      autoStart: true,
+      namedTunnelConfigured: true,
+      configuredTunnelId: "tunnel-1",
+      configuredHostname: "agent.example.com",
+      credentialsPathConfigured: true,
+      tunnelCount: 1,
+      tunnels: [{ id: "tunnel-1", name: "agent", createdAt: "2026-01-01T00:00:00Z" }],
+    })
+
+    expect(buildOperatorTunnelSetupSummary({
+      config: {},
+      installed: true,
+      loggedIn: true,
+      listResult: { success: false, error: "not authenticated" },
+    })).toMatchObject({
+      mode: "quick",
+      autoStart: false,
+      namedTunnelConfigured: false,
+      tunnelCount: 0,
+      tunnels: [],
+      error: "not authenticated",
+    })
+
+    expect(getConfiguredCloudflareTunnelStartPlan({})).toEqual({
+      ok: true,
+      mode: "quick",
+    })
+    expect(getConfiguredCloudflareTunnelStartPlan({
+      cloudflareTunnelMode: "named",
+      cloudflareTunnelId: " tunnel-1 ",
+      cloudflareTunnelHostname: " agent.example.com ",
+      cloudflareTunnelCredentialsPath: " /tmp/creds.json ",
+    })).toEqual({
+      ok: true,
+      mode: "named",
+      tunnelId: "tunnel-1",
+      hostname: "agent.example.com",
+      credentialsPath: "/tmp/creds.json",
+    })
+    expect(getConfiguredCloudflareTunnelStartPlan({
+      cloudflareTunnelMode: "named",
+      cloudflareTunnelId: "tunnel-1",
+      cloudflareTunnelHostname: " ",
+    })).toEqual({
+      ok: false,
+      mode: "named",
+      error: "Named tunnel requires cloudflareTunnelId and cloudflareTunnelHostname",
+    })
+  })
+
+  it("builds audit, conversation, and Discord log responses", () => {
+    const auditEntries = Array.from({ length: 3 }, (_, index) => ({
+      timestamp: index + 1,
+      action: `action-${index + 1}`,
+      path: "/v1/operator/test",
+      success: true,
+    }))
+    expect(buildOperatorAuditResponse(auditEntries, 2)).toEqual({
+      count: 2,
+      entries: [auditEntries[2], auditEntries[1]],
+    })
+
+    const longPreview = "x".repeat(205)
+    expect(buildOperatorConversationsResponse([{
+      id: "conv-1",
+      title: "Conversation",
+      createdAt: 1,
+      updatedAt: 2,
+      messageCount: 3,
+      preview: longPreview,
+    }], 10)).toEqual({
+      count: 1,
+      conversations: [{
+        id: "conv-1",
+        title: "Conversation",
+        createdAt: 1,
+        updatedAt: 2,
+        messageCount: 3,
+        preview: `${"x".repeat(200)}\u2026`,
+      }],
+    })
+
+    const discordLogs = [
+      { id: "log-1", level: "info", message: "one", timestamp: 1 },
+      { id: "log-2", level: "error", message: "two", timestamp: 2 },
+    ]
+    expect(buildOperatorDiscordLogsResponse(discordLogs, 1)).toEqual({
+      count: 1,
+      logs: [discordLogs[1]],
+    })
+  })
+
+  it("builds Discord integration summaries from service status and logs", () => {
+    expect(buildOperatorDiscordIntegrationSummary({
+      available: true,
+      enabled: true,
+      connected: false,
+      connecting: true,
+      tokenConfigured: true,
+      defaultProfileId: "profile-1",
+      defaultProfileName: "Operator",
+      botUsername: "bot",
+      lastError: "connecting",
+      lastEventAt: 5,
+    }, [
+      { timestamp: 1, level: "info" },
+      { timestamp: 2, level: "warn" },
+    ])).toEqual({
+      available: true,
+      enabled: true,
+      connected: false,
+      connecting: true,
+      tokenConfigured: true,
+      defaultProfileId: "profile-1",
+      defaultProfileName: "Operator",
+      botUsername: "bot",
+      lastError: "connecting",
+      lastEventAt: 5,
+      logs: {
+        total: 2,
+        lastTimestamp: 2,
+        errorCount: 0,
+        warningCount: 1,
+        infoCount: 1,
+      },
+    })
+  })
+
+  it("builds Discord, tunnel, and restart action responses", () => {
+    expect(buildOperatorDiscordConnectActionResponse({ success: true }, { connected: false })).toEqual({
+      success: true,
+      action: "discord-connect",
+      message: "Discord connection started",
+      details: {
+        connected: false,
+      },
+    })
+
+    expect(buildOperatorDiscordConnectActionResponse({ success: false, error: "token missing" }, { connected: false })).toEqual({
+      success: false,
+      action: "discord-connect",
+      message: "token missing",
+      error: "token missing",
+    })
+
+    expect(buildOperatorDiscordDisconnectActionResponse({ success: true })).toEqual({
+      success: true,
+      action: "discord-disconnect",
+      message: "Discord integration stopped",
+    })
+
+    expect(buildOperatorDiscordDisconnectActionResponse({ success: false })).toEqual({
+      success: false,
+      action: "discord-disconnect",
+      message: "Failed to stop Discord integration",
+      error: "Failed to stop Discord integration",
+    })
+
+    expect(buildOperatorDiscordClearLogsActionResponse()).toEqual({
+      success: true,
+      action: "discord-clear-logs",
+      message: "Discord logs cleared",
+    })
+
+    expect(buildOperatorTunnelStartRemoteServerRequiredResponse()).toEqual({
+      success: false,
+      action: "tunnel-start",
+      message: "Remote server must be running before a tunnel can be started",
+      error: "Remote server is not running",
+    })
+
+    expect(buildOperatorTunnelStartActionResponse({
+      success: true,
+      mode: "quick",
+      url: "https://quick.example.com",
+    })).toEqual({
+      success: true,
+      action: "tunnel-start",
+      message: "Cloudflare quick tunnel started",
+      details: {
+        mode: "quick",
+        url: "https://quick.example.com",
+      },
+    })
+
+    expect(buildOperatorTunnelStartActionResponse({
+      success: false,
+      mode: "named",
+      error: "credentials missing",
+    })).toEqual({
+      success: false,
+      action: "tunnel-start",
+      message: "credentials missing",
+      error: "credentials missing",
+      details: {
+        mode: "named",
+      },
+    })
+
+    expect(buildOperatorTunnelStopActionResponse()).toEqual({
+      success: true,
+      action: "tunnel-stop",
+      message: "Cloudflare tunnel stopped",
+    })
+
+    expect(buildOperatorRestartRemoteServerActionResponse(true)).toEqual({
+      success: true,
+      action: "restart-remote-server",
+      message: "Remote server restart scheduled",
+      scheduled: true,
+      details: {
+        wasRunning: true,
+      },
+    })
+
+    expect(buildOperatorRestartAppActionResponse("1.2.3")).toEqual({
+      success: true,
+      action: "restart-app",
+      message: "Application restart scheduled",
+      scheduled: true,
+      details: {
+        currentVersion: "1.2.3",
+      },
+    })
+  })
+
+  it("builds push notification integration summaries", () => {
+    expect(buildOperatorPushNotificationsSummary([
+      { platform: "ios" },
+      { platform: "android" },
+      { platform: "ios" },
+    ])).toEqual({
+      enabled: true,
+      tokenCount: 3,
+      platforms: ["android", "ios"],
+    })
+
+    expect(buildOperatorPushNotificationsSummary([])).toEqual({
+      enabled: false,
+      tokenCount: 0,
+      platforms: [],
+    })
+  })
+
+  it("builds audit action names from operator paths", () => {
+    expect(buildOperatorAuditActionFromPath("/v1/operator/actions/restart-app")).toBe("actions-restart-app")
+    expect(buildOperatorAuditActionFromPath("/v1/operator/runtime")).toBe("runtime")
+    expect(buildOperatorAuditActionFromPath("/v1/operator")).toBe("operator-action")
+    expect(buildOperatorAuditActionFromPath("/v1/operator/")).toBe("operator-action")
+  })
+
+  it("builds response audit contexts for mutating operator routes", () => {
+    expect(buildOperatorResponseAuditContext(
+      { method: "GET", url: "/v1/operator/status" },
+      { statusCode: 200 },
+    )).toBeUndefined()
+
+    expect(buildOperatorResponseAuditContext(
+      { method: "POST", url: "/v1/settings" },
+      { statusCode: 200 },
+    )).toBeUndefined()
+
+    expect(buildOperatorResponseAuditContext(
+      { method: "POST", url: "/v1/operator/actions/restart-app?x=1" },
+      { statusCode: 202 },
+    )).toEqual({
+      action: "actions-restart-app",
+      path: "/v1/operator/actions/restart-app",
+      success: true,
+      failureReason: undefined,
+    })
+
+    expect(buildOperatorResponseAuditContext(
+      { method: "POST", url: "/v1/operator/actions/restart-app" },
+      { statusCode: 500 },
+      {
+        action: "restart-app",
+        success: false,
+        details: { scheduled: false },
+        failureReason: "restart-failed",
+      },
+    )).toEqual({
+      action: "restart-app",
+      path: "/v1/operator/actions/restart-app",
+      success: false,
+      details: { scheduled: false },
+      failureReason: "restart-failed",
+    })
+
+    expect(buildOperatorResponseAuditContext(
+      { method: "POST", url: "/v1/operator/actions/restart-app" },
+      { statusCode: 500 },
+    )).toEqual(expect.objectContaining({
+      success: false,
+      failureReason: "http-500",
+    }))
+  })
+
+  it("parses operator JSON records defensively", () => {
+    expect(parseOperatorJsonRecord('{"status":"connected"}')).toEqual({ status: "connected" })
+    expect(parseOperatorJsonRecord("[1,2]")).toBeUndefined()
+    expect(parseOperatorJsonRecord("not json")).toBeUndefined()
+    expect(parseOperatorJsonRecord(undefined)).toBeUndefined()
+  })
+
+  it("builds sanitized WhatsApp action success responses", () => {
+    const parsed = {
+      status: "connected",
+      connected: true,
+      hasCredentials: false,
+      lastError: "old error",
+      token: "raw-secret",
+    }
+
+    expect(getSanitizedWhatsAppOperatorDetails(parsed)).toEqual({
+      status: "connected",
+      connected: true,
+      hasCredentials: false,
+      lastError: "old error",
+    })
+
+    expect(getOperatorMcpToolResultText({
+      content: [
+        { type: "image", text: "ignore" },
+        { type: "text", text: "Connected" },
+      ],
+    })).toBe("Connected")
+    expect(getOperatorMcpToolResultText({ content: [{ type: "text", text: 42 }] })).toBeUndefined()
+    expect(getOperatorMcpToolResultText({})).toBeUndefined()
+
+    expect(buildOperatorWhatsAppActionSuccessResponse({
+      action: "whatsapp-connect",
+      text: JSON.stringify(parsed),
+      successMessage: "started",
+    })).toEqual({
+      success: true,
+      action: "whatsapp-connect",
+      message: "WhatsApp connected",
+      details: {
+        status: "connected",
+        connected: true,
+        hasCredentials: false,
+        lastError: "old error",
+      },
+    })
+
+    expect(buildOperatorWhatsAppActionSuccessResponse({
+      action: "whatsapp-connect",
+      text: "Connected",
+      successMessage: "started",
+    })).toEqual({
+      success: true,
+      action: "whatsapp-connect",
+      message: "Connected",
+    })
+
+    expect(buildOperatorWhatsAppServerUnavailableActionResponse("whatsapp-connect")).toEqual({
+      success: false,
+      action: "whatsapp-connect",
+      message: "WhatsApp server is not running. Enable WhatsApp in settings first.",
+      error: "WhatsApp server is not running",
+    })
+
+    expect(buildOperatorWhatsAppActionErrorResponse("whatsapp-logout", "logout failed")).toEqual({
+      success: false,
+      action: "whatsapp-logout",
+      message: "logout failed",
+      error: "logout failed",
+    })
+  })
+
+  it("merges WhatsApp status payloads into integration summaries", () => {
+    const summary = buildOperatorWhatsAppIntegrationSummary({
+      enabled: true,
+      serverConfigured: true,
+      serverConnected: true,
+      autoReplyEnabled: false,
+      logMessagesEnabled: true,
+      allowedSenderCount: 2,
+      logs: [{ timestamp: 1, level: "info" }],
+    })
+
+    expect(summary).toEqual({
+      enabled: true,
+      available: true,
+      connected: false,
+      serverConfigured: true,
+      serverConnected: true,
+      autoReplyEnabled: false,
+      logMessagesEnabled: true,
+      allowedSenderCount: 2,
+      logs: {
+        total: 1,
+        lastTimestamp: 1,
+        errorCount: 0,
+        warningCount: 0,
+        infoCount: 1,
+      },
+    })
+
+    expect(mergeOperatorWhatsAppStatusPayload(summary, JSON.stringify({
+      connected: true,
+      hasCredentials: true,
+      lastError: "stale session",
+      token: "raw-secret",
+    }))).toEqual({
+      ...summary,
+      connected: true,
+      hasCredentials: true,
+      lastError: "stale session",
+    })
+
+    expect(mergeOperatorWhatsAppStatusPayload(summary, "not json")).toBe(summary)
+  })
+
+  it("builds compact operator log summaries", () => {
+    expect(buildOperatorLogSummary([
+      { timestamp: 1, level: "info" },
+      { timestamp: 2, level: "warn" },
+      { timestamp: 3, level: "warning" },
+      { timestamp: 4, level: "error" },
+      { timestamp: 5, level: "debug" },
+    ])).toEqual({
+      total: 5,
+      lastTimestamp: 5,
+      errorCount: 1,
+      warningCount: 2,
+      infoCount: 1,
+    })
+
+    expect(buildOperatorLogSummary([])).toEqual({ total: 0 })
+  })
+
+  it("builds updater status summaries from plain update info", () => {
+    const updateInfo = {
+      updateAvailable: true,
+      latestRelease: {
+        tagName: "v1.2.3",
+        name: "Release",
+        publishedAt: "2026-01-01T00:00:00Z",
+        url: "https://example.com/releases/v1.2.3",
+        assets: [{ name: "app.zip" }, { name: "notes.txt" }],
+      },
+      preferredAsset: {
+        name: "app.zip",
+        downloadUrl: "https://example.com/app.zip",
+      },
+      lastCheckedAt: 10,
+      error: "download failed",
+      lastDownloadedAsset: {
+        name: "old.zip",
+        downloadedAt: 20,
+      },
+    }
+
+    expect(buildOperatorUpdaterStatus({
+      currentVersion: "1.0.0",
+      manualReleasesUrl: "https://example.com/releases",
+      updateInfo,
+    })).toEqual({
+      enabled: false,
+      mode: "manual",
+      currentVersion: "1.0.0",
+      updateInfo,
+      manualReleasesUrl: "https://example.com/releases",
+      updateAvailable: true,
+      lastCheckedAt: 10,
+      lastCheckError: "download failed",
+      latestRelease: {
+        tagName: "v1.2.3",
+        name: "Release",
+        publishedAt: "2026-01-01T00:00:00Z",
+        url: "https://example.com/releases/v1.2.3",
+        assetCount: 2,
+      },
+      preferredAsset: {
+        name: "app.zip",
+        downloadUrl: "https://example.com/app.zip",
+      },
+      lastDownloadedAt: 20,
+      lastDownloadedFileName: "old.zip",
+    })
+
+    expect(buildOperatorUpdaterStatus({ updateInfo: null })).toMatchObject({
+      enabled: false,
+      mode: "manual",
+      updateInfo: null,
+    })
+  })
+
+  it("builds updater action responses from plain update results", () => {
+    expect(buildOperatorUpdaterCheckActionResponse({
+      currentVersion: "1.0.0",
+      updateAvailable: true,
+      latestRelease: {
+        tagName: "v1.2.3",
+        url: "https://example.com/releases/v1.2.3",
+      },
+      lastCheckedAt: 10,
+    }, "https://example.com/releases")).toEqual({
+      success: true,
+      action: "updater-check",
+      message: "Update available: v1.2.3",
+      details: {
+        currentVersion: "1.0.0",
+        checkedAt: 10,
+        updateAvailable: true,
+        latestReleaseTag: "v1.2.3",
+        releaseUrl: "https://example.com/releases/v1.2.3",
+      },
+    })
+
+    expect(buildOperatorUpdaterCheckActionResponse({
+      currentVersion: "1.0.0",
+      updateAvailable: false,
+      lastCheckedAt: 11,
+    }, "https://example.com/releases")).toEqual({
+      success: true,
+      action: "updater-check",
+      message: "No newer release found.",
+      details: {
+        currentVersion: "1.0.0",
+        checkedAt: 11,
+        updateAvailable: false,
+        latestReleaseTag: undefined,
+        releaseUrl: "https://example.com/releases",
+      },
+    })
+
+    expect(buildOperatorUpdaterCheckActionResponse({
+      currentVersion: "1.0.0",
+      error: "network unavailable",
+      lastCheckedAt: 12,
+    }, "https://example.com/releases")).toEqual({
+      success: false,
+      action: "updater-check",
+      message: "Update check failed: network unavailable",
+      error: "network unavailable",
+      details: {
+        currentVersion: "1.0.0",
+        checkedAt: 12,
+        releaseUrl: "https://example.com/releases",
+      },
+    })
+
+    expect(buildOperatorUpdaterDownloadLatestActionResponse({
+      downloadedAsset: {
+        name: "DotAgents.dmg",
+        filePath: "/tmp/DotAgents.dmg",
+        downloadedAt: 20,
+      },
+      updateInfo: {
+        latestRelease: { tagName: "v1.2.3" },
+      },
+    })).toEqual({
+      success: true,
+      action: "updater-download-latest",
+      message: "Downloaded DotAgents.dmg to /tmp/DotAgents.dmg",
+      details: {
+        fileName: "DotAgents.dmg",
+        filePath: "/tmp/DotAgents.dmg",
+        downloadedAt: 20,
+        releaseTag: "v1.2.3",
+      },
+    })
+
+    expect(buildOperatorDownloadedAssetActionResponse("updater-reveal-download", {
+      name: "DotAgents.dmg",
+      filePath: "/tmp/DotAgents.dmg",
+    })).toEqual({
+      success: true,
+      action: "updater-reveal-download",
+      message: "Revealed DotAgents.dmg in the desktop file manager.",
+      details: {
+        fileName: "DotAgents.dmg",
+        filePath: "/tmp/DotAgents.dmg",
+      },
+    })
+
+    expect(buildOperatorDownloadedAssetActionResponse("updater-open-download", {
+      name: "DotAgents.dmg",
+      filePath: "/tmp/DotAgents.dmg",
+    })).toMatchObject({
+      success: true,
+      action: "updater-open-download",
+      message: "Opened DotAgents.dmg on the desktop machine.",
+    })
+
+    expect(buildOperatorOpenReleasesActionResponse("https://example.com/releases")).toEqual({
+      success: true,
+      action: "updater-open-releases",
+      message: "Opened releases page: https://example.com/releases",
+      details: {
+        url: "https://example.com/releases",
+      },
+    })
+
+    expect(buildOperatorActionErrorResponse("updater-open-download", "No downloaded asset found")).toEqual({
+      success: false,
+      action: "updater-open-download",
+      message: "No downloaded asset found",
+      error: "No downloaded asset found",
+    })
+
+    expect(buildOperatorAgentSessionStopResponse("session-1", "conv-1")).toEqual({
+      success: true,
+      action: "agent-session-stop",
+      message: "Stopped agent session session-1",
+      details: {
+        sessionId: "session-1",
+        conversationId: "conv-1",
+      },
+    })
+
+    expect(buildOperatorMessageQueueClearResponse("conv-1", true)).toEqual({
+      success: true,
+      action: "message-queue-clear",
+      message: "Cleared message queue for conv-1",
+      details: { conversationId: "conv-1" },
+    })
+    expect(buildOperatorMessageQueueClearResponse("conv-1", false)).toEqual({
+      success: false,
+      action: "message-queue-clear",
+      message: "Failed to clear message queue for conv-1",
+      error: "Failed to clear message queue for conv-1",
+    })
+    expect(buildOperatorMessageQueuePauseResponse("conv-1")).toEqual({
+      success: true,
+      action: "message-queue-pause",
+      message: "Paused message queue for conv-1",
+      details: { conversationId: "conv-1" },
+    })
+    expect(buildOperatorMessageQueueResumeResponse("conv-1", true)).toEqual({
+      success: true,
+      action: "message-queue-resume",
+      message: "Resumed message queue for conv-1 and started processing",
+      details: { conversationId: "conv-1", processingStarted: true },
+    })
+    expect(buildOperatorMessageQueueResumeResponse("conv-1", false)).toEqual({
+      success: true,
+      action: "message-queue-resume",
+      message: "Resumed message queue for conv-1",
+      details: { conversationId: "conv-1", processingStarted: false },
+    })
+    expect(buildOperatorQueuedMessageRemoveResponse("conv-1", "msg-1", true)).toEqual({
+      success: true,
+      action: "message-queue-message-remove",
+      message: "Removed queued message msg-1",
+      details: { conversationId: "conv-1", messageId: "msg-1" },
+    })
+    expect(buildOperatorQueuedMessageRemoveResponse("conv-1", "msg-1", false)).toEqual({
+      success: false,
+      action: "message-queue-message-remove",
+      message: "Failed to remove queued message msg-1",
+      error: "Failed to remove queued message msg-1",
+    })
+    expect(buildOperatorQueuedMessageRetryResponse("conv-1", "msg-1", true, true)).toEqual({
+      success: true,
+      action: "message-queue-message-retry",
+      message: "Retried queued message msg-1 and started processing",
+      details: { conversationId: "conv-1", messageId: "msg-1", processingStarted: true },
+    })
+    expect(buildOperatorQueuedMessageRetryResponse("conv-1", "msg-1", false, false)).toEqual({
+      success: false,
+      action: "message-queue-message-retry",
+      message: "Failed to retry queued message msg-1",
+      error: "Failed to retry queued message msg-1",
+    })
+    expect(buildOperatorQueuedMessageUpdateResponse("conv-1", "msg-1", true, false)).toEqual({
+      success: true,
+      action: "message-queue-message-update",
+      message: "Updated queued message msg-1",
+      details: { conversationId: "conv-1", messageId: "msg-1", processingStarted: false },
+    })
+  })
+
+  it("builds system metrics from raw process and OS values", () => {
+    expect(buildOperatorSystemMetrics({
+      platform: "darwin",
+      arch: "arm64",
+      nodeVersion: "v20.0.0",
+      electronVersion: "30.0.0",
+      appVersion: "1.2.3",
+      osUptimeSeconds: 123.9,
+      processUptimeSeconds: 45.8,
+      memoryUsageBytes: {
+        heapUsed: 1_572_864,
+        heapTotal: 2_097_152,
+        rss: 10_485_760,
+      },
+      cpuCount: 8,
+      totalMemoryBytes: 17_179_869_184,
+      freeMemoryBytes: 4_294_967_296,
+      hostname: "workstation",
+    })).toEqual({
+      platform: "darwin",
+      arch: "arm64",
+      nodeVersion: "v20.0.0",
+      electronVersion: "30.0.0",
+      appVersion: "1.2.3",
+      uptimeSeconds: 123,
+      processUptimeSeconds: 45,
+      memoryUsage: {
+        heapUsedMB: 1.5,
+        heapTotalMB: 2,
+        rssMB: 10,
+      },
+      cpuCount: 8,
+      totalMemoryMB: 16384,
+      freeMemoryMB: 4096,
+      hostname: "workstation",
+    })
+  })
+
+  it("builds active and recent session summaries", () => {
+    expect(buildOperatorSessionsSummary([
+      {
+        id: "session-1",
+        conversationTitle: "Research",
+        status: "active",
+        startTime: 1,
+        currentIteration: 2,
+        maxIterations: 5,
+      },
+    ], [
+      {
+        id: "session-2",
+        status: "completed",
+        startTime: 0,
+      },
+      {
+        id: "session-3",
+        status: "error",
+        startTime: 3,
+      },
+    ])).toEqual({
+      activeSessions: 1,
+      recentSessions: 2,
+      activeSessionDetails: [{
+        id: "session-1",
+        title: "Research",
+        status: "active",
+        startTime: 1,
+        currentIteration: 2,
+        maxIterations: 5,
+      }],
+    })
+  })
+
+  it("builds complete operator runtime status snapshots from plain inputs", () => {
+    expect(buildOperatorRuntimeStatus({
+      timestamp: 1_000,
+      remoteServer: {
+        running: true,
+        bind: "0.0.0.0",
+        port: 3210,
+        url: "http://0.0.0.0:3210/v1",
+        connectableUrl: "http://192.168.1.2:3210/v1",
+      },
+      health: {
+        overall: "healthy",
+        checks: {},
+      },
+      tunnel: {
+        running: false,
+        starting: false,
+        mode: null,
+      },
+      integrations: {
+        discord: {
+          available: true,
+          enabled: true,
+          connected: true,
+          connecting: false,
+          logs: { total: 0 },
+        },
+        whatsapp: {
+          enabled: false,
+          available: false,
+          connected: false,
+          serverConfigured: false,
+          serverConnected: false,
+          autoReplyEnabled: false,
+          logMessagesEnabled: false,
+          allowedSenderCount: 0,
+          logs: { total: 0 },
+        },
+        pushNotifications: {
+          enabled: false,
+          tokenCount: 0,
+          platforms: [],
+        },
+      },
+      updater: {
+        currentVersion: "1.0.0",
+        updateInfo: null,
+        manualReleasesUrl: "https://example.com/releases",
+      },
+      system: {
+        platform: "darwin",
+        arch: "arm64",
+        nodeVersion: "v20.0.0",
+        electronVersion: "30.0.0",
+        appVersion: "1.0.0",
+        osUptimeSeconds: 10.9,
+        processUptimeSeconds: 3.1,
+        memoryUsageBytes: {
+          heapUsed: 1_048_576,
+          heapTotal: 2_097_152,
+          rss: 3_145_728,
+        },
+        cpuCount: 8,
+        totalMemoryBytes: 8_388_608,
+        freeMemoryBytes: 4_194_304,
+        hostname: "workstation",
+      },
+      activeSessions: [{
+        id: "session-1",
+        conversationTitle: "Research",
+        status: "active",
+        startTime: 900,
+      }],
+      recentSessions: [{ id: "session-1", status: "active", startTime: 900 }],
+      recentErrors: [
+        { timestamp: 100, level: "error", component: "old", message: "Old" },
+        { timestamp: 950, level: "error", component: "new", message: "New" },
+      ],
+      recentErrorWindowMs: 100,
+    })).toMatchObject({
+      timestamp: 1_000,
+      remoteServer: {
+        running: true,
+        bind: "0.0.0.0",
+        port: 3210,
+        url: "http://0.0.0.0:3210/v1",
+        connectableUrl: "http://192.168.1.2:3210/v1",
+      },
+      health: {
+        checkedAt: 1_000,
+        overall: "healthy",
+        checks: {},
+      },
+      tunnel: {
+        running: false,
+        starting: false,
+        mode: null,
+      },
+      updater: {
+        enabled: false,
+        mode: "manual",
+        currentVersion: "1.0.0",
+        updateInfo: null,
+        manualReleasesUrl: "https://example.com/releases",
+      },
+      system: {
+        platform: "darwin",
+        uptimeSeconds: 10,
+        processUptimeSeconds: 3,
+        memoryUsage: {
+          heapUsedMB: 1,
+          heapTotalMB: 2,
+          rssMB: 3,
+        },
+      },
+      sessions: {
+        activeSessions: 1,
+        recentSessions: 1,
+      },
+      recentErrors: {
+        total: 2,
+        errorsInLastFiveMinutes: 1,
+      },
+    })
+  })
+})

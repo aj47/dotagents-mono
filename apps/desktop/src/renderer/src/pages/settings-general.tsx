@@ -7,7 +7,14 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { Switch } from "@renderer/components/ui/switch"
-import { STT_PROVIDER_ID, SUPPORTED_LANGUAGES } from "@dotagents/shared"
+import {
+  MCP_MAX_ITERATIONS_DEFAULT,
+  MCP_MAX_ITERATIONS_MAX,
+  MCP_MAX_ITERATIONS_MIN,
+  parseMcpMaxIterationsDraft,
+} from "@dotagents/shared/mcp-api"
+import type { STT_PROVIDER_ID } from "@dotagents/shared/providers"
+import { SUPPORTED_LANGUAGES } from "@dotagents/shared/languages"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Input } from "@renderer/components/ui/input"
 import { Button } from "@renderer/components/ui/button"
@@ -34,9 +41,6 @@ import { useAudioDevices } from "@renderer/hooks/use-audio-devices"
 import { hasResolvedAudioInputDeviceLabel } from "@renderer/hooks/audio-input-device-utils"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
-const MCP_MAX_ITERATIONS_MIN = 1
-const MCP_MAX_ITERATIONS_MAX = 50
-const MCP_MAX_ITERATIONS_DEFAULT = 10
 
 type LangfuseDraftKey = "langfusePublicKey" | "langfuseSecretKey" | "langfuseBaseUrl"
 
@@ -46,13 +50,6 @@ function getLangfuseDrafts(config: Config | undefined) {
     langfuseSecretKey: config?.langfuseSecretKey ?? "",
     langfuseBaseUrl: config?.langfuseBaseUrl ?? "",
   }
-}
-
-function parseMcpMaxIterationsDraft(value: string) {
-  const parsedValue = Number.parseInt(value, 10)
-  if (Number.isNaN(parsedValue)) return null
-  if (parsedValue < MCP_MAX_ITERATIONS_MIN || parsedValue > MCP_MAX_ITERATIONS_MAX) return null
-  return parsedValue
 }
 
 export function Component() {

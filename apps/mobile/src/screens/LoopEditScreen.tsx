@@ -24,6 +24,16 @@ import {
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
+import {
+  DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
+  DEFAULT_REPEAT_TASK_WEEKDAYS,
+  REPEAT_TASK_DAY_LABELS,
+  getLoopScheduleDaysOfWeek,
+  getLoopScheduleMode,
+  getLoopScheduleTimes,
+  parseLoopIntervalDraft,
+  sanitizeScheduleTimes,
+} from '@dotagents/shared/repeat-task-utils';
 
 type ScheduleMode = 'continuous' | 'interval' | 'daily' | 'weekly';
 
@@ -33,13 +43,16 @@ type LoopFormData = {
   intervalMinutes: string;
   enabled: boolean;
   profileId: string;
+  runOnStartup: boolean;
+  speakOnTrigger: boolean;
+  continueInSession: boolean;
+  lastSessionId: string;
+  maxIterations: string;
   scheduleMode: ScheduleMode;
   scheduleTimes: string[];
   scheduleDaysOfWeek: number[];
 };
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const DEFAULT_INTERVAL_MINUTES = 60;
 
 const defaultFormData: LoopFormData = {
@@ -48,32 +61,31 @@ const defaultFormData: LoopFormData = {
   intervalMinutes: String(DEFAULT_INTERVAL_MINUTES),
   enabled: true,
   profileId: '',
+  runOnStartup: false,
+  speakOnTrigger: false,
+  continueInSession: false,
+  lastSessionId: '',
+  maxIterations: '',
   scheduleMode: 'interval',
-  scheduleTimes: ['09:00'],
-  scheduleDaysOfWeek: [1, 2, 3, 4, 5],
+  scheduleTimes: [...DEFAULT_REPEAT_TASK_SCHEDULE_TIMES],
+  scheduleDaysOfWeek: [...DEFAULT_REPEAT_TASK_WEEKDAYS],
 };
 
-function sanitizeScheduleTimes(times: string[]): string[] {
-  const out: string[] = [];
-  for (const t of times) {
-    const trimmed = t.trim();
-    if (TIME_RE.test(trimmed) && !out.includes(trimmed)) out.push(trimmed);
-  }
-  return out.sort();
-}
-
 function loopToFormData(loop: Loop): LoopFormData {
-  const scheduleMode: ScheduleMode = loop.runContinuously ? 'continuous' : (loop.schedule?.type ?? 'interval');
-  const scheduleTimes = loop.schedule?.times.length ? [...loop.schedule.times] : ['09:00'];
-  const scheduleDaysOfWeek = loop.schedule?.type === 'weekly'
-    ? [...loop.schedule.daysOfWeek]
-    : [1, 2, 3, 4, 5];
+  const scheduleMode: ScheduleMode = getLoopScheduleMode(loop);
+  const scheduleTimes = getLoopScheduleTimes(loop);
+  const scheduleDaysOfWeek = getLoopScheduleDaysOfWeek(loop);
   return {
     name: loop.name,
     prompt: loop.prompt,
     intervalMinutes: String(loop.intervalMinutes),
     enabled: loop.enabled,
     profileId: loop.profileId || '',
+    runOnStartup: loop.runOnStartup ?? false,
+    speakOnTrigger: loop.speakOnTrigger ?? false,
+    continueInSession: loop.continueInSession ?? false,
+    lastSessionId: loop.lastSessionId || '',
+    maxIterations: loop.maxIterations ? String(loop.maxIterations) : '',
     scheduleMode,
     scheduleTimes,
     scheduleDaysOfWeek,
@@ -192,7 +204,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       setError('Name and prompt are required');
       return;
     }
-    const hasValidInterval = /^\d+$/.test(intervalInput) && Number.isInteger(intervalMinutes) && intervalMinutes >= 1;
+    const hasValidInterval = parseLoopIntervalDraft(intervalInput) !== null;
     if (formData.scheduleMode === 'interval' && !hasValidInterval) {
       setError('Interval must be a positive whole number of minutes');
       return;
@@ -202,6 +214,12 @@ export default function LoopEditScreen({ navigation, route }: any) {
       : isEditing && existingLoopIntervalMinutes !== null
         ? existingLoopIntervalMinutes
         : DEFAULT_INTERVAL_MINUTES;
+    const maxIterationsInput = formData.maxIterations.trim();
+    const parsedMaxIterations = maxIterationsInput ? parseLoopIntervalDraft(maxIterationsInput) : null;
+    if (maxIterationsInput && parsedMaxIterations === null) {
+      setError('Max iterations must be a positive whole number');
+      return;
+    }
 
     let schedule: LoopSchedule | null = null;
     if (formData.scheduleMode !== 'interval' && formData.scheduleMode !== 'continuous') {
@@ -224,6 +242,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
     setIsSaving(true);
     setError(null);
     try {
+      const lastSessionId = formData.lastSessionId.trim();
       if (isEditing && effectiveLoopId) {
         const updatePayload: LoopUpdateRequest = {
           name,
@@ -231,6 +250,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
           intervalMinutes: savedIntervalMinutes,
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
+          runOnStartup: formData.runOnStartup,
+          speakOnTrigger: formData.speakOnTrigger,
+          continueInSession: formData.continueInSession,
+          lastSessionId: formData.continueInSession ? (lastSessionId || null) : null,
+          maxIterations: parsedMaxIterations ?? null,
           runContinuously: formData.scheduleMode === 'continuous',
           schedule,
         };
@@ -242,6 +266,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
           intervalMinutes: savedIntervalMinutes,
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
+          runOnStartup: formData.runOnStartup,
+          speakOnTrigger: formData.speakOnTrigger,
+          continueInSession: formData.continueInSession,
+          ...(formData.continueInSession && lastSessionId ? { lastSessionId } : {}),
+          ...(parsedMaxIterations ? { maxIterations: parsedMaxIterations } : {}),
           runContinuously: formData.scheduleMode === 'continuous',
           schedule,
         };
@@ -375,7 +404,9 @@ export default function LoopEditScreen({ navigation, route }: any) {
             </View>
           ))}
           <TouchableOpacity
-            onPress={() => updateField('scheduleTimes', [...formData.scheduleTimes, '09:00'])}
+            onPress={() =>
+              updateField('scheduleTimes', [...formData.scheduleTimes, DEFAULT_REPEAT_TASK_SCHEDULE_TIMES[0]])
+            }
             style={styles.addTimeBtn}
             accessibilityRole="button"
           >
@@ -388,7 +419,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
         <>
           <Text style={styles.label}>Days of week</Text>
           <View style={styles.modeRow}>
-            {DAY_LABELS.map((label, dayIdx) => {
+            {REPEAT_TASK_DAY_LABELS.map((label, dayIdx) => {
               const active = formData.scheduleDaysOfWeek.includes(dayIdx);
               return (
                 <TouchableOpacity
@@ -420,6 +451,65 @@ export default function LoopEditScreen({ navigation, route }: any) {
           thumbColor={formData.enabled ? theme.colors.primaryForeground : theme.colors.background}
         />
       </View>
+      <View style={styles.switchRow}>
+        <View style={styles.switchInfo}>
+          <Text style={styles.switchLabel}>Run on startup</Text>
+          <Text style={styles.switchHelperText}>Runs once when the desktop repeat task service starts.</Text>
+        </View>
+        <Switch
+          value={formData.runOnStartup}
+          onValueChange={value => updateField('runOnStartup', value)}
+          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+          thumbColor={formData.runOnStartup ? theme.colors.primaryForeground : theme.colors.background}
+        />
+      </View>
+      <View style={styles.switchRow}>
+        <View style={styles.switchInfo}>
+          <Text style={styles.switchLabel}>Speak on trigger</Text>
+          <Text style={styles.switchHelperText}>Unsnoozes the completed task session so desktop TTS can play the result.</Text>
+        </View>
+        <Switch
+          value={formData.speakOnTrigger}
+          onValueChange={value => updateField('speakOnTrigger', value)}
+          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+          thumbColor={formData.speakOnTrigger ? theme.colors.primaryForeground : theme.colors.background}
+        />
+      </View>
+      <View style={styles.switchRow}>
+        <View style={styles.switchInfo}>
+          <Text style={styles.switchLabel}>Continue in same session</Text>
+          <Text style={styles.switchHelperText}>Appends future runs to the last task session when it can be revived.</Text>
+        </View>
+        <Switch
+          value={formData.continueInSession}
+          onValueChange={value => updateField('continueInSession', value)}
+          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+          thumbColor={formData.continueInSession ? theme.colors.primaryForeground : theme.colors.background}
+        />
+      </View>
+      {formData.continueInSession && (
+        <>
+          <Text style={styles.label}>Pinned session ID (optional)</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.lastSessionId}
+            onChangeText={v => updateField('lastSessionId', v)}
+            placeholder="Auto uses this task's most recent session"
+            placeholderTextColor={theme.colors.mutedForeground}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </>
+      )}
+      <Text style={styles.label}>Max iterations (optional)</Text>
+      <TextInput
+        style={styles.input}
+        value={formData.maxIterations}
+        onChangeText={v => updateField('maxIterations', v)}
+        placeholder="Uses desktop default"
+        placeholderTextColor={theme.colors.mutedForeground}
+        keyboardType="numeric"
+      />
 
       <Text style={styles.label}>Agent Profile (optional)</Text>
       <Text style={styles.sectionHelperText}>Choose a dedicated agent for this loop, or leave it on the default agent.</Text>
@@ -490,7 +580,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 110 },
     switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+    switchInfo: { flex: 1, marginRight: spacing.md },
     switchLabel: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground },
+    switchHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 2 },
     profileOptions: { width: '100%' as const, gap: spacing.xs },
     profileOption: {
       ...createMinimumTouchTargetStyle({

@@ -12,11 +12,11 @@ export {
   sessionToListItem,
   sortSessionsByPinnedFirst,
   isStubSession,
-} from '@dotagents/shared';
+} from '@dotagents/shared/session';
 
 // Re-export session types from shared
 // Note: SessionChatMessage is re-exported as ChatMessage for backward compatibility
-export type { Session, SessionListItem, SessionChatMessage as ChatMessage } from '@dotagents/shared';
+export type { Session, SessionListItem, SessionChatMessage as ChatMessage } from '@dotagents/shared/session';
 
 // Re-export ToolCall/ToolResult for backward compat
-export type { ToolCall, ToolResult } from '@dotagents/shared';
+export type { ToolCall, ToolResult } from '@dotagents/shared/types';

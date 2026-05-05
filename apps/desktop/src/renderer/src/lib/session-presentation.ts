@@ -2,7 +2,7 @@ import {
   getAgentConversationStateLabel,
   normalizeAgentConversationState,
   type AgentConversationState,
-} from "@dotagents/shared"
+} from "@dotagents/shared/conversation-state"
 
 export type SessionLifecycleState = AgentConversationState
 export type SessionAttentionState = "foreground" | "background"

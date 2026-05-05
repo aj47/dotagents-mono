@@ -32,8 +32,8 @@ import { isDebugLLM, logLLM } from "./debug"
 import { getErrorMessage, normalizeError } from "./error-utils"
 import { normalizeVerificationResultForCompletion } from "./llm-continuation-guards"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
-import type { AgentConversationState } from "@dotagents/shared"
-import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
+import type { AgentConversationState } from "@dotagents/shared/conversation-state"
+import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
 import {
   createLLMGeneration,
   endLLMGeneration,

@@ -15,7 +15,12 @@ import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { SessionListItem, isStubSession } from '../types/session';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createTextInputAccessibilityLabel } from '../lib/accessibility';
-import { filterSessionSearchResults, type SessionSearchResult } from './session-list-search';
+import {
+  filterSessionSearchResults,
+  filterSessionsByArchiveMode,
+  type SessionArchiveMode,
+  type SessionSearchResult,
+} from './session-list-search';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
@@ -34,6 +39,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const { currentProfile } = useProfile();
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sessionListMode, setSessionListMode] = useState<SessionArchiveMode>('active');
 
   // ── Rapid Fire voice state ─────────────────────────────────────────────────
   const [rfListening, setRfListening] = useState(false);
@@ -838,9 +844,13 @@ export default function SessionListScreen({ navigation }: Props) {
 
   const filteredSessions = useMemo(() => {
     const results = filterSessionSearchResults(sessionStore.sessions, searchQuery);
-    if (searchQuery.trim()) return results;
-    return results.filter((s) => !s.isArchived);
-  }, [sessionStore.sessions, searchQuery]);
+    return filterSessionsByArchiveMode(results, sessionListMode);
+  }, [sessionStore.sessions, searchQuery, sessionListMode]);
+
+  const sessionArchiveCount = useMemo(
+    () => sessionStore.sessions.filter((session) => !!session.isArchived).length,
+    [sessionStore.sessions],
+  );
 
   const renderSession = ({ item }: { item: SessionSearchResult }) => {
     const isActive = item.id === sessionStore.currentSessionId;
@@ -873,22 +883,39 @@ export default function SessionListScreen({ navigation }: Props) {
           </View>
           <View style={styles.sessionHeaderMeta}>
             <Text style={styles.sessionDate}>{formatDate(item.updatedAt)}</Text>
-            <Pressable
-              style={[styles.sessionPinButton, item.isPinned && styles.sessionPinButtonActive]}
-              onPress={(event: GestureResponderEvent) => {
-                event.stopPropagation();
-                void handleToggleSessionPinned(item.id);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel(item.isPinned ? `Unpin ${item.title}` : `Pin ${item.title}`)}
-              accessibilityHint={item.isPinned
-                ? 'Removes this chat from the pinned chats section.'
-                : 'Keeps this chat at the top of the chats list.'}
-            >
-              <Text style={[styles.sessionPinButtonText, item.isPinned && styles.sessionPinButtonTextActive]}>
-                {item.isPinned ? 'Pinned' : 'Pin'}
-              </Text>
-            </Pressable>
+            {item.isArchived ? (
+              <Pressable
+                style={[styles.sessionPinButton, styles.sessionArchiveButtonActive]}
+                onPress={(event: GestureResponderEvent) => {
+                  event.stopPropagation();
+                  void handleToggleSessionArchived(item.id);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel(`Unarchive ${item.title}`)}
+                accessibilityHint="Moves this chat back to the chats list."
+              >
+                <Text style={[styles.sessionPinButtonText, styles.sessionArchiveButtonTextActive]}>
+                  Unarchive
+                </Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                style={[styles.sessionPinButton, item.isPinned && styles.sessionPinButtonActive]}
+                onPress={(event: GestureResponderEvent) => {
+                  event.stopPropagation();
+                  void handleToggleSessionPinned(item.id);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel(item.isPinned ? `Unpin ${item.title}` : `Pin ${item.title}`)}
+                accessibilityHint={item.isPinned
+                  ? 'Removes this chat from the pinned chats section.'
+                  : 'Keeps this chat at the top of the chats list.'}
+              >
+                <Text style={[styles.sessionPinButtonText, item.isPinned && styles.sessionPinButtonTextActive]}>
+                  {item.isPinned ? 'Pinned' : 'Pin'}
+                </Text>
+              </Pressable>
+            )}
           </View>
         </View>
         <Text style={styles.sessionPreview} numberOfLines={1}>
@@ -899,25 +926,31 @@ export default function SessionListScreen({ navigation }: Props) {
     );
   };
 
-  const EmptyState = () => (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyStateTextGroup}>
-        <Text style={styles.emptyTitle}>No chats yet</Text>
-        <Text style={styles.emptySubtitle}>
-          Start your first chat so recent conversations show up here.
-        </Text>
+  const EmptyState = () => {
+    const isArchivedMode = sessionListMode === 'archived';
+
+    return (
+      <View style={styles.emptyState}>
+        <View style={styles.emptyStateTextGroup}>
+          <Text style={styles.emptyTitle}>{isArchivedMode ? 'No archived chats' : 'No chats yet'}</Text>
+          <Text style={styles.emptySubtitle}>
+            {isArchivedMode
+              ? 'Your archived chat list is empty.'
+              : 'Start your first chat so recent conversations show up here.'}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
+          onPress={isArchivedMode ? () => setSessionListMode('active') : handleCreateSession}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel(isArchivedMode ? 'View chats' : 'Start first chat')}
+          accessibilityHint={isArchivedMode ? 'Returns to the chats list.' : 'Creates and opens your first chat.'}
+        >
+          <Text style={styles.emptyStateButtonText}>{isArchivedMode ? 'View chats' : 'Start first chat'}</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
-        onPress={handleCreateSession}
-        accessibilityRole="button"
-        accessibilityLabel={createButtonAccessibilityLabel('Start first chat')}
-        accessibilityHint="Creates and opens your first chat."
-      >
-        <Text style={styles.emptyStateButtonText}>Start first chat</Text>
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   const DisconnectedState = () => (
     <View style={styles.disconnectedState}>
@@ -960,7 +993,9 @@ export default function SessionListScreen({ navigation }: Props) {
   const SearchEmptyState = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyStateTextGroup}>
-        <Text style={styles.emptyTitle}>No matching chats</Text>
+        <Text style={styles.emptyTitle}>
+          {sessionListMode === 'archived' ? 'No matching archived chats' : 'No matching chats'}
+        </Text>
         <Text style={styles.emptySubtitle}>
           Try a different keyword or clear search.
         </Text>
@@ -1028,6 +1063,28 @@ export default function SessionListScreen({ navigation }: Props) {
               <Text style={styles.searchClearButtonText}>Clear</Text>
             </TouchableOpacity>
           )}
+        </View>
+        <View style={styles.sessionFilterRow}>
+          {([
+            ['active', 'Chats'],
+            ['archived', `Archived${sessionArchiveCount > 0 ? ` (${sessionArchiveCount})` : ''}`],
+          ] as const).map(([mode, label]) => {
+            const isSelected = sessionListMode === mode;
+            return (
+              <Pressable
+                key={mode}
+                style={[styles.sessionFilterButton, isSelected && styles.sessionFilterButtonActive]}
+                onPress={() => setSessionListMode(mode)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+                accessibilityLabel={createButtonAccessibilityLabel(label)}
+              >
+                <Text style={[styles.sessionFilterButtonText, isSelected && styles.sessionFilterButtonTextActive]}>
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
@@ -1184,6 +1241,35 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.primary,
       fontWeight: '600',
     },
+    sessionFilterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      flexWrap: 'wrap',
+    },
+    sessionFilterButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    sessionFilterButtonActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '12',
+    },
+    sessionFilterButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    sessionFilterButtonTextActive: {
+      color: theme.colors.primary,
+    },
     list: {
       padding: spacing.md,
     },
@@ -1297,12 +1383,19 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.primary + '12',
     },
+    sessionArchiveButtonActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '12',
+    },
     sessionPinButtonText: {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
       fontWeight: '600',
     },
     sessionPinButtonTextActive: {
+      color: theme.colors.primary,
+    },
+    sessionArchiveButtonTextActive: {
       color: theme.colors.primary,
     },
     sessionDate: {

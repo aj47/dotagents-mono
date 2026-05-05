@@ -17,7 +17,7 @@ import type {
   LoopConfig,
   AgentProfileConnectionType,
   AgentProfileRole,
-} from "@shared/types"
+} from "@dotagents/core"
 import {
   buildHubBundleArtifactUrl,
   buildHubBundleInstallUrl,
@@ -25,7 +25,7 @@ import {
   type HubCatalogAuthor,
   type HubCatalogCompatibility,
   type HubPublishPayload,
-} from "@dotagents/shared"
+} from "@dotagents/shared/hub"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToDirPath } from "./agents-files/skills"

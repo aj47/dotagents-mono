@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { HandsFreePhase, HandsFreeResumePhase } from '@dotagents/shared';
+import type { HandsFreePhase, HandsFreeResumePhase } from '@dotagents/shared/types';
 import { matchSleepPhrase, matchWakePhrase, normalizeVoicePhrase } from './phraseMatcher';
 import type { VoiceDebugLog } from './voiceDebug';
 

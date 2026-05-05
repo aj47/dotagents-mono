@@ -2,7 +2,22 @@
 import { app } from "electron"
 import path from "path"
 import fs from "fs"
-import { AgentSkill, AgentSkillsData } from "@shared/types"
+import {
+  parseSkillMarkdown,
+  stringifySkillMarkdown,
+  type AgentSkill,
+  type AgentSkillsData,
+} from "@dotagents/core"
+import {
+  GITHUB_SKILL_COLLECTION_DIRS,
+  GITHUB_SKILL_MARKDOWN_FILENAMES,
+  getGitHubSkillCandidateRelativePaths,
+  isGitHubSkillMarkdownFileName,
+  parseGitHubSkillIdentifier,
+  validateGitHubSkillIdentifierPart,
+  validateGitHubSkillRef,
+  validateGitHubSkillSubPath,
+} from "@dotagents/shared/skills-api"
 import { randomUUID } from "crypto"
 import { logApp } from "./debug"
 import { exec } from "child_process"
@@ -27,149 +42,6 @@ type SkillOrigin = {
 }
 
 const execAsync = promisify(exec)
-
-/**
- * Common paths where SKILL.md files might be located in a GitHub repo
- */
-const SKILL_MD_PATHS = [
-  "SKILL.md",
-  "skill.md",
-  "skills/{name}/SKILL.md",
-  ".claude/skills/{name}/SKILL.md",
-  ".codex/skills/{name}/SKILL.md",
-]
-
-/**
- * Parse a GitHub repo identifier or URL into owner, repo, and optional path
- * Supports formats:
- * - owner/repo
- * - owner/repo/path/to/skill
- * - https://github.com/owner/repo
- * - https://github.com/owner/repo/tree/main/path/to/skill
- */
-/**
- * Validate a git ref (branch/tag name) to prevent command injection
- * Only allows safe characters: alphanumeric, dots, hyphens, underscores, and forward slashes
- * Must not start with a hyphen to prevent being interpreted as a flag in git commands
- */
-function validateGitRef(ref: string): boolean {
-  // Git ref names can contain alphanumeric, dots, hyphens, underscores, and slashes
-  // But must not contain shell metacharacters like ; & | $ ` ' " ( ) < > etc.
-  // Must not start with a hyphen to prevent flag injection (e.g., "-delete" in git checkout)
-  if (ref.startsWith("-")) {
-    return false
-  }
-  return /^[a-zA-Z0-9._\-/]+$/.test(ref)
-}
-
-/**
- * Validate a GitHub owner or repo name to prevent command injection
- * GitHub usernames/org names: alphanumeric and hyphens, cannot start/end with hyphen, max 39 chars
- * GitHub repo names: alphanumeric, hyphens, underscores, and dots
- * We use a slightly permissive pattern that still blocks shell metacharacters
- * Must not start with a hyphen to prevent flag injection when used in git commands
- */
-function validateGitHubIdentifierPart(part: string, type: "owner" | "repo"): boolean {
-  if (!part || part.length === 0 || part.length > 100) {
-    return false
-  }
-  // Must not start with a hyphen to prevent flag injection in shell commands
-  // (GitHub also doesn't allow usernames starting with hyphens)
-  if (part.startsWith("-")) {
-    return false
-  }
-  // Allow alphanumeric, hyphens, underscores, and dots
-  // Block shell metacharacters like ; & | $ ` ' " ( ) < > space newline etc.
-  return /^[a-zA-Z0-9._-]+$/.test(part)
-}
-
-/**
- * Validate a subPath to prevent path traversal attacks.
- * The subPath should not escape the intended directory via ".." or absolute paths.
- */
-function validateSubPath(subPath: string): boolean {
-  if (!subPath) {
-    return true // Empty/null subPath is valid (means no subPath)
-  }
-  // Reject absolute paths
-  if (path.isAbsolute(subPath)) {
-    return false
-  }
-  // Reject paths containing .. (path traversal)
-  const normalizedPath = path.normalize(subPath)
-  if (normalizedPath.startsWith("..") || normalizedPath.includes(`${path.sep}..${path.sep}`) || normalizedPath.includes(`${path.sep}..`) || normalizedPath.endsWith("..")) {
-    return false
-  }
-  // Also reject if the path after normalization would escape
-  // Check each segment for ".."
-  const segments = subPath.split(/[/\\]/)
-  for (const segment of segments) {
-    if (segment === "..") {
-      return false
-    }
-  }
-  return true
-}
-
-/**
- * Parse a GitHub identifier with support for branch names containing slashes.
- * For /tree/<ref>/... URLs, we store all remaining parts and let the caller
- * resolve the correct ref/path split using the GitHub API.
- */
-function parseGitHubIdentifier(input: string): { owner: string; repo: string; path?: string; ref: string; refAndPath?: string[] } {
-  // Remove trailing slashes
-  input = input.trim().replace(/\/+$/, "")
-
-  // Handle full GitHub URLs
-  if (input.startsWith("https://github.com/") || input.startsWith("http://github.com/")) {
-    const url = new URL(input)
-    const parts = url.pathname.split("/").filter(Boolean)
-
-    if (parts.length < 2) {
-      throw new Error("Invalid GitHub URL: must include owner and repo")
-    }
-
-    const owner = parts[0]
-    const repo = parts[1]
-    let ref = "main"
-    let subPath: string | undefined
-    let refAndPath: string[] | undefined
-
-    // Handle /tree/branch/path or /blob/branch/path URLs
-    // Note: Branch names can contain slashes (e.g., "feature/foo"), so we can't simply
-    // assume parts[3] is the full branch name. We store all remaining parts and let
-    // the caller resolve the correct split using the GitHub API.
-    if (parts.length > 2 && (parts[2] === "tree" || parts[2] === "blob")) {
-      if (parts.length > 3) {
-        // Store all parts after tree/blob for later resolution
-        refAndPath = parts.slice(3)
-        // Use first segment as initial ref guess (will be resolved later)
-        ref = parts[3]
-        if (parts.length > 4) {
-          subPath = parts.slice(4).join("/")
-        }
-      }
-    } else if (parts.length > 2) {
-      // Simple path without /tree/ or /blob/
-      subPath = parts.slice(2).join("/")
-    }
-
-    return { owner, repo, path: subPath, ref, refAndPath }
-  }
-
-  // Handle owner/repo format (with optional path)
-  const parts = input.split("/").filter(Boolean)
-
-  if (parts.length < 2) {
-    throw new Error("Invalid GitHub identifier: expected 'owner/repo' or 'owner/repo/path'")
-  }
-
-  const owner = parts[0]
-  const repo = parts[1]
-  const subPath = parts.length > 2 ? parts.slice(2).join("/") : undefined
-
-  return { owner, repo, path: subPath, ref: "main" }
-}
 
 /**
  * Fetch the default branch for a GitHub repository.
@@ -453,59 +325,6 @@ export function initializeBundledSkills(): { copied: string[]; skipped: string[]
 
   logApp(`Bundled skills initialization complete: ${result.copied.length} copied, ${result.skipped.length} skipped, ${result.errors.length} errors`)
   return result
-}
-
-/**
- * Parse a SKILL.md file content into skill metadata and instructions
- * Format:
- * ---
- * name: skill-name
- * description: Description of what skill does
- * ---
- * 
- * # Instructions
- * [Markdown content]
- */
-function parseSkillMarkdown(content: string): { name: string; description: string; instructions: string } | null {
-  // Use \r?\n to handle both Unix (LF) and Windows (CRLF) line endings
-  const frontmatterMatch = content.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n([\s\S]*)$/)
-  
-  if (!frontmatterMatch) {
-    // No valid frontmatter found - return null to indicate invalid format
-    // Note: Skills without frontmatter are not supported; a valid SKILL.md must have
-    // YAML frontmatter with at least a 'name' field
-    return null
-  }
-
-  const frontmatter = frontmatterMatch[1]
-  const instructions = frontmatterMatch[2].trim()
-
-  // Parse YAML-like frontmatter (simple key: value pairs)
-  const nameMatch = frontmatter.match(/^name:\s*(.+)$/m)
-  const descriptionMatch = frontmatter.match(/^description:\s*(.+)$/m)
-
-  if (!nameMatch) {
-    return null
-  }
-
-  return {
-    name: nameMatch[1].trim(),
-    description: descriptionMatch ? descriptionMatch[1].trim() : "",
-    instructions,
-  }
-}
-
-/**
- * Generate SKILL.md content from a skill
- */
-function generateSkillMarkdown(skill: AgentSkill): string {
-  return `---
-name: ${skill.name}
-description: ${skill.description}
----
-
-${skill.instructions}
-`
 }
 
 class SkillsService {
@@ -824,7 +643,7 @@ class SkillsService {
    * Import a skill from SKILL.md content
    */
   importSkillFromMarkdown(content: string, filePath?: string): AgentSkill {
-    const parsed = parseSkillMarkdown(content)
+    const parsed = parseSkillMarkdown(content, { filePath })
     if (!parsed) {
       throw new Error("Invalid SKILL.md format. Expected YAML frontmatter with 'name' field.")
     }
@@ -940,7 +759,7 @@ class SkillsService {
     if (!skill) {
       throw new Error(`Skill with id ${id} not found`)
     }
-    return generateSkillMarkdown(skill)
+    return stringifySkillMarkdown(skill)
   }
 
   /**
@@ -1001,7 +820,7 @@ Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsD
     // Parse the GitHub identifier
     let parsed: { owner: string; repo: string; path?: string; ref: string; refAndPath?: string[] }
     try {
-      parsed = parseGitHubIdentifier(repoIdentifier)
+      parsed = parseGitHubSkillIdentifier(repoIdentifier)
     } catch (error) {
       return {
         imported: [],
@@ -1012,14 +831,14 @@ Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsD
     let { owner, repo, path: subPath, ref, refAndPath } = parsed
 
     // Validate owner and repo early before any API calls
-    if (!validateGitHubIdentifierPart(owner, "owner")) {
+    if (!validateGitHubSkillIdentifierPart(owner, "owner")) {
       return {
         imported: [],
         errors: [`Invalid GitHub owner: "${owner}". Owner names can only contain alphanumeric characters, hyphens, underscores, and dots.`],
       }
     }
 
-    if (!validateGitHubIdentifierPart(repo, "repo")) {
+    if (!validateGitHubSkillIdentifierPart(repo, "repo")) {
       return {
         imported: [],
         errors: [`Invalid GitHub repo: "${repo}". Repository names can only contain alphanumeric characters, hyphens, underscores, and dots.`],
@@ -1038,7 +857,7 @@ Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsD
 
     // Validate subPath to prevent path traversal attacks
     // Values like "../.." could escape the clone directory and access arbitrary local paths
-    if (subPath && !validateSubPath(subPath)) {
+    if (subPath && !validateGitHubSkillSubPath(subPath)) {
       return {
         imported: [],
         errors: [`Invalid path: "${subPath}". Path cannot contain ".." or be absolute.`],
@@ -1059,7 +878,7 @@ Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsD
 
     // Validate the ref to prevent command injection
     // Note: owner and repo are already validated above before the API call
-    if (!validateGitRef(ref)) {
+    if (!validateGitHubSkillRef(ref)) {
       return {
         imported: [],
         errors: [`Invalid git ref: "${ref}". Ref names can only contain alphanumeric characters, dots, hyphens, underscores, and slashes.`],
@@ -1120,10 +939,7 @@ Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsD
 
     // If a specific subPath was given, look for SKILL.md there first
     if (subPath && fs.existsSync(searchBase)) {
-      const directPaths = [
-        path.join(searchBase, "SKILL.md"),
-        path.join(searchBase, "skill.md"),
-      ]
+      const directPaths = GITHUB_SKILL_MARKDOWN_FILENAMES.map((fileName) => path.join(searchBase, fileName))
       for (const p of directPaths) {
         if (fs.existsSync(p)) {
           importLocalSkill(p)
@@ -1133,8 +949,8 @@ Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsD
     }
 
     // Try common SKILL.md locations in the clone
-    for (const pathTemplate of SKILL_MD_PATHS) {
-      const checkPath = path.join(searchBase, pathTemplate.replace("{name}", repo))
+    for (const relativePath of getGitHubSkillCandidateRelativePaths(repo)) {
+      const checkPath = path.join(searchBase, relativePath)
       if (fs.existsSync(checkPath)) {
         importLocalSkill(checkPath)
         if (imported.length > 0) return { imported, errors }
@@ -1142,8 +958,7 @@ Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsD
     }
 
     // Look in skills subdirectories
-    const skillsDirs = ["skills", ".claude/skills", ".codex/skills"]
-    for (const skillsDir of skillsDirs) {
+    for (const skillsDir of GITHUB_SKILL_COLLECTION_DIRS) {
       const skillsDirPath = path.join(searchBase, skillsDir)
       if (fs.existsSync(skillsDirPath) && fs.statSync(skillsDirPath).isDirectory()) {
         const entries = fs.readdirSync(skillsDirPath)
@@ -1170,7 +985,7 @@ Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsD
           if (entry.startsWith(".") || entry === "node_modules") continue
           const fullPath = path.join(dir, entry)
           const stat = fs.statSync(fullPath)
-          if (stat.isFile() && (entry === "SKILL.md" || entry === "skill.md")) {
+          if (stat.isFile() && isGitHubSkillMarkdownFileName(entry)) {
             results.push(fullPath)
           } else if (stat.isDirectory()) {
             results.push(...findSkillMdFiles(fullPath, depth + 1))
@@ -1223,16 +1038,16 @@ Skills directory: \`${workspaceSkillsDir ?? globalSkillsDir}\`${workspaceSkillsD
 
     // Validate owner and repo to prevent command injection
     // These values are interpolated into shell commands via execAsync
-    if (!validateGitHubIdentifierPart(owner, "owner")) {
+    if (!validateGitHubSkillIdentifierPart(owner, "owner")) {
       throw new Error(`Invalid GitHub owner: "${owner}". Owner names can only contain alphanumeric characters, hyphens, underscores, and dots.`)
     }
 
-    if (!validateGitHubIdentifierPart(repo, "repo")) {
+    if (!validateGitHubSkillIdentifierPart(repo, "repo")) {
       throw new Error(`Invalid GitHub repo: "${repo}". Repository names can only contain alphanumeric characters, hyphens, underscores, and dots.`)
     }
 
     // Validate subPath to prevent path traversal attacks
-    if (subPath && !validateSubPath(subPath)) {
+    if (subPath && !validateGitHubSkillSubPath(subPath)) {
       throw new Error(`Invalid path: "${subPath}". Path cannot contain ".." or be absolute.`)
     }
 

@@ -1,0 +1,1172 @@
+import { normalizeApiBaseUrl } from './connection-recovery';
+import { DEFAULT_EDGE_TTS_VOICE, DEFAULT_MODEL_PRESET_ID, isChatProviderId } from './providers';
+import type { CHAT_PROVIDER_ID, ModelPreset } from './providers';
+import {
+  buildModelPresetsResponse,
+  getMergedModelPresetById,
+  getModelPresetActivationUpdates,
+  upsertModelPresetOverride,
+} from './model-presets';
+import { MCP_MAX_ITERATIONS_DEFAULT, normalizeMcpMaxIterationsValue } from './mcp-api';
+import { sanitizeConfigStringList } from './config-list-input';
+import {
+  REMOTE_SERVER_API_BUILDERS,
+  REMOTE_SERVER_API_PATHS,
+  getRemoteServerApiRoutePath,
+} from './remote-server-api';
+import type {
+  AgentProfileCreateRequest,
+  AgentProfileDeleteResponse,
+  AgentProfileToggleResponse,
+  AgentProfileUpdateRequest,
+  ApiAgentProfile,
+  ApiAgentProfileFull,
+  ApiAgentProfilesResponse,
+  CreateConversationRequest,
+  EmergencyStopResponse,
+  KnowledgeNoteCreateRequest,
+  KnowledgeNoteDeleteResponse,
+  KnowledgeNoteMutationResponse,
+  KnowledgeNoteResponse,
+  KnowledgeNoteUpdateRequest,
+  KnowledgeNotesResponse,
+  LocalSpeechModelProviderId,
+  LocalSpeechModelStatus,
+  LocalSpeechModelStatusesResponse,
+  Loop,
+  LoopCreateRequest,
+  LoopDeleteResponse,
+  LoopMutationResponse,
+  LoopRunResponse,
+  LoopToggleResponse,
+  LoopsResponse,
+  LoopUpdateRequest,
+  MCPServersResponse,
+  ModelPresetCreateRequest,
+  ModelPresetMutationResponse,
+  ModelPresetsResponse,
+  ModelPresetUpdateRequest,
+  ModelsResponse,
+  OpenAICompatibleModelsResponse,
+  OperatorActionResponse,
+  OperatorApiKeyRotationResponse,
+  OperatorAuditResponse,
+  OperatorConversationsResponse,
+  OperatorDiscordIntegrationSummary,
+  OperatorDiscordLogsResponse,
+  OperatorHealthSnapshot,
+  OperatorIntegrationsSummary,
+  OperatorLogsResponse,
+  OperatorMessageQueuesResponse,
+  OperatorMCPServerLogsResponse,
+  OperatorMCPServerTestResponse,
+  OperatorMCPStatusResponse,
+  OperatorMCPToolsResponse,
+  OperatorMCPToolToggleResponse,
+  OperatorRecentErrorsResponse,
+  OperatorRemoteServerStatus,
+  OperatorRunAgentRequest,
+  OperatorRunAgentResponse,
+  OperatorRuntimeStatus,
+  OperatorTunnelSetupSummary,
+  OperatorTunnelStatus,
+  OperatorUpdaterStatus,
+  OperatorWhatsAppIntegrationSummary,
+  Profile,
+  ProfilesResponse,
+  PushStatusResponse,
+  PushTokenRegistration,
+  ServerConversation,
+  ServerConversationFull,
+  Settings,
+  SettingsUpdate,
+  SkillToggleResponse,
+  SkillsResponse,
+  TtsSpeakRequest,
+  TtsSpeakResponse,
+  UpdateConversationRequest,
+} from './api-types';
+
+export const DOTAGENTS_DEVICE_ID_HEADER = 'x-dotagents-device-id';
+
+const API_PATHS = REMOTE_SERVER_API_PATHS;
+const API_BUILDERS = REMOTE_SERVER_API_BUILDERS;
+const SETTINGS_AUDIT_PATH = getRemoteServerApiRoutePath(API_PATHS.settings);
+
+export type SettingsUpdatePatch = Record<string, any>;
+
+export interface SettingsUpdateConfigLike {
+  currentModelPresetId?: string;
+  modelPresets?: ModelPreset[];
+  openaiApiKey?: string;
+}
+
+export type SettingsResponseConfigLike = Partial<Settings> & {
+  modelPresets?: ModelPreset[];
+};
+
+export interface BuildSettingsResponseOptions {
+  providerSecretMask: string;
+  remoteServerApiKey: string;
+  discordBotToken: string;
+  discordDefaultProfileId?: string;
+  acpxAgents?: Settings['acpxAgents'];
+  langfuseSecretMask?: string;
+}
+
+export interface BuildSettingsUpdatePatchOptions {
+  providerSecretMask: string;
+  remoteServerSecretMask: string;
+  discordSecretMask: string;
+  langfuseSecretMask?: string;
+}
+
+export type SettingsLifecycleAction = 'noop' | 'start' | 'stop' | 'restart';
+
+export interface SettingsUpdateResponse {
+  success: true;
+  updated: string[];
+}
+
+export interface SettingsSensitiveUpdateAuditContext {
+  action: 'settings-sensitive-update';
+  path: typeof SETTINGS_AUDIT_PATH;
+  success: boolean;
+  details?: Record<string, unknown>;
+  failureReason?: string;
+}
+
+function getRequestRecord(body: unknown): Record<string, unknown> {
+  return body && typeof body === 'object' && !Array.isArray(body) ? body as Record<string, unknown> : {};
+}
+
+export function getSettingsUpdateRequestRecord(body: unknown): Record<string, unknown> {
+  return getRequestRecord(body);
+}
+
+export function buildSettingsUpdateResponse(updates: object | string[]): SettingsUpdateResponse {
+  return {
+    success: true,
+    updated: Array.isArray(updates) ? updates : Object.keys(updates),
+  };
+}
+
+export function buildSettingsResponse(
+  cfg: SettingsResponseConfigLike,
+  options: BuildSettingsResponseOptions,
+): Settings {
+  const modelPresetsResponse = buildModelPresetsResponse(cfg, options.providerSecretMask);
+  const langfuseSecretMask = options.langfuseSecretMask ?? options.providerSecretMask;
+
+  return {
+    // Agent model settings (agent* preferred; mcpTools* legacy aliases)
+    agentProviderId: cfg.agentProviderId || cfg.mcpToolsProviderId || 'openai',
+    agentOpenaiModel: cfg.agentOpenaiModel || cfg.mcpToolsOpenaiModel,
+    agentGroqModel: cfg.agentGroqModel || cfg.mcpToolsGroqModel,
+    agentGeminiModel: cfg.agentGeminiModel || cfg.mcpToolsGeminiModel,
+    agentChatgptWebModel: cfg.agentChatgptWebModel || cfg.mcpToolsChatgptWebModel,
+    mcpToolsProviderId: cfg.mcpToolsProviderId || 'openai',
+    mcpToolsOpenaiModel: cfg.mcpToolsOpenaiModel,
+    mcpToolsGroqModel: cfg.mcpToolsGroqModel,
+    mcpToolsGeminiModel: cfg.mcpToolsGeminiModel,
+    mcpToolsChatgptWebModel: cfg.mcpToolsChatgptWebModel,
+    currentModelPresetId: modelPresetsResponse.currentModelPresetId,
+    availablePresets: modelPresetsResponse.presets,
+    predefinedPrompts: (cfg.predefinedPrompts || []).map((prompt) => ({
+      id: prompt.id,
+      name: prompt.name,
+      content: prompt.content,
+      createdAt: prompt.createdAt,
+      updatedAt: prompt.updatedAt,
+    })),
+    openaiApiKey: cfg.openaiApiKey ? options.providerSecretMask : '',
+    openaiBaseUrl: cfg.openaiBaseUrl ?? '',
+    groqApiKey: cfg.groqApiKey ? options.providerSecretMask : '',
+    groqBaseUrl: cfg.groqBaseUrl ?? '',
+    geminiApiKey: cfg.geminiApiKey ? options.providerSecretMask : '',
+    geminiBaseUrl: cfg.geminiBaseUrl ?? '',
+    transcriptPostProcessingEnabled: cfg.transcriptPostProcessingEnabled ?? true,
+    mcpRequireApprovalBeforeToolCall: cfg.mcpRequireApprovalBeforeToolCall ?? false,
+    ttsEnabled: cfg.ttsEnabled ?? true,
+    whatsappEnabled: cfg.whatsappEnabled ?? false,
+    discordEnabled: cfg.discordEnabled ?? false,
+    mcpMaxIterations: cfg.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT,
+    streamerModeEnabled: cfg.streamerModeEnabled ?? false,
+    sttLanguage: cfg.sttLanguage ?? '',
+    transcriptionPreviewEnabled: cfg.transcriptionPreviewEnabled ?? true,
+    parakeetNumThreads: cfg.parakeetNumThreads ?? 2,
+    openaiSttLanguage: cfg.openaiSttLanguage ?? '',
+    openaiSttModel: cfg.openaiSttModel || 'whisper-1',
+    groqSttLanguage: cfg.groqSttLanguage ?? '',
+    groqSttModel: cfg.groqSttModel || 'whisper-large-v3-turbo',
+    groqSttPrompt: cfg.groqSttPrompt ?? '',
+    transcriptPostProcessingPrompt: cfg.transcriptPostProcessingPrompt ?? '',
+    ttsAutoPlay: cfg.ttsAutoPlay ?? true,
+    ttsPreprocessingEnabled: cfg.ttsPreprocessingEnabled ?? true,
+    ttsRemoveCodeBlocks: cfg.ttsRemoveCodeBlocks ?? true,
+    ttsRemoveUrls: cfg.ttsRemoveUrls ?? true,
+    ttsConvertMarkdown: cfg.ttsConvertMarkdown ?? true,
+    ttsUseLLMPreprocessing: cfg.ttsUseLLMPreprocessing ?? false,
+    mainAgentMode: cfg.mainAgentMode ?? 'api',
+    mcpMessageQueueEnabled: cfg.mcpMessageQueueEnabled ?? true,
+    mcpVerifyCompletionEnabled: cfg.mcpVerifyCompletionEnabled ?? true,
+    mcpFinalSummaryEnabled: cfg.mcpFinalSummaryEnabled ?? false,
+    dualModelEnabled: cfg.dualModelEnabled ?? false,
+    mcpUnlimitedIterations: cfg.mcpUnlimitedIterations ?? true,
+    mcpContextReductionEnabled: cfg.mcpContextReductionEnabled ?? true,
+    mcpToolResponseProcessingEnabled: cfg.mcpToolResponseProcessingEnabled ?? true,
+    mcpParallelToolExecution: cfg.mcpParallelToolExecution ?? true,
+    remoteServerEnabled: cfg.remoteServerEnabled ?? false,
+    remoteServerPort: cfg.remoteServerPort ?? 3210,
+    remoteServerBindAddress: cfg.remoteServerBindAddress ?? '127.0.0.1',
+    remoteServerApiKey: options.remoteServerApiKey,
+    remoteServerLogLevel: cfg.remoteServerLogLevel ?? 'info',
+    remoteServerCorsOrigins: cfg.remoteServerCorsOrigins ?? ['*'],
+    remoteServerOperatorAllowDeviceIds: cfg.remoteServerOperatorAllowDeviceIds ?? [],
+    remoteServerAutoShowPanel: cfg.remoteServerAutoShowPanel ?? false,
+    remoteServerTerminalQrEnabled: cfg.remoteServerTerminalQrEnabled ?? false,
+    cloudflareTunnelMode: cfg.cloudflareTunnelMode ?? 'quick',
+    cloudflareTunnelAutoStart: cfg.cloudflareTunnelAutoStart ?? false,
+    cloudflareTunnelId: cfg.cloudflareTunnelId ?? '',
+    cloudflareTunnelName: cfg.cloudflareTunnelName ?? '',
+    cloudflareTunnelCredentialsPath: cfg.cloudflareTunnelCredentialsPath ?? '',
+    cloudflareTunnelHostname: cfg.cloudflareTunnelHostname ?? '',
+    whatsappAllowFrom: cfg.whatsappAllowFrom ?? [],
+    whatsappOperatorAllowFrom: cfg.whatsappOperatorAllowFrom ?? [],
+    whatsappAutoReply: cfg.whatsappAutoReply ?? false,
+    whatsappLogMessages: cfg.whatsappLogMessages ?? false,
+    discordBotToken: options.discordBotToken,
+    discordDmEnabled: cfg.discordDmEnabled ?? true,
+    discordRequireMention: cfg.discordRequireMention ?? true,
+    discordAllowUserIds: cfg.discordAllowUserIds ?? [],
+    discordAllowGuildIds: cfg.discordAllowGuildIds ?? [],
+    discordAllowChannelIds: cfg.discordAllowChannelIds ?? [],
+    discordAllowRoleIds: cfg.discordAllowRoleIds ?? [],
+    discordDmAllowUserIds: cfg.discordDmAllowUserIds ?? [],
+    discordOperatorAllowUserIds: cfg.discordOperatorAllowUserIds ?? [],
+    discordOperatorAllowGuildIds: cfg.discordOperatorAllowGuildIds ?? [],
+    discordOperatorAllowChannelIds: cfg.discordOperatorAllowChannelIds ?? [],
+    discordOperatorAllowRoleIds: cfg.discordOperatorAllowRoleIds ?? [],
+    discordDefaultProfileId: options.discordDefaultProfileId ?? '',
+    discordLogMessages: cfg.discordLogMessages ?? false,
+    langfuseEnabled: cfg.langfuseEnabled ?? false,
+    langfusePublicKey: cfg.langfusePublicKey ?? '',
+    langfuseSecretKey: cfg.langfuseSecretKey ? langfuseSecretMask : '',
+    langfuseBaseUrl: cfg.langfuseBaseUrl ?? '',
+    localTraceLoggingEnabled: cfg.localTraceLoggingEnabled ?? false,
+    localTraceLogPath: cfg.localTraceLogPath ?? '',
+    sttProviderId: cfg.sttProviderId || 'openai',
+    ttsProviderId: cfg.ttsProviderId || 'openai',
+    transcriptPostProcessingProviderId: cfg.transcriptPostProcessingProviderId || 'openai',
+    transcriptPostProcessingOpenaiModel: cfg.transcriptPostProcessingOpenaiModel || '',
+    transcriptPostProcessingGroqModel: cfg.transcriptPostProcessingGroqModel || '',
+    transcriptPostProcessingGeminiModel: cfg.transcriptPostProcessingGeminiModel || '',
+    transcriptPostProcessingChatgptWebModel: cfg.transcriptPostProcessingChatgptWebModel || '',
+    mainAgentName: cfg.mainAgentName || '',
+    openaiTtsModel: cfg.openaiTtsModel || 'gpt-4o-mini-tts',
+    openaiTtsVoice: cfg.openaiTtsVoice || 'alloy',
+    openaiTtsSpeed: cfg.openaiTtsSpeed ?? 1.0,
+    groqTtsModel: cfg.groqTtsModel || 'canopylabs/orpheus-v1-english',
+    groqTtsVoice: cfg.groqTtsVoice || 'autumn',
+    geminiTtsModel: cfg.geminiTtsModel || 'gemini-2.5-flash-preview-tts',
+    geminiTtsVoice: cfg.geminiTtsVoice || 'Kore',
+    edgeTtsModel: cfg.edgeTtsModel || 'edge-tts',
+    edgeTtsVoice: cfg.edgeTtsVoice || DEFAULT_EDGE_TTS_VOICE,
+    edgeTtsRate: cfg.edgeTtsRate ?? 1.0,
+    kittenVoiceId: cfg.kittenVoiceId ?? 0,
+    supertonicVoice: cfg.supertonicVoice ?? 'M1',
+    supertonicLanguage: cfg.supertonicLanguage ?? 'en',
+    supertonicSpeed: cfg.supertonicSpeed ?? 1.05,
+    supertonicSteps: cfg.supertonicSteps ?? 5,
+    acpxAgents: options.acpxAgents ?? [],
+    pinnedSessionIds: Array.isArray(cfg.pinnedSessionIds)
+      ? cfg.pinnedSessionIds.filter((id): id is string => typeof id === 'string')
+      : [],
+    archivedSessionIds: Array.isArray(cfg.archivedSessionIds)
+      ? cfg.archivedSessionIds.filter((id): id is string => typeof id === 'string')
+      : [],
+  };
+}
+
+export function buildSettingsSensitiveNoValidUpdateAuditContext(
+  attemptedSensitiveSettingsKeys: string[],
+): SettingsSensitiveUpdateAuditContext {
+  return {
+    action: 'settings-sensitive-update',
+    path: SETTINGS_AUDIT_PATH,
+    success: false,
+    details: { attempted: attemptedSensitiveSettingsKeys },
+    failureReason: 'no-valid-settings-to-update',
+  };
+}
+
+export function buildSettingsSensitiveUpdateAuditContext(
+  sensitiveUpdatedKeys: string[],
+  lifecycleActions: {
+    remoteServerLifecycleAction?: SettingsLifecycleAction;
+    discordLifecycleAction?: SettingsLifecycleAction;
+  } = {},
+): SettingsSensitiveUpdateAuditContext {
+  return {
+    action: 'settings-sensitive-update',
+    path: SETTINGS_AUDIT_PATH,
+    success: true,
+    details: {
+      updated: sensitiveUpdatedKeys,
+      ...(lifecycleActions.remoteServerLifecycleAction && lifecycleActions.remoteServerLifecycleAction !== 'noop'
+        ? { remoteServerLifecycleAction: lifecycleActions.remoteServerLifecycleAction }
+        : {}),
+      ...(lifecycleActions.discordLifecycleAction && lifecycleActions.discordLifecycleAction !== 'noop'
+        ? { discordLifecycleAction: lifecycleActions.discordLifecycleAction }
+        : {}),
+    },
+  };
+}
+
+export function buildSettingsSensitiveUpdateFailureAuditContext(
+  attemptedSensitiveSettingsKeys: string[],
+): SettingsSensitiveUpdateAuditContext {
+  return {
+    action: 'settings-sensitive-update',
+    path: SETTINGS_AUDIT_PATH,
+    success: false,
+    details: { attempted: attemptedSensitiveSettingsKeys },
+    failureReason: 'settings-update-error',
+  };
+}
+
+export function buildEmergencyStopResponse(
+  processesKilled: number,
+  processesRemaining: number,
+): EmergencyStopResponse {
+  return {
+    success: true,
+    message: 'Emergency stop executed',
+    processesKilled,
+    processesRemaining,
+  };
+}
+
+export function buildEmergencyStopErrorResponse(error: unknown): EmergencyStopResponse {
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : 'Emergency stop failed';
+  return {
+    success: false,
+    error: message || 'Emergency stop failed',
+  };
+}
+
+export function buildSettingsUpdatePatch(
+  body: unknown,
+  cfg: SettingsUpdateConfigLike,
+  options: BuildSettingsUpdatePatchOptions,
+): SettingsUpdatePatch {
+  const requestBody = getRequestRecord(body);
+  const updates: SettingsUpdatePatch = {};
+  const providerSecretMask = options.providerSecretMask;
+  const langfuseSecretMask = options.langfuseSecretMask ?? providerSecretMask;
+
+  if (typeof requestBody.transcriptPostProcessingEnabled === 'boolean') {
+    updates.transcriptPostProcessingEnabled = requestBody.transcriptPostProcessingEnabled;
+  }
+  if (typeof requestBody.mcpRequireApprovalBeforeToolCall === 'boolean') {
+    updates.mcpRequireApprovalBeforeToolCall = requestBody.mcpRequireApprovalBeforeToolCall;
+  }
+  if (typeof requestBody.ttsEnabled === 'boolean') {
+    updates.ttsEnabled = requestBody.ttsEnabled;
+  }
+  if (typeof requestBody.whatsappEnabled === 'boolean') {
+    updates.whatsappEnabled = requestBody.whatsappEnabled;
+  }
+  if (typeof requestBody.discordEnabled === 'boolean') {
+    updates.discordEnabled = requestBody.discordEnabled;
+  }
+  const mcpMaxIterations = normalizeMcpMaxIterationsValue(requestBody.mcpMaxIterations);
+  if (mcpMaxIterations !== undefined) updates.mcpMaxIterations = mcpMaxIterations;
+
+  const agentProviderId = typeof requestBody.agentProviderId === 'string' ? requestBody.agentProviderId : requestBody.mcpToolsProviderId;
+  if (isChatProviderId(agentProviderId)) {
+    updates.agentProviderId = agentProviderId;
+    updates.mcpToolsProviderId = updates.agentProviderId;
+  }
+  const agentOpenaiModel = typeof requestBody.agentOpenaiModel === 'string' ? requestBody.agentOpenaiModel : requestBody.mcpToolsOpenaiModel;
+  if (typeof agentOpenaiModel === 'string') {
+    updates.agentOpenaiModel = agentOpenaiModel;
+    updates.mcpToolsOpenaiModel = agentOpenaiModel;
+  }
+  const agentGroqModel = typeof requestBody.agentGroqModel === 'string' ? requestBody.agentGroqModel : requestBody.mcpToolsGroqModel;
+  if (typeof agentGroqModel === 'string') {
+    updates.agentGroqModel = agentGroqModel;
+    updates.mcpToolsGroqModel = agentGroqModel;
+  }
+  const agentGeminiModel = typeof requestBody.agentGeminiModel === 'string' ? requestBody.agentGeminiModel : requestBody.mcpToolsGeminiModel;
+  if (typeof agentGeminiModel === 'string') {
+    updates.agentGeminiModel = agentGeminiModel;
+    updates.mcpToolsGeminiModel = agentGeminiModel;
+  }
+  const agentChatgptWebModel = typeof requestBody.agentChatgptWebModel === 'string' ? requestBody.agentChatgptWebModel : requestBody.mcpToolsChatgptWebModel;
+  if (typeof agentChatgptWebModel === 'string') {
+    updates.agentChatgptWebModel = agentChatgptWebModel;
+    updates.mcpToolsChatgptWebModel = agentChatgptWebModel;
+  }
+  if (typeof requestBody.chatgptWebAccessToken === 'string') updates.chatgptWebAccessToken = requestBody.chatgptWebAccessToken;
+  if (typeof requestBody.chatgptWebSessionToken === 'string') updates.chatgptWebSessionToken = requestBody.chatgptWebSessionToken;
+  if (typeof requestBody.chatgptWebAccountId === 'string') updates.chatgptWebAccountId = requestBody.chatgptWebAccountId;
+  if (typeof requestBody.chatgptWebBaseUrl === 'string') updates.chatgptWebBaseUrl = requestBody.chatgptWebBaseUrl;
+  if (typeof requestBody.openaiApiKey === 'string' && requestBody.openaiApiKey !== providerSecretMask) updates.openaiApiKey = requestBody.openaiApiKey.trim();
+  if (typeof requestBody.openaiBaseUrl === 'string') updates.openaiBaseUrl = requestBody.openaiBaseUrl.trim();
+  if (typeof requestBody.groqApiKey === 'string' && requestBody.groqApiKey !== providerSecretMask) updates.groqApiKey = requestBody.groqApiKey.trim();
+  if (typeof requestBody.groqBaseUrl === 'string') updates.groqBaseUrl = requestBody.groqBaseUrl.trim();
+  if (typeof requestBody.geminiApiKey === 'string' && requestBody.geminiApiKey !== providerSecretMask) updates.geminiApiKey = requestBody.geminiApiKey.trim();
+  if (typeof requestBody.geminiBaseUrl === 'string') updates.geminiBaseUrl = requestBody.geminiBaseUrl.trim();
+  if (typeof requestBody.currentModelPresetId === 'string') {
+    const preset = getMergedModelPresetById(cfg, requestBody.currentModelPresetId);
+    if (preset) Object.assign(updates, getModelPresetActivationUpdates(preset));
+  }
+  if (typeof requestBody.streamerModeEnabled === 'boolean') updates.streamerModeEnabled = requestBody.streamerModeEnabled;
+  if (typeof requestBody.sttLanguage === 'string') updates.sttLanguage = requestBody.sttLanguage;
+  if (typeof requestBody.openaiSttLanguage === 'string') updates.openaiSttLanguage = requestBody.openaiSttLanguage || undefined;
+  if (typeof requestBody.groqSttLanguage === 'string') updates.groqSttLanguage = requestBody.groqSttLanguage || undefined;
+  if (typeof requestBody.transcriptionPreviewEnabled === 'boolean') updates.transcriptionPreviewEnabled = requestBody.transcriptionPreviewEnabled;
+  if (typeof requestBody.transcriptPostProcessingPrompt === 'string') updates.transcriptPostProcessingPrompt = requestBody.transcriptPostProcessingPrompt;
+  if (typeof requestBody.ttsAutoPlay === 'boolean') updates.ttsAutoPlay = requestBody.ttsAutoPlay;
+  if (typeof requestBody.ttsPreprocessingEnabled === 'boolean') updates.ttsPreprocessingEnabled = requestBody.ttsPreprocessingEnabled;
+  if (typeof requestBody.ttsRemoveCodeBlocks === 'boolean') updates.ttsRemoveCodeBlocks = requestBody.ttsRemoveCodeBlocks;
+  if (typeof requestBody.ttsRemoveUrls === 'boolean') updates.ttsRemoveUrls = requestBody.ttsRemoveUrls;
+  if (typeof requestBody.ttsConvertMarkdown === 'boolean') updates.ttsConvertMarkdown = requestBody.ttsConvertMarkdown;
+  if (typeof requestBody.ttsUseLLMPreprocessing === 'boolean') updates.ttsUseLLMPreprocessing = requestBody.ttsUseLLMPreprocessing;
+
+  if (typeof requestBody.mainAgentMode === 'string' && ['api', 'acpx'].includes(requestBody.mainAgentMode)) updates.mainAgentMode = requestBody.mainAgentMode;
+  if (typeof requestBody.mcpMessageQueueEnabled === 'boolean') updates.mcpMessageQueueEnabled = requestBody.mcpMessageQueueEnabled;
+  if (typeof requestBody.mcpVerifyCompletionEnabled === 'boolean') updates.mcpVerifyCompletionEnabled = requestBody.mcpVerifyCompletionEnabled;
+  if (typeof requestBody.mcpFinalSummaryEnabled === 'boolean') updates.mcpFinalSummaryEnabled = requestBody.mcpFinalSummaryEnabled;
+  if (typeof requestBody.dualModelEnabled === 'boolean') updates.dualModelEnabled = requestBody.dualModelEnabled;
+  if (typeof requestBody.mcpUnlimitedIterations === 'boolean') updates.mcpUnlimitedIterations = requestBody.mcpUnlimitedIterations;
+  if (typeof requestBody.mcpContextReductionEnabled === 'boolean') updates.mcpContextReductionEnabled = requestBody.mcpContextReductionEnabled;
+  if (typeof requestBody.mcpToolResponseProcessingEnabled === 'boolean') updates.mcpToolResponseProcessingEnabled = requestBody.mcpToolResponseProcessingEnabled;
+  if (typeof requestBody.mcpParallelToolExecution === 'boolean') updates.mcpParallelToolExecution = requestBody.mcpParallelToolExecution;
+
+  if (typeof requestBody.remoteServerEnabled === 'boolean') updates.remoteServerEnabled = requestBody.remoteServerEnabled;
+  if (typeof requestBody.remoteServerPort === 'number' && Number.isInteger(requestBody.remoteServerPort) && requestBody.remoteServerPort >= 1 && requestBody.remoteServerPort <= 65535) {
+    updates.remoteServerPort = requestBody.remoteServerPort;
+  }
+  if (typeof requestBody.remoteServerBindAddress === 'string' && ['127.0.0.1', '0.0.0.0'].includes(requestBody.remoteServerBindAddress)) {
+    updates.remoteServerBindAddress = requestBody.remoteServerBindAddress;
+  }
+  if (typeof requestBody.remoteServerApiKey === 'string' && requestBody.remoteServerApiKey !== options.remoteServerSecretMask) {
+    const trimmedKey = requestBody.remoteServerApiKey.trim();
+    if (trimmedKey.length > 0) updates.remoteServerApiKey = trimmedKey;
+  }
+  if (typeof requestBody.remoteServerLogLevel === 'string' && ['error', 'info', 'debug'].includes(requestBody.remoteServerLogLevel)) {
+    updates.remoteServerLogLevel = requestBody.remoteServerLogLevel;
+  }
+  if (Array.isArray(requestBody.remoteServerCorsOrigins)) {
+    updates.remoteServerCorsOrigins = requestBody.remoteServerCorsOrigins
+      .filter((value: unknown) => typeof value === 'string')
+      .map((value: string) => value.trim())
+      .filter(Boolean);
+  }
+  if (Array.isArray(requestBody.remoteServerOperatorAllowDeviceIds)) updates.remoteServerOperatorAllowDeviceIds = sanitizeConfigStringList(requestBody.remoteServerOperatorAllowDeviceIds);
+  if (typeof requestBody.remoteServerAutoShowPanel === 'boolean') updates.remoteServerAutoShowPanel = requestBody.remoteServerAutoShowPanel;
+  if (typeof requestBody.remoteServerTerminalQrEnabled === 'boolean') updates.remoteServerTerminalQrEnabled = requestBody.remoteServerTerminalQrEnabled;
+
+  if (typeof requestBody.cloudflareTunnelMode === 'string' && ['quick', 'named'].includes(requestBody.cloudflareTunnelMode)) updates.cloudflareTunnelMode = requestBody.cloudflareTunnelMode;
+  if (typeof requestBody.cloudflareTunnelAutoStart === 'boolean') updates.cloudflareTunnelAutoStart = requestBody.cloudflareTunnelAutoStart;
+  if (typeof requestBody.cloudflareTunnelId === 'string') updates.cloudflareTunnelId = requestBody.cloudflareTunnelId.trim();
+  if (typeof requestBody.cloudflareTunnelName === 'string') updates.cloudflareTunnelName = requestBody.cloudflareTunnelName.trim();
+  if (typeof requestBody.cloudflareTunnelCredentialsPath === 'string') updates.cloudflareTunnelCredentialsPath = requestBody.cloudflareTunnelCredentialsPath.trim();
+  if (typeof requestBody.cloudflareTunnelHostname === 'string') updates.cloudflareTunnelHostname = requestBody.cloudflareTunnelHostname.trim();
+
+  if (Array.isArray(requestBody.whatsappAllowFrom)) updates.whatsappAllowFrom = sanitizeConfigStringList(requestBody.whatsappAllowFrom);
+  if (Array.isArray(requestBody.whatsappOperatorAllowFrom)) updates.whatsappOperatorAllowFrom = sanitizeConfigStringList(requestBody.whatsappOperatorAllowFrom);
+  if (typeof requestBody.whatsappAutoReply === 'boolean') updates.whatsappAutoReply = requestBody.whatsappAutoReply;
+  if (typeof requestBody.whatsappLogMessages === 'boolean') updates.whatsappLogMessages = requestBody.whatsappLogMessages;
+
+  if (typeof requestBody.discordBotToken === 'string' && requestBody.discordBotToken !== options.discordSecretMask) updates.discordBotToken = requestBody.discordBotToken;
+  if (typeof requestBody.discordDmEnabled === 'boolean') updates.discordDmEnabled = requestBody.discordDmEnabled;
+  if (typeof requestBody.discordRequireMention === 'boolean') updates.discordRequireMention = requestBody.discordRequireMention;
+  if (Array.isArray(requestBody.discordAllowUserIds)) updates.discordAllowUserIds = sanitizeConfigStringList(requestBody.discordAllowUserIds);
+  if (Array.isArray(requestBody.discordAllowGuildIds)) updates.discordAllowGuildIds = sanitizeConfigStringList(requestBody.discordAllowGuildIds);
+  if (Array.isArray(requestBody.discordAllowChannelIds)) updates.discordAllowChannelIds = sanitizeConfigStringList(requestBody.discordAllowChannelIds);
+  if (Array.isArray(requestBody.discordAllowRoleIds)) updates.discordAllowRoleIds = sanitizeConfigStringList(requestBody.discordAllowRoleIds);
+  if (Array.isArray(requestBody.discordDmAllowUserIds)) updates.discordDmAllowUserIds = sanitizeConfigStringList(requestBody.discordDmAllowUserIds);
+  if (Array.isArray(requestBody.discordOperatorAllowUserIds)) updates.discordOperatorAllowUserIds = sanitizeConfigStringList(requestBody.discordOperatorAllowUserIds);
+  if (Array.isArray(requestBody.discordOperatorAllowGuildIds)) updates.discordOperatorAllowGuildIds = sanitizeConfigStringList(requestBody.discordOperatorAllowGuildIds);
+  if (Array.isArray(requestBody.discordOperatorAllowChannelIds)) updates.discordOperatorAllowChannelIds = sanitizeConfigStringList(requestBody.discordOperatorAllowChannelIds);
+  if (Array.isArray(requestBody.discordOperatorAllowRoleIds)) updates.discordOperatorAllowRoleIds = sanitizeConfigStringList(requestBody.discordOperatorAllowRoleIds);
+  if (typeof requestBody.discordDefaultProfileId === 'string') updates.discordDefaultProfileId = requestBody.discordDefaultProfileId;
+  if (typeof requestBody.discordLogMessages === 'boolean') updates.discordLogMessages = requestBody.discordLogMessages;
+
+  if (typeof requestBody.langfuseEnabled === 'boolean') updates.langfuseEnabled = requestBody.langfuseEnabled;
+  if (typeof requestBody.langfusePublicKey === 'string') updates.langfusePublicKey = requestBody.langfusePublicKey;
+  if (typeof requestBody.langfuseSecretKey === 'string' && requestBody.langfuseSecretKey !== langfuseSecretMask) updates.langfuseSecretKey = requestBody.langfuseSecretKey;
+  if (typeof requestBody.langfuseBaseUrl === 'string') updates.langfuseBaseUrl = requestBody.langfuseBaseUrl;
+  if (typeof requestBody.localTraceLoggingEnabled === 'boolean') updates.localTraceLoggingEnabled = requestBody.localTraceLoggingEnabled;
+  if (typeof requestBody.localTraceLogPath === 'string') updates.localTraceLogPath = requestBody.localTraceLogPath.trim() || undefined;
+
+  if (typeof requestBody.sttProviderId === 'string' && ['openai', 'groq', 'parakeet'].includes(requestBody.sttProviderId)) updates.sttProviderId = requestBody.sttProviderId;
+  if (typeof requestBody.openaiSttModel === 'string') updates.openaiSttModel = requestBody.openaiSttModel;
+  if (typeof requestBody.groqSttModel === 'string') updates.groqSttModel = requestBody.groqSttModel;
+  if (typeof requestBody.groqSttPrompt === 'string') updates.groqSttPrompt = requestBody.groqSttPrompt || undefined;
+  if (typeof requestBody.parakeetNumThreads === 'number' && Number.isInteger(requestBody.parakeetNumThreads) && [1, 2, 4, 8].includes(requestBody.parakeetNumThreads)) {
+    updates.parakeetNumThreads = requestBody.parakeetNumThreads;
+  }
+  if (typeof requestBody.ttsProviderId === 'string' && ['openai', 'groq', 'gemini', 'edge', 'kitten', 'supertonic'].includes(requestBody.ttsProviderId)) updates.ttsProviderId = requestBody.ttsProviderId;
+  if (typeof requestBody.transcriptPostProcessingProviderId === 'string' && ['openai', 'groq', 'gemini', 'chatgpt-web'].includes(requestBody.transcriptPostProcessingProviderId)) {
+    updates.transcriptPostProcessingProviderId = requestBody.transcriptPostProcessingProviderId;
+  }
+  if (typeof requestBody.transcriptPostProcessingOpenaiModel === 'string') updates.transcriptPostProcessingOpenaiModel = requestBody.transcriptPostProcessingOpenaiModel;
+  if (typeof requestBody.transcriptPostProcessingGroqModel === 'string') updates.transcriptPostProcessingGroqModel = requestBody.transcriptPostProcessingGroqModel;
+  if (typeof requestBody.transcriptPostProcessingGeminiModel === 'string') updates.transcriptPostProcessingGeminiModel = requestBody.transcriptPostProcessingGeminiModel;
+  if (typeof requestBody.transcriptPostProcessingChatgptWebModel === 'string') updates.transcriptPostProcessingChatgptWebModel = requestBody.transcriptPostProcessingChatgptWebModel;
+
+  const activeOpenAiPresetId = updates.currentModelPresetId || cfg.currentModelPresetId || DEFAULT_MODEL_PRESET_ID;
+  const openAiPresetModelPatch: Partial<ModelPreset> = {};
+  if (typeof agentOpenaiModel === 'string') {
+    updates.agentOpenaiModel = agentOpenaiModel;
+    updates.mcpToolsOpenaiModel = agentOpenaiModel;
+    openAiPresetModelPatch.agentModel = agentOpenaiModel;
+  }
+  if (typeof requestBody.transcriptPostProcessingOpenaiModel === 'string') {
+    updates.transcriptPostProcessingOpenaiModel = requestBody.transcriptPostProcessingOpenaiModel;
+    openAiPresetModelPatch.transcriptProcessingModel = requestBody.transcriptPostProcessingOpenaiModel;
+  }
+  if (Object.keys(openAiPresetModelPatch).length > 0) {
+    updates.modelPresets = upsertModelPresetOverride(cfg, activeOpenAiPresetId, openAiPresetModelPatch);
+  }
+
+  if (typeof requestBody.mainAgentName === 'string') updates.mainAgentName = requestBody.mainAgentName;
+  if (typeof requestBody.openaiTtsModel === 'string') updates.openaiTtsModel = requestBody.openaiTtsModel;
+  if (typeof requestBody.openaiTtsVoice === 'string') updates.openaiTtsVoice = requestBody.openaiTtsVoice;
+  if (typeof requestBody.openaiTtsSpeed === 'number' && requestBody.openaiTtsSpeed >= 0.25 && requestBody.openaiTtsSpeed <= 4.0) updates.openaiTtsSpeed = requestBody.openaiTtsSpeed;
+  if (typeof requestBody.groqTtsModel === 'string' && ['canopylabs/orpheus-v1-english', 'canopylabs/orpheus-arabic-saudi'].includes(requestBody.groqTtsModel)) updates.groqTtsModel = requestBody.groqTtsModel;
+  if (typeof requestBody.groqTtsVoice === 'string') updates.groqTtsVoice = requestBody.groqTtsVoice;
+  if (typeof requestBody.geminiTtsModel === 'string' && ['gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts'].includes(requestBody.geminiTtsModel)) updates.geminiTtsModel = requestBody.geminiTtsModel;
+  if (typeof requestBody.geminiTtsVoice === 'string') updates.geminiTtsVoice = requestBody.geminiTtsVoice;
+  if (typeof requestBody.edgeTtsModel === 'string') updates.edgeTtsModel = requestBody.edgeTtsModel;
+  if (typeof requestBody.edgeTtsVoice === 'string') updates.edgeTtsVoice = requestBody.edgeTtsVoice;
+  if (typeof requestBody.edgeTtsRate === 'number' && requestBody.edgeTtsRate >= 0.5 && requestBody.edgeTtsRate <= 2.0) updates.edgeTtsRate = requestBody.edgeTtsRate;
+  if (Number.isInteger(requestBody.kittenVoiceId) && (requestBody.kittenVoiceId as number) >= 0 && (requestBody.kittenVoiceId as number) <= 7) updates.kittenVoiceId = requestBody.kittenVoiceId;
+  if (typeof requestBody.supertonicVoice === 'string' && ['M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'].includes(requestBody.supertonicVoice)) updates.supertonicVoice = requestBody.supertonicVoice;
+  if (typeof requestBody.supertonicLanguage === 'string' && ['en', 'ko', 'es', 'pt', 'fr'].includes(requestBody.supertonicLanguage)) updates.supertonicLanguage = requestBody.supertonicLanguage;
+  if (typeof requestBody.supertonicSpeed === 'number' && requestBody.supertonicSpeed >= 0.5 && requestBody.supertonicSpeed <= 2.0) updates.supertonicSpeed = requestBody.supertonicSpeed;
+  if (Number.isInteger(requestBody.supertonicSteps) && (requestBody.supertonicSteps as number) >= 2 && (requestBody.supertonicSteps as number) <= 10) updates.supertonicSteps = requestBody.supertonicSteps;
+
+  if (Array.isArray(requestBody.pinnedSessionIds) && requestBody.pinnedSessionIds.every((id: unknown) => typeof id === 'string')) updates.pinnedSessionIds = requestBody.pinnedSessionIds;
+  if (Array.isArray(requestBody.archivedSessionIds) && requestBody.archivedSessionIds.every((id: unknown) => typeof id === 'string')) updates.archivedSessionIds = requestBody.archivedSessionIds;
+  if (Array.isArray(requestBody.predefinedPrompts)) updates.predefinedPrompts = requestBody.predefinedPrompts;
+
+  return updates;
+}
+
+export interface SettingsApiClientOptions {
+  deviceIdHeaderName?: string;
+  getDeviceId?: () => Promise<string | undefined> | string | undefined;
+}
+
+export class SettingsApiClient {
+  private baseUrl: string;
+  private apiKey: string;
+  private options: SettingsApiClientOptions;
+
+  constructor(baseUrl: string, apiKey: string, options: SettingsApiClientOptions = {}) {
+    this.baseUrl = normalizeApiBaseUrl(baseUrl);
+    this.apiKey = apiKey;
+    this.options = options;
+  }
+
+  protected async requestResponse(endpoint: string, options: RequestInit = {}): Promise<Response> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const headers = new Headers(options.headers);
+    headers.set('Authorization', `Bearer ${this.apiKey}`);
+
+    const deviceId = await this.options.getDeviceId?.();
+    if (deviceId) {
+      headers.set(this.options.deviceIdHeaderName ?? DOTAGENTS_DEVICE_ID_HEADER, deviceId);
+    }
+
+    // Only send a JSON content type when a request body exists. Fastify treats
+    // an empty JSON body as a 400 for methods like DELETE/POST when the header is present.
+    if (options.body !== undefined && options.body !== null && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+
+    return fetch(url, {
+      ...options,
+      headers,
+    });
+  }
+
+  protected async createResponseError(response: Response): Promise<Error> {
+    const error = await response.clone().json().catch(async () => ({
+      error: await response.text().catch(() => response.statusText),
+    }));
+    return new Error(error.error || `Request failed: ${response.status}`);
+  }
+
+  protected async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const response = await this.requestResponse(endpoint, options);
+    if (!response.ok) {
+      throw await this.createResponseError(response);
+    }
+    return response.json();
+  }
+
+  // Profile Management
+  async getProfiles(): Promise<ProfilesResponse> {
+    return this.request<ProfilesResponse>(API_PATHS.profiles);
+  }
+
+  async getCurrentProfile(): Promise<Profile> {
+    return this.request<Profile>(API_PATHS.currentProfile);
+  }
+
+  async setCurrentProfile(profileId: string): Promise<{ success: boolean; profile: Profile }> {
+    return this.request(API_PATHS.currentProfile, {
+      method: 'POST',
+      body: JSON.stringify({ profileId }),
+    });
+  }
+
+  async exportProfile(profileId: string): Promise<{ profileJson: string }> {
+    return this.request<{ profileJson: string }>(API_BUILDERS.profileExport(profileId));
+  }
+
+  async importProfile(profileJson: string): Promise<{ success: boolean; profile: Profile }> {
+    return this.request(API_PATHS.profileImport, {
+      method: 'POST',
+      body: JSON.stringify({ profileJson }),
+    });
+  }
+
+  // MCP Server Management
+  async getMCPServers(): Promise<MCPServersResponse> {
+    return this.request<MCPServersResponse>(API_PATHS.mcpServers);
+  }
+
+  async toggleMCPServer(serverName: string, enabled: boolean): Promise<{ success: boolean; server: string; enabled: boolean }> {
+    return this.request(API_BUILDERS.mcpServerToggle(serverName), {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
+  // Settings Management
+  async getSettings(): Promise<Settings> {
+    return this.request<Settings>(API_PATHS.settings);
+  }
+
+  async updateSettings(updates: SettingsUpdate): Promise<{ success: boolean; updated: string[] }> {
+    return this.request(API_PATHS.settings, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  // Models Management
+  async getOpenAICompatibleModels(): Promise<OpenAICompatibleModelsResponse> {
+    return this.request<OpenAICompatibleModelsResponse>(API_PATHS.models);
+  }
+
+  async getModels(providerId: CHAT_PROVIDER_ID): Promise<ModelsResponse> {
+    return this.request<ModelsResponse>(API_BUILDERS.modelsByProvider(providerId));
+  }
+
+  async getModelPresets(): Promise<ModelPresetsResponse> {
+    return this.request<ModelPresetsResponse>(API_PATHS.operatorModelPresets);
+  }
+
+  async createModelPreset(request: ModelPresetCreateRequest): Promise<ModelPresetMutationResponse> {
+    return this.request<ModelPresetMutationResponse>(API_PATHS.operatorModelPresets, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async updateModelPreset(presetId: string, request: ModelPresetUpdateRequest): Promise<ModelPresetMutationResponse> {
+    return this.request<ModelPresetMutationResponse>(API_BUILDERS.operatorModelPreset(presetId), {
+      method: 'PATCH',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async deleteModelPreset(presetId: string): Promise<ModelPresetMutationResponse> {
+    return this.request<ModelPresetMutationResponse>(API_BUILDERS.operatorModelPreset(presetId), {
+      method: 'DELETE',
+    });
+  }
+
+  // Operator / Admin Management
+  async getOperatorStatus(): Promise<OperatorRuntimeStatus> {
+    return this.request<OperatorRuntimeStatus>(API_PATHS.operatorStatus);
+  }
+
+  async getOperatorHealth(): Promise<OperatorHealthSnapshot> {
+    return this.request<OperatorHealthSnapshot>(API_PATHS.operatorHealth);
+  }
+
+  async getOperatorErrors(count: number = 10): Promise<OperatorRecentErrorsResponse> {
+    return this.request<OperatorRecentErrorsResponse>(API_BUILDERS.operatorErrors(count));
+  }
+
+  async getOperatorLogs(count: number = 20, level?: 'error' | 'warning' | 'info'): Promise<OperatorLogsResponse> {
+    return this.request<OperatorLogsResponse>(API_BUILDERS.operatorLogs(count, level));
+  }
+
+  async getOperatorAudit(count: number = 20): Promise<OperatorAuditResponse> {
+    return this.request<OperatorAuditResponse>(API_BUILDERS.operatorAudit(count));
+  }
+
+  async getOperatorMCP(): Promise<OperatorMCPStatusResponse> {
+    return this.request<OperatorMCPStatusResponse>(API_PATHS.operatorMcp);
+  }
+
+  async getOperatorMCPServerLogs(server: string, count: number = 50): Promise<OperatorMCPServerLogsResponse> {
+    return this.request<OperatorMCPServerLogsResponse>(API_BUILDERS.operatorMcpServerLogs(server, count));
+  }
+
+  async clearOperatorMCPServerLogs(server: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorMcpServerLogsClear(server), {
+      method: 'POST',
+    });
+  }
+
+  async testOperatorMCPServer(server: string): Promise<OperatorMCPServerTestResponse> {
+    return this.request<OperatorMCPServerTestResponse>(API_BUILDERS.operatorMcpServerTest(server), {
+      method: 'POST',
+    });
+  }
+
+  async getOperatorMCPTools(server?: string): Promise<OperatorMCPToolsResponse> {
+    return this.request<OperatorMCPToolsResponse>(API_BUILDERS.operatorMcpTools(server));
+  }
+
+  async setOperatorMCPToolEnabled(toolName: string, enabled: boolean): Promise<OperatorMCPToolToggleResponse> {
+    return this.request<OperatorMCPToolToggleResponse>(API_BUILDERS.operatorMcpToolToggle(toolName), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
+  async startMCPServer(server: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return this.request<{ success: boolean; message?: string; error?: string }>(API_PATHS.operatorMcpStart, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server }),
+    });
+  }
+
+  async stopMCPServer(server: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    return this.request<{ success: boolean; message?: string; error?: string }>(API_PATHS.operatorMcpStop, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server }),
+    });
+  }
+
+  async restartMCPServer(server: string): Promise<{ success: boolean; error?: string }> {
+    return this.request<{ success: boolean; error?: string }>(API_PATHS.operatorMcpRestart, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server }),
+    });
+  }
+
+  async getOperatorConversations(count: number = 10): Promise<OperatorConversationsResponse> {
+    return this.request<OperatorConversationsResponse>(API_BUILDERS.operatorConversations(count));
+  }
+
+  async stopOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorAgentSessionStop(sessionId), {
+      method: 'POST',
+    });
+  }
+
+  async getOperatorMessageQueues(): Promise<OperatorMessageQueuesResponse> {
+    return this.request<OperatorMessageQueuesResponse>(API_PATHS.operatorMessageQueues);
+  }
+
+  async clearOperatorMessageQueue(conversationId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorMessageQueueClear(conversationId), {
+      method: 'POST',
+    });
+  }
+
+  async pauseOperatorMessageQueue(conversationId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorMessageQueuePause(conversationId), {
+      method: 'POST',
+    });
+  }
+
+  async resumeOperatorMessageQueue(conversationId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorMessageQueueResume(conversationId), {
+      method: 'POST',
+    });
+  }
+
+  async removeOperatorQueuedMessage(conversationId: string, messageId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorMessageQueueMessage(conversationId, messageId), {
+      method: 'DELETE',
+    });
+  }
+
+  async retryOperatorQueuedMessage(conversationId: string, messageId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorMessageQueueMessageRetry(conversationId, messageId), {
+      method: 'POST',
+    });
+  }
+
+  async updateOperatorQueuedMessageText(conversationId: string, messageId: string, text: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorMessageQueueMessage(conversationId, messageId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async getOperatorRemoteServer(): Promise<OperatorRemoteServerStatus> {
+    return this.request<OperatorRemoteServerStatus>(API_PATHS.operatorRemoteServer);
+  }
+
+  async getOperatorTunnel(): Promise<OperatorTunnelStatus> {
+    return this.request<OperatorTunnelStatus>(API_PATHS.operatorTunnel);
+  }
+
+  async getOperatorTunnelSetup(): Promise<OperatorTunnelSetupSummary> {
+    return this.request<OperatorTunnelSetupSummary>(API_PATHS.operatorTunnelSetup);
+  }
+
+  async startOperatorTunnel(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorTunnelStart, {
+      method: 'POST',
+    });
+  }
+
+  async stopOperatorTunnel(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorTunnelStop, {
+      method: 'POST',
+    });
+  }
+
+  async getOperatorIntegrations(): Promise<OperatorIntegrationsSummary> {
+    return this.request<OperatorIntegrationsSummary>(API_PATHS.operatorIntegrations);
+  }
+
+  async getOperatorUpdater(): Promise<OperatorUpdaterStatus> {
+    return this.request<OperatorUpdaterStatus>(API_PATHS.operatorUpdater);
+  }
+
+  async checkOperatorUpdater(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorUpdaterCheck, {
+      method: 'POST',
+    });
+  }
+
+  async downloadOperatorUpdateAsset(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorUpdaterDownloadLatest, {
+      method: 'POST',
+    });
+  }
+
+  async revealOperatorUpdateAsset(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorUpdaterRevealDownload, {
+      method: 'POST',
+    });
+  }
+
+  async openOperatorUpdateAsset(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorUpdaterOpenDownload, {
+      method: 'POST',
+    });
+  }
+
+  async openOperatorReleasesPage(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorUpdaterOpenReleases, {
+      method: 'POST',
+    });
+  }
+
+  async getOperatorDiscord(): Promise<OperatorDiscordIntegrationSummary> {
+    return this.request<OperatorDiscordIntegrationSummary>(API_PATHS.operatorDiscord);
+  }
+
+  async getOperatorDiscordLogs(count: number = 20): Promise<OperatorDiscordLogsResponse> {
+    return this.request<OperatorDiscordLogsResponse>(API_BUILDERS.operatorDiscordLogs(count));
+  }
+
+  async connectOperatorDiscord(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorDiscordConnect, {
+      method: 'POST',
+    });
+  }
+
+  async disconnectOperatorDiscord(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorDiscordDisconnect, {
+      method: 'POST',
+    });
+  }
+
+  async clearOperatorDiscordLogs(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorDiscordClearLogs, {
+      method: 'POST',
+    });
+  }
+
+  async getOperatorWhatsApp(): Promise<OperatorWhatsAppIntegrationSummary> {
+    return this.request<OperatorWhatsAppIntegrationSummary>(API_PATHS.operatorWhatsApp);
+  }
+
+  async connectOperatorWhatsApp(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorWhatsAppConnect, {
+      method: 'POST',
+    });
+  }
+
+  async logoutOperatorWhatsApp(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorWhatsAppLogout, {
+      method: 'POST',
+    });
+  }
+
+  async getLocalSpeechModelStatuses(): Promise<LocalSpeechModelStatusesResponse> {
+    return this.request<LocalSpeechModelStatusesResponse>(API_PATHS.operatorLocalSpeechModels);
+  }
+
+  async getLocalSpeechModelStatus(providerId: LocalSpeechModelProviderId): Promise<LocalSpeechModelStatus> {
+    return this.request<LocalSpeechModelStatus>(API_BUILDERS.operatorLocalSpeechModel(providerId));
+  }
+
+  async downloadLocalSpeechModel(providerId: LocalSpeechModelProviderId): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorLocalSpeechModelDownload(providerId), {
+      method: 'POST',
+    });
+  }
+
+  async emergencyStop(): Promise<EmergencyStopResponse> {
+    return this.request<EmergencyStopResponse>(API_PATHS.emergencyStop, {
+      method: 'POST',
+    });
+  }
+
+  async restartRemoteServer(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorRestartRemoteServer, {
+      method: 'POST',
+    });
+  }
+
+  async restartApp(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorRestartApp, {
+      method: 'POST',
+    });
+  }
+
+  async runOperatorAgent(request: OperatorRunAgentRequest): Promise<OperatorRunAgentResponse> {
+    return this.request<OperatorRunAgentResponse>(API_PATHS.operatorRunAgent, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async rotateOperatorApiKey(): Promise<OperatorApiKeyRotationResponse> {
+    return this.request<OperatorApiKeyRotationResponse>(API_PATHS.operatorRotateApiKey, {
+      method: 'POST',
+    });
+  }
+
+  // Conversation Sync Management
+  async getConversations(): Promise<{ conversations: ServerConversation[] }> {
+    return this.request<{ conversations: ServerConversation[] }>(API_PATHS.conversations);
+  }
+
+  async getConversation(id: string): Promise<ServerConversationFull> {
+    return this.request<ServerConversationFull>(API_BUILDERS.conversation(id));
+  }
+
+  async createConversation(data: CreateConversationRequest): Promise<ServerConversationFull> {
+    return this.request<ServerConversationFull>(API_PATHS.conversations, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateConversation(id: string, data: UpdateConversationRequest): Promise<ServerConversationFull> {
+    return this.request<ServerConversationFull>(API_BUILDERS.conversation(id), {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+}
+
+export class ExtendedSettingsApiClient extends SettingsApiClient {
+  // Register push notification token
+  async registerPushToken(registration: PushTokenRegistration): Promise<{ success: boolean; message: string; tokenCount: number }> {
+    return this.request(API_PATHS.pushRegister, {
+      method: 'POST',
+      body: JSON.stringify(registration),
+    });
+  }
+
+  // Unregister push notification token
+  async unregisterPushToken(token: string): Promise<{ success: boolean; message: string; tokenCount: number }> {
+    return this.request(API_PATHS.pushUnregister, {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  // Get push notification status
+  async getPushStatus(): Promise<PushStatusResponse> {
+    return this.request<PushStatusResponse>(API_PATHS.pushStatus);
+  }
+
+  // Clear server-side badge count for a push notification token
+  async clearPushBadge(token: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(API_PATHS.pushClearBadge, {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  // Synthesize speech through the desktop remote server and return raw audio bytes
+  async synthesizeSpeech(request: TtsSpeakRequest): Promise<TtsSpeakResponse> {
+    const response = await this.requestResponse(API_PATHS.ttsSpeak, {
+      method: 'POST',
+      headers: { Accept: 'audio/*' },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw await this.createResponseError(response);
+    }
+
+    return {
+      audio: await response.arrayBuffer(),
+      mimeType: response.headers.get('content-type') || 'audio/mpeg',
+      provider: response.headers.get('x-tts-provider') || undefined,
+    };
+  }
+
+  // Skills Management
+  async getSkills(): Promise<SkillsResponse> {
+    return this.request<SkillsResponse>(API_PATHS.skills);
+  }
+
+  async toggleSkillForProfile(skillId: string): Promise<SkillToggleResponse> {
+    return this.request<SkillToggleResponse>(API_BUILDERS.skillToggleProfile(skillId), {
+      method: 'POST',
+    });
+  }
+
+  // Knowledge Notes Management
+  async getKnowledgeNotes(): Promise<KnowledgeNotesResponse> {
+    return this.request<KnowledgeNotesResponse>(API_PATHS.knowledgeNotes);
+  }
+
+  async getKnowledgeNote(id: string): Promise<KnowledgeNoteResponse> {
+    return this.request<KnowledgeNoteResponse>(API_BUILDERS.knowledgeNote(id));
+  }
+
+  async createKnowledgeNote(data: KnowledgeNoteCreateRequest): Promise<KnowledgeNoteResponse> {
+    return this.request<KnowledgeNoteResponse>(API_PATHS.knowledgeNotes, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateKnowledgeNote(id: string, data: KnowledgeNoteUpdateRequest): Promise<KnowledgeNoteMutationResponse> {
+    return this.request<KnowledgeNoteMutationResponse>(API_BUILDERS.knowledgeNote(id), {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteKnowledgeNote(id: string): Promise<KnowledgeNoteDeleteResponse> {
+    return this.request<KnowledgeNoteDeleteResponse>(API_BUILDERS.knowledgeNote(id), {
+      method: 'DELETE',
+    });
+  }
+
+  // Agent Profiles Management
+  async getAgentProfiles(): Promise<ApiAgentProfilesResponse> {
+    return this.request<ApiAgentProfilesResponse>(API_PATHS.agentProfiles);
+  }
+
+  async getAgentProfile(id: string): Promise<{ profile: ApiAgentProfileFull }> {
+    return this.request<{ profile: ApiAgentProfileFull }>(API_BUILDERS.agentProfile(id));
+  }
+
+  async createAgentProfile(data: AgentProfileCreateRequest): Promise<{ profile: ApiAgentProfileFull }> {
+    return this.request<{ profile: ApiAgentProfileFull }>(API_PATHS.agentProfiles, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAgentProfile(id: string, data: AgentProfileUpdateRequest): Promise<{ success: boolean; profile: ApiAgentProfileFull }> {
+    return this.request<{ success: boolean; profile: ApiAgentProfileFull }>(API_BUILDERS.agentProfile(id), {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAgentProfile(id: string): Promise<AgentProfileDeleteResponse> {
+    return this.request<AgentProfileDeleteResponse>(API_BUILDERS.agentProfile(id), {
+      method: 'DELETE',
+    });
+  }
+
+  async toggleAgentProfile(id: string): Promise<AgentProfileToggleResponse> {
+    return this.request<AgentProfileToggleResponse>(API_BUILDERS.agentProfileToggle(id), {
+      method: 'POST',
+    });
+  }
+
+  // Agent Loops Management
+  async getLoops(): Promise<LoopsResponse> {
+    return this.request<LoopsResponse>(API_PATHS.loops);
+  }
+
+  async createLoop(data: LoopCreateRequest): Promise<{ loop: Loop }> {
+    return this.request<{ loop: Loop }>(API_PATHS.loops, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateLoop(id: string, data: LoopUpdateRequest): Promise<LoopMutationResponse> {
+    return this.request<LoopMutationResponse>(API_BUILDERS.loop(id), {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteLoop(id: string): Promise<LoopDeleteResponse> {
+    return this.request<LoopDeleteResponse>(API_BUILDERS.loop(id), {
+      method: 'DELETE',
+    });
+  }
+
+  async toggleLoop(id: string): Promise<LoopToggleResponse> {
+    return this.request<LoopToggleResponse>(API_BUILDERS.loopToggle(id), {
+      method: 'POST',
+    });
+  }
+
+  async runLoop(id: string): Promise<LoopRunResponse> {
+    return this.request<LoopRunResponse>(API_BUILDERS.loopRun(id), {
+      method: 'POST',
+    });
+  }
+}
+
+export function createSettingsApiClient(baseUrl: string, apiKey: string, options?: SettingsApiClientOptions): SettingsApiClient {
+  return new SettingsApiClient(baseUrl, apiKey, options);
+}
+
+export function createExtendedSettingsApiClient(
+  baseUrl: string,
+  apiKey: string,
+  options?: SettingsApiClientOptions,
+): ExtendedSettingsApiClient {
+  return new ExtendedSettingsApiClient(baseUrl, apiKey, options);
+}

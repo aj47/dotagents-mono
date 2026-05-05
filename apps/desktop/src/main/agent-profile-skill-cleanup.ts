@@ -1,63 +1,27 @@
-import type { AgentProfile } from "@shared/types"
+import type { AgentProfile } from "@dotagents/core"
 import type { AgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
+import {
+  cleanupInvalidSkillReferencesInProfiles as cleanupSharedInvalidSkillReferencesInProfiles,
+  type AgentProfileSkillReferenceCleanupSummary,
+} from "@dotagents/shared/agent-profile-reference-cleanup"
 
-export type SkillReferenceCleanupSummary = {
-  updatedProfileIds: string[]
-  removedReferenceCount: number
-}
-
-function uniqueSorted(values: string[]): string[] {
-  return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b))
-}
-
-export function cleanupInvalidSkillReferencesInProfiles(
-  profiles: AgentProfile[],
-  validSkillIds: Iterable<string>,
-  now: number = Date.now(),
-): { profiles: AgentProfile[] } & SkillReferenceCleanupSummary {
-  const validSkillIdSet = new Set(Array.from(validSkillIds))
-  const updatedProfileIds: string[] = []
-  let removedReferenceCount = 0
-
-  const nextProfiles = profiles.map((profile) => {
-    const currentSkillIds = profile.skillsConfig?.enabledSkillIds ?? []
-    if (currentSkillIds.length === 0) return profile
-
-    const nextSkillIds = currentSkillIds.filter((skillId) => validSkillIdSet.has(skillId))
-    if (nextSkillIds.length === currentSkillIds.length) return profile
-
-    removedReferenceCount += currentSkillIds.length - nextSkillIds.length
-    updatedProfileIds.push(profile.id)
-
-    return {
-      ...profile,
-      updatedAt: now,
-      skillsConfig: {
-        ...profile.skillsConfig,
-        enabledSkillIds: nextSkillIds,
-      },
-    }
-  })
-
-  return {
-    profiles: nextProfiles,
-    updatedProfileIds: uniqueSorted(updatedProfileIds),
-    removedReferenceCount,
-  }
-}
+export {
+  cleanupInvalidSkillReferencesInProfiles,
+  type AgentProfileSkillReferenceCleanupSummary as SkillReferenceCleanupSummary,
+} from "@dotagents/shared/agent-profile-reference-cleanup"
 
 export function cleanupInvalidSkillReferencesInLayers(
   layers: AgentsLayerPaths[],
   validSkillIds: Iterable<string>,
   now: number = Date.now(),
-): SkillReferenceCleanupSummary {
+): AgentProfileSkillReferenceCleanupSummary {
   const combinedUpdatedProfileIds: string[] = []
   let removedReferenceCount = 0
 
   for (const layer of layers) {
     const loaded = loadAgentProfilesLayer(layer)
-    const result = cleanupInvalidSkillReferencesInProfiles(loaded.profiles, validSkillIds, now)
+    const result = cleanupSharedInvalidSkillReferencesInProfiles<AgentProfile>(loaded.profiles, validSkillIds, now)
 
     if (result.updatedProfileIds.length === 0) continue
 
@@ -73,7 +37,7 @@ export function cleanupInvalidSkillReferencesInLayers(
   }
 
   return {
-    updatedProfileIds: uniqueSorted(combinedUpdatedProfileIds),
+    updatedProfileIds: Array.from(new Set(combinedUpdatedProfileIds)).sort((a, b) => a.localeCompare(b)),
     removedReferenceCount,
   }
 }

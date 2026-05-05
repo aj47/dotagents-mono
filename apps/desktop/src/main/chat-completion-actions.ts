@@ -1,0 +1,165 @@
+import fs from "fs"
+import path from "path"
+import type { FastifyReply } from "fastify"
+import {
+  buildChatCompletionDoneSsePayload,
+  buildChatCompletionErrorSsePayload,
+  buildChatCompletionProgressSsePayload,
+  buildDotAgentsChatCompletionResponse,
+  formatServerSentEventData,
+  parseChatCompletionRequestBody,
+} from "@dotagents/shared/chat-utils"
+import type { AgentRunExecutor } from "@dotagents/shared/agent-run-utils"
+import { resolveActiveModelId } from "@dotagents/shared/model-presets"
+import type { AgentProgressUpdate } from "../shared/types"
+import { configStore, recordingsFolder } from "./config"
+import { getConversationIdValidationError } from "./conversation-id"
+import { diagnosticsService } from "./diagnostics"
+import { isPushEnabled, sendMessageNotification } from "./push-notification-service"
+
+export type ChatCompletionRunAgentExecutor = AgentRunExecutor
+
+function recordHistory(transcript: string) {
+  try {
+    fs.mkdirSync(recordingsFolder, { recursive: true })
+    const historyPath = path.join(recordingsFolder, "history.json")
+    let history: Array<{ id: string; createdAt: number; duration: number; transcript: string }>
+    try {
+      history = JSON.parse(fs.readFileSync(historyPath, "utf8"))
+    } catch {
+      history = []
+    }
+
+    const item = {
+      id: Date.now().toString(),
+      createdAt: Date.now(),
+      duration: 0,
+      transcript,
+    }
+    history.push(item)
+    fs.writeFileSync(historyPath, JSON.stringify(history))
+  } catch (caughtError) {
+    diagnosticsService.logWarning(
+      "remote-server",
+      "Failed to record history item",
+      caughtError,
+    )
+  }
+}
+
+function sendCompletionPushNotification(
+  shouldSend: boolean,
+  prompt: string,
+  conversationId: string,
+  content: string,
+): void {
+  if (!shouldSend || !isPushEnabled()) {
+    return
+  }
+
+  const conversationTitle = prompt.length > 30 ? prompt.substring(0, 30) + "..." : prompt
+  void sendMessageNotification(conversationId, conversationTitle, content).catch((caughtError) => {
+    diagnosticsService.logWarning("remote-server", "Failed to send push notification", caughtError)
+  })
+}
+
+function normalizeOrigin(origin: string | string[] | undefined): string {
+  if (Array.isArray(origin)) {
+    return origin[0] || "*"
+  }
+
+  return origin || "*"
+}
+
+export async function handleChatCompletionRequest(
+  body: unknown,
+  origin: string | string[] | undefined,
+  reply: FastifyReply,
+  runAgent: ChatCompletionRunAgentExecutor,
+) {
+  try {
+    const chatRequest = parseChatCompletionRequestBody(body)
+    const { prompt, conversationId, profileId, stream: isStreaming } = chatRequest
+    if (!prompt) {
+      return reply.code(400).send({ error: "Missing user prompt" })
+    }
+
+    if (conversationId) {
+      const conversationIdError = getConversationIdValidationError(conversationId)
+      if (conversationIdError) {
+        return reply.code(400).send({ error: conversationIdError })
+      }
+    }
+
+    console.log("[remote-server] Chat request:", { conversationId: conversationId || "new", promptLength: prompt.length, streaming: isStreaming })
+    diagnosticsService.logInfo("remote-server", `Handling completion request${conversationId ? ` for conversation ${conversationId}` : ""}${isStreaming ? " (streaming)" : ""}`)
+
+    if (isStreaming) {
+      reply.raw.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Access-Control-Allow-Origin": normalizeOrigin(origin),
+        "Access-Control-Allow-Credentials": "true",
+      })
+
+      const writeSSE = (data: object) => {
+        reply.raw.write(formatServerSentEventData(data))
+      }
+
+      const onProgress = (update: AgentProgressUpdate) => {
+        writeSSE(buildChatCompletionProgressSsePayload(update))
+      }
+
+      try {
+        const result = await runAgent({ prompt, conversationId, profileId, onProgress })
+        recordHistory(result.content)
+
+        const model = resolveActiveModelId(configStore.get())
+        writeSSE(buildChatCompletionDoneSsePayload({
+          content: result.content,
+          conversationId: result.conversationId,
+          conversationHistory: result.conversationHistory,
+          model,
+        }))
+
+        sendCompletionPushNotification(
+          chatRequest.sendPushNotification,
+          prompt,
+          result.conversationId,
+          result.content,
+        )
+      } catch (caughtError: any) {
+        writeSSE(buildChatCompletionErrorSsePayload(caughtError?.message || "Internal Server Error"))
+      } finally {
+        reply.raw.end()
+      }
+
+      return reply
+    }
+
+    const result = await runAgent({ prompt, conversationId, profileId })
+    recordHistory(result.content)
+
+    const model = resolveActiveModelId(configStore.get())
+    const response = buildDotAgentsChatCompletionResponse({
+      content: result.content,
+      model,
+      conversationId: result.conversationId,
+      conversationHistory: result.conversationHistory,
+    })
+
+    console.log("[remote-server] Chat response:", { conversationId: result.conversationId, responseLength: result.content.length })
+    sendCompletionPushNotification(
+      chatRequest.sendPushNotification,
+      prompt,
+      result.conversationId,
+      result.content,
+    )
+
+    return reply.send(response)
+  } catch (caughtError: any) {
+    diagnosticsService.logError("remote-server", "Handler error", caughtError)
+    return reply.code(500).send({ error: "Internal Server Error" })
+  }
+}

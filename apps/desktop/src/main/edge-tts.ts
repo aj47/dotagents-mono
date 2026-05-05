@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { createRequire } from "node:module"
+import { DEFAULT_EDGE_TTS_VOICE } from "@dotagents/shared/providers"
 import type { Config } from "../shared/types"
 
 const localRequire = createRequire(import.meta.url)
@@ -16,7 +17,6 @@ const WSS_HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 }
 const WINDOWS_EPOCH_OFFSET_SECONDS = 11_644_473_600
-const DEFAULT_EDGE_TTS_VOICE = "en-US-AriaNeural"
 const NO_AUDIO_ERROR_MESSAGE = "Edge TTS connection closed before audio was received"
 
 export type TTSGenerationResult = {

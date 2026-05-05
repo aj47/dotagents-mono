@@ -11,6 +11,12 @@
       "@shared/*": [
         "src/shared/*"
       ],
+      "@dotagents/shared": [
+        "../../packages/shared/dist/index.d.ts"
+      ],
+      "@dotagents/shared/*": [
+        "../../packages/shared/dist/*.d.ts"
+      ],
     }
   }
 }
