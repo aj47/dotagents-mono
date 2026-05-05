@@ -14,6 +14,12 @@ import {
   REMOTE_SERVER_API_PATHS,
   getRemoteServerApiRoutePath,
 } from './remote-server-api';
+import {
+  getRemoteServerLifecycleAction,
+  type RemoteServerLifecycleAction,
+  type RemoteServerLifecycleConfigLike,
+} from './remote-pairing';
+import { getSensitiveOperatorSettingsKeys } from './operator-actions';
 import type {
   AgentProfileCreateRequest,
   AgentProfileDeleteResponse,
@@ -139,6 +145,45 @@ export interface SettingsSensitiveUpdateAuditContext {
   success: boolean;
   details?: Record<string, unknown>;
   failureReason?: string;
+}
+
+export type SettingsActionResult = {
+  statusCode: number;
+  body: unknown;
+  remoteServerLifecycleAction?: RemoteServerLifecycleAction;
+  auditContext?: SettingsSensitiveUpdateAuditContext;
+};
+
+export type SettingsActionConfigLike = SettingsResponseConfigLike
+  & SettingsUpdateConfigLike
+  & RemoteServerLifecycleConfigLike
+  & {
+    whatsappEnabled?: boolean;
+    discordEnabled?: boolean;
+  };
+
+type SettingsMaybePromise<T> = T | Promise<T>;
+
+export interface SettingsActionConfigStore<TConfig extends SettingsActionConfigLike = SettingsActionConfigLike> {
+  get(): TConfig;
+  save(config: TConfig): SettingsMaybePromise<void>;
+}
+
+export interface SettingsActionDiagnostics {
+  logInfo(source: string, message: string): void;
+  logError(source: string, message: string, error: unknown): void;
+}
+
+export interface SettingsActionOptions<TConfig extends SettingsActionConfigLike = SettingsActionConfigLike> {
+  config: SettingsActionConfigStore<TConfig>;
+  diagnostics: SettingsActionDiagnostics;
+  getMaskedRemoteServerApiKey(config: TConfig): string;
+  getMaskedDiscordBotToken(config: TConfig): string;
+  getDiscordDefaultProfileId(config: TConfig): string;
+  getAcpxAgents(): Settings['acpxAgents'];
+  getDiscordLifecycleAction(prev: TConfig, next: TConfig): SettingsLifecycleAction;
+  applyDiscordLifecycleAction(action: SettingsLifecycleAction): SettingsMaybePromise<void>;
+  applyWhatsappToggle(prevEnabled: boolean, nextEnabled: boolean): SettingsMaybePromise<void>;
 }
 
 function getRequestRecord(body: unknown): Record<string, unknown> {
@@ -338,6 +383,119 @@ export function buildSettingsSensitiveUpdateFailureAuditContext(
     details: { attempted: attemptedSensitiveSettingsKeys },
     failureReason: 'settings-update-error',
   };
+}
+
+function settingsActionOk(
+  body: unknown,
+  options: Pick<SettingsActionResult, 'auditContext' | 'remoteServerLifecycleAction'> = {},
+): SettingsActionResult {
+  return {
+    statusCode: 200,
+    body,
+    ...options,
+  };
+}
+
+function settingsActionError(
+  statusCode: number,
+  message: string,
+  auditContext?: SettingsSensitiveUpdateAuditContext,
+): SettingsActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+    ...(auditContext ? { auditContext } : {}),
+  };
+}
+
+function getUnknownErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string') {
+    return (error as { message: string }).message;
+  }
+  return fallback;
+}
+
+export function getSettingsAction<TConfig extends SettingsActionConfigLike>(
+  providerSecretMask: string,
+  options: SettingsActionOptions<TConfig>,
+): SettingsActionResult {
+  try {
+    const cfg = options.config.get();
+    return settingsActionOk(buildSettingsResponse(cfg, {
+      providerSecretMask,
+      remoteServerApiKey: options.getMaskedRemoteServerApiKey(cfg),
+      discordBotToken: options.getMaskedDiscordBotToken(cfg),
+      discordDefaultProfileId: options.getDiscordDefaultProfileId(cfg),
+      acpxAgents: options.getAcpxAgents(),
+    }));
+  } catch (caughtError) {
+    options.diagnostics.logError('settings-actions', 'Failed to get settings', caughtError);
+    return settingsActionError(500, 'Failed to get settings');
+  }
+}
+
+export async function updateSettingsAction<TConfig extends SettingsActionConfigLike>(
+  body: unknown,
+  masks: BuildSettingsUpdatePatchOptions,
+  options: SettingsActionOptions<TConfig>,
+): Promise<SettingsActionResult> {
+  let attemptedSensitiveSettingsKeys: string[] = [];
+
+  try {
+    const requestBody = getSettingsUpdateRequestRecord(body);
+    attemptedSensitiveSettingsKeys = getSensitiveOperatorSettingsKeys(requestBody);
+    const cfg = options.config.get();
+    const updates = buildSettingsUpdatePatch(requestBody, cfg, masks) as Partial<TConfig>;
+
+    if (Object.keys(updates).length === 0) {
+      return settingsActionError(
+        400,
+        'No valid settings to update',
+        attemptedSensitiveSettingsKeys.length > 0
+          ? buildSettingsSensitiveNoValidUpdateAuditContext(attemptedSensitiveSettingsKeys)
+          : undefined,
+      );
+    }
+
+    const nextConfig = { ...cfg, ...updates } as TConfig;
+    const remoteServerLifecycleAction = getRemoteServerLifecycleAction(cfg, nextConfig);
+    const sensitiveUpdatedKeys = getSensitiveOperatorSettingsKeys(updates);
+    await options.config.save(nextConfig);
+    options.diagnostics.logInfo('settings-actions', `Updated settings: ${Object.keys(updates).join(', ')}`);
+
+    const discordLifecycleAction = options.getDiscordLifecycleAction(cfg, nextConfig);
+    await options.applyDiscordLifecycleAction(discordLifecycleAction);
+
+    if (updates.whatsappEnabled !== undefined) {
+      try {
+        const prevEnabled = cfg.whatsappEnabled ?? false;
+        await options.applyWhatsappToggle(prevEnabled, updates.whatsappEnabled);
+      } catch {
+        // lifecycle is best-effort
+      }
+    }
+
+    return settingsActionOk(buildSettingsUpdateResponse(updates), {
+      remoteServerLifecycleAction,
+      auditContext: sensitiveUpdatedKeys.length > 0
+        ? buildSettingsSensitiveUpdateAuditContext(sensitiveUpdatedKeys, {
+          remoteServerLifecycleAction,
+          discordLifecycleAction,
+        })
+        : undefined,
+    });
+  } catch (caughtError) {
+    options.diagnostics.logError('settings-actions', 'Failed to update settings', caughtError);
+    return settingsActionError(
+      500,
+      getUnknownErrorMessage(caughtError, 'Failed to update settings'),
+      attemptedSensitiveSettingsKeys.length > 0
+        ? buildSettingsSensitiveUpdateFailureAuditContext(attemptedSensitiveSettingsKeys)
+        : undefined,
+    );
+  }
 }
 
 export function buildEmergencyStopResponse(

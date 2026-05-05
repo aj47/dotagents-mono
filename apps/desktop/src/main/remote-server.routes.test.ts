@@ -832,6 +832,7 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const settingsActionsSource = getSettingsActionsSource()
+    const sharedSettingsApiClientSource = getSharedSettingsApiClientSource()
     const settingsGetSection = getSection(
       mobileApiRoutesSource,
       getApiRouteRegistrationMarker(mobileApiRoutesSource, "GET", "settings"),
@@ -849,12 +850,19 @@ describe("remote-server route registration", () => {
     expect(source).toContain("langfuseSecretMask: PROVIDER_SECRET_MASK")
     expect(settingsGetSection).toContain("const result = actions.getSettings(providerSecretMask)")
     expect(settingsGetSection).toContain("reply.code(result.statusCode).send(result.body)")
-    expect(settingsActionsSource).toContain("buildSettingsResponse(cfg, {")
-    expect(settingsActionsSource).toContain("remoteServerApiKey: getMaskedRemoteServerApiKey(cfg.remoteServerApiKey)")
-    expect(settingsActionsSource).toContain("discordBotToken: getMaskedDiscordBotToken(cfg)")
-    expect(settingsActionsSource).toContain("discordDefaultProfileId: getDiscordResolvedDefaultProfileId(cfg).profileId ?? \"\"")
-    expect(settingsActionsSource).toContain("acpxAgents: agentProfileService.getAll()")
+    expect(settingsActionsSource).toContain("getSettingsAction(providerSecretMask, settingsActionOptions)")
+    expect(settingsActionsSource).toContain("getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey)")
+    expect(settingsActionsSource).toContain("getMaskedDiscordBotToken")
+    expect(settingsActionsSource).toContain("getDiscordDefaultProfileId: (config) => getDiscordResolvedDefaultProfileId(config).profileId ?? \"\"")
+    expect(settingsActionsSource).toContain("getAcpxAgents: () => agentProfileService.getAll()")
     expect(settingsActionsSource).toContain("p.connection.type === 'acpx'")
+    expect(sharedSettingsApiClientSource).toContain("export interface SettingsActionOptions")
+    expect(sharedSettingsApiClientSource).toContain("export function getSettingsAction")
+    expect(sharedSettingsApiClientSource).toContain("buildSettingsResponse(cfg, {")
+    expect(sharedSettingsApiClientSource).toContain("remoteServerApiKey: options.getMaskedRemoteServerApiKey(cfg)")
+    expect(sharedSettingsApiClientSource).toContain("discordBotToken: options.getMaskedDiscordBotToken(cfg)")
+    expect(sharedSettingsApiClientSource).toContain("discordDefaultProfileId: options.getDiscordDefaultProfileId(cfg)")
+    expect(sharedSettingsApiClientSource).toContain("acpxAgents: options.getAcpxAgents()")
 
     expect(settingsPatchSection).toContain("providerSecretMask")
     expect(settingsPatchSection).toContain("remoteServerSecretMask")
@@ -864,11 +872,15 @@ describe("remote-server route registration", () => {
     expect(settingsPatchSection).toContain("scheduleRemoteServerLifecycleActionAfterReply(reply, result.remoteServerLifecycleAction)")
     expect(settingsPatchSection).toContain("actions.recordOperatorAuditEvent(req, result.auditContext)")
     expect(settingsPatchSection).toContain("reply.code(result.statusCode).send(result.body)")
-    expect(settingsActionsSource).toContain("const requestBody = getSettingsUpdateRequestRecord(body)")
-    expect(settingsActionsSource).toContain("buildSettingsUpdatePatch(requestBody, cfg, masks)")
-    expect(settingsActionsSource).toContain("const remoteServerLifecycleAction = getRemoteServerLifecycleAction(cfg, nextConfig)")
-    expect(settingsActionsSource).toContain("getDiscordLifecycleAction(cfg, nextConfig)")
-    expect(settingsActionsSource).toContain("await applyDiscordLifecycleAction(discordLifecycleAction)")
+    expect(settingsActionsSource).toContain("updateSettingsAction(body, masks, settingsActionOptions)")
+    expect(sharedSettingsApiClientSource).toContain("export async function updateSettingsAction")
+    expect(sharedSettingsApiClientSource).toContain("const requestBody = getSettingsUpdateRequestRecord(body)")
+    expect(sharedSettingsApiClientSource).toContain("buildSettingsUpdatePatch(requestBody, cfg, masks)")
+    expect(sharedSettingsApiClientSource).toContain("const remoteServerLifecycleAction = getRemoteServerLifecycleAction(cfg, nextConfig)")
+    expect(sharedSettingsApiClientSource).toContain("options.getDiscordLifecycleAction(cfg, nextConfig)")
+    expect(sharedSettingsApiClientSource).toContain("await options.applyDiscordLifecycleAction(discordLifecycleAction)")
+    expect(sharedSettingsApiClientSource).toContain("await options.applyWhatsappToggle(prevEnabled, updates.whatsappEnabled)")
+    expect(sharedSettingsApiClientSource).not.toContain('from "./config"')
   })
 
   it("delegates emergency stop route behavior to emergency stop actions", () => {
@@ -1422,6 +1434,7 @@ describe("remote-server route registration", () => {
   it("audits sensitive settings updates without persisting secrets", () => {
     const source = getMobileApiRoutesSource()
     const settingsActionsSource = getSettingsActionsSource()
+    const sharedSettingsApiClientSource = getSharedSettingsApiClientSource()
     const settingsPatchSection = getSection(
       source,
       getApiRouteRegistrationMarker(source, "PATCH", "settings"),
@@ -1430,19 +1443,22 @@ describe("remote-server route registration", () => {
 
     expect(settingsPatchSection).toContain("if (result.auditContext)")
     expect(settingsPatchSection).toContain("actions.recordOperatorAuditEvent(req, result.auditContext)")
-    expect(settingsActionsSource).toContain("let attemptedSensitiveSettingsKeys: string[] = []")
-    expect(settingsActionsSource).toContain("getSensitiveOperatorSettingsKeys(requestBody)")
-    expect(settingsActionsSource).toContain("const sensitiveUpdatedKeys = getSensitiveOperatorSettingsKeys(updates)")
-    expect(settingsActionsSource).toContain("buildSettingsSensitiveNoValidUpdateAuditContext(attemptedSensitiveSettingsKeys)")
-    expect(settingsActionsSource).toContain("buildSettingsSensitiveUpdateAuditContext(sensitiveUpdatedKeys")
-    expect(settingsActionsSource).toContain("buildSettingsSensitiveUpdateFailureAuditContext(attemptedSensitiveSettingsKeys)")
-    expect(settingsActionsSource).toContain("buildSettingsUpdateResponse(updates)")
-    expect(settingsActionsSource).toContain("remoteServerLifecycleAction")
-    expect(settingsActionsSource).toContain("discordLifecycleAction")
+    expect(settingsActionsSource).toContain("updateSettingsAction(body, masks, settingsActionOptions)")
+    expect(sharedSettingsApiClientSource).toContain("let attemptedSensitiveSettingsKeys: string[] = []")
+    expect(sharedSettingsApiClientSource).toContain("getSensitiveOperatorSettingsKeys(requestBody)")
+    expect(sharedSettingsApiClientSource).toContain("const sensitiveUpdatedKeys = getSensitiveOperatorSettingsKeys(updates)")
+    expect(sharedSettingsApiClientSource).toContain("buildSettingsSensitiveNoValidUpdateAuditContext(attemptedSensitiveSettingsKeys)")
+    expect(sharedSettingsApiClientSource).toContain("buildSettingsSensitiveUpdateAuditContext(sensitiveUpdatedKeys")
+    expect(sharedSettingsApiClientSource).toContain("buildSettingsSensitiveUpdateFailureAuditContext(attemptedSensitiveSettingsKeys)")
+    expect(sharedSettingsApiClientSource).toContain("buildSettingsUpdateResponse(updates)")
+    expect(sharedSettingsApiClientSource).toContain("remoteServerLifecycleAction")
+    expect(sharedSettingsApiClientSource).toContain("discordLifecycleAction")
     expect(settingsPatchSection).not.toContain("details: { apiKey")
     expect(settingsPatchSection).not.toContain("details: { remoteServerApiKey")
     expect(settingsActionsSource).not.toContain("details: { apiKey")
     expect(settingsActionsSource).not.toContain("details: { remoteServerApiKey")
+    expect(sharedSettingsApiClientSource).not.toContain("details: { apiKey")
+    expect(sharedSettingsApiClientSource).not.toContain("details: { remoteServerApiKey")
   })
 
   it("resolves remote server secret references only for authenticated pairing surfaces", () => {
@@ -1451,6 +1467,7 @@ describe("remote-server route registration", () => {
     const desktopAdaptersSource = getRemoteServerDesktopAdaptersSource()
     const settingsActionsSource = getSettingsActionsSource()
     const remoteServerPairingActionsSource = getRemoteServerPairingActionsSource()
+    const sharedSettingsApiClientSource = getSharedSettingsApiClientSource()
 
     expect(remoteServerPairingActionsSource).toContain("getDotAgentsSecretsRecord(parsed)")
     expect(remoteServerPairingActionsSource).toContain("resolveDotAgentsSecretReference(value, secrets)")
@@ -1474,7 +1491,8 @@ describe("remote-server route registration", () => {
     expect(controllerSource).toContain("adapters.getNetworkAddresses()")
     expect(remoteServerPairingActionsSource).toContain("resolveConnectableRemoteServerPairingBaseUrl(bind, port, getRemoteNetworkAddresses())")
     expect(remoteServerPairingActionsSource).toContain("QRCode.toString(qrValue")
-    expect(settingsActionsSource).toContain("remoteServerApiKey: getMaskedRemoteServerApiKey(cfg.remoteServerApiKey)")
+    expect(settingsActionsSource).toContain("getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey)")
+    expect(sharedSettingsApiClientSource).toContain("remoteServerApiKey: options.getMaskedRemoteServerApiKey(cfg)")
   })
 
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {

@@ -10,9 +10,13 @@ import {
   buildSettingsUpdateResponse,
   DOTAGENTS_DEVICE_ID_HEADER,
   ExtendedSettingsApiClient,
+  getSettingsAction,
   getSettingsUpdateRequestRecord,
   SettingsApiClient,
   triggerEmergencyStopAction,
+  updateSettingsAction,
+  type SettingsActionConfigLike,
+  type SettingsActionOptions,
 } from './settings-api-client';
 import {
   REMOTE_SERVER_API_BUILDERS,
@@ -251,6 +255,177 @@ describe('SettingsApiClient', () => {
       details: { attempted: ['discordBotToken'] },
       failureReason: 'settings-update-error',
     });
+  });
+
+  it('runs shared settings actions through config and lifecycle adapters', async () => {
+    let config: SettingsActionConfigLike = {
+      remoteServerEnabled: false,
+      remoteServerPort: 3210,
+      discordEnabled: false,
+      whatsappEnabled: false,
+      mcpMaxIterations: 10,
+      modelPresets: [],
+    };
+    const savedConfigs: SettingsActionConfigLike[] = [];
+    const diagnosticsCalls: unknown[] = [];
+    const lifecycleCalls: unknown[] = [];
+    const options: SettingsActionOptions = {
+      config: {
+        get: () => config,
+        save: async (nextConfig) => {
+          config = nextConfig;
+          savedConfigs.push(nextConfig);
+        },
+      },
+      diagnostics: {
+        logInfo: (source, message) => diagnosticsCalls.push({ level: 'info', source, message }),
+        logError: (source, message, error) => diagnosticsCalls.push({ level: 'error', source, message, error }),
+      },
+      getMaskedRemoteServerApiKey: () => 'REMOTE-MASK',
+      getMaskedDiscordBotToken: () => 'DISCORD-MASK',
+      getDiscordDefaultProfileId: () => 'agent-1',
+      getAcpxAgents: () => [{ name: 'agent', displayName: 'Agent' }],
+      getDiscordLifecycleAction: (prev, next) => (!prev.discordEnabled && next.discordEnabled ? 'start' : 'noop'),
+      applyDiscordLifecycleAction: async (action) => {
+        lifecycleCalls.push({ type: 'discord', action });
+      },
+      applyWhatsappToggle: async (prevEnabled, nextEnabled) => {
+        lifecycleCalls.push({
+          type: 'whatsapp',
+          prevEnabled,
+          nextEnabled,
+        });
+      },
+    };
+
+    expect(getSettingsAction('MASKED', options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        remoteServerApiKey: 'REMOTE-MASK',
+        discordBotToken: 'DISCORD-MASK',
+        discordDefaultProfileId: 'agent-1',
+        acpxAgents: [{ name: 'agent', displayName: 'Agent' }],
+      },
+    });
+
+    await expect(updateSettingsAction({
+      remoteServerEnabled: true,
+      discordEnabled: true,
+      whatsappEnabled: true,
+      mcpMaxIterations: 20,
+    }, {
+      providerSecretMask: 'MASKED',
+      remoteServerSecretMask: 'REMOTE-MASK',
+      discordSecretMask: 'DISCORD-MASK',
+    }, options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        updated: ['whatsappEnabled', 'discordEnabled', 'mcpMaxIterations', 'remoteServerEnabled'],
+      },
+      remoteServerLifecycleAction: 'start',
+      auditContext: {
+        action: 'settings-sensitive-update',
+        success: true,
+        details: {
+          updated: ['whatsappEnabled', 'discordEnabled', 'remoteServerEnabled'],
+          remoteServerLifecycleAction: 'start',
+          discordLifecycleAction: 'start',
+        },
+      },
+    });
+    expect(config).toMatchObject({
+      remoteServerEnabled: true,
+      discordEnabled: true,
+      whatsappEnabled: true,
+      mcpMaxIterations: 20,
+    });
+    expect(savedConfigs).toHaveLength(1);
+    expect(diagnosticsCalls).toEqual([
+      {
+        level: 'info',
+        source: 'settings-actions',
+        message: 'Updated settings: whatsappEnabled, discordEnabled, mcpMaxIterations, remoteServerEnabled',
+      },
+    ]);
+    expect(lifecycleCalls).toEqual([
+      { type: 'discord', action: 'start' },
+      { type: 'whatsapp', prevEnabled: false, nextEnabled: true },
+    ]);
+  });
+
+  it('returns shared settings action validation and failure audit responses', async () => {
+    const options: SettingsActionOptions = {
+      config: {
+        get: () => ({
+          remoteServerEnabled: false,
+          modelPresets: [],
+        }),
+        save: async () => undefined,
+      },
+      diagnostics: {
+        logInfo: () => {
+          throw new Error('unexpected info log');
+        },
+        logError: () => {
+          throw new Error('unexpected error log');
+        },
+      },
+      getMaskedRemoteServerApiKey: () => '',
+      getMaskedDiscordBotToken: () => '',
+      getDiscordDefaultProfileId: () => '',
+      getAcpxAgents: () => [],
+      getDiscordLifecycleAction: () => 'noop',
+      applyDiscordLifecycleAction: async () => undefined,
+      applyWhatsappToggle: async () => undefined,
+    };
+
+    await expect(updateSettingsAction({
+      remoteServerApiKey: 'REMOTE-MASK',
+    }, {
+      providerSecretMask: 'MASKED',
+      remoteServerSecretMask: 'REMOTE-MASK',
+      discordSecretMask: 'DISCORD-MASK',
+    }, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: 'No valid settings to update' },
+      auditContext: buildSettingsSensitiveNoValidUpdateAuditContext(['remoteServerApiKey']),
+    });
+
+    const caughtFailure = new Error('config failed');
+    const loggedErrors: unknown[] = [];
+    const failingOptions: SettingsActionOptions = {
+      ...options,
+      config: {
+        get: () => {
+          throw caughtFailure;
+        },
+        save: async () => undefined,
+      },
+      diagnostics: {
+        logInfo: () => undefined,
+        logError: (source, message, error) => loggedErrors.push({ source, message, error }),
+      },
+    };
+
+    await expect(updateSettingsAction({
+      remoteServerApiKey: 'new-secret',
+    }, {
+      providerSecretMask: 'MASKED',
+      remoteServerSecretMask: 'REMOTE-MASK',
+      discordSecretMask: 'DISCORD-MASK',
+    }, failingOptions)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: 'config failed' },
+      auditContext: buildSettingsSensitiveUpdateFailureAuditContext(['remoteServerApiKey']),
+    });
+    expect(loggedErrors).toEqual([
+      {
+        source: 'settings-actions',
+        message: 'Failed to update settings',
+        error: caughtFailure,
+      },
+    ]);
   });
 
   it('builds emergency stop responses for the recovery endpoint', () => {
