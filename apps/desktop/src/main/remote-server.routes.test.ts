@@ -84,6 +84,12 @@ function getSharedMcpApiSource(): string {
   return readFileSync(sharedMcpApiPath, "utf8")
 }
 
+function getSharedPushNotificationsSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedPushNotificationsPath = path.join(testDir, "../../../../packages/shared/src/push-notifications.ts")
+  return readFileSync(sharedPushNotificationsPath, "utf8")
+}
+
 function getSharedMessageQueueStoreSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedMessageQueueStorePath = path.join(testDir, "../../../../packages/shared/src/message-queue-store.ts")
@@ -855,6 +861,7 @@ describe("remote-server route registration", () => {
     const sharedMcpApiSource = getSharedMcpApiSource()
     const ttsActionsSource = getTtsActionsSource()
     const pushActionsSource = getPushActionsSource()
+    const sharedPushNotificationsSource = getSharedPushNotificationsSource()
 
     expectRegisteredApiRoute(source, "GET", "models")
     expectRegisteredApiRoute(source, "GET", "modelsByProvider")
@@ -890,11 +897,18 @@ describe("remote-server route registration", () => {
     expect(ttsActionsSource).toContain("parseTtsSpeakRequestBody(body)")
     expect(ttsActionsSource).toContain("generateTTS(")
     expect(ttsActionsSource).toContain("getTtsSpeakFailureStatusCode(message)")
-    expect(pushActionsSource).toContain("parsePushTokenRegistrationBody(body)")
-    expect(pushActionsSource).toContain("upsertPushTokenRegistration(existingTokens, parsedRequest.registration, Date.now())")
-    expect(pushActionsSource).toContain("removePushTokenRegistration(existingTokens, parsedRequest.token)")
-    expect(pushActionsSource).toContain("buildPushStatusResponse(tokens)")
-    expect(pushActionsSource).toContain("clearBadgeCount(parsedRequest.token)")
+    expect(pushActionsSource).toContain("registerPushTokenAction(body, pushActionOptions)")
+    expect(pushActionsSource).toContain("unregisterPushTokenAction(body, pushActionOptions)")
+    expect(pushActionsSource).toContain("getPushStatusAction(pushActionOptions)")
+    expect(pushActionsSource).toContain("clearPushBadgeAction(body, pushActionOptions)")
+    expect(sharedPushNotificationsSource).toContain("export interface PushActionTokenStore")
+    expect(sharedPushNotificationsSource).toContain("export function registerPushTokenAction")
+    expect(sharedPushNotificationsSource).toContain("export function unregisterPushTokenAction")
+    expect(sharedPushNotificationsSource).toContain("export function getPushStatusAction")
+    expect(sharedPushNotificationsSource).toContain("export function clearPushBadgeAction")
+    expect(sharedPushNotificationsSource).toContain("options.tokenStore.savePushNotificationTokens(registrationResult.tokens)")
+    expect(sharedPushNotificationsSource).not.toContain("configStore")
+    expect(sharedPushNotificationsSource).not.toContain("push-notification-service")
   })
 
   it("delegates conversation sync and media routes to conversation actions", () => {

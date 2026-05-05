@@ -4,10 +4,15 @@ import {
   buildPushRegistrationResponse,
   buildPushStatusResponse,
   buildPushUnregistrationResponse,
+  clearPushBadgeAction,
+  getPushStatusAction,
   parsePushTokenBody,
   parsePushTokenRegistrationBody,
+  registerPushTokenAction,
   removePushTokenRegistration,
+  unregisterPushTokenAction,
   upsertPushTokenRegistration,
+  type PushTokenRecord,
 } from './push-notifications';
 
 describe('push notification API helpers', () => {
@@ -112,6 +117,100 @@ describe('push notification API helpers', () => {
       enabled: true,
       tokenCount: 3,
       platforms: ['ios', 'android'],
+    });
+  });
+
+  it('runs push registration actions through shared token store adapters', () => {
+    let tokens: PushTokenRecord[] = [];
+    const logs: string[] = [];
+    const options = {
+      tokenStore: {
+        getPushNotificationTokens: () => tokens,
+        savePushNotificationTokens: (nextTokens: PushTokenRecord[]) => {
+          tokens = nextTokens;
+        },
+      },
+      diagnostics: {
+        logError: (_source: string, message: string) => logs.push(message),
+        logInfo: (_source: string, message: string) => logs.push(message),
+      },
+      now: () => 123,
+    };
+
+    expect(registerPushTokenAction({
+      token: 't1',
+      platform: 'ios',
+      deviceId: 'device-1',
+    }, options)).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        message: 'Token registered',
+        tokenCount: 1,
+      },
+    });
+    expect(tokens).toEqual([{
+      token: 't1',
+      type: 'expo',
+      platform: 'ios',
+      deviceId: 'device-1',
+      registeredAt: 123,
+    }]);
+    expect(registerPushTokenAction({ token: 't1', platform: 'android' }, options)).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        message: 'Token updated',
+        tokenCount: 1,
+      },
+    });
+    expect(getPushStatusAction(options)).toEqual({
+      statusCode: 200,
+      body: {
+        enabled: true,
+        tokenCount: 1,
+        platforms: ['android'],
+      },
+    });
+    expect(unregisterPushTokenAction({ token: 't1' }, options)).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        message: 'Token unregistered',
+        tokenCount: 0,
+      },
+    });
+    expect(tokens).toEqual([]);
+    expect(logs).toEqual([
+      'Registered new push notification token for ios',
+      'Updated push notification token for android',
+      'Unregistered push notification token',
+    ]);
+  });
+
+  it('runs push badge clearing and parse failures through shared adapters', () => {
+    const clearedTokens: string[] = [];
+    const options = {
+      tokenStore: {
+        getPushNotificationTokens: () => [],
+        savePushNotificationTokens: () => undefined,
+      },
+      diagnostics: {
+        logError: () => undefined,
+      },
+      badgeService: {
+        clearBadgeCount: (token: string) => clearedTokens.push(token),
+      },
+    };
+
+    expect(clearPushBadgeAction({ token: 't1' }, options)).toEqual({
+      statusCode: 200,
+      body: { success: true },
+    });
+    expect(clearedTokens).toEqual(['t1']);
+    expect(registerPushTokenAction({ platform: 'ios' }, options)).toEqual({
+      statusCode: 400,
+      body: { error: 'Missing or invalid token' },
     });
   });
 });

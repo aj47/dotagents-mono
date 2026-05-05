@@ -17,6 +17,32 @@ export type PushTokenRegistrationResult = {
   updatedExisting: boolean;
 };
 
+export type PushActionResult = {
+  statusCode: number;
+  body: unknown;
+};
+
+export interface PushActionTokenStore {
+  getPushNotificationTokens(): PushTokenRecord[];
+  savePushNotificationTokens(tokens: PushTokenRecord[]): void;
+}
+
+export interface PushActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void;
+  logInfo?(source: string, message: string): void;
+}
+
+export interface PushActionBadgeService {
+  clearBadgeCount(token: string): void;
+}
+
+export interface PushActionOptions {
+  tokenStore: PushActionTokenStore;
+  diagnostics: PushActionDiagnostics;
+  badgeService?: PushActionBadgeService;
+  now?: () => number;
+}
+
 export function parsePushTokenRegistrationBody(body: unknown): PushRegistrationParseResult {
   const requestBody = body && typeof body === 'object'
     ? body as { token?: unknown; type?: unknown; platform?: unknown; deviceId?: unknown }
@@ -121,4 +147,110 @@ export function buildPushStatusResponse<T extends { platform: PushTokenRegistrat
     tokenCount: tokens.length,
     platforms: [...new Set(tokens.map(token => token.platform))],
   };
+}
+
+function pushActionOk(body: unknown): PushActionResult {
+  return {
+    statusCode: 200,
+    body,
+  };
+}
+
+function pushActionError(statusCode: number, message: string): PushActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+  };
+}
+
+function getUnknownErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+export function registerPushTokenAction(body: unknown, options: PushActionOptions): PushActionResult {
+  try {
+    const parsedRequest = parsePushTokenRegistrationBody(body);
+    if (parsedRequest.ok === false) {
+      return pushActionError(parsedRequest.statusCode, parsedRequest.error);
+    }
+
+    const existingTokens = options.tokenStore.getPushNotificationTokens();
+    const registrationResult = upsertPushTokenRegistration(
+      existingTokens,
+      parsedRequest.registration,
+      (options.now ?? Date.now)(),
+    );
+
+    if (registrationResult.updatedExisting) {
+      options.diagnostics.logInfo?.(
+        'push-actions',
+        `Updated push notification token for ${parsedRequest.registration.platform}`,
+      );
+    } else {
+      options.diagnostics.logInfo?.(
+        'push-actions',
+        `Registered new push notification token for ${parsedRequest.registration.platform}`,
+      );
+    }
+
+    options.tokenStore.savePushNotificationTokens(registrationResult.tokens);
+
+    return pushActionOk(buildPushRegistrationResponse(
+      registrationResult.tokens.length,
+      registrationResult.updatedExisting,
+    ));
+  } catch (caughtError) {
+    options.diagnostics.logError('push-actions', 'Failed to register push token', caughtError);
+    return pushActionError(500, getUnknownErrorMessage(caughtError, 'Failed to register push token'));
+  }
+}
+
+export function unregisterPushTokenAction(body: unknown, options: PushActionOptions): PushActionResult {
+  try {
+    const parsedRequest = parsePushTokenBody(body);
+    if (parsedRequest.ok === false) {
+      return pushActionError(parsedRequest.statusCode, parsedRequest.error);
+    }
+
+    const existingTokens = options.tokenStore.getPushNotificationTokens();
+    const unregisterResult = removePushTokenRegistration(existingTokens, parsedRequest.token);
+
+    if (unregisterResult.removed) {
+      options.tokenStore.savePushNotificationTokens(unregisterResult.tokens);
+      options.diagnostics.logInfo?.('push-actions', 'Unregistered push notification token');
+    }
+
+    return pushActionOk(buildPushUnregistrationResponse(
+      unregisterResult.tokens.length,
+      unregisterResult.removed,
+    ));
+  } catch (caughtError) {
+    options.diagnostics.logError('push-actions', 'Failed to unregister push token', caughtError);
+    return pushActionError(500, getUnknownErrorMessage(caughtError, 'Failed to unregister push token'));
+  }
+}
+
+export function getPushStatusAction(options: PushActionOptions): PushActionResult {
+  try {
+    return pushActionOk(buildPushStatusResponse(options.tokenStore.getPushNotificationTokens()));
+  } catch (caughtError) {
+    options.diagnostics.logError('push-actions', 'Failed to get push status', caughtError);
+    return pushActionError(500, getUnknownErrorMessage(caughtError, 'Failed to get push status'));
+  }
+}
+
+export function clearPushBadgeAction(body: unknown, options: PushActionOptions): PushActionResult {
+  try {
+    const parsedRequest = parsePushTokenBody(body);
+    if (parsedRequest.ok === false) {
+      return pushActionError(parsedRequest.statusCode, parsedRequest.error);
+    }
+
+    options.badgeService?.clearBadgeCount(parsedRequest.token);
+
+    return pushActionOk(buildPushBadgeClearResponse());
+  } catch (caughtError) {
+    options.diagnostics.logError('push-actions', 'Failed to clear badge count', caughtError);
+    return pushActionError(500, getUnknownErrorMessage(caughtError, 'Failed to clear badge count'));
+  }
 }
