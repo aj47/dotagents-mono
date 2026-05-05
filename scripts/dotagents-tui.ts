@@ -159,14 +159,27 @@ async function streamChat(
   const decoder = new TextDecoder()
   let buffer = ""
   const seenSteps = new Set<string>()
+  const findEventBoundary = (value: string) => {
+    const match = /\r?\n\r?\n/.exec(value)
+    return match && match.index !== undefined
+      ? { index: match.index, length: match[0].length }
+      : undefined
+  }
   const handleEvent = (raw: string) => {
     const data = raw
       .split(/\r?\n/)
-      .filter((line) => line.startsWith("data: "))
-      .map((line) => line.slice(6))
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.replace(/^data: ?/, ""))
       .join("\n")
     if (!data) return
-    const event = JSON.parse(data)
+    let event
+    try {
+      event = JSON.parse(data)
+    } catch (error) {
+      const preview = data.length > 120 ? `${data.slice(0, 117)}...` : data
+      const message = error instanceof Error ? error.message : String(error)
+      throw new Error(`Invalid SSE data frame: ${preview} (${message})`)
+    }
     if (event.type === "progress") {
       const payload = event.data || {}
       for (const step of payload.steps || []) {
@@ -187,11 +200,11 @@ async function streamChat(
   while (true) {
     const { done, value } = await reader.read()
     buffer += decoder.decode(value || new Uint8Array(), { stream: !done })
-    let idx = buffer.indexOf("\n\n")
-    while (idx >= 0) {
-      handleEvent(buffer.slice(0, idx).trim())
-      buffer = buffer.slice(idx + 2)
-      idx = buffer.indexOf("\n\n")
+    let boundary = findEventBoundary(buffer)
+    while (boundary) {
+      handleEvent(buffer.slice(0, boundary.index).trim())
+      buffer = buffer.slice(boundary.index + boundary.length)
+      boundary = findEventBoundary(buffer)
     }
     if (done) break
   }
@@ -291,6 +304,10 @@ async function runTui() {
     log.scrollTo(log.scrollHeight)
     renderer.requestRender()
   }
+  const clearLog = () => {
+    for (const child of log.getChildren()) log.remove(child.id)
+    renderer.requestRender()
+  }
   addLine("Connected. Type a message to start.", COLORS.dim)
 
   input.on(InputRenderableEvents.ENTER, async (value: string) => {
@@ -302,7 +319,7 @@ async function runTui() {
       process.exit(0)
     }
     if (message === "/clear") {
-      for (const child of log.getChildren()) log.remove(child.id)
+      clearLog()
       return
     }
     busy = true
@@ -343,8 +360,7 @@ async function runTui() {
     }
   })
   renderer.keyInput.on("keypress", (key) => {
-    if (key.ctrl && key.name === "l")
-      for (const child of log.getChildren()) log.remove(child.id)
+    if (key.ctrl && key.name === "l") clearLog()
   })
   input.focus()
   renderer.start()

@@ -1,14 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { execFile } from "child_process"
+import { execFile, spawnSync } from "child_process"
 import http from "http"
 import fs from "fs/promises"
 import os from "os"
 import path from "path"
 import { promisify } from "util"
+import { fileURLToPath } from "url"
 
 const execFileAsync = promisify(execFile)
+const hasBash =
+  process.platform !== "win32" &&
+  spawnSync("bash", ["--version"], { stdio: "ignore" }).status === 0
+const describeCliSmoke = hasBash ? describe : describe.skip
+const scriptPath = fileURLToPath(
+  new URL("../../../../scripts/dotagents-cli.sh", import.meta.url),
+)
 
-describe("dotagents CLI one-shot chat", () => {
+describeCliSmoke("dotagents CLI one-shot chat", () => {
   let server: http.Server | undefined
   let tmpHome: string | undefined
   let port = 0
@@ -19,15 +27,20 @@ describe("dotagents CLI one-shot chat", () => {
 
     const configDir = path.join(tmpHome, ".config", "app.dotagents")
     await fs.mkdir(configDir, { recursive: true })
-    await fs.writeFile(path.join(configDir, "config.json"), JSON.stringify({
-      remoteServerPort: port,
-      remoteServerApiKey: "test-cli-key",
-      openaiApiKey: "test-openai-key",
-    }))
+    await fs.writeFile(
+      path.join(configDir, "config.json"),
+      JSON.stringify({
+        remoteServerPort: port,
+        remoteServerApiKey: "test-cli-key",
+        openaiApiKey: "test-openai-key",
+      }),
+    )
   })
 
   afterEach(async () => {
-    await new Promise<void>((resolve) => server?.close(() => resolve()) ?? resolve())
+    await new Promise<void>(
+      (resolve) => server?.close(() => resolve()) ?? resolve(),
+    )
     server = undefined
 
     if (tmpHome) {
@@ -37,7 +50,6 @@ describe("dotagents CLI one-shot chat", () => {
   })
 
   it("posts a chat message and renders streamed SSE output", async () => {
-    const scriptPath = path.resolve(process.cwd(), "../../scripts/dotagents-cli.sh")
     const env = Object.fromEntries(
       Object.entries(process.env).map(([key, value]) => [key, String(value)]),
     ) as Record<string, string>
@@ -46,11 +58,15 @@ describe("dotagents CLI one-shot chat", () => {
       HOME: tmpHome ?? "",
     }
 
-    const { stdout, stderr } = await execFileAsync("bash", [scriptPath, "chat", "hello from test"], {
-      env: childEnv as any,
-      timeout: 10_000,
-      maxBuffer: 1024 * 1024,
-    })
+    const { stdout, stderr } = await execFileAsync(
+      "bash",
+      [scriptPath, "chat", "hello from test"],
+      {
+        env: childEnv as any,
+        timeout: 10_000,
+        maxBuffer: 1024 * 1024,
+      },
+    )
 
     expect(stderr).toBe("")
     expect(stdout).toContain("DotAgents CLI")
@@ -69,11 +85,13 @@ describe("dotagents CLI one-shot chat", () => {
 
       if (req.url === "/v1/operator/status") {
         res.writeHead(200, { "content-type": "application/json" })
-        res.end(JSON.stringify({
-          health: { overall: "healthy", checks: {} },
-          integrations: { discord: { connected: false } },
-          mcp: { activeAgentProfile: "mock" },
-        }))
+        res.end(
+          JSON.stringify({
+            health: { overall: "healthy", checks: {} },
+            integrations: { discord: { connected: false } },
+            mcp: { activeAgentProfile: "mock" },
+          }),
+        )
         return
       }
 
@@ -81,17 +99,26 @@ describe("dotagents CLI one-shot chat", () => {
         req.resume()
         req.on("end", () => {
           res.writeHead(200, { "content-type": "text/event-stream" })
-          res.write(`data: ${JSON.stringify({
-            type: "progress",
-            data: {
-              steps: [{ id: "step-1", type: "thinking", title: "Mock thinking" }],
-              streamingContent: { text: "hello from mock daemon" },
-            },
-          })}\n\n`)
-          res.write(`data: ${JSON.stringify({
-            type: "done",
-            data: { content: "hello from mock daemon", conversation_id: "conv-mock" },
-          })}\n\n`)
+          res.write(
+            `data: ${JSON.stringify({
+              type: "progress",
+              data: {
+                steps: [
+                  { id: "step-1", type: "thinking", title: "Mock thinking" },
+                ],
+                streamingContent: { text: "hello from mock daemon" },
+              },
+            })}\n\n`,
+          )
+          res.write(
+            `data: ${JSON.stringify({
+              type: "done",
+              data: {
+                content: "hello from mock daemon",
+                conversation_id: "conv-mock",
+              },
+            })}\n\n`,
+          )
           res.end()
         })
         return
@@ -101,7 +128,9 @@ describe("dotagents CLI one-shot chat", () => {
       res.end(JSON.stringify({ error: "not found" }))
     })
 
-    await new Promise<void>((resolve) => server!.listen(0, "127.0.0.1", resolve))
+    await new Promise<void>((resolve) =>
+      server!.listen(0, "127.0.0.1", resolve),
+    )
     const address = server.address()
     if (!address || typeof address === "string") {
       throw new Error("Mock daemon did not bind to a TCP port")

@@ -893,7 +893,10 @@ NODE
 
   rm -f "$curl_err_file"
 
-  cid_line="$(cat "$INSTALL_DIR/.last_cid" 2>/dev/null || true)"
+  cid_line=""
+  if [[ -n "${INSTALL_DIR:-}" ]]; then
+    cid_line="$(cat "$INSTALL_DIR/.last_cid" 2>/dev/null || true)"
+  fi
   if [[ "${cid_line:-}" == CID:* ]]; then
     CONVERSATION_ID="${cid_line#CID:}"
   fi
@@ -1460,7 +1463,10 @@ NODE
 
       rm -f "$CURL_ERR_FILE"
 
-      CID_LINE="$(cat "$INSTALL_DIR/.last_cid" 2>/dev/null || true)"
+      CID_LINE=""
+      if [[ -n "${INSTALL_DIR:-}" ]]; then
+        CID_LINE="$(cat "$INSTALL_DIR/.last_cid" 2>/dev/null || true)"
+      fi
       if [[ "${CID_LINE:-}" == CID:* ]]; then
         CONVERSATION_ID="${CID_LINE#CID:}"
       fi
