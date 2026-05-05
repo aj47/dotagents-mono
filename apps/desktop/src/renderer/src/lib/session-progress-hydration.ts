@@ -106,11 +106,17 @@ export function mergeLoadedConversationIntoProgress(
     return progress
   }
 
+  const existingHistoryStartIndex = toNonNegativeInteger(progress.conversationHistoryStartIndex)
+    ?? Math.max(
+      0,
+      (progress.conversationHistoryTotalCount ?? progress.conversationHistory?.length ?? 0) -
+        (progress.conversationHistory?.length ?? 0),
+    )
   const branchMessageIndexMap = getBranchMessageIndexMap(conversation.messages)
   const branchMessageIndexOffset = conversation.branchMessageIndexOffset ?? 0
   const loadedHistoryStartIndex = getLoadedConversationHistoryStartIndex(
     conversation,
-    progress.conversationHistoryStartIndex ?? 0,
+    existingHistoryStartIndex,
   )
   const loadedConversationHistory = conversation.messages.map((message, index) => ({
     role: message.role,
@@ -121,12 +127,6 @@ export function mergeLoadedConversationIntoProgress(
     timestamp: message.timestamp,
     branchMessageIndex: branchMessageIndexOffset + branchMessageIndexMap[index],
   }))
-  const existingHistoryStartIndex = toNonNegativeInteger(progress.conversationHistoryStartIndex)
-    ?? Math.max(
-      0,
-      (progress.conversationHistoryTotalCount ?? progress.conversationHistory?.length ?? 0) -
-        (progress.conversationHistory?.length ?? 0),
-    )
   const mergedHistory = options?.replaceExistingHistory === true
     ? mergeHistoryWindows(
         loadedConversationHistory,
@@ -136,7 +136,7 @@ export function mergeLoadedConversationIntoProgress(
       )
     : {
         conversationHistory: loadedConversationHistory,
-        conversationHistoryStartIndex: progress.conversationHistoryStartIndex ?? loadedHistoryStartIndex,
+        conversationHistoryStartIndex: loadedHistoryStartIndex,
       }
 
   return {

@@ -106,6 +106,27 @@ describe("runtime-tools skill access", () => {
     expect(String(result?.content[0]?.text)).toContain("secret instructions")
   })
 
+  it("lets current-profile skill disables override a matching session snapshot", async () => {
+    mockGetSessionProfileSnapshot.mockReturnValue({
+      profileId: "main-agent",
+      profileName: "Main Agent",
+      guidelines: "",
+      skillsConfig: { allSkillsDisabledByDefault: true, enabledSkillIds: ["disabled-skill"] },
+    })
+    mockGetCurrentProfile.mockReturnValue({
+      id: "main-agent",
+      name: "Main Agent",
+      skillsConfig: { allSkillsDisabledByDefault: true, enabledSkillIds: ["allowed-skill"] },
+    })
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("load_skill_instructions", { skillId: "disabled-skill" }, "session-1")
+
+    expect(result?.isError).toBe(true)
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(payload).toEqual(expect.objectContaining({ success: false, skillId: "disabled-skill" }))
+  })
+
   it("blocks loading instructions for a disabled skill name fallback", async () => {
     mockGetSkill.mockReturnValue(undefined)
 
@@ -146,6 +167,11 @@ describe("runtime-tools skill access", () => {
       profileId: "main-agent",
       profileName: "Main Agent",
       guidelines: "",
+      skillsConfig: { allSkillsDisabledByDefault: false },
+    })
+    mockGetCurrentProfile.mockReturnValue({
+      id: "main-agent",
+      name: "Main Agent",
       skillsConfig: { allSkillsDisabledByDefault: false },
     })
     mockGetSkill.mockReturnValue({

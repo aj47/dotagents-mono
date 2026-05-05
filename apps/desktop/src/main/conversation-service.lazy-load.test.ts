@@ -197,4 +197,79 @@ describe("conversation lazy loading", () => {
     const reloaded = await service.loadConversation("conv_checkpoint_backfill")
     expect(reloaded?.updatedAt).toBe(200)
   })
+
+  it("treats first kept indexes as persisted checkpoint metadata for legacy messages without ids", async () => {
+    const service = await setupConversationServiceTest()
+    const rawMessages = Array.from({ length: 25 }, (_, index) => ({
+      id: undefined as any,
+      role: index % 2 === 0 ? "user" as const : "assistant" as const,
+      content: `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }))
+    const summaryMessage = {
+      id: undefined as any,
+      role: "assistant" as const,
+      content: "Compacted summary.",
+      timestamp: 1_700_000_000_100,
+      isSummary: true,
+      summarizedMessageCount: 15,
+    }
+
+    await service.saveConversation({
+      id: "conv_checkpoint_no_message_ids",
+      title: "Checkpoint without message ids",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [summaryMessage, ...rawMessages.slice(15)],
+      rawMessages,
+      compaction: {
+        rawHistoryPreserved: true,
+        storedRawMessageCount: 25,
+        representedMessageCount: 25,
+        compactedAt: summaryMessage.timestamp,
+        summary: summaryMessage.content,
+        firstKeptMessageIndex: 15,
+        summarizedRange: { startIndex: 0, endIndex: 14 },
+        summarizedMessageCount: 15,
+      },
+    }, true)
+
+    const saveSpy = vi.spyOn(service, "saveConversation")
+
+    const loaded = await service.loadConversationWithCompaction("conv_checkpoint_no_message_ids")
+
+    expect(loaded?.compaction?.firstKeptMessageIndex).toBe(15)
+    expect(saveSpy).not.toHaveBeenCalled()
+  })
+
+  it("clamps checkpoint summarized counts to the preserved raw history bounds", async () => {
+    const service = await setupConversationServiceTest()
+    const rawMessages = Array.from({ length: 3 }, (_, index) => ({
+      id: `m${index}`,
+      role: "user" as const,
+      content: `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }))
+
+    const metadata = (service as any).buildCompactionCheckpointMetadata(
+      undefined,
+      rawMessages,
+      {
+        id: "summary-1",
+        role: "assistant",
+        content: "Summary",
+        timestamp: 1_700_000_000_010,
+        isSummary: true,
+        summarizedMessageCount: 99,
+      },
+      99,
+      12,
+      1_700_000_000_010,
+    )
+
+    expect(metadata.summarizedMessageCount).toBe(3)
+    expect(metadata.firstKeptMessageId).toBeUndefined()
+    expect(metadata.firstKeptMessageIndex).toBeUndefined()
+    expect(metadata.summarizedRange).toMatchObject({ startIndex: 0, endIndex: 2 })
+  })
 })

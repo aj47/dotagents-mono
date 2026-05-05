@@ -79,6 +79,17 @@ describe("session progress hydration", () => {
     )
   })
 
+  it("uses the loaded window start when hydrating empty placeholder progress", () => {
+    const progress = {
+      ...baseProgress(),
+      conversationHistoryStartIndex: 0,
+    }
+
+    const hydrated = mergeLoadedConversationIntoProgress(progress, loadedConversation())
+
+    expect(hydrated.conversationHistoryStartIndex).toBe(5)
+  })
+
   it("can replace a partial live history with an expanded loaded window", () => {
     const progress = {
       ...baseProgress(),

@@ -1020,6 +1020,22 @@ export class ConversationService {
     return Date.now()
   }
 
+  private normalizeSummarizedMessageCount(count: number | undefined, rawMessageCount: number): number {
+    if (typeof count !== "number" || !Number.isFinite(count)) return 0
+    return Math.min(Math.max(0, Math.floor(count)), rawMessageCount)
+  }
+
+  private hasPersistedCompactionCheckpoint(compaction: ConversationCompactionMetadata | undefined): boolean {
+    return !!(
+      compaction?.summary?.trim() &&
+      (
+        compaction.firstKeptMessageId ||
+        typeof compaction.firstKeptMessageIndex === "number" ||
+        compaction.summarizedRange
+      )
+    )
+  }
+
   private buildCompactionCheckpointMetadata(
     existing: ConversationCompactionMetadata | undefined,
     fullMessageHistory: ConversationMessage[],
@@ -1028,8 +1044,12 @@ export class ConversationService {
     tokensBefore: number,
     compactedAt: number = Date.now(),
   ): ConversationCompactionMetadata {
-    const summarizedMessages = fullMessageHistory.slice(0, summarizedMessageCount)
-    const firstKeptMessage = fullMessageHistory[summarizedMessageCount]
+    const normalizedSummarizedMessageCount = this.normalizeSummarizedMessageCount(
+      summarizedMessageCount,
+      fullMessageHistory.length,
+    )
+    const summarizedMessages = fullMessageHistory.slice(0, normalizedSummarizedMessageCount)
+    const firstKeptMessage = fullMessageHistory[normalizedSummarizedMessageCount]
     const firstSummarizedMessage = summarizedMessages[0]
     const lastSummarizedMessage = summarizedMessages[summarizedMessages.length - 1]
 
@@ -1042,7 +1062,7 @@ export class ConversationService {
       summary: summaryMessage.content,
       summaryMessageId: summaryMessage.id,
       firstKeptMessageId: firstKeptMessage?.id,
-      firstKeptMessageIndex: firstKeptMessage ? summarizedMessageCount : undefined,
+      firstKeptMessageIndex: firstKeptMessage ? normalizedSummarizedMessageCount : undefined,
       summarizedRange: summarizedMessages.length > 0
         ? {
           startMessageId: firstSummarizedMessage?.id,
@@ -1051,7 +1071,7 @@ export class ConversationService {
           endIndex: summarizedMessages.length - 1,
         }
         : undefined,
-      summarizedMessageCount,
+      summarizedMessageCount: normalizedSummarizedMessageCount,
       tokensBefore,
       extractedFacts: extractHighSignalFactsFromConversationMessages(summarizedMessages, {
         maxFacts: COMPACTION_EXTRACTED_FACT_LIMIT,
@@ -1063,7 +1083,7 @@ export class ConversationService {
     conversation: Conversation,
     fullMessageHistory: ConversationMessage[],
   ): Promise<Conversation> {
-    if (conversation.compaction?.summary && conversation.compaction.firstKeptMessageId) {
+    if (this.hasPersistedCompactionCheckpoint(conversation.compaction)) {
       return conversation
     }
 
@@ -1072,7 +1092,10 @@ export class ConversationService {
       return conversation
     }
 
-    const summarizedMessageCount = Math.max(summaryMessage.summarizedMessageCount ?? 0, 0)
+    const summarizedMessageCount = this.normalizeSummarizedMessageCount(
+      summaryMessage.summarizedMessageCount,
+      fullMessageHistory.length,
+    )
     if (summarizedMessageCount <= 0) {
       return conversation
     }

@@ -83,10 +83,13 @@ function getSkillRuntimeIds(skill: AgentSkill, requestedSkillId?: string): strin
 }
 
 function resolveRuntimeSkill(skillId: string, skillsServiceLike: { getSkill: (id: string) => AgentSkill | undefined; getSkills: () => AgentSkill[] }): AgentSkill | undefined {
-  const direct = skillsServiceLike.getSkill(skillId)
+  const trimmedSkillId = skillId.trim()
+  if (!trimmedSkillId) return undefined
+
+  const direct = skillsServiceLike.getSkill(trimmedSkillId)
   if (direct) return direct
 
-  const normalizedSkillId = skillId.toLowerCase()
+  const normalizedSkillId = trimmedSkillId.toLowerCase()
   return skillsServiceLike.getSkills().find((skill) => {
     return skill.name.toLowerCase() === normalizedSkillId
       || getSkillFolderIdFromFilePath(skill.filePath)?.toLowerCase() === normalizedSkillId
@@ -112,11 +115,8 @@ async function isSkillEnabledForRuntimeContext(skillIds: string | string[], cont
     const snapshot = stateSnapshot ?? trackerSnapshot
     if (snapshot) {
       const currentProfile = agentProfileService.getCurrentProfile()
-      if (
-        currentProfile?.id === snapshot.profileId &&
-        isSkillEnabledByConfig(skillIds, currentProfile.skillsConfig)
-      ) {
-        return true
+      if (currentProfile?.id === snapshot.profileId) {
+        return isSkillEnabledByConfig(skillIds, currentProfile.skillsConfig)
       }
       return isSkillEnabledByConfig(skillIds, snapshot.skillsConfig)
     }

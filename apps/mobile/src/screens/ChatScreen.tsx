@@ -1872,12 +1872,27 @@ export default function ChatScreen({ route, navigation }: any) {
         }
       }
 
+      const activeStep = [...update.steps].reverse().find((step) => step.status === 'in_progress');
+      const isVerificationStep = activeStep?.title?.toLowerCase().includes('verifying');
+
       if (currentToolCalls.length > 0 || currentToolResults.length > 0 || thinkingContent) {
         messages.push({
           role: 'assistant',
           content: thinkingContent || (currentToolCalls.length > 0 ? 'Executing tools...' : ''),
           toolCalls: currentToolCalls.length > 0 ? currentToolCalls : undefined,
           toolResults: currentToolResults.length > 0 ? currentToolResults : undefined,
+        });
+      } else if (
+        !update.isComplete &&
+        !update.pendingToolApproval &&
+        delegationMessages.length === 0 &&
+        !isVerificationStep
+      ) {
+        messages.push({
+          role: 'assistant',
+          content: activeStep?.type === 'tool_call'
+            ? activeStep.title || 'Running tool...'
+            : activeStep?.description || 'Thinking...',
         });
       }
     }
