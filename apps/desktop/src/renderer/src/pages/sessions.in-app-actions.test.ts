@@ -180,8 +180,14 @@ describe("sessions in-app actions", () => {
 
   it("wires lazy earlier-history loading for active session tiles", () => {
     expect(sessionsSource).toContain("const [activeHistoryMessageLimit, setActiveHistoryMessageLimit]")
+    expect(sessionsSource).toContain("const progressForExpandedHistoryDecision = useMemo")
     expect(sessionsSource).toContain("const shouldLoadExpandedConversationHistory =")
+    expect(sessionsSource.indexOf("const progressForExpandedHistoryDecision = useMemo")).toBeLessThan(
+      sessionsSource.indexOf("const shouldLoadExpandedConversationHistory ="),
+    )
     expect(sessionsSource).toContain("messageLimit: activeHistoryMessageLimit")
+    expect(sessionsSource).toContain("replaceExistingHistory:")
+    expect(sessionsSource).toContain("activeHistoryMessageLimit > baseConversationHistoryCount")
     expect(sessionsSource).toContain("onLoadEarlierConversationHistory={handleLoadEarlierConversationHistory}")
     expect(sessionsSource).toContain("isLoadingEarlierConversationHistory={")
   })

@@ -4114,7 +4114,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       const alreadyHasCurrentStateFeedback = items.some((item) =>
         item.kind === "streaming" ||
         item.kind === "tool_approval" ||
-        item.kind === "retry_status",
+        item.kind === "retry_status" ||
+        item.kind === "tool_execution" ||
+        item.kind === "tool_activity_group" ||
+        (
+          item.kind === "assistant_with_tools" &&
+          (
+            item.data.calls.length > 0 ||
+            item.data.results.some((result) => !!result)
+          )
+        ),
       )
 
       const activeStep = [...progress.steps].reverse().find((step) => step.status === "in_progress")

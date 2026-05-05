@@ -1874,18 +1874,24 @@ export default function ChatScreen({ route, navigation }: any) {
 
       const activeStep = [...update.steps].reverse().find((step) => step.status === 'in_progress');
       const isVerificationStep = activeStep?.title?.toLowerCase().includes('verifying');
+      const hasCurrentToolActivity = currentToolCalls.length > 0 || currentToolResults.length > 0;
+      const hasCurrentAssistantFeedback = hasCurrentToolActivity || thinkingContent.trim().length > 0;
+      const hasCurrentStateFeedback =
+        hasCurrentAssistantFeedback ||
+        !!update.pendingToolApproval ||
+        delegationMessages.length > 0 ||
+        !!update.streamingContent?.text;
 
-      if (currentToolCalls.length > 0 || currentToolResults.length > 0 || thinkingContent) {
+      if (hasCurrentAssistantFeedback) {
         messages.push({
           role: 'assistant',
-          content: thinkingContent || (currentToolCalls.length > 0 ? 'Executing tools...' : ''),
+          content: thinkingContent || (hasCurrentToolActivity ? 'Executing tools...' : ''),
           toolCalls: currentToolCalls.length > 0 ? currentToolCalls : undefined,
           toolResults: currentToolResults.length > 0 ? currentToolResults : undefined,
         });
       } else if (
         !update.isComplete &&
-        !update.pendingToolApproval &&
-        delegationMessages.length === 0 &&
+        !hasCurrentStateFeedback &&
         !isVerificationStep
       ) {
         messages.push({

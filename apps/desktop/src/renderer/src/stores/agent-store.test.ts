@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentProgressUpdate } from '@shared/types'
 import { useAgentStore } from './agent-store'
 
@@ -14,6 +14,10 @@ const createBaseUpdate = (): AgentProgressUpdate => ({
 })
 
 describe('agent-store delegation merge', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   beforeEach(() => {
     vi.stubGlobal('localStorage', {
       getItem: vi.fn(() => null),

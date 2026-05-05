@@ -347,6 +347,47 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("Generating response...")
   })
 
+  it("does not add a live thinking placeholder while tool activity is already visible", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-tool-activity-placeholder",
+      conversationId: "conversation-tool-activity-placeholder",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [
+        {
+          id: "tool-step-1",
+          type: "tool_call",
+          title: "Running inspect_workspace",
+          status: "in_progress",
+          timestamp: 200,
+          toolCall: { name: "inspect_workspace", arguments: { path: "apps/desktop" } },
+        },
+      ],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Inspect the workspace", timestamp: 100 },
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 150,
+          toolCalls: [
+            { name: "inspect_workspace", arguments: { path: "apps/desktop" } },
+          ],
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("inspect_workspace")
+    expect(text).not.toContain("Running inspect_workspace")
+    expect(text).not.toContain("Thinking...")
+  })
+
   it("keeps the completed streamed response visible while verification is running", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)

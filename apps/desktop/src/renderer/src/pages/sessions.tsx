@@ -6,7 +6,7 @@ import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
 import { AgentProgress } from "@renderer/components/agent-progress"
 import { MessageCircle, Mic, Plus, CheckCircle2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
-import type { AgentProfile, AgentProgressUpdate } from "@shared/types"
+import type { AgentProfile, AgentProgressUpdate, LoadedConversation } from "@shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { toast } from "sonner"
 
@@ -135,23 +135,38 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   const baseProgress = storeProgress ?? fallbackProgress
   const conversationIdForHydration = baseProgress?.conversationId ?? null
   const [activeHistoryMessageLimit, setActiveHistoryMessageLimit] = useState(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
-  const activeConversationHistoryCount = baseProgress?.conversationHistory?.length ?? 0
-  const activeConversationHistoryTotalCount = Math.max(
-    baseProgress?.conversationHistoryTotalCount ?? 0,
-    activeConversationHistoryCount,
-  )
+  const queryClient = useQueryClient()
+  const baseConversationHistoryCount = baseProgress?.conversationHistory?.length ?? 0
   const shouldHydrateFromConversation =
     !!conversationIdForHydration && !hasConversationHistoryForDisplay(baseProgress)
+  const savedConversationQueryKey = [
+    "conversation",
+    conversationIdForHydration,
+    shouldHydrateFromConversation ? "hydrate" : activeHistoryMessageLimit,
+  ] as const
+  const cachedSavedConversation = queryClient.getQueryData<LoadedConversation>(savedConversationQueryKey)
+  const progressForExpandedHistoryDecision = useMemo(
+    () => baseProgress && cachedSavedConversation && !shouldHydrateFromConversation
+      ? mergeLoadedConversationIntoProgress(
+          baseProgress,
+          cachedSavedConversation,
+          { replaceExistingHistory: true },
+        )
+      : baseProgress,
+    [baseProgress, cachedSavedConversation, shouldHydrateFromConversation],
+  )
+  const displayedConversationHistoryCount = progressForExpandedHistoryDecision?.conversationHistory?.length ?? 0
+  const displayedConversationHistoryTotalCount = Math.max(
+    progressForExpandedHistoryDecision?.conversationHistoryTotalCount ?? 0,
+    displayedConversationHistoryCount,
+  )
   const shouldLoadExpandedConversationHistory =
     !!conversationIdForHydration &&
-    activeConversationHistoryTotalCount > activeConversationHistoryCount &&
-    activeHistoryMessageLimit > activeConversationHistoryCount
+    !shouldHydrateFromConversation &&
+    displayedConversationHistoryTotalCount > displayedConversationHistoryCount &&
+    activeHistoryMessageLimit > displayedConversationHistoryCount
   const savedConversationQuery = useQuery({
-    queryKey: [
-      "conversation",
-      conversationIdForHydration,
-      shouldHydrateFromConversation ? "hydrate" : activeHistoryMessageLimit,
-    ],
+    queryKey: savedConversationQueryKey,
     queryFn: async () => {
       if (!conversationIdForHydration) return null
       return tipcClient.loadConversation({
@@ -179,15 +194,25 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
       ? mergeLoadedConversationIntoProgress(
           baseProgress,
           savedConversationQuery.data,
-          { replaceExistingHistory: shouldLoadExpandedConversationHistory },
+          {
+            replaceExistingHistory:
+              !shouldHydrateFromConversation &&
+              !!savedConversationQuery.data &&
+              activeHistoryMessageLimit > baseConversationHistoryCount,
+          },
         )
       : null,
-    [baseProgress, savedConversationQuery.data, shouldLoadExpandedConversationHistory],
+    [
+      activeHistoryMessageLimit,
+      baseConversationHistoryCount,
+      baseProgress,
+      savedConversationQuery.data,
+      shouldHydrateFromConversation,
+    ],
   )
   const focusedSessionId = useAgentStore((state) => state.focusedSessionId)
   const setFocusedSessionId = useAgentStore((state) => state.setFocusedSessionId)
   const isFocused = focusedSessionId === sessionId
-  const queryClient = useQueryClient()
 
   const handleFocusSession = useCallback(async () => {
     setFocusedSessionId(sessionId)
