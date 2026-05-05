@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  createAgentProfileAction,
+  deleteAgentProfileAction,
   buildAgentProfileDeleteResponse,
   buildAgentProfileDetailResponse,
   buildAgentProfileMutationDetailResponse,
@@ -12,6 +14,8 @@ import {
   exportProfileAction,
   filterAgentProfilesByRole,
   formatProfileForApi,
+  getAgentProfileAction,
+  getAgentProfilesAction,
   getCurrentProfileAction,
   getProfilesAction,
   importProfileAction,
@@ -20,6 +24,8 @@ import {
   parseImportProfileRequestBody,
   parseSetCurrentProfileRequestBody,
   setCurrentProfileAction,
+  toggleAgentProfileAction,
+  updateAgentProfileAction,
 } from "./profile-api"
 
 describe("profile API helpers", () => {
@@ -431,6 +437,209 @@ describe("profile API helpers", () => {
       enabled: false,
     })
     expect(buildAgentProfileDeleteResponse()).toEqual({ success: true })
+  })
+
+  it("runs shared agent profile route actions through service adapters", () => {
+    const agentProfile = {
+      id: "agent-1",
+      name: "research-agent",
+      displayName: "Research Agent",
+      description: "Finds context",
+      systemPrompt: "System",
+      guidelines: "Guidelines",
+      connection: { type: "internal" as const },
+      enabled: true,
+      isBuiltIn: false,
+      isUserProfile: false,
+      isAgentTarget: true,
+      isDefault: false,
+      autoSpawn: true,
+      createdAt: 10,
+      updatedAt: 20,
+    }
+    const createdProfile = {
+      ...agentProfile,
+      id: "agent-2",
+      name: "New Agent",
+      displayName: "New Agent",
+      createdAt: 30,
+      updatedAt: 30,
+    }
+    const updatedProfile = {
+      ...agentProfile,
+      name: "Renamed Agent",
+      displayName: "Renamed Agent",
+      updatedAt: 40,
+    }
+    const updateRequests: unknown[] = []
+    const deletedProfileIds: string[] = []
+    const service = {
+      getAll: () => [agentProfile],
+      getById: (profileId: string) => profileId === "agent-1" ? agentProfile : undefined,
+      create: (profileRequest: any) => {
+        expect(profileRequest.displayName).toBe("New Agent")
+        expect(profileRequest.role).toBe("delegation-target")
+        return createdProfile
+      },
+      update: (profileId: string, updates: any) => {
+        expect(profileId).toBe("agent-1")
+        updateRequests.push(updates)
+        if (updates.displayName === "Renamed Agent") return updatedProfile
+        return { ...agentProfile, enabled: updates.enabled ?? agentProfile.enabled }
+      },
+      deleteProfile: (profileId: string) => {
+        deletedProfileIds.push(profileId)
+        return true
+      },
+    }
+    const diagnostics = {
+      logInfo: () => {
+        throw new Error("unexpected info log")
+      },
+      logError: () => {
+        throw new Error("unexpected error log")
+      },
+    }
+    const options = { service, diagnostics }
+
+    expect(getAgentProfilesAction("delegation-target", options)).toEqual({
+      statusCode: 200,
+      body: buildAgentProfilesResponse([agentProfile]),
+    })
+    expect(getAgentProfileAction("agent-1", options)).toEqual({
+      statusCode: 200,
+      body: buildAgentProfileDetailResponse(agentProfile),
+    })
+    expect(toggleAgentProfileAction("agent-1", options)).toEqual({
+      statusCode: 200,
+      body: buildAgentProfileToggleResponse("agent-1", false),
+    })
+    expect(createAgentProfileAction({ displayName: " New Agent " }, options)).toEqual({
+      statusCode: 201,
+      body: buildAgentProfileDetailResponse(createdProfile),
+    })
+    expect(updateAgentProfileAction("agent-1", { displayName: " Renamed Agent " }, options)).toEqual({
+      statusCode: 200,
+      body: buildAgentProfileMutationDetailResponse(updatedProfile),
+    })
+    expect(deleteAgentProfileAction("agent-1", options)).toEqual({
+      statusCode: 200,
+      body: buildAgentProfileDeleteResponse(),
+    })
+    expect(updateRequests).toEqual([
+      { enabled: false },
+      { name: "Renamed Agent", displayName: "Renamed Agent" },
+    ])
+    expect(deletedProfileIds).toEqual(["agent-1"])
+  })
+
+  it("returns shared agent profile route validation and state errors", () => {
+    const agentProfile = {
+      id: "agent-1",
+      name: "research-agent",
+      displayName: "Research Agent",
+      connection: { type: "internal" as const },
+      enabled: true,
+      isBuiltIn: false,
+      isUserProfile: false,
+      isAgentTarget: true,
+      createdAt: 10,
+      updatedAt: 20,
+    }
+    const builtInProfile = {
+      ...agentProfile,
+      id: "built-in-agent",
+      isBuiltIn: true,
+    }
+    const diagnostics = {
+      logInfo: () => {
+        throw new Error("unexpected info log")
+      },
+      logError: () => {
+        throw new Error("unexpected error log")
+      },
+    }
+    const options = {
+      diagnostics,
+      service: {
+        getAll: () => [],
+        getById: (profileId: string) => profileId === "agent-1"
+          ? agentProfile
+          : profileId === "built-in-agent"
+            ? builtInProfile
+            : undefined,
+        create: () => agentProfile,
+        update: () => undefined,
+        deleteProfile: () => false,
+      },
+    }
+
+    expect(getAgentProfileAction("missing", options)).toEqual({
+      statusCode: 404,
+      body: { error: "Agent profile not found" },
+    })
+    expect(toggleAgentProfileAction("missing", options)).toEqual({
+      statusCode: 404,
+      body: { error: "Agent profile not found" },
+    })
+    expect(createAgentProfileAction({}, options)).toEqual({
+      statusCode: 400,
+      body: { error: "displayName is required and must be a non-empty string" },
+    })
+    expect(updateAgentProfileAction("agent-1", { displayName: "" }, options)).toEqual({
+      statusCode: 400,
+      body: { error: "displayName must be a non-empty string" },
+    })
+    expect(updateAgentProfileAction("agent-1", { displayName: "Updated" }, options)).toEqual({
+      statusCode: 500,
+      body: { error: "Failed to update agent profile" },
+    })
+    expect(deleteAgentProfileAction("built-in-agent", options)).toEqual({
+      statusCode: 403,
+      body: { error: "Cannot delete built-in agent profiles" },
+    })
+    expect(deleteAgentProfileAction("agent-1", options)).toEqual({
+      statusCode: 500,
+      body: { error: "Failed to delete agent profile" },
+    })
+  })
+
+  it("logs shared agent profile route failures and returns route errors", () => {
+    const caughtFailure = new Error("storage failed")
+    const loggedErrors: unknown[] = []
+    const diagnostics = {
+      logInfo: () => {
+        throw new Error("unexpected info log")
+      },
+      logError: (source: string, message: string, caughtError: unknown) => {
+        loggedErrors.push({ source, message, caughtError })
+      },
+    }
+
+    expect(getAgentProfilesAction(undefined, {
+      diagnostics,
+      service: {
+        getAll: () => {
+          throw caughtFailure
+        },
+        getById: () => undefined,
+        create: () => {
+          throw new Error("unexpected create")
+        },
+        update: () => undefined,
+        deleteProfile: () => false,
+      },
+    })).toEqual({
+      statusCode: 500,
+      body: { error: "Failed to get agent profiles" },
+    })
+    expect(loggedErrors).toEqual([
+      {
+        source: "agent-profile-actions",
+        message: "Failed to get agent profiles",
+        caughtError: caughtFailure,
+      },
+    ])
   })
 
   it("filters agent profiles by preferred and legacy role names", () => {

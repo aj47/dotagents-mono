@@ -132,6 +132,21 @@ export type AgentProfileApiLike = {
   updatedAt: number
 }
 
+export type AgentProfileActionResult = ProfileActionResult
+
+export interface AgentProfileActionService<TProfile extends AgentProfileApiLike = AgentProfileApiLike> {
+  getAll(): TProfile[]
+  getById(profileId: string): TProfile | null | undefined
+  create(profile: AgentProfileCreateRouteRequest): TProfile
+  update(profileId: string, updates: AgentProfileUpdateRouteRequest): TProfile | null | undefined
+  deleteProfile(profileId: string): boolean
+}
+
+export interface AgentProfileActionOptions<TProfile extends AgentProfileApiLike = AgentProfileApiLike> {
+  service: AgentProfileActionService<TProfile>
+  diagnostics: ProfileActionDiagnostics
+}
+
 function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {}
 }
@@ -340,6 +355,143 @@ export function importProfileAction<TProfile extends ProfileLike>(
       isProfileImportValidationError(caughtError) ? 400 : 500,
       getUnknownErrorMessage(caughtError, "Failed to import profile"),
     )
+  }
+}
+
+export function getAgentProfilesAction<TProfile extends AgentProfileApiLike>(
+  role: string | undefined,
+  options: AgentProfileActionOptions<TProfile>,
+): AgentProfileActionResult {
+  try {
+    let profiles = options.service.getAll()
+
+    if (role) {
+      profiles = filterAgentProfilesByRole(profiles, role)
+    }
+
+    return profileActionOk(buildAgentProfilesResponse(profiles))
+  } catch (caughtError) {
+    options.diagnostics.logError("agent-profile-actions", "Failed to get agent profiles", caughtError)
+    return profileActionError(500, "Failed to get agent profiles")
+  }
+}
+
+export function toggleAgentProfileAction<TProfile extends AgentProfileApiLike>(
+  id: string | undefined,
+  options: AgentProfileActionOptions<TProfile>,
+): AgentProfileActionResult {
+  try {
+    const profileId = id ?? ""
+    const profile = options.service.getById(profileId)
+
+    if (!profile) {
+      return profileActionError(404, "Agent profile not found")
+    }
+
+    const updated = options.service.update(profileId, {
+      enabled: !profile.enabled,
+    })
+
+    return profileActionOk(buildAgentProfileToggleResponse(profileId, updated?.enabled ?? !profile.enabled))
+  } catch (caughtError) {
+    options.diagnostics.logError("agent-profile-actions", "Failed to toggle agent profile", caughtError)
+    return profileActionError(500, getUnknownErrorMessage(caughtError, "Failed to toggle agent profile"))
+  }
+}
+
+export function getAgentProfileAction<TProfile extends AgentProfileApiLike>(
+  id: string | undefined,
+  options: AgentProfileActionOptions<TProfile>,
+): AgentProfileActionResult {
+  try {
+    const profile = options.service.getById(id ?? "")
+
+    if (!profile) {
+      return profileActionError(404, "Agent profile not found")
+    }
+
+    return profileActionOk(buildAgentProfileDetailResponse(profile))
+  } catch (caughtError) {
+    options.diagnostics.logError("agent-profile-actions", "Failed to get agent profile", caughtError)
+    return profileActionError(500, getUnknownErrorMessage(caughtError, "Failed to get agent profile"))
+  }
+}
+
+export function createAgentProfileAction<TProfile extends AgentProfileApiLike>(
+  body: unknown,
+  options: AgentProfileActionOptions<TProfile>,
+): AgentProfileActionResult {
+  try {
+    const parsedRequest = parseAgentProfileCreateRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return profileActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const newProfile = options.service.create(parsedRequest.request)
+    return profileActionOk(buildAgentProfileDetailResponse(newProfile), 201)
+  } catch (caughtError) {
+    options.diagnostics.logError("agent-profile-actions", "Failed to create agent profile", caughtError)
+    return profileActionError(500, getUnknownErrorMessage(caughtError, "Failed to create agent profile"))
+  }
+}
+
+export function updateAgentProfileAction<TProfile extends AgentProfileApiLike>(
+  id: string | undefined,
+  body: unknown,
+  options: AgentProfileActionOptions<TProfile>,
+): AgentProfileActionResult {
+  try {
+    const profileId = id ?? ""
+    const profile = options.service.getById(profileId)
+    if (!profile) {
+      return profileActionError(404, "Agent profile not found")
+    }
+
+    const parsedRequest = parseAgentProfileUpdateRequestBody(body, {
+      isBuiltIn: profile.isBuiltIn,
+      connection: profile.connection,
+    })
+    if (parsedRequest.ok === false) {
+      return profileActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const updatedProfile = options.service.update(profileId, parsedRequest.request)
+    if (!updatedProfile) {
+      return profileActionError(500, "Failed to update agent profile")
+    }
+
+    return profileActionOk(buildAgentProfileMutationDetailResponse(updatedProfile))
+  } catch (caughtError) {
+    options.diagnostics.logError("agent-profile-actions", "Failed to update agent profile", caughtError)
+    return profileActionError(500, getUnknownErrorMessage(caughtError, "Failed to update agent profile"))
+  }
+}
+
+export function deleteAgentProfileAction<TProfile extends AgentProfileApiLike>(
+  id: string | undefined,
+  options: AgentProfileActionOptions<TProfile>,
+): AgentProfileActionResult {
+  try {
+    const profileId = id ?? ""
+    const profile = options.service.getById(profileId)
+
+    if (!profile) {
+      return profileActionError(404, "Agent profile not found")
+    }
+
+    if (profile.isBuiltIn) {
+      return profileActionError(403, "Cannot delete built-in agent profiles")
+    }
+
+    const success = options.service.deleteProfile(profileId)
+    if (!success) {
+      return profileActionError(500, "Failed to delete agent profile")
+    }
+
+    return profileActionOk(buildAgentProfileDeleteResponse())
+  } catch (caughtError) {
+    options.diagnostics.logError("agent-profile-actions", "Failed to delete agent profile", caughtError)
+    return profileActionError(500, getUnknownErrorMessage(caughtError, "Failed to delete agent profile"))
   }
 }
 
