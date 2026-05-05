@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildDisabledRuntimeSkillPayload,
+  getSkillsAction,
   buildSkillsResponse,
   buildSkillToggleResponse,
   buildIgnoredExecuteCommandSkillIdWarning,
@@ -17,6 +18,7 @@ import {
   parseGitHubSkillIdentifier,
   parseRuntimeSkillIdArg,
   resolveRuntimeSkill,
+  toggleProfileSkillAction,
   uniqueSkillIds,
   validateGitHubSkillIdentifierPart,
   validateGitHubSkillRef,
@@ -109,6 +111,101 @@ describe("skills API helpers", () => {
       skillId: "research",
       enabledForProfile: true,
     })
+  })
+
+  it("runs shared skill list and toggle actions through service adapters", () => {
+    const profile = {
+      id: "profile-1",
+      skillsConfig: {
+        allSkillsDisabledByDefault: true,
+        enabledSkillIds: ["writing"],
+      },
+    }
+    const service = {
+      getSkills: () => skills,
+      getCurrentProfile: () => profile,
+      toggleProfileSkill: (profileId: string, skillId: string, allSkillIds: string[]) => {
+        expect(profileId).toBe("profile-1")
+        expect(skillId).toBe("research")
+        expect(allSkillIds).toEqual(["research", "writing"])
+        return {
+          id: profileId,
+          skillsConfig: {
+            allSkillsDisabledByDefault: true,
+            enabledSkillIds: ["research", "writing"],
+          },
+        }
+      },
+    }
+    const diagnostics = {
+      logError: () => {
+        throw new Error("unexpected diagnostics log")
+      },
+    }
+
+    expect(getSkillsAction({ service, diagnostics })).toEqual({
+      statusCode: 200,
+      body: buildSkillsResponse(skills, profile),
+    })
+    expect(toggleProfileSkillAction("research", { service, diagnostics })).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        skillId: "research",
+        enabledForProfile: true,
+      },
+    })
+  })
+
+  it("returns shared skill action validation errors before mutating profile state", () => {
+    const service = {
+      getSkills: () => skills,
+      getCurrentProfile: () => null,
+      toggleProfileSkill: () => {
+        throw new Error("unexpected toggle")
+      },
+    }
+    const diagnostics = {
+      logError: () => {
+        throw new Error("unexpected diagnostics log")
+      },
+    }
+
+    expect(toggleProfileSkillAction("missing", { service, diagnostics })).toEqual({
+      statusCode: 404,
+      body: { error: "Skill not found" },
+    })
+    expect(toggleProfileSkillAction("research", { service, diagnostics })).toEqual({
+      statusCode: 400,
+      body: { error: "No current profile set" },
+    })
+  })
+
+  it("logs shared skill action failures and returns route errors", () => {
+    const error = new Error("toggle failed")
+    const loggedErrors: unknown[] = []
+    const service = {
+      getSkills: () => skills,
+      getCurrentProfile: () => ({ id: "profile-1" }),
+      toggleProfileSkill: () => {
+        throw error
+      },
+    }
+    const diagnostics = {
+      logError: (source: string, message: string, caughtError: unknown) => {
+        loggedErrors.push({ source, message, caughtError })
+      },
+    }
+
+    expect(toggleProfileSkillAction("research", { service, diagnostics })).toEqual({
+      statusCode: 500,
+      body: { error: "toggle failed" },
+    })
+    expect(loggedErrors).toEqual([{
+      source: "skill-actions",
+      message: "Failed to toggle skill",
+      caughtError: error,
+    }])
   })
 
   it("parses GitHub skill identifiers and URLs", () => {

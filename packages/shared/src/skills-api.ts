@@ -18,6 +18,30 @@ export type SkillProfileLike = {
   }
 }
 
+export type SkillActionProfileLike = SkillProfileLike & {
+  id: string
+}
+
+export type SkillActionResult = {
+  statusCode: number
+  body: unknown
+}
+
+export interface SkillActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void
+}
+
+export interface SkillActionService {
+  getSkills(): SkillApiLike[]
+  getCurrentProfile(): SkillActionProfileLike | null | undefined
+  toggleProfileSkill(profileId: string, skillId: string, allSkillIds: string[]): SkillActionProfileLike | null | undefined
+}
+
+export interface SkillActionOptions {
+  service: SkillActionService
+  diagnostics: SkillActionDiagnostics
+}
+
 export type GitHubSkillIdentifier = {
   owner: string
   repo: string
@@ -319,5 +343,63 @@ export function buildSkillToggleResponse(
     success: true,
     skillId,
     enabledForProfile: isSkillEnabledForProfile(skillId, profile),
+  }
+}
+
+function skillActionOk(body: unknown): SkillActionResult {
+  return {
+    statusCode: 200,
+    body,
+  }
+}
+
+function skillActionError(statusCode: number, message: string): SkillActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+  }
+}
+
+function getUnknownErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string") {
+    return (error as { message: string }).message
+  }
+  return fallback
+}
+
+export function getSkillsAction(options: SkillActionOptions): SkillActionResult {
+  try {
+    const skills = options.service.getSkills()
+    const currentProfile = options.service.getCurrentProfile()
+    return skillActionOk(buildSkillsResponse(skills, currentProfile))
+  } catch (caughtError) {
+    options.diagnostics.logError("skill-actions", "Failed to get skills", caughtError)
+    return skillActionError(500, "Failed to get skills")
+  }
+}
+
+export function toggleProfileSkillAction(
+  skillId: string | undefined,
+  options: SkillActionOptions,
+): SkillActionResult {
+  try {
+    const skills = options.service.getSkills()
+    const skillExists = skills.some((skill) => skill.id === skillId)
+    if (!skillExists) {
+      return skillActionError(404, "Skill not found")
+    }
+
+    const currentProfile = options.service.getCurrentProfile()
+    if (!currentProfile) {
+      return skillActionError(400, "No current profile set")
+    }
+
+    const allSkillIds = skills.map((skill) => skill.id)
+    const updatedProfile = options.service.toggleProfileSkill(currentProfile.id, skillId ?? "", allSkillIds)
+    return skillActionOk(buildSkillToggleResponse(skillId ?? "", updatedProfile))
+  } catch (caughtError) {
+    options.diagnostics.logError("skill-actions", "Failed to toggle skill", caughtError)
+    return skillActionError(500, getUnknownErrorMessage(caughtError, "Failed to toggle skill"))
   }
 }

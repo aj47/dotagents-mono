@@ -108,6 +108,12 @@ function getSharedSettingsApiClientSource(): string {
   return readFileSync(sharedSettingsApiClientPath, "utf8")
 }
 
+function getSharedSkillsApiSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedSkillsApiPath = path.join(testDir, "../../../../packages/shared/src/skills-api.ts")
+  return readFileSync(sharedSkillsApiPath, "utf8")
+}
+
 function getSharedMessageQueueStoreSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedMessageQueueStorePath = path.join(testDir, "../../../../packages/shared/src/message-queue-store.ts")
@@ -754,15 +760,22 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const skillActionsSource = getSkillActionsSource()
+    const sharedSkillsApiSource = getSharedSkillsApiSource()
 
     expectRegisteredApiRoute(source, "GET", "skills")
     expectRegisteredApiRoute(source, "POST", "skillToggleProfile")
     expect(mobileApiRoutesSource).toContain("actions.getSkills()")
     expect(mobileApiRoutesSource).toContain("actions.toggleProfileSkill(params.id)")
-    expect(skillActionsSource).toContain("buildSkillsResponse(skills, currentProfile)")
-    expect(skillActionsSource).toContain("buildSkillToggleResponse(skillId ?? \"\", updatedProfile)")
-    expect(skillActionsSource).toContain("skillsService.getSkills()")
-    expect(skillActionsSource).toContain("agentProfileService.toggleProfileSkill(currentProfile.id, skillId ?? \"\", allSkillIds)")
+    expect(skillActionsSource).toContain("getSkillsAction(skillActionOptions)")
+    expect(skillActionsSource).toContain("toggleProfileSkillAction(skillId, skillActionOptions)")
+    expect(sharedSkillsApiSource).toContain("export interface SkillActionOptions")
+    expect(sharedSkillsApiSource).toContain("export function getSkillsAction")
+    expect(sharedSkillsApiSource).toContain("export function toggleProfileSkillAction")
+    expect(sharedSkillsApiSource).toContain("buildSkillsResponse(skills, currentProfile)")
+    expect(sharedSkillsApiSource).toContain("buildSkillToggleResponse(skillId ?? \"\", updatedProfile)")
+    expect(sharedSkillsApiSource).toContain("options.service.toggleProfileSkill(currentProfile.id, skillId ?? \"\", allSkillIds)")
+    expect(sharedSkillsApiSource).not.toContain('from "./agent-profile-service"')
+    expect(sharedSkillsApiSource).not.toContain('from "./skills-service"')
   })
 
   it("exposes remote server, tunnel, and Discord settings in the remote settings GET/PATCH routes", () => {
