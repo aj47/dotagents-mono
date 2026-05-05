@@ -65,9 +65,9 @@ import { RendererHandlers } from "./renderer-handlers"
 import {
   postProcessTranscript,
   processTranscriptWithTools,
-  processTranscriptWithAgentMode,
 } from "./llm"
-import { mcpService, MCPToolResult, WHATSAPP_SERVER_NAME, getInternalWhatsAppServerPath } from "./mcp-service"
+import { mcpService, WHATSAPP_SERVER_NAME, getInternalWhatsAppServerPath, type MCPToolCall, type MCPToolResult } from "./mcp-service"
+import { agentRuntime } from "./agent-runtime"
 import {
   saveCustomPosition,
   updatePanelPosition,
@@ -452,18 +452,7 @@ async function processWithAgentMode(
     // Initialize MCP with progress feedback
     await initializeMcpWithProgress(config, sessionId, runId)
 
-    // Register any existing MCP server processes with the agent process manager
-    // This handles the case where servers were already initialized before agent mode was activated
-    mcpService.registerExistingProcessesWithAgentManager()
-
-    // Get available tools filtered by profile snapshot if available (for session isolation)
-    // This ensures revived sessions use the same tool list they started with
-    const availableTools = profileSnapshot?.mcpServerConfig
-      ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
-      : mcpService.getAvailableTools()
-
-    // Use agent mode for iterative tool calling
-    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
+    const beforeExecuteToolCall = async (toolCall: MCPToolCall): Promise<MCPToolResult | void> => {
       // Handle inline tool approval if enabled in config
       if (config.mcpRequireApprovalBeforeToolCall) {
         // Request approval and wait for user response via the UI
@@ -515,9 +504,7 @@ async function processWithAgentMode(
         }
       }
 
-      // Execute the tool call (approval either not required or was granted)
-      // Pass sessionId for ACP router tools progress, and profileSnapshot.mcpServerConfig for session-aware server availability
-      return await mcpService.executeToolCall(toolCall, onProgress, true, sessionId, profileSnapshot?.mcpServerConfig)
+      return undefined
     }
 
     // Load previous conversation history if continuing a conversation.
@@ -585,18 +572,18 @@ async function processWithAgentMode(
       }
     }
 
-    const agentResult = await processTranscriptWithAgentMode(
-      text,
-      availableTools,
-      executeToolCall,
-      effectiveMaxIterations, // Use configured max iterations or Infinity if unlimited mode
+    const agentResult = await agentRuntime.runAgentTurn({
+      transcript: text,
+      maxIterations: effectiveMaxIterations, // Use configured max iterations or Infinity if unlimited mode
       previousConversationHistory,
       conversationId, // Pass conversation ID for linking to conversation history
       sessionId, // Pass session ID for progress routing and isolation
-      undefined, // onProgress callback (not used here, progress is emitted via emitAgentProgress)
       profileSnapshot, // Pass profile snapshot for session isolation
       runId,
-    )
+      initializeMcp: false, // Already initialized above with progress feedback.
+      skipApprovalCheck: true, // TIPC handles inline approval before delegating to MCP.
+      beforeExecuteToolCall,
+    })
 
     // Mark session as completed
     agentSessionTracker.completeSession(sessionId, "Agent completed successfully")

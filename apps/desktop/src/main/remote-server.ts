@@ -30,7 +30,7 @@ import {
   stopCloudflareTunnel,
 } from "./cloudflare-tunnel"
 import { mcpService, MCPToolResult, WHATSAPP_SERVER_NAME, handleWhatsAppToggle } from "./mcp-service"
-import { processTranscriptWithAgentMode } from "./llm"
+import { agentRuntime } from "./agent-runtime"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { resolveMainAcpAgentSelection } from "./main-agent-selection"
 import { state, agentProcessManager, agentSessionStateManager } from "./state"
@@ -1171,32 +1171,15 @@ export async function runAgent(options: RunAgentOptions): Promise<{
       }
     }
 
-    await mcpService.initialize()
-
-    mcpService.registerExistingProcessesWithAgentManager()
-
-    // Get available tools filtered by profile snapshot if available (for session isolation)
-    // This ensures revived sessions use the same tool list they started with
-    const availableTools = profileSnapshot?.mcpServerConfig
-      ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
-      : mcpService.getAvailableTools()
-
-    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
-      // Pass sessionId for ACP router tools progress, and profileSnapshot.mcpServerConfig for session-aware server availability
-      return await mcpService.executeToolCall(toolCall, onProgress, false, sessionId, profileSnapshot?.mcpServerConfig)
-    }
-
-    const agentResult = await processTranscriptWithAgentMode(
-      prompt,
-      availableTools,
-      executeToolCall,
-      cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? 10),
+    const agentResult = await agentRuntime.runAgentTurn({
+      transcript: prompt,
+      maxIterations: cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? 10),
       previousConversationHistory,
       conversationId,
       sessionId, // Pass session ID for progress routing
       onProgress, // Pass progress callback for SSE streaming
       profileSnapshot, // Pass profile snapshot for session isolation
-    )
+    })
 
     // Mark session as completed
     agentSessionTracker.completeSession(sessionId, "Agent completed successfully")

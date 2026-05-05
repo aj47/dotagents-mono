@@ -14,8 +14,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { processTranscriptWithAgentMode } from '../llm';
-import { mcpService } from '../mcp-service';
+import { agentRuntime } from '../agent-runtime';
 import { agentSessionStateManager } from '../state';
 import { agentSessionTracker } from '../agent-session-tracker';
 import { emitAgentProgress } from '../emit-agent-progress';
@@ -505,16 +504,7 @@ export async function runInternalSubSession(
   emitSubSessionDelegationProgress(subSession, parentSessionId);
 
   try {
-    // Get available tools - use profile-filtered tools if we have a profile snapshot
-    const availableTools = effectiveProfileSnapshot?.mcpServerConfig
-      ? mcpService.getAvailableToolsForProfile(effectiveProfileSnapshot.mcpServerConfig)
-      : mcpService.getAvailableTools();
-
-    // Create tool executor that respects session isolation
-    const executeToolCall = async (
-      toolCall: MCPToolCall,
-      toolOnProgress?: (message: string) => void
-    ): Promise<MCPToolResult> => {
+    const beforeExecuteToolCall = (toolCall: MCPToolCall): MCPToolResult | undefined => {
       // Check if session should stop
       if (agentSessionStateManager.shouldStopSession(subSessionId)) {
         return {
@@ -523,16 +513,10 @@ export async function runInternalSubSession(
         };
       }
 
-      // Execute the tool via MCP service
-      // Use executeToolCall which handles routing to correct server based on tool name
-      const result = await mcpService.executeToolCall(
-        toolCall,
-        toolOnProgress,
-        false, // skipApprovalCheck
-        subSessionId,
-        effectiveProfileSnapshot?.mcpServerConfig
-      );
+      return undefined;
+    };
 
+    const afterExecuteToolCall = (toolCall: MCPToolCall, result: MCPToolResult): void => {
       // Add tool result to conversation history for UI display
       subSession.conversationHistory.push({
         role: 'tool',
@@ -544,8 +528,6 @@ export async function runInternalSubSession(
 
       // Emit updated delegation progress with tool result
       emitSubSessionDelegationProgress(subSession, parentSessionId);
-
-      return result;
     };
 
     // Sub-session progress handler
@@ -606,17 +588,19 @@ export async function runInternalSubSession(
 
     subSession.conversationId = conversationId;
 
-    const result = await processTranscriptWithAgentMode(
-      fullPrompt,
-      availableTools,
-      executeToolCall,
-      effectiveSubSessionMaxIterations,
+    const result = await agentRuntime.runAgentTurn({
+      transcript: fullPrompt,
+      maxIterations: effectiveSubSessionMaxIterations,
       previousConversationHistory, // Pass previous history for stateful agents
       conversationId, // Use appropriate conversation ID if stateful
-      subSessionId,
-      subSessionOnProgress,
-      effectiveProfileSnapshot
-    );
+      sessionId: subSessionId,
+      onProgress: subSessionOnProgress,
+      profileSnapshot: effectiveProfileSnapshot,
+      initializeMcp: false,
+      registerExistingProcesses: false,
+      beforeExecuteToolCall,
+      afterExecuteToolCall,
+    });
 
     // Update sub-session state only if not already cancelled
     // This prevents a cancelled sub-session from transitioning back to completed

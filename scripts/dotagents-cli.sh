@@ -257,6 +257,7 @@ print_help() {
 
 $(echo -e "${B}Chat${R}")
   $(echo -e "${C}<message>${R}")          Chat with the agent
+  $(echo -e "${C}dotagents chat \"hello\"${R}")  Run a one-shot CLI chat smoke test
   $(echo -e "${C}/new${R}")               Start a new conversation
   $(echo -e "${C}/conversations${R}")     List recent conversations
   $(echo -e "${C}/stop${R}")              Emergency stop running agent
@@ -759,6 +760,147 @@ configure_provider_auth() {
   echo -e "  ${G}✓ LLM configuration saved${R}"
 }
 
+run_chat_input() {
+  local input="$1"
+  local body curl_err_file stream_status cid_line
+
+  body="$(node -e "
+    const msg=process.argv[1];
+    const body={messages:[{role:'user',content:msg}],stream:true,send_push_notification:false};
+    const cid=process.argv[2];
+    if(cid) body.conversation_id=cid;
+    process.stdout.write(JSON.stringify(body));
+  " "$input" "$CONVERSATION_ID" 2>/dev/null)"
+
+  curl_err_file="$(mktemp -t dotagents-curl-err.XXXXXX 2>/dev/null || echo "/tmp/dotagents-curl-err.$$")"
+
+  # Stream SSE through a single long-lived node consumer so we can:
+  #   (1) track step ids globally across chunks (server windows steps[] to last 3),
+  #   (2) render streamingContent.text deltas as the model types,
+  #   (3) surface curl/HTTP failures that the previous -sfN 2>/dev/null swallowed.
+  {
+    curl -sN -X POST \
+      -H "Authorization: Bearer $API_KEY" \
+      -H "Content-Type: application/json" \
+      -d "$body" \
+      -w 'HTTP_STATUS:%{http_code}\n' \
+      "http://127.0.0.1:$PORT/v1/chat/completions" 2>"$curl_err_file"
+    echo "CURL_EXIT:$?"
+  } | node -e "$(cat <<'NODE'
+const readline = require('readline');
+const fs = require('fs');
+const rl = readline.createInterface({ input: process.stdin });
+
+const dim = '\x1b[2m', reset = '\x1b[0m', red = '\x1b[0;31m';
+const stepIcons = {
+  thinking: '•', tool_call: '⚒', tool_result: '✓',
+  completion: '✓', tool_approval: '?', response: '▸',
+  error: '✗', pending_approval: '?',
+};
+
+const installDir = process.argv[1] || '';
+const curlErrFile = process.argv[2] || '';
+const seenStepIds = new Set();
+let streamedLen = 0;
+let onNewLine = true;
+let httpStatus = 0;
+let curlExit = 0;
+
+function ensureNewline() {
+  if (!onNewLine) { process.stdout.write('\n'); onNewLine = true; }
+}
+
+rl.on('line', (line) => {
+  if (line.startsWith('HTTP_STATUS:')) {
+    httpStatus = parseInt(line.slice('HTTP_STATUS:'.length), 10) || 0;
+    return;
+  }
+  if (line.startsWith('CURL_EXIT:')) {
+    curlExit = parseInt(line.slice('CURL_EXIT:'.length), 10) || 0;
+    return;
+  }
+  if (!line.startsWith('data: ')) return;
+  let d;
+  try { d = JSON.parse(line.slice(6)); } catch { return; }
+
+  if (d.type === 'progress') {
+    const p = d.data || {};
+
+    // Step lifecycle: print each new step id once (dim, with a type icon).
+    const steps = Array.isArray(p.steps) ? p.steps : [];
+    for (const s of steps) {
+      if (!s || !s.id || seenStepIds.has(s.id)) continue;
+      seenStepIds.add(s.id);
+      const icon = stepIcons[s.type] || '•';
+      const title = s.title || s.type || 'step';
+      if (title === 'Agent response') continue;
+      ensureNewline();
+      const desc = s.description ? ' — ' + s.description : '';
+      process.stdout.write(dim + icon + ' ' + title + desc + reset + '\n');
+    }
+
+    // Streaming assistant text: emit only the new suffix since last write.
+    const sc = p.streamingContent;
+    if (sc && typeof sc.text === 'string' && sc.text.length > streamedLen) {
+      const delta = sc.text.slice(streamedLen);
+      streamedLen = sc.text.length;
+      process.stdout.write(delta);
+      onNewLine = delta.endsWith('\n');
+    }
+  } else if (d.type === 'done') {
+    const r = d.data || {};
+    ensureNewline();
+    if (r.content) {
+      if (streamedLen === 0) {
+        // No streaming happened — print the full final reply.
+        process.stdout.write('\n' + r.content + '\n');
+      } else {
+        // We already streamed it incrementally; just terminate the line.
+        process.stdout.write('\n');
+      }
+    }
+    if (r.conversation_id && installDir) {
+      try { fs.writeFileSync(installDir + '/.last_cid', 'CID:' + r.conversation_id); } catch {}
+    }
+  } else if (d.type === 'error') {
+    ensureNewline();
+    const m = (d.data && d.data.message) || 'Unknown';
+    process.stdout.write(red + 'Error: ' + m + reset + '\n');
+  }
+});
+
+rl.on('close', () => {
+  if (curlExit !== 0) {
+    ensureNewline();
+    process.stderr.write(red + '✗ Network error talking to daemon (curl exit ' + curlExit + ')' + reset + '\n');
+    try {
+      if (curlErrFile) {
+        const e = fs.readFileSync(curlErrFile, 'utf8').trim();
+        if (e) process.stderr.write(dim + '  ' + e + reset + '\n');
+      }
+    } catch {}
+    process.exitCode = 1;
+  } else if (httpStatus && httpStatus >= 400) {
+    ensureNewline();
+    process.stderr.write(red + '✗ Daemon returned HTTP ' + httpStatus + reset + '\n');
+    process.stderr.write(dim + '  Hint: /status for health, /logs for recent errors.' + reset + '\n');
+    process.exitCode = 1;
+  }
+});
+NODE
+)" "$INSTALL_DIR" "$curl_err_file"
+  stream_status=$?
+
+  rm -f "$curl_err_file"
+
+  cid_line="$(cat "$INSTALL_DIR/.last_cid" 2>/dev/null || true)"
+  if [[ "${cid_line:-}" == CID:* ]]; then
+    CONVERSATION_ID="${cid_line#CID:}"
+  fi
+  echo ""
+  return "$stream_status"
+}
+
 # ── Auto-setup on missing config ──────────────────────────────
 CUR_API_KEY="$(get_config_val openaiApiKey)"
 CUR_MAIN_AGENT_MODE="$(get_config_val mainAgentMode)"
@@ -789,10 +931,20 @@ case "$CLI_COMMAND" in
     " || echo -e "${RED}Failed${R}"
     exit 0
     ;;
+  chat|--chat|/chat)
+    shift
+    CHAT_INPUT="$*"
+    if [[ -z "$CHAT_INPUT" ]]; then
+      echo -e "${Y}Usage: dotagents chat \"message\"${R}"
+      exit 1
+    fi
+    run_chat_input "$CHAT_INPUT"
+    exit $?
+    ;;
   "") ;;
   *)
     echo -e "${Y}Unknown command: $CLI_COMMAND${R}"
-    echo -e "${D}Usage: dotagents [setup|status|help]${R}"
+    echo -e "${D}Usage: dotagents [setup|status|chat|help]${R}"
     exit 1
     ;;
 esac
