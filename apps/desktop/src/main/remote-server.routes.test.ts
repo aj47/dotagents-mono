@@ -102,6 +102,12 @@ function getSharedTtsApiSource(): string {
   return readFileSync(sharedTtsApiPath, "utf8")
 }
 
+function getSharedSettingsApiClientSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedSettingsApiClientPath = path.join(testDir, "../../../../packages/shared/src/settings-api-client.ts")
+  return readFileSync(sharedSettingsApiClientPath, "utf8")
+}
+
 function getSharedMessageQueueStoreSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedMessageQueueStorePath = path.join(testDir, "../../../../packages/shared/src/message-queue-store.ts")
@@ -806,12 +812,18 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const emergencyStopActionsSource = getEmergencyStopActionsSource()
+    const sharedSettingsApiClientSource = getSharedSettingsApiClientSource()
 
     expectRegisteredApiRoute(source, "POST", "emergencyStop")
     expect(mobileApiRoutesSource).toContain("actions.triggerEmergencyStop()")
-    expect(emergencyStopActionsSource).toContain("emergencyStopAll()")
-    expect(emergencyStopActionsSource).toContain("buildEmergencyStopResponse(before, after)")
-    expect(emergencyStopActionsSource).toContain("buildEmergencyStopErrorResponse(caughtError)")
+    expect(emergencyStopActionsSource).toContain("triggerEmergencyStopAction(emergencyStopActionOptions)")
+    expect(sharedSettingsApiClientSource).toContain("export interface EmergencyStopActionOptions")
+    expect(sharedSettingsApiClientSource).toContain("export async function triggerEmergencyStopAction")
+    expect(sharedSettingsApiClientSource).toContain("await options.stopAll()")
+    expect(sharedSettingsApiClientSource).toContain("buildEmergencyStopResponse(before, after)")
+    expect(sharedSettingsApiClientSource).toContain("buildEmergencyStopErrorResponse(caughtError)")
+    expect(sharedSettingsApiClientSource).not.toContain('from "./emergency-stop"')
+    expect(sharedSettingsApiClientSource).not.toContain("diagnosticsService")
   })
 
   it("delegates profile route behavior to profile actions", () => {

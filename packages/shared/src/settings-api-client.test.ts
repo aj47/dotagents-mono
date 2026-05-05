@@ -12,6 +12,7 @@ import {
   ExtendedSettingsApiClient,
   getSettingsUpdateRequestRecord,
   SettingsApiClient,
+  triggerEmergencyStopAction,
 } from './settings-api-client';
 import {
   REMOTE_SERVER_API_BUILDERS,
@@ -268,6 +269,97 @@ describe('SettingsApiClient', () => {
     expect(buildEmergencyStopErrorResponse(undefined)).toEqual({
       success: false,
       error: 'Emergency stop failed',
+    });
+  });
+
+  it('runs shared emergency stop actions through adapters', async () => {
+    const diagnosticsCalls: unknown[] = [];
+    const loggerCalls: unknown[] = [];
+    const result = await triggerEmergencyStopAction({
+      stopAll: async () => ({ before: 3, after: 1 }),
+      diagnostics: {
+        logInfo: (source, message) => diagnosticsCalls.push({ level: 'info', source, message }),
+        logError: (source, message, error) => diagnosticsCalls.push({ level: 'error', source, message, error }),
+      },
+      logger: {
+        log: (message) => loggerCalls.push({ level: 'log', message }),
+        error: (message, error) => loggerCalls.push({ level: 'error', message, error }),
+      },
+    });
+
+    expect(result).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        message: 'Emergency stop executed',
+        processesKilled: 3,
+        processesRemaining: 1,
+      },
+    });
+    expect(diagnosticsCalls).toEqual([
+      {
+        level: 'info',
+        source: 'remote-server',
+        message: 'Emergency stop triggered via API',
+      },
+      {
+        level: 'info',
+        source: 'remote-server',
+        message: 'Emergency stop completed. Killed 3 processes. Remaining: 1',
+      },
+    ]);
+    expect(loggerCalls).toEqual([
+      { level: 'log', message: '[KILLSWITCH] /v1/emergency-stop endpoint called' },
+      { level: 'log', message: '[KILLSWITCH] Loading emergency-stop module...' },
+      { level: 'log', message: '[KILLSWITCH] Calling emergency stop handler...' },
+      { level: 'log', message: '[KILLSWITCH] Emergency stop completed. Killed 3 processes. Remaining: 1' },
+    ]);
+  });
+
+  it('logs shared emergency stop failures and returns the route error body', async () => {
+    const error = new Error('stop failed');
+    const diagnosticsCalls: unknown[] = [];
+    const loggerCalls: unknown[] = [];
+    const result = await triggerEmergencyStopAction({
+      stopAll: async () => {
+        throw error;
+      },
+      diagnostics: {
+        logInfo: (source, message) => diagnosticsCalls.push({ level: 'info', source, message }),
+        logError: (source, message, caughtError) => {
+          diagnosticsCalls.push({ level: 'error', source, message, caughtError });
+        },
+      },
+      logger: {
+        log: (message) => loggerCalls.push({ level: 'log', message }),
+        error: (message, caughtError) => loggerCalls.push({ level: 'error', message, caughtError }),
+      },
+    });
+
+    expect(result).toEqual({
+      statusCode: 500,
+      body: {
+        success: false,
+        error: 'stop failed',
+      },
+    });
+    expect(diagnosticsCalls).toEqual([
+      {
+        level: 'info',
+        source: 'remote-server',
+        message: 'Emergency stop triggered via API',
+      },
+      {
+        level: 'error',
+        source: 'remote-server',
+        message: 'Emergency stop error',
+        caughtError: error,
+      },
+    ]);
+    expect(loggerCalls.at(-1)).toEqual({
+      level: 'error',
+      message: '[KILLSWITCH] Error during emergency stop:',
+      caughtError: error,
     });
   });
 

@@ -355,6 +355,71 @@ export function buildEmergencyStopErrorResponse(error: unknown): EmergencyStopRe
   };
 }
 
+export type EmergencyStopActionResult = {
+  statusCode: number;
+  body: unknown;
+};
+
+export type EmergencyStopAllResult = {
+  before: number;
+  after: number;
+};
+
+export interface EmergencyStopActionDiagnostics {
+  logInfo(source: string, message: string): void;
+  logError(source: string, message: string, error: unknown): void;
+}
+
+export interface EmergencyStopActionLogger {
+  log(message: string): void;
+  error(message: string, error: unknown): void;
+}
+
+export interface EmergencyStopActionOptions {
+  stopAll(): Promise<EmergencyStopAllResult>;
+  diagnostics: EmergencyStopActionDiagnostics;
+  logger?: EmergencyStopActionLogger;
+}
+
+function emergencyStopActionOk(body: unknown): EmergencyStopActionResult {
+  return {
+    statusCode: 200,
+    body,
+  };
+}
+
+function emergencyStopActionError(statusCode: number, body: unknown): EmergencyStopActionResult {
+  return {
+    statusCode,
+    body,
+  };
+}
+
+export async function triggerEmergencyStopAction(
+  options: EmergencyStopActionOptions,
+): Promise<EmergencyStopActionResult> {
+  options.logger?.log('[KILLSWITCH] /v1/emergency-stop endpoint called');
+  try {
+    options.logger?.log('[KILLSWITCH] Loading emergency-stop module...');
+    options.diagnostics.logInfo('remote-server', 'Emergency stop triggered via API');
+
+    options.logger?.log('[KILLSWITCH] Calling emergency stop handler...');
+    const { before, after } = await options.stopAll();
+
+    options.logger?.log(`[KILLSWITCH] Emergency stop completed. Killed ${before} processes. Remaining: ${after}`);
+    options.diagnostics.logInfo(
+      'remote-server',
+      `Emergency stop completed. Killed ${before} processes. Remaining: ${after}`,
+    );
+
+    return emergencyStopActionOk(buildEmergencyStopResponse(before, after));
+  } catch (caughtError) {
+    options.logger?.error('[KILLSWITCH] Error during emergency stop:', caughtError);
+    options.diagnostics.logError('remote-server', 'Emergency stop error', caughtError);
+    return emergencyStopActionError(500, buildEmergencyStopErrorResponse(caughtError));
+  }
+}
+
 export function buildSettingsUpdatePatch(
   body: unknown,
   cfg: SettingsUpdateConfigLike,
