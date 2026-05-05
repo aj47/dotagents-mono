@@ -6,13 +6,18 @@ import {
   buildKnowledgeNoteMutationResponse,
   buildKnowledgeNoteResponse,
   buildKnowledgeNotesResponse,
+  createKnowledgeNoteAction,
+  deleteKnowledgeNoteAction,
   formatKnowledgeNoteReferencesInput,
   formatKnowledgeNoteTagsInput,
+  getKnowledgeNoteAction,
+  getKnowledgeNotesAction,
   parseKnowledgeNoteCreateRequestBody,
   parseKnowledgeNoteReferencesInput,
   parseKnowledgeNoteTagsInput,
   parseKnowledgeNoteUpdateRequestBody,
   serializeKnowledgeNoteForApi,
+  updateKnowledgeNoteAction,
 } from "./knowledge-note-form"
 
 describe("knowledge note form helpers", () => {
@@ -129,5 +134,176 @@ describe("knowledge note form helpers", () => {
     expect(buildKnowledgeNoteResponse(note)).toEqual({ note: serialized })
     expect(buildKnowledgeNoteMutationResponse(note)).toEqual({ success: true, note: serialized })
     expect(buildKnowledgeNoteDeleteResponse("note-1")).toEqual({ success: true, id: "note-1" })
+  })
+
+  it("runs shared knowledge note route actions through service adapters", async () => {
+    const note: KnowledgeNote = {
+      id: "note-1",
+      title: "Title",
+      context: "search-only",
+      body: "Body",
+      tags: ["tag"],
+      references: [],
+      createdAt: 1,
+      updatedAt: 2,
+    }
+    const createdNote: KnowledgeNote = {
+      ...note,
+      id: "note-2",
+      title: "Created",
+      body: "Created body",
+      createdAt: 3,
+      updatedAt: 3,
+    }
+    const updatedNote: KnowledgeNote = {
+      ...note,
+      title: "Updated",
+      updatedAt: 4,
+    }
+    const notesById = new Map<string, KnowledgeNote>([[note.id, note]])
+    const service = {
+      getAllNotes: async () => Array.from(notesById.values()),
+      getNote: async (id: string) => notesById.get(id),
+      deleteNote: async (id: string) => notesById.delete(id),
+      createNote: (request: any) => {
+        expect(request.body).toBe("Created body")
+        return createdNote
+      },
+      saveNote: async (nextNote: KnowledgeNote) => {
+        notesById.set(nextNote.id, nextNote)
+        return true
+      },
+      updateNote: async (id: string, request: any) => {
+        expect(id).toBe("note-1")
+        expect(request.title).toBe("Updated")
+        notesById.set(id, updatedNote)
+        return true
+      },
+    }
+    const diagnostics = {
+      logError: () => {
+        throw new Error("unexpected diagnostics log")
+      },
+    }
+    const options = { service, diagnostics }
+
+    await expect(getKnowledgeNotesAction(options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNotesResponse([note]),
+    })
+    await expect(getKnowledgeNoteAction("note-1", options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNoteResponse(note),
+    })
+    await expect(createKnowledgeNoteAction({ body: " Created body " }, options)).resolves.toEqual({
+      statusCode: 201,
+      body: buildKnowledgeNoteResponse(createdNote),
+    })
+    await expect(updateKnowledgeNoteAction("note-1", { title: " Updated " }, options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNoteMutationResponse(updatedNote),
+    })
+    await expect(deleteKnowledgeNoteAction("note-2", options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNoteDeleteResponse("note-2"),
+    })
+  })
+
+  it("returns shared knowledge note route validation and state errors", async () => {
+    const note: KnowledgeNote = {
+      id: "note-1",
+      title: "Title",
+      context: "search-only",
+      body: "Body",
+      tags: [],
+      references: [],
+      createdAt: 1,
+      updatedAt: 2,
+    }
+    const diagnostics = {
+      logError: () => {
+        throw new Error("unexpected diagnostics log")
+      },
+    }
+    const options = {
+      diagnostics,
+      service: {
+        getAllNotes: () => [],
+        getNote: (id: string) => id === "note-1" ? note : undefined,
+        deleteNote: () => false,
+        createNote: () => note,
+        saveNote: () => false,
+        updateNote: () => false,
+      },
+    }
+
+    await expect(getKnowledgeNoteAction("missing", options)).resolves.toEqual({
+      statusCode: 404,
+      body: { error: "Knowledge note not found" },
+    })
+    await expect(deleteKnowledgeNoteAction("missing", options)).resolves.toEqual({
+      statusCode: 404,
+      body: { error: "Knowledge note not found" },
+    })
+    await expect(createKnowledgeNoteAction({}, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "body is required and must be a non-empty string" },
+    })
+    await expect(createKnowledgeNoteAction({ body: "Body" }, options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "Failed to save knowledge note" },
+    })
+    await expect(updateKnowledgeNoteAction("note-1", { tags: ["ok", 1] }, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "tags must be an array of strings when provided" },
+    })
+    await expect(updateKnowledgeNoteAction("missing", { title: "Updated" }, options)).resolves.toEqual({
+      statusCode: 404,
+      body: { error: "Knowledge note not found" },
+    })
+    await expect(updateKnowledgeNoteAction("note-1", { title: "Updated" }, options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "Failed to update knowledge note" },
+    })
+    await expect(deleteKnowledgeNoteAction("note-1", options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "Failed to persist knowledge note deletion" },
+    })
+  })
+
+  it("logs shared knowledge note route failures and returns route errors", async () => {
+    const caughtFailure = new Error("storage failed")
+    const loggedErrors: unknown[] = []
+    const diagnostics = {
+      logError: (source: string, message: string, caughtError: unknown) => {
+        loggedErrors.push({ source, message, caughtError })
+      },
+    }
+
+    await expect(getKnowledgeNotesAction({
+      diagnostics,
+      service: {
+        getAllNotes: () => {
+          throw caughtFailure
+        },
+        getNote: () => undefined,
+        deleteNote: () => false,
+        createNote: () => {
+          throw new Error("unexpected create")
+        },
+        saveNote: () => false,
+        updateNote: () => false,
+      },
+    })).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "Failed to get knowledge notes" },
+    })
+    expect(loggedErrors).toEqual([
+      {
+        source: "knowledge-note-actions",
+        message: "Failed to get knowledge notes",
+        caughtError: caughtFailure,
+      },
+    ])
   })
 })
