@@ -114,6 +114,12 @@ function getSharedSkillsApiSource(): string {
   return readFileSync(sharedSkillsApiPath, "utf8")
 }
 
+function getSharedProfileApiSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedProfileApiPath = path.join(testDir, "../../../../packages/shared/src/profile-api.ts")
+  return readFileSync(sharedProfileApiPath, "utf8")
+}
+
 function getSharedMessageQueueStoreSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedMessageQueueStorePath = path.join(testDir, "../../../../packages/shared/src/message-queue-store.ts")
@@ -843,6 +849,7 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const profileActionsSource = getProfileActionsSource()
+    const sharedProfileApiSource = getSharedProfileApiSource()
 
     expectRegisteredApiRoute(source, "GET", "profiles")
     expectRegisteredApiRoute(source, "GET", "currentProfile")
@@ -854,13 +861,27 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.setCurrentProfile(req.body)")
     expect(mobileApiRoutesSource).toContain("actions.exportProfile(params.id)")
     expect(mobileApiRoutesSource).toContain("actions.importProfile(req.body)")
-    expect(profileActionsSource).toContain("buildProfilesResponse(profiles, currentProfile)")
-    expect(profileActionsSource).toContain("formatProfileForApi(profile, { includeDetails: true })")
-    expect(profileActionsSource).toContain("parseSetCurrentProfileRequestBody(body)")
+    expect(profileActionsSource).toContain("getProfilesAction(profileActionOptions)")
+    expect(profileActionsSource).toContain("getCurrentProfileAction(profileActionOptions)")
+    expect(profileActionsSource).toContain("setCurrentProfileAction(body, profileActionOptions)")
+    expect(profileActionsSource).toContain("exportProfileAction(id, profileActionOptions)")
+    expect(profileActionsSource).toContain("importProfileAction(body, profileActionOptions)")
+    expect(sharedProfileApiSource).toContain("export interface ProfileActionOptions")
+    expect(sharedProfileApiSource).toContain("export function getProfilesAction")
+    expect(sharedProfileApiSource).toContain("export function getCurrentProfileAction")
+    expect(sharedProfileApiSource).toContain("export function setCurrentProfileAction")
+    expect(sharedProfileApiSource).toContain("export function exportProfileAction")
+    expect(sharedProfileApiSource).toContain("export function importProfileAction")
+    expect(sharedProfileApiSource).toContain(
+      "buildProfilesResponse(profiles, currentProfile ?? undefined)",
+    )
+    expect(sharedProfileApiSource).toContain("formatProfileForApi(profile, { includeDetails: true })")
+    expect(sharedProfileApiSource).toContain("parseSetCurrentProfileRequestBody(body)")
+    expect(sharedProfileApiSource).toContain("options.applyCurrentProfile?.(profile)")
+    expect(sharedProfileApiSource).not.toContain('from "./agent-profile-service"')
+    expect(sharedProfileApiSource).not.toContain('from "./mcp-service"')
     expect(profileActionsSource).toContain("toolConfigToMcpServerConfig(profile.toolConfig)")
     expect(profileActionsSource).toContain("mcpService.applyProfileMcpConfig(")
-    expect(profileActionsSource).toContain("buildProfileExportResponse(profileJson)")
-    expect(profileActionsSource).toContain("parseImportProfileRequestBody(body)")
   })
 
   it("delegates agent profile route behavior to agent profile actions", () => {

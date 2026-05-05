@@ -80,6 +80,30 @@ export type ProfileLike = {
 
 export type ProfileNameSource = "displayName" | "name"
 
+export type ProfileActionResult = {
+  statusCode: number
+  body: unknown
+}
+
+export interface ProfileActionDiagnostics {
+  logInfo(source: string, message: string): void
+  logError(source: string, message: string, error: unknown): void
+}
+
+export interface ProfileActionService<TProfile extends ProfileLike = ProfileLike> {
+  getUserProfiles(): TProfile[]
+  getCurrentProfile(): TProfile | null | undefined
+  setCurrentProfileStrict(profileId: string): TProfile
+  exportProfile(profileId: string): string
+  importProfile(profileJson: string): TProfile
+}
+
+export interface ProfileActionOptions<TProfile extends ProfileLike = ProfileLike> {
+  service: ProfileActionService<TProfile>
+  diagnostics: ProfileActionDiagnostics
+  applyCurrentProfile?: (profile: TProfile) => void
+}
+
 export type ApiAgentProfileRole = "chat-agent" | "delegation-target" | "external-agent"
 
 export type AgentProfileApiLike = {
@@ -188,6 +212,135 @@ export function parseImportProfileRequestBody(body: unknown): ProfileRequestPars
   }
 
   return { ok: true, request: { profileJson } }
+}
+
+function profileActionOk(body: unknown, statusCode = 200): ProfileActionResult {
+  return {
+    statusCode,
+    body,
+  }
+}
+
+function profileActionError(statusCode: number, message: string): ProfileActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+  }
+}
+
+function getUnknownErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string") {
+    return (error as { message: string }).message
+  }
+  return fallback
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return getUnknownErrorMessage(error, "").includes("not found")
+}
+
+function isProfileImportValidationError(error: unknown): boolean {
+  const errorMessage = getUnknownErrorMessage(error, "").toLowerCase()
+  return error instanceof SyntaxError ||
+    errorMessage.includes("json") ||
+    errorMessage.includes("invalid") ||
+    errorMessage.includes("missing")
+}
+
+function getProfileDisplayLabel(profile: ProfileLike): string {
+  return profile.displayName ?? profile.name ?? profile.id
+}
+
+export function getProfilesAction<TProfile extends ProfileLike>(
+  options: ProfileActionOptions<TProfile>,
+): ProfileActionResult {
+  try {
+    const profiles = options.service.getUserProfiles()
+    const currentProfile = options.service.getCurrentProfile()
+    return profileActionOk(buildProfilesResponse(profiles, currentProfile ?? undefined))
+  } catch (caughtError) {
+    options.diagnostics.logError("profile-actions", "Failed to get profiles", caughtError)
+    return profileActionError(500, "Failed to get profiles")
+  }
+}
+
+export function getCurrentProfileAction<TProfile extends ProfileLike>(
+  options: ProfileActionOptions<TProfile>,
+): ProfileActionResult {
+  try {
+    const profile = options.service.getCurrentProfile()
+    if (!profile) {
+      return profileActionError(404, "No current profile set")
+    }
+
+    return profileActionOk(formatProfileForApi(profile, { includeDetails: true }))
+  } catch (caughtError) {
+    options.diagnostics.logError("profile-actions", "Failed to get current profile", caughtError)
+    return profileActionError(500, "Failed to get current profile")
+  }
+}
+
+export function setCurrentProfileAction<TProfile extends ProfileLike>(
+  body: unknown,
+  options: ProfileActionOptions<TProfile>,
+): ProfileActionResult {
+  try {
+    const parsedRequest = parseSetCurrentProfileRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return profileActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const profile = options.service.setCurrentProfileStrict(parsedRequest.request.profileId)
+    options.applyCurrentProfile?.(profile)
+    options.diagnostics.logInfo("profile-actions", `Switched to profile: ${getProfileDisplayLabel(profile)}`)
+
+    return profileActionOk(buildProfileMutationResponse(profile, { nameSource: "name" }))
+  } catch (caughtError) {
+    options.diagnostics.logError("profile-actions", "Failed to set current profile", caughtError)
+    return profileActionError(
+      isNotFoundError(caughtError) ? 404 : 500,
+      getUnknownErrorMessage(caughtError, "Failed to set current profile"),
+    )
+  }
+}
+
+export function exportProfileAction<TProfile extends ProfileLike>(
+  id: string | undefined,
+  options: ProfileActionOptions<TProfile>,
+): ProfileActionResult {
+  try {
+    const profileJson = options.service.exportProfile(id ?? "")
+    return profileActionOk(buildProfileExportResponse(profileJson))
+  } catch (caughtError) {
+    options.diagnostics.logError("profile-actions", "Failed to export profile", caughtError)
+    return profileActionError(
+      isNotFoundError(caughtError) ? 404 : 500,
+      getUnknownErrorMessage(caughtError, "Failed to export profile"),
+    )
+  }
+}
+
+export function importProfileAction<TProfile extends ProfileLike>(
+  body: unknown,
+  options: ProfileActionOptions<TProfile>,
+): ProfileActionResult {
+  try {
+    const parsedRequest = parseImportProfileRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return profileActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const profile = options.service.importProfile(parsedRequest.request.profileJson)
+    options.diagnostics.logInfo("profile-actions", `Imported profile: ${getProfileDisplayLabel(profile)}`)
+    return profileActionOk(buildProfileMutationResponse(profile))
+  } catch (caughtError) {
+    options.diagnostics.logError("profile-actions", "Failed to import profile", caughtError)
+    return profileActionError(
+      isProfileImportValidationError(caughtError) ? 400 : 500,
+      getUnknownErrorMessage(caughtError, "Failed to import profile"),
+    )
+  }
 }
 
 export function parseAgentProfileCreateRequestBody(

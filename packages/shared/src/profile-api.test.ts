@@ -9,12 +9,17 @@ import {
   buildProfileExportResponse,
   buildProfileMutationResponse,
   buildProfilesResponse,
+  exportProfileAction,
   filterAgentProfilesByRole,
   formatProfileForApi,
+  getCurrentProfileAction,
+  getProfilesAction,
+  importProfileAction,
   parseAgentProfileCreateRequestBody,
   parseAgentProfileUpdateRequestBody,
   parseImportProfileRequestBody,
   parseSetCurrentProfileRequestBody,
+  setCurrentProfileAction,
 } from "./profile-api"
 
 describe("profile API helpers", () => {
@@ -204,6 +209,161 @@ describe("profile API helpers", () => {
     expect(buildProfileExportResponse("{\"profile\":true}")).toEqual({
       profileJson: "{\"profile\":true}",
     })
+  })
+
+  it("runs shared profile route actions through service adapters", () => {
+    const logs: unknown[] = []
+    const appliedProfiles: unknown[] = []
+    const importedProfile = {
+      ...profile,
+      id: "imported-profile",
+      name: "imported-profile",
+      displayName: "Imported Profile",
+    }
+    const service = {
+      getUserProfiles: () => [profile],
+      getCurrentProfile: () => profile,
+      setCurrentProfileStrict: (profileId: string) => {
+        expect(profileId).toBe("profile-1")
+        return profile
+      },
+      exportProfile: (profileId: string) => {
+        expect(profileId).toBe("profile-1")
+        return "{\"profile\":true}"
+      },
+      importProfile: (profileJson: string) => {
+        expect(profileJson).toBe("{\"id\":\"imported-profile\"}")
+        return importedProfile
+      },
+    }
+    const diagnostics = {
+      logInfo: (source: string, message: string) => logs.push({ level: "info", source, message }),
+      logError: () => {
+        throw new Error("unexpected diagnostics log")
+      },
+    }
+    const options = {
+      service,
+      diagnostics,
+      applyCurrentProfile: (updatedProfile: typeof profile) => appliedProfiles.push(updatedProfile),
+    }
+
+    expect(getProfilesAction(options)).toEqual({
+      statusCode: 200,
+      body: buildProfilesResponse([profile], profile),
+    })
+    expect(getCurrentProfileAction(options)).toEqual({
+      statusCode: 200,
+      body: formatProfileForApi(profile, { includeDetails: true }),
+    })
+    expect(setCurrentProfileAction({ profileId: "profile-1" }, options)).toEqual({
+      statusCode: 200,
+      body: buildProfileMutationResponse(profile, { nameSource: "name" }),
+    })
+    expect(exportProfileAction("profile-1", options)).toEqual({
+      statusCode: 200,
+      body: buildProfileExportResponse("{\"profile\":true}"),
+    })
+    expect(importProfileAction({ profileJson: "{\"id\":\"imported-profile\"}" }, options)).toEqual({
+      statusCode: 200,
+      body: buildProfileMutationResponse(importedProfile),
+    })
+    expect(appliedProfiles).toEqual([profile])
+    expect(logs).toEqual([
+      { level: "info", source: "profile-actions", message: "Switched to profile: Display Name" },
+      { level: "info", source: "profile-actions", message: "Imported profile: Imported Profile" },
+    ])
+  })
+
+  it("returns shared profile route validation and missing-current errors", () => {
+    const service = {
+      getUserProfiles: () => [profile],
+      getCurrentProfile: () => null,
+      setCurrentProfileStrict: () => {
+        throw new Error("unexpected set")
+      },
+      exportProfile: () => "{}",
+      importProfile: () => profile,
+    }
+    const diagnostics = {
+      logInfo: () => {
+        throw new Error("unexpected info log")
+      },
+      logError: () => {
+        throw new Error("unexpected error log")
+      },
+    }
+    const options = { service, diagnostics }
+
+    expect(getCurrentProfileAction(options)).toEqual({
+      statusCode: 404,
+      body: { error: "No current profile set" },
+    })
+    expect(setCurrentProfileAction({}, options)).toEqual({
+      statusCode: 400,
+      body: { error: "Missing or invalid profileId" },
+    })
+    expect(importProfileAction({}, options)).toEqual({
+      statusCode: 400,
+      body: { error: "Missing or invalid profileJson" },
+    })
+  })
+
+  it("logs shared profile route failures and preserves route status mapping", () => {
+    const notFoundError = new Error("profile not found")
+    const importError = new SyntaxError("Unexpected token")
+    const loggedErrors: unknown[] = []
+    const diagnostics = {
+      logInfo: () => {
+        throw new Error("unexpected info log")
+      },
+      logError: (source: string, message: string, caughtError: unknown) => {
+        loggedErrors.push({ source, message, caughtError })
+      },
+    }
+
+    expect(setCurrentProfileAction({ profileId: "missing" }, {
+      diagnostics,
+      service: {
+        getUserProfiles: () => [],
+        getCurrentProfile: () => null,
+        setCurrentProfileStrict: () => {
+          throw notFoundError
+        },
+        exportProfile: () => "{}",
+        importProfile: () => profile,
+      },
+    })).toEqual({
+      statusCode: 404,
+      body: { error: "profile not found" },
+    })
+    expect(importProfileAction({ profileJson: "bad" }, {
+      diagnostics,
+      service: {
+        getUserProfiles: () => [],
+        getCurrentProfile: () => null,
+        setCurrentProfileStrict: () => profile,
+        exportProfile: () => "{}",
+        importProfile: () => {
+          throw importError
+        },
+      },
+    })).toEqual({
+      statusCode: 400,
+      body: { error: "Unexpected token" },
+    })
+    expect(loggedErrors).toEqual([
+      {
+        source: "profile-actions",
+        message: "Failed to set current profile",
+        caughtError: notFoundError,
+      },
+      {
+        source: "profile-actions",
+        message: "Failed to import profile",
+        caughtError: importError,
+      },
+    ])
   })
 
   it("formats agent profile list and detail responses", () => {
