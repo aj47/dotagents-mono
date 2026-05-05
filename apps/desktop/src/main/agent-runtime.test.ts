@@ -99,4 +99,55 @@ describe("AgentRuntime", () => {
     expect(afterExecuteToolCall).not.toHaveBeenCalled()
     expect(result.content).toBe("blocked")
   })
+
+  it("uses a stored session profile snapshot for tools and agent loop when resuming", async () => {
+    const toolService = createToolService()
+    const passedProfileSnapshot = { mcpServerConfig: { enabledServers: ["passed-server"] } } as any
+    const storedProfileSnapshot = { mcpServerConfig: { enabledServers: ["stored-server"] } } as any
+    const getSessionProfileSnapshot = vi.fn(() => storedProfileSnapshot)
+    const runAgentLoop = vi.fn(async (
+      _transcript,
+      _availableTools,
+      executeToolCall: (toolCall: MCPToolCall) => Promise<MCPToolResult>,
+    ) => {
+      await executeToolCall({ name: "profile_tool", arguments: {} })
+      return { content: "done", conversationHistory: [], totalIterations: 1 }
+    })
+
+    const runtime = new AgentRuntime({
+      toolService,
+      runAgentLoop: runAgentLoop as any,
+      getSessionProfileSnapshot,
+    })
+
+    await runtime.runAgentTurn({
+      transcript: "resume",
+      sessionId: "session-1",
+      profileSnapshot: passedProfileSnapshot,
+    })
+
+    expect(getSessionProfileSnapshot).toHaveBeenCalledWith("session-1")
+    expect(toolService.getAvailableToolsForProfile).toHaveBeenCalledWith(
+      storedProfileSnapshot.mcpServerConfig,
+    )
+    expect(toolService.executeToolCall).toHaveBeenCalledWith(
+      { name: "profile_tool", arguments: {} },
+      undefined,
+      false,
+      "session-1",
+      storedProfileSnapshot.mcpServerConfig,
+    )
+    expect(runAgentLoop).toHaveBeenCalledWith(
+      "resume",
+      [{ name: "profile_tool", description: "", inputSchema: {} }],
+      expect.any(Function),
+      undefined,
+      undefined,
+      undefined,
+      "session-1",
+      undefined,
+      storedProfileSnapshot,
+      undefined,
+    )
+  })
 })

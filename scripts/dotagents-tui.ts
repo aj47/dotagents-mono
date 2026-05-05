@@ -49,7 +49,14 @@ function configFilePath() {
     "app.dotagents",
     "config.json",
   )
-  return fs.existsSync(linux) ? linux : fs.existsSync(mac) ? mac : linux
+  const windows = process.env.APPDATA
+    ? path.join(process.env.APPDATA, "app.dotagents", "config.json")
+    : path.join(home, "AppData", "Roaming", "app.dotagents", "config.json")
+  const candidates =
+    process.platform === "win32"
+      ? [windows, linux, mac]
+      : [linux, mac]
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? candidates[0]
 }
 
 function readConfig(): Config {
@@ -129,6 +136,14 @@ function parseArgs() {
   }
 }
 
+function textDelta(previous: string, next: string) {
+  if (!next) return ""
+  if (!previous) return next
+  if (next.startsWith(previous)) return next.slice(previous.length)
+  if (previous.startsWith(next)) return ""
+  return `\n${next}`
+}
+
 async function streamChat(
   message: string,
   conversationId: string | undefined,
@@ -182,7 +197,8 @@ async function streamChat(
     }
     if (event.type === "progress") {
       const payload = event.data || {}
-      for (const step of payload.steps || []) {
+      const steps = Array.isArray(payload.steps) ? payload.steps : []
+      for (const step of steps) {
         if (!step?.id || seenSteps.has(step.id)) continue
         seenSteps.add(step.id)
         if (step.title !== "Agent response")
@@ -222,13 +238,14 @@ async function runOnce(message: string) {
   await streamChat(message, undefined, {
     step: (title, desc) => console.log(`• ${title}${desc ? ` — ${desc}` : ""}`),
     text: (text) => {
-      const delta = text.slice(last.length)
-      last = text
-      process.stdout.write(delta)
+      const delta = textDelta(last, text)
+      if (delta) process.stdout.write(delta)
+      if (!last || !last.startsWith(text)) last = text
     },
     done: (content) => {
-      if (!last && content) console.log(content)
-      else console.log()
+      const delta = textDelta(last, content)
+      process.stdout.write(delta)
+      console.log()
     },
   })
 }
@@ -346,7 +363,10 @@ async function runTui() {
         },
         done: (content, cid) => {
           conversationId = cid || conversationId
-          if (!streamed && content) reply.content = `Agent: ${content}`
+          if (content && content !== streamed) {
+            streamed = content
+            reply.content = `Agent: ${streamed}`
+          }
         },
       })
       status.content = conversationId ? `Ready · ${conversationId}` : "Ready"

@@ -801,13 +801,53 @@ const stepIcons = {
 const installDir = process.argv[1] || '';
 const curlErrFile = process.argv[2] || '';
 const seenStepIds = new Set();
-let streamedLen = 0;
+let streamedText = '';
 let onNewLine = true;
 let httpStatus = 0;
 let curlExit = 0;
 
 function ensureNewline() {
   if (!onNewLine) { process.stdout.write('\n'); onNewLine = true; }
+}
+
+function writeTextDelta(next) {
+  if (typeof next !== 'string' || next.length === 0) return;
+  let delta = '';
+  if (!streamedText) {
+    delta = next;
+  } else if (next.startsWith(streamedText)) {
+    delta = next.slice(streamedText.length);
+  } else if (!streamedText.startsWith(next)) {
+    ensureNewline();
+    delta = next;
+  }
+  if (delta) {
+    process.stdout.write(delta);
+    onNewLine = delta.endsWith('\n');
+  }
+  if (!streamedText || !streamedText.startsWith(next)) streamedText = next;
+}
+
+function writeFinalContent(content) {
+  if (typeof content !== 'string' || content.length === 0) {
+    ensureNewline();
+    return;
+  }
+  if (!streamedText) {
+    process.stdout.write(content);
+    onNewLine = content.endsWith('\n');
+  } else if (content.startsWith(streamedText)) {
+    const delta = content.slice(streamedText.length);
+    if (delta) {
+      process.stdout.write(delta);
+      onNewLine = delta.endsWith('\n');
+    }
+  } else if (!streamedText.endsWith(content)) {
+    ensureNewline();
+    process.stdout.write(content);
+    onNewLine = content.endsWith('\n');
+  }
+  ensureNewline();
 }
 
 rl.on('line', (line) => {
@@ -841,24 +881,10 @@ rl.on('line', (line) => {
 
     // Streaming assistant text: emit only the new suffix since last write.
     const sc = p.streamingContent;
-    if (sc && typeof sc.text === 'string' && sc.text.length > streamedLen) {
-      const delta = sc.text.slice(streamedLen);
-      streamedLen = sc.text.length;
-      process.stdout.write(delta);
-      onNewLine = delta.endsWith('\n');
-    }
+    if (sc && typeof sc.text === 'string') writeTextDelta(sc.text);
   } else if (d.type === 'done') {
     const r = d.data || {};
-    ensureNewline();
-    if (r.content) {
-      if (streamedLen === 0) {
-        // No streaming happened — print the full final reply.
-        process.stdout.write('\n' + r.content + '\n');
-      } else {
-        // We already streamed it incrementally; just terminate the line.
-        process.stdout.write('\n');
-      }
-    }
+    writeFinalContent(r.content);
     if (r.conversation_id && installDir) {
       try { fs.writeFileSync(installDir + '/.last_cid', 'CID:' + r.conversation_id); } catch {}
     }
@@ -1374,13 +1400,53 @@ const stepIcons = {
 const installDir = process.argv[1] || '';
 const curlErrFile = process.argv[2] || '';
 const seenStepIds = new Set();
-let streamedLen = 0;
+let streamedText = '';
 let onNewLine = true;
 let httpStatus = 0;
 let curlExit = 0;
 
 function ensureNewline() {
   if (!onNewLine) { process.stdout.write('\n'); onNewLine = true; }
+}
+
+function writeTextDelta(next) {
+  if (typeof next !== 'string' || next.length === 0) return;
+  let delta = '';
+  if (!streamedText) {
+    delta = next;
+  } else if (next.startsWith(streamedText)) {
+    delta = next.slice(streamedText.length);
+  } else if (!streamedText.startsWith(next)) {
+    ensureNewline();
+    delta = next;
+  }
+  if (delta) {
+    process.stdout.write(delta);
+    onNewLine = delta.endsWith('\n');
+  }
+  if (!streamedText || !streamedText.startsWith(next)) streamedText = next;
+}
+
+function writeFinalContent(content) {
+  if (typeof content !== 'string' || content.length === 0) {
+    ensureNewline();
+    return;
+  }
+  if (!streamedText) {
+    process.stdout.write(content);
+    onNewLine = content.endsWith('\n');
+  } else if (content.startsWith(streamedText)) {
+    const delta = content.slice(streamedText.length);
+    if (delta) {
+      process.stdout.write(delta);
+      onNewLine = delta.endsWith('\n');
+    }
+  } else if (!streamedText.endsWith(content)) {
+    ensureNewline();
+    process.stdout.write(content);
+    onNewLine = content.endsWith('\n');
+  }
+  ensureNewline();
 }
 
 rl.on('line', (line) => {
@@ -1414,24 +1480,10 @@ rl.on('line', (line) => {
 
     // Streaming assistant text: emit only the new suffix since last write.
     const sc = p.streamingContent;
-    if (sc && typeof sc.text === 'string' && sc.text.length > streamedLen) {
-      const delta = sc.text.slice(streamedLen);
-      streamedLen = sc.text.length;
-      process.stdout.write(delta);
-      onNewLine = delta.endsWith('\n');
-    }
+    if (sc && typeof sc.text === 'string') writeTextDelta(sc.text);
   } else if (d.type === 'done') {
     const r = d.data || {};
-    ensureNewline();
-    if (r.content) {
-      if (streamedLen === 0) {
-        // No streaming happened — print the full final reply.
-        process.stdout.write('\n' + r.content + '\n');
-      } else {
-        // We already streamed it incrementally; just terminate the line.
-        process.stdout.write('\n');
-      }
-    }
+    writeFinalContent(r.content);
     if (r.conversation_id && installDir) {
       try { fs.writeFileSync(installDir + '/.last_cid', 'CID:' + r.conversation_id); } catch {}
     }

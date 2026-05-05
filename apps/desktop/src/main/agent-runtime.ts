@@ -5,6 +5,7 @@ import {
   type MCPToolCall,
   type MCPToolResult,
 } from "./mcp-service"
+import { agentSessionStateManager } from "./state"
 import type { AgentProgressUpdate, SessionProfileSnapshot } from "../shared/types"
 
 type ToolProgressCallback = (message: string) => void
@@ -30,12 +31,15 @@ export interface AgentRuntimeToolService {
 export interface AgentRuntimeDependencies {
   toolService: AgentRuntimeToolService
   runAgentLoop: typeof processTranscriptWithAgentMode
+  getSessionProfileSnapshot?: (sessionId: string) => SessionProfileSnapshot | undefined
 }
 
 function getDefaultAgentRuntimeDependencies(): AgentRuntimeDependencies {
   return {
     toolService: mcpService,
     runAgentLoop: processTranscriptWithAgentMode,
+    getSessionProfileSnapshot: (sessionId) =>
+      agentSessionStateManager.getSessionProfileSnapshot(sessionId),
   }
 }
 
@@ -94,11 +98,22 @@ export class AgentRuntime {
       : this.deps.toolService.getAvailableTools()
   }
 
+  getEffectiveProfileSnapshot(options: {
+    sessionId?: string
+    profileSnapshot?: SessionProfileSnapshot
+  }): SessionProfileSnapshot | undefined {
+    const storedSnapshot = options.sessionId
+      ? this.deps.getSessionProfileSnapshot?.(options.sessionId)
+      : undefined
+    return storedSnapshot ?? options.profileSnapshot
+  }
+
   async executeToolCall(
     toolCall: MCPToolCall,
     onProgress: ToolProgressCallback | undefined,
     options: AgentRuntimeExecuteToolOptions,
   ): Promise<MCPToolResult> {
+    const effectiveProfileSnapshot = this.getEffectiveProfileSnapshot(options)
     const preExecuteResult = await options.beforeExecuteToolCall?.(toolCall, onProgress)
     if (preExecuteResult) {
       return preExecuteResult
@@ -109,7 +124,7 @@ export class AgentRuntime {
       onProgress,
       options.skipApprovalCheck ?? false,
       options.sessionId,
-      options.profileSnapshot?.mcpServerConfig,
+      effectiveProfileSnapshot?.mcpServerConfig,
     )
 
     await options.afterExecuteToolCall?.(toolCall, result)
@@ -122,9 +137,11 @@ export class AgentRuntime {
       registerExistingProcesses: options.registerExistingProcesses,
     })
 
-    const availableTools = this.getAvailableTools(options.profileSnapshot)
+    const effectiveProfileSnapshot = this.getEffectiveProfileSnapshot(options)
+    const runOptions = { ...options, profileSnapshot: effectiveProfileSnapshot }
+    const availableTools = this.getAvailableTools(effectiveProfileSnapshot)
     const executeToolCall = (toolCall: MCPToolCall, onProgress?: ToolProgressCallback) =>
-      this.executeToolCall(toolCall, onProgress, options)
+      this.executeToolCall(toolCall, onProgress, runOptions)
 
     return this.deps.runAgentLoop(
       options.transcript,
@@ -135,7 +152,7 @@ export class AgentRuntime {
       options.conversationId,
       options.sessionId,
       options.onProgress,
-      options.profileSnapshot,
+      effectiveProfileSnapshot,
       options.runId,
     )
   }

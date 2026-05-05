@@ -106,7 +106,7 @@ describeCliSmoke("dotagents CLI one-shot chat", () => {
                 steps: [
                   { id: "step-1", type: "thinking", title: "Mock thinking" },
                 ],
-                streamingContent: { text: "hello from mock daemon" },
+                streamingContent: { text: "hello from mock" },
               },
             })}\n\n`,
           )
