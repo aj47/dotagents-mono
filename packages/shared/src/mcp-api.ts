@@ -12,6 +12,15 @@ import type {
   OperatorMCPToolSummary,
   OperatorMCPToolToggleResponse,
 } from "./api-types"
+import {
+  inferTransportType,
+  isReservedMcpServerName,
+  removeMcpServerConfig,
+  upsertMcpServerConfig,
+  type MCPConfig,
+  type MCPServerConfig,
+  type MCPTransportType,
+} from "./mcp-utils"
 
 export type McpRequestParseResult<T> =
   | { ok: true; request: T }
@@ -25,6 +34,16 @@ export type McpServerToggleResponse = {
   success: true
   server: string
   enabled: boolean
+}
+
+export type McpServerConfigMutationResponse = {
+  success: true
+  server: string
+  action: "upserted" | "deleted"
+}
+
+export type McpServerConfigUpsertRequest = {
+  config: MCPServerConfig
 }
 
 export type InjectedMcpToolCallRequest = {
@@ -102,6 +121,11 @@ export interface McpServerActionService {
   setServerRuntimeEnabled(serverName: string, enabled: boolean): boolean
 }
 
+export interface McpServerConfigActionService {
+  getMcpConfig(): MCPConfig
+  saveMcpConfig(mcpConfig: MCPConfig): void
+}
+
 export interface McpServerActionDiagnostics {
   logError(source: string, message: string, error: unknown): void
   logInfo?(source: string, message: string): void
@@ -110,6 +134,12 @@ export interface McpServerActionDiagnostics {
 export interface McpServerActionOptions {
   service: McpServerActionService
   diagnostics: McpServerActionDiagnostics
+}
+
+export interface McpServerConfigActionOptions {
+  service: McpServerConfigActionService
+  diagnostics: McpServerActionDiagnostics
+  reservedServerNames?: readonly string[]
 }
 
 export interface OperatorMcpReadActionService {
@@ -324,6 +354,92 @@ function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {}
 }
 
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return !!value
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && Object.values(value).every((entry) => typeof entry === "string")
+}
+
+function normalizeOptionalStringRecord(value: unknown): Record<string, string> | undefined {
+  if (value === undefined) return undefined
+  return isStringRecord(value) ? { ...value } : undefined
+}
+
+function normalizeOptionalStringArray(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string")) return undefined
+  return [...value]
+}
+
+function normalizeOptionalRecord(value: unknown): Record<string, unknown> | undefined {
+  if (value === undefined) return undefined
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : undefined
+}
+
+function normalizeMcpServerConfigRequest(value: unknown): MCPServerConfig | null {
+  const input = getRequestRecord(value)
+  if (Object.keys(input).length === 0) return null
+
+  const requestedTransport = input.transport
+  let transport: MCPTransportType | undefined
+  if (
+    requestedTransport === "stdio"
+    || requestedTransport === "websocket"
+    || requestedTransport === "streamableHttp"
+  ) {
+    transport = requestedTransport
+  } else if (requestedTransport !== undefined) {
+    return null
+  }
+
+  const command = typeof input.command === "string" ? input.command.trim() : undefined
+  const url = typeof input.url === "string" ? input.url.trim() : undefined
+  const args = normalizeOptionalStringArray(input.args)
+  const env = normalizeOptionalStringRecord(input.env)
+  const headers = normalizeOptionalStringRecord(input.headers)
+  const oauth = normalizeOptionalRecord(input.oauth)
+  const timeout = input.timeout === undefined
+    ? undefined
+    : typeof input.timeout === "number" && Number.isFinite(input.timeout) && input.timeout > 0
+      ? Math.floor(input.timeout)
+      : null
+  const disabled = input.disabled === undefined
+    ? undefined
+    : typeof input.disabled === "boolean"
+      ? input.disabled
+      : null
+
+  if (args === undefined && input.args !== undefined) return null
+  if (env === undefined && input.env !== undefined) return null
+  if (headers === undefined && input.headers !== undefined) return null
+  if (oauth === undefined && input.oauth !== undefined) return null
+  if (timeout === null || disabled === null) return null
+
+  const normalized: MCPServerConfig = {
+    ...(transport ? { transport } : {}),
+    ...(command ? { command } : {}),
+    ...(args ? { args } : {}),
+    ...(env ? { env } : {}),
+    ...(url ? { url } : {}),
+    ...(headers ? { headers } : {}),
+    ...(oauth ? { oauth: oauth as MCPServerConfig["oauth"] } : {}),
+    ...(timeout !== undefined ? { timeout } : {}),
+    ...(disabled !== undefined ? { disabled } : {}),
+  }
+  const inferredTransport = inferTransportType(normalized)
+
+  if (inferredTransport === "stdio" && !command) return null
+  if ((inferredTransport === "websocket" || inferredTransport === "streamableHttp") && !url) return null
+
+  return {
+    ...normalized,
+    transport: inferredTransport,
+  }
+}
+
 function parseOperatorMcpServerActionRequestBody(body: unknown): McpRequestParseResult<{ server: string }> {
   const requestBody = getRequestRecord(body)
   const server = typeof requestBody.server === "string" ? requestBody.server.trim() : ""
@@ -367,11 +483,33 @@ export function parseMcpServerToggleRequestBody(body: unknown): McpRequestParseR
   return { ok: true, request: { enabled } }
 }
 
+export function parseMcpServerConfigUpsertRequestBody(body: unknown): McpRequestParseResult<McpServerConfigUpsertRequest> {
+  const requestBody = getRequestRecord(body)
+  const config = normalizeMcpServerConfigRequest(requestBody.config)
+
+  if (!config) {
+    return { ok: false, statusCode: 400, error: "Missing or invalid MCP server config" }
+  }
+
+  return { ok: true, request: { config } }
+}
+
 export function buildMcpServerToggleResponse(server: string, enabled: boolean): McpServerToggleResponse {
   return {
     success: true,
     server,
     enabled,
+  }
+}
+
+export function buildMcpServerConfigMutationResponse(
+  server: string,
+  action: McpServerConfigMutationResponse["action"],
+): McpServerConfigMutationResponse {
+  return {
+    success: true,
+    server,
+    action,
   }
 }
 
@@ -489,6 +627,75 @@ export function toggleMcpServerAction(
   } catch (caughtError) {
     options.diagnostics.logError("mcp-server-actions", "Failed to toggle MCP server", caughtError)
     return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to toggle MCP server"))
+  }
+}
+
+export function upsertMcpServerConfigAction(
+  serverName: string | undefined,
+  body: unknown,
+  options: McpServerConfigActionOptions,
+): McpServerActionResult {
+  try {
+    const normalizedServerName = typeof serverName === "string" ? serverName.trim() : ""
+    if (!normalizedServerName) {
+      return mcpServerActionError(400, "Missing server name")
+    }
+    if (isReservedMcpServerName(normalizedServerName, options.reservedServerNames || [])) {
+      return mcpServerActionError(400, `Server name '${normalizedServerName}' is reserved`)
+    }
+
+    const parsedRequest = parseMcpServerConfigUpsertRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return mcpServerActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const nextMcpConfig = upsertMcpServerConfig(
+      options.service.getMcpConfig(),
+      normalizedServerName,
+      parsedRequest.request.config,
+    )
+    options.service.saveMcpConfig(nextMcpConfig)
+    options.diagnostics.logInfo?.(
+      "mcp-server-actions",
+      `Upserted MCP server config ${normalizedServerName}`,
+    )
+
+    return mcpServerActionOk(buildMcpServerConfigMutationResponse(normalizedServerName, "upserted"))
+  } catch (caughtError) {
+    options.diagnostics.logError("mcp-server-actions", "Failed to upsert MCP server config", caughtError)
+    return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to upsert MCP server config"))
+  }
+}
+
+export function deleteMcpServerConfigAction(
+  serverName: string | undefined,
+  options: McpServerConfigActionOptions,
+): McpServerActionResult {
+  try {
+    const normalizedServerName = typeof serverName === "string" ? serverName.trim() : ""
+    if (!normalizedServerName) {
+      return mcpServerActionError(400, "Missing server name")
+    }
+    if (isReservedMcpServerName(normalizedServerName, options.reservedServerNames || [])) {
+      return mcpServerActionError(400, `Server name '${normalizedServerName}' is reserved`)
+    }
+
+    const currentMcpConfig = options.service.getMcpConfig()
+    if (!currentMcpConfig.mcpServers?.[normalizedServerName]) {
+      return mcpServerActionError(404, `Server '${normalizedServerName}' not found`)
+    }
+
+    const nextMcpConfig = removeMcpServerConfig(currentMcpConfig, normalizedServerName)
+    options.service.saveMcpConfig(nextMcpConfig)
+    options.diagnostics.logInfo?.(
+      "mcp-server-actions",
+      `Deleted MCP server config ${normalizedServerName}`,
+    )
+
+    return mcpServerActionOk(buildMcpServerConfigMutationResponse(normalizedServerName, "deleted"))
+  } catch (caughtError) {
+    options.diagnostics.logError("mcp-server-actions", "Failed to delete MCP server config", caughtError)
+    return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to delete MCP server config"))
   }
 }
 

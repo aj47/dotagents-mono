@@ -7,7 +7,8 @@ import {
   getModelPresetActivationUpdates,
   upsertModelPresetOverride,
 } from './model-presets';
-import { MCP_MAX_ITERATIONS_DEFAULT, normalizeMcpMaxIterationsValue } from './mcp-api';
+import { MCP_MAX_ITERATIONS_DEFAULT, normalizeMcpMaxIterationsValue, type McpServerConfigMutationResponse } from './mcp-api';
+import type { MCPServerConfig } from './mcp-utils';
 import { sanitizeConfigStringList } from './config-list-input';
 import {
   REMOTE_SERVER_API_BUILDERS,
@@ -993,6 +994,19 @@ export class SettingsApiClient {
     return this.request(API_BUILDERS.mcpServerToggle(serverName), {
       method: 'POST',
       body: JSON.stringify({ enabled }),
+    });
+  }
+
+  async upsertMCPServerConfig(serverName: string, config: MCPServerConfig): Promise<McpServerConfigMutationResponse> {
+    return this.request<McpServerConfigMutationResponse>(API_BUILDERS.mcpConfigServer(serverName), {
+      method: 'PUT',
+      body: JSON.stringify({ config }),
+    });
+  }
+
+  async deleteMCPServerConfig(serverName: string): Promise<McpServerConfigMutationResponse> {
+    return this.request<McpServerConfigMutationResponse>(API_BUILDERS.mcpConfigServer(serverName), {
+      method: 'DELETE',
     });
   }
 

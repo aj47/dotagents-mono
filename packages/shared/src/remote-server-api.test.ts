@@ -50,6 +50,7 @@ describe('remote server API contract', () => {
   it('builds encoded dynamic paths and query paths for clients', () => {
     expect(REMOTE_SERVER_API_BUILDERS.profileExport('agent/name')).toBe('/profiles/agent%2Fname/export');
     expect(REMOTE_SERVER_API_BUILDERS.mcpServerToggle('filesystem/local')).toBe('/mcp/servers/filesystem%2Flocal/toggle');
+    expect(REMOTE_SERVER_API_BUILDERS.mcpConfigServer('filesystem/local')).toBe('/mcp/config/servers/filesystem%2Flocal');
     expect(REMOTE_SERVER_API_BUILDERS.modelsByProvider('openai')).toBe('/models/openai');
     expect(REMOTE_SERVER_API_BUILDERS.conversationVideoAsset('conv 1', 'clip/name.mp4')).toBe('/conversations/conv%201/assets/videos/clip%2Fname.mp4');
     expect(REMOTE_SERVER_API_BUILDERS.operatorLogs(5, 'warning')).toBe('/operator/logs?count=5&level=warning');

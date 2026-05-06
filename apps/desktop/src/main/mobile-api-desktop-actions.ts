@@ -24,8 +24,10 @@ import {
   updateKnowledgeNote,
 } from "./knowledge-note-actions"
 import {
+  deleteMcpServerConfig,
   getMcpServers,
   toggleMcpServer,
+  upsertMcpServerConfig,
 } from "./mcp-server-actions"
 import {
   getModels,
@@ -78,6 +80,8 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   importProfile,
   getMcpServers,
   toggleMcpServer,
+  upsertMcpServerConfig,
+  deleteMcpServerConfig,
   getSettings,
   updateSettings,
   recordOperatorAuditEvent,

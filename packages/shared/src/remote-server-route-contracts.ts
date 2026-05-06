@@ -58,6 +58,8 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   importProfile: (body: unknown) => MobileApiActionResult;
   getMcpServers: () => MobileApiActionResult;
   toggleMcpServer: (name: string | undefined, body: unknown) => MobileApiActionResult;
+  upsertMcpServerConfig: (name: string | undefined, body: unknown) => MobileApiActionResult;
+  deleteMcpServerConfig: (name?: string) => MobileApiActionResult;
   getSettings: (providerSecretMask: string) => MobileApiActionResult;
   updateSettings: (
     body: unknown,

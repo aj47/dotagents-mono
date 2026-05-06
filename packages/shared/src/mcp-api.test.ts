@@ -8,6 +8,7 @@ import {
   MCP_MAX_ITERATIONS_MIN,
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   RUNTIME_TOOLS_SERVER_NAME,
+  buildMcpServerConfigMutationResponse,
   buildInjectedMcpToolCallErrorResponse,
   buildInjectedMcpToolCallResponse,
   buildInjectedMcpToolsListResponse,
@@ -29,12 +30,15 @@ import {
   parseInjectedMcpToolCallRequestBody,
   parseMcpMaxIterationsDraft,
   parseMcpServerToggleRequestBody,
+  parseMcpServerConfigUpsertRequestBody,
   setOperatorMcpToolEnabledAction,
   startOperatorMcpServerAction,
   stopOperatorMcpServerAction,
   testOperatorMcpServerAction,
   restartOperatorMcpServerAction,
   toggleMcpServerAction,
+  upsertMcpServerConfigAction,
+  deleteMcpServerConfigAction,
   type ElicitationRequest,
   type SamplingRequest,
   type SamplingResult,
@@ -43,6 +47,7 @@ import {
   type OperatorMcpTestActionOptions,
   type McpServerStatusMapLike,
 } from "./mcp-api"
+import type { MCPConfig } from "./mcp-utils"
 
 describe("MCP API helpers", () => {
   it("exports canonical runtime tool MCP names", () => {
@@ -124,11 +129,69 @@ describe("MCP API helpers", () => {
     })
   })
 
+  it("parses MCP server config upsert requests", () => {
+    expect(parseMcpServerConfigUpsertRequestBody({
+      config: {
+        command: "npx",
+        args: ["-y", "server"],
+        env: { API_KEY: "secret" },
+      },
+    })).toEqual({
+      ok: true,
+      request: {
+        config: {
+          transport: "stdio",
+          command: "npx",
+          args: ["-y", "server"],
+          env: { API_KEY: "secret" },
+        },
+      },
+    })
+
+    expect(parseMcpServerConfigUpsertRequestBody({
+      config: {
+        url: " https://example.com/mcp ",
+        headers: { Authorization: "Bearer token" },
+        timeout: 15.8,
+        disabled: true,
+      },
+    })).toEqual({
+      ok: true,
+      request: {
+        config: {
+          transport: "streamableHttp",
+          url: "https://example.com/mcp",
+          headers: { Authorization: "Bearer token" },
+          timeout: 15,
+          disabled: true,
+        },
+      },
+    })
+
+    expect(parseMcpServerConfigUpsertRequestBody({ config: { transport: "stdio" } })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "Missing or invalid MCP server config",
+    })
+    expect(parseMcpServerConfigUpsertRequestBody({
+      config: { url: "https://example.com/mcp", headers: { Bad: 1 } },
+    })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "Missing or invalid MCP server config",
+    })
+  })
+
   it("builds MCP server toggle responses", () => {
     expect(buildMcpServerToggleResponse("filesystem", false)).toEqual({
       success: true,
       server: "filesystem",
       enabled: false,
+    })
+    expect(buildMcpServerConfigMutationResponse("filesystem", "upserted")).toEqual({
+      success: true,
+      server: "filesystem",
+      action: "upserted",
     })
   })
 
@@ -184,6 +247,11 @@ describe("MCP API helpers", () => {
     }
     const toggles: Array<{ serverName: string; enabled: boolean }> = []
     const logs: string[] = []
+    let mcpConfig: MCPConfig = {
+      mcpServers: {
+        filesystem: { command: "filesystem-mcp" },
+      },
+    }
     const options = {
       service: {
         getServerStatus: () => status,
@@ -196,6 +264,16 @@ describe("MCP API helpers", () => {
         logError: (_source: string, message: string) => logs.push(message),
         logInfo: (_source: string, message: string) => logs.push(message),
       },
+    }
+    const configOptions = {
+      service: {
+        getMcpConfig: () => mcpConfig,
+        saveMcpConfig: (nextConfig: typeof mcpConfig) => {
+          mcpConfig = nextConfig
+        },
+      },
+      diagnostics: options.diagnostics,
+      reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
     }
 
     expect(getMcpServersAction(options)).toEqual({
@@ -214,11 +292,30 @@ describe("MCP API helpers", () => {
       statusCode: 400,
       body: { error: "Missing or invalid 'enabled' boolean" },
     })
+    expect(upsertMcpServerConfigAction("github", { config: { command: "github-mcp" } }, configOptions)).toEqual({
+      statusCode: 200,
+      body: buildMcpServerConfigMutationResponse("github", "upserted"),
+    })
+    expect(mcpConfig.mcpServers.github).toEqual({ transport: "stdio", command: "github-mcp" })
+    expect(upsertMcpServerConfigAction("dotagents-runtime-tools", { config: { command: "reserved" } }, configOptions)).toEqual({
+      statusCode: 400,
+      body: { error: "Server name 'dotagents-runtime-tools' is reserved" },
+    })
+    expect(deleteMcpServerConfigAction("github", configOptions)).toEqual({
+      statusCode: 200,
+      body: buildMcpServerConfigMutationResponse("github", "deleted"),
+    })
+    expect(deleteMcpServerConfigAction("missing", configOptions)).toEqual({
+      statusCode: 404,
+      body: { error: "Server 'missing' not found" },
+    })
     expect(toggles).toEqual([
       { serverName: "filesystem", enabled: false },
       { serverName: "missing", enabled: true },
     ])
     expect(logs).toContain("Toggled MCP server filesystem to disabled")
+    expect(logs).toContain("Upserted MCP server config github")
+    expect(logs).toContain("Deleted MCP server config github")
   })
 
   it("builds compact operator MCP status responses", () => {

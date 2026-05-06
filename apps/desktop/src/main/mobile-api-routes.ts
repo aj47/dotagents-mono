@@ -93,6 +93,20 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // PUT /v1/mcp/config/servers/:name - Add or update MCP server config
+  fastify.put(API_ROUTES.mcpConfigServer, async (req, reply) => {
+    const params = req.params as { name?: string }
+    const result = actions.upsertMcpServerConfig(params.name, req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
+  // DELETE /v1/mcp/config/servers/:name - Remove MCP server config
+  fastify.delete(API_ROUTES.mcpConfigServer, async (req, reply) => {
+    const params = req.params as { name?: string }
+    const result = actions.deleteMcpServerConfig(params.name)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // GET /v1/settings - Get relevant settings for mobile app
   fastify.get(API_ROUTES.settings, async (_req, reply) => {
     const result = actions.getSettings(providerSecretMask)

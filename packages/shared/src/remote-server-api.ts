@@ -69,6 +69,7 @@ export const REMOTE_SERVER_API_PATHS = {
   operatorMcpServerLogsClear: "/operator/mcp/:server/logs/clear",
   mcpServers: "/mcp/servers",
   mcpServerToggle: "/mcp/servers/:name/toggle",
+  mcpConfigServer: "/mcp/config/servers/:name",
   settings: "/settings",
   conversation: "/conversations/:id",
   conversationVideoAsset: "/conversations/:id/assets/videos/:fileName",
@@ -158,6 +159,8 @@ export const REMOTE_SERVER_API_ROUTES = [
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorMcpServerLogsClear },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.mcpServers },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.mcpServerToggle },
+  { method: "PUT", path: REMOTE_SERVER_API_PATHS.mcpConfigServer },
+  { method: "DELETE", path: REMOTE_SERVER_API_PATHS.mcpConfigServer },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.settings },
   { method: "PATCH", path: REMOTE_SERVER_API_PATHS.settings },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.conversation },
@@ -350,6 +353,9 @@ export const REMOTE_SERVER_API_BUILDERS = {
   },
   mcpServerToggle(serverName: string): string {
     return `/mcp/servers/${encodePathParam(serverName)}/toggle`;
+  },
+  mcpConfigServer(serverName: string): string {
+    return `/mcp/config/servers/${encodePathParam(serverName)}`;
   },
   conversation(id: string): string {
     return `/conversations/${encodePathParam(id)}`;
