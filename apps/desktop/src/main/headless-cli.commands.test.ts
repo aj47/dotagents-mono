@@ -22,5 +22,7 @@ describe("headless CLI Discord commands", () => {
     expect(source).toContain("await handleDiscordCommand")
     expect(source).toContain("await saveDiscordConfig({ discordEnabled: true }")
     expect(source).toContain("await saveDiscordConfig({ discordDefaultProfileId: profile.id }")
+    expect(source).toContain("getEnabledChatAgentProfiles(agentProfileService.getAll())")
+    expect(source).not.toContain("profile.enabled !== false && (profile.role === \"chat-agent\"")
   })
 })

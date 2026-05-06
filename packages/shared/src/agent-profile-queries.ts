@@ -79,6 +79,10 @@ export function getChatAgentProfiles<T extends AgentProfileQueryLike>(profiles: 
   return dedupeProfilesById([...byRole, ...legacy])
 }
 
+export function getEnabledChatAgentProfiles<T extends AgentProfileQueryLike>(profiles: T[]): T[] {
+  return getChatAgentProfiles(profiles).filter((profile) => profile.enabled !== false)
+}
+
 export function getDelegationAgentProfiles<T extends AgentProfileQueryLike>(profiles: T[]): T[] {
   const byRole = getAgentProfilesByRole(profiles, "delegation-target")
   const legacy = profiles.filter((profile) => profile.isAgentTarget && !profile.role)

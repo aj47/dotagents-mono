@@ -15,6 +15,7 @@ import {
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
 } from "@dotagents/shared/discord-config"
+import { getEnabledChatAgentProfiles } from "@dotagents/shared/agent-profile-queries"
 import type { AgentProfile, Config } from "@shared/types"
 
 interface DiscordStatus {
@@ -103,7 +104,7 @@ export function Component() {
       ])
       setStatus(nextStatus as DiscordStatus)
       setLogs((nextLogs as DiscordLogEntry[]).slice().reverse())
-      setProfiles((nextProfiles as AgentProfile[]).filter((profile) => profile.enabled !== false && (profile.role === "chat-agent" || profile.role === "user-profile" || profile.isUserProfile)))
+      setProfiles(getEnabledChatAgentProfiles(nextProfiles as AgentProfile[]))
       setStatusError(null)
     } catch (error) {
       setStatusError(error instanceof Error ? error.message : String(error))

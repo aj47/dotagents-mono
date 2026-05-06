@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { readFileSync } from "node:fs"
+
+const settingsDiscordSource = readFileSync(new URL("./settings-discord.tsx", import.meta.url), "utf8")
 
 type EffectRecord = {
   callback?: () => void | (() => void)
@@ -261,6 +264,11 @@ afterEach(() => {
 })
 
 describe("desktop Discord settings review comment fixes", () => {
+  it("uses shared chat-agent filtering for Discord profile choices", () => {
+    expect(settingsDiscordSource).toContain("getEnabledChatAgentProfiles(nextProfiles as AgentProfile[])")
+    expect(settingsDiscordSource).not.toContain("profile.enabled !== false && (profile.role === \"chat-agent\"")
+  })
+
   it("shows Discord as unavailable and disables connect actions when the dependency is missing", async () => {
     const runtime = createHookRuntime()
     const { Component, setStatus } = await loadSettingsDiscord(runtime)

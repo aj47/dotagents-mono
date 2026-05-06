@@ -6,6 +6,7 @@ import {
   getChatAgentProfiles,
   getCurrentAgentProfile,
   getDelegationAgentProfiles,
+  getEnabledChatAgentProfiles,
   getEnabledDelegationAgentProfiles,
   getExternalAgentProfiles,
   isAgentProfileMatchingRole,
@@ -39,6 +40,13 @@ describe("agent profile query helpers", () => {
       enabled: true,
     },
     {
+      id: "disabled-chat",
+      name: "disabled-chat",
+      displayName: "Disabled Chat",
+      role: "chat-agent",
+      enabled: false,
+    },
+    {
       id: "disabled-target",
       name: "disabled-target",
       displayName: "Disabled Target",
@@ -69,17 +77,21 @@ describe("agent profile query helpers", () => {
   })
 
   it("matches roles using explicit role first and legacy flags as fallback", () => {
-    expect(isAgentProfileMatchingRole(profiles[1], "chat-agent")).toBe(true)
-    expect(isAgentProfileMatchingRole(profiles[2], "user-profile")).toBe(true)
-    expect(isAgentProfileMatchingRole(profiles[3], "delegation-target")).toBe(true)
-    expect(isAgentProfileMatchingRole(profiles[4], "external-agent")).toBe(true)
-    expect(isAgentProfileMatchingRole(profiles[5], "external-agent")).toBe(false)
+    const profile = (id: string) => profiles.find((candidate) => candidate.id === id)!
+
+    expect(isAgentProfileMatchingRole(profile("chat"), "chat-agent")).toBe(true)
+    expect(isAgentProfileMatchingRole(profile("legacy-chat"), "user-profile")).toBe(true)
+    expect(isAgentProfileMatchingRole(profile("disabled-target"), "delegation-target")).toBe(true)
+    expect(isAgentProfileMatchingRole(profile("external"), "external-agent")).toBe(true)
+    expect(isAgentProfileMatchingRole(profile("remote"), "external-agent")).toBe(false)
   })
 
   it("filters role-specific profile lists with legacy compatibility", () => {
     expect(getAgentProfilesByRole(profiles, "chat-agent").map((profile) => profile.id))
-      .toEqual(["chat", "legacy-chat"])
+      .toEqual(["chat", "legacy-chat", "disabled-chat"])
     expect(getChatAgentProfiles(profiles).map((profile) => profile.id))
+      .toEqual(["chat", "legacy-chat", "disabled-chat"])
+    expect(getEnabledChatAgentProfiles(profiles).map((profile) => profile.id))
       .toEqual(["chat", "legacy-chat"])
     expect(getDelegationAgentProfiles(profiles).map((profile) => profile.id))
       .toEqual(["main", "disabled-target", "external"])

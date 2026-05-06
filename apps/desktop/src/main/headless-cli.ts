@@ -18,6 +18,7 @@ import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressUpdate, Config } from "@shared/types"
 import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
 import { resolveAgentModeMaxIterations } from "@dotagents/shared/agent-run-utils"
+import { getEnabledChatAgentProfiles } from "@dotagents/shared/agent-profile-queries"
 
 // ANSI color codes (no external deps)
 const colors = {
@@ -74,9 +75,7 @@ ${colors.dim}Type any message to interact with the agent.${colors.reset}
 }
 
 function getChatAgents() {
-  return agentProfileService
-    .getAll()
-    .filter((profile) => profile.enabled !== false && (profile.role === "chat-agent" || profile.role === "user-profile" || profile.isUserProfile))
+  return getEnabledChatAgentProfiles(agentProfileService.getAll())
 }
 
 function printProfiles() {
