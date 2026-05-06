@@ -5,6 +5,24 @@ import {
   resolveMainAcpAgentSelection,
   resolvePreferredTopLevelAcpAgentSelection,
 } from "./main-agent-selection"
+import type { MainAgentConfig, MainAgentMode } from "./main-agent-selection"
+
+function assertType<T>(_value: T): void {
+  // Compile-time assertion only.
+}
+
+describe("main agent config contracts", () => {
+  it("exposes the persisted main agent mode and name contract", () => {
+    const mode: MainAgentMode = "acpx"
+    const config: MainAgentConfig = {
+      mainAgentMode: mode,
+      mainAgentName: "augustus",
+    }
+
+    assertType<MainAgentConfig>(config)
+    expect(config.mainAgentMode).toBe("acpx")
+  })
+})
 
 describe("getSelectableMainAcpAgents", () => {
   it("returns enabled acp-capable profile agents before legacy agents", () => {

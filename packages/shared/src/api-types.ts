@@ -6,6 +6,7 @@
 import type { QueuedMessage, ToolCall, ToolResult, LoopSchedule } from './types';
 import type { SessionHistoryConfig } from './session';
 import type { ModelPreset } from './providers';
+import type { MainAgentConfig } from './main-agent-selection';
 import type {
   KnowledgeNote,
   KnowledgeNoteContext,
@@ -582,7 +583,7 @@ export interface PredefinedPromptSummary {
 
 export type PredefinedPrompt = PredefinedPromptSummary;
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig {
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -608,8 +609,6 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, Ob
   mcpRequireApprovalBeforeToolCall?: boolean;
   mcpMaxIterations?: number;
   mcpUnlimitedIterations?: boolean;
-  mainAgentMode?: 'api' | 'acpx';
-  mainAgentName?: string;
   mcpVerifyCompletionEnabled?: boolean;
   mcpFinalSummaryEnabled?: boolean;
 
@@ -700,7 +699,7 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, Ob
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig {
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -724,8 +723,6 @@ export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConf
   mcpRequireApprovalBeforeToolCall?: boolean;
   mcpMaxIterations?: number;
   mcpUnlimitedIterations?: boolean;
-  mainAgentMode?: 'api' | 'acpx';
-  mainAgentName?: string;
   mcpVerifyCompletionEnabled?: boolean;
   mcpFinalSummaryEnabled?: boolean;
 

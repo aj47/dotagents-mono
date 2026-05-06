@@ -2,6 +2,7 @@ import {
   getAcpxMainAgentOptions,
   toMainAgentProfile,
   type MainAcpLegacyAgentCandidate,
+  type LegacyMainAgentMode,
 } from "./main-agent-selection"
 
 export type AgentSelectorProfileCandidate = {
@@ -28,7 +29,7 @@ export interface SelectableAgentProfile {
 }
 
 export type AgentSelectorSettings = {
-  mainAgentMode?: "api" | "acpx" | "acp"
+  mainAgentMode?: LegacyMainAgentMode
   acpxAgents?: MainAcpLegacyAgentCandidate[]
 } | null | undefined
 

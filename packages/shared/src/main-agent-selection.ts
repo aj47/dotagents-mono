@@ -4,6 +4,13 @@ export type MainAcpAgentOption = {
 }
 
 export type MainAgentOption = MainAcpAgentOption
+export type MainAgentMode = "api" | "acpx"
+export type LegacyMainAgentMode = MainAgentMode | "acp"
+
+export interface MainAgentConfig {
+  mainAgentMode?: MainAgentMode
+  mainAgentName?: string
+}
 
 export type MainAcpProfileCandidate = {
   id?: string
@@ -198,7 +205,7 @@ export function resolvePreferredTopLevelAcpAgentSelection({
 }: {
   currentProfile?: MainAcpProfileCandidate
   sessionProfileId?: string
-  mainAgentMode?: "api" | "acpx" | "acp"
+  mainAgentMode?: LegacyMainAgentMode
   mainAgentName?: string
   profileAgents?: MainAcpProfileCandidate[]
   legacyAgents?: MainAcpLegacyAgentCandidate[]
