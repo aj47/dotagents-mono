@@ -4,6 +4,10 @@ export type PushTokenRecord = PushTokenRegistration & {
   registeredAt: number;
 };
 
+export type PushNotificationToken = PushTokenRecord & {
+  badgeCount?: number;
+};
+
 export type PushRegistrationParseResult =
   | { ok: true; registration: PushTokenRegistration }
   | { ok: false; statusCode: 400; error: string };

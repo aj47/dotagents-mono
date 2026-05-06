@@ -15,6 +15,7 @@ import {
   summarizeExpoPushTickets,
   unregisterPushTokenAction,
   upsertPushTokenRegistration,
+  type PushNotificationToken,
   type PushTokenRecord,
 } from './push-notifications';
 
@@ -86,6 +87,18 @@ describe('push notification API helpers', () => {
       tokens: updated.tokens,
       removed: false,
     });
+  });
+
+  it('exposes persisted push token records with badge counts', () => {
+    const token: PushNotificationToken = {
+      token: 't1',
+      type: 'expo',
+      platform: 'ios',
+      registeredAt: 100,
+      badgeCount: 2,
+    };
+
+    expect(token.badgeCount).toBe(2);
   });
 
   it('builds registration, unregistration, and status responses', () => {

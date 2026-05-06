@@ -18,6 +18,7 @@ import type {
   AgentConversationState,
 } from '@dotagents/shared/conversation-state'
 import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
+import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
 import type { PredefinedPrompt as SharedPredefinedPrompt } from '@dotagents/shared/api-types'
 import {
   legacyAcpAgentConfigToAgentProfile as sharedLegacyAcpAgentConfigToAgentProfile,
@@ -37,6 +38,7 @@ export type { AgentConversationState } from '@dotagents/shared/conversation-stat
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared/agent-progress'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '@dotagents/shared/knowledge-note-domain'
 export type { KnowledgeNoteDateFilter, KnowledgeNoteGroupSummary, KnowledgeNoteSeriesSummary, KnowledgeNoteSort, KnowledgeNotesOverview } from '@dotagents/shared/knowledge-note-grouping'
+export type { PushNotificationToken } from '@dotagents/shared/push-notifications'
 
 export type RecordingHistoryItem = {
   id: string
@@ -848,7 +850,7 @@ export type Config = {
 
   // Push Notification Configuration for Mobile App
   // Stores registered push notification tokens from mobile clients
-  pushNotificationTokens?: PushNotificationToken[]
+  pushNotificationTokens?: SharedPushNotificationToken[]
 
   // Langfuse Observability Configuration
   // When enabled, traces all LLM calls, agent sessions, and MCP tool calls
@@ -866,14 +868,4 @@ export type Config = {
 
   // Repeat Tasks Configuration
   loops?: SharedLoopConfig[]  // Scheduled repeat tasks that run at intervals
-}
-
-// Push Notification Token (from mobile clients)
-export interface PushNotificationToken {
-  token: string
-  type: 'expo'
-  platform: 'ios' | 'android'
-  registeredAt: number
-  deviceId?: string
-  badgeCount?: number // Tracks unread notification count for this device
 }
