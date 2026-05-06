@@ -190,6 +190,32 @@ function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === 'object' && !Array.isArray(body) ? body as Record<string, unknown> : {};
 }
 
+const PANEL_POSITIONS = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'custom'] as const;
+
+function getRecordValue(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
+}
+
+function normalizePanelPoint(value: unknown): { x: number; y: number } | undefined {
+  const record = getRecordValue(value);
+  if (!record || typeof record.x !== 'number' || typeof record.y !== 'number') return undefined;
+  if (!Number.isFinite(record.x) || !Number.isFinite(record.y)) return undefined;
+  return {
+    x: Math.round(record.x),
+    y: Math.round(record.y),
+  };
+}
+
+function normalizePanelSizeValue(value: unknown): { width: number; height: number } | undefined {
+  const record = getRecordValue(value);
+  if (!record || typeof record.width !== 'number' || typeof record.height !== 'number') return undefined;
+  if (!Number.isFinite(record.width) || !Number.isFinite(record.height)) return undefined;
+  const width = Math.round(record.width);
+  const height = Math.round(record.height);
+  if (width < 1 || height < 1 || width > 10000 || height > 10000) return undefined;
+  return { width, height };
+}
+
 export function getSettingsUpdateRequestRecord(body: unknown): Record<string, unknown> {
   return getRequestRecord(body);
 }
@@ -240,6 +266,13 @@ export function buildSettingsResponse(
     themePreference: cfg.themePreference ?? 'system',
     floatingPanelAutoShow: cfg.floatingPanelAutoShow ?? true,
     hidePanelWhenMainFocused: cfg.hidePanelWhenMainFocused ?? true,
+    panelPosition: cfg.panelPosition ?? 'top-right',
+    panelCustomPosition: cfg.panelCustomPosition,
+    panelDragEnabled: cfg.panelDragEnabled ?? true,
+    panelCustomSize: cfg.panelCustomSize,
+    panelWaveformSize: cfg.panelWaveformSize,
+    panelTextInputSize: cfg.panelTextInputSize,
+    panelProgressSize: cfg.panelProgressSize,
     conversationsEnabled: cfg.conversationsEnabled ?? true,
     maxConversationsToKeep: cfg.maxConversationsToKeep ?? 100,
     autoSaveConversations: cfg.autoSaveConversations ?? true,
@@ -661,6 +694,23 @@ export function buildSettingsUpdatePatch(
   }
   if (typeof requestBody.floatingPanelAutoShow === 'boolean') updates.floatingPanelAutoShow = requestBody.floatingPanelAutoShow;
   if (typeof requestBody.hidePanelWhenMainFocused === 'boolean') updates.hidePanelWhenMainFocused = requestBody.hidePanelWhenMainFocused;
+  if (typeof requestBody.panelPosition === 'string' && PANEL_POSITIONS.includes(requestBody.panelPosition as typeof PANEL_POSITIONS[number])) {
+    updates.panelPosition = requestBody.panelPosition;
+  }
+  if (requestBody.panelCustomPosition === null) updates.panelCustomPosition = undefined;
+  else {
+    const panelCustomPosition = normalizePanelPoint(requestBody.panelCustomPosition);
+    if (panelCustomPosition) updates.panelCustomPosition = panelCustomPosition;
+  }
+  if (typeof requestBody.panelDragEnabled === 'boolean') updates.panelDragEnabled = requestBody.panelDragEnabled;
+  for (const key of ['panelCustomSize', 'panelWaveformSize', 'panelTextInputSize', 'panelProgressSize']) {
+    if (requestBody[key] === null) {
+      updates[key] = undefined;
+      continue;
+    }
+    const size = normalizePanelSizeValue(requestBody[key]);
+    if (size) updates[key] = size;
+  }
   if (typeof requestBody.conversationsEnabled === 'boolean') updates.conversationsEnabled = requestBody.conversationsEnabled;
   if (typeof requestBody.autoSaveConversations === 'boolean') updates.autoSaveConversations = requestBody.autoSaveConversations;
   if (typeof requestBody.maxConversationsToKeep === 'number' && Number.isFinite(requestBody.maxConversationsToKeep)) {

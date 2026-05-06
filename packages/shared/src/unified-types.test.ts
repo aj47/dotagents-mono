@@ -24,6 +24,7 @@ import type {
   ChatProviderCredentialsConfig,
   ConversationStorageConfig,
   DesktopDisplayConfig,
+  DesktopPanelLayoutConfig,
   PredefinedPrompt,
   PredefinedPromptsConfig,
   SpeechToTextConfig,
@@ -457,6 +458,25 @@ describe('settings API request/response contracts', () => {
     assertType<DesktopDisplayConfig>(config)
     assertType<SettingsUpdate>(update)
     expect(update.themePreference).toBe('dark')
+  })
+
+  it('accepts desktop panel layout settings through the shared settings API', () => {
+    const config: DesktopPanelLayoutConfig = {
+      panelPosition: 'custom',
+      panelCustomPosition: { x: 40, y: -20 },
+      panelDragEnabled: true,
+      panelCustomSize: { width: 420, height: 128 },
+      panelWaveformSize: { width: 360, height: 96 },
+      panelTextInputSize: { width: 620, height: 240 },
+      panelProgressSize: { width: 720, height: 360 },
+    }
+    const update: SettingsUpdate = {
+      ...config,
+    }
+
+    assertType<DesktopPanelLayoutConfig>(config)
+    assertType<SettingsUpdate>(update)
+    expect(update.panelPosition).toBe('custom')
   })
 
   it('accepts conversation storage settings through the shared settings API', () => {

@@ -12,7 +12,7 @@ import type {
 } from '@dotagents/shared/conversation-state'
 import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
 import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
-import type { AgentExecutionConfig, AgentGenerationOptionsConfig, AgentModelSelectionConfig, AudioDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, ConversationStorageConfig, DesktopDisplayConfig, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
+import type { AgentExecutionConfig, AgentGenerationOptionsConfig, AgentModelSelectionConfig, AudioDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, ConversationStorageConfig, DesktopDisplayConfig, DesktopPanelLayoutConfig, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
 import type { MainAgentConfig } from '@dotagents/shared/main-agent-selection'
 import type { CloudflareTunnelConfig, RemoteServerConfig, StreamerModeConfig } from '@dotagents/shared/remote-pairing'
 import type { ObservabilityConfig } from '@dotagents/shared/observability-config'
@@ -34,7 +34,7 @@ import {
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, RecordingHistoryItem, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
 export type { SessionHistoryConfig } from '@dotagents/shared/session'
-export type { AgentExecutionConfig, AgentGenerationOptionsConfig, AgentModelSelectionConfig, AudioDeviceConfig, AudioInputDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, CodexTextVerbosity, ConversationStorageConfig, DesktopDisplayConfig, OpenAiReasoningEffort, OpenAITtsResponseFormat, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, ThemePreference, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
+export type { AgentExecutionConfig, AgentGenerationOptionsConfig, AgentModelSelectionConfig, AudioDeviceConfig, AudioInputDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, CodexTextVerbosity, ConversationStorageConfig, DesktopDisplayConfig, DesktopPanelLayoutConfig, OpenAiReasoningEffort, OpenAITtsResponseFormat, PanelPoint, PanelPosition, PanelSize, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, ThemePreference, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
@@ -137,7 +137,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & AgentModelSelectionConfig & ChatProviderCredentialsConfig & ChatGptWebAuthConfig & AgentGenerationOptionsConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & TextToSpeechConfig & DesktopDisplayConfig & ConversationStorageConfig & AudioDeviceConfig & AgentRuntimeTuningConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & AgentModelSelectionConfig & ChatProviderCredentialsConfig & ChatGptWebAuthConfig & AgentGenerationOptionsConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & TextToSpeechConfig & DesktopDisplayConfig & DesktopPanelLayoutConfig & ConversationStorageConfig & AudioDeviceConfig & AgentRuntimeTuningConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -233,22 +233,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   providerSectionCollapsedParakeet?: boolean
   providerSectionCollapsedKitten?: boolean
   providerSectionCollapsedSupertonic?: boolean
-
-  // Panel Position Configuration
-  panelPosition?:
-    | "top-left"
-    | "top-center"
-    | "top-right"
-    | "bottom-left"
-    | "bottom-center"
-    | "bottom-right"
-    | "custom"
-  panelCustomPosition?: { x: number; y: number }
-  panelDragEnabled?: boolean
-  panelCustomSize?: { width: number; height: number }
-  panelWaveformSize?: { width: number; height: number }
-  panelTextInputSize?: { width: number; height: number }
-  panelProgressSize?: { width: number; height: number }
 
   // Stream Status Watcher Configuration
   streamStatusWatcherEnabled?: boolean
