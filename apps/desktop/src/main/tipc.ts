@@ -72,6 +72,7 @@ import { buildConversationImageMarkdownMessage } from "@dotagents/shared/convers
 import {
   DEFAULT_MCP_AUTO_PASTE_DELAY,
   DEFAULT_MCP_AUTO_PASTE_ENABLED,
+  DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
   parseMcpServerConfigImportRequestBody,
 } from "@dotagents/shared/mcp-api"
 import { conversationService } from "./conversation-service"
@@ -1379,7 +1380,7 @@ export const router = {
     }>()
     .action(async ({ input }) => {
       const config = configStore.get()
-      const queueEnabled = config.mcpMessageQueueEnabled !== false
+      const queueEnabled = config.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED
 
       logApp("[createMcpTextInput] Request received", {
         conversationId: input.conversationId ?? null,
@@ -1558,7 +1559,7 @@ export const router = {
 
       // Check if message queuing is enabled and there's an active session for this conversation
       // If so, we'll transcribe the audio and queue the transcript instead of processing immediately
-      if (input.conversationId && config.mcpMessageQueueEnabled !== false) {
+      if (input.conversationId && (config.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED)) {
         const activeSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
         if (activeSessionId) {
           const session = agentSessionTracker.getSession(activeSessionId)

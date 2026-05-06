@@ -16,6 +16,7 @@ import {
   isGeneratedContextSummaryContent,
   MAPPED_TOOL_RESULT_PREFIX_RE,
 } from "./conversation-history-utils"
+import { DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED } from "@dotagents/shared/mcp-api"
 
 export type LLMMessage = { role: string; content: string }
 
@@ -1367,7 +1368,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   const config = configStore.get()
   const applied: string[] = []
 
-  const enabled = config.mcpContextReductionEnabled ?? true
+  const enabled = config.mcpContextReductionEnabled ?? DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED
   // CHANGED: Default target ratio lowered from 0.7 to 0.4
   // Research shows LLM quality degrades significantly past 30-50% of context window
   // for complex agentic tasks (tool calling + multi-step reasoning).

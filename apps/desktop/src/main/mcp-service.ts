@@ -30,6 +30,7 @@ import {
 import { requestElicitation, handleElicitationComplete, cancelAllElicitations } from "./mcp-elicitation"
 import { requestSampling, cancelAllSamplingRequests } from "./mcp-sampling"
 import { inferTransportType, normalizeMcpConfig } from "@dotagents/shared/mcp-utils"
+import { DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED } from "@dotagents/shared/mcp-api"
 import { DEFAULT_REMOTE_SERVER_PORT } from "@dotagents/shared/remote-pairing"
 import { spawn } from "child_process"
 import { promisify } from "util"
@@ -1310,7 +1311,7 @@ export class MCPService {
     const CRITICAL_RESPONSE_THRESHOLD = config.mcpToolResponseCriticalThreshold ?? 50000
 
     // Check if processing is enabled
-    if (!config.mcpToolResponseProcessingEnabled) {
+    if (!(config.mcpToolResponseProcessingEnabled ?? DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED)) {
       return content // Return unprocessed if disabled
     }
 
