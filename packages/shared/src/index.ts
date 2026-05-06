@@ -60,6 +60,7 @@ export * from './stt-models';
 export * from './api-key-error-utils';
 export * from './error-utils';
 export * from './config-save-error';
+export * from './audio-input-device-utils';
 export * from './tool-activity-grouping';
 export * from './main-agent-selection';
 export * from './agent-profile-presets';

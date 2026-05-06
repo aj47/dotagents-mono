@@ -181,6 +181,11 @@
       "import": "./dist/config-save-error.mjs",
       "require": "./dist/config-save-error.js"
     },
+    "./audio-input-device-utils": {
+      "types": "./dist/audio-input-device-utils.d.ts",
+      "import": "./dist/audio-input-device-utils.mjs",
+      "require": "./dist/audio-input-device-utils.js"
+    },
     "./tool-activity-grouping": {
       "types": "./dist/tool-activity-grouping.d.ts",
       "import": "./dist/tool-activity-grouping.mjs",

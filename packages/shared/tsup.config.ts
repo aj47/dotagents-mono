@@ -37,6 +37,7 @@ export default defineConfig({
     'api-key-error-utils': 'src/api-key-error-utils.ts',
     'error-utils': 'src/error-utils.ts',
     'config-save-error': 'src/config-save-error.ts',
+    'audio-input-device-utils': 'src/audio-input-device-utils.ts',
     'tool-activity-grouping': 'src/tool-activity-grouping.ts',
     'main-agent-selection': 'src/main-agent-selection.ts',
     'agent-profile-presets': 'src/agent-profile-presets.ts',
