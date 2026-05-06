@@ -40,6 +40,8 @@ export type SkillActionResult = {
   body: unknown
 }
 
+export type SkillIdGenerator = () => string
+
 export interface SkillActionDiagnostics {
   logError(source: string, message: string, error: unknown): void
 }
@@ -117,6 +119,19 @@ export type IgnoredExecuteCommandSkillIdWarning = {
 
 export const GITHUB_SKILL_MARKDOWN_FILENAMES = ["SKILL.md", "skill.md"] as const
 export const GITHUB_SKILL_COLLECTION_DIRS = ["skills", ".claude/skills", ".codex/skills"] as const
+
+export function slugifySkillName(name: string, maxLength = 64): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, maxLength)
+}
+
+export function createSkillIdFromName(name: string, createFallbackId: SkillIdGenerator): string {
+  return slugifySkillName(name) || createFallbackId()
+}
 
 export function isGitHubSkillMarkdownFileName(filename: string): boolean {
   return (GITHUB_SKILL_MARKDOWN_FILENAMES as readonly string[]).includes(filename)

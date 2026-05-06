@@ -11,6 +11,7 @@ import {
   buildSkillsResponse,
   buildSkillToggleResponse,
   createSkillAction,
+  createSkillIdFromName,
   deleteSkillAction,
   exportSkillToMarkdownAction,
   importSkillFromGitHubAction,
@@ -33,6 +34,7 @@ import {
   resolveRuntimeSkill,
   toggleProfileSkillAction,
   updateSkillAction,
+  slugifySkillName,
   uniqueSkillIds,
   validateGitHubSkillIdentifierPart,
   validateGitHubSkillRef,
@@ -88,6 +90,13 @@ describe("skills API helpers", () => {
       ...overrides,
     }
   }
+
+  it("creates skill ids from skill names with fallback id generation", () => {
+    expect(slugifySkillName("  Research Helper!  ")).toBe("research-helper")
+    expect(slugifySkillName("Code / Review Assistant", 8)).toBe("code-rev")
+    expect(createSkillIdFromName("Research Helper", () => "fallback")).toBe("research-helper")
+    expect(createSkillIdFromName("!!!", () => "fallback")).toBe("fallback")
+  })
 
   it("enables all skills when a profile has default skill semantics", () => {
     expect(getEnabledSkillIdsForProfile(skills, undefined)).toEqual(["research", "writing"])

@@ -11,6 +11,7 @@ import {
 import {
   GITHUB_SKILL_COLLECTION_DIRS,
   GITHUB_SKILL_MARKDOWN_FILENAMES,
+  createSkillIdFromName,
   getGitHubSkillCandidateRelativePaths,
   isGitHubSkillMarkdownFileName,
   parseGitHubSkillIdentifier,
@@ -529,8 +530,7 @@ class SkillsService {
     this.ensureInitialized()
 
     const { globalLayer } = this.getLayers()
-    const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64)
-    const id = slugify(name) || randomUUID()
+    const id = createSkillIdFromName(name, randomUUID)
     const originFilePath = skillIdToFilePath(globalLayer, id)
     const now = Date.now()
 
