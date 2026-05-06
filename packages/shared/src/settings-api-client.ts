@@ -37,6 +37,11 @@ import {
   type RemoteServerLifecycleConfigLike,
 } from './remote-pairing';
 import { getSensitiveOperatorSettingsKeys } from './operator-actions';
+import {
+  TEXT_TO_SPEECH_SPEED_SETTING_KEYS,
+  getTextToSpeechSpeedDefault,
+  isTextToSpeechSpeedUpdateValue,
+} from './text-to-speech-settings';
 import type {
   AgentModelSelectionConfig,
   ChatProviderCredentialsConfig,
@@ -398,7 +403,7 @@ export function buildSettingsResponse(
     mainAgentName: cfg.mainAgentName || '',
     openaiTtsModel: cfg.openaiTtsModel || 'gpt-4o-mini-tts',
     openaiTtsVoice: cfg.openaiTtsVoice || 'alloy',
-    openaiTtsSpeed: cfg.openaiTtsSpeed ?? 1.0,
+    openaiTtsSpeed: cfg.openaiTtsSpeed ?? getTextToSpeechSpeedDefault('openai'),
     openaiTtsResponseFormat: cfg.openaiTtsResponseFormat || 'mp3',
     groqTtsModel: cfg.groqTtsModel || 'canopylabs/orpheus-v1-english',
     groqTtsVoice: cfg.groqTtsVoice || 'autumn',
@@ -406,11 +411,11 @@ export function buildSettingsResponse(
     geminiTtsVoice: cfg.geminiTtsVoice || 'Kore',
     edgeTtsModel: cfg.edgeTtsModel || 'edge-tts',
     edgeTtsVoice: cfg.edgeTtsVoice || DEFAULT_EDGE_TTS_VOICE,
-    edgeTtsRate: cfg.edgeTtsRate ?? 1.0,
+    edgeTtsRate: cfg.edgeTtsRate ?? getTextToSpeechSpeedDefault('edge'),
     kittenVoiceId: cfg.kittenVoiceId ?? 0,
     supertonicVoice: cfg.supertonicVoice ?? 'M1',
     supertonicLanguage: cfg.supertonicLanguage ?? 'en',
-    supertonicSpeed: cfg.supertonicSpeed ?? 1.05,
+    supertonicSpeed: cfg.supertonicSpeed ?? getTextToSpeechSpeedDefault('supertonic'),
     supertonicSteps: cfg.supertonicSteps ?? 5,
     acpxAgents: options.acpxAgents ?? [],
     pinnedSessionIds: Array.isArray(cfg.pinnedSessionIds)
@@ -913,7 +918,6 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.mainAgentName === 'string') updates.mainAgentName = requestBody.mainAgentName;
   if (typeof requestBody.openaiTtsModel === 'string') updates.openaiTtsModel = requestBody.openaiTtsModel;
   if (typeof requestBody.openaiTtsVoice === 'string') updates.openaiTtsVoice = requestBody.openaiTtsVoice;
-  if (typeof requestBody.openaiTtsSpeed === 'number' && requestBody.openaiTtsSpeed >= 0.25 && requestBody.openaiTtsSpeed <= 4.0) updates.openaiTtsSpeed = requestBody.openaiTtsSpeed;
   if (typeof requestBody.openaiTtsResponseFormat === 'string' && ['mp3', 'opus', 'aac', 'flac', 'wav', 'pcm'].includes(requestBody.openaiTtsResponseFormat)) {
     updates.openaiTtsResponseFormat = requestBody.openaiTtsResponseFormat;
   }
@@ -923,11 +927,15 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.geminiTtsVoice === 'string') updates.geminiTtsVoice = requestBody.geminiTtsVoice;
   if (typeof requestBody.edgeTtsModel === 'string') updates.edgeTtsModel = requestBody.edgeTtsModel;
   if (typeof requestBody.edgeTtsVoice === 'string') updates.edgeTtsVoice = requestBody.edgeTtsVoice;
-  if (typeof requestBody.edgeTtsRate === 'number' && requestBody.edgeTtsRate >= 0.5 && requestBody.edgeTtsRate <= 2.0) updates.edgeTtsRate = requestBody.edgeTtsRate;
   if (Number.isInteger(requestBody.kittenVoiceId) && (requestBody.kittenVoiceId as number) >= 0 && (requestBody.kittenVoiceId as number) <= 7) updates.kittenVoiceId = requestBody.kittenVoiceId;
   if (typeof requestBody.supertonicVoice === 'string' && ['M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'].includes(requestBody.supertonicVoice)) updates.supertonicVoice = requestBody.supertonicVoice;
   if (typeof requestBody.supertonicLanguage === 'string' && ['en', 'ko', 'es', 'pt', 'fr'].includes(requestBody.supertonicLanguage)) updates.supertonicLanguage = requestBody.supertonicLanguage;
-  if (typeof requestBody.supertonicSpeed === 'number' && requestBody.supertonicSpeed >= 0.5 && requestBody.supertonicSpeed <= 2.0) updates.supertonicSpeed = requestBody.supertonicSpeed;
+  for (const key of TEXT_TO_SPEECH_SPEED_SETTING_KEYS) {
+    const value = requestBody[key];
+    if (isTextToSpeechSpeedUpdateValue(key, value)) {
+      updates[key] = value;
+    }
+  }
   if (Number.isInteger(requestBody.supertonicSteps) && (requestBody.supertonicSteps as number) >= 2 && (requestBody.supertonicSteps as number) <= 10) updates.supertonicSteps = requestBody.supertonicSteps;
 
   if (Array.isArray(requestBody.pinnedSessionIds) && requestBody.pinnedSessionIds.every((id: unknown) => typeof id === 'string')) updates.pinnedSessionIds = requestBody.pinnedSessionIds;

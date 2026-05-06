@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  TEXT_TO_SPEECH_SPEED_SETTING_KEYS,
   formatLocalSpeechModelProgress,
   getTextToSpeechModelValue,
   getTextToSpeechPlaybackRate,
+  getTextToSpeechSpeedDefault,
   getTextToSpeechSpeedSetting,
+  getTextToSpeechSpeedSettingByKey,
   getTextToSpeechSpeedValue,
   getTextToSpeechVoiceValue,
+  isTextToSpeechSpeedUpdateValue,
   normalizeTextToSpeechVoiceUpdateValue,
 } from "./text-to-speech-settings"
 
@@ -52,6 +56,7 @@ describe("text to speech settings helpers", () => {
   })
 
   it("describes provider-specific speed controls", () => {
+    expect(TEXT_TO_SPEECH_SPEED_SETTING_KEYS).toEqual(["openaiTtsSpeed", "edgeTtsRate", "supertonicSpeed"])
     expect(getTextToSpeechSpeedSetting()).toMatchObject({
       key: "openaiTtsSpeed",
       minimumValue: 0.25,
@@ -77,6 +82,16 @@ describe("text to speech settings helpers", () => {
       fractionDigits: 2,
     })
     expect(getTextToSpeechSpeedSetting("groq")).toBeUndefined()
+  })
+
+  it("looks up and validates speed controls by setting key", () => {
+    expect(getTextToSpeechSpeedSettingByKey("openaiTtsSpeed").defaultValue).toBe(1.0)
+    expect(getTextToSpeechSpeedDefault("supertonic")).toBe(1.05)
+    expect(isTextToSpeechSpeedUpdateValue("openaiTtsSpeed", 0.25)).toBe(true)
+    expect(isTextToSpeechSpeedUpdateValue("openaiTtsSpeed", 4.0)).toBe(true)
+    expect(isTextToSpeechSpeedUpdateValue("openaiTtsSpeed", 0.24)).toBe(false)
+    expect(isTextToSpeechSpeedUpdateValue("edgeTtsRate", 2.1)).toBe(false)
+    expect(isTextToSpeechSpeedUpdateValue("supertonicSpeed", "1.0")).toBe(false)
   })
 
   it("resolves playback rates with provider defaults", () => {

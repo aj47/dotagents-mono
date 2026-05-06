@@ -16,6 +16,12 @@ export type TextToSpeechSpeedSetting = {
   fractionDigits: number
 }
 
+export const TEXT_TO_SPEECH_SPEED_SETTING_KEYS = [
+  "openaiTtsSpeed",
+  "edgeTtsRate",
+  "supertonicSpeed",
+] as const
+
 const TEXT_TO_SPEECH_SPEED_SETTINGS: Record<string, TextToSpeechSpeedSetting> = {
   openai: {
     key: "openaiTtsSpeed",
@@ -43,8 +49,30 @@ const TEXT_TO_SPEECH_SPEED_SETTINGS: Record<string, TextToSpeechSpeedSetting> = 
   },
 }
 
+const TEXT_TO_SPEECH_SPEED_SETTINGS_BY_KEY = Object.fromEntries(
+  Object.values(TEXT_TO_SPEECH_SPEED_SETTINGS).map((setting) => [setting.key, setting]),
+) as Record<TextToSpeechSpeedSettingKey, TextToSpeechSpeedSetting>
+
 export function getTextToSpeechSpeedSetting(providerId?: string | null): TextToSpeechSpeedSetting | undefined {
   return TEXT_TO_SPEECH_SPEED_SETTINGS[providerId || "openai"]
+}
+
+export function getTextToSpeechSpeedSettingByKey(
+  key: TextToSpeechSpeedSettingKey,
+): TextToSpeechSpeedSetting {
+  return TEXT_TO_SPEECH_SPEED_SETTINGS_BY_KEY[key]
+}
+
+export function getTextToSpeechSpeedDefault(providerId?: string | null): number {
+  return getTextToSpeechSpeedSetting(providerId)?.defaultValue ?? 1.0
+}
+
+export function isTextToSpeechSpeedUpdateValue(
+  key: TextToSpeechSpeedSettingKey,
+  value: unknown,
+): value is number {
+  const setting = getTextToSpeechSpeedSettingByKey(key)
+  return typeof value === "number" && value >= setting.minimumValue && value <= setting.maximumValue
 }
 
 export function getTextToSpeechModelValue(settings?: TextToSpeechConfig | null): string | undefined {
@@ -76,7 +104,7 @@ export function getTextToSpeechPlaybackRate(settings?: TextToSpeechConfig | null
   const speedSetting = getTextToSpeechSpeedSetting(settings?.ttsProviderId)
   const speed = getTextToSpeechSpeedValue(settings)
   if (speed !== undefined) return speed
-  return speedSetting?.defaultValue ?? 1.0
+  return speedSetting?.defaultValue ?? getTextToSpeechSpeedDefault()
 }
 
 export function formatLocalSpeechModelProgress(status?: LocalSpeechModelStatus): string {

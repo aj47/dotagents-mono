@@ -121,6 +121,9 @@ describe('SettingsApiClient', () => {
         maxConversationsToKeep: 250.9,
         autoSaveConversations: false,
         ttsLLMPreprocessingProviderId: 'chatgpt-web',
+        openaiTtsSpeed: 1.25,
+        edgeTtsRate: 0.8,
+        supertonicSpeed: 1.1,
         openaiTtsResponseFormat: 'opus',
         remoteServerCorsOrigins: [' https://app.example ', '', 3],
         discordBotToken: '••••••••',
@@ -166,6 +169,9 @@ describe('SettingsApiClient', () => {
       maxConversationsToKeep: 250,
       autoSaveConversations: false,
       ttsLLMPreprocessingProviderId: 'chatgpt-web',
+      openaiTtsSpeed: 1.25,
+      edgeTtsRate: 0.8,
+      supertonicSpeed: 1.1,
       openaiTtsResponseFormat: 'opus',
       remoteServerCorsOrigins: ['https://app.example'],
       discordAllowUserIds: ['user-1'],
@@ -196,6 +202,23 @@ describe('SettingsApiClient', () => {
         discordSecretMask: '••••••••',
       },
     )).not.toHaveProperty('mcpMaxIterations');
+    expect(buildSettingsUpdatePatch(
+      {
+        openaiTtsSpeed: 0.24,
+        edgeTtsRate: 2.1,
+        supertonicSpeed: '1.1',
+      },
+      {},
+      {
+        providerSecretMask: '••••••••',
+        remoteServerSecretMask: '••••••••',
+        discordSecretMask: '••••••••',
+      },
+    )).not.toMatchObject({
+      openaiTtsSpeed: expect.any(Number),
+      edgeTtsRate: expect.any(Number),
+      supertonicSpeed: expect.any(Number),
+    });
   });
 
   it('builds masked settings responses with mobile-compatible defaults', () => {
@@ -285,7 +308,10 @@ describe('SettingsApiClient', () => {
       maxConversationsToKeep: 250,
       autoSaveConversations: false,
       ttsLLMPreprocessingProviderId: 'gemini',
+      openaiTtsSpeed: 1.0,
       openaiTtsResponseFormat: 'aac',
+      edgeTtsRate: 1.0,
+      supertonicSpeed: 1.05,
       transcriptPostProcessingEnabled: true,
       remoteServerApiKey: 'REMOTE-MASK',
       remoteServerPort: 3210,
