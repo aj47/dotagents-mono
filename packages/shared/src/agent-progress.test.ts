@@ -8,6 +8,8 @@ import {
 import type {
   AgentProgressUpdate,
   AgentProgressStep,
+  AgentRetryInfo,
+  AgentRetryProgressCallback,
   ACPDelegationProgress,
   ACPDelegationState,
   ACPSubAgentMessage,
@@ -138,6 +140,18 @@ describe('AgentProgressUpdate', () => {
   })
 
   it('accepts desktop-specific fields', () => {
+    const retryInfo: AgentRetryInfo = {
+      isRetrying: true,
+      attempt: 2,
+      maxAttempts: 5,
+      delaySeconds: 30,
+      reason: 'Rate limited',
+      startedAt: Date.now(),
+    }
+    const retryProgressCallback: AgentRetryProgressCallback = (info) => {
+      expect(info).toEqual(retryInfo)
+    }
+
     const update: AgentProgressUpdate = {
       ...minimalUpdate,
       runId: 3,
@@ -150,14 +164,7 @@ describe('AgentProgressUpdate', () => {
         toolName: 'shell',
         arguments: { cmd: 'ls' },
       },
-      retryInfo: {
-        isRetrying: true,
-        attempt: 2,
-        maxAttempts: 5,
-        delaySeconds: 30,
-        reason: 'Rate limited',
-        startedAt: Date.now(),
-      },
+      retryInfo,
       contextInfo: {
         estTokens: 3000,
         maxTokens: 8000,
@@ -187,6 +194,7 @@ describe('AgentProgressUpdate', () => {
       },
     }
     assertType<AgentProgressUpdate>(update)
+    retryProgressCallback(retryInfo)
     expect(update.runId).toBe(3)
     expect(update.retryInfo?.isRetrying).toBe(true)
     expect(update.acpSessionInfo?.agentName).toBe('coder')

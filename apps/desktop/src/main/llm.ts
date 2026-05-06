@@ -7,10 +7,11 @@ import {
 } from "./mcp-service"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressStep, AgentProgressUpdate } from "../shared/types"
+import type { AgentRetryProgressCallback } from "@dotagents/shared/agent-progress"
 import type { ConversationCompactionMetadata } from "../shared/types"
 import { diagnosticsService } from "./diagnostics"
 
-import { makeLLMCallWithFetch, makeTextCompletionWithFetch, verifyCompletionWithFetch, RetryProgressCallback, makeLLMCallWithStreamingAndTools, StreamingCallback } from "./llm-fetch"
+import { makeLLMCallWithFetch, makeTextCompletionWithFetch, verifyCompletionWithFetch, makeLLMCallWithStreamingAndTools, StreamingCallback } from "./llm-fetch"
 import { constructSystemPrompt } from "./system-prompts"
 import { state, agentSessionStateManager } from "./state"
 import { isDebugLLM, logLLM, isDebugTools, logTools } from "./debug"
@@ -1138,7 +1139,7 @@ export async function processTranscriptWithAgentMode(
   // This callback is passed to makeLLMCall to show retry status
   // Note: This callback captures conversationHistory and formatConversationForProgress by reference,
   // so it will have access to them when called (they are defined later in this function)
-  const onRetryProgress: RetryProgressCallback = (retryInfo) => {
+  const onRetryProgress: AgentRetryProgressCallback = (retryInfo) => {
     emit({
       currentIteration: currentIterationRef,
       maxIterations,
@@ -3561,7 +3562,7 @@ export async function processTranscriptWithAgentMode(
 async function makeLLMCall(
   messages: Array<{ role: string; content: string }>,
   config: any,
-  onRetryProgress?: RetryProgressCallback,
+  onRetryProgress?: AgentRetryProgressCallback,
   onStreamingUpdate?: StreamingCallback,
   sessionId?: string,
   tools?: MCPTool[],

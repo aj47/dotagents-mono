@@ -15,6 +15,7 @@ import type { ModelMessage, UserContent } from "ai"
 import { jsonSchema } from "ai"
 import { randomUUID } from "crypto"
 import fs from "fs"
+import type { AgentRetryProgressCallback } from "@dotagents/shared/agent-progress"
 import {
   createLanguageModel,
   getCurrentProviderId,
@@ -299,18 +300,6 @@ function convertMCPToolsToAISDKTools(mcpTools: MCPTool[]): ConvertedTools {
 }
 
 /**
- * Callback for reporting retry progress to the UI
- */
-export type RetryProgressCallback = (info: {
-  isRetrying: boolean
-  attempt: number
-  maxAttempts?: number // undefined for rate limits (infinite retries)
-  delaySeconds: number
-  reason: string
-  startedAt: number
-}) => void
-
-/**
  * Callback for streaming content updates
  */
 export type StreamingCallback = (chunk: string, accumulated: string) => void
@@ -372,7 +361,7 @@ async function withRetry<T>(
     maxRetries?: number
     baseDelay?: number
     maxDelay?: number
-    onRetryProgress?: RetryProgressCallback
+    onRetryProgress?: AgentRetryProgressCallback
     sessionId?: string
   } = {}
 ): Promise<T> {
@@ -695,7 +684,7 @@ function extractJsonObject(str: string): any | null {
 export async function makeLLMCallWithFetch(
   messages: Array<{ role: string; content: string }>,
   providerId?: string,
-  onRetryProgress?: RetryProgressCallback,
+  onRetryProgress?: AgentRetryProgressCallback,
   sessionId?: string,
   tools?: MCPTool[]
 ): Promise<LLMToolCallResponse> {
@@ -998,7 +987,7 @@ export async function makeLLMCallWithStreamingAndTools(
   messages: Array<{ role: string; content: string }>,
   onChunk: StreamingCallback,
   providerId?: string,
-  onRetryProgress?: RetryProgressCallback,
+  onRetryProgress?: AgentRetryProgressCallback,
   sessionId?: string,
   tools?: MCPTool[]
 ): Promise<LLMToolCallResponse> {
@@ -1231,7 +1220,7 @@ export async function makeTextCompletionWithFetch(
   prompt: string,
   providerId?: string,
   sessionId?: string,
-  onRetryProgress?: RetryProgressCallback
+  onRetryProgress?: AgentRetryProgressCallback
 ): Promise<string> {
   // Use transcript provider as default since this is primarily used for transcript post-processing
   const effectiveProviderId = (providerId ||
@@ -1339,7 +1328,7 @@ export async function verifyCompletionWithFetch(
   messages: Array<{ role: string; content: string }>,
   providerId?: string,
   sessionId?: string,
-  onRetryProgress?: RetryProgressCallback
+  onRetryProgress?: AgentRetryProgressCallback
 ): Promise<CompletionVerification> {
   const effectiveProviderId = (providerId ||
     getCurrentProviderId()) as ProviderType

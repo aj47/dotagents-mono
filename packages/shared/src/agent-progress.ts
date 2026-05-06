@@ -198,6 +198,17 @@ export interface AgentProgressStep {
   subagentId?: string
 }
 
+export type AgentRetryInfo = {
+  isRetrying: boolean
+  attempt: number
+  maxAttempts?: number
+  delaySeconds: number
+  reason: string
+  startedAt: number
+}
+
+export type AgentRetryProgressCallback = (info: AgentRetryInfo) => void
+
 /**
  * Ordered user-facing response emitted during a single agent run.
  * Consumers should use `id` for playback/delivery dedupe instead of raw text.
@@ -279,14 +290,7 @@ export interface AgentProgressUpdate {
     toolName: string
     arguments: any
   }
-  retryInfo?: {
-    isRetrying: boolean
-    attempt: number
-    maxAttempts?: number
-    delaySeconds: number
-    reason: string
-    startedAt: number
-  }
+  retryInfo?: AgentRetryInfo
   contextInfo?: {
     estTokens: number
     maxTokens: number
