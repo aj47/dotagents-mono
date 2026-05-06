@@ -19,6 +19,7 @@ import { extractHighSignalFactsFromConversationMessages } from "./conversation-c
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
 import { filterVisibleChatMessages } from "@dotagents/shared/chat-utils"
 import {
+  extractDataImageMarkdownReferences,
   getConversationImageExtensionForMimeType,
   getConversationImageMimeTypeFromFileName,
   getConversationVideoExtensionForMimeType,
@@ -57,8 +58,6 @@ const MAX_AGENT_SESSION_TITLE_WORDS = 10
 const MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS = 500
 const MAX_CONVERSATION_HISTORY_PREVIEW_CHARS = 200
 const COMPACTION_EXTRACTED_FACT_LIMIT = 8
-const createInlineDataImageMarkdownRegex = () =>
-  /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
 
 export class ConversationService {
   private static instance: ConversationService | null = null
@@ -209,20 +208,19 @@ export class ConversationService {
 
     let nextContent = ""
     let lastIndex = 0
-    const matches = Array.from(content.matchAll(createInlineDataImageMarkdownRegex()))
+    const matches = extractDataImageMarkdownReferences(content)
 
     for (const match of matches) {
-      const matchIndex = match.index ?? 0
-      const [fullMatch, altText, dataUrl] = match
+      const matchIndex = match.index
       nextContent += content.slice(lastIndex, matchIndex)
       try {
-        const assetUrl = await this.storeDataImageUrlAsConversationAsset(conversationId, dataUrl)
-        nextContent += `![${altText}](${assetUrl})`
+        const assetUrl = await this.storeDataImageUrlAsConversationAsset(conversationId, match.url)
+        nextContent += `![${match.altText}](${assetUrl})`
       } catch (error) {
         logApp(`[ConversationService] Failed to materialize inline image for ${conversationId}`, error)
-        nextContent += fullMatch
+        nextContent += match.fullMatch
       }
-      lastIndex = matchIndex + fullMatch.length
+      lastIndex = matchIndex + match.fullMatch.length
     }
 
     return nextContent + content.slice(lastIndex)

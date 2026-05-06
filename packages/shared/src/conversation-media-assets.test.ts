@@ -6,6 +6,7 @@ import {
   buildConversationVideoAssetHttpUrl,
   escapeMarkdownAltText,
   extractConversationImageMarkdownReferences,
+  extractDataImageMarkdownReferences,
   getConversationImageExtensionForMimeType,
   getConversationImageMimeTypeFromFileName,
   getConversationVideoByteRange,
@@ -217,6 +218,30 @@ describe('conversation video asset utilities', () => {
         altText: 'asset',
         url: 'assets://conversation-image/conv_1/abcdef1234567890.png',
         index: content.indexOf('![asset]'),
+      },
+    ]);
+  });
+
+  it('extracts markdown data image references without matching asset urls', () => {
+    const content = [
+      'Before ![inline](data:image/png;base64,AAAA) middle',
+      '![multiline](data:image/jpeg;base64,AA==\nBB==)',
+      '![asset](assets://conversation-image/conv_1/abcdef1234567890.png)',
+    ].join('\n');
+
+    const refs = extractDataImageMarkdownReferences(content);
+    expect(refs).toEqual([
+      {
+        fullMatch: '![inline](data:image/png;base64,AAAA)',
+        altText: 'inline',
+        url: 'data:image/png;base64,AAAA',
+        index: content.indexOf('![inline]'),
+      },
+      {
+        fullMatch: '![multiline](data:image/jpeg;base64,AA==\nBB==)',
+        altText: 'multiline',
+        url: 'data:image/jpeg;base64,AA==\nBB==',
+        index: content.indexOf('![multiline]'),
       },
     ]);
   });

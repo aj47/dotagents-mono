@@ -74,6 +74,7 @@ import {
   type ToolActivityGroup,
 } from '@dotagents/shared/tool-activity-grouping';
 import { sanitizeMessageMediaContentForPreview } from '@dotagents/shared/message-display-utils';
+import { extractDataImageMarkdownReferences } from '@dotagents/shared/conversation-media-assets';
 import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
 import type { HandsFreePhase } from '@dotagents/shared/types';
 import type {
@@ -200,16 +201,26 @@ const getSkillPromptContent = (skill: Skill): string => {
   return `Use the "${skill.name}" skill for this request.${skill.description ? `\n\n${skill.description}` : ''}`;
 };
 
-const INLINE_DATA_IMAGE_MARKDOWN_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi;
-
 /** Meta-tools whose results are already shown as visible message content or are purely internal */
 const HIDDEN_META_TOOLS = new Set([RESPOND_TO_USER_TOOL, 'mark_work_complete']);
 
-const sanitizeMessageContentForModel = (content: string) =>
-  content.replace(INLINE_DATA_IMAGE_MARKDOWN_REGEX, (_match, altText: string) => {
-    const cleanedAlt = altText?.trim();
-    return cleanedAlt ? `[Image: ${cleanedAlt}]` : '[Image]';
-  });
+const sanitizeMessageContentForModel = (content: string) => {
+  const imageReferences = extractDataImageMarkdownReferences(content);
+  if (imageReferences.length === 0) {
+    return content;
+  }
+
+  let sanitizedContent = '';
+  let lastIndex = 0;
+  for (const imageReference of imageReferences) {
+    const cleanedAlt = imageReference.altText.trim();
+    sanitizedContent += content.slice(lastIndex, imageReference.index);
+    sanitizedContent += cleanedAlt ? `[Image: ${cleanedAlt}]` : '[Image]';
+    lastIndex = imageReference.index + imageReference.fullMatch.length;
+  }
+
+  return sanitizedContent + content.slice(lastIndex);
+};
 
 const sanitizeMessagesForModel = (messages: ChatMessage[]): ChatMessage[] =>
   messages.map((message) => {
@@ -251,7 +262,7 @@ const extractRespondToUserHistory = (
 
 const getMessageLogMeta = (content: string) => ({
   length: content.length,
-  inlineImageCount: (content.match(/!\[[^\]]*\]\((?:data:image\/[^)]+)\)/gi) || []).length,
+  inlineImageCount: extractDataImageMarkdownReferences(content).length,
 });
 
 const normalizeVoiceText = (text?: string) => (text || '').replace(/\s+/g, ' ').trim();
