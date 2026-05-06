@@ -788,11 +788,15 @@ describe("agent progress response history", () => {
     expect(text).not.toMatch(/2 step(?:\s*s)?/)
     expect(text).not.toContain("First tool thought")
     expect(text).not.toContain("Second tool thought")
-    // Collapsed groups preview only the latest execute_command as
-    // "<firstCmdWord>:<secondToLastOutputWord>" (here: pnpm test → "suites passed").
+    // Collapsed groups list every execute_command as
+    // "<firstCmdWord>:<secondToLastOutputWord>" in chronological order, with a
+    // call count next to the wrench icon.
+    expect(text).toContain("git:branch")
     expect(text).toContain("pnpm:suites")
-    expect(text).not.toContain("git:branch")
+    expect(text.indexOf("git:branch")).toBeLessThan(text.indexOf("pnpm:suites"))
     expect(text.indexOf("pnpm:suites")).toBeLessThan(text.indexOf("Now here is the answer"))
+    // 2 tool calls in the run (search count badge before previews).
+    expect(text).toMatch(/2\s+git:branch/)
   })
 
   it("lets expanded tool groups collapse from the bottom", async () => {

@@ -145,6 +145,8 @@ type DisplayItem =
       items: DisplayItem[]
       /** Short single-line preview strings for the collapsed tool group. */
       previewLines: string[]
+      /** Total number of underlying tool calls across all collapsed items. */
+      callCount: number
     } }
 
 type ChatProviderId = NonNullable<Config["agentProviderId"]>
@@ -1721,6 +1723,7 @@ const ToolActivityGroupBubble: React.FC<{
   group: {
     items: DisplayItem[]
     previewLines: string[]
+    callCount: number
   }
   isExpanded: boolean
   onToggleExpand: () => void
@@ -1729,6 +1732,7 @@ const ToolActivityGroupBubble: React.FC<{
 }> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
   const collapsedPreviewLine = group.previewLines.join(', ')
   const thinkingCount = group.items.filter((item) => item.kind === "assistant_with_tools" && item.data.thought.trim().length > 0).length
+  const callCount = group.callCount
 
   return (
     <div className={cn(
@@ -1742,6 +1746,15 @@ const ToolActivityGroupBubble: React.FC<{
         onClick={() => !isExpanded && onToggleExpand()}
       >
         <Wrench className="h-3 w-3 shrink-0 text-sky-600/80 dark:text-sky-300/80" aria-hidden="true" />
+        {callCount > 0 && (
+          <span
+            className="shrink-0 rounded bg-sky-100/70 px-1 py-px font-mono text-[9px] font-semibold text-sky-800/80 dark:bg-sky-900/40 dark:text-sky-100/80"
+            aria-label={`${callCount} tool call${callCount === 1 ? "" : "s"}`}
+            title={`${callCount} tool call${callCount === 1 ? "" : "s"}`}
+          >
+            {callCount}
+          </span>
+        )}
         <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono text-[10px] text-sky-900/80 dark:text-sky-100/80">
           {collapsedPreviewLine || "Tool activity"}
         </span>
@@ -4209,12 +4222,14 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         return
       }
       const runItems = sortedItems.slice(runStart, runEnd + 1)
-      // Collapsed preview surfaces the most recent tool call. For
-      // execute_command we render `<firstCommandWord>:<secondToLastOutputWord>`
-      // so the header reads like a compact `git:branch` / `pnpm:passed` token.
-      // For other tools we fall back to the tool name only.
-      let previewLine = ""
-      for (let j = runItems.length - 1; j >= 0 && !previewLine; j--) {
+      // Collapsed preview surfaces every tool call in the run as a compact
+      // token, in chronological order. execute_command renders as
+      // `<firstCommandWord>:<secondToLastOutputWord>` (e.g. `git:branch`); other
+      // tools fall back to the tool name. The CSS truncate handles overflow on
+      // narrow tiles, so we emit the full list and let the layout shrink it.
+      const previewLines: string[] = []
+      let callCount = 0
+      for (let j = 0; j < runItems.length; j++) {
         const it = runItems[j]
         const calls =
           it.kind === "assistant_with_tools"
@@ -4228,23 +4243,21 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             : it.kind === "tool_execution"
               ? it.data.results
               : []
-        if (calls.length === 0) continue
-        const lastCallIdx = calls.length - 1
-        const latestCall = calls[lastCallIdx]
-        if (!latestCall) continue
-        const latestResult = results[lastCallIdx] ?? undefined
-        const execPreview = getExecuteCommandResultPreview(
-          { name: latestCall.name, arguments: latestCall.arguments ?? {} },
-          latestResult ?? null,
-        )
-        if (execPreview) {
-          previewLine = execPreview
-          break
-        }
-        const namePreview = getToolCallPreview({ name: latestCall.name, arguments: latestCall.arguments ?? {} })
-        if (namePreview) {
-          previewLine = namePreview
-          break
+        for (let k = 0; k < calls.length; k++) {
+          const call = calls[k]
+          if (!call) continue
+          callCount += 1
+          const result = results[k] ?? null
+          const execPreview = getExecuteCommandResultPreview(
+            { name: call.name, arguments: call.arguments ?? {} },
+            result,
+          )
+          if (execPreview) {
+            previewLines.push(execPreview)
+            continue
+          }
+          const namePreview = getToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
+          if (namePreview) previewLines.push(namePreview)
         }
       }
       // Prefix the first child ID so the group stays stable as the run grows
@@ -4253,7 +4266,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       grouped.push({
         kind: "tool_activity_group",
         id: groupId,
-        data: { items: runItems, previewLines: previewLine ? [previewLine] : [] },
+        data: { items: runItems, previewLines, callCount },
       })
       runStart = null
     }
