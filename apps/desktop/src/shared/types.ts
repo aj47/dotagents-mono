@@ -6,8 +6,6 @@ import type {
   ModelPreset,
 } from '@dotagents/shared/providers'
 import type {
-  ToolCall,
-  ToolResult,
   LoopConfig as SharedLoopConfig,
 } from '@dotagents/shared/types'
 import type { AgentProfile as SharedAgentProfile } from '@dotagents/shared/agent-profile-domain'
@@ -29,6 +27,7 @@ export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage,
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
+export type { Conversation, ConversationBranchSource, ConversationCompactionFact, ConversationCompactionMetadata, ConversationHistoryItem, ConversationMessage, LoadedConversation } from '@dotagents/shared/conversation-domain'
 export type { AgentConversationState } from '@dotagents/shared/conversation-state'
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared/agent-progress'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '@dotagents/shared/knowledge-note-domain'
@@ -192,141 +191,6 @@ export interface DetailedToolInfo {
 
 // Message Queue Types — re-exported from shared package
 export type { QueuedMessage, MessageQueue } from '@dotagents/shared/message-queue-utils'
-
-// Conversation Types
-export interface ConversationMessage {
-  id: string
-  role: "user" | "assistant" | "tool"
-  content: string
-  /**
-   * Optional display-only override for renderer history. This is persisted so
-   * saved sessions can show UI-only annotations such as Codex thinking blocks,
-   * but model replay must continue to use `content`.
-   */
-  displayContent?: string
-  timestamp: number
-  toolCalls?: ToolCall[]
-  toolResults?: ToolResult[]
-  /**
-   * When true, this message is a compaction summary that represents older messages
-   * in the active context window. The original raw messages may still be preserved
-   * in `Conversation.rawMessages`.
-   */
-  isSummary?: boolean
-  /**
-   * Number of messages that were summarized into this summary message.
-   * Only set when isSummary is true.
-   */
-  summarizedMessageCount?: number
-}
-
-export interface ConversationCompactionFact {
-  /** Raw-message index this fact was extracted from before compaction. */
-  sourceMessageIndex: number
-  /** Persisted message id for provenance when available. */
-  sourceMessageId?: string
-  sourceRole: "user" | "assistant" | "tool" | string
-  timestamp?: number
-  excerpt: string
-  repoSlugs?: string[]
-  urls?: string[]
-  paths?: string[]
-  identifiers?: string[]
-}
-
-export interface ConversationCompactionMetadata {
-  /**
-   * Whether the original raw message history is still preserved on disk.
-   */
-  rawHistoryPreserved: boolean
-  /**
-   * Number of raw messages preserved separately for compacted conversations.
-   * Omitted for legacy compacted sessions where the original history is unavailable.
-   */
-  storedRawMessageCount?: number
-  /**
-   * Total number of messages represented by the current conversation payload.
-   * For compacted conversations this includes summarized older messages plus active ones.
-   */
-  representedMessageCount: number
-  /**
-   * Timestamp of the most recent compaction pass that refreshed the active window.
-   */
-  compactedAt?: number
-  /** Stable checkpoint summary persisted during the latest compaction pass. */
-  summary?: string
-  /** Message id of the synthetic summary message in Conversation.messages. */
-  summaryMessageId?: string
-  /** Message id of the first raw message replayed after the summary checkpoint. */
-  firstKeptMessageId?: string
-  /** Raw-message index of the first message replayed after the summary checkpoint. */
-  firstKeptMessageIndex?: number
-  summarizedRange?: {
-    startMessageId?: string
-    endMessageId?: string
-    startIndex: number
-    endIndex: number
-  }
-  summarizedMessageCount?: number
-  /** Estimated token count for the summarized range before compaction. */
-  tokensBefore?: number
-  /** Deterministic high-signal facts extracted from the summarized range. */
-  extractedFacts?: ConversationCompactionFact[]
-  /**
-   * Marks conversations whose older raw history was previously discarded and cannot
-   * be fully recovered.
-   */
-  partialReason?: "legacy_summary_without_raw_messages"
-}
-
-/**
- * Provenance metadata for conversations created via "Branch from here".
- */
-export interface ConversationBranchSource {
-  /** The conversation ID that this conversation was branched from */
-  sourceConversationId: string
-  /** The index of the message (in the source conversation) that the branch was created from */
-  sourceMessageIndex: number
-  /** Timestamp of when the branch was created */
-  branchedAt: number
-}
-
-export interface Conversation {
-  id: string
-  title: string
-  createdAt: number
-  updatedAt: number
-  messages: ConversationMessage[]
-  rawMessages?: ConversationMessage[]
-  compaction?: ConversationCompactionMetadata
-  metadata?: {
-    totalTokens?: number
-    model?: string
-    provider?: string
-    agentMode?: boolean
-  }
-  /** Branch provenance: set when this conversation was created by branching from another */
-  branchSource?: ConversationBranchSource
-}
-
-export interface LoadedConversation extends Conversation {
-  /** Start index of `messages` within the persisted conversation when loaded as a window. */
-  messageOffset?: number
-  /** Total number of persisted display messages before windowing. */
-  totalMessageCount?: number
-  /** Raw-history branch index represented before the first loaded display message. */
-  branchMessageIndexOffset?: number
-}
-
-export interface ConversationHistoryItem {
-  id: string
-  title: string
-  createdAt: number
-  updatedAt: number
-  messageCount: number
-  lastMessage: string
-  preview: string
-}
 
 // Profile Management Types
 export type Profile = {

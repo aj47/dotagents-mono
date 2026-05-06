@@ -9,12 +9,17 @@ const __dirname = path.dirname(__filename)
 
 const serviceSource = fs.readFileSync(path.join(__dirname, 'conversation-service.ts'), 'utf8')
 const typesSource = fs.readFileSync(path.join(__dirname, '..', 'shared', 'types.ts'), 'utf8')
+const sharedConversationDomainSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', '..', 'packages', 'shared', 'src', 'conversation-domain.ts'),
+  'utf8',
+)
 
 test('conversation types expose preserved raw-history and partial-compaction metadata', () => {
-  assert.match(typesSource, /export interface ConversationCompactionMetadata/)
-  assert.match(typesSource, /rawMessages\?: ConversationMessage\[]/)
-  assert.match(typesSource, /compaction\?: ConversationCompactionMetadata/)
-  assert.match(typesSource, /partialReason\?: "legacy_summary_without_raw_messages"/)
+  assert.match(typesSource, /from ['"]@dotagents\/shared\/conversation-domain['"]/)
+  assert.match(sharedConversationDomainSource, /export interface ConversationCompactionMetadata/)
+  assert.match(sharedConversationDomainSource, /rawMessages\?: ConversationMessage\[]/)
+  assert.match(sharedConversationDomainSource, /compaction\?: ConversationCompactionMetadata/)
+  assert.match(sharedConversationDomainSource, /partialReason\?: 'legacy_summary_without_raw_messages'/)
 })
 
 test('conversation service preserves raw messages during compaction and marks legacy lossy sessions', () => {

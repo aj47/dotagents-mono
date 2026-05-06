@@ -69,6 +69,7 @@ export default defineConfig({
     'agent-run-utils': 'src/agent-run-utils.ts',
     'conversation-history-utils': 'src/conversation-history-utils.ts',
     'conversation-context-builder': 'src/conversation-context-builder.ts',
+    'conversation-domain': 'src/conversation-domain.ts',
     'conversation-id': 'src/conversation-id.ts',
     'llm-continuation-guards': 'src/llm-continuation-guards.ts',
     'agent-profile-reference-cleanup': 'src/agent-profile-reference-cleanup.ts',

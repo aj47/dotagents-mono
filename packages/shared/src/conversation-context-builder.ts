@@ -1,3 +1,12 @@
+import type {
+  ConversationCompactionFact,
+  ConversationCompactionMetadata,
+} from './conversation-domain'
+export type {
+  ConversationCompactionFact,
+  ConversationCompactionMetadata,
+} from './conversation-domain'
+
 export type PromptConversationRole = "user" | "assistant" | "tool" | string
 
 export interface PromptConversationMessage {
@@ -6,39 +15,6 @@ export interface PromptConversationMessage {
   content?: string
   timestamp?: number
   branchMessageIndex?: number
-}
-
-export interface ConversationCompactionFact {
-  sourceMessageIndex: number
-  sourceMessageId?: string
-  sourceRole: "user" | "assistant" | "tool" | string
-  timestamp?: number
-  excerpt: string
-  repoSlugs?: string[]
-  urls?: string[]
-  paths?: string[]
-  identifiers?: string[]
-}
-
-export interface ConversationCompactionMetadata {
-  rawHistoryPreserved?: boolean
-  storedRawMessageCount?: number
-  representedMessageCount?: number
-  compactedAt?: number
-  summary?: string
-  summaryMessageId?: string
-  firstKeptMessageId?: string
-  firstKeptMessageIndex?: number
-  summarizedRange?: {
-    startMessageId?: string
-    endMessageId?: string
-    startIndex: number
-    endIndex: number
-  }
-  summarizedMessageCount?: number
-  tokensBefore?: number
-  extractedFacts?: ConversationCompactionFact[]
-  partialReason?: "legacy_summary_without_raw_messages"
 }
 
 export interface RelevantEarlierContextOptions {

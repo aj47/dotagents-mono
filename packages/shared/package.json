@@ -341,6 +341,11 @@
       "import": "./dist/conversation-context-builder.mjs",
       "require": "./dist/conversation-context-builder.js"
     },
+    "./conversation-domain": {
+      "types": "./dist/conversation-domain.d.ts",
+      "import": "./dist/conversation-domain.mjs",
+      "require": "./dist/conversation-domain.js"
+    },
     "./conversation-id": {
       "types": "./dist/conversation-id.d.ts",
       "import": "./dist/conversation-id.mjs",
