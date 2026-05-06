@@ -58,6 +58,8 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   importProfile: (body: unknown) => MobileApiActionResult;
   getBundleExportableItems: () => MobileApiActionResult;
   exportBundle: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
+  previewBundleImport: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
+  importBundle: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
   getMcpServers: () => MobileApiActionResult;
   toggleMcpServer: (name: string | undefined, body: unknown) => MobileApiActionResult;
   exportMcpServerConfigs: () => MobileApiActionResult;

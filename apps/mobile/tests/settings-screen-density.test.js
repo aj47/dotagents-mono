@@ -96,3 +96,14 @@ test('lets mobile export DotAgents bundles through the shared client', () => {
   assert.match(settingsSource, /createButtonAccessibilityLabel\('Export DotAgents bundle JSON'\)/);
   assert.match(settingsSource, /Bundles can include agents, MCP servers, skills, tasks, and knowledge notes/);
 });
+
+test('lets mobile preview and import pasted DotAgents bundles through the shared client', () => {
+  assert.match(settingsSource, /showBundleImportModal/);
+  assert.match(settingsSource, /Import Bundle/);
+  assert.match(settingsSource, /settingsClient\.previewBundleImport\(\{ bundleJson: bundleImportJsonText\.trim\(\) \}\)/);
+  assert.match(settingsSource, /settingsClient\.importBundle\(\{[\s\S]*?bundleJson: bundleImportJsonText\.trim\(\),[\s\S]*?conflictStrategy: bundleImportConflictStrategy,[\s\S]*?components: bundleImportComponents/);
+  assert.match(settingsSource, /BUNDLE_IMPORT_CONFLICT_STRATEGIES/);
+  assert.match(settingsSource, /BUNDLE_IMPORT_COMPONENT_OPTIONS/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Import DotAgents bundle JSON'\)/);
+  assert.match(settingsSource, /Preview DotAgents bundle JSON/);
+});

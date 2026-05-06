@@ -17,7 +17,11 @@ import {
 import type {
   BundleExportResponse,
   BundleExportableItemsResponse,
+  BundleImportPreviewResponse,
+  BundleImportResult,
   ExportBundleRequest,
+  ImportBundleRequest,
+  PreviewBundleImportRequest,
 } from './bundle-api';
 import type { MCPConfig, MCPServerConfig } from './mcp-utils';
 import { sanitizeConfigStringList } from './config-list-input';
@@ -1003,6 +1007,20 @@ export class SettingsApiClient {
 
   async exportBundle(request: ExportBundleRequest = {}): Promise<BundleExportResponse> {
     return this.request<BundleExportResponse>(API_PATHS.bundleExport, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async previewBundleImport(request: PreviewBundleImportRequest): Promise<BundleImportPreviewResponse> {
+    return this.request<BundleImportPreviewResponse>(API_PATHS.bundleImportPreview, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async importBundle(request: ImportBundleRequest): Promise<BundleImportResult> {
+    return this.request<BundleImportResult>(API_PATHS.bundleImport, {
       method: 'POST',
       body: JSON.stringify(request),
     });

@@ -3,9 +3,14 @@ import { describe, expect, it } from "vitest"
 import {
   buildBundleExportResponse,
   buildBundleExportableItemsResponse,
+  buildBundleImportPreviewResponse,
   exportBundleAction,
   getBundleExportableItemsAction,
+  importBundleAction,
   parseExportBundleRequestBody,
+  parseImportBundleRequestBody,
+  parsePreviewBundleImportRequestBody,
+  previewBundleImportAction,
   type DotAgentsBundle,
   type ExportableBundleItems,
 } from "./bundle-api"
@@ -58,6 +63,27 @@ const exportableItems: ExportableBundleItems = {
   knowledgeNotes: [],
 }
 
+const importPreview = {
+  bundle,
+  conflicts: {
+    agentProfiles: [{ id: "agent-1", name: "agent", existingName: "Existing agent" }],
+    mcpServers: [],
+    skills: [],
+    repeatTasks: [],
+    knowledgeNotes: [],
+  },
+}
+
+const importResult = {
+  success: true,
+  agentProfiles: [{ id: "agent-1", name: "agent", action: "imported" as const }],
+  mcpServers: [],
+  skills: [],
+  repeatTasks: [],
+  knowledgeNotes: [],
+  errors: [],
+}
+
 describe("bundle API helpers", () => {
   it("parses bundle export requests with optional selection filters", () => {
     expect(parseExportBundleRequestBody({
@@ -101,6 +127,44 @@ describe("bundle API helpers", () => {
     })
   })
 
+  it("parses bundle import requests", () => {
+    const bundleJson = JSON.stringify(bundle)
+
+    expect(parsePreviewBundleImportRequestBody({ bundleJson })).toEqual({
+      ok: true,
+      request: { bundleJson },
+    })
+    expect(parseImportBundleRequestBody({
+      bundleJson,
+      conflictStrategy: "rename",
+      components: { skills: false, agentProfiles: true },
+    })).toEqual({
+      ok: true,
+      request: {
+        bundleJson,
+        conflictStrategy: "rename",
+        components: { skills: false, agentProfiles: true },
+      },
+    })
+    expect(parseImportBundleRequestBody({ bundleJson })).toEqual({
+      ok: true,
+      request: {
+        bundleJson,
+        conflictStrategy: "skip",
+      },
+    })
+    expect(parsePreviewBundleImportRequestBody({ bundleJson: "{bad" })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "bundleJson must be valid JSON",
+    })
+    expect(parseImportBundleRequestBody({ bundleJson, conflictStrategy: "merge" })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "conflictStrategy must be skip, overwrite, or rename",
+    })
+  })
+
   it("builds bundle responses", () => {
     expect(buildBundleExportableItemsResponse(exportableItems)).toEqual({
       success: true,
@@ -111,14 +175,21 @@ describe("bundle API helpers", () => {
       bundle,
       bundleJson: JSON.stringify(bundle, null, 2),
     })
+    expect(buildBundleImportPreviewResponse(importPreview)).toEqual({
+      success: true,
+      preview: importPreview,
+    })
   })
 
   it("runs bundle actions through service adapters", async () => {
+    const bundleJson = JSON.stringify(bundle)
     const logs: string[] = []
     const options = {
       service: {
         getExportableItems: () => exportableItems,
         exportBundle: async () => bundle,
+        previewBundleImport: async () => importPreview,
+        importBundle: async () => importResult,
       },
       diagnostics: {
         logError: (_source: string, message: string) => logs.push(message),
@@ -136,6 +207,18 @@ describe("bundle API helpers", () => {
     await expect(exportBundleAction({ skillIds: "bad" }, options)).resolves.toEqual({
       statusCode: 400,
       body: { error: "skillIds must be an array of strings" },
+    })
+    await expect(previewBundleImportAction({ bundleJson }, options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildBundleImportPreviewResponse(importPreview),
+    })
+    await expect(importBundleAction({ bundleJson, conflictStrategy: "overwrite" }, options)).resolves.toEqual({
+      statusCode: 200,
+      body: importResult,
+    })
+    await expect(importBundleAction({ bundleJson, conflictStrategy: "merge" }, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "conflictStrategy must be skip, overwrite, or rename" },
     })
     expect(logs).toEqual([])
   })

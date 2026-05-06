@@ -92,6 +92,18 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // POST /v1/bundles/import/preview - Preview pasted DotAgents bundle JSON
+  fastify.post(API_ROUTES.bundleImportPreview, async (req, reply) => {
+    const result = await actions.previewBundleImport(req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
+  // POST /v1/bundles/import - Import pasted DotAgents bundle JSON
+  fastify.post(API_ROUTES.bundleImport, async (req, reply) => {
+    const result = await actions.importBundle(req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // GET /v1/mcp/servers - List MCP servers with status
   fastify.get(API_ROUTES.mcpServers, async (_req, reply) => {
     const result = actions.getMcpServers()

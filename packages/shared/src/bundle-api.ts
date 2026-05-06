@@ -39,6 +39,17 @@ export type ExportBundleRequest = BundleItemSelectionOptions & {
   components?: BundleComponentSelection
 }
 
+export type BundleImportConflictStrategy = "skip" | "overwrite" | "rename"
+
+export type PreviewBundleImportRequest = {
+  bundleJson: string
+}
+
+export type ImportBundleRequest = PreviewBundleImportRequest & {
+  conflictStrategy?: BundleImportConflictStrategy
+  components?: BundleComponentSelection
+}
+
 export type BundleManifest = {
   version: 1
   name: string
@@ -181,6 +192,48 @@ export type BundleExportResponse = {
   bundleJson: string
 }
 
+export type BundleImportPreviewConflict = {
+  id: string
+  name: string
+  existingName?: string
+}
+
+export type BundleImportPreviewConflicts = {
+  agentProfiles: BundleImportPreviewConflict[]
+  mcpServers: BundleImportPreviewConflict[]
+  skills: BundleImportPreviewConflict[]
+  repeatTasks: BundleImportPreviewConflict[]
+  knowledgeNotes: BundleImportPreviewConflict[]
+}
+
+export type BundleImportPreview = {
+  bundle: DotAgentsBundle
+  conflicts: BundleImportPreviewConflicts
+}
+
+export type BundleImportPreviewResponse = {
+  success: true
+  preview: BundleImportPreview
+}
+
+export type BundleImportItemResult = {
+  id: string
+  name: string
+  action: "imported" | "skipped" | "renamed" | "overwritten"
+  newId?: string
+  error?: string
+}
+
+export type BundleImportResult = {
+  success: boolean
+  agentProfiles: BundleImportItemResult[]
+  mcpServers: BundleImportItemResult[]
+  skills: BundleImportItemResult[]
+  repeatTasks: BundleImportItemResult[]
+  knowledgeNotes: BundleImportItemResult[]
+  errors: string[]
+}
+
 export type BundleActionResult = {
   statusCode: number
   body: unknown
@@ -195,6 +248,8 @@ export type BundleRequestParseResult<T> =
 export interface BundleActionService {
   getExportableItems(): ExportableBundleItems
   exportBundle(request: ExportBundleRequest): Promise<DotAgentsBundle>
+  previewBundleImport(request: PreviewBundleImportRequest): Promise<BundleImportPreview | null>
+  importBundle(request: ImportBundleRequest): Promise<BundleImportResult>
 }
 
 export interface BundleActionDiagnostics {
@@ -246,6 +301,13 @@ function parseOptionalStringArray(value: unknown, field: string): BundleRequestP
     ok: true,
     request: value.map((entry) => entry.trim()).filter(Boolean),
   }
+}
+
+function parseRequiredString(value: unknown, field: string): BundleRequestParseResult<string> {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return { ok: false, statusCode: 400, error: `${field} must be a non-empty string` }
+  }
+  return { ok: true, request: value.trim() }
 }
 
 function parseComponents(value: unknown): BundleRequestParseResult<BundleComponentSelection | undefined> {
@@ -361,6 +423,46 @@ export function parseExportBundleRequestBody(body: unknown): BundleRequestParseR
   return { ok: true, request }
 }
 
+export function parsePreviewBundleImportRequestBody(body: unknown): BundleRequestParseResult<PreviewBundleImportRequest> {
+  const input = getRequestRecord(body)
+  const bundleJson = parseRequiredString(input.bundleJson, "bundleJson")
+  if (isBundleRequestParseError(bundleJson)) return bundleJson
+
+  try {
+    JSON.parse(bundleJson.request)
+  } catch {
+    return { ok: false, statusCode: 400, error: "bundleJson must be valid JSON" }
+  }
+
+  return { ok: true, request: { bundleJson: bundleJson.request } }
+}
+
+export function parseImportBundleRequestBody(body: unknown): BundleRequestParseResult<ImportBundleRequest> {
+  const parsedPreview = parsePreviewBundleImportRequestBody(body)
+  if (isBundleRequestParseError(parsedPreview)) return parsedPreview
+
+  const input = getRequestRecord(body)
+  const request: ImportBundleRequest = {
+    bundleJson: parsedPreview.request.bundleJson,
+  }
+
+  const conflictStrategy = input.conflictStrategy ?? "skip"
+  if (
+    conflictStrategy !== "skip"
+    && conflictStrategy !== "overwrite"
+    && conflictStrategy !== "rename"
+  ) {
+    return { ok: false, statusCode: 400, error: "conflictStrategy must be skip, overwrite, or rename" }
+  }
+  request.conflictStrategy = conflictStrategy
+
+  const components = parseComponents(input.components)
+  if (isBundleRequestParseError(components)) return components
+  if (components.request) request.components = components.request
+
+  return { ok: true, request }
+}
+
 export function buildBundleExportableItemsResponse(
   items: ExportableBundleItems,
 ): BundleExportableItemsResponse {
@@ -375,6 +477,15 @@ export function buildBundleExportResponse(bundle: DotAgentsBundle): BundleExport
     success: true,
     bundle,
     bundleJson: JSON.stringify(bundle, null, 2),
+  }
+}
+
+export function buildBundleImportPreviewResponse(
+  preview: BundleImportPreview,
+): BundleImportPreviewResponse {
+  return {
+    success: true,
+    preview,
   }
 }
 
@@ -405,5 +516,43 @@ export async function exportBundleAction(
   } catch (caughtError) {
     options.diagnostics.logError("bundle-actions", "Failed to export bundle", caughtError)
     return bundleActionError(500, getUnknownErrorMessage(caughtError, "Failed to export bundle"))
+  }
+}
+
+export async function previewBundleImportAction(
+  body: unknown,
+  options: BundleActionOptions,
+): Promise<BundleActionResult> {
+  const parsed = parsePreviewBundleImportRequestBody(body)
+  if (isBundleRequestParseError(parsed)) {
+    return bundleActionError(parsed.statusCode, parsed.error)
+  }
+
+  try {
+    const preview = await options.service.previewBundleImport(parsed.request)
+    if (!preview) {
+      return bundleActionError(400, "Failed to parse bundle")
+    }
+    return bundleActionOk(buildBundleImportPreviewResponse(preview))
+  } catch (caughtError) {
+    options.diagnostics.logError("bundle-actions", "Failed to preview bundle import", caughtError)
+    return bundleActionError(500, getUnknownErrorMessage(caughtError, "Failed to preview bundle import"))
+  }
+}
+
+export async function importBundleAction(
+  body: unknown,
+  options: BundleActionOptions,
+): Promise<BundleActionResult> {
+  const parsed = parseImportBundleRequestBody(body)
+  if (isBundleRequestParseError(parsed)) {
+    return bundleActionError(parsed.statusCode, parsed.error)
+  }
+
+  try {
+    return bundleActionOk(await options.service.importBundle(parsed.request))
+  } catch (caughtError) {
+    options.diagnostics.logError("bundle-actions", "Failed to import bundle", caughtError)
+    return bundleActionError(500, getUnknownErrorMessage(caughtError, "Failed to import bundle"))
   }
 }

@@ -2,6 +2,8 @@ import type { MobileApiRouteActions } from "./mobile-api-routes"
 import {
   exportBundle,
   getBundleExportableItems,
+  importBundle,
+  previewBundleImport,
 } from "./bundle-actions"
 import { handleChatCompletionRequest } from "./chat-completion-actions"
 import {
@@ -86,6 +88,8 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   importProfile,
   getBundleExportableItems,
   exportBundle,
+  previewBundleImport,
+  importBundle,
   getMcpServers,
   toggleMcpServer,
   exportMcpServerConfigs,

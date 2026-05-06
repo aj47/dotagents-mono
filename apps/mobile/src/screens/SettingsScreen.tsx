@@ -51,6 +51,7 @@ import { describeLoopCadence } from '@dotagents/shared/repeat-task-utils';
 import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
 import { getDefaultSttModel, KNOWN_STT_MODEL_IDS } from '@dotagents/shared/stt-models';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
+import type { BundleComponentSelection, BundleImportConflictStrategy, BundleImportPreview } from '@dotagents/shared/bundle-api';
 import {
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   formatMcpMaxIterationsValidationMessage,
@@ -89,6 +90,8 @@ type DiscordListSettingKey =
 
 type ModelPresetEditorMode = 'create' | 'edit';
 type McpServerEditorMode = 'create' | 'replace';
+type BundleImportComponentsState = Required<BundleComponentSelection>;
+type BundleImportComponentKey = keyof BundleImportComponentsState;
 
 type ModelPresetDraft = {
   id?: string;
@@ -124,6 +127,28 @@ const EMPTY_MCP_SERVER_DRAFT: McpServerDraft = {
   timeout: '',
   disabled: false,
 };
+
+const DEFAULT_BUNDLE_IMPORT_COMPONENTS: BundleImportComponentsState = {
+  agentProfiles: true,
+  mcpServers: true,
+  skills: true,
+  repeatTasks: true,
+  knowledgeNotes: true,
+};
+
+const BUNDLE_IMPORT_COMPONENT_OPTIONS: Array<{ key: BundleImportComponentKey; label: string }> = [
+  { key: 'agentProfiles', label: 'Agents' },
+  { key: 'mcpServers', label: 'MCP servers' },
+  { key: 'skills', label: 'Skills' },
+  { key: 'repeatTasks', label: 'Tasks' },
+  { key: 'knowledgeNotes', label: 'Knowledge' },
+];
+
+const BUNDLE_IMPORT_CONFLICT_STRATEGIES: Array<{ value: BundleImportConflictStrategy; label: string }> = [
+  { value: 'skip', label: 'Skip' },
+  { value: 'rename', label: 'Rename' },
+  { value: 'overwrite', label: 'Overwrite' },
+];
 
 const PROVIDER_CREDENTIAL_SECTIONS: Array<{
   id: string;
@@ -357,6 +382,13 @@ export default function SettingsScreen({ navigation }: any) {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
   const [isExportingBundle, setIsExportingBundle] = useState(false);
+  const [isPreviewingBundleImport, setIsPreviewingBundleImport] = useState(false);
+  const [isImportingBundle, setIsImportingBundle] = useState(false);
+  const [showBundleImportModal, setShowBundleImportModal] = useState(false);
+  const [bundleImportJsonText, setBundleImportJsonText] = useState('');
+  const [bundleImportPreview, setBundleImportPreview] = useState<BundleImportPreview | null>(null);
+  const [bundleImportConflictStrategy, setBundleImportConflictStrategy] = useState<BundleImportConflictStrategy>('skip');
+  const [bundleImportComponents, setBundleImportComponents] = useState<BundleImportComponentsState>(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
 
   // Model picker state
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
@@ -905,6 +937,112 @@ export default function SettingsScreen({ navigation }: any) {
       },
     ]);
   };
+
+  const closeBundleImportModal = useCallback(() => {
+    if (isPreviewingBundleImport || isImportingBundle) return;
+    setShowBundleImportModal(false);
+    setBundleImportJsonText('');
+    setBundleImportPreview(null);
+    setBundleImportConflictStrategy('skip');
+    setBundleImportComponents(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
+  }, [isImportingBundle, isPreviewingBundleImport]);
+
+  const handleBundleImportJsonChange = useCallback((value: string) => {
+    setBundleImportJsonText(value);
+    setBundleImportPreview(null);
+  }, []);
+
+  const handleBundleImportComponentToggle = useCallback((key: BundleImportComponentKey, value: boolean) => {
+    setBundleImportComponents(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleBundleImportPreview = useCallback(async () => {
+    if (!settingsClient || !bundleImportJsonText.trim()) return;
+
+    try {
+      JSON.parse(bundleImportJsonText.trim());
+    } catch {
+      setRemoteError('Bundle JSON is invalid');
+      Alert.alert('Preview Failed', 'Bundle JSON is invalid');
+      return;
+    }
+
+    setIsPreviewingBundleImport(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.previewBundleImport({ bundleJson: bundleImportJsonText.trim() });
+      setBundleImportPreview(result.preview);
+      const components = result.preview.bundle.manifest.components;
+      const itemCount = components.agentProfiles + components.mcpServers + components.skills + components.repeatTasks + components.knowledgeNotes;
+      setSaveStatusMessage(`Previewed bundle with ${itemCount} item${itemCount === 1 ? '' : 's'}`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to preview bundle import:', error);
+      setRemoteError(error.message || 'Failed to preview bundle');
+      Alert.alert('Preview Failed', error.message || 'Failed to preview bundle');
+    } finally {
+      setIsPreviewingBundleImport(false);
+    }
+  }, [bundleImportJsonText, settingsClient]);
+
+  const refreshAfterBundleImport = useCallback(async () => {
+    const refreshes: Promise<void>[] = [fetchRemoteSettings()];
+    if (isDotAgentsServer) {
+      refreshes.push(fetchSkills(), fetchKnowledgeNotes(), fetchAgentProfiles(), fetchLoops());
+    }
+    await Promise.allSettled(refreshes);
+  }, [fetchAgentProfiles, fetchKnowledgeNotes, fetchLoops, fetchRemoteSettings, fetchSkills, isDotAgentsServer]);
+
+  const handleBundleImport = useCallback(async () => {
+    if (!settingsClient || !bundleImportJsonText.trim()) return;
+    if (!Object.values(bundleImportComponents).some(Boolean)) {
+      setRemoteError('Select at least one bundle component to import');
+      Alert.alert('Import Failed', 'Select at least one bundle component to import');
+      return;
+    }
+
+    setIsImportingBundle(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importBundle({
+        bundleJson: bundleImportJsonText.trim(),
+        conflictStrategy: bundleImportConflictStrategy,
+        components: bundleImportComponents,
+      });
+
+      if (!result.success) {
+        throw new Error(result.errors.join(', ') || 'Import failed');
+      }
+
+      const importedCount = [
+        ...result.agentProfiles,
+        ...result.mcpServers,
+        ...result.skills,
+        ...result.repeatTasks,
+        ...result.knowledgeNotes,
+      ].filter(item => item.action !== 'skipped').length;
+
+      setShowBundleImportModal(false);
+      setBundleImportJsonText('');
+      setBundleImportPreview(null);
+      setBundleImportConflictStrategy('skip');
+      setBundleImportComponents(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
+      setSaveStatusMessage(`Imported ${importedCount} bundle item${importedCount === 1 ? '' : 's'}`);
+      await refreshAfterBundleImport();
+      Alert.alert('Import Complete', `Imported ${importedCount} item${importedCount === 1 ? '' : 's'} from the bundle.`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to import bundle:', error);
+      setRemoteError(error.message || 'Failed to import bundle');
+      Alert.alert('Import Failed', error.message || 'Failed to import bundle');
+    } finally {
+      setIsImportingBundle(false);
+    }
+  }, [
+    bundleImportComponents,
+    bundleImportConflictStrategy,
+    bundleImportJsonText,
+    refreshAfterBundleImport,
+    settingsClient,
+  ]);
 
   // Handle MCP server toggle
   const handleServerToggle = async (serverName: string, enabled: boolean) => {
@@ -2751,6 +2889,17 @@ export default function SettingsScreen({ navigation }: any) {
             {isDotAgentsServer && (
               <CollapsibleSection id="bundles" title="Bundles">
                 <View style={styles.profileActions}>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, isImportingBundle && styles.profileActionButtonDisabled]}
+                    onPress={() => setShowBundleImportModal(true)}
+                    disabled={isImportingBundle}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import DotAgents bundle JSON')}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isImportingBundle ? 'Importing...' : 'Import Bundle'}
+                    </Text>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.profileActionButton, isExportingBundle && styles.profileActionButtonDisabled]}
                     onPress={handleBundleExport}
@@ -4604,6 +4753,151 @@ export default function SettingsScreen({ navigation }: any) {
         </View>
       </Modal>
 
+      {/* Bundle Import Modal */}
+      <Modal
+        visible={showBundleImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeBundleImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import Bundle</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeBundleImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close bundle import modal"
+                disabled={isPreviewingBundleImport || isImportingBundle}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.bundleImportBody}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <TextInput
+                style={styles.importJsonInput}
+                value={bundleImportJsonText}
+                onChangeText={handleBundleImportJsonChange}
+                placeholder='{"manifest":{"version":1,"name":"Bundle"},"agentProfiles":[]}'
+                placeholderTextColor={theme.colors.mutedForeground}
+                multiline
+                numberOfLines={8}
+                textAlignVertical="top"
+                autoCorrect={false}
+                autoCapitalize="none"
+                spellCheck={false}
+                editable={!isPreviewingBundleImport && !isImportingBundle}
+              />
+
+              <Text style={styles.label}>Handle conflicts</Text>
+              <View style={styles.providerSelector}>
+                {BUNDLE_IMPORT_CONFLICT_STRATEGIES.map((strategy) => (
+                  <Pressable
+                    key={strategy.value}
+                    style={[
+                      styles.providerOption,
+                      bundleImportConflictStrategy === strategy.value && styles.providerOptionActive,
+                    ]}
+                    onPress={() => setBundleImportConflictStrategy(strategy.value)}
+                    disabled={isImportingBundle}
+                  >
+                    <Text style={[
+                      styles.providerOptionText,
+                      bundleImportConflictStrategy === strategy.value && styles.providerOptionTextActive,
+                    ]}>
+                      {strategy.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Components</Text>
+              {BUNDLE_IMPORT_COMPONENT_OPTIONS.map((component) => {
+                const count = bundleImportPreview?.bundle.manifest.components[component.key] ?? 0;
+                const conflicts = bundleImportPreview?.conflicts[component.key].length ?? 0;
+                return (
+                  <View key={component.key} style={styles.row}>
+                    <View style={styles.serverInfo}>
+                      <Text style={styles.serverName}>{component.label}</Text>
+                      <Text style={styles.serverMeta}>
+                        {bundleImportPreview
+                          ? `${count} item${count === 1 ? '' : 's'}${conflicts > 0 ? `, ${conflicts} conflict${conflicts === 1 ? '' : 's'}` : ''}`
+                          : 'Not previewed'}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={bundleImportComponents[component.key]}
+                      onValueChange={(value) => handleBundleImportComponentToggle(component.key, value)}
+                      accessibilityLabel={createSwitchAccessibilityLabel(`Import bundle ${component.label}`)}
+                      trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                      thumbColor={bundleImportComponents[component.key] ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+                );
+              })}
+
+              {bundleImportPreview && (
+                <View style={styles.bundlePreviewCard}>
+                  <Text style={styles.serverName}>{bundleImportPreview.bundle.manifest.name}</Text>
+                  {bundleImportPreview.bundle.manifest.description && (
+                    <Text style={styles.serverMeta} numberOfLines={2}>
+                      {bundleImportPreview.bundle.manifest.description}
+                    </Text>
+                  )}
+                  <Text style={styles.serverMeta}>
+                    Exported from {bundleImportPreview.bundle.manifest.exportedFrom}
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeBundleImportModal}
+                disabled={isPreviewingBundleImport || isImportingBundle}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalCancelButton,
+                  (!bundleImportJsonText.trim() || isPreviewingBundleImport || isImportingBundle) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={handleBundleImportPreview}
+                disabled={!bundleImportJsonText.trim() || isPreviewingBundleImport || isImportingBundle}
+                accessibilityRole="button"
+                accessibilityLabel="Preview DotAgents bundle JSON"
+              >
+                <Text style={styles.importModalCancelText}>
+                  {isPreviewingBundleImport ? 'Previewing...' : 'Preview'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!bundleImportPreview || isImportingBundle || isPreviewingBundleImport) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={handleBundleImport}
+                disabled={!bundleImportPreview || isImportingBundle || isPreviewingBundleImport}
+                accessibilityRole="button"
+                accessibilityLabel="Import DotAgents bundle JSON"
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingBundle ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* MCP Server Import Modal */}
       <Modal
         visible={showMcpImportModal}
@@ -5309,8 +5603,20 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       minHeight: 150,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
+    bundleImportBody: {
+      maxHeight: 520,
+    },
+    bundlePreviewCard: {
+      marginTop: spacing.md,
+      padding: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.muted,
+    },
     importModalActions: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: spacing.sm,
       marginTop: spacing.md,
     },
