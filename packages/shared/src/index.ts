@@ -75,6 +75,7 @@ export * from './selected-agent-persistence';
 export * from './theme-preference';
 export * from './split-pane-selection';
 export * from './tool-activity-grouping';
+export * from './tool-execution-display';
 export * from './main-agent-selection';
 export * from './agent-profile-presets';
 export * from './agent-profile-connection';

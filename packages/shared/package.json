@@ -256,6 +256,11 @@
       "import": "./dist/tool-activity-grouping.mjs",
       "require": "./dist/tool-activity-grouping.js"
     },
+    "./tool-execution-display": {
+      "types": "./dist/tool-execution-display.d.ts",
+      "import": "./dist/tool-execution-display.mjs",
+      "require": "./dist/tool-execution-display.js"
+    },
     "./main-agent-selection": {
       "types": "./dist/main-agent-selection.d.ts",
       "import": "./dist/main-agent-selection.mjs",
