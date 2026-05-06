@@ -293,12 +293,6 @@ function getOperatorApiKeyActionsSource(): string {
   return readFileSync(operatorApiKeyActionsPath, "utf8")
 }
 
-function getBundleActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const bundleActionsPath = path.join(testDir, "bundle-actions.ts")
-  return readFileSync(bundleActionsPath, "utf8")
-}
-
 function getSharedKnowledgeNoteFormSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedKnowledgeNoteFormPath = path.join(testDir, "../../../../packages/shared/src/knowledge-note-form.ts")
@@ -977,7 +971,6 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
-    const bundleActionsSource = getBundleActionsSource()
     const sharedBundleApiSource = getSharedBundleApiSource()
 
     expectRegisteredApiRoute(source, "GET", "bundleExportableItems")
@@ -992,14 +985,14 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain("exportBundle")
     expect(mobileApiDesktopActionsSource).toContain("previewBundleImport")
     expect(mobileApiDesktopActionsSource).toContain("importBundle")
-    expect(bundleActionsSource).toContain("getBundleExportableItemsAction(bundleActionOptions)")
-    expect(bundleActionsSource).toContain("exportBundleAction(body, bundleActionOptions)")
-    expect(bundleActionsSource).toContain("previewBundleImportAction(body, bundleActionOptions)")
-    expect(bundleActionsSource).toContain("importBundleAction(body, bundleActionOptions)")
-    expect(bundleActionsSource).toContain("getBundleExportableItemsFromLayers(getBundleLayerDirs())")
-    expect(bundleActionsSource).toContain("exportBundleFromLayers(getBundleLayerDirs(), request)")
-    expect(bundleActionsSource).toContain("previewBundleWithConflicts(filePath, getBundleImportTargetDir())")
-    expect(bundleActionsSource).toContain("importBundleFromFile(filePath, getBundleImportTargetDir(), {")
+    expect(mobileApiDesktopActionsSource).toContain("getBundleExportableItemsAction(bundleActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("exportBundleAction(body, bundleActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("previewBundleImportAction(body, bundleActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("importBundleAction(body, bundleActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getBundleExportableItemsFromLayers(getBundleLayerDirs())")
+    expect(mobileApiDesktopActionsSource).toContain("exportBundleFromLayers(getBundleLayerDirs(), request)")
+    expect(mobileApiDesktopActionsSource).toContain("previewBundleWithConflicts(filePath, getBundleImportTargetDir())")
+    expect(mobileApiDesktopActionsSource).toContain("importBundleFromFile(filePath, getBundleImportTargetDir(), {")
     expect(sharedBundleApiSource).toContain("export function getBundleExportableItemsAction")
     expect(sharedBundleApiSource).toContain("export async function exportBundleAction")
     expect(sharedBundleApiSource).toContain("export async function previewBundleImportAction")
