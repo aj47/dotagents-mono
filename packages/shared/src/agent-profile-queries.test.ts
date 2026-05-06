@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  getAcpxAgentProfiles,
   getAgentProfileByName,
   getAgentProfilesByRole,
   getChatAgentProfiles,
   getCurrentAgentProfile,
   getDelegationAgentProfiles,
+  getEnabledAcpxAgentProfiles,
   getEnabledChatAgentProfiles,
   getEnabledDelegationAgentProfiles,
   getExternalAgentProfiles,
@@ -62,6 +64,13 @@ describe("agent profile query helpers", () => {
       enabled: true,
     },
     {
+      id: "disabled-acpx",
+      name: "disabled-acpx",
+      displayName: "Disabled ACPx",
+      connection: { type: "acpx" },
+      enabled: false,
+    },
+    {
       id: "remote",
       name: "remote",
       displayName: "Remote",
@@ -103,7 +112,14 @@ describe("agent profile query helpers", () => {
     expect(getExternalAgentProfiles([
       ...profiles,
       { id: "role-external", role: "external-agent", enabled: true },
-    ]).map((profile) => profile.id)).toEqual(["external", "remote", "role-external"])
+    ]).map((profile) => profile.id)).toEqual(["external", "disabled-acpx", "remote", "role-external"])
+  })
+
+  it("filters acpx profiles with enabled-only variant for settings surfaces", () => {
+    expect(getAcpxAgentProfiles(profiles).map((profile) => profile.id))
+      .toEqual(["external", "disabled-acpx"])
+    expect(getEnabledAcpxAgentProfiles(profiles).map((profile) => profile.id))
+      .toEqual(["external"])
   })
 
   it("finds profiles by canonical name then display name", () => {

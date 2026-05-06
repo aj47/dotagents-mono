@@ -1,5 +1,6 @@
 import { spawn } from 'child_process'
 import { EventEmitter } from 'events'
+import { getAcpxAgentProfiles } from '@dotagents/shared/agent-profile-queries'
 
 import { agentProfileService } from '../agent-profile-service'
 import { logACP, logApp } from '../debug'
@@ -178,7 +179,7 @@ class ACPXService extends EventEmitter {
 
   getAgents(): Array<{ config: { name: string; displayName: string; description?: string; enabled: boolean; connection: { type: string } }; status: string; error?: string }> {
     const verification = this.getCachedVerificationStatus()
-    const profiles = agentProfileService.getExternalAgents().filter(profile => profile.connection.type === 'acpx')
+    const profiles = getAcpxAgentProfiles(agentProfileService.getExternalAgents())
 
     return profiles.map(profile => ({
       config: {

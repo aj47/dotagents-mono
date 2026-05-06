@@ -96,6 +96,14 @@ export function getExternalAgentProfiles<T extends AgentProfileQueryLike>(profil
   })
 }
 
+export function getAcpxAgentProfiles<T extends AgentProfileQueryLike>(profiles: T[]): T[] {
+  return profiles.filter((profile) => getConnectionType(profile) === "acpx")
+}
+
+export function getEnabledAcpxAgentProfiles<T extends AgentProfileQueryLike>(profiles: T[]): T[] {
+  return getAcpxAgentProfiles(profiles).filter((profile) => profile.enabled !== false)
+}
+
 export function getEnabledDelegationAgentProfiles<T extends AgentProfileQueryLike>(profiles: T[]): T[] {
   return getDelegationAgentProfiles(profiles).filter((profile) => profile.enabled)
 }

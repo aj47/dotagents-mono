@@ -6,6 +6,7 @@ import {
 import {
   getMaskedRemoteServerApiKey,
 } from "@dotagents/shared/remote-pairing"
+import { getEnabledAcpxAgentProfiles } from "@dotagents/shared/agent-profile-queries"
 import type {
   MobileApiActionResult,
   RemoteServerRouteAuditContext,
@@ -53,8 +54,7 @@ const settingsActionOptions: SettingsActionOptions<Config> = {
   getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey),
   getMaskedDiscordBotToken,
   getDiscordDefaultProfileId: (config) => getDiscordResolvedDefaultProfileId(config).profileId ?? "",
-  getAcpxAgents: () => agentProfileService.getAll()
-    .filter(p => p.connection.type === 'acpx' && p.enabled !== false)
+  getAcpxAgents: () => getEnabledAcpxAgentProfiles(agentProfileService.getAll())
     .map(p => ({ name: p.name, displayName: p.displayName })),
   getDiscordLifecycleAction,
   applyDiscordLifecycleAction,
