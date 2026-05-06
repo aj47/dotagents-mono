@@ -66,6 +66,7 @@ import type {
   SessionProfileSnapshot,
 } from "@dotagents/core"
 import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared/stt-models"
+import { DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED } from "@dotagents/shared/providers"
 import { buildConversationImageMarkdownMessage } from "@dotagents/shared/conversation-media-assets"
 import { parseMcpServerConfigImportRequestBody } from "@dotagents/shared/mcp-api"
 import { conversationService } from "./conversation-service"
@@ -246,7 +247,7 @@ function float32ToWav(samples: Float32Array, sampleRate: number): Buffer {
 async function postProcessTranscriptSafely(transcript: string, context: string): Promise<string> {
   const config = configStore.get()
 
-  if (!config.transcriptPostProcessingEnabled) {
+  if (!(config.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED)) {
     return transcript
   }
 
@@ -1320,7 +1321,7 @@ export const router = {
       let processedText = input.text
 
       // Apply post-processing if enabled
-      if (config.transcriptPostProcessingEnabled) {
+      if (config.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED) {
         try {
           processedText = await postProcessTranscript(input.text)
         } catch (error) {

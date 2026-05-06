@@ -289,6 +289,7 @@ export const DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT = [
   "",
   "{transcript}",
 ].join("\n");
+export const DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED = true;
 
 export const TTS_PROVIDERS = [
   { label: "OpenAI", value: "openai" },

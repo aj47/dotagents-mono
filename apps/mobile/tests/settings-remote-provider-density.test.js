@@ -146,6 +146,10 @@ test('lets mobile configure the local Parakeet STT model', () => {
 });
 
 test('lets mobile configure cloud desktop STT model details', () => {
+  const profileModelSection = extractBetween(
+    '<CollapsibleSection id="profileModel" title="Profile & Model">',
+    '<CollapsibleSection id="bundles" title="Bundles">'
+  );
   const speechToTextSection = extractBetween(
     '<CollapsibleSection id="speechToText" title="Speech-to-Text">',
     '<CollapsibleSection id="textToSpeech" title="Text-to-Speech">'
@@ -153,6 +157,8 @@ test('lets mobile configure cloud desktop STT model details', () => {
 
   assert.match(settingsSource, /KNOWN_STT_MODEL_IDS/);
   assert.match(settingsSource, /getDefaultSttModel/);
+  assert.match(settingsSource, /DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED/);
+  assert.match(profileModelSection, /remoteSettings\.transcriptPostProcessingEnabled \?\? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED/);
   assert.match(remoteSettingsDraftsSource, /openaiSttLanguage: settings\.openaiSttLanguage \|\| ""/);
   assert.match(settingsSource, /updates\.openaiSttLanguage = inputDrafts\.openaiSttLanguage \?\? ''/);
   assert.match(settingsSource, /updates\.groqSttLanguage = inputDrafts\.groqSttLanguage \?\? ''/);

@@ -28,7 +28,10 @@ import {
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
 } from "@dotagents/shared/observability-config"
-import type { STT_PROVIDER_ID } from "@dotagents/shared/providers"
+import {
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
+  type STT_PROVIDER_ID,
+} from "@dotagents/shared/providers"
 import { SUPPORTED_LANGUAGES } from "@dotagents/shared/languages"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Input } from "@renderer/components/ui/input"
@@ -1022,7 +1025,7 @@ export function Component() {
           <Control label={<ControlLabel label="Transcript Processing" tooltip="Clean up punctuation, capitalization, or obvious speech-to-text mistakes after dictation." />} className="px-3">
             <div className="flex flex-wrap items-center gap-2">
               <Switch
-                checked={configQuery.data.transcriptPostProcessingEnabled ?? false}
+                checked={configQuery.data.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED}
                 onCheckedChange={(value) => {
                   saveConfig({ transcriptPostProcessingEnabled: value })
                 }}

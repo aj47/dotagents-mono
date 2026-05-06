@@ -1,5 +1,11 @@
 import { normalizeApiBaseUrl } from './connection-recovery';
-import { DEFAULT_MODEL_PRESET_ID, isChatProviderId, isSttProviderId, isTtsProviderId } from './providers';
+import {
+  DEFAULT_MODEL_PRESET_ID,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
+  isChatProviderId,
+  isSttProviderId,
+  isTtsProviderId,
+} from './providers';
 import type { CHAT_PROVIDER_ID, ModelPreset } from './providers';
 import {
   buildModelPresetsResponse,
@@ -382,7 +388,7 @@ export function buildSettingsResponse(
     conversationsEnabled: cfg.conversationsEnabled ?? true,
     maxConversationsToKeep: cfg.maxConversationsToKeep ?? 100,
     autoSaveConversations: cfg.autoSaveConversations ?? true,
-    transcriptPostProcessingEnabled: cfg.transcriptPostProcessingEnabled ?? true,
+    transcriptPostProcessingEnabled: cfg.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
     mcpRequireApprovalBeforeToolCall: cfg.mcpRequireApprovalBeforeToolCall ?? DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL,
     ttsEnabled: cfg.ttsEnabled ?? true,
     whatsappEnabled: cfg.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED,

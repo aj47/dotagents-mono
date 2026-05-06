@@ -37,6 +37,7 @@ import {
 } from '@dotagents/shared/model-presets';
 import {
   CHAT_PROVIDERS,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
   STT_PROVIDERS,
   SUPERTONIC_TTS_LANGUAGES,
   TTS_PROVIDERS,
@@ -3159,10 +3160,10 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Enabled</Text>
                   <Switch
-                    value={remoteSettings.transcriptPostProcessingEnabled ?? false}
+                    value={remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('transcriptPostProcessingEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.transcriptPostProcessingEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
 
@@ -3187,7 +3188,7 @@ export default function SettingsScreen({ navigation }: any) {
                   ))}
                 </View>
 
-                {remoteSettings.transcriptPostProcessingEnabled && (
+                {(remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED) && (
                   <>
                     {(() => {
                       const providerId = remoteSettings.transcriptPostProcessingProviderId || 'openai';

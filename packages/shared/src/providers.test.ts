@@ -5,6 +5,7 @@ import {
   CHAT_PROVIDERS,
   CHAT_PROVIDER_IDS,
   DEFAULT_CHAT_MODELS,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
   TTS_PROVIDERS,
   TTS_PROVIDER_IDS,
   OPENAI_TTS_VOICES,
@@ -276,6 +277,7 @@ describe('Voice lists', () => {
   })
 
   it('maps transcript post-processing providers to settings keys', () => {
+    expect(DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED).toBe(true)
     expect(getTranscriptPostProcessingModelSettingKey('openai')).toBe('transcriptPostProcessingOpenaiModel')
     expect(getTranscriptPostProcessingModelSettingKey('groq')).toBe('transcriptPostProcessingGroqModel')
     expect(getTranscriptPostProcessingModelSettingKey('gemini')).toBe('transcriptPostProcessingGeminiModel')

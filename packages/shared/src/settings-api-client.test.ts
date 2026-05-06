@@ -19,6 +19,9 @@ import {
   type SettingsActionOptions,
 } from './settings-api-client';
 import {
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
+} from './providers';
+import {
   buildRemoteServerApiQueryPath,
   REMOTE_SERVER_API_BUILDERS,
   REMOTE_SERVER_API_PATHS,
@@ -393,7 +396,7 @@ describe('SettingsApiClient', () => {
       supertonicLanguage: 'en',
       supertonicSpeed: 1.05,
       supertonicSteps: 5,
-      transcriptPostProcessingEnabled: true,
+      transcriptPostProcessingEnabled: DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
       whatsappEnabled: DEFAULT_WHATSAPP_ENABLED,
       whatsappAutoReply: DEFAULT_WHATSAPP_AUTO_REPLY,
       whatsappLogMessages: DEFAULT_WHATSAPP_LOG_MESSAGES,

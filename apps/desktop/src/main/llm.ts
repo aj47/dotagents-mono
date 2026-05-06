@@ -24,7 +24,11 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
 import { getAcpSessionTitleOverride } from "./acp-session-state"
 import { hasRepeatTaskTitlePrefix } from "@dotagents/shared/repeat-task-utils"
-import { DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT, getCurrentPresetName } from "@dotagents/shared/providers"
+import {
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT,
+  getCurrentPresetName,
+} from "@dotagents/shared/providers"
 import {
   createAgentTrace,
   endAgentTrace,
@@ -300,7 +304,7 @@ function buildAnswerOnlyContinuationDigest(
 export async function postProcessTranscript(transcript: string) {
   const config = configStore.get()
 
-  if (!config.transcriptPostProcessingEnabled) {
+  if (!(config.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED)) {
     return transcript
   }
 
