@@ -41,6 +41,7 @@ import { saveConfig, useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
 import { radius, spacing } from '../ui/theme';
 import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
+import { getErrorMessage } from '@dotagents/shared/error-utils';
 
 const RECENT_ERROR_COUNT = 8;
 const RECENT_LOG_COUNT = 10;
@@ -64,10 +65,6 @@ type RemoteAccessDrafts = {
   discordOperatorAllowChannelIds: string;
   discordOperatorAllowRoleIds: string;
 };
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unknown error';
-}
 
 function formatTimestamp(timestamp?: number): string {
   if (!timestamp) return '—';

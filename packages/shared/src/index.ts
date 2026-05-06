@@ -29,6 +29,7 @@ export * from './message-queue-store';
 export * from './mobile-app-config';
 export * from './stt-models';
 export * from './api-key-error-utils';
+export * from './error-utils';
 export * from './tool-activity-grouping';
 export * from './main-agent-selection';
 export * from './agent-profile-connection';

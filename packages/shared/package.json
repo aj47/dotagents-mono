@@ -136,6 +136,11 @@
       "import": "./dist/api-key-error-utils.mjs",
       "require": "./dist/api-key-error-utils.js"
     },
+    "./error-utils": {
+      "types": "./dist/error-utils.d.ts",
+      "import": "./dist/error-utils.mjs",
+      "require": "./dist/error-utils.js"
+    },
     "./tool-activity-grouping": {
       "types": "./dist/tool-activity-grouping.d.ts",
       "import": "./dist/tool-activity-grouping.mjs",

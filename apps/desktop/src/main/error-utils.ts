@@ -1,5 +1,4 @@
-// Re-export from @dotagents/core
 export {
   getErrorMessage,
   normalizeError,
-} from "@dotagents/core"
+} from "@dotagents/shared/error-utils"

@@ -28,6 +28,7 @@ export default defineConfig({
     'message-display-utils': 'src/message-display-utils.ts',
     'stt-models': 'src/stt-models.ts',
     'api-key-error-utils': 'src/api-key-error-utils.ts',
+    'error-utils': 'src/error-utils.ts',
     'tool-activity-grouping': 'src/tool-activity-grouping.ts',
     'main-agent-selection': 'src/main-agent-selection.ts',
     'agent-profile-connection': 'src/agent-profile-connection.ts',
