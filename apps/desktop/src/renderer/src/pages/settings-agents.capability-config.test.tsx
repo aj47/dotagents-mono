@@ -56,6 +56,12 @@ describe("settings agents capability config", () => {
     expect(settingsAgentsSource).not.toContain("connectionType: agent.connection.type")
   })
 
+  it("uses shared editable preset fields in the desktop agent editor", () => {
+    expect(settingsAgentsSource).toContain("getAgentProfilePresetFormFields")
+    expect(settingsAgentsSource).toContain("getAgentProfilePresetFormFields(presetKey)")
+    expect(settingsAgentsSource).not.toContain("...emptyAgent(), ...preset, presetKey")
+  })
+
   it("uses shared profile property helpers in the desktop agent editor", () => {
     expect(settingsAgentsSource).toContain("normalizeAgentProfileProperties")
     expect(settingsAgentsSource).toContain("formatAgentProfilePropertiesForRequest")

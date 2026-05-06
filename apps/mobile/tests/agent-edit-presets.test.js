@@ -16,19 +16,19 @@ const sharedPresetSource = fs.readFileSync(
 test('uses shared desktop agent presets on the mobile create screen', () => {
   assert.match(screenSource, /AGENT_PROFILE_PRESETS/);
   assert.match(screenSource, /detectAgentProfilePresetKey\(formData\)/);
+  assert.match(screenSource, /getAgentProfilePresetFormFields/);
   assert.match(screenSource, /const applyAgentPreset = useCallback\(\(presetKey: AgentProfilePresetKey\)/);
   assert.match(screenSource, /Object\.entries\(AGENT_PROFILE_PRESETS\)\.map/);
   assert.match(screenSource, /createButtonAccessibilityLabel\(`Use \$\{preset\.displayName\} agent preset`\)/);
 });
 
-test('mobile preset selection fills local external agent connection fields', () => {
-  assert.match(screenSource, /displayName: preset\.displayName/);
-  assert.match(screenSource, /description: preset\.description/);
-  assert.match(screenSource, /connectionType: preset\.connectionType/);
-  assert.match(screenSource, /connectionCommand: preset\.connectionCommand/);
-  assert.match(screenSource, /connectionArgs: preset\.connectionArgs/);
-  assert.match(screenSource, /connectionBaseUrl: ''/);
-  assert.match(screenSource, /connectionCwd: ''/);
+test('mobile preset selection uses shared editable preset fields', () => {
+  assert.match(screenSource, /\.\.\.getAgentProfilePresetFormFields\(presetKey\)/);
+  assert.doesNotMatch(screenSource, /displayName: preset\.displayName/);
+  assert.doesNotMatch(screenSource, /description: preset\.description/);
+  assert.doesNotMatch(screenSource, /connectionType: preset\.connectionType/);
+  assert.doesNotMatch(screenSource, /connectionCommand: preset\.connectionCommand/);
+  assert.doesNotMatch(screenSource, /connectionArgs: preset\.connectionArgs/);
 });
 
 test('shared presets keep the current external agent command catalog', () => {

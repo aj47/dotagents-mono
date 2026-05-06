@@ -20,6 +20,17 @@ export type AgentProfilePresetCandidate = {
   connectionArgs?: string;
 };
 
+export type AgentProfilePresetFormFields = {
+  displayName: string;
+  description: string;
+  connectionType: 'acpx';
+  connectionCommand: string;
+  connectionArgs: string;
+  connectionBaseUrl: string;
+  connectionCwd: string;
+  enabled: boolean;
+};
+
 export const AGENT_PROFILE_PRESETS: Record<AgentProfilePresetKey, AgentProfilePresetDefinition> = {
   auggie: {
     displayName: 'Auggie (Augment Code)',
@@ -72,6 +83,22 @@ export const AGENT_PROFILE_PRESETS: Record<AgentProfilePresetKey, AgentProfilePr
     verifyArgs: ['--help'],
   },
 };
+
+export function getAgentProfilePresetFormFields(
+  presetKey: AgentProfilePresetKey,
+): AgentProfilePresetFormFields {
+  const preset = AGENT_PROFILE_PRESETS[presetKey];
+  return {
+    displayName: preset.displayName,
+    description: preset.description,
+    connectionType: preset.connectionType,
+    connectionCommand: preset.connectionCommand,
+    connectionArgs: preset.connectionArgs,
+    connectionBaseUrl: '',
+    connectionCwd: '',
+    enabled: preset.enabled,
+  };
+}
 
 export function detectAgentProfilePresetKey(
   agent?: AgentProfilePresetCandidate | null,

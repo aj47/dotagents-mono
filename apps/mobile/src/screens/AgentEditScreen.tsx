@@ -32,6 +32,7 @@ import {
 import {
   AGENT_PROFILE_PRESETS,
   detectAgentProfilePresetKey,
+  getAgentProfilePresetFormFields,
   type AgentProfilePresetKey,
 } from '@dotagents/shared/agent-profile-presets';
 import {
@@ -479,17 +480,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
   }, [formData.connectionArgs, formData.connectionCommand, formData.connectionCwd, formData.connectionType, selectedPreset?.verifyArgs, settingsClient]);
 
   const applyAgentPreset = useCallback((presetKey: AgentProfilePresetKey) => {
-    const preset = AGENT_PROFILE_PRESETS[presetKey];
     setFormData(prev => ({
       ...prev,
-      displayName: preset.displayName,
-      description: preset.description,
-      connectionType: preset.connectionType,
-      connectionCommand: preset.connectionCommand,
-      connectionArgs: preset.connectionArgs,
-      connectionBaseUrl: '',
-      connectionCwd: '',
-      enabled: preset.enabled,
+      ...getAgentProfilePresetFormFields(presetKey),
     }));
   }, []);
 

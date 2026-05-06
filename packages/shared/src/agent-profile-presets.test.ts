@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AGENT_PROFILE_PRESETS,
   detectAgentProfilePresetKey,
+  getAgentProfilePresetFormFields,
 } from './agent-profile-presets';
 
 describe('agent profile presets', () => {
@@ -46,6 +47,19 @@ describe('agent profile presets', () => {
       connectionCommand: 'opencode',
       connectionArgs: 'acp',
     })).toBe('opencode');
+  });
+
+  it('builds editable preset fields without docs metadata', () => {
+    expect(getAgentProfilePresetFormFields('codex')).toEqual({
+      displayName: 'Codex',
+      description: 'OpenAI Codex via the official ACP adapter',
+      connectionType: 'acpx',
+      connectionCommand: 'codex-acp',
+      connectionArgs: '',
+      connectionBaseUrl: '',
+      connectionCwd: '',
+      enabled: true,
+    });
   });
 
   it('does not match unrelated or incomplete local agent commands', () => {

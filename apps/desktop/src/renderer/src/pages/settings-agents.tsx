@@ -16,6 +16,7 @@ import { toast } from "sonner"
 import {
   AGENT_PROFILE_PRESETS,
   detectAgentProfilePresetKey,
+  getAgentProfilePresetFormFields,
   type AgentProfilePresetKey,
 } from "@dotagents/shared/agent-profile-presets"
 import {
@@ -273,8 +274,7 @@ export function SettingsAgents() {
   const refreshAgentProfileQueries = () => invalidateAgentProfileQueries(queryClient)
 
   const applyPreset = (presetKey: AgentProfilePresetKey) => {
-    const preset = AGENT_PROFILE_PRESETS[presetKey]
-    setEditing({ ...emptyAgent(), ...preset, presetKey })
+    setEditing({ ...emptyAgent(), ...getAgentProfilePresetFormFields(presetKey), presetKey })
     setCommandVerification(null)
   }
 
