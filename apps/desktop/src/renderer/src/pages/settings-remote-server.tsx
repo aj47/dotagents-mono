@@ -29,6 +29,8 @@ import {
   isLoopbackRemoteHost,
   isUnconnectableRemoteHostForMobilePairing,
   isWildcardRemoteHost,
+  REMOTE_SERVER_PORT_MAX,
+  REMOTE_SERVER_PORT_MIN,
   REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
   type CloudflareTunnelMode,
@@ -246,8 +248,8 @@ export function RemoteServerSettingsGroups({
               <Control label={<ControlLabel label="Port" tooltip="HTTP port to listen on" />} className="px-3">
                 <Input
                   type="number"
-                  min={1}
-                  max={65535}
+                  min={REMOTE_SERVER_PORT_MIN}
+                  max={REMOTE_SERVER_PORT_MAX}
                   value={cfg.remoteServerPort ?? DEFAULT_REMOTE_SERVER_PORT}
                   onChange={(e) =>
                     saveConfig({ remoteServerPort: parseInt(e.currentTarget.value || String(DEFAULT_REMOTE_SERVER_PORT), 10) })

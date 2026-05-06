@@ -24,6 +24,9 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_LOG_LEVEL/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_CORS_ORIGINS/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_PORT/);
+  assert.match(operationsSource, /REMOTE_SERVER_PORT_MIN/);
+  assert.match(operationsSource, /REMOTE_SERVER_PORT_MAX/);
+  assert.match(operationsSource, /isRemoteServerPortUpdateValue/);
   assert.match(operationsSource, /buildOperatorRemoteAccessDrafts as buildDrafts/);
   assert.match(remoteAccessDraftsSource, /DEFAULT_REMOTE_SERVER_CORS_ORIGINS/);
   assert.match(remoteAccessDraftsSource, /DEFAULT_REMOTE_SERVER_PORT/);

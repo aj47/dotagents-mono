@@ -12,6 +12,8 @@ export const REMOTE_SERVER_BIND_ADDRESS_OPTIONS = ['127.0.0.1', '0.0.0.0'] as co
 export const REMOTE_SERVER_LOG_LEVEL_OPTIONS = ['error', 'info', 'debug'] as const;
 export const CLOUDFLARE_TUNNEL_MODE_OPTIONS = ['quick', 'named'] as const;
 export const DEFAULT_REMOTE_SERVER_CORS_ORIGINS = ['*'] as const;
+export const REMOTE_SERVER_PORT_MIN = 1;
+export const REMOTE_SERVER_PORT_MAX = 65535;
 
 export type RemoteServerBindAddress = (typeof REMOTE_SERVER_BIND_ADDRESS_OPTIONS)[number];
 export type RemoteServerLogLevel = (typeof REMOTE_SERVER_LOG_LEVEL_OPTIONS)[number];
@@ -24,6 +26,13 @@ export const DEFAULT_CLOUDFLARE_TUNNEL_MODE: CloudflareTunnelMode = 'quick';
 
 export function getDefaultRemoteServerCorsOrigins(): string[] {
   return [...DEFAULT_REMOTE_SERVER_CORS_ORIGINS];
+}
+
+export function isRemoteServerPortUpdateValue(value: unknown): value is number {
+  return typeof value === 'number'
+    && Number.isInteger(value)
+    && value >= REMOTE_SERVER_PORT_MIN
+    && value <= REMOTE_SERVER_PORT_MAX;
 }
 
 export interface RemoteServerConfig {

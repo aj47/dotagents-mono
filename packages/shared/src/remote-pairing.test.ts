@@ -38,6 +38,7 @@ import {
   isLoopbackRemoteHost,
   isRemoteServerBindAddressUpdateValue,
   isRemoteServerLogLevelUpdateValue,
+  isRemoteServerPortUpdateValue,
   redactSecretForDisplay,
   resolveDotAgentsSecretReference,
   resolveDotAgentsSecretReferenceFromStore,
@@ -49,6 +50,8 @@ import {
   parseDotAgentsConfigDeepLink,
   REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
+  REMOTE_SERVER_PORT_MAX,
+  REMOTE_SERVER_PORT_MIN,
 } from './remote-pairing';
 
 function assertType<T>(_value: T): void {
@@ -87,6 +90,8 @@ describe('remote server config contracts', () => {
     expect(DEFAULT_REMOTE_SERVER_BIND_ADDRESS).toBe('127.0.0.1');
     expect(REMOTE_SERVER_BIND_ADDRESS_OPTIONS).toEqual(['127.0.0.1', '0.0.0.0']);
     expect(DEFAULT_REMOTE_SERVER_PORT).toBe(3210);
+    expect(REMOTE_SERVER_PORT_MIN).toBe(1);
+    expect(REMOTE_SERVER_PORT_MAX).toBe(65535);
     expect(DEFAULT_REMOTE_SERVER_LOG_LEVEL).toBe('info');
     expect(REMOTE_SERVER_LOG_LEVEL_OPTIONS).toEqual(['error', 'info', 'debug']);
     expect(DEFAULT_REMOTE_SERVER_CORS_ORIGINS).toEqual(['*']);
@@ -97,6 +102,10 @@ describe('remote server config contracts', () => {
 
     expect(isRemoteServerBindAddressUpdateValue('0.0.0.0')).toBe(true);
     expect(isRemoteServerBindAddressUpdateValue('localhost')).toBe(false);
+    expect(isRemoteServerPortUpdateValue(3210)).toBe(true);
+    expect(isRemoteServerPortUpdateValue(0)).toBe(false);
+    expect(isRemoteServerPortUpdateValue(65536)).toBe(false);
+    expect(isRemoteServerPortUpdateValue(3210.5)).toBe(false);
     expect(isRemoteServerLogLevelUpdateValue('debug')).toBe(true);
     expect(isRemoteServerLogLevelUpdateValue('trace')).toBe(false);
     expect(isCloudflareTunnelModeUpdateValue('named')).toBe(true);

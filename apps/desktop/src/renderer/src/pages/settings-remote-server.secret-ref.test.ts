@@ -18,6 +18,8 @@ describe("remote server settings secret references", () => {
     expect(source).toContain("DEFAULT_REMOTE_SERVER_BIND_ADDRESS")
     expect(source).toContain("DEFAULT_REMOTE_SERVER_CORS_ORIGINS")
     expect(source).toContain("DEFAULT_REMOTE_SERVER_PORT")
+    expect(source).toContain("REMOTE_SERVER_PORT_MIN")
+    expect(source).toContain("REMOTE_SERVER_PORT_MAX")
     expect(source).toContain("DEFAULT_REMOTE_SERVER_LOG_LEVEL")
     expect(source).toContain("DEFAULT_CLOUDFLARE_TUNNEL_MODE")
   })

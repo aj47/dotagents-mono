@@ -58,8 +58,11 @@ import {
   DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
   DEFAULT_REMOTE_SERVER_PORT,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
+  isRemoteServerPortUpdateValue,
   REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
+  REMOTE_SERVER_PORT_MAX,
+  REMOTE_SERVER_PORT_MIN,
   type CloudflareTunnelMode,
   type RemoteServerBindAddress,
   type RemoteServerLogLevel,
@@ -614,8 +617,8 @@ export default function OperationsScreen({ navigation }: any) {
 
   const handleRemoteServerPortSave = useCallback(() => {
     const parsed = Number.parseInt(drafts.remoteServerPort.trim(), 10);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
-      Alert.alert('Invalid Port', 'Enter a whole number between 1 and 65535.');
+    if (!isRemoteServerPortUpdateValue(parsed)) {
+      Alert.alert('Invalid Port', `Enter a whole number between ${REMOTE_SERVER_PORT_MIN} and ${REMOTE_SERVER_PORT_MAX}.`);
       setDrafts((current) => ({
         ...current,
         remoteServerPort: String(settings?.remoteServerPort ?? DEFAULT_REMOTE_SERVER_PORT),

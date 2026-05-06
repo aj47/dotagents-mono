@@ -58,6 +58,7 @@ import {
   isCloudflareTunnelModeUpdateValue,
   isRemoteServerBindAddressUpdateValue,
   isRemoteServerLogLevelUpdateValue,
+  isRemoteServerPortUpdateValue,
   type RemoteServerLifecycleAction,
   type RemoteServerLifecycleConfigLike,
 } from './remote-pairing';
@@ -864,7 +865,7 @@ export function buildSettingsUpdatePatch(
   if (Array.isArray(requestBody.mcpDisabledTools)) updates.mcpDisabledTools = sanitizeConfigStringList(requestBody.mcpDisabledTools);
 
   if (typeof requestBody.remoteServerEnabled === 'boolean') updates.remoteServerEnabled = requestBody.remoteServerEnabled;
-  if (typeof requestBody.remoteServerPort === 'number' && Number.isInteger(requestBody.remoteServerPort) && requestBody.remoteServerPort >= 1 && requestBody.remoteServerPort <= 65535) {
+  if (isRemoteServerPortUpdateValue(requestBody.remoteServerPort)) {
     updates.remoteServerPort = requestBody.remoteServerPort;
   }
   if (isRemoteServerBindAddressUpdateValue(requestBody.remoteServerBindAddress)) {
