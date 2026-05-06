@@ -10,6 +10,7 @@ import {
   extractConversationImageMarkdownReferences,
   extractDataImageMarkdownReferences,
   extractMarkdownImageReferences,
+  extractMarkdownLinkReferences,
   getConversationImageExtensionForMimeType,
   getConversationImageMimeTypeFromFileName,
   getConversationVideoByteRange,
@@ -21,11 +22,13 @@ import {
   getUtf8ByteLength,
   getVideoAssetLabel,
   hasMarkdownMediaImageReference,
+  hasMarkdownVideoLink,
   isAllowedRespondToUserImageUrl,
   isAllowedRespondToUserVideoUrl,
   isAllowedMarkdownImageUrl,
   isAllowedMarkdownLinkUrl,
   isMarkdownMediaImageUrl,
+  isMarkdownVideoLinkUrl,
   isSafeConversationVideoAssetFileName,
   isSafeConversationImageAssetFileName,
   isConversationImageAssetUrl,
@@ -41,7 +44,9 @@ import {
   parseConversationImageAssetUrl,
   parseConversationVideoAssetUrl,
   replaceMarkdownImageReferences,
+  replaceMarkdownVideoLinks,
   stripMarkdownImageReferences,
+  stripMarkdownVideoLinks,
   transformMarkdownUrl,
   type RespondToUserAssetHandlers,
   validateRespondToUserImageFile,
@@ -329,6 +334,55 @@ describe('conversation video asset utilities', () => {
     expect(isMarkdownMediaImageUrl('file://private/image.png')).toBe(false);
     expect(hasMarkdownMediaImageReference('See ![pic](assets://conversation-image/conv_1/image.png)')).toBe(true);
     expect(hasMarkdownMediaImageReference('See ![pic](file://private/image.png)')).toBe(false);
+  });
+
+  it('extracts and rewrites markdown video links without matching image links', () => {
+    const content = [
+      'Watch [clip](assets://conversation-video/conv_1/demo.mp4)',
+      'or [remote](https://example.com/demo.webm?download=1).',
+      'Keep ![poster](https://example.com/poster.png)',
+      'and [recording](assets://recording/recording_1/demo.mp4).',
+    ].join(' ');
+
+    expect(extractMarkdownLinkReferences(content)).toEqual([
+      {
+        fullMatch: ' [clip](assets://conversation-video/conv_1/demo.mp4)',
+        linkMatch: '[clip](assets://conversation-video/conv_1/demo.mp4)',
+        prefix: ' ',
+        label: 'clip',
+        url: 'assets://conversation-video/conv_1/demo.mp4',
+        index: content.indexOf(' [clip]'),
+        linkIndex: content.indexOf('[clip]'),
+      },
+      {
+        fullMatch: ' [remote](https://example.com/demo.webm?download=1)',
+        linkMatch: '[remote](https://example.com/demo.webm?download=1)',
+        prefix: ' ',
+        label: 'remote',
+        url: 'https://example.com/demo.webm?download=1',
+        index: content.indexOf(' [remote]'),
+        linkIndex: content.indexOf('[remote]'),
+      },
+      {
+        fullMatch: ' [recording](assets://recording/recording_1/demo.mp4)',
+        linkMatch: '[recording](assets://recording/recording_1/demo.mp4)',
+        prefix: ' ',
+        label: 'recording',
+        url: 'assets://recording/recording_1/demo.mp4',
+        index: content.indexOf(' [recording]'),
+        linkIndex: content.indexOf('[recording]'),
+      },
+    ]);
+
+    expect(isMarkdownVideoLinkUrl('assets://conversation-video/conv_1/demo.mp4')).toBe(true);
+    expect(isMarkdownVideoLinkUrl('https://example.com/demo.webm?download=1')).toBe(true);
+    expect(isMarkdownVideoLinkUrl('assets://recording/recording_1/demo.mp4')).toBe(false);
+    expect(isMarkdownVideoLinkUrl('assets://recording/recording_1/demo.mp4', { allowRecordingAssetUrls: true })).toBe(true);
+    expect(hasMarkdownVideoLink(content)).toBe(true);
+    expect(replaceMarkdownVideoLinks(content, (reference) => `[Video: ${reference.label}]`))
+      .toBe('Watch [Video: clip] or [Video: remote]. Keep ![poster](https://example.com/poster.png) and [recording](assets://recording/recording_1/demo.mp4).');
+    expect(stripMarkdownVideoLinks(content, { allowRecordingAssetUrls: true }))
+      .toBe('Watch  or . Keep ![poster](https://example.com/poster.png) and .');
   });
 
   it('parses respond_to_user top-level args once for callers that need media counts', () => {

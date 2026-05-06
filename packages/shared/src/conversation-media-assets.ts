@@ -59,6 +59,7 @@ const DATA_IMAGE_MARKDOWN_REFERENCE_REGEX =
 const CONVERSATION_IMAGE_MARKDOWN_REFERENCE_REGEX =
   /!\[([^\]]*)\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi;
 const MARKDOWN_IMAGE_REFERENCE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/gi;
+const MARKDOWN_LINK_REFERENCE_REGEX = /(^|[^!])\[([^\]]*)\]\(([^)]+)\)/gi;
 const MARKDOWN_MEDIA_IMAGE_URL_REGEX = /^(?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)/i;
 
 export const MAX_RESPOND_TO_USER_IMAGES = 4;
@@ -99,6 +100,20 @@ export interface ConversationImageMarkdownInput {
 
 export interface StripMarkdownImageReferencesOptions {
   mediaOnly?: boolean;
+}
+
+export interface MarkdownLinkReference {
+  fullMatch: string;
+  linkMatch: string;
+  prefix: string;
+  label: string;
+  url: string;
+  index: number;
+  linkIndex: number;
+}
+
+export interface MarkdownVideoLinkOptions {
+  allowRecordingAssetUrls?: boolean;
 }
 
 export type ConversationVideoByteRange =
@@ -308,6 +323,74 @@ export function stripMarkdownImageReferences(
 
 export function hasMarkdownMediaImageReference(content: string): boolean {
   return extractMarkdownImageReferences(content).some((reference) => isMarkdownMediaImageUrl(reference.url));
+}
+
+export function extractMarkdownLinkReferences(content: string): MarkdownLinkReference[] {
+  return Array.from(content.matchAll(MARKDOWN_LINK_REFERENCE_REGEX), (match) => {
+    const fullMatch = match[0];
+    const prefix = match[1] ?? '';
+    return {
+      fullMatch,
+      linkMatch: fullMatch.slice(prefix.length),
+      prefix,
+      label: match[2] ?? '',
+      url: match[3] ?? '',
+      index: match.index ?? 0,
+      linkIndex: (match.index ?? 0) + prefix.length,
+    };
+  });
+}
+
+export function isMarkdownVideoLinkUrl(
+  rawUrl: string,
+  options: MarkdownVideoLinkOptions = {},
+): boolean {
+  const url = rawUrl.trim();
+  return isRenderableVideoUrl(url) || (options.allowRecordingAssetUrls === true && RECORDING_ASSET_URL_REGEX.test(url));
+}
+
+export function replaceMarkdownLinkReferences(
+  content: string,
+  replacer: (reference: MarkdownLinkReference) => string,
+): string {
+  const references = extractMarkdownLinkReferences(content);
+  if (references.length === 0) return content;
+
+  let nextContent = '';
+  let lastIndex = 0;
+  for (const reference of references) {
+    nextContent += content.slice(lastIndex, reference.index);
+    nextContent += reference.prefix + replacer(reference);
+    lastIndex = reference.index + reference.fullMatch.length;
+  }
+
+  return nextContent + content.slice(lastIndex);
+}
+
+export function replaceMarkdownVideoLinks(
+  content: string,
+  replacer: (reference: MarkdownLinkReference) => string,
+  options: MarkdownVideoLinkOptions = {},
+): string {
+  return replaceMarkdownLinkReferences(content, (reference) => {
+    return isMarkdownVideoLinkUrl(reference.url, options)
+      ? replacer(reference)
+      : reference.linkMatch;
+  });
+}
+
+export function stripMarkdownVideoLinks(
+  content: string,
+  options: MarkdownVideoLinkOptions = {},
+): string {
+  return replaceMarkdownVideoLinks(content, () => '', options);
+}
+
+export function hasMarkdownVideoLink(
+  content: string,
+  options: MarkdownVideoLinkOptions = {},
+): boolean {
+  return extractMarkdownLinkReferences(content).some((reference) => isMarkdownVideoLinkUrl(reference.url, options));
 }
 
 export function isRenderableVideoUrl(rawUrl?: string): boolean {

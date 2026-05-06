@@ -1,14 +1,14 @@
 import type { AgentProgressUpdate } from "./agent-progress"
 import {
   hasMarkdownMediaImageReference,
+  hasMarkdownVideoLink,
   replaceMarkdownImageReferences,
+  replaceMarkdownVideoLinks,
   stripMarkdownImageReferences,
+  stripMarkdownVideoLinks,
 } from "./conversation-media-assets"
 
 // Inline data URLs can be megabytes long; replace them in display/budget text.
-const MARKDOWN_VIDEO_LINK_REGEX = /(^|[^!])\[([^\]]*)\]\((assets:\/\/conversation-video\/[^)]+|https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?)\)/gi
-const MARKDOWN_MEDIA_VIDEO_PAYLOAD_REGEX = /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/gi
-
 export interface StripMarkdownMediaPayloadOptions {
   stripAllImages?: boolean
 }
@@ -39,14 +39,15 @@ export function sanitizeMessageContentForSpeech(content: string): string {
 
   // Strip markdown image payloads (including inline data URLs) before TTS.
   // This keeps speech requests small and avoids reading non-verbal content.
-  return replaceMarkdownImageReferences(content, (reference) => {
+  const contentWithoutImages = replaceMarkdownImageReferences(content, (reference) => {
     const cleanedAlt = reference.altText.trim()
     return cleanedAlt ? `Image: ${cleanedAlt}` : "Image"
   })
-    .replace(MARKDOWN_VIDEO_LINK_REGEX, (_match, prefix: string, label: string) => {
-      const cleanedLabel = label?.trim()
-      return `${prefix}${cleanedLabel ? `Video: ${cleanedLabel}` : "Video"}`
-    })
+
+  return replaceMarkdownVideoLinks(contentWithoutImages, (reference) => {
+    const cleanedLabel = reference.label.trim()
+    return cleanedLabel ? `Video: ${cleanedLabel}` : "Video"
+  })
 }
 
 export function sanitizeMessageMediaContentForPreview(content: string): string {
@@ -54,8 +55,10 @@ export function sanitizeMessageMediaContentForPreview(content: string): string {
     return content
   }
 
-  return replaceMarkdownImageReferences(content, () => "[Image]")
-    .replace(MARKDOWN_VIDEO_LINK_REGEX, "$1[Video]")
+  return replaceMarkdownVideoLinks(
+    replaceMarkdownImageReferences(content, () => "[Image]"),
+    () => "[Video]",
+  )
     .replace(/\s+/g, " ")
     .trim()
 }
@@ -64,13 +67,15 @@ export function stripMarkdownMediaPayloads(
   content: string,
   options: StripMarkdownMediaPayloadOptions = {},
 ): string {
-  return stripMarkdownImageReferences(content, { mediaOnly: !options.stripAllImages })
-    .replace(MARKDOWN_MEDIA_VIDEO_PAYLOAD_REGEX, "$1")
+  return stripMarkdownVideoLinks(
+    stripMarkdownImageReferences(content, { mediaOnly: !options.stripAllImages }),
+    { allowRecordingAssetUrls: true },
+  )
 }
 
 export function hasMarkdownMediaPayload(content: string): boolean {
   return hasMarkdownMediaImageReference(content) ||
-    /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/i.test(content)
+    hasMarkdownVideoLink(content, { allowRecordingAssetUrls: true })
 }
 
 export function normalizeAssistantResponseForDedupe(content: string | undefined): string {

@@ -63,6 +63,11 @@ describe('sanitizeMessageContentForSpeech', () => {
     expect(sanitizeMessageContentForSpeech(content)).toBe('Watch Video: demo please')
   })
 
+  it('preserves recording asset links in speech text', () => {
+    const content = 'Review [recording](assets://recording/recording_1/demo.mp4) please'
+    expect(sanitizeMessageContentForSpeech(content)).toBe(content)
+  })
+
   it('leaves plain text unchanged', () => {
     const content = 'Just regular text with no images'
     expect(sanitizeMessageContentForSpeech(content)).toBe(content)
@@ -85,6 +90,11 @@ describe('sanitizeMessageMediaContentForPreview', () => {
   it('replaces markdown video links with [Video]', () => {
     const content = 'Watch [demo](assets://conversation-video/conv_1/abcdef1234567890.mp4) now'
     expect(sanitizeMessageMediaContentForPreview(content)).toBe('Watch [Video] now')
+  })
+
+  it('preserves recording asset links in previews', () => {
+    const content = 'Review [recording](assets://recording/recording_1/demo.mp4) now'
+    expect(sanitizeMessageMediaContentForPreview(content)).toBe(content)
   })
 })
 
