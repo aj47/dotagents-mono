@@ -197,11 +197,11 @@ async function loadSettingsDiscord(runtime: ReturnType<typeof createHookRuntime>
   vi.doMock("../components/ui/switch", () => ({ Switch: (props: any) => ({ type: "Switch", props }) }))
   vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
   vi.doMock("../components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
-  vi.doMock("@renderer/lib/query-client", () => ({
+  vi.doMock("@renderer/lib/queries", () => ({
     useConfigQuery: () => ({ data: currentConfig }),
     useSaveConfigMutation: () => ({ mutate, mutateAsync }),
   }))
-  vi.doMock("../lib/query-client", () => ({
+  vi.doMock("../lib/queries", () => ({
     useConfigQuery: () => ({ data: currentConfig }),
     useSaveConfigMutation: () => ({ mutate, mutateAsync }),
   }))

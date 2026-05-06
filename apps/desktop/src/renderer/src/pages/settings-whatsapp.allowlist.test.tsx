@@ -169,11 +169,11 @@ async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime
   vi.doMock("../components/ui/input", () => ({ Input: (props: any) => ({ type: "Input", props }) }))
   vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
   vi.doMock("../components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
-  vi.doMock("@renderer/lib/query-client", () => ({
+  vi.doMock("@renderer/lib/queries", () => ({
     useConfigQuery: () => ({ data: currentConfig }),
     useSaveConfigMutation: () => ({ mutate }),
   }))
-  vi.doMock("../lib/query-client", () => ({
+  vi.doMock("../lib/queries", () => ({
     useConfigQuery: () => ({ data: currentConfig }),
     useSaveConfigMutation: () => ({ mutate }),
   }))

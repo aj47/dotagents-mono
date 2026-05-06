@@ -61,7 +61,7 @@ import { Button } from "@renderer/components/ui/button"
 import {
   useConfigQuery,
   useSaveConfigMutation,
-} from "@renderer/lib/query-client"
+} from "@renderer/lib/queries"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { ExternalLink, FolderOpen, FolderUp, FileText, Search, X } from "lucide-react"

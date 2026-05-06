@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { Switch } from "@renderer/components/ui/switch"
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
+import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { ModelPresetManager } from "@renderer/components/model-preset-manager"
 import { ModelSelector, ProviderModelSelector } from "@renderer/components/model-selector"
 import { PresetModelSelector } from "@renderer/components/preset-model-selector"

@@ -6,7 +6,7 @@ import { Input } from "@renderer/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@renderer/components/ui/select"
 import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
+import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { formatConfigListInput, parseConfigListInput } from "@dotagents/shared/config-list-input"
 import {

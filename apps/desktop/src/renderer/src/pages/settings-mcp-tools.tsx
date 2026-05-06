@@ -1,4 +1,4 @@
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
+import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { Config, MCPConfig } from "@shared/types"
 import { MCPConfigManager } from "@renderer/components/mcp-config-manager"
 

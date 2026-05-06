@@ -196,8 +196,8 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
     useMutation: () => ({ mutate: vi.fn() }),
     focusManager: { setEventListener: vi.fn() },
   }))
-  vi.doMock("@renderer/lib/query-client", () => queryClientMock)
-  vi.doMock("../lib/query-client", () => queryClientMock)
+  vi.doMock("@renderer/lib/queries", () => queryClientMock)
+  vi.doMock("../lib/queries", () => queryClientMock)
   vi.doMock("@renderer/lib/tts-manager", () => ttsManagerMock)
   vi.doMock("../lib/tts-manager", () => ttsManagerMock)
   vi.doMock("@renderer/lib/tipc-client", () => tipcClientMock)

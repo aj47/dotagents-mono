@@ -8,7 +8,7 @@ import {
 } from "@renderer/components/ui/select"
 import { Label } from "@renderer/components/ui/label"
 import { Input } from "@renderer/components/ui/input"
-import { useAvailableModelsQuery, useConfigQuery } from "@renderer/lib/query-client"
+import { useAvailableModelsQuery, useConfigQuery } from "@renderer/lib/queries"
 import { AlertCircle, Search } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { logUI, logFocus, logStateChange, logRender } from "@renderer/lib/debug"

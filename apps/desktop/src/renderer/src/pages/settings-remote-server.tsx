@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@renderer/components/ui/select"
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
+import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import type { Config } from "@shared/types"

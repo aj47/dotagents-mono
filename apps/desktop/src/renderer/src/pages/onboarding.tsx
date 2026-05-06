@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@renderer/components/ui/select"
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
+import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
 import { Config } from "@shared/types"
 import { useNavigate } from "react-router-dom"

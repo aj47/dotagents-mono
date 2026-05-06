@@ -15,7 +15,7 @@ import { useSidebar, SIDEBAR_DIMENSIONS } from "@renderer/hooks/use-sidebar"
 import {
   useConfigQuery,
   useSaveConfigMutation,
-} from "@renderer/lib/query-client"
+} from "@renderer/lib/queries"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { DEFAULT_DISCORD_ENABLED } from "@dotagents/shared/discord-config"
 import { DEFAULT_WHATSAPP_ENABLED } from "@dotagents/shared/whatsapp-config"

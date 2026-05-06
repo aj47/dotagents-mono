@@ -3,7 +3,7 @@ import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/con
 import { Switch } from "@renderer/components/ui/switch"
 import { Input } from "@renderer/components/ui/input"
 import { Button } from "@renderer/components/ui/button"
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
+import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import type { Config } from "@shared/types"
 import { AlertTriangle, Loader2, CheckCircle2, XCircle, RefreshCw, LogOut, QrCode as QrCodeIcon, EyeOff } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"

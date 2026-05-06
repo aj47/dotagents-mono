@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select"
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
+import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { ModelPreset, Config } from "@shared/types"
 import { toast } from "sonner"
 import { Plus, Trash2, Key, Globe, Bot, Settings2 } from "lucide-react"
