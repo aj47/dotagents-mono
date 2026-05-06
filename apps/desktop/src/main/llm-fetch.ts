@@ -33,7 +33,7 @@ import { getErrorMessage, normalizeError } from "./error-utils"
 import { normalizeVerificationResultForCompletion } from "./llm-continuation-guards"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
 import type { AgentConversationState } from "@dotagents/shared/conversation-state"
-import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
+import { isLocalConfigurationErrorMessage } from "@dotagents/shared/api-key-error-utils"
 import { hasRawToolCallMarkerTokens, stripRawToolMarkerTokens } from "@dotagents/shared/chat-utils"
 import {
   extractConversationImageMarkdownReferences,
@@ -393,21 +393,6 @@ function isEmptyResponseError(error: unknown): boolean {
     )
   }
   return false
-}
-
-function isLocalConfigurationErrorMessage(message: string): boolean {
-  if (isMissingApiKeyErrorMessage(message)) {
-    return true
-  }
-
-  const normalized = message.toLowerCase()
-  return (
-    normalized.includes("unknown provider:") ||
-    normalized.includes("base url is required") ||
-    normalized.includes("access token is required") ||
-    normalized.includes("session token is required") ||
-    normalized.includes("is not configured")
-  )
 }
 
 /**

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { isMissingApiKeyErrorMessage } from './api-key-error-utils'
+import {
+  isLocalConfigurationErrorMessage,
+  isMissingApiKeyErrorMessage,
+} from './api-key-error-utils'
 
 describe('isMissingApiKeyErrorMessage', () => {
   it('returns true for "API key is required"', () => {
@@ -28,5 +31,25 @@ describe('isMissingApiKeyErrorMessage', () => {
 
   it('returns true when the message is embedded in a longer string', () => {
     expect(isMissingApiKeyErrorMessage('Error: API key is required for anthropic. Please configure it.')).toBe(true)
+  })
+})
+
+describe('isLocalConfigurationErrorMessage', () => {
+  it('includes missing API key messages', () => {
+    expect(isLocalConfigurationErrorMessage('API key is required for openai')).toBe(true)
+  })
+
+  it('detects deterministic local provider configuration errors', () => {
+    expect(isLocalConfigurationErrorMessage('Unknown provider: acme')).toBe(true)
+    expect(isLocalConfigurationErrorMessage('Base URL is required')).toBe(true)
+    expect(isLocalConfigurationErrorMessage('Access token is required')).toBe(true)
+    expect(isLocalConfigurationErrorMessage('Session token is required')).toBe(true)
+    expect(isLocalConfigurationErrorMessage('Remote API is not configured')).toBe(true)
+  })
+
+  it('leaves transient errors retryable by this classifier', () => {
+    expect(isLocalConfigurationErrorMessage('Connection timed out')).toBe(false)
+    expect(isLocalConfigurationErrorMessage('Rate limit exceeded')).toBe(false)
+    expect(isLocalConfigurationErrorMessage('Empty response')).toBe(false)
   })
 })
