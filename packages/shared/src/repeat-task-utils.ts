@@ -166,6 +166,17 @@ export type RepeatTaskIntervalMsResult = {
   wasClamped: boolean
 }
 
+export type RepeatTaskIntervalDraftResolutionOptions = {
+  existingIntervalMinutes?: number | null
+  fallbackIntervalMinutes: number
+}
+
+export type RepeatTaskIntervalDraftResolution = {
+  parsedIntervalMinutes: number | null
+  intervalMinutes: number
+  isValid: boolean
+}
+
 export type RepeatTaskNextDelayResult = {
   delayMs: number
   nextRunAt?: number
@@ -1385,6 +1396,18 @@ export function parseLoopIntervalDraft(draft: string): number | null {
   if (!Number.isInteger(parsed) || parsed < 1) return null
 
   return parsed
+}
+
+export function resolveRepeatTaskIntervalMinutesDraft(
+  draft: string,
+  options: RepeatTaskIntervalDraftResolutionOptions,
+): RepeatTaskIntervalDraftResolution {
+  const parsedIntervalMinutes = parseLoopIntervalDraft(draft)
+  return {
+    parsedIntervalMinutes,
+    intervalMinutes: parsedIntervalMinutes ?? options.existingIntervalMinutes ?? options.fallbackIntervalMinutes,
+    isValid: parsedIntervalMinutes !== null,
+  }
 }
 
 export function getLoopScheduleMode(loop: { runContinuously?: boolean; schedule?: RepeatTaskSchedule | null }): RepeatTaskScheduleMode {

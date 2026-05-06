@@ -53,6 +53,7 @@ import {
   sanitizeScheduleTimes,
   startRepeatTaskAction,
   stopRepeatTaskAction,
+  resolveRepeatTaskIntervalMinutesDraft,
   TASK_SESSION_TITLE_PREFIX,
   toggleRepeatTaskAction,
   updateRepeatTaskAction,
@@ -268,6 +269,24 @@ describe("repeat task schedule helpers", () => {
     expect(parseLoopIntervalDraft("")).toBeNull()
     expect(parseLoopIntervalDraft("1.5")).toBeNull()
     expect(parseLoopIntervalDraft("0")).toBeNull()
+    expect(resolveRepeatTaskIntervalMinutesDraft(" 45 ", { fallbackIntervalMinutes: 15 })).toEqual({
+      parsedIntervalMinutes: 45,
+      intervalMinutes: 45,
+      isValid: true,
+    })
+    expect(resolveRepeatTaskIntervalMinutesDraft("", {
+      existingIntervalMinutes: 30,
+      fallbackIntervalMinutes: 15,
+    })).toEqual({
+      parsedIntervalMinutes: null,
+      intervalMinutes: 30,
+      isValid: false,
+    })
+    expect(resolveRepeatTaskIntervalMinutesDraft("", { fallbackIntervalMinutes: 15 })).toEqual({
+      parsedIntervalMinutes: null,
+      intervalMinutes: 15,
+      isValid: false,
+    })
   })
 
   it("derives schedule form defaults from an existing loop", () => {

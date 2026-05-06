@@ -38,6 +38,7 @@ import {
   getLoopScheduleMode,
   getLoopScheduleTimes,
   parseLoopIntervalDraft,
+  resolveRepeatTaskIntervalMinutesDraft,
   type RepeatTaskScheduleMode,
 } from "@dotagents/shared/repeat-task-utils"
 
@@ -217,8 +218,14 @@ export function SettingsLoops() {
       return
     }
 
-    const parsedIntervalMinutes = parseLoopIntervalDraft(editing.intervalMinutesDraft)
-    if (editing.scheduleMode === "interval" && parsedIntervalMinutes === null) {
+    const existingIntervalMinutes = editing.id
+      ? loops.find((loop) => loop.id === editing.id)?.intervalMinutes
+      : undefined
+    const intervalResolution = resolveRepeatTaskIntervalMinutesDraft(editing.intervalMinutesDraft, {
+      existingIntervalMinutes,
+      fallbackIntervalMinutes: 15,
+    })
+    if (editing.scheduleMode === "interval" && !intervalResolution.isValid) {
       toast.error("Interval must be a positive whole number of minutes")
       return
     }
@@ -237,15 +244,11 @@ export function SettingsLoops() {
     }
 
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
-    const existingIntervalMinutes = editing.id
-      ? loops.find((loop) => loop.id === editing.id)?.intervalMinutes
-      : undefined
-    const savedIntervalMinutes = parsedIntervalMinutes ?? existingIntervalMinutes ?? 15
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
       name: editing.name.trim(),
       prompt: editing.prompt.trim(),
-      intervalMinutes: savedIntervalMinutes,
+      intervalMinutes: intervalResolution.intervalMinutes,
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
       speakOnTrigger: editing.speakOnTrigger,

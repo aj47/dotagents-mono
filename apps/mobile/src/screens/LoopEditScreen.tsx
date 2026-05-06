@@ -39,6 +39,7 @@ import {
   getLoopScheduleMode,
   getLoopScheduleTimes,
   parseLoopIntervalDraft,
+  resolveRepeatTaskIntervalMinutesDraft,
   type RepeatTaskScheduleMode,
 } from '@dotagents/shared/repeat-task-utils';
 
@@ -244,22 +245,18 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
     const name = formData.name.trim();
     const prompt = formData.prompt.trim();
-    const intervalInput = formData.intervalMinutes.trim();
-    const intervalMinutes = Number(intervalInput);
     if (!name || !prompt) {
       setError('Name and prompt are required');
       return;
     }
-    const hasValidInterval = parseLoopIntervalDraft(intervalInput) !== null;
-    if (formData.scheduleMode === 'interval' && !hasValidInterval) {
+    const intervalResolution = resolveRepeatTaskIntervalMinutesDraft(formData.intervalMinutes, {
+      existingIntervalMinutes: isEditing ? existingLoopIntervalMinutes : null,
+      fallbackIntervalMinutes: DEFAULT_INTERVAL_MINUTES,
+    });
+    if (formData.scheduleMode === 'interval' && !intervalResolution.isValid) {
       setError('Interval must be a positive whole number of minutes');
       return;
     }
-    const savedIntervalMinutes = hasValidInterval
-      ? intervalMinutes
-      : isEditing && existingLoopIntervalMinutes !== null
-        ? existingLoopIntervalMinutes
-        : DEFAULT_INTERVAL_MINUTES;
     const maxIterationsInput = formData.maxIterations.trim();
     const parsedMaxIterations = maxIterationsInput ? parseLoopIntervalDraft(maxIterationsInput) : null;
     if (maxIterationsInput && parsedMaxIterations === null) {
@@ -288,7 +285,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
         const updatePayload: LoopUpdateRequest = {
           name,
           prompt,
-          intervalMinutes: savedIntervalMinutes,
+          intervalMinutes: intervalResolution.intervalMinutes,
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
           runOnStartup: formData.runOnStartup,
@@ -304,7 +301,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
         const createPayload: LoopCreateRequest = {
           name,
           prompt,
-          intervalMinutes: savedIntervalMinutes,
+          intervalMinutes: intervalResolution.intervalMinutes,
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
           runOnStartup: formData.runOnStartup,

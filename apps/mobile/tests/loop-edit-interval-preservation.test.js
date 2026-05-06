@@ -14,7 +14,8 @@ test('preserves an existing loop interval when hidden interval text is invalid w
   assert.match(screenSource, /setExistingLoopIntervalMinutes\(loop\.intervalMinutes\);/);
   assert.match(
     screenSource,
-    /const savedIntervalMinutes = hasValidInterval\s*\? intervalMinutes\s*: isEditing && existingLoopIntervalMinutes !== null\s*\? existingLoopIntervalMinutes\s*: DEFAULT_INTERVAL_MINUTES;/
+    /resolveRepeatTaskIntervalMinutesDraft\(formData\.intervalMinutes, \{[\s\S]*?existingIntervalMinutes: isEditing \? existingLoopIntervalMinutes : null,[\s\S]*?fallbackIntervalMinutes: DEFAULT_INTERVAL_MINUTES,[\s\S]*?\}\)/
   );
+  assert.match(screenSource, /intervalMinutes: intervalResolution\.intervalMinutes/);
   assert.doesNotMatch(screenSource, /const savedIntervalMinutes = hasValidInterval \? intervalMinutes : 60;/);
 });
