@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { getBranchMessageIndexMap } from "./conversation-progress"
+import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
 
 describe("getBranchMessageIndexMap", () => {
   it("maps non-compacted messages to their raw indexes", () => {
