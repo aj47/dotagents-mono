@@ -34,6 +34,7 @@ import { normalizeVerificationResultForCompletion } from "./llm-continuation-gua
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
 import type { AgentConversationState } from "@dotagents/shared/conversation-state"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
+import { hasRawToolCallMarkerTokens, stripRawToolMarkerTokens } from "@dotagents/shared/chat-utils"
 import {
   extractConversationImageMarkdownReferences,
   getConversationImageMimeTypeFromFileName,
@@ -917,9 +918,8 @@ export async function makeLLMCallWithFetch(
             return response
           }
 
-          const hasToolMarkers =
-            /<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(text)
-          const cleaned = text.replace(/<\|[^|]*\|>/g, "").trim()
+          const hasToolMarkers = hasRawToolCallMarkerTokens(text)
+          const cleaned = stripRawToolMarkerTokens(text, { trim: true })
 
           if (generationId) {
             endLLMGeneration(generationId, {
@@ -1096,9 +1096,8 @@ export async function makeLLMCallWithFetch(
         }
 
         // Check for tool markers in plain text response
-        const hasToolMarkers =
-          /<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(text)
-        const cleaned = text.replace(/<\|[^|]*\|>/g, "").trim()
+        const hasToolMarkers = hasRawToolCallMarkerTokens(text)
+        const cleaned = stripRawToolMarkerTokens(text, { trim: true })
 
         // End Langfuse generation with text response.
         // When tool markers are present, log the raw text so traces accurately

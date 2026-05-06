@@ -1,4 +1,9 @@
-import { MARK_WORK_COMPLETE_TOOL, RESPOND_TO_USER_TOOL } from "./chat-utils"
+import {
+  MARK_WORK_COMPLETE_TOOL,
+  RESPOND_TO_USER_TOOL,
+  hasRawToolMarkerTokens,
+  stripRawToolMarkerTokens,
+} from "./chat-utils"
 import type {
   MCPServer,
   MCPServersResponse,
@@ -360,9 +365,6 @@ export type SamplingChatMessage = {
   content: string
 }
 
-const SAMPLING_TOOL_MARKER_DETECT_PATTERN = /<\|[^|]*\|>/
-const SAMPLING_TOOL_MARKER_PATTERN = /<\|[^|]*\|>/g
-
 export function formatSamplingMessageContent(
   content: SamplingMessageContent | SamplingMessageContent[]
 ): string {
@@ -394,8 +396,8 @@ export function buildSamplingChatMessages(
 
 export function stripSamplingToolMarkerTokens(content: string | undefined | null): string {
   const rawContent = content || ""
-  return SAMPLING_TOOL_MARKER_DETECT_PATTERN.test(rawContent)
-    ? rawContent.replace(SAMPLING_TOOL_MARKER_PATTERN, "").trim()
+  return hasRawToolMarkerTokens(rawContent)
+    ? stripRawToolMarkerTokens(rawContent, { trim: true })
     : rawContent
 }
 

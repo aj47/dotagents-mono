@@ -44,7 +44,10 @@ import {
   isToolOnlyMessage,
   normalizeServerSentEventOrigin,
   isInternalCompletionControlMessage,
+  hasRawToolCallMarkerTokens,
+  hasRawToolMarkerTokens,
   looksLikeToolPayloadContent,
+  stripRawToolMarkerTokens,
   stripRawToolTextFromContent,
   filterVisibleChatMessages,
   validateChatCompletionRequestBody,
@@ -1241,6 +1244,14 @@ describe('visible message content helpers', () => {
     expect(looksLikeToolPayloadContent('tool_call')).toBe(true)
     expect(looksLikeToolPayloadContent('recipient_name functions.exec_command')).toBe(true)
     expect(looksLikeToolPayloadContent('Normal assistant text')).toBe(false)
+  })
+
+  it('shares raw tool marker token detection and stripping', () => {
+    expect(hasRawToolMarkerTokens('hello <|tool_call_end|>')).toBe(true)
+    expect(hasRawToolCallMarkerTokens('hello <|tool_call_end|>')).toBe(false)
+    expect(hasRawToolCallMarkerTokens('hello <|tool_call_begin|>')).toBe(true)
+    expect(stripRawToolMarkerTokens('  hello <|tool_call_begin|>search<|tool_call_end|>  ')).toBe('  hello search  ')
+    expect(stripRawToolMarkerTokens('  hello <|tool_call_begin|>search<|tool_call_end|>  ', { trim: true })).toBe('hello search')
   })
 
   it('keeps ordinary assistant and user text visible', () => {

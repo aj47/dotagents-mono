@@ -212,6 +212,9 @@ const TOOL_PAYLOAD_PREFIX_REGEX = /^(?:using tool:|tool result:)/i;
 const TOOL_RESULT_BRACKET_REGEX = /^\[[\w_.-]+\]\s*[{\[#]/;
 const INLINE_TOOL_BRACKET_REGEX = /\[[\w_.-]+\]\s*(?:\{[\s\S]*?\}|\[[\s\S]*?\])/g;
 const GARBLED_TOOL_CALL_REGEX = /(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.|recipient_name.*functions\.)/i;
+const RAW_TOOL_MARKER_TOKEN_REGEX = /<\|[^|]*\|>/g;
+const RAW_TOOL_MARKER_DETECT_REGEX = /<\|[^|]*\|>/;
+const RAW_TOOL_CALL_MARKER_DETECT_REGEX = /<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i;
 const DEFAULT_CHAT_COMPLETION_PUSH_NOTIFICATION_TITLE_LENGTH = 30;
 
 /**
@@ -1374,7 +1377,7 @@ export function looksLikeToolPayloadContent(content?: string): boolean {
     return false;
   }
 
-  if (/<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(trimmedContent)) {
+  if (hasRawToolCallMarkerTokens(trimmedContent)) {
     return true;
   }
 
@@ -1397,12 +1400,27 @@ export function looksLikeToolPayloadContent(content?: string): boolean {
   return false;
 }
 
+export function hasRawToolMarkerTokens(content?: string | null): boolean {
+  return RAW_TOOL_MARKER_DETECT_REGEX.test(content ?? '');
+}
+
+export function hasRawToolCallMarkerTokens(content?: string | null): boolean {
+  return RAW_TOOL_CALL_MARKER_DETECT_REGEX.test(content ?? '');
+}
+
+export function stripRawToolMarkerTokens(
+  content: string | undefined | null,
+  options: { trim?: boolean } = {},
+): string {
+  const stripped = (content ?? '').replace(RAW_TOOL_MARKER_TOKEN_REGEX, '');
+  return options.trim ? stripped.trim() : stripped;
+}
+
 export function stripRawToolTextFromContent(content: string): string {
   if (!content) return content;
 
-  return content
+  return stripRawToolMarkerTokens(content)
     .replace(INLINE_TOOL_BRACKET_REGEX, '')
-    .replace(/<\|[^|]*\|>/g, '')
     .replace(/(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.)[\s\S]*$/i, '')
     .trim();
 }

@@ -49,6 +49,8 @@ import {
 import {
   MARK_WORK_COMPLETE_TOOL,
   RESPOND_TO_USER_TOOL,
+  hasRawToolCallMarkerTokens,
+  stripRawToolMarkerTokens,
 } from "@dotagents/shared/chat-utils"
 import { INTERNAL_COMPLETION_NUDGE_TEXT } from "@dotagents/shared/mcp-api"
 import {
@@ -486,7 +488,7 @@ export async function processTranscriptWithTools(
     // makeLLMCallWithFetch preserves for the agent loop's recovery path.
     // This non-agent flow returns content directly to the renderer.
     if (result.content) {
-      const stripped = result.content.replace(/<\|[^|]*\|>/g, "").trim()
+      const stripped = stripRawToolMarkerTokens(result.content, { trim: true })
       // Only update if stripping produced non-empty content; if the response
       // was marker-only, replace with empty string rather than falling back
       // to the raw marker text (which would leak special tokens to the renderer).
@@ -2267,7 +2269,7 @@ export async function processTranscriptWithAgentMode(
     // Update thinking step with actual LLM content and mark as completed.
     // Strip any raw tool-marker tokens (e.g. <|tool_call_begin|>) so they
     // don't leak into the progress UI before the marker-recovery branch runs.
-    const displayContent = (reasoningDisplayContent || llmResponse.content || "").replace(/<\|[^|]*\|>/g, "").trim()
+    const displayContent = stripRawToolMarkerTokens(reasoningDisplayContent || llmResponse.content || "", { trim: true })
     const displayOnlyMessageOptions = reasoningDisplayContent
       ? { displayContent }
       : undefined
@@ -2343,10 +2345,10 @@ export async function processTranscriptWithAgentMode(
       const hasToolsAvailable = activeTools.length > 0
       const contentText = llmResponse.content || ""
       const trimmedContent = contentText.trim()
-      const hasToolMarkers = /<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(contentText)
+      const hasToolMarkers = hasRawToolCallMarkerTokens(contentText)
 
       if (hasToolMarkers) {
-        const cleaned = contentText.replace(/<\|[^|]*\|>/g, "").trim()
+        const cleaned = stripRawToolMarkerTokens(contentText, { trim: true })
         if (cleaned.length > 0) {
           addMessage("assistant", cleaned)
         }
