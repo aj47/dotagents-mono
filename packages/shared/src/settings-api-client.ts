@@ -21,6 +21,8 @@ import {
 } from './remote-pairing';
 import { getSensitiveOperatorSettingsKeys } from './operator-actions';
 import type {
+  AgentModelSelectionConfig,
+  ChatProviderCredentialsConfig,
   AgentProfileCreateRequest,
   AgentProfileDeleteResponse,
   AgentProfileToggleResponse,
@@ -106,10 +108,8 @@ const SETTINGS_AUDIT_PATH = getRemoteServerApiRoutePath(API_PATHS.settings);
 
 export type SettingsUpdatePatch = Record<string, any>;
 
-export interface SettingsUpdateConfigLike {
-  currentModelPresetId?: string;
+export interface SettingsUpdateConfigLike extends Pick<AgentModelSelectionConfig, 'currentModelPresetId'>, Pick<ChatProviderCredentialsConfig, 'openaiApiKey'> {
   modelPresets?: ModelPreset[];
-  openaiApiKey?: string;
 }
 
 export type SettingsResponseConfigLike = Partial<Settings> & {

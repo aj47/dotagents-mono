@@ -651,52 +651,55 @@ export interface TextToSpeechConfig {
   supertonicSteps?: number;
 }
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {
-  // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
-  agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
+export interface AgentModelSelectionConfig {
+  agentProviderId?: CHAT_PROVIDER_ID;
   agentOpenaiModel?: string;
   agentGroqModel?: string;
   agentGeminiModel?: string;
   agentChatgptWebModel?: string;
-  mcpToolsProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
+  /** @deprecated Use agentProviderId instead. */
+  mcpToolsProviderId?: CHAT_PROVIDER_ID;
+  /** @deprecated Use agentOpenaiModel instead. */
   mcpToolsOpenaiModel?: string;
+  /** @deprecated Use agentGroqModel instead. */
   mcpToolsGroqModel?: string;
+  /** @deprecated Use agentGeminiModel instead. */
   mcpToolsGeminiModel?: string;
+  /** @deprecated Use agentChatgptWebModel instead. */
   mcpToolsChatgptWebModel?: string;
   currentModelPresetId?: string;
-  availablePresets?: ModelPresetSummary[];
+}
+
+export interface ChatProviderCredentialsConfig {
   openaiApiKey?: string;
   openaiBaseUrl?: string;
   groqApiKey?: string;
   groqBaseUrl?: string;
   geminiApiKey?: string;
   geminiBaseUrl?: string;
+}
+
+export interface ChatGptWebAuthConfig {
+  chatgptWebAccessToken?: string;
+  chatgptWebSessionToken?: string;
+  chatgptWebAccountId?: string;
+  chatgptWebBaseUrl?: string;
+  chatgptWebAuthEmail?: string;
+  chatgptWebPlanType?: string;
+  chatgptWebConnectedAt?: number;
+}
+
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {
+  // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
+  agentProviderId: CHAT_PROVIDER_ID;
+  mcpToolsProviderId: CHAT_PROVIDER_ID;
+  availablePresets?: ModelPresetSummary[];
 
   // acpx-capable agent profile summaries (read-only, from GET only)
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {
-  // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
-  agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
-  agentOpenaiModel?: string;
-  agentGroqModel?: string;
-  agentGeminiModel?: string;
-  agentChatgptWebModel?: string;
-  mcpToolsProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
-  mcpToolsOpenaiModel?: string;
-  mcpToolsGroqModel?: string;
-  mcpToolsGeminiModel?: string;
-  mcpToolsChatgptWebModel?: string;
-  currentModelPresetId?: string;
-  openaiApiKey?: string;
-  openaiBaseUrl?: string;
-  groqApiKey?: string;
-  groqBaseUrl?: string;
-  geminiApiKey?: string;
-  geminiBaseUrl?: string;
-
-}
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, ChatGptWebAuthConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {}
 
 // Conversation Sync Types
 export interface ServerConversationMessage {

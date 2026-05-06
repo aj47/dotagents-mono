@@ -16,6 +16,9 @@ import type {
   ModelsDevData,
   ModelsDevModel,
   AgentExecutionConfig,
+  AgentModelSelectionConfig,
+  ChatGptWebAuthConfig,
+  ChatProviderCredentialsConfig,
   PredefinedPrompt,
   PredefinedPromptsConfig,
   SpeechToTextConfig,
@@ -378,6 +381,48 @@ describe('settings API request/response contracts', () => {
 
     assertType<AgentExecutionConfig>(config)
     expect(config.mcpMaxIterations).toBe(12)
+  })
+
+  it('accepts provider model and credential config shared by desktop and mobile settings', () => {
+    const modelConfig: AgentModelSelectionConfig = {
+      agentProviderId: 'chatgpt-web',
+      agentOpenaiModel: 'gpt-4.1-mini',
+      agentGroqModel: 'openai/gpt-oss-120b',
+      agentGeminiModel: 'gemini-2.5-flash',
+      agentChatgptWebModel: 'gpt-5.1-codex',
+      mcpToolsProviderId: 'chatgpt-web',
+      mcpToolsOpenaiModel: 'gpt-4.1-mini',
+      mcpToolsGroqModel: 'openai/gpt-oss-120b',
+      mcpToolsGeminiModel: 'gemini-2.5-flash',
+      mcpToolsChatgptWebModel: 'gpt-5.1-codex',
+      currentModelPresetId: 'builtin-openai',
+    }
+    const credentials: ChatProviderCredentialsConfig = {
+      openaiApiKey: 'sk-openai',
+      openaiBaseUrl: 'https://api.openai.com/v1',
+      groqApiKey: 'gsk_groq',
+      groqBaseUrl: 'https://api.groq.com/openai/v1',
+      geminiApiKey: 'gemini-key',
+      geminiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    }
+    const chatgptWebAuth: ChatGptWebAuthConfig = {
+      chatgptWebAccessToken: 'access-token',
+      chatgptWebSessionToken: 'session-token',
+      chatgptWebAccountId: 'account-1',
+      chatgptWebBaseUrl: 'https://chatgpt.com',
+      chatgptWebAuthEmail: 'agent@example.com',
+      chatgptWebPlanType: 'plus',
+      chatgptWebConnectedAt: 123,
+    }
+    const update: SettingsUpdate = {
+      ...modelConfig,
+      ...credentials,
+      ...chatgptWebAuth,
+    }
+
+    assertType<SettingsUpdate>(update)
+    expect(update.agentProviderId).toBe('chatgpt-web')
+    expect(update.chatgptWebBaseUrl).toBe('https://chatgpt.com')
   })
 
   it('accepts streamer mode config shared by settings and remote pairing', () => {

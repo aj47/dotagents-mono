@@ -13,7 +13,7 @@ import type {
 } from '@dotagents/shared/conversation-state'
 import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
 import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
-import type { AgentExecutionConfig, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
+import type { AgentExecutionConfig, AgentModelSelectionConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
 import type { MainAgentConfig } from '@dotagents/shared/main-agent-selection'
 import type { CloudflareTunnelConfig, RemoteServerConfig, StreamerModeConfig } from '@dotagents/shared/remote-pairing'
 import type { ObservabilityConfig } from '@dotagents/shared/observability-config'
@@ -34,7 +34,7 @@ import {
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, RecordingHistoryItem, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
 export type { SessionHistoryConfig } from '@dotagents/shared/session'
-export type { AgentExecutionConfig, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
+export type { AgentExecutionConfig, AgentModelSelectionConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
@@ -136,7 +136,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & TextToSpeechConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & AgentModelSelectionConfig & ChatProviderCredentialsConfig & ChatGptWebAuthConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & TextToSpeechConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -157,28 +157,9 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   // Theme Configuration
   themePreference?: "system" | "light" | "dark"
 
-  openaiApiKey?: string
-  openaiBaseUrl?: string
   openaiCompatiblePreset?: OPENAI_COMPATIBLE_PRESET_ID
 
   modelPresets?: ModelPreset[]
-  currentModelPresetId?: string
-
-  groqApiKey?: string
-  groqBaseUrl?: string
-
-  geminiApiKey?: string
-  geminiBaseUrl?: string
-
-  // ChatGPT Web Auth Configuration
-  // Either access token directly, or session token (to resolve access token via /api/auth/session)
-  chatgptWebAccessToken?: string
-  chatgptWebSessionToken?: string
-  chatgptWebAccountId?: string
-  chatgptWebBaseUrl?: string
-  chatgptWebAuthEmail?: string
-  chatgptWebPlanType?: string
-  chatgptWebConnectedAt?: number
 
   // Parakeet (Local) STT Configuration
   parakeetModelPath?: string // Optional custom model path
@@ -229,11 +210,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   agentShortcut?: "hold-ctrl-alt" | "toggle-ctrl-alt" | "ctrl-alt-slash" | "custom"
   customAgentShortcut?: string
   customAgentShortcutMode?: "hold" | "toggle"
-  agentProviderId?: CHAT_PROVIDER_ID
-  agentOpenaiModel?: string
-  agentGroqModel?: string
-  agentGeminiModel?: string
-  agentChatgptWebModel?: string
   agentSystemPrompt?: string
   /** @deprecated Use agentShortcut instead. */
   mcpToolsShortcut?: "hold-ctrl-alt" | "toggle-ctrl-alt" | "ctrl-alt-slash" | "custom"
@@ -241,16 +217,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   customMcpToolsShortcut?: string
   /** @deprecated Use customAgentShortcutMode instead. */
   customMcpToolsShortcutMode?: "hold" | "toggle"
-  /** @deprecated Use agentProviderId instead. */
-  mcpToolsProviderId?: CHAT_PROVIDER_ID
-  /** @deprecated Use agentOpenaiModel instead. */
-  mcpToolsOpenaiModel?: string
-  /** @deprecated Use agentGroqModel instead. */
-  mcpToolsGroqModel?: string
-  /** @deprecated Use agentGeminiModel instead. */
-  mcpToolsGeminiModel?: string
-  /** @deprecated Use agentChatgptWebModel instead. */
-  mcpToolsChatgptWebModel?: string
   /**
    * Reasoning effort for reasoning-capable OpenAI/Codex models. Passed as
    * `providerOptions.openai.reasoningEffort` on OpenAI generateText calls and

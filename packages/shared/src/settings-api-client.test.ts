@@ -99,6 +99,8 @@ describe('SettingsApiClient', () => {
         remoteServerApiKey: '   ',
         openaiApiKey: '••••••••',
         groqApiKey: ' groq-secret ',
+        chatgptWebAccessToken: 'chatgpt-access',
+        chatgptWebBaseUrl: 'https://chatgpt.example',
         remoteServerCorsOrigins: [' https://app.example ', '', 3],
         discordBotToken: '••••••••',
         discordAllowUserIds: [' user-1 ', 'user-1', ' '],
@@ -118,6 +120,8 @@ describe('SettingsApiClient', () => {
       mcpToolsGroqModel: 'llama-3.3',
       mcpMaxIterations: 100,
       groqApiKey: 'groq-secret',
+      chatgptWebAccessToken: 'chatgpt-access',
+      chatgptWebBaseUrl: 'https://chatgpt.example',
       remoteServerCorsOrigins: ['https://app.example'],
       discordAllowUserIds: ['user-1'],
     });
