@@ -148,6 +148,14 @@ export type DotAgentsChatCompletionSsePayload =
   | DotAgentsChatCompletionDoneSsePayload
   | DotAgentsChatCompletionErrorSsePayload;
 
+export type ChatCompletionSseHeaders = {
+  'Content-Type': 'text/event-stream';
+  'Cache-Control': 'no-cache';
+  Connection: 'keep-alive';
+  'Access-Control-Allow-Origin': string;
+  'Access-Control-Allow-Credentials': 'true';
+};
+
 export type BuildChatCompletionDoneSsePayloadOptions = {
   content: string;
   conversationId?: string;
@@ -553,6 +561,26 @@ export function buildChatCompletionErrorSsePayload(message: string): DotAgentsCh
 
 export function formatServerSentEventData(payload: unknown): string {
   return `data: ${JSON.stringify(payload)}\n\n`;
+}
+
+export function normalizeServerSentEventOrigin(origin: string | string[] | undefined): string {
+  if (Array.isArray(origin)) {
+    return origin[0] || '*';
+  }
+
+  return origin || '*';
+}
+
+export function buildChatCompletionSseHeaders(
+  origin: string | string[] | undefined,
+): ChatCompletionSseHeaders {
+  return {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    'Access-Control-Allow-Origin': normalizeServerSentEventOrigin(origin),
+    'Access-Control-Allow-Credentials': 'true',
+  };
 }
 
 export function parseChatCompletionSseEvent(event: string): ParsedChatCompletionSseEvent[] {

@@ -5,6 +5,7 @@ import {
   buildChatCompletionDoneSsePayload,
   buildChatCompletionErrorSsePayload,
   buildChatCompletionProgressSsePayload,
+  buildChatCompletionSseHeaders,
   buildDotAgentsChatCompletionResponse,
   formatServerSentEventData,
   parseChatCompletionRequestBody,
@@ -63,14 +64,6 @@ function sendCompletionPushNotification(
   })
 }
 
-function normalizeOrigin(origin: string | string[] | undefined): string {
-  if (Array.isArray(origin)) {
-    return origin[0] || "*"
-  }
-
-  return origin || "*"
-}
-
 export async function handleChatCompletionRequest(
   body: unknown,
   origin: string | string[] | undefined,
@@ -95,13 +88,7 @@ export async function handleChatCompletionRequest(
     diagnosticsService.logInfo("remote-server", `Handling completion request${conversationId ? ` for conversation ${conversationId}` : ""}${isStreaming ? " (streaming)" : ""}`)
 
     if (isStreaming) {
-      reply.raw.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
-        "Access-Control-Allow-Origin": normalizeOrigin(origin),
-        "Access-Control-Allow-Credentials": "true",
-      })
+      reply.raw.writeHead(200, buildChatCompletionSseHeaders(origin))
 
       const writeSSE = (data: object) => {
         reply.raw.write(formatServerSentEventData(data))

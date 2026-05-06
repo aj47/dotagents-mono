@@ -15,6 +15,7 @@ import {
   buildChatCompletionErrorSsePayload,
   buildChatCompletionProgressSsePayload,
   buildChatCompletionRequestBody,
+  buildChatCompletionSseHeaders,
   buildDotAgentsChatCompletionResponse,
   buildOpenAIChatCompletionResponse,
   buildOpenAICompatibleModelsResponse,
@@ -40,6 +41,7 @@ import {
   getRespondToUserContentFromMessage,
   getVisibleMessageContent,
   isToolOnlyMessage,
+  normalizeServerSentEventOrigin,
   isInternalCompletionControlMessage,
   looksLikeToolPayloadContent,
   stripRawToolTextFromContent,
@@ -528,6 +530,25 @@ describe('chat completion SSE payload builders', () => {
     expect(parseChatCompletionSseEvent(formatServerSentEventData(error))).toEqual([
       { type: 'error', message: 'Boom' },
     ])
+  })
+})
+
+describe('buildChatCompletionSseHeaders', () => {
+  it('builds the shared streaming response headers', () => {
+    expect(buildChatCompletionSseHeaders('https://mobile.example')).toEqual({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'Access-Control-Allow-Origin': 'https://mobile.example',
+      'Access-Control-Allow-Credentials': 'true',
+    })
+  })
+
+  it('normalizes array and missing origins for SSE CORS headers', () => {
+    expect(normalizeServerSentEventOrigin(['https://first.example', 'https://second.example']))
+      .toBe('https://first.example')
+    expect(normalizeServerSentEventOrigin([])).toBe('*')
+    expect(normalizeServerSentEventOrigin(undefined)).toBe('*')
   })
 })
 
