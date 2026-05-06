@@ -32,6 +32,7 @@ import { isDebugLLM, logLLM } from "./debug"
 import { getErrorMessage, normalizeError } from "./error-utils"
 import { normalizeVerificationResultForCompletion } from "./llm-continuation-guards"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
+import { calculateLlmRetryBackoffDelay } from "./agent-run-utils"
 import type { AgentConversationState } from "@dotagents/shared/conversation-state"
 import {
   isEmptyResponseError,
@@ -323,21 +324,6 @@ export type CompletionVerification = {
 }
 
 /**
- * Calculate exponential backoff delay with jitter
- */
-function calculateBackoffDelay(
-  attempt: number,
-  baseDelay: number = 1000,
-  maxDelay: number = 30000
-): number {
-  const exponentialDelay = baseDelay * Math.pow(2, attempt)
-  const cappedDelay = Math.min(exponentialDelay, maxDelay)
-  const jitter = cappedDelay * 0.25 * (Math.random() * 2 - 1)
-  return Math.max(0, cappedDelay + jitter)
-}
-
-
-/**
  * Sleep for the specified delay while allowing the kill switch to interrupt.
  * Checks both the global stop flag and session-specific stop flag immediately
  * and roughly every 100ms during the wait.
@@ -508,7 +494,7 @@ async function withRetry<T>(
         continue
       }
 
-      const delay = calculateBackoffDelay(attempt, baseDelay, maxDelay)
+      const delay = calculateLlmRetryBackoffDelay(attempt, baseDelay, maxDelay)
       const waitTimeSeconds = Math.round(delay / 1000)
 
       logLLM(

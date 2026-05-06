@@ -108,6 +108,20 @@ export interface ApiRetryConfig {
   apiRetryMaxDelay?: number
 }
 
+export type RetryJitterRandom = () => number
+
+export function calculateLlmRetryBackoffDelay(
+  attempt: number,
+  baseDelay: number = 1000,
+  maxDelay: number = 30000,
+  random: RetryJitterRandom = Math.random,
+): number {
+  const exponentialDelay = baseDelay * Math.pow(2, attempt)
+  const cappedDelay = Math.min(exponentialDelay, maxDelay)
+  const jitter = cappedDelay * 0.25 * (random() * 2 - 1)
+  return Math.max(0, cappedDelay + jitter)
+}
+
 export interface AgentContextBudgetConfig {
   mcpContextTargetRatio?: number
   mcpContextLastNMessages?: number

@@ -9,6 +9,7 @@ import {
   appendAgentStopNote,
   buildAgentStoppedProgressUpdate,
   buildProfileContext,
+  calculateLlmRetryBackoffDelay,
   describeAgentSessionId,
   getExplicitAgentStopReason,
   getPreferredDelegationOutput,
@@ -86,6 +87,26 @@ describe('agent runtime tuning config contracts', () => {
 
     assertType<AgentRuntimeTuningConfig>(config);
     expect(config.mcpToolResponseProgressUpdates).toBe(true);
+  });
+});
+
+describe('calculateLlmRetryBackoffDelay', () => {
+  it('applies exponential backoff before jitter', () => {
+    expect(calculateLlmRetryBackoffDelay(0, 100, 1000, () => 0.5)).toBe(100);
+    expect(calculateLlmRetryBackoffDelay(3, 100, 1000, () => 0.5)).toBe(800);
+  });
+
+  it('caps the exponential delay before applying jitter', () => {
+    expect(calculateLlmRetryBackoffDelay(10, 1000, 30000, () => 0.5)).toBe(30000);
+  });
+
+  it('applies plus or minus 25 percent jitter', () => {
+    expect(calculateLlmRetryBackoffDelay(1, 100, 1000, () => 0)).toBe(150);
+    expect(calculateLlmRetryBackoffDelay(1, 100, 1000, () => 1)).toBe(250);
+  });
+
+  it('does not return negative delays', () => {
+    expect(calculateLlmRetryBackoffDelay(0, 0, 1000, () => 0)).toBe(0);
   });
 });
 

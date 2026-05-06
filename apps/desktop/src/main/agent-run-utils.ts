@@ -7,6 +7,7 @@ export {
   appendAgentStopNote,
   buildAgentStoppedProgressUpdate,
   buildProfileContext,
+  calculateLlmRetryBackoffDelay,
   describeAgentSessionId,
   getExplicitAgentStopReason,
   getPreferredDelegationOutput,
@@ -21,4 +22,5 @@ export type {
   ExpectedAgentStopReason,
   ProfileContextSource,
   ResolveExpectedAgentStopReasonOptions,
+  RetryJitterRandom,
 } from "@dotagents/shared/agent-run-utils"
