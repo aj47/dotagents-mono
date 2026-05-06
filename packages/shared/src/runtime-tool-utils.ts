@@ -442,6 +442,8 @@ export function buildRuntimeToolDefinitions(
   ];
 }
 
+export const dotagentsRuntimeToolDefinitions: RuntimeToolDefinition[] = buildRuntimeToolDefinitions(acpRouterToolDefinitions);
+
 export function getRuntimeToolNames(
   definitions: readonly RuntimeToolDefinition[] = baseRuntimeToolDefinitions,
 ): string[] {

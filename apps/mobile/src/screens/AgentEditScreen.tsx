@@ -27,8 +27,7 @@ import {
 } from '@dotagents/shared/agent-profile-connection';
 import { useConfigContext } from '../store/config';
 import {
-  acpRouterToolDefinitions,
-  buildRuntimeToolDefinitions,
+  dotagentsRuntimeToolDefinitions,
   type RuntimeToolDefinition,
 } from '@dotagents/shared/runtime-tool-utils';
 import {
@@ -85,7 +84,7 @@ import {
 
 type AgentModelProvider = AgentProfileAgentModelProvider;
 
-const RUNTIME_TOOLS = buildRuntimeToolDefinitions(acpRouterToolDefinitions);
+const RUNTIME_TOOLS = dotagentsRuntimeToolDefinitions;
 interface AgentFormData extends AgentConnectionFormFields {
   displayName: string;
   description: string;

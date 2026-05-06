@@ -62,6 +62,7 @@ test('uses shared bulk skill config helpers in the mobile agent editor', () => {
 });
 
 test('uses shared enabled-count helpers in the mobile agent editor', () => {
+  assert.match(screenSource, /dotagentsRuntimeToolDefinitions/);
   assert.match(screenSource, /AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES/);
   assert.match(screenSource, /countEnabledAgentProfileMcpServers/);
   assert.match(screenSource, /countEnabledAgentProfileMcpTools/);

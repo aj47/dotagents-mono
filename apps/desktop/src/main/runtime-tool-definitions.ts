@@ -7,19 +7,18 @@
  */
 
 import {
-  buildRuntimeToolDefinitions,
+  dotagentsRuntimeToolDefinitions,
   getRuntimeToolNames as getSharedRuntimeToolNames,
   type RuntimeToolDefinition,
 } from '@dotagents/shared/runtime-tool-utils'
 import { RUNTIME_TOOLS_SERVER_NAME } from '@dotagents/shared/mcp-api'
-import { acpRouterToolDefinitions } from './acp/acp-router-tool-definitions'
 
 export { RUNTIME_TOOLS_SERVER_NAME }
 export type { RuntimeToolDefinition }
 
-// Runtime tools use plain names (no server prefix). ACP router tools are
-// exposed alongside core DotAgents runtime tools for execution purposes.
-export const runtimeToolDefinitions: RuntimeToolDefinition[] = buildRuntimeToolDefinitions(acpRouterToolDefinitions)
+// Desktop exposes the shared DotAgents runtime tool list, including ACP router
+// schemas. Runtime tools use plain names (no server prefix) for execution.
+export const runtimeToolDefinitions: RuntimeToolDefinition[] = dotagentsRuntimeToolDefinitions
 
 /**
  * Get all runtime tool names (for disabling by default).

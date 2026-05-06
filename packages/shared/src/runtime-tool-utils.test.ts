@@ -19,6 +19,7 @@ import {
   buildSetSessionTitleProgressUpdate,
   buildSetSessionTitleRenameFailedPayload,
   buildSendAgentMessageQueuedPayload,
+  dotagentsRuntimeToolDefinitions,
   getRuntimeToolNames,
   isAcpRouterTool,
   parseReadMoreContextArgs,
@@ -63,6 +64,12 @@ describe('runtime tool utils', () => {
       'delegate_to_agent',
       'respond_to_user',
     ]);
+  });
+
+  it('exports the shared DotAgents runtime tool list with ACP router tools inserted', () => {
+    expect(dotagentsRuntimeToolDefinitions).toEqual(buildRuntimeToolDefinitions(acpRouterToolDefinitions));
+    expect(getRuntimeToolNames(dotagentsRuntimeToolDefinitions)).toContain('delegate_to_agent');
+    expect(getRuntimeToolNames(dotagentsRuntimeToolDefinitions)).toContain('respond_to_user');
   });
 
   it('exports ACP router tool schemas and aliases', () => {
