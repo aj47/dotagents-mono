@@ -5,7 +5,7 @@ import {
   reconcileSplitPaneSelection,
   replaceSplitPaneSelection,
   resolveSplitOrientation,
-} from './split-chat-utils';
+} from '@dotagents/shared/split-pane-selection';
 
 describe('split-chat-utils', () => {
   it('prefers the current session when choosing initial panes', () => {

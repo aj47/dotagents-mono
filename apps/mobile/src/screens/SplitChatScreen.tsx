@@ -26,8 +26,9 @@ import {
   reconcileSplitPaneSelection,
   replaceSplitPaneSelection,
   resolveSplitOrientation,
-} from './split-chat-utils';
-import type { SplitOrientationPreference, SplitPane } from './split-chat-utils';
+  type SplitOrientationPreference,
+  type SplitPane,
+} from '@dotagents/shared/split-pane-selection';
 
 interface Props {
   navigation: any;
