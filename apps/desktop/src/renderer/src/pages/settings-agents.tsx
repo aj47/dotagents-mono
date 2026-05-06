@@ -18,6 +18,7 @@ import {
   detectAgentProfilePresetKey,
   type AgentProfilePresetKey,
 } from "@dotagents/shared/agent-profile-presets"
+import { sanitizeAgentProfileConnection } from "@dotagents/shared/agent-profile-connection"
 import {
   buildAgentProfileAgentModelUpdate,
   getAgentProfileAgentModelProvider,
@@ -55,7 +56,7 @@ import { BundlePublishDialog } from "@renderer/components/bundle-publish-dialog"
 import { invalidateAgentProfileQueries } from "@renderer/lib/invalidate-agent-profile-queries"
 import { SandboxSlotSwitcher } from "@renderer/components/sandbox-slot-switcher"
 import {
-  AgentProfile, AgentProfileConnectionType, AgentProfileConnection,
+  AgentProfile, AgentProfileConnectionType,
   ProfileModelConfig, AgentProfileToolConfig, ProfileSkillsConfig, AgentSkill, DetailedToolInfo,
 } from "../../../shared/types"
 
@@ -289,12 +290,13 @@ export function SettingsAgents() {
       toast.error("Add a base URL before saving a remote agent.")
       return
     }
-    const connection: AgentProfileConnection = {
-      type: editing.connectionType, command: editing.connectionCommand,
-      args: editing.connectionArgs?.split(" ").filter(Boolean),
-      baseUrl: editing.connectionBaseUrl,
-      cwd: editing.connectionCwd,
-    }
+    const connection = sanitizeAgentProfileConnection({
+      connectionType: editing.connectionType,
+      connectionCommand: editing.connectionCommand,
+      connectionArgs: editing.connectionArgs,
+      connectionBaseUrl: editing.connectionBaseUrl,
+      connectionCwd: editing.connectionCwd,
+    })
     const data: any = {
       displayName: editing.displayName,
       description: editing.description || undefined,

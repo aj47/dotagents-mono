@@ -64,6 +64,24 @@ describe("sanitizeAgentProfileConnection", () => {
     })
     expect("baseUrl" in connection).toBe(false)
   })
+
+  it("normalizes explicit local connection form fields for persisted profile records", () => {
+    const connection = sanitizeAgentProfileConnection({
+      connectionType: "acpx",
+      connectionCommand: " npx ",
+      connectionArgs: " -y  @example/agent ",
+      connectionBaseUrl: "https://hidden.example/v1",
+      connectionCwd: " /workspace/project ",
+    })
+
+    expect(connection).toEqual({
+      type: "acpx",
+      command: "npx",
+      args: ["-y", "@example/agent"],
+      cwd: "/workspace/project",
+    })
+    expect("baseUrl" in connection).toBe(false)
+  })
 })
 
 describe("agent connection request helpers", () => {

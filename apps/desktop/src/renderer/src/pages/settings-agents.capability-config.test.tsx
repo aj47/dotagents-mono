@@ -25,4 +25,10 @@ describe("settings agents capability config", () => {
     expect(settingsAgentsSource).toContain("buildAgentProfileAgentModelUpdate")
     expect(settingsAgentsSource).not.toContain("editing.modelConfig.agentOpenaiModel || editing.modelConfig.mcpToolsOpenaiModel")
   })
+
+  it("uses shared connection normalization before saving desktop agents", () => {
+    expect(settingsAgentsSource).toContain("sanitizeAgentProfileConnection")
+    expect(settingsAgentsSource).not.toContain("const connection: AgentProfileConnection")
+    expect(settingsAgentsSource).not.toContain("baseUrl: editing.connectionBaseUrl")
+  })
 })
