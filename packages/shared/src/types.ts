@@ -87,6 +87,18 @@ export interface MessageQueue {
 }
 
 /**
+ * Persisted recording transcript entry.
+ * Desktop currently writes these from native dictation flows; the shape is
+ * platform-neutral so API/UI surfaces can share it.
+ */
+export type RecordingHistoryItem = {
+  id: string;
+  createdAt: number;
+  duration: number;
+  transcript: string;
+};
+
+/**
  * Runtime states for the foreground handsfree voice loop.
  * Shared so mobile and desktop can converge on the same vocabulary.
  */

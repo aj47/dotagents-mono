@@ -28,7 +28,7 @@ import {
   legacyProfileToAgentProfile as sharedLegacyProfileToAgentProfile,
 } from '@dotagents/shared/agent-profile-legacy-converters'
 
-export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
+export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, RecordingHistoryItem, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
 export type { PredefinedPrompt } from '@dotagents/shared/api-types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
@@ -43,13 +43,6 @@ export type { KnowledgeNoteDateFilter, KnowledgeNoteGroupSummary, KnowledgeNoteS
 export type { PushNotificationToken } from '@dotagents/shared/push-notifications'
 export type { EnhancedModelInfo, ModelInfo, ModelsDevCost, ModelsDevData, ModelsDevLimit, ModelsDevModalities, ModelsDevModel, ModelsDevProvider } from '@dotagents/shared/api-types'
 export type { LegacyAcpAgentConfig, LegacyPersonaRecord, LegacyPersonasData, LegacyProfileRecord, LegacyProfilesData } from '@dotagents/shared/agent-profile-legacy-converters'
-
-export type RecordingHistoryItem = {
-  id: string
-  createdAt: number
-  duration: number
-  transcript: string
-}
 
 // Agent Mode Progress Tracking Types — re-exported from @dotagents/shared (see above)
 

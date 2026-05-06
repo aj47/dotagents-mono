@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { ModelPreset } from './providers'
-import type { QueuedMessage, MessageQueue } from './types'
+import type { QueuedMessage, MessageQueue, RecordingHistoryItem } from './types'
 import type {
   KnowledgeNoteCreateRequest,
   KnowledgeNoteResponse,
@@ -226,6 +226,22 @@ describe('QueuedMessage', () => {
   it('supports all valid status values', () => {
     const statuses: QueuedMessage['status'][] = ['pending', 'processing', 'cancelled', 'failed']
     expect(statuses).toHaveLength(4)
+  })
+})
+
+// ── RecordingHistoryItem ────────────────────────────────────────────────────
+
+describe('RecordingHistoryItem', () => {
+  it('accepts persisted recording transcript entries', () => {
+    const item: RecordingHistoryItem = {
+      id: 'recording-1',
+      createdAt: 1700000000,
+      duration: 12.5,
+      transcript: 'Open settings',
+    }
+
+    assertType<RecordingHistoryItem>(item)
+    expect(item.transcript).toBe('Open settings')
   })
 })
 
