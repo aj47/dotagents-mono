@@ -3,7 +3,7 @@ import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
-import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest, AgentProfileUpdateRequest } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest, AgentProfileUpdateRequest, Skill } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { applyConnectionTypeChange, buildAgentConnectionRequestFields, type AgentConnectionFormFields, type ConnectionType } from './agent-edit-connection-utils';
 import { useConfigContext } from '../store/config';
@@ -33,7 +33,13 @@ interface AgentFormData extends AgentConnectionFormFields {
   guidelines: string;
   enabled: boolean;
   autoSpawn: boolean;
+  skillsConfig?: AgentSkillsConfig;
 }
+
+type AgentSkillsConfig = {
+  enabledSkillIds?: string[];
+  allSkillsDisabledByDefault?: boolean;
+};
 
 const defaultFormData: AgentFormData = {
   displayName: '',
@@ -55,6 +61,35 @@ const normalizeConnectionType = (value?: string): ConnectionType => {
   return 'internal';
 };
 
+const normalizeSkillIds = (value: unknown): string[] => {
+  return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
+};
+
+const normalizeAgentSkillsConfig = (value?: Record<string, unknown>): AgentSkillsConfig | undefined => {
+  if (!value) return undefined;
+  return {
+    enabledSkillIds: normalizeSkillIds(value.enabledSkillIds),
+    allSkillsDisabledByDefault: value.allSkillsDisabledByDefault === true,
+  };
+};
+
+const isSkillEnabledByConfig = (skillId: string, skillsConfig?: AgentSkillsConfig): boolean => {
+  if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true;
+  return (skillsConfig.enabledSkillIds ?? []).includes(skillId);
+};
+
+const countEnabledSkills = (skills: Skill[], skillsConfig?: AgentSkillsConfig): number => {
+  return skills.filter((skill) => isSkillEnabledByConfig(skill.id, skillsConfig)).length;
+};
+
+const formatSkillsConfigForRequest = (skillsConfig?: AgentSkillsConfig): Record<string, unknown> | undefined => {
+  if (!skillsConfig) return undefined;
+  return {
+    enabledSkillIds: skillsConfig.enabledSkillIds ?? [],
+    allSkillsDisabledByDefault: skillsConfig.allSkillsDisabledByDefault === true,
+  };
+};
+
 export default function AgentEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -67,8 +102,15 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [originalProfile, setOriginalProfile] = useState<AgentProfileFull | null>(null);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [isSkillsLoading, setIsSkillsLoading] = useState(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const displaySkills = useMemo(() => [...skills].sort((a, b) => a.name.localeCompare(b.name)), [skills]);
+  const enabledSkillCount = useMemo(
+    () => countEnabledSkills(displaySkills, formData.skillsConfig),
+    [displaySkills, formData.skillsConfig],
+  );
 
   const settingsClient = useMemo(() => {
     if (config.baseUrl && config.apiKey) {
@@ -98,6 +140,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             connectionCwd: profile.connection?.cwd || '',
             enabled: profile.enabled,
             autoSpawn: profile.autoSpawn || false,
+            skillsConfig: normalizeAgentSkillsConfig(profile.skillsConfig),
           });
         })
         .catch(err => {
@@ -107,6 +150,24 @@ export default function AgentEditScreen({ navigation, route }: any) {
         .finally(() => setIsLoading(false));
     }
   }, [isEditing, settingsClient, agentId]);
+
+  useEffect(() => {
+    if (!settingsClient) {
+      setSkills([]);
+      return;
+    }
+
+    setIsSkillsLoading(true);
+    settingsClient.getSkills()
+      .then((res) => {
+        setSkills(res.skills);
+      })
+      .catch((err) => {
+        console.error('[AgentEdit] Failed to fetch skills:', err);
+        setError(err.message || 'Failed to load skills');
+      })
+      .finally(() => setIsSkillsLoading(false));
+  }, [settingsClient]);
 
   // Set navigation title
   useEffect(() => {
@@ -143,6 +204,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             ...connectionFields,
             enabled: formData.enabled,
             autoSpawn: formData.autoSpawn,
+            skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),
           };
         await settingsClient.updateAgentProfile(agentId, updateData);
       } else {
@@ -154,6 +216,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           ...connectionFields,
           enabled: formData.enabled,
           autoSpawn: formData.autoSpawn,
+          skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),
         };
         await settingsClient.createAgentProfile(createData);
       }
@@ -173,6 +236,44 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const handleConnectionTypeSelect = useCallback((connectionType: ConnectionType) => {
     setFormData(prev => applyConnectionTypeChange(prev, connectionType));
   }, []);
+
+  const setAllSkillsEnabled = useCallback((enabled: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      skillsConfig: {
+        enabledSkillIds: [],
+        allSkillsDisabledByDefault: !enabled,
+      },
+    }));
+  }, []);
+
+  const toggleSkill = useCallback((skillId: string) => {
+    setFormData(prev => {
+      const allSkillIds = displaySkills.map(skill => skill.id);
+      if (!prev.skillsConfig || !prev.skillsConfig.allSkillsDisabledByDefault) {
+        return {
+          ...prev,
+          skillsConfig: {
+            enabledSkillIds: allSkillIds.filter(id => id !== skillId),
+            allSkillsDisabledByDefault: true,
+          },
+        };
+      }
+
+      const currentIds = prev.skillsConfig.enabledSkillIds ?? [];
+      const enabledSkillIds = currentIds.includes(skillId)
+        ? currentIds.filter(id => id !== skillId)
+        : [...currentIds, skillId];
+
+      return {
+        ...prev,
+        skillsConfig: {
+          enabledSkillIds,
+          allSkillsDisabledByDefault: true,
+        },
+      };
+    });
+  }, [displaySkills]);
 
   const isBuiltInAgent = originalProfile?.isBuiltIn === true;
 
@@ -345,6 +446,61 @@ export default function AgentEditScreen({ navigation, route }: any) {
         textAlignVertical="top"
       />
 
+      <View style={styles.capabilitySection}>
+        <View style={styles.capabilityHeader}>
+          <View style={styles.capabilityTitleBlock}>
+            <Text style={styles.sectionTitle}>Skills</Text>
+            <Text style={styles.sectionHelperText}>{enabledSkillCount} of {displaySkills.length} enabled</Text>
+          </View>
+          <View style={styles.skillBulkActions}>
+            <TouchableOpacity
+              style={[styles.chipButton, isBuiltInAgent && styles.chipButtonDisabled]}
+              onPress={() => setAllSkillsEnabled(true)}
+              disabled={isBuiltInAgent}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Enable all agent skills')}
+            >
+              <Text style={styles.chipButtonText}>All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.chipButton, isBuiltInAgent && styles.chipButtonDisabled]}
+              onPress={() => setAllSkillsEnabled(false)}
+              disabled={isBuiltInAgent}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Disable all agent skills')}
+            >
+              <Text style={styles.chipButtonText}>None</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        {isSkillsLoading ? (
+          <View style={styles.inlineLoadingRow}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Text style={styles.sectionHelperText}>Loading skills...</Text>
+          </View>
+        ) : displaySkills.length === 0 ? (
+          <Text style={styles.sectionHelperText}>No skills available.</Text>
+        ) : displaySkills.map(skill => {
+          const enabled = isSkillEnabledByConfig(skill.id, formData.skillsConfig);
+          return (
+            <View key={skill.id} style={styles.skillRow}>
+              <View style={styles.skillInfo}>
+                <Text style={styles.skillName}>{skill.name}</Text>
+                {skill.description ? <Text style={styles.skillDescription} numberOfLines={2}>{skill.description}</Text> : null}
+              </View>
+              <Switch
+                value={enabled}
+                onValueChange={() => toggleSkill(skill.id)}
+                disabled={isBuiltInAgent}
+                accessibilityLabel={createButtonAccessibilityLabel(`${enabled ? 'Disable' : 'Enable'} ${skill.name} for this agent`)}
+                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                thumbColor={enabled ? theme.colors.primaryForeground : theme.colors.background}
+              />
+            </View>
+          );
+        })}
+      </View>
+
       <View style={styles.switchRow}>
         <Text style={styles.switchLabel}>Enabled</Text>
         <Switch
@@ -432,6 +588,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.mutedForeground,
       marginBottom: spacing.sm,
     },
+    sectionTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.colors.foreground,
+    },
     input: {
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -443,6 +604,81 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     textArea: {
       minHeight: 100,
+    },
+    capabilitySection: {
+      marginTop: spacing.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.background,
+      padding: spacing.md,
+      gap: spacing.sm,
+    },
+    capabilityHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: spacing.md,
+    },
+    capabilityTitleBlock: {
+      flex: 1,
+      minWidth: 0,
+    },
+    skillBulkActions: {
+      flexDirection: 'row',
+      gap: spacing.xs,
+    },
+    chipButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.muted,
+    },
+    chipButtonDisabled: {
+      opacity: 0.5,
+    },
+    chipButtonText: {
+      color: theme.colors.foreground,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    inlineLoadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.sm,
+    },
+    skillRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.xs,
+    },
+    skillInfo: {
+      flex: 1,
+      minWidth: 0,
+    },
+    skillName: {
+      color: theme.colors.foreground,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    skillDescription: {
+      color: theme.colors.mutedForeground,
+      fontSize: 12,
+      marginTop: 2,
     },
     connectionTypeOptions: {
       width: '100%' as const,

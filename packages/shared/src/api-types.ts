@@ -1077,6 +1077,9 @@ export interface AgentProfileCreateRequest {
   connectionCwd?: string;
   enabled?: boolean;
   autoSpawn?: boolean;
+  modelConfig?: Record<string, unknown>;
+  toolConfig?: Record<string, unknown>;
+  skillsConfig?: Record<string, unknown>;
   properties?: Record<string, string>;
 }
 
@@ -1093,6 +1096,9 @@ export interface AgentProfileUpdateRequest {
   connectionCwd?: string;
   enabled?: boolean;
   autoSpawn?: boolean;
+  modelConfig?: Record<string, unknown>;
+  toolConfig?: Record<string, unknown>;
+  skillsConfig?: Record<string, unknown>;
   properties?: Record<string, string>;
 }
 
