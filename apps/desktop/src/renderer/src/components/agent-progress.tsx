@@ -89,7 +89,8 @@ import {
   getFollowUpInputPresentation,
   getSessionPresentation,
 } from "@dotagents/shared/session-presentation"
-import { computeTurnDurations, formatTurnDuration, useNowTick } from "@renderer/lib/turn-duration"
+import { computeTurnDurations, formatTurnDuration } from "@dotagents/shared/turn-duration"
+import { useNowTick } from "@renderer/lib/turn-duration"
 
 interface AgentProgressProps {
   progress: AgentProgressUpdate | null

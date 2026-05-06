@@ -1,18 +1,4 @@
-/**
- * Desktop wrapper for shared per-turn duration accounting plus the renderer-only
- * ticking hook used by live progress views.
- */
-
 import { useEffect, useState } from "react"
-export {
-  computeTurnDurations,
-  formatTurnDuration,
-} from "@dotagents/shared/turn-duration"
-export type {
-  TurnDurationEntry,
-  TurnDurationMessage,
-  TurnDurationsResult,
-} from "@dotagents/shared/turn-duration"
 
 /**
  * React hook returning a wall-clock timestamp that refreshes every
