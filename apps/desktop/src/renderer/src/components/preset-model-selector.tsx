@@ -17,26 +17,7 @@ import {
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { tipcClient } from "@renderer/lib/tipc-client"
-
-/** Local type matching models.dev service response */
-interface ModelsDevModel {
-  id: string
-  name: string
-  tool_call?: boolean
-  reasoning?: boolean
-  modalities?: {
-    input?: string[]
-    output?: string[]
-  }
-  cost?: {
-    input?: number
-    output?: number
-  }
-  limit?: {
-    context?: number
-    output?: number
-  }
-}
+import type { ModelsDevModel } from "@dotagents/shared/api-types"
 
 interface PresetModelSelectorProps {
   presetId: string

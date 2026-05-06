@@ -51,11 +51,106 @@ export interface ModelInfo {
   name: string;
   description?: string;
   context_length?: number;
+  created?: number;
+  /** Whether this model supports speech-to-text transcription. */
+  supportsTranscription?: boolean;
 }
 
 export interface ModelsResponse {
   providerId: string;
   models: ModelInfo[];
+}
+
+export interface ModelsDevCost {
+  /** Cost per million input tokens. */
+  input?: number;
+  /** Cost per million output tokens. */
+  output?: number;
+  /** Cost per million reasoning tokens. */
+  reasoning?: number;
+  /** Cost per million cache read tokens. */
+  cache_read?: number;
+  /** Cost per million cache write tokens. */
+  cache_write?: number;
+  /** Cost per million audio input tokens. */
+  input_audio?: number;
+  /** Cost per million audio output tokens. */
+  output_audio?: number;
+}
+
+export interface ModelsDevLimit {
+  /** Maximum context window size in tokens. */
+  context?: number;
+  /** Maximum output tokens. */
+  output?: number;
+  /** Maximum input tokens. */
+  input?: number;
+}
+
+export interface ModelsDevModalities {
+  input?: string[];
+  output?: string[];
+}
+
+export interface ModelsDevModel {
+  id: string;
+  name: string;
+  family?: string;
+  attachment?: boolean;
+  reasoning?: boolean;
+  tool_call?: boolean;
+  structured_output?: boolean;
+  temperature?: boolean;
+  knowledge?: string;
+  release_date?: string;
+  last_updated?: string;
+  modalities?: ModelsDevModalities;
+  open_weights?: boolean;
+  cost?: ModelsDevCost;
+  limit?: ModelsDevLimit;
+  interleaved?: { field: string };
+}
+
+export interface ModelsDevProvider {
+  id: string;
+  name: string;
+  env?: string[];
+  npm?: string;
+  api?: string;
+  doc?: string;
+  models: Record<string, ModelsDevModel>;
+}
+
+export type ModelsDevData = Record<string, ModelsDevProvider>;
+
+export interface EnhancedModelInfo extends ModelInfo {
+  family?: string;
+  supportsAttachment?: boolean;
+  supportsReasoning?: boolean;
+  supportsToolCalls?: boolean;
+  supportsStructuredOutput?: boolean;
+  supportsTemperature?: boolean;
+  knowledge?: string;
+  releaseDate?: string;
+  lastUpdated?: string;
+  openWeights?: boolean;
+  inputCost?: number;
+  outputCost?: number;
+  reasoningCost?: number;
+  cacheReadCost?: number;
+  cacheWriteCost?: number;
+  contextLimit?: number;
+  inputLimit?: number;
+  outputLimit?: number;
+  inputModalities?: string[];
+  outputModalities?: string[];
+}
+
+export interface ModelMatchResult {
+  model: ModelsDevModel;
+  providerId: string;
+  matchType: 'exact' | 'fuzzy';
+  score: number;
 }
 
 export interface OpenAICompatibleModelSummary {

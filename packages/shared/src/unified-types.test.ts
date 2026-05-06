@@ -7,6 +7,11 @@ import type {
   KnowledgeNoteUpdateRequest,
   LoopCreateRequest,
   LoopUpdateRequest,
+  EnhancedModelInfo,
+  ModelInfo,
+  ModelMatchResult,
+  ModelsDevData,
+  ModelsDevModel,
   PredefinedPrompt,
   EmergencyStopResponse,
   OperatorDiscordLogsResponse,
@@ -89,6 +94,87 @@ describe('ModelPreset', () => {
     }
     assertType<ModelPreset>(preset)
     expect(preset.apiKey).toBe('')
+  })
+})
+
+// ── Model Metadata ──────────────────────────────────────────────────────────
+
+describe('Model metadata API types', () => {
+  it('accepts model list entries with desktop transcription metadata', () => {
+    const model: ModelInfo = {
+      id: 'whisper-1',
+      name: 'Whisper',
+      context_length: 16000,
+      created: 1700000000,
+      supportsTranscription: true,
+    }
+
+    assertType<ModelInfo>(model)
+    expect(model.supportsTranscription).toBe(true)
+  })
+
+  it('accepts models.dev API records with optional provider metadata', () => {
+    const model: ModelsDevModel = {
+      id: 'gpt-5.5',
+      name: 'GPT-5.5',
+      reasoning: true,
+      tool_call: true,
+      modalities: {
+        input: ['text', 'image'],
+        output: ['text'],
+      },
+      cost: {
+        input: 1.25,
+        output: 10,
+        cache_read: 0.125,
+      },
+      limit: {
+        context: 400000,
+        output: 128000,
+      },
+    }
+
+    const data: ModelsDevData = {
+      openai: {
+        id: 'openai',
+        name: 'OpenAI',
+        env: ['OPENAI_API_KEY'],
+        models: {
+          [model.id]: model,
+        },
+      },
+    }
+
+    assertType<ModelsDevData>(data)
+    expect(data.openai.models['gpt-5.5'].reasoning).toBe(true)
+  })
+
+  it('accepts enhanced model display data derived from models.dev', () => {
+    const enhanced: EnhancedModelInfo = {
+      id: 'gpt-5.5',
+      name: 'GPT-5.5',
+      supportsReasoning: true,
+      supportsToolCalls: true,
+      inputCost: 1.25,
+      outputCost: 10,
+      contextLimit: 400000,
+      inputModalities: ['text', 'image'],
+      outputModalities: ['text'],
+    }
+
+    const match: ModelMatchResult = {
+      model: {
+        id: enhanced.id,
+        name: enhanced.name,
+      },
+      providerId: 'openai',
+      matchType: 'fuzzy',
+      score: 100,
+    }
+
+    assertType<EnhancedModelInfo>(enhanced)
+    assertType<ModelMatchResult>(match)
+    expect(match.model.id).toBe('gpt-5.5')
   })
 })
 

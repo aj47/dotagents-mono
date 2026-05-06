@@ -9,67 +9,12 @@ import fs from "fs"
 import path from "path"
 import { app } from "electron"
 import { diagnosticsService } from "./diagnostics"
-
-// ============================================================================
-// Types
-// ============================================================================
-
-/** Cost information for a model (in USD per million tokens) */
-export interface ModelsDevCost {
-  input: number
-  output: number
-  cache_read?: number
-  cache_write?: number
-  reasoning?: number
-  input_audio?: number
-  output_audio?: number
-}
-
-/** Context/output limits for a model */
-export interface ModelsDevLimit {
-  context: number
-  output: number
-}
-
-/** Input/output modalities supported by the model */
-export interface ModelsDevModalities {
-  input: string[]
-  output: string[]
-}
-
-/** Model definition from models.dev API */
-export interface ModelsDevModel {
-  id: string
-  name: string
-  family?: string
-  attachment?: boolean
-  reasoning?: boolean
-  tool_call?: boolean
-  structured_output?: boolean
-  temperature?: boolean
-  knowledge?: string
-  release_date?: string
-  last_updated?: string
-  modalities?: ModelsDevModalities
-  open_weights?: boolean
-  cost?: ModelsDevCost
-  limit?: ModelsDevLimit
-  interleaved?: { field: string }
-}
-
-/** Provider definition from models.dev API */
-export interface ModelsDevProvider {
-  id: string
-  name: string
-  env?: string[]
-  npm?: string
-  api?: string
-  doc?: string
-  models: Record<string, ModelsDevModel>
-}
-
-/** Full API response: Record of provider ID to provider data */
-export type ModelsDevData = Record<string, ModelsDevProvider>
+import type {
+  ModelMatchResult,
+  ModelsDevData,
+  ModelsDevModel,
+  ModelsDevProvider,
+} from "@dotagents/shared/api-types"
 
 /** Cache file structure */
 interface ModelsDevCache {
@@ -255,14 +200,6 @@ function calculateMatchScore(normalizedQuery: string, normalizedCandidate: strin
   }
 
   return 0
-}
-
-/** Result of finding the best model match */
-export interface ModelMatchResult {
-  model: ModelsDevModel
-  providerId: string
-  matchType: "exact" | "fuzzy"
-  score: number
 }
 
 /**
@@ -542,4 +479,3 @@ export function initModelsDevService(): void {
     })
   }
 }
-
