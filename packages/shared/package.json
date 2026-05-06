@@ -371,6 +371,11 @@
       "import": "./dist/local-speech-models.mjs",
       "require": "./dist/local-speech-models.js"
     },
+    "./text-to-speech-settings": {
+      "types": "./dist/text-to-speech-settings.d.ts",
+      "import": "./dist/text-to-speech-settings.mjs",
+      "require": "./dist/text-to-speech-settings.js"
+    },
     "./tts-api": {
       "types": "./dist/tts-api.d.ts",
       "import": "./dist/tts-api.mjs",

@@ -75,6 +75,7 @@ export default defineConfig({
     'remote-server-route-contracts': 'src/remote-server-route-contracts.ts',
     'model-presets': 'src/model-presets.ts',
     'local-speech-models': 'src/local-speech-models.ts',
+    'text-to-speech-settings': 'src/text-to-speech-settings.ts',
     'tts-api': 'src/tts-api.ts',
     'tts-voice-picker': 'src/tts-voice-picker.ts',
     'push-notifications': 'src/push-notifications.ts',

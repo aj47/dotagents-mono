@@ -96,6 +96,7 @@ export * from './remote-server-controller-contracts';
 export * from './remote-server-route-contracts';
 export * from './model-presets';
 export * from './local-speech-models';
+export * from './text-to-speech-settings';
 export * from './tts-api';
 export * from './tts-voice-picker';
 export * from './push-notifications';
