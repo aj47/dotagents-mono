@@ -57,6 +57,7 @@ import {
   getAgentProfileRuntimeToolsConfigAfterSetAllEnabled,
   getAgentProfileRuntimeToolsConfigAfterToggle,
   getAgentProfileSkillsConfigAfterSetAllEnabled,
+  isAgentProfileEssentialRuntimeToolName,
   isAgentProfileMcpServerEnabled,
   isAgentProfileMcpToolEnabled,
   isAgentProfileRuntimeToolEnabled,
@@ -1045,7 +1046,7 @@ export function SettingsAgents() {
                     {runtimeTools.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-3 text-center">No DotAgents runtime tools available.</p>
                     ) : runtimeTools.map(tool => {
-                      const isEssential = tool.name === "mark_work_complete"
+                      const isEssential = isAgentProfileEssentialRuntimeToolName(tool.name)
                       const enabled = isEssential || isRuntimeToolEnabled(tool.name)
                       return (
                         <div key={tool.name} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/30">

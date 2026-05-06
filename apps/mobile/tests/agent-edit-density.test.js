@@ -62,10 +62,13 @@ test('uses shared bulk skill config helpers in the mobile agent editor', () => {
 });
 
 test('uses shared enabled-count helpers in the mobile agent editor', () => {
+  assert.match(screenSource, /AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES/);
   assert.match(screenSource, /countEnabledAgentProfileMcpServers/);
   assert.match(screenSource, /countEnabledAgentProfileMcpTools/);
   assert.match(screenSource, /countEnabledAgentProfileRuntimeTools/);
   assert.match(screenSource, /countEnabledAgentProfileSkills/);
+  assert.match(screenSource, /isAgentProfileEssentialRuntimeToolName/);
+  assert.doesNotMatch(screenSource, /const ESSENTIAL_RUNTIME_TOOL_NAME = 'mark_work_complete'/);
   assert.doesNotMatch(screenSource, /const countEnabledMcpServers/);
   assert.doesNotMatch(screenSource, /const countEnabledMcpTools/);
   assert.doesNotMatch(screenSource, /const countEnabledRuntimeTools/);

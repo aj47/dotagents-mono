@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
   AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS,
   buildAgentProfileAgentModelUpdate,
   countEnabledAgentProfileMcpServers,
@@ -31,6 +32,7 @@ import {
   hasNoAgentProfileMcpServersEnabled,
   hasNoAgentProfileSkillsEnabled,
   hasOnlyEssentialAgentProfileRuntimeToolsEnabled,
+  isAgentProfileEssentialRuntimeToolName,
   isAgentProfileMcpServerEnabled,
   isAgentProfileMcpToolEnabled,
   isAgentProfileRuntimeToolEnabled,
@@ -157,6 +159,9 @@ describe("agent profile config updates", () => {
 
   it("models runtime tool allowlists while preserving the essential completion tool", () => {
     const runtimeTools = ["respond_to_user", "mark_work_complete", "screenshot"]
+    expect(AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES).toEqual(["mark_work_complete"])
+    expect(isAgentProfileEssentialRuntimeToolName("mark_work_complete")).toBe(true)
+    expect(isAgentProfileEssentialRuntimeToolName("respond_to_user")).toBe(false)
     expect(isAgentProfileRuntimeToolEnabled(undefined, "respond_to_user")).toBe(true)
     expect(isAgentProfileRuntimeToolEnabled({ enabledRuntimeTools: ["respond_to_user"] }, "screenshot")).toBe(false)
     expect(isAgentProfileRuntimeToolEnabled({ enabledRuntimeTools: [] }, "screenshot")).toBe(true)

@@ -14,10 +14,12 @@ describe("settings agents capability config", () => {
     expect(settingsAgentsSource).toContain("hasNoAgentProfileMcpServersEnabled(editing?.toolConfig, serverNames)")
     expect(settingsAgentsSource).toContain("hasAllAgentProfileRuntimeToolsEnabled(editing?.toolConfig, runtimeTools.map(t => t.name))")
     expect(settingsAgentsSource).toContain("hasOnlyEssentialAgentProfileRuntimeToolsEnabled(editing?.toolConfig)")
+    expect(settingsAgentsSource).toContain("isAgentProfileEssentialRuntimeToolName(tool.name)")
     expect(settingsAgentsSource).toContain("isAgentProfileMcpServerEnabled(editing?.toolConfig, serverName)")
     expect(settingsAgentsSource).toContain("isAgentProfileRuntimeToolEnabled(editing?.toolConfig, toolName)")
     expect(settingsAgentsSource).not.toContain("serverNames.every(n => isServerEnabled(n))")
     expect(settingsAgentsSource).not.toContain("editing.toolConfig.enabledRuntimeTools.length === 0")
+    expect(settingsAgentsSource).not.toContain("tool.name === \"mark_work_complete\"")
   })
 
   it("uses shared skill enablement semantics in the desktop agent editor", () => {

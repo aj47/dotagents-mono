@@ -34,7 +34,7 @@ export const AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS = [
   { label: "ChatGPT Web", value: "chatgpt-web" },
 ] as const satisfies readonly AgentProfileAgentModelProviderOption[]
 
-const DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES = ["mark_work_complete"]
+export const AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES = ["mark_work_complete"] as const
 const STT_PROVIDER_IDS = STT_PROVIDERS.map((provider) => provider.value)
 const TTS_PROVIDER_IDS = TTS_PROVIDERS.map((provider) => provider.value)
 
@@ -232,18 +232,25 @@ export function countEnabledAgentProfileMcpTools(
 export function isAgentProfileRuntimeToolEnabled(
   mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
   toolName: string,
-  essentialRuntimeToolNames: readonly string[] = DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
+  essentialRuntimeToolNames: readonly string[] = AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
 ): boolean {
-  if (essentialRuntimeToolNames.includes(toolName)) return true
+  if (isAgentProfileEssentialRuntimeToolName(toolName, essentialRuntimeToolNames)) return true
   const enabledRuntimeTools = mcpConfig?.enabledRuntimeTools
   if (!enabledRuntimeTools || enabledRuntimeTools.length === 0) return true
   return enabledRuntimeTools.includes(toolName)
 }
 
+export function isAgentProfileEssentialRuntimeToolName(
+  toolName: string,
+  essentialRuntimeToolNames: readonly string[] = AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
+): boolean {
+  return essentialRuntimeToolNames.includes(toolName)
+}
+
 export function countEnabledAgentProfileRuntimeTools(
   mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
   runtimeToolNames: readonly string[],
-  essentialRuntimeToolNames: readonly string[] = DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
+  essentialRuntimeToolNames: readonly string[] = AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
 ): number {
   return runtimeToolNames.filter((toolName) => (
     isAgentProfileRuntimeToolEnabled(mcpConfig, toolName, essentialRuntimeToolNames)
@@ -253,7 +260,7 @@ export function countEnabledAgentProfileRuntimeTools(
 export function hasAllAgentProfileRuntimeToolsEnabled(
   mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
   runtimeToolNames: readonly string[],
-  essentialRuntimeToolNames: readonly string[] = DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
+  essentialRuntimeToolNames: readonly string[] = AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
 ): boolean {
   const enabledRuntimeTools = mcpConfig?.enabledRuntimeTools
   if (!enabledRuntimeTools || enabledRuntimeTools.length === 0) return true
@@ -263,7 +270,7 @@ export function hasAllAgentProfileRuntimeToolsEnabled(
 
 export function hasOnlyEssentialAgentProfileRuntimeToolsEnabled(
   mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
-  essentialRuntimeToolNames: readonly string[] = DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
+  essentialRuntimeToolNames: readonly string[] = AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
 ): boolean {
   const enabledRuntimeTools = mcpConfig?.enabledRuntimeTools
   if (!enabledRuntimeTools || enabledRuntimeTools.length === 0) return false
@@ -327,7 +334,7 @@ export function getAgentProfileMcpConfigAfterToolToggle(
 export function getAgentProfileRuntimeToolsConfigAfterSetAllEnabled(
   mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
   enabled: boolean,
-  essentialRuntimeToolNames: readonly string[] = DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
+  essentialRuntimeToolNames: readonly string[] = AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
 ): AgentProfileMcpConfigUpdateLike {
   return mergeAgentProfileMcpConfig(mcpConfig, {
     enabledRuntimeTools: enabled ? undefined : [...essentialRuntimeToolNames],
@@ -338,9 +345,9 @@ export function getAgentProfileRuntimeToolsConfigAfterToggle(
   mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
   toolName: string,
   allRuntimeToolNames: readonly string[],
-  essentialRuntimeToolNames: readonly string[] = DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
+  essentialRuntimeToolNames: readonly string[] = AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
 ): AgentProfileMcpConfigUpdateLike {
-  if (essentialRuntimeToolNames.includes(toolName)) {
+  if (isAgentProfileEssentialRuntimeToolName(toolName, essentialRuntimeToolNames)) {
     return mergeAgentProfileMcpConfig(mcpConfig, {})
   }
 

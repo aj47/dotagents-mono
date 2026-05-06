@@ -45,6 +45,7 @@ import {
   normalizeAgentProfileProperties,
 } from '@dotagents/shared/agent-profile-mutations';
 import {
+  AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
   AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS,
   buildAgentProfileAgentModelUpdate,
   countEnabledAgentProfileMcpServers,
@@ -67,6 +68,7 @@ import {
   getAgentProfileSkillsConfigAfterSetAllEnabled,
   isAgentProfileMcpServerEnabled,
   isAgentProfileMcpToolEnabled,
+  isAgentProfileEssentialRuntimeToolName,
   isAgentProfileRuntimeToolEnabled,
   isAgentProfileSkillEnabled,
   mergeAgentProfileModelConfig,
@@ -83,7 +85,6 @@ import {
 
 type AgentModelProvider = AgentProfileAgentModelProvider;
 
-const ESSENTIAL_RUNTIME_TOOL_NAME = 'mark_work_complete';
 const RUNTIME_TOOLS = buildRuntimeToolDefinitions(acpRouterToolDefinitions);
 interface AgentFormData extends AgentConnectionFormFields {
   displayName: string;
@@ -124,7 +125,7 @@ const isMcpToolEnabledByConfig = (toolName: string, toolConfig?: AgentProfileMcp
 };
 
 const isRuntimeToolEnabledByConfig = (toolName: string, toolConfig?: AgentProfileMcpConfigUpdateLike): boolean => {
-  return isAgentProfileRuntimeToolEnabled(toolConfig, toolName, [ESSENTIAL_RUNTIME_TOOL_NAME]);
+  return isAgentProfileRuntimeToolEnabled(toolConfig, toolName, AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES);
 };
 
 const isSkillEnabledByConfig = (skillId: string, skillsConfig?: AgentProfileSkillsConfigUpdateLike): boolean => {
@@ -173,7 +174,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
     [displayMcpServerNames, formData.toolConfig],
   );
   const enabledRuntimeToolCount = useMemo(
-    () => countEnabledAgentProfileRuntimeTools(formData.toolConfig, runtimeToolNames, [ESSENTIAL_RUNTIME_TOOL_NAME]),
+    () => countEnabledAgentProfileRuntimeTools(formData.toolConfig, runtimeToolNames, AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES),
     [runtimeToolNames, formData.toolConfig],
   );
   const enabledSkillCount = useMemo(
@@ -521,12 +522,12 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const setAllRuntimeToolsEnabled = useCallback((enabled: boolean) => {
     setFormData(prev => ({
       ...prev,
-      toolConfig: getAgentProfileRuntimeToolsConfigAfterSetAllEnabled(prev.toolConfig, enabled, [ESSENTIAL_RUNTIME_TOOL_NAME]),
+      toolConfig: getAgentProfileRuntimeToolsConfigAfterSetAllEnabled(prev.toolConfig, enabled, AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES),
     }));
   }, []);
 
   const toggleRuntimeTool = useCallback((toolName: string) => {
-    if (toolName === ESSENTIAL_RUNTIME_TOOL_NAME) return;
+    if (isAgentProfileEssentialRuntimeToolName(toolName)) return;
     setFormData(prev => {
       return {
         ...prev,
@@ -534,7 +535,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           prev.toolConfig,
           toolName,
           runtimeTools.map(tool => tool.name),
-          [ESSENTIAL_RUNTIME_TOOL_NAME],
+          AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
         ),
       };
     });
@@ -1090,7 +1091,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           </View>
         </View>
         {runtimeTools.map(tool => {
-          const essential = tool.name === ESSENTIAL_RUNTIME_TOOL_NAME;
+          const essential = isAgentProfileEssentialRuntimeToolName(tool.name);
           const enabled = isRuntimeToolEnabledByConfig(tool.name, formData.toolConfig);
           return (
             <View key={tool.name} style={styles.skillRow}>
