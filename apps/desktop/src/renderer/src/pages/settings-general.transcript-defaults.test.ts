@@ -14,6 +14,8 @@ describe("settings general transcript defaults", () => {
 
     expect(source).toContain("DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED")
     expect(source).toContain("transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED")
+    expect(source).toContain("DEFAULT_STT_PROVIDER_ID")
+    expect(source).toContain("sttProviderId || DEFAULT_STT_PROVIDER_ID")
     expect(source).toContain("DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED")
     expect(source).toContain("transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED")
   })

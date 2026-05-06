@@ -29,6 +29,7 @@ import {
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
 } from "@dotagents/shared/observability-config"
 import {
+  DEFAULT_STT_PROVIDER_ID,
   DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
   type STT_PROVIDER_ID,
 } from "@dotagents/shared/providers"
@@ -369,7 +370,7 @@ export function Component() {
   }, [(configQuery.data as any)?.themePreference])
 
   const sttProviderId: STT_PROVIDER_ID =
-    (configQuery.data as any)?.sttProviderId || "openai"
+    (configQuery.data as any)?.sttProviderId || DEFAULT_STT_PROVIDER_ID
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
   const textInputEnabled = configQuery.data?.textInputEnabled ?? DEFAULT_TEXT_INPUT_ENABLED
   const textInputShortcut = (configQuery.data as any)?.textInputShortcut || DEFAULT_TEXT_INPUT_SHORTCUT

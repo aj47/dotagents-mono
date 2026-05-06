@@ -37,7 +37,10 @@ import {
 } from '@dotagents/shared/model-presets';
 import {
   CHAT_PROVIDERS,
+  DEFAULT_STT_PROVIDER_ID,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID,
   DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
+  DEFAULT_TTS_PROVIDER_ID,
   STT_PROVIDERS,
   SUPERTONIC_TTS_LANGUAGES,
   TTS_PROVIDERS,
@@ -419,7 +422,7 @@ export default function SettingsScreen({ navigation }: any) {
     () => getAcpxMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
   );
-  const remoteTtsProviderId = remoteSettings?.ttsProviderId || 'openai';
+  const remoteTtsProviderId = remoteSettings?.ttsProviderId || DEFAULT_TTS_PROVIDER_ID;
   const remoteTtsSpeedSetting = getRemoteTtsSpeedSetting(remoteTtsProviderId);
 
   // Profile import/export state
@@ -2867,13 +2870,13 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider.value}
                       style={[
                         styles.providerOption,
-                        (remoteSettings.sttProviderId || 'openai') === provider.value && styles.providerOptionActive,
+                        (remoteSettings.sttProviderId || DEFAULT_STT_PROVIDER_ID) === provider.value && styles.providerOptionActive,
                       ]}
                       onPress={() => handleRemoteSettingUpdate('sttProviderId', provider.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        (remoteSettings.sttProviderId || 'openai') === provider.value && styles.providerOptionTextActive,
+                        (remoteSettings.sttProviderId || DEFAULT_STT_PROVIDER_ID) === provider.value && styles.providerOptionTextActive,
                       ]}>
                         {provider.label}
                       </Text>
@@ -2911,13 +2914,13 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider.value}
                       style={[
                         styles.providerOption,
-                        (remoteSettings.ttsProviderId || 'openai') === provider.value && styles.providerOptionActive,
+                        (remoteSettings.ttsProviderId || DEFAULT_TTS_PROVIDER_ID) === provider.value && styles.providerOptionActive,
                       ]}
                       onPress={() => handleRemoteSettingUpdate('ttsProviderId', provider.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        (remoteSettings.ttsProviderId || 'openai') === provider.value && styles.providerOptionTextActive,
+                        (remoteSettings.ttsProviderId || DEFAULT_TTS_PROVIDER_ID) === provider.value && styles.providerOptionTextActive,
                       ]}>
                         {provider.label}
                       </Text>
@@ -3182,13 +3185,13 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider.value}
                       style={[
                         styles.providerOption,
-                        (remoteSettings.transcriptPostProcessingProviderId || 'openai') === provider.value && styles.providerOptionActive,
+                        (remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID) === provider.value && styles.providerOptionActive,
                       ]}
                       onPress={() => handleRemoteSettingUpdate('transcriptPostProcessingProviderId', provider.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        (remoteSettings.transcriptPostProcessingProviderId || 'openai') === provider.value && styles.providerOptionTextActive,
+                        (remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID) === provider.value && styles.providerOptionTextActive,
                       ]}>
                         {provider.label}
                       </Text>
@@ -3199,7 +3202,7 @@ export default function SettingsScreen({ navigation }: any) {
                 {(remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED) && (
                   <>
                     {(() => {
-                      const providerId = remoteSettings.transcriptPostProcessingProviderId || 'openai';
+                      const providerId = remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID;
                       const modelKey = getTranscriptPostProcessingModelSettingKey(providerId);
                       if (!modelKey) return null;
 

@@ -1,5 +1,5 @@
 import type { CHAT_PROVIDER_ID, ModelPreset } from './providers';
-import { DEFAULT_MODEL_PRESET_ID, getBuiltInModelPresets, isChatProviderId } from './providers';
+import { DEFAULT_AGENT_PROVIDER_ID, DEFAULT_MODEL_PRESET_ID, getBuiltInModelPresets, isChatProviderId } from './providers';
 import type {
   ModelPresetCreateRequest,
   ModelPresetMutationResponse,
@@ -458,7 +458,7 @@ export function resolveAgentProviderId(cfg?: ActiveModelConfigLike | null): CHAT
   if (isChatProviderId(agentProviderId)) return agentProviderId;
   const mcpToolsProviderId = cfg?.mcpToolsProviderId;
   if (isChatProviderId(mcpToolsProviderId)) return mcpToolsProviderId;
-  return 'openai';
+  return DEFAULT_AGENT_PROVIDER_ID;
 }
 
 export function getAgentModelSettingKey(providerId: CHAT_PROVIDER_ID | string): AgentModelSettingKey {
@@ -522,7 +522,7 @@ export function resolveConfiguredAgentModel(
 }
 
 export function resolveActiveModelId(cfg: ActiveModelConfigLike): string {
-  const provider = cfg.agentProviderId || cfg.mcpToolsProviderId || 'openai';
+  const provider = cfg.agentProviderId || cfg.mcpToolsProviderId || DEFAULT_AGENT_PROVIDER_ID;
   if (provider === 'openai') return cfg.agentOpenaiModel || cfg.mcpToolsOpenaiModel || 'openai';
   if (provider === 'groq') return cfg.agentGroqModel || cfg.mcpToolsGroqModel || 'groq';
   if (provider === 'gemini') return cfg.agentGeminiModel || cfg.mcpToolsGeminiModel || 'gemini';

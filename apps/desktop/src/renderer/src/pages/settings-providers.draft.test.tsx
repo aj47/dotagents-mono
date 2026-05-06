@@ -29,4 +29,15 @@ describe("desktop provider settings draft behavior", () => {
     expect(settingsProvidersSource).toMatch(/tipcClient\.logoutChatGptWebOAuth\(\)/)
     expect(settingsProvidersSource).toMatch(/Copy Callback URL/)
   })
+
+  it("uses shared provider fallback defaults for active provider badges", () => {
+    expect(settingsProvidersSource).toContain("DEFAULT_AGENT_PROVIDER_ID")
+    expect(settingsProvidersSource).toContain("DEFAULT_STT_PROVIDER_ID")
+    expect(settingsProvidersSource).toContain("DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID")
+    expect(settingsProvidersSource).toContain("DEFAULT_TTS_PROVIDER_ID")
+    expect(settingsProvidersSource).toContain("configQuery.data.agentProviderId || configQuery.data.mcpToolsProviderId || DEFAULT_AGENT_PROVIDER_ID")
+    expect(settingsProvidersSource).toContain("configQuery.data.sttProviderId || DEFAULT_STT_PROVIDER_ID")
+    expect(settingsProvidersSource).toContain("configQuery.data.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID")
+    expect(settingsProvidersSource).toContain("configQuery.data.ttsProviderId || DEFAULT_TTS_PROVIDER_ID")
+  })
 })

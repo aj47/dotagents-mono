@@ -2,12 +2,18 @@ import { describe, it, expect } from 'vitest'
 import {
   STT_PROVIDERS,
   STT_PROVIDER_IDS,
+  DEFAULT_STT_PROVIDER_ID,
   CHAT_PROVIDERS,
   CHAT_PROVIDER_IDS,
+  DEFAULT_AGENT_PROVIDER_ID,
+  DEFAULT_CHAT_PROVIDER_ID,
   DEFAULT_CHAT_MODELS,
+  DEFAULT_MCP_TOOLS_PROVIDER_ID,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID,
   DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
   TTS_PROVIDERS,
   TTS_PROVIDER_IDS,
+  DEFAULT_TTS_PROVIDER_ID,
   OPENAI_TTS_VOICES,
   OPENAI_TTS_MODELS,
   GROQ_TTS_VOICES_ENGLISH,
@@ -67,6 +73,7 @@ describe('STT_PROVIDERS', () => {
 
   it('exports shared STT provider ids and validation', () => {
     expect(STT_PROVIDER_IDS).toEqual(['openai', 'groq', 'parakeet'])
+    expect(DEFAULT_STT_PROVIDER_ID).toBe('openai')
     expect(isSttProviderId('openai')).toBe(true)
     expect(isSttProviderId('parakeet')).toBe(true)
     expect(isSttProviderId('gemini')).toBe(false)
@@ -85,6 +92,9 @@ describe('CHAT_PROVIDERS', () => {
 
   it('exports shared chat provider ids and validation', () => {
     expect(CHAT_PROVIDER_IDS).toEqual(['openai', 'groq', 'gemini', 'chatgpt-web'])
+    expect(DEFAULT_CHAT_PROVIDER_ID).toBe('openai')
+    expect(DEFAULT_AGENT_PROVIDER_ID).toBe(DEFAULT_CHAT_PROVIDER_ID)
+    expect(DEFAULT_MCP_TOOLS_PROVIDER_ID).toBe(DEFAULT_CHAT_PROVIDER_ID)
     expect(isChatProviderId('openai')).toBe(true)
     expect(isChatProviderId('chatgpt-web')).toBe(true)
     expect(isChatProviderId('edge')).toBe(false)
@@ -203,6 +213,7 @@ describe('TTS_PROVIDERS', () => {
 
   it('exports shared TTS provider ids and validation', () => {
     expect(TTS_PROVIDER_IDS).toEqual(['openai', 'groq', 'gemini', 'edge', 'kitten', 'supertonic'])
+    expect(DEFAULT_TTS_PROVIDER_ID).toBe('openai')
     expect(isTtsProviderId('openai')).toBe(true)
     expect(isTtsProviderId('supertonic')).toBe(true)
     expect(isTtsProviderId('parakeet')).toBe(false)
@@ -278,6 +289,7 @@ describe('Voice lists', () => {
 
   it('maps transcript post-processing providers to settings keys', () => {
     expect(DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED).toBe(true)
+    expect(DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID).toBe(DEFAULT_CHAT_PROVIDER_ID)
     expect(getTranscriptPostProcessingModelSettingKey('openai')).toBe('transcriptPostProcessingOpenaiModel')
     expect(getTranscriptPostProcessingModelSettingKey('groq')).toBe('transcriptPostProcessingGroqModel')
     expect(getTranscriptPostProcessingModelSettingKey('gemini')).toBe('transcriptPostProcessingGeminiModel')

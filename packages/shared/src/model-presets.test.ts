@@ -35,7 +35,7 @@ import {
   type ModelPresetActionConfigLike,
   type ModelPresetActionOptions,
 } from './model-presets';
-import { DEFAULT_MODEL_PRESET_ID, type ModelPreset } from './providers';
+import { DEFAULT_AGENT_PROVIDER_ID, DEFAULT_MODEL_PRESET_ID, type ModelPreset } from './providers';
 
 describe('model preset helpers', () => {
   it('merges built-in presets with saved overrides and custom presets', () => {
@@ -226,6 +226,8 @@ describe('model preset helpers', () => {
       mcpToolsGeminiModel: 'gemini-2.5-pro',
     })).toBe('gemini-2.5-pro');
 
+    expect(resolveActiveModelId({})).toBe(DEFAULT_AGENT_PROVIDER_ID);
+
     expect(resolveActiveModelId({
       agentProviderId: 'custom-provider',
     })).toBe('custom-provider');
@@ -235,7 +237,7 @@ describe('model preset helpers', () => {
     expect(AGENT_MODEL_FALLBACKS.openai).toBe('gpt-4.1-mini');
     expect(resolveAgentProviderId({ agentProviderId: 'gemini', mcpToolsProviderId: 'openai' })).toBe('gemini');
     expect(resolveAgentProviderId({ agentProviderId: 'custom-provider', mcpToolsProviderId: 'groq' })).toBe('groq');
-    expect(resolveAgentProviderId({ agentProviderId: 'custom-provider' })).toBe('openai');
+    expect(resolveAgentProviderId({ agentProviderId: 'custom-provider' })).toBe(DEFAULT_AGENT_PROVIDER_ID);
 
     expect(getAgentModelSettingKey('openai')).toBe('agentOpenaiModel');
     expect(getAgentModelSettingKey('groq')).toBe('agentGroqModel');

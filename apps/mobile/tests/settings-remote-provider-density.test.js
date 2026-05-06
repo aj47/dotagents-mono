@@ -31,11 +31,15 @@ test('avoids decorative emoji chrome in the mobile remote provider selection sub
   assert.doesNotMatch(providerSection, /🎤|📝|🤖|🔊/);
   assert.doesNotMatch(providerSection, /Select which AI provider to use for each feature\./);
   assert.match(providerSection, />Voice Transcription \(STT\)</);
+  assert.match(settingsSource, /DEFAULT_STT_PROVIDER_ID/);
+  assert.match(providerSection, /remoteSettings\.sttProviderId \|\| DEFAULT_STT_PROVIDER_ID/);
   assert.doesNotMatch(providerSection, />Transcript Post-Processing</);
   assert.doesNotMatch(providerSection, />Transcript Processing</);
   assert.match(providerSection, />Agent</);
   assert.doesNotMatch(providerSection, />Agent\/MCP Tools</);
   assert.match(providerSection, />Text-to-Speech \(TTS\)</);
+  assert.match(settingsSource, /DEFAULT_TTS_PROVIDER_ID/);
+  assert.match(providerSection, /remoteSettings\.ttsProviderId \|\| DEFAULT_TTS_PROVIDER_ID/);
 });
 
 test('lets mobile configure desktop provider credentials without echoing secrets', () => {
@@ -71,11 +75,13 @@ test('keeps profile/model actions text-first and explicitly labeled', () => {
   assert.match(profileModelSection, />Transcript Processing</);
   assert.match(profileModelSection, />Enabled</);
   assert.match(profileModelSection, />Provider</);
+  assert.match(settingsSource, /DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID/);
   assert.match(settingsSource, /getTranscriptPostProcessingModelSettingKey/);
   assert.match(settingsSource, /buildRemoteSettingsInputDrafts/);
   assert.match(remoteSettingsDraftsSource, /transcriptPostProcessingOpenaiModel: settings\.transcriptPostProcessingOpenaiModel \|\| ""/);
   assert.match(settingsSource, /updates\.transcriptPostProcessingGroqModel = inputDrafts\.transcriptPostProcessingGroqModel \?\? ''/);
   assert.match(profileModelSection, /const modelKey = getTranscriptPostProcessingModelSettingKey\(providerId\)/);
+  assert.match(profileModelSection, /remoteSettings\.transcriptPostProcessingProviderId \|\| DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID/);
   assert.match(profileModelSection, /handleRemoteSettingUpdate\(modelKey, v\)/);
   assert.match(profileModelSection, />Prompt</);
 });
@@ -120,6 +126,7 @@ test('lets mobile configure local desktop TTS provider details', () => {
   assert.match(settingsSource, /DEFAULT_TTS_REMOVE_URLS/);
   assert.match(settingsSource, /DEFAULT_TTS_CONVERT_MARKDOWN/);
   assert.match(settingsSource, /DEFAULT_TTS_USE_LLM_PREPROCESSING/);
+  assert.match(settingsSource, /const remoteTtsProviderId = remoteSettings\?\.ttsProviderId \|\| DEFAULT_TTS_PROVIDER_ID/);
   assert.match(ttsSection, /remoteSettings\.ttsEnabled \?\? DEFAULT_TTS_ENABLED/);
   assert.match(ttsSection, /remoteSettings\.ttsAutoPlay \?\? DEFAULT_TTS_AUTO_PLAY/);
   assert.match(ttsSection, /remoteSettings\.ttsPreprocessingEnabled \?\? DEFAULT_TTS_PREPROCESSING_ENABLED/);

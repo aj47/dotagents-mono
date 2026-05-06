@@ -27,6 +27,12 @@ import {
   DEFAULT_PARAKEET_NUM_THREADS,
   PARAKEET_NUM_THREAD_OPTIONS,
 } from "@dotagents/shared/stt-models"
+import {
+  DEFAULT_AGENT_PROVIDER_ID,
+  DEFAULT_STT_PROVIDER_ID,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID,
+  DEFAULT_TTS_PROVIDER_ID,
+} from "@dotagents/shared/providers"
 import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Cpu, Download, Loader2 } from "lucide-react"
 
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
@@ -777,10 +783,10 @@ export function Component() {
     if (!configQuery.data) return { openai: [], groq: [], gemini: [], chatgptWeb: [], parakeet: [], kitten: [], supertonic: [] }
 
     const isMainAgentAcpMode = configQuery.data.mainAgentMode === "acpx"
-    const stt = configQuery.data.sttProviderId || "openai"
-    const transcript = configQuery.data.transcriptPostProcessingProviderId || "openai"
-    const mcp = configQuery.data.agentProviderId || configQuery.data.mcpToolsProviderId || "openai"
-    const tts = configQuery.data.ttsProviderId || "openai"
+    const stt = configQuery.data.sttProviderId || DEFAULT_STT_PROVIDER_ID
+    const transcript = configQuery.data.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID
+    const mcp = configQuery.data.agentProviderId || configQuery.data.mcpToolsProviderId || DEFAULT_AGENT_PROVIDER_ID
+    const tts = configQuery.data.ttsProviderId || DEFAULT_TTS_PROVIDER_ID
 
     return {
       openai: [

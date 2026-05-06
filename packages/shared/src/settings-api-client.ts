@@ -1,7 +1,12 @@
 import { normalizeApiBaseUrl } from './connection-recovery';
 import {
+  DEFAULT_AGENT_PROVIDER_ID,
+  DEFAULT_MCP_TOOLS_PROVIDER_ID,
   DEFAULT_MODEL_PRESET_ID,
+  DEFAULT_STT_PROVIDER_ID,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID,
   DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
+  DEFAULT_TTS_PROVIDER_ID,
   isChatProviderId,
   isSttProviderId,
   isTtsProviderId,
@@ -358,12 +363,12 @@ export function buildSettingsResponse(
 
   return {
     // Agent model settings (agent* preferred; mcpTools* legacy aliases)
-    agentProviderId: cfg.agentProviderId || cfg.mcpToolsProviderId || 'openai',
+    agentProviderId: cfg.agentProviderId || cfg.mcpToolsProviderId || DEFAULT_AGENT_PROVIDER_ID,
     agentOpenaiModel: cfg.agentOpenaiModel || cfg.mcpToolsOpenaiModel,
     agentGroqModel: cfg.agentGroqModel || cfg.mcpToolsGroqModel,
     agentGeminiModel: cfg.agentGeminiModel || cfg.mcpToolsGeminiModel,
     agentChatgptWebModel: cfg.agentChatgptWebModel || cfg.mcpToolsChatgptWebModel,
-    mcpToolsProviderId: cfg.mcpToolsProviderId || 'openai',
+    mcpToolsProviderId: cfg.mcpToolsProviderId || DEFAULT_MCP_TOOLS_PROVIDER_ID,
     mcpToolsOpenaiModel: cfg.mcpToolsOpenaiModel,
     mcpToolsGroqModel: cfg.mcpToolsGroqModel,
     mcpToolsGeminiModel: cfg.mcpToolsGeminiModel,
@@ -476,9 +481,9 @@ export function buildSettingsResponse(
     langfuseBaseUrl: cfg.langfuseBaseUrl ?? '',
     localTraceLoggingEnabled: cfg.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
     localTraceLogPath: cfg.localTraceLogPath ?? '',
-    sttProviderId: cfg.sttProviderId || 'openai',
-    ttsProviderId: cfg.ttsProviderId || 'openai',
-    transcriptPostProcessingProviderId: cfg.transcriptPostProcessingProviderId || 'openai',
+    sttProviderId: cfg.sttProviderId || DEFAULT_STT_PROVIDER_ID,
+    ttsProviderId: cfg.ttsProviderId || DEFAULT_TTS_PROVIDER_ID,
+    transcriptPostProcessingProviderId: cfg.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID,
     transcriptPostProcessingOpenaiModel: cfg.transcriptPostProcessingOpenaiModel || '',
     transcriptPostProcessingGroqModel: cfg.transcriptPostProcessingGroqModel || '',
     transcriptPostProcessingGeminiModel: cfg.transcriptPostProcessingGeminiModel || '',

@@ -19,6 +19,10 @@ import {
   STT_PROVIDERS,
   CHAT_PROVIDERS,
   TTS_PROVIDERS,
+  DEFAULT_AGENT_PROVIDER_ID,
+  DEFAULT_STT_PROVIDER_ID,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID,
+  DEFAULT_TTS_PROVIDER_ID,
   STT_PROVIDER_ID,
   CHAT_PROVIDER_ID,
   TTS_PROVIDER_ID,
@@ -154,10 +158,10 @@ export function Component() {
   if (!configQuery.data) return null
 
   const config = configQuery.data
-  const sttProviderId = config.sttProviderId || "openai"
-  const transcriptProcessingProviderId = config.transcriptPostProcessingProviderId || "openai"
-  const ttsProviderId = config.ttsProviderId || "openai"
-  const agentProviderId = config.agentProviderId || config.mcpToolsProviderId || "openai"
+  const sttProviderId = config.sttProviderId || DEFAULT_STT_PROVIDER_ID
+  const transcriptProcessingProviderId = config.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID
+  const ttsProviderId = config.ttsProviderId || DEFAULT_TTS_PROVIDER_ID
+  const agentProviderId = config.agentProviderId || config.mcpToolsProviderId || DEFAULT_AGENT_PROVIDER_ID
   const transcriptProcessingEnabled = config.transcriptPostProcessingEnabled ?? false
   const transcriptProcessingModelKey = getTranscriptPostProcessingModelSettingKey(transcriptProcessingProviderId)
   const usesOpenAiCompatiblePreset =

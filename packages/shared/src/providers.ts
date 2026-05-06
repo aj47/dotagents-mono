@@ -26,6 +26,7 @@ export const STT_PROVIDERS = [
 
 export type STT_PROVIDER_ID = (typeof STT_PROVIDERS)[number]["value"];
 export const STT_PROVIDER_IDS: readonly STT_PROVIDER_ID[] = STT_PROVIDERS.map(provider => provider.value);
+export const DEFAULT_STT_PROVIDER_ID: STT_PROVIDER_ID = "openai";
 
 export const CHAT_PROVIDERS = [
   { label: "OpenAI", value: "openai" },
@@ -36,6 +37,9 @@ export const CHAT_PROVIDERS = [
 
 export type CHAT_PROVIDER_ID = (typeof CHAT_PROVIDERS)[number]["value"];
 export const CHAT_PROVIDER_IDS: readonly CHAT_PROVIDER_ID[] = CHAT_PROVIDERS.map(provider => provider.value);
+export const DEFAULT_CHAT_PROVIDER_ID: CHAT_PROVIDER_ID = "openai";
+export const DEFAULT_AGENT_PROVIDER_ID: CHAT_PROVIDER_ID = DEFAULT_CHAT_PROVIDER_ID;
+export const DEFAULT_MCP_TOOLS_PROVIDER_ID: CHAT_PROVIDER_ID = DEFAULT_CHAT_PROVIDER_ID;
 export type ChatModelContext = "mcp" | "transcript";
 export type ChatModelSelectionResolutionReason = "transcription-only" | "chatgpt-web-only";
 export type ChatModelSelectionResolution = {
@@ -265,8 +269,8 @@ export function resolveMcpSamplingModelSelection(
   config: McpSamplingModelSelectionConfig,
   hints?: readonly McpSamplingModelPreferenceHint[] | null,
 ): McpSamplingModelSelection {
-  const providerId = config.agentProviderId || config.mcpToolsProviderId || "openai";
-  let model = config.agentOpenaiModel || config.mcpToolsOpenaiModel || DEFAULT_CHAT_MODELS.openai.mcp;
+  const providerId = config.agentProviderId || config.mcpToolsProviderId || DEFAULT_AGENT_PROVIDER_ID;
+  let model = config.agentOpenaiModel || config.mcpToolsOpenaiModel || DEFAULT_CHAT_MODELS[DEFAULT_AGENT_PROVIDER_ID].mcp;
 
   const hint = hints?.[0];
   if (hint?.name) {
@@ -290,6 +294,7 @@ export const DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT = [
   "{transcript}",
 ].join("\n");
 export const DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED = true;
+export const DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID: CHAT_PROVIDER_ID = DEFAULT_CHAT_PROVIDER_ID;
 
 export const TTS_PROVIDERS = [
   { label: "OpenAI", value: "openai" },
@@ -302,6 +307,7 @@ export const TTS_PROVIDERS = [
 
 export type TTS_PROVIDER_ID = (typeof TTS_PROVIDERS)[number]["value"];
 export const TTS_PROVIDER_IDS: readonly TTS_PROVIDER_ID[] = TTS_PROVIDERS.map(provider => provider.value);
+export const DEFAULT_TTS_PROVIDER_ID: TTS_PROVIDER_ID = "openai";
 
 export function isTtsProviderId(value: unknown): value is TTS_PROVIDER_ID {
   return typeof value === "string" && TTS_PROVIDER_IDS.includes(value as TTS_PROVIDER_ID);

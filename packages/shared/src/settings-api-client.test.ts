@@ -19,7 +19,12 @@ import {
   type SettingsActionOptions,
 } from './settings-api-client';
 import {
+  DEFAULT_AGENT_PROVIDER_ID,
+  DEFAULT_MCP_TOOLS_PROVIDER_ID,
+  DEFAULT_STT_PROVIDER_ID,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID,
   DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
+  DEFAULT_TTS_PROVIDER_ID,
 } from './providers';
 import {
   DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED,
@@ -467,6 +472,11 @@ describe('SettingsApiClient', () => {
         discordBotToken: 'DISCORD-MASK',
       },
     );
+    expect(defaultResponse.agentProviderId).toBe(DEFAULT_AGENT_PROVIDER_ID);
+    expect(defaultResponse.mcpToolsProviderId).toBe(DEFAULT_MCP_TOOLS_PROVIDER_ID);
+    expect(defaultResponse.sttProviderId).toBe(DEFAULT_STT_PROVIDER_ID);
+    expect(defaultResponse.ttsProviderId).toBe(DEFAULT_TTS_PROVIDER_ID);
+    expect(defaultResponse.transcriptPostProcessingProviderId).toBe(DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID);
     expect(defaultResponse.textInputEnabled).toBe(DEFAULT_TEXT_INPUT_ENABLED);
     expect(defaultResponse.mcpAutoPasteEnabled).toBe(DEFAULT_MCP_AUTO_PASTE_ENABLED);
     expect(defaultResponse.mcpAutoPasteDelay).toBe(DEFAULT_MCP_AUTO_PASTE_DELAY);
