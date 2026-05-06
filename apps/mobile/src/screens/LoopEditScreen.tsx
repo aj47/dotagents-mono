@@ -15,7 +15,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import {
-  AgentSessionCandidate,
   AgentSessionCandidatesResponse,
   AgentProfile,
   ExtendedSettingsApiClient,
@@ -26,6 +25,12 @@ import {
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
+import {
+  buildAgentSessionCandidateOptions,
+  formatAgentSessionCandidateTime,
+  formatAgentSessionCandidateTitle,
+  type AgentSessionCandidateOption,
+} from '@dotagents/shared/agent-session-candidates';
 import {
   DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
   DEFAULT_REPEAT_TASK_WEEKDAYS,
@@ -38,11 +43,6 @@ import {
 } from '@dotagents/shared/repeat-task-utils';
 
 type ScheduleMode = 'continuous' | 'interval' | 'daily' | 'weekly';
-type SessionCandidateGroup = 'Active' | 'Recent' | 'Selected';
-
-type SessionCandidateOption = AgentSessionCandidate & {
-  group: SessionCandidateGroup;
-};
 
 type LoopFormData = {
   name: string;
@@ -99,45 +99,15 @@ function loopToFormData(loop: Loop): LoopFormData {
   };
 }
 
-function formatSessionCandidateTime(candidate: AgentSessionCandidate): string {
-  const timestamp = candidate.endTime ?? candidate.startTime;
-  return new Date(timestamp).toLocaleString([], {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
+function formatMobileSessionCandidateTime(candidate: AgentSessionCandidateOption): string {
+  return formatAgentSessionCandidateTime(candidate, {
+    dateTimeFormatOptions: {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    },
   });
-}
-
-function formatSessionCandidateTitle(candidate: AgentSessionCandidate): string {
-  return candidate.conversationTitle?.trim() || candidate.conversationId || candidate.id;
-}
-
-function buildSessionCandidateOptions(
-  candidates: AgentSessionCandidatesResponse | null,
-  selectedSessionId: string,
-): SessionCandidateOption[] {
-  const seen = new Set<string>();
-  const options: SessionCandidateOption[] = [];
-  for (const candidate of candidates?.activeSessions ?? []) {
-    if (seen.has(candidate.id)) continue;
-    seen.add(candidate.id);
-    options.push({ ...candidate, group: 'Active' });
-  }
-  for (const candidate of candidates?.completedSessions ?? []) {
-    if (seen.has(candidate.id)) continue;
-    seen.add(candidate.id);
-    options.push({ ...candidate, group: 'Recent' });
-  }
-  if (selectedSessionId && !seen.has(selectedSessionId)) {
-    options.unshift({
-      id: selectedSessionId,
-      status: 'unknown',
-      startTime: 0,
-      group: 'Selected',
-    });
-  }
-  return options;
 }
 
 export default function LoopEditScreen({ navigation, route }: any) {
@@ -166,7 +136,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const [error, setError] = useState<string | null>(null);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const sessionCandidateOptions = useMemo(() => buildSessionCandidateOptions(
+  const sessionCandidateOptions = useMemo(() => buildAgentSessionCandidateOptions(
     sessionCandidates,
     formData.lastSessionId.trim(),
   ), [formData.lastSessionId, sessionCandidates]);
@@ -591,16 +561,16 @@ export default function LoopEditScreen({ navigation, route }: any) {
                   style={[styles.profileOption, active && styles.profileOptionActive]}
                   onPress={() => updateField('lastSessionId', candidate.id)}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel(`Continue from ${formatSessionCandidateTitle(candidate)}`)}
+                  accessibilityLabel={createButtonAccessibilityLabel(`Continue from ${formatAgentSessionCandidateTitle(candidate)}`)}
                   accessibilityHint={active ? 'Currently selected for this loop.' : 'Pins this session for the next loop run.'}
                   accessibilityState={{ selected: active }}
                 >
                   <View style={styles.profileOptionInfo}>
                     <Text style={[styles.profileOptionText, active && styles.profileOptionTextActive]} numberOfLines={1}>
-                      {formatSessionCandidateTitle(candidate)}
+                      {formatAgentSessionCandidateTitle(candidate)}
                     </Text>
                     <Text style={[styles.profileOptionHelperText, active && styles.profileOptionHelperTextActive]} numberOfLines={1}>
-                      {candidate.group} - {candidate.status} - {candidate.startTime ? formatSessionCandidateTime(candidate) : candidate.id}
+                      {candidate.group} - {candidate.status} - {formatMobileSessionCandidateTime(candidate)}
                     </Text>
                   </View>
                   {active && <Text style={styles.profileOptionCheckmark}>✓</Text>}

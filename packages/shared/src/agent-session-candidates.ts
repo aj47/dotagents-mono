@@ -12,6 +12,19 @@ export type AgentSessionCandidateLike = {
   endTime?: number
 }
 
+export type AgentSessionCandidateGroup = "Active" | "Recent" | "Selected"
+
+export type AgentSessionCandidateOption<TCandidate extends AgentSessionCandidateLike = AgentSessionCandidate> =
+  TCandidate & {
+    group: AgentSessionCandidateGroup
+  }
+
+export type AgentSessionCandidateTimeFormatOptions = {
+  locales?: Intl.LocalesArgument
+  dateTimeFormatOptions?: Intl.DateTimeFormatOptions
+  fallback?: string
+}
+
 export type AgentSessionCandidateQueryParseResult =
   | { ok: true; limit: number }
   | { ok: false; statusCode: 400; error: string }
@@ -76,6 +89,59 @@ export function formatAgentSessionCandidateForApi(
     startTime: candidate.startTime,
     endTime: candidate.endTime,
   }
+}
+
+export function formatAgentSessionCandidateTitle(candidate: AgentSessionCandidateLike): string {
+  return candidate.conversationTitle?.trim() || candidate.conversationId || candidate.id
+}
+
+export function formatAgentSessionCandidateTime(
+  candidate: AgentSessionCandidateLike,
+  options: AgentSessionCandidateTimeFormatOptions = {},
+): string {
+  const timestamp = candidate.endTime ?? candidate.startTime
+  if (!timestamp) return options.fallback ?? candidate.id
+  return new Date(timestamp).toLocaleString(options.locales, options.dateTimeFormatOptions)
+}
+
+export function formatAgentSessionCandidateLabel(
+  candidate: AgentSessionCandidateLike,
+  options?: AgentSessionCandidateTimeFormatOptions,
+): string {
+  return `${formatAgentSessionCandidateTitle(candidate)} - ${formatAgentSessionCandidateTime(candidate, options)}`
+}
+
+export function buildAgentSessionCandidateOptions<
+  TCandidate extends AgentSessionCandidateLike = AgentSessionCandidate,
+>(
+  candidates: Pick<AgentSessionCandidatesResponse, "activeSessions" | "completedSessions"> | null | undefined,
+  selectedSessionId?: string,
+): AgentSessionCandidateOption<TCandidate>[] {
+  const selectedId = selectedSessionId?.trim()
+  const seen = new Set<string>()
+  const options: AgentSessionCandidateOption<TCandidate>[] = []
+
+  const addCandidates = (items: AgentSessionCandidateLike[] | undefined, group: AgentSessionCandidateGroup) => {
+    for (const candidate of items ?? []) {
+      if (seen.has(candidate.id)) continue
+      seen.add(candidate.id)
+      options.push({ ...(candidate as TCandidate), group })
+    }
+  }
+
+  addCandidates(candidates?.activeSessions, "Active")
+  addCandidates(candidates?.completedSessions, "Recent")
+
+  if (selectedId && !seen.has(selectedId)) {
+    options.unshift({
+      id: selectedId,
+      status: "unknown",
+      startTime: 0,
+      group: "Selected",
+    } as AgentSessionCandidateOption<TCandidate>)
+  }
+
+  return options
 }
 
 export function buildAgentSessionCandidatesResponse(

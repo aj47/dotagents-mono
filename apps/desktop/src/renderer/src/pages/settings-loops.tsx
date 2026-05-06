@@ -21,6 +21,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { LoopConfig, LoopSchedule } from "@shared/types"
 import { toast } from "sonner"
 import {
+  buildAgentSessionCandidateOptions,
+  formatAgentSessionCandidateLabel,
+  type AgentSessionCandidateOption,
+} from "@dotagents/shared/agent-session-candidates"
+import type { AgentSessionCandidatesResponse } from "@dotagents/shared/api-types"
+import {
   DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
   DEFAULT_REPEAT_TASK_WEEKDAYS,
   REPEAT_TASK_DAY_LABELS,
@@ -89,26 +95,6 @@ function formatLastRun(timestamp?: number): string {
 // Radix Select does not accept an empty string as an item value.
 const AUTO_SESSION_VALUE = "__auto__"
 
-type SessionCandidate = {
-  id: string
-  conversationId?: string
-  conversationTitle?: string
-  status: string
-  startTime: number
-  endTime?: number
-}
-
-type SessionCandidatesData = {
-  activeSessions: SessionCandidate[]
-  completedSessions: SessionCandidate[]
-} | undefined
-
-function formatSessionLabel(s: SessionCandidate): string {
-  const title = s.conversationTitle?.trim() || s.id
-  const when = new Date(s.endTime ?? s.startTime).toLocaleString()
-  return `${title} — ${when}`
-}
-
 function SessionPicker({
   value,
   onChange,
@@ -116,24 +102,14 @@ function SessionPicker({
 }: {
   value: string | undefined
   onChange: (value: string | undefined) => void
-  candidates: SessionCandidatesData
+  candidates: AgentSessionCandidatesResponse | null | undefined
 }) {
-  const active = candidates?.activeSessions ?? []
-  const completed = candidates?.completedSessions ?? []
-  // Merge and de-dupe by id, active first (most likely to be useful).
-  const seen = new Set<string>()
-  const merged: SessionCandidate[] = []
-  for (const s of [...active, ...completed]) {
-    if (seen.has(s.id)) continue
-    seen.add(s.id)
-    merged.push(s)
-  }
-
-  const pinned = value && !seen.has(value)
-    ? { id: value, conversationTitle: undefined, status: "unknown", startTime: 0 } as SessionCandidate
-    : undefined
-
+  const options = buildAgentSessionCandidateOptions(candidates, value)
   const selectValue = value ?? AUTO_SESSION_VALUE
+  const getOptionLabel = (candidate: AgentSessionCandidateOption) =>
+    candidate.group === "Selected"
+      ? `${candidate.id} (no longer available)`
+      : formatAgentSessionCandidateLabel(candidate)
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -147,14 +123,9 @@ function SessionPicker({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={AUTO_SESSION_VALUE}>Auto — most recent run of this task</SelectItem>
-          {pinned && (
-            <SelectItem value={pinned.id}>
-              {pinned.id} (no longer available)
-            </SelectItem>
-          )}
-          {merged.map((s) => (
-            <SelectItem key={s.id} value={s.id}>
-              {formatSessionLabel(s)}
+          {options.map((candidate) => (
+            <SelectItem key={`${candidate.group}:${candidate.id}`} value={candidate.id}>
+              {getOptionLabel(candidate)}
             </SelectItem>
           ))}
         </SelectContent>

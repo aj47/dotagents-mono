@@ -176,6 +176,11 @@
       "import": "./dist/agent-selector-options.mjs",
       "require": "./dist/agent-selector-options.js"
     },
+    "./agent-session-candidates": {
+      "types": "./dist/agent-session-candidates.d.ts",
+      "import": "./dist/agent-session-candidates.mjs",
+      "require": "./dist/agent-session-candidates.js"
+    },
     "./repeat-task-utils": {
       "types": "./dist/repeat-task-utils.d.ts",
       "import": "./dist/repeat-task-utils.mjs",

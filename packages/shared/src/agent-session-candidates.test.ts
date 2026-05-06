@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  buildAgentSessionCandidateOptions,
   buildAgentSessionCandidatesResponse,
+  formatAgentSessionCandidateLabel,
+  formatAgentSessionCandidateTime,
+  formatAgentSessionCandidateTitle,
   getAgentSessionCandidatesAction,
   parseAgentSessionCandidateLimit,
 } from "./agent-session-candidates"
@@ -40,6 +44,50 @@ describe("agent session candidates", () => {
       activeSessions: active,
       completedSessions: completed,
     })
+  })
+
+  it("formats and merges active, recent, and selected session candidates", () => {
+    const active = [{
+      id: "active-1",
+      conversationId: "conv-active",
+      conversationTitle: " Active work ",
+      status: "active",
+      startTime: Date.UTC(2026, 4, 6, 12, 0, 0),
+    }]
+    const duplicateCompleted = {
+      id: "active-1",
+      conversationId: "conv-active-old",
+      conversationTitle: "Older active work",
+      status: "completed",
+      startTime: Date.UTC(2026, 4, 5, 12, 0, 0),
+    }
+    const completed = [{
+      id: "done-1",
+      conversationId: "conv-done",
+      status: "completed",
+      startTime: Date.UTC(2026, 4, 4, 12, 0, 0),
+      endTime: Date.UTC(2026, 4, 4, 13, 0, 0),
+    }]
+
+    expect(buildAgentSessionCandidateOptions({
+      activeSessions: active,
+      completedSessions: [duplicateCompleted, ...completed],
+    }, "missing-session")).toEqual([
+      { id: "missing-session", status: "unknown", startTime: 0, group: "Selected" },
+      { ...active[0], group: "Active" },
+      { ...completed[0], group: "Recent" },
+    ])
+    expect(formatAgentSessionCandidateTitle(active[0])).toBe("Active work")
+    expect(formatAgentSessionCandidateTitle(completed[0])).toBe("conv-done")
+    expect(formatAgentSessionCandidateTime({
+      id: "missing-session",
+      status: "unknown",
+      startTime: 0,
+    })).toBe("missing-session")
+    expect(formatAgentSessionCandidateLabel(active[0], {
+      locales: "en-US",
+      dateTimeFormatOptions: { timeZone: "UTC", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" },
+    })).toBe("Active work - May 6, 12:00 PM")
   })
 
   it("runs the route action against a session tracker adapter", () => {
