@@ -6,7 +6,7 @@ import { AlertTriangle, Archive, Clock, Loader2, Pin, Search, Trash2 } from "luc
 
 import { cn } from "@renderer/lib/utils"
 import { orderConversationHistoryByPinnedFirst } from "@dotagents/shared/session"
-import { getSidebarStatusPresentation } from "@renderer/lib/session-presentation"
+import { getSidebarStatusPresentation } from "@dotagents/shared/session-presentation"
 import {
   getLatestUserFacingResponse,
   getSidebarActivityPresentation,

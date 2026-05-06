@@ -12,7 +12,7 @@ const tileSource = readFileSync(
 )
 
 const presentationSource = readFileSync(
-  new URL("../lib/session-presentation.ts", import.meta.url),
+  new URL("../../../../../../packages/shared/src/session-presentation.ts", import.meta.url),
   "utf8",
 )
 

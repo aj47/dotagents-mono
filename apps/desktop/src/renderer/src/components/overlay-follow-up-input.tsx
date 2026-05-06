@@ -12,7 +12,7 @@ import { SlashCommandMenu, useSlashCommands } from "./slash-command-menu"
 import {
   getFollowUpInputPresentation,
   type FollowUpInputPresentation,
-} from "@renderer/lib/session-presentation"
+} from "@dotagents/shared/session-presentation"
 import {
   buildMessageWithImages,
   getClipboardImageFiles,

@@ -48,7 +48,7 @@ import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
 import type { AgentProgressUpdate, LoopConfig } from "@shared/types"
-import { getSidebarStatusPresentation } from "@renderer/lib/session-presentation"
+import { getSidebarStatusPresentation } from "@dotagents/shared/session-presentation"
 
 interface SidebarSessionRecord {
   id: string

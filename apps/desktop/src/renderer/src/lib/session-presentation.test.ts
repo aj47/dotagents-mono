@@ -6,7 +6,7 @@ import {
   getFollowUpInputPresentation,
   getSessionPresentation,
   getSidebarStatusPresentation,
-} from "./session-presentation"
+} from "@dotagents/shared/session-presentation"
 
 describe("session presentation semantics", () => {
   it("keeps snoozed repeat tasks running and labels them as background work", () => {

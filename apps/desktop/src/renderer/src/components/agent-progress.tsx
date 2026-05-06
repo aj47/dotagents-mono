@@ -88,7 +88,7 @@ import { toast } from "sonner"
 import {
   getFollowUpInputPresentation,
   getSessionPresentation,
-} from "@renderer/lib/session-presentation"
+} from "@dotagents/shared/session-presentation"
 import { computeTurnDurations, formatTurnDuration, useNowTick } from "@renderer/lib/turn-duration"
 
 interface AgentProgressProps {
