@@ -8,6 +8,7 @@ import type {
   KnowledgeNotesDeleteAllResponse,
   KnowledgeNotesDeleteMultipleRequest,
   KnowledgeNotesDeleteMultipleResponse,
+  KnowledgeNotesListRequest,
   KnowledgeNotesResponse,
   KnowledgeNoteUpdateRequest,
 } from "./api-types"
@@ -38,6 +39,10 @@ export type KnowledgeNoteUpdateParseResult =
   | { ok: true; request: KnowledgeNoteUpdateRequest }
   | { ok: false; statusCode: 400; error: string }
 
+export type KnowledgeNotesListParseResult =
+  | { ok: true; request: KnowledgeNotesListRequest }
+  | { ok: false; statusCode: 400; error: string }
+
 export type KnowledgeNoteSearchParseResult =
   | { ok: true; request: KnowledgeNoteSearchRequest }
   | { ok: false; statusCode: 400; error: string }
@@ -63,7 +68,7 @@ export interface KnowledgeNoteActionDiagnostics {
 }
 
 export interface KnowledgeNoteActionService {
-  getAllNotes(): KnowledgeNoteMaybePromise<KnowledgeNote[]>
+  getAllNotes(filter: KnowledgeNotesListRequest): KnowledgeNoteMaybePromise<KnowledgeNote[]>
   getNote(id: string): KnowledgeNoteMaybePromise<KnowledgeNote | null | undefined>
   searchNotes(
     query: string,
@@ -185,10 +190,16 @@ function getUnknownErrorMessage(error: unknown, fallback: string): string {
 }
 
 export async function getKnowledgeNotesAction(
+  query: unknown,
   options: KnowledgeNoteActionOptions,
 ): Promise<KnowledgeNoteActionResult> {
   try {
-    const notes = await options.service.getAllNotes()
+    const parsedRequest = parseKnowledgeNotesListRequestQuery(query)
+    if (parsedRequest.ok === false) {
+      return knowledgeNoteActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const notes = await options.service.getAllNotes(parsedRequest.request)
     return knowledgeNoteActionOk(buildKnowledgeNotesResponse(notes))
   } catch (caughtError) {
     options.diagnostics.logError("knowledge-note-actions", "Failed to get knowledge notes", caughtError)
@@ -473,6 +484,52 @@ export function parseKnowledgeNoteSearchRequestBody(body: unknown): KnowledgeNot
       return { ok: false, statusCode: 400, error: "limit must be a positive number when provided" }
     }
     request.limit = Math.min(Math.floor(body.limit), 500)
+  }
+
+  return { ok: true, request }
+}
+
+export function parseKnowledgeNotesListRequestQuery(query: unknown): KnowledgeNotesListParseResult {
+  if (query === undefined || query === null) {
+    return { ok: true, request: {} }
+  }
+  if (!isRequestObject(query)) {
+    return { ok: false, statusCode: 400, error: "Query parameters must be an object" }
+  }
+
+  const request: KnowledgeNotesListRequest = {}
+
+  if (query.context !== undefined) {
+    if (typeof query.context !== "string" || !KNOWLEDGE_NOTE_CONTEXTS.has(query.context as KnowledgeNoteSearchContext)) {
+      return { ok: false, statusCode: 400, error: "context must be one of: auto, search-only" }
+    }
+    request.context = query.context as KnowledgeNoteSearchContext
+  }
+  if (query.dateFilter !== undefined) {
+    if (
+      typeof query.dateFilter !== "string"
+      || !KNOWLEDGE_NOTE_DATE_FILTERS.has(query.dateFilter as KnowledgeNoteSearchDateFilter)
+    ) {
+      return { ok: false, statusCode: 400, error: "dateFilter must be one of: all, 7d, 30d, 90d, year" }
+    }
+    request.dateFilter = query.dateFilter as KnowledgeNoteSearchDateFilter
+  }
+  if (query.sort !== undefined) {
+    if (typeof query.sort !== "string" || !KNOWLEDGE_NOTE_SORTS.has(query.sort as KnowledgeNoteSearchSort)) {
+      return {
+        ok: false,
+        statusCode: 400,
+        error: "sort must be one of: relevance, updated-desc, updated-asc, created-desc, created-asc, title-asc, title-desc",
+      }
+    }
+    request.sort = query.sort as KnowledgeNoteSearchSort
+  }
+  if (query.limit !== undefined) {
+    const limit = typeof query.limit === "number" ? query.limit : Number(query.limit)
+    if (!Number.isFinite(limit) || limit < 1) {
+      return { ok: false, statusCode: 400, error: "limit must be a positive number when provided" }
+    }
+    request.limit = Math.min(Math.floor(limit), 5000)
   }
 
   return { ok: true, request }

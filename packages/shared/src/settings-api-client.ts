@@ -26,6 +26,7 @@ import type {
 import type { MCPConfig, MCPServerConfig } from './mcp-utils';
 import { sanitizeConfigStringList } from './config-list-input';
 import {
+  buildRemoteServerApiQueryPath,
   REMOTE_SERVER_API_BUILDERS,
   REMOTE_SERVER_API_PATHS,
   getRemoteServerApiRoutePath,
@@ -55,6 +56,7 @@ import type {
   KnowledgeNoteSearchRequest,
   KnowledgeNotesDeleteAllResponse,
   KnowledgeNotesDeleteMultipleResponse,
+  KnowledgeNotesListRequest,
   KnowledgeNoteUpdateRequest,
   KnowledgeNotesResponse,
   LocalSpeechModelProviderId,
@@ -1523,8 +1525,13 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   }
 
   // Knowledge Notes Management
-  async getKnowledgeNotes(): Promise<KnowledgeNotesResponse> {
-    return this.request<KnowledgeNotesResponse>(API_PATHS.knowledgeNotes);
+  async getKnowledgeNotes(filter: KnowledgeNotesListRequest = {}): Promise<KnowledgeNotesResponse> {
+    return this.request<KnowledgeNotesResponse>(buildRemoteServerApiQueryPath(API_PATHS.knowledgeNotes, {
+      context: filter.context,
+      dateFilter: filter.dateFilter,
+      sort: filter.sort,
+      limit: filter.limit,
+    }));
   }
 
   async getKnowledgeNote(id: string): Promise<KnowledgeNoteResponse> {

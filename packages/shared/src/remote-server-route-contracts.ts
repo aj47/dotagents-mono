@@ -111,7 +111,7 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   updateSkill: (id: string | undefined, body: unknown) => MobileApiActionResult;
   deleteSkill: (id?: string) => MobileApiActionResult;
   toggleProfileSkill: (id?: string) => MobileApiActionResult;
-  getKnowledgeNotes: () => RemoteServerMaybePromise<MobileApiActionResult>;
+  getKnowledgeNotes: (query?: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
   getKnowledgeNote: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   searchKnowledgeNotes: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
   deleteKnowledgeNote: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;

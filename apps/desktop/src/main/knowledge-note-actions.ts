@@ -17,7 +17,7 @@ export type KnowledgeNoteActionResult = MobileApiActionResult
 
 const knowledgeNoteActionOptions: KnowledgeNoteActionOptions = {
   service: {
-    getAllNotes: () => knowledgeNotesService.getAllNotes(),
+    getAllNotes: (filter) => knowledgeNotesService.getAllNotes(filter),
     getNote: (id) => knowledgeNotesService.getNote(id),
     searchNotes: (query, filter) => knowledgeNotesService.searchNotes(query, filter),
     deleteNote: (id) => knowledgeNotesService.deleteNote(id),
@@ -30,8 +30,8 @@ const knowledgeNoteActionOptions: KnowledgeNoteActionOptions = {
   diagnostics: diagnosticsService,
 }
 
-export async function getKnowledgeNotes(): Promise<KnowledgeNoteActionResult> {
-  return getKnowledgeNotesAction(knowledgeNoteActionOptions)
+export async function getKnowledgeNotes(query?: unknown): Promise<KnowledgeNoteActionResult> {
+  return getKnowledgeNotesAction(query, knowledgeNoteActionOptions)
 }
 
 export async function getKnowledgeNote(id: string | undefined): Promise<KnowledgeNoteActionResult> {

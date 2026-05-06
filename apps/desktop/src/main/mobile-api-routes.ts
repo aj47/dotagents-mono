@@ -308,8 +308,8 @@ export function registerMobileApiRoutes(
   })
 
   // GET /v1/knowledge/notes - List all knowledge notes
-  fastify.get(API_ROUTES.knowledgeNotes, async (_req, reply) => {
-    const result = await actions.getKnowledgeNotes()
+  fastify.get(API_ROUTES.knowledgeNotes, async (req, reply) => {
+    const result = await actions.getKnowledgeNotes(req.query)
     return reply.code(result.statusCode).send(result.body)
   })
 

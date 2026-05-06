@@ -18,6 +18,7 @@ import {
   getKnowledgeNotesAction,
   parseKnowledgeNoteCreateRequestBody,
   parseKnowledgeNotesDeleteMultipleRequestBody,
+  parseKnowledgeNotesListRequestQuery,
   parseKnowledgeNoteReferencesInput,
   parseKnowledgeNoteSearchRequestBody,
   parseKnowledgeNoteTagsInput,
@@ -136,6 +137,30 @@ describe("knowledge note form helpers", () => {
     })
   })
 
+  it("parses list query filters for the remote knowledge note API", () => {
+    expect(parseKnowledgeNotesListRequestQuery({
+      context: "search-only",
+      dateFilter: "7d",
+      sort: "title-asc",
+      limit: "12.8",
+    })).toEqual({
+      ok: true,
+      request: {
+        context: "search-only",
+        dateFilter: "7d",
+        sort: "title-asc",
+        limit: 12,
+      },
+    })
+
+    expect(parseKnowledgeNotesListRequestQuery(undefined)).toEqual({ ok: true, request: {} })
+    expect(parseKnowledgeNotesListRequestQuery({ context: "all" })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "context must be one of: auto, search-only",
+    })
+  })
+
   it("parses delete-multiple request bodies for the remote knowledge note API", () => {
     expect(parseKnowledgeNotesDeleteMultipleRequestBody({
       ids: [" note-1 ", "note-2", "note-1", "", 1],
@@ -222,7 +247,15 @@ describe("knowledge note form helpers", () => {
     }
     const notesById = new Map<string, KnowledgeNote>([[note.id, note]])
     const service = {
-      getAllNotes: async () => Array.from(notesById.values()),
+      getAllNotes: async (filter: any) => {
+        expect(filter).toEqual({
+          context: "search-only",
+          dateFilter: "7d",
+          sort: "title-asc",
+          limit: 12,
+        })
+        return Array.from(notesById.values())
+      },
       getNote: async (id: string) => notesById.get(id),
       searchNotes: async (query: string, filter: any) => {
         expect(query).toBe("body")
@@ -262,7 +295,12 @@ describe("knowledge note form helpers", () => {
     }
     const options = { service, diagnostics }
 
-    await expect(getKnowledgeNotesAction(options)).resolves.toEqual({
+    await expect(getKnowledgeNotesAction({
+      context: "search-only",
+      dateFilter: "7d",
+      sort: "title-asc",
+      limit: "12",
+    }, options)).resolves.toEqual({
       statusCode: 200,
       body: buildKnowledgeNotesResponse([note]),
     })
@@ -390,7 +428,7 @@ describe("knowledge note form helpers", () => {
       },
     }
 
-    await expect(getKnowledgeNotesAction({
+    await expect(getKnowledgeNotesAction(undefined, {
       diagnostics,
       service: {
         getAllNotes: () => {

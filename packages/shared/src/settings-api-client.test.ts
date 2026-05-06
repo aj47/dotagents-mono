@@ -19,6 +19,7 @@ import {
   type SettingsActionOptions,
 } from './settings-api-client';
 import {
+  buildRemoteServerApiQueryPath,
   REMOTE_SERVER_API_BUILDERS,
   REMOTE_SERVER_API_PATHS,
   REMOTE_SERVER_API_ROUTES,
@@ -945,7 +946,21 @@ describe('SettingsApiClient', () => {
       { route: { method: 'PATCH', path: REMOTE_SERVER_API_PATHS.skill }, expectedPath: REMOTE_SERVER_API_BUILDERS.skill(skillId), run: () => client.updateSkill(skillId, { description: 'Updated' }) },
       { route: { method: 'DELETE', path: REMOTE_SERVER_API_PATHS.skill }, expectedPath: REMOTE_SERVER_API_BUILDERS.skill(skillId), run: () => client.deleteSkill(skillId) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.skillToggleProfile }, expectedPath: REMOTE_SERVER_API_BUILDERS.skillToggleProfile(skillId), run: () => client.toggleSkillForProfile(skillId) },
-      { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.knowledgeNotes }, expectedPath: REMOTE_SERVER_API_PATHS.knowledgeNotes, run: () => client.getKnowledgeNotes() },
+      {
+        route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.knowledgeNotes },
+        expectedPath: buildRemoteServerApiQueryPath(REMOTE_SERVER_API_PATHS.knowledgeNotes, {
+          context: 'auto',
+          dateFilter: '30d',
+          sort: 'updated-desc',
+          limit: 100,
+        }),
+        run: () => client.getKnowledgeNotes({
+          context: 'auto',
+          dateFilter: '30d',
+          sort: 'updated-desc',
+          limit: 100,
+        }),
+      },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.knowledgeNote }, expectedPath: REMOTE_SERVER_API_BUILDERS.knowledgeNote(noteId), run: () => client.getKnowledgeNote(noteId) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.knowledgeNotesSearch }, expectedPath: REMOTE_SERVER_API_PATHS.knowledgeNotesSearch, run: () => client.searchKnowledgeNotes({ query: 'project', limit: 100 }) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.knowledgeNotes }, expectedPath: REMOTE_SERVER_API_PATHS.knowledgeNotes, run: () => client.createKnowledgeNote({ title: 'Note', body: 'Body' }) },

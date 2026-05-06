@@ -986,12 +986,15 @@ export interface KnowledgeNoteUpdateRequest {
   references?: string[];
 }
 
-export interface KnowledgeNoteSearchRequest {
-  query: string;
+export interface KnowledgeNotesListRequest {
   context?: KnowledgeNoteContext;
   dateFilter?: KnowledgeNoteDateFilter;
   sort?: KnowledgeNoteSort;
   limit?: number;
+}
+
+export interface KnowledgeNoteSearchRequest extends KnowledgeNotesListRequest {
+  query: string;
 }
 
 // Agent Profiles Types (renamed to Api* to avoid conflict with desktop's AgentProfile)

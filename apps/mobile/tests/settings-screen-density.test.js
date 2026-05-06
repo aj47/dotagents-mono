@@ -128,10 +128,20 @@ test('lets mobile import GitHub skills through the shared client', () => {
 
 test('lets mobile search desktop knowledge notes through the shared client', () => {
   assert.match(settingsSource, /knowledgeNoteSearchQuery/);
-  assert.match(settingsSource, /settingsClient\.searchKnowledgeNotes\(\{[\s\S]*?query: trimmedKnowledgeNoteSearchQuery,[\s\S]*?limit: 100/);
+  assert.match(settingsSource, /settingsClient\.searchKnowledgeNotes\(\{[\s\S]*?query: trimmedKnowledgeNoteSearchQuery,[\s\S]*?context: knowledgeNoteFilterRequest\.context,[\s\S]*?dateFilter: knowledgeNoteFilterRequest\.dateFilter,[\s\S]*?sort: knowledgeNoteFilterRequest\.sort,[\s\S]*?limit: 100/);
   assert.match(settingsSource, /displayedKnowledgeNotes = trimmedKnowledgeNoteSearchQuery \? knowledgeNoteSearchResults : knowledgeNotes/);
   assert.match(settingsSource, /placeholder="Search notes"/);
   assert.match(settingsSource, /accessibilityLabel="Search knowledge notes"/);
+});
+
+test('lets mobile filter and sort desktop knowledge notes through the shared client', () => {
+  assert.match(settingsSource, /knowledgeNoteContextFilter/);
+  assert.match(settingsSource, /knowledgeNoteDateFilter/);
+  assert.match(settingsSource, /knowledgeNoteSortOption/);
+  assert.match(settingsSource, /settingsClient\.getKnowledgeNotes\(knowledgeNoteFilterRequest\)/);
+  assert.match(settingsSource, /KNOWLEDGE_CONTEXT_FILTER_OPTIONS/);
+  assert.match(settingsSource, /KNOWLEDGE_DATE_FILTER_OPTIONS/);
+  assert.match(settingsSource, /KNOWLEDGE_SORT_OPTIONS/);
 });
 
 test('lets mobile delete selected and all desktop knowledge notes through the shared client', () => {

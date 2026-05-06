@@ -19,7 +19,7 @@ import {
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
 } from '../lib/accessibility';
-import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, AgentProfile, Loop, LocalSpeechModelProviderId, LocalSpeechModelStatus, ModelPresetSummary } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteDateFilter, KnowledgeNoteSort, AgentProfile, Loop, LocalSpeechModelProviderId, LocalSpeechModelStatus, ModelPresetSummary } from '../lib/settingsApi';
 import { getAcpxMainAgentOptions } from '../lib/mainAgentOptions';
 import { speakRemoteTts } from '../lib/remoteTts';
 import { TTSSettings } from '../ui/TTSSettings';
@@ -148,6 +148,29 @@ const BUNDLE_IMPORT_CONFLICT_STRATEGIES: Array<{ value: BundleImportConflictStra
   { value: 'skip', label: 'Skip' },
   { value: 'rename', label: 'Rename' },
   { value: 'overwrite', label: 'Overwrite' },
+];
+
+const KNOWLEDGE_CONTEXT_FILTER_OPTIONS: Array<{ label: string; value: 'all' | KnowledgeNoteContext }> = [
+  { label: 'All', value: 'all' },
+  { label: 'Search', value: 'search-only' },
+  { label: 'Auto', value: 'auto' },
+];
+
+const KNOWLEDGE_DATE_FILTER_OPTIONS: Array<{ label: string; value: KnowledgeNoteDateFilter }> = [
+  { label: 'Any time', value: 'all' },
+  { label: '7 days', value: '7d' },
+  { label: '30 days', value: '30d' },
+  { label: '90 days', value: '90d' },
+  { label: 'Year', value: 'year' },
+];
+
+const KNOWLEDGE_SORT_OPTIONS: Array<{ label: string; value: KnowledgeNoteSort }> = [
+  { label: 'Best', value: 'relevance' },
+  { label: 'Updated', value: 'updated-desc' },
+  { label: 'Oldest', value: 'updated-asc' },
+  { label: 'Created', value: 'created-desc' },
+  { label: 'A-Z', value: 'title-asc' },
+  { label: 'Z-A', value: 'title-desc' },
 ];
 
 const PROVIDER_CREDENTIAL_SECTIONS: Array<{
@@ -362,6 +385,9 @@ export default function SettingsScreen({ navigation }: any) {
   const [knowledgeNoteSearchQuery, setKnowledgeNoteSearchQuery] = useState('');
   const [knowledgeNoteSearchResults, setKnowledgeNoteSearchResults] = useState<KnowledgeNote[]>([]);
   const [selectedKnowledgeNoteIds, setSelectedKnowledgeNoteIds] = useState<Set<string>>(new Set());
+  const [knowledgeNoteContextFilter, setKnowledgeNoteContextFilter] = useState<'all' | KnowledgeNoteContext>('all');
+  const [knowledgeNoteDateFilter, setKnowledgeNoteDateFilter] = useState<KnowledgeNoteDateFilter>('all');
+  const [knowledgeNoteSortOption, setKnowledgeNoteSortOption] = useState<KnowledgeNoteSort>('relevance');
   const [agentProfiles, setAgentProfiles] = useState<AgentProfile[]>([]);
   const [loops, setLoops] = useState<Loop[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
@@ -386,6 +412,12 @@ export default function SettingsScreen({ navigation }: any) {
     return a.name.localeCompare(b.name);
   }), [skills]);
   const trimmedKnowledgeNoteSearchQuery = knowledgeNoteSearchQuery.trim();
+  const knowledgeNoteFilterRequest = useMemo(() => ({
+    context: knowledgeNoteContextFilter === 'all' ? undefined : knowledgeNoteContextFilter,
+    dateFilter: knowledgeNoteDateFilter,
+    sort: knowledgeNoteSortOption,
+    limit: 1000,
+  }), [knowledgeNoteContextFilter, knowledgeNoteDateFilter, knowledgeNoteSortOption]);
   const displayedKnowledgeNotes = trimmedKnowledgeNoteSearchQuery ? knowledgeNoteSearchResults : knowledgeNotes;
   const displayedKnowledgeNoteIds = useMemo(
     () => new Set(displayedKnowledgeNotes.map((note) => note.id)),
@@ -675,14 +707,14 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) return;
     setIsLoadingKnowledgeNotes(true);
     try {
-      const res = await settingsClient.getKnowledgeNotes();
+      const res = await settingsClient.getKnowledgeNotes(knowledgeNoteFilterRequest);
       setKnowledgeNotes(res.notes);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch knowledge notes:', error);
     } finally {
       setIsLoadingKnowledgeNotes(false);
     }
-  }, [settingsClient]);
+  }, [settingsClient, knowledgeNoteFilterRequest]);
 
   useEffect(() => {
     if (!settingsClient || !isDotAgentsServer || !trimmedKnowledgeNoteSearchQuery) {
@@ -697,6 +729,9 @@ export default function SettingsScreen({ navigation }: any) {
       try {
         const res = await settingsClient.searchKnowledgeNotes({
           query: trimmedKnowledgeNoteSearchQuery,
+          context: knowledgeNoteFilterRequest.context,
+          dateFilter: knowledgeNoteFilterRequest.dateFilter,
+          sort: knowledgeNoteFilterRequest.sort,
           limit: 100,
         });
         if (!cancelled) {
@@ -718,7 +753,11 @@ export default function SettingsScreen({ navigation }: any) {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [settingsClient, isDotAgentsServer, trimmedKnowledgeNoteSearchQuery]);
+  }, [settingsClient, isDotAgentsServer, trimmedKnowledgeNoteSearchQuery, knowledgeNoteFilterRequest]);
+
+  useEffect(() => {
+    setSelectedKnowledgeNoteIds(new Set());
+  }, [trimmedKnowledgeNoteSearchQuery, knowledgeNoteContextFilter, knowledgeNoteDateFilter, knowledgeNoteSortOption]);
 
   // Fetch agent profiles from desktop
   const fetchAgentProfiles = useCallback(async () => {
@@ -1665,7 +1704,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient || knowledgeNotes.length === 0) return;
     confirmDestructiveAction(
       'Delete All Notes',
-      `Delete all ${knowledgeNotes.length} knowledge notes? This cannot be undone.`,
+      'Delete every knowledge note on desktop? This cannot be undone.',
       async () => {
         try {
           await settingsClient.deleteAllKnowledgeNotes();
@@ -4419,6 +4458,78 @@ export default function SettingsScreen({ navigation }: any) {
                   autoCorrect={false}
                   returnKeyType="search"
                 />
+                <View style={styles.knowledgeFilterGroup}>
+                  {KNOWLEDGE_CONTEXT_FILTER_OPTIONS.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.knowledgeFilterButton,
+                        knowledgeNoteContextFilter === option.value && styles.knowledgeFilterButtonActive,
+                      ]}
+                      onPress={() => setKnowledgeNoteContextFilter(option.value)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: knowledgeNoteContextFilter === option.value }}
+                      accessibilityLabel={`Filter knowledge notes by ${option.label}`}
+                    >
+                      <Text
+                        style={[
+                          styles.knowledgeFilterButtonText,
+                          knowledgeNoteContextFilter === option.value && styles.knowledgeFilterButtonTextActive,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <View style={styles.knowledgeFilterGroup}>
+                  {KNOWLEDGE_DATE_FILTER_OPTIONS.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.knowledgeFilterButton,
+                        knowledgeNoteDateFilter === option.value && styles.knowledgeFilterButtonActive,
+                      ]}
+                      onPress={() => setKnowledgeNoteDateFilter(option.value)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: knowledgeNoteDateFilter === option.value }}
+                      accessibilityLabel={`Filter knowledge notes by ${option.label}`}
+                    >
+                      <Text
+                        style={[
+                          styles.knowledgeFilterButtonText,
+                          knowledgeNoteDateFilter === option.value && styles.knowledgeFilterButtonTextActive,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <View style={styles.knowledgeFilterGroup}>
+                  {KNOWLEDGE_SORT_OPTIONS.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.knowledgeFilterButton,
+                        knowledgeNoteSortOption === option.value && styles.knowledgeFilterButtonActive,
+                      ]}
+                      onPress={() => setKnowledgeNoteSortOption(option.value)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: knowledgeNoteSortOption === option.value }}
+                      accessibilityLabel={`Sort knowledge notes by ${option.label}`}
+                    >
+                      <Text
+                        style={[
+                          styles.knowledgeFilterButtonText,
+                          knowledgeNoteSortOption === option.value && styles.knowledgeFilterButtonTextActive,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
                 {isLoadingKnowledgeNotes ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : isSearchingKnowledgeNotes ? (
@@ -5807,6 +5918,34 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     knowledgeNoteSearchInput: {
       marginTop: 0,
       marginBottom: spacing.sm,
+    },
+    knowledgeFilterGroup: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      marginBottom: spacing.sm,
+    },
+    knowledgeFilterButton: {
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      minHeight: 32,
+      justifyContent: 'center',
+    },
+    knowledgeFilterButtonActive: {
+      backgroundColor: theme.colors.primary,
+      borderColor: theme.colors.primary,
+    },
+    knowledgeFilterButtonText: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: theme.colors.foreground,
+    },
+    knowledgeFilterButtonTextActive: {
+      color: theme.colors.primaryForeground,
     },
     inputDisabled: {
       opacity: 0.65,
