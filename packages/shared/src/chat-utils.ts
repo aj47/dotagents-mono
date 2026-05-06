@@ -70,6 +70,21 @@ export interface ChatCompletionRequestValidationOptions {
   validateConversationId?: (conversationId: string) => string | null | undefined;
 }
 
+export type ChatCompletionPushNotificationPlan = {
+  conversationId: string;
+  conversationTitle: string;
+  content: string;
+};
+
+export type BuildChatCompletionPushNotificationPlanOptions = {
+  sendPushNotification: boolean;
+  pushEnabled: boolean;
+  prompt: string;
+  conversationId: string;
+  content: string;
+  maxTitleLength?: number;
+};
+
 export type OpenAIChatCompletionResponse = {
   id: string;
   object: 'chat.completion';
@@ -197,6 +212,7 @@ const TOOL_PAYLOAD_PREFIX_REGEX = /^(?:using tool:|tool result:)/i;
 const TOOL_RESULT_BRACKET_REGEX = /^\[[\w_.-]+\]\s*[{\[#]/;
 const INLINE_TOOL_BRACKET_REGEX = /\[[\w_.-]+\]\s*(?:\{[\s\S]*?\}|\[[\s\S]*?\])/g;
 const GARBLED_TOOL_CALL_REGEX = /(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.|recipient_name.*functions\.)/i;
+const DEFAULT_CHAT_COMPLETION_PUSH_NOTIFICATION_TITLE_LENGTH = 30;
 
 /**
  * Determine if a message should be collapsible based on its content
@@ -465,6 +481,28 @@ export function validateChatCompletionRequestBody(
       ...request,
       prompt: request.prompt,
     },
+  };
+}
+
+export function buildChatCompletionPushNotificationPlan(
+  options: BuildChatCompletionPushNotificationPlanOptions,
+): ChatCompletionPushNotificationPlan | null {
+  if (!options.sendPushNotification || !options.pushEnabled) {
+    return null;
+  }
+
+  const maxTitleLength = Math.max(
+    0,
+    Math.floor(options.maxTitleLength ?? DEFAULT_CHAT_COMPLETION_PUSH_NOTIFICATION_TITLE_LENGTH),
+  );
+  const conversationTitle = options.prompt.length > maxTitleLength
+    ? `${options.prompt.substring(0, maxTitleLength)}...`
+    : options.prompt;
+
+  return {
+    conversationId: options.conversationId,
+    conversationTitle,
+    content: options.content,
   };
 }
 

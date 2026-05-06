@@ -14,6 +14,7 @@ import {
   buildChatCompletionDoneSsePayload,
   buildChatCompletionErrorSsePayload,
   buildChatCompletionProgressSsePayload,
+  buildChatCompletionPushNotificationPlan,
   buildChatCompletionRequestBody,
   buildChatCompletionSseHeaders,
   buildDotAgentsChatCompletionResponse,
@@ -529,6 +530,52 @@ describe('validateChatCompletionRequestBody', () => {
       ok: false,
       statusCode: 400,
       body: { error: 'Invalid conversation ID format' },
+    })
+  })
+})
+
+describe('buildChatCompletionPushNotificationPlan', () => {
+  it('returns null when the request or push store disables notifications', () => {
+    expect(buildChatCompletionPushNotificationPlan({
+      sendPushNotification: false,
+      pushEnabled: true,
+      prompt: 'Hello',
+      conversationId: 'conv-1',
+      content: 'Done',
+    })).toBeNull()
+
+    expect(buildChatCompletionPushNotificationPlan({
+      sendPushNotification: true,
+      pushEnabled: false,
+      prompt: 'Hello',
+      conversationId: 'conv-1',
+      content: 'Done',
+    })).toBeNull()
+  })
+
+  it('builds a reusable push notification payload plan with capped titles', () => {
+    expect(buildChatCompletionPushNotificationPlan({
+      sendPushNotification: true,
+      pushEnabled: true,
+      prompt: 'Explain the modular server extraction plan',
+      conversationId: 'conv-1',
+      content: 'Done',
+    })).toEqual({
+      conversationId: 'conv-1',
+      conversationTitle: 'Explain the modular server ext...',
+      content: 'Done',
+    })
+
+    expect(buildChatCompletionPushNotificationPlan({
+      sendPushNotification: true,
+      pushEnabled: true,
+      prompt: 'Short prompt',
+      conversationId: 'conv-2',
+      content: 'Ready',
+    })).toEqual({
+      conversationId: 'conv-2',
+      conversationTitle: 'Short prompt',
+      content: 'Ready',
     })
   })
 })

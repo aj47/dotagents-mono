@@ -5,6 +5,7 @@ import {
   buildChatCompletionDoneSsePayload,
   buildChatCompletionErrorSsePayload,
   buildChatCompletionProgressSsePayload,
+  buildChatCompletionPushNotificationPlan,
   buildChatCompletionSseHeaders,
   buildDotAgentsChatCompletionResponse,
   formatServerSentEventData,
@@ -54,12 +55,22 @@ function sendCompletionPushNotification(
   conversationId: string,
   content: string,
 ): void {
-  if (!shouldSend || !isPushEnabled()) {
+  const notificationPlan = buildChatCompletionPushNotificationPlan({
+    sendPushNotification: shouldSend,
+    pushEnabled: shouldSend ? isPushEnabled() : false,
+    prompt,
+    conversationId,
+    content,
+  })
+  if (!notificationPlan) {
     return
   }
 
-  const conversationTitle = prompt.length > 30 ? prompt.substring(0, 30) + "..." : prompt
-  void sendMessageNotification(conversationId, conversationTitle, content).catch((caughtError) => {
+  void sendMessageNotification(
+    notificationPlan.conversationId,
+    notificationPlan.conversationTitle,
+    notificationPlan.content,
+  ).catch((caughtError) => {
     diagnosticsService.logWarning("remote-server", "Failed to send push notification", caughtError)
   })
 }
