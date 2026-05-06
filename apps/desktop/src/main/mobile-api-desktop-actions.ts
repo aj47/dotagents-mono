@@ -1,5 +1,5 @@
 import type { MobileApiRouteActions } from "./mobile-api-routes"
-import type { LoopConfig } from "@dotagents/core"
+import { getAgentsLayerPaths, type LoopConfig } from "@dotagents/core"
 import {
   getAgentSessionCandidatesAction,
   type AgentSessionCandidateActionOptions,
@@ -20,6 +20,16 @@ import {
   getProviderModelsAction,
   type ModelActionOptions,
 } from "@dotagents/shared/chat-utils"
+import {
+  RESERVED_RUNTIME_TOOL_SERVER_NAMES,
+  deleteMcpServerConfigAction,
+  exportMcpServerConfigsAction,
+  getMcpServersAction,
+  importMcpServerConfigsAction,
+  toggleMcpServerAction,
+  upsertMcpServerConfigAction,
+} from "@dotagents/shared/mcp-api"
+import type { MCPConfig } from "@dotagents/shared/mcp-utils"
 import {
   synthesizeSpeechAction,
   type TtsActionOptions,
@@ -84,14 +94,6 @@ import {
   getConversationVideoAsset,
   updateConversation,
 } from "./conversation-actions"
-import {
-  deleteMcpServerConfig,
-  exportMcpServerConfigs,
-  getMcpServers,
-  importMcpServerConfigs,
-  toggleMcpServer,
-  upsertMcpServerConfig,
-} from "./mcp-server-actions"
 import { recordOperatorAuditEvent } from "./operator-audit-actions"
 import {
   getSettings,
@@ -108,10 +110,11 @@ import {
   toggleProfileSkill,
   updateSkill,
 } from "./skill-actions"
+import { cleanupInvalidMcpServerReferencesInLayers } from "./agent-profile-mcp-cleanup"
 import { agentProfileService, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { verifyExternalAgentCommand as verifyExternalAgentCommandService } from "./command-verification-service"
-import { configStore } from "./config"
+import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { diagnosticsService } from "./diagnostics"
 import { emergencyStopAll } from "./emergency-stop"
 import { knowledgeNotesService } from "./knowledge-notes-service"
@@ -249,6 +252,45 @@ const repeatTaskActionOptions: RepeatTaskActionOptions<LoopConfig, ReturnType<ty
   getProfileName: getLoopProfileName,
   diagnostics: diagnosticsService,
 }
+
+const mcpServerActionOptions = {
+  service: mcpService,
+  diagnostics: diagnosticsService,
+}
+
+function cleanupInvalidAgentProfileMcpReferences(mcpConfig: MCPConfig): void {
+  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+  const layers = workspaceAgentsFolder
+    ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
+    : [getAgentsLayerPaths(globalAgentsFolder)]
+  const validServerNames = Object.keys(mcpConfig.mcpServers || {})
+  const cleanupResult = cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)
+
+  if (cleanupResult.updatedProfileIds.length > 0) {
+    agentProfileService.reload()
+    diagnosticsService.logInfo(
+      "mobile-api-desktop-actions",
+      `Cleaned ${cleanupResult.removedReferenceCount} stale MCP server reference(s) from ${cleanupResult.updatedProfileIds.length} agent profile(s)`,
+    )
+  }
+}
+
+const mcpServerConfigActionOptions = {
+  service: {
+    getMcpConfig: () => configStore.get().mcpConfig || { mcpServers: {} },
+    saveMcpConfig: (mcpConfig: MCPConfig) => {
+      const config = configStore.get()
+      configStore.save({ ...config, mcpConfig })
+    },
+    onMcpConfigSaved: ({ action, nextMcpConfig }) => {
+      if (action === "deleted") {
+        cleanupInvalidAgentProfileMcpReferences(nextMcpConfig)
+      }
+    },
+  },
+  diagnostics: diagnosticsService,
+  reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
+} satisfies Parameters<typeof upsertMcpServerConfigAction>[2]
 
 function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
@@ -412,6 +454,30 @@ async function updateRepeatTask(id: string | undefined, body: unknown) {
 
 async function deleteRepeatTask(id: string | undefined) {
   return deleteRepeatTaskAction(id, repeatTaskActionOptions)
+}
+
+function getMcpServers() {
+  return getMcpServersAction(mcpServerActionOptions)
+}
+
+function toggleMcpServer(serverName: string | undefined, body: unknown) {
+  return toggleMcpServerAction(serverName, body, mcpServerActionOptions)
+}
+
+function importMcpServerConfigs(body: unknown) {
+  return importMcpServerConfigsAction(body, mcpServerConfigActionOptions)
+}
+
+function exportMcpServerConfigs() {
+  return exportMcpServerConfigsAction(mcpServerConfigActionOptions)
+}
+
+function upsertMcpServerConfig(serverName: string | undefined, body: unknown) {
+  return upsertMcpServerConfigAction(serverName, body, mcpServerConfigActionOptions)
+}
+
+function deleteMcpServerConfig(serverName: string | undefined) {
+  return deleteMcpServerConfigAction(serverName, mcpServerConfigActionOptions)
 }
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {

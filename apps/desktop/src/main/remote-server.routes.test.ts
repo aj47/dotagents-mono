@@ -317,12 +317,6 @@ function getSkillActionsSource(): string {
   return readFileSync(skillActionsPath, "utf8")
 }
 
-function getMcpServerActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const mcpServerActionsPath = path.join(testDir, "mcp-server-actions.ts")
-  return readFileSync(mcpServerActionsPath, "utf8")
-}
-
 function getPushNotificationServiceSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const pushNotificationServicePath = path.join(testDir, "push-notification-service.ts")
@@ -707,7 +701,6 @@ describe("remote-server route registration", () => {
   it("keeps remote route action result contracts shared", () => {
     const mobileActionSources = [
       getConversationActionsSource(),
-      getMcpServerActionsSource(),
       getSettingsActionsSource(),
       getSkillActionsSource(),
     ]
@@ -1083,7 +1076,6 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
-    const mcpServerActionsSource = getMcpServerActionsSource()
     const sharedMcpApiSource = getSharedMcpApiSource()
     const sharedChatUtilsSource = getSharedChatUtilsSource()
     const sharedTtsApiSource = getSharedTtsApiSource()
@@ -1126,14 +1118,18 @@ describe("remote-server route registration", () => {
     expect(sharedChatUtilsSource).toContain("options.fetchAvailableModels(providerId)")
     expect(sharedChatUtilsSource).not.toContain("models-service")
     expect(sharedChatUtilsSource).not.toContain("configStore")
-    expect(mcpServerActionsSource).toContain("getMcpServersAction(mcpServerActionOptions)")
-    expect(mcpServerActionsSource).toContain("toggleMcpServerAction(serverName, body, mcpServerActionOptions)")
-    expect(mcpServerActionsSource).toContain("upsertMcpServerConfigAction(serverName, body, mcpServerConfigActionOptions)")
-    expect(mcpServerActionsSource).toContain("deleteMcpServerConfigAction(serverName, mcpServerConfigActionOptions)")
-    expect(mcpServerActionsSource).toContain("importMcpServerConfigsAction(body, mcpServerConfigActionOptions)")
-    expect(mcpServerActionsSource).toContain("exportMcpServerConfigsAction(mcpServerConfigActionOptions)")
-    expect(mcpServerActionsSource).toContain("cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)")
-    expect(mcpServerActionsSource).toContain("agentProfileService.reload()")
+    expect(mobileApiDesktopActionsSource).toContain("getMcpServersAction(mcpServerActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("toggleMcpServerAction(serverName, body, mcpServerActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain(
+      "upsertMcpServerConfigAction(serverName, body, mcpServerConfigActionOptions)",
+    )
+    expect(mobileApiDesktopActionsSource).toContain(
+      "deleteMcpServerConfigAction(serverName, mcpServerConfigActionOptions)",
+    )
+    expect(mobileApiDesktopActionsSource).toContain("importMcpServerConfigsAction(body, mcpServerConfigActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("exportMcpServerConfigsAction(mcpServerConfigActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)")
+    expect(mobileApiDesktopActionsSource).toContain("agentProfileService.reload()")
     expect(sharedMcpApiSource).toContain("export interface McpServerActionService")
     expect(sharedMcpApiSource).toContain("export interface McpServerConfigActionService")
     expect(sharedMcpApiSource).toContain("export function getMcpServersAction")
