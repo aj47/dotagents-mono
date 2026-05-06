@@ -10,6 +10,10 @@ import {
   buildRemoteServerBaseUrl,
   buildRemoteServerCorsOptions,
   buildRemoteServerStatusSnapshot,
+  CLOUDFLARE_TUNNEL_MODE_OPTIONS,
+  DEFAULT_CLOUDFLARE_TUNNEL_MODE,
+  DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   DEFAULT_REMOTE_SERVER_SECRET_MASK,
   ensureRemoteServerV1BaseUrl,
   formatConnectableRemoteHostWarning,
@@ -25,9 +29,12 @@ import {
   resolveConnectableRemoteServerPairingBaseUrl,
   getSecretReferenceCandidates,
   hasConfiguredRemoteServerApiKey,
+  isCloudflareTunnelModeUpdateValue,
   isHeadlessRemoteServerEnvironment,
   isConnectableIpv6Address,
   isLoopbackRemoteHost,
+  isRemoteServerBindAddressUpdateValue,
+  isRemoteServerLogLevelUpdateValue,
   redactSecretForDisplay,
   resolveDotAgentsSecretReference,
   resolveDotAgentsSecretReferenceFromStore,
@@ -37,6 +44,8 @@ import {
   isWildcardRemoteHost,
   normalizeRemoteHostForComparison,
   parseDotAgentsConfigDeepLink,
+  REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
+  REMOTE_SERVER_LOG_LEVEL_OPTIONS,
 } from './remote-pairing';
 
 function assertType<T>(_value: T): void {
@@ -69,6 +78,22 @@ describe('remote server config contracts', () => {
     assertType<CloudflareTunnelConfig>(tunnelConfig);
     expect(remoteServerConfig.remoteServerBindAddress).toBe('0.0.0.0');
     expect(tunnelConfig.cloudflareTunnelMode).toBe('named');
+  });
+
+  it('describes remote server option defaults and validators', () => {
+    expect(DEFAULT_REMOTE_SERVER_BIND_ADDRESS).toBe('127.0.0.1');
+    expect(REMOTE_SERVER_BIND_ADDRESS_OPTIONS).toEqual(['127.0.0.1', '0.0.0.0']);
+    expect(DEFAULT_REMOTE_SERVER_LOG_LEVEL).toBe('info');
+    expect(REMOTE_SERVER_LOG_LEVEL_OPTIONS).toEqual(['error', 'info', 'debug']);
+    expect(DEFAULT_CLOUDFLARE_TUNNEL_MODE).toBe('quick');
+    expect(CLOUDFLARE_TUNNEL_MODE_OPTIONS).toEqual(['quick', 'named']);
+
+    expect(isRemoteServerBindAddressUpdateValue('0.0.0.0')).toBe(true);
+    expect(isRemoteServerBindAddressUpdateValue('localhost')).toBe(false);
+    expect(isRemoteServerLogLevelUpdateValue('debug')).toBe(true);
+    expect(isRemoteServerLogLevelUpdateValue('trace')).toBe(false);
+    expect(isCloudflareTunnelModeUpdateValue('named')).toBe(true);
+    expect(isCloudflareTunnelModeUpdateValue('persisted')).toBe(false);
   });
 });
 

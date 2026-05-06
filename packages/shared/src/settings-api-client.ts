@@ -37,7 +37,13 @@ import {
   getRemoteServerApiRoutePath,
 } from './remote-server-api';
 import {
+  DEFAULT_CLOUDFLARE_TUNNEL_MODE,
+  DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   getRemoteServerLifecycleAction,
+  isCloudflareTunnelModeUpdateValue,
+  isRemoteServerBindAddressUpdateValue,
+  isRemoteServerLogLevelUpdateValue,
   type RemoteServerLifecycleAction,
   type RemoteServerLifecycleConfigLike,
 } from './remote-pairing';
@@ -373,14 +379,14 @@ export function buildSettingsResponse(
     mcpDisabledTools: sanitizeConfigStringList(cfg.mcpDisabledTools),
     remoteServerEnabled: cfg.remoteServerEnabled ?? false,
     remoteServerPort: cfg.remoteServerPort ?? 3210,
-    remoteServerBindAddress: cfg.remoteServerBindAddress ?? '127.0.0.1',
+    remoteServerBindAddress: cfg.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
     remoteServerApiKey: options.remoteServerApiKey,
-    remoteServerLogLevel: cfg.remoteServerLogLevel ?? 'info',
+    remoteServerLogLevel: cfg.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL,
     remoteServerCorsOrigins: cfg.remoteServerCorsOrigins ?? ['*'],
     remoteServerOperatorAllowDeviceIds: cfg.remoteServerOperatorAllowDeviceIds ?? [],
     remoteServerAutoShowPanel: cfg.remoteServerAutoShowPanel ?? false,
     remoteServerTerminalQrEnabled: cfg.remoteServerTerminalQrEnabled ?? false,
-    cloudflareTunnelMode: cfg.cloudflareTunnelMode ?? 'quick',
+    cloudflareTunnelMode: cfg.cloudflareTunnelMode ?? DEFAULT_CLOUDFLARE_TUNNEL_MODE,
     cloudflareTunnelAutoStart: cfg.cloudflareTunnelAutoStart ?? false,
     cloudflareTunnelId: cfg.cloudflareTunnelId ?? '',
     cloudflareTunnelName: cfg.cloudflareTunnelName ?? '',
@@ -847,14 +853,14 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.remoteServerPort === 'number' && Number.isInteger(requestBody.remoteServerPort) && requestBody.remoteServerPort >= 1 && requestBody.remoteServerPort <= 65535) {
     updates.remoteServerPort = requestBody.remoteServerPort;
   }
-  if (typeof requestBody.remoteServerBindAddress === 'string' && ['127.0.0.1', '0.0.0.0'].includes(requestBody.remoteServerBindAddress)) {
+  if (isRemoteServerBindAddressUpdateValue(requestBody.remoteServerBindAddress)) {
     updates.remoteServerBindAddress = requestBody.remoteServerBindAddress;
   }
   if (typeof requestBody.remoteServerApiKey === 'string' && requestBody.remoteServerApiKey !== options.remoteServerSecretMask) {
     const trimmedKey = requestBody.remoteServerApiKey.trim();
     if (trimmedKey.length > 0) updates.remoteServerApiKey = trimmedKey;
   }
-  if (typeof requestBody.remoteServerLogLevel === 'string' && ['error', 'info', 'debug'].includes(requestBody.remoteServerLogLevel)) {
+  if (isRemoteServerLogLevelUpdateValue(requestBody.remoteServerLogLevel)) {
     updates.remoteServerLogLevel = requestBody.remoteServerLogLevel;
   }
   if (Array.isArray(requestBody.remoteServerCorsOrigins)) {
@@ -867,7 +873,7 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.remoteServerAutoShowPanel === 'boolean') updates.remoteServerAutoShowPanel = requestBody.remoteServerAutoShowPanel;
   if (typeof requestBody.remoteServerTerminalQrEnabled === 'boolean') updates.remoteServerTerminalQrEnabled = requestBody.remoteServerTerminalQrEnabled;
 
-  if (typeof requestBody.cloudflareTunnelMode === 'string' && ['quick', 'named'].includes(requestBody.cloudflareTunnelMode)) updates.cloudflareTunnelMode = requestBody.cloudflareTunnelMode;
+  if (isCloudflareTunnelModeUpdateValue(requestBody.cloudflareTunnelMode)) updates.cloudflareTunnelMode = requestBody.cloudflareTunnelMode;
   if (typeof requestBody.cloudflareTunnelAutoStart === 'boolean') updates.cloudflareTunnelAutoStart = requestBody.cloudflareTunnelAutoStart;
   if (typeof requestBody.cloudflareTunnelId === 'string') updates.cloudflareTunnelId = requestBody.cloudflareTunnelId.trim();
   if (typeof requestBody.cloudflareTunnelName === 'string') updates.cloudflareTunnelName = requestBody.cloudflareTunnelName.trim();

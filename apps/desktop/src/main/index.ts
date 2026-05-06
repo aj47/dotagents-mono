@@ -1,5 +1,6 @@
 import { app, Menu } from "electron"
 import { electronApp, optimizer } from "@electron-toolkit/utils"
+import { DEFAULT_CLOUDFLARE_TUNNEL_MODE } from "@dotagents/shared/remote-pairing"
 import {
   createMainWindow,
   createPanelWindow,
@@ -276,7 +277,7 @@ if (!gotSingleInstanceLock) {
           )
         } else {
           // Prefer named tunnel if configured, otherwise use quick tunnel
-          const tunnelMode = cfg.cloudflareTunnelMode || "quick"
+          const tunnelMode = cfg.cloudflareTunnelMode || DEFAULT_CLOUDFLARE_TUNNEL_MODE
 
           if (
             tunnelMode === "named" &&
@@ -618,7 +619,7 @@ if (!gotSingleInstanceLock) {
                   return
                 }
 
-                const tunnelMode = cfg.cloudflareTunnelMode || "quick"
+                const tunnelMode = cfg.cloudflareTunnelMode || DEFAULT_CLOUDFLARE_TUNNEL_MODE
 
                 if (tunnelMode === "named") {
                   // For named tunnels, we need tunnel ID and hostname

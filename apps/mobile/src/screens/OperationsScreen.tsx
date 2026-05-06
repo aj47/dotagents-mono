@@ -52,6 +52,17 @@ import {
   getOperatorTunnelStateLabel as getTunnelStateLabel,
 } from '@dotagents/shared/operator-display-utils';
 import {
+  CLOUDFLARE_TUNNEL_MODE_OPTIONS,
+  DEFAULT_CLOUDFLARE_TUNNEL_MODE,
+  DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_LOG_LEVEL,
+  REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
+  REMOTE_SERVER_LOG_LEVEL_OPTIONS,
+  type CloudflareTunnelMode,
+  type RemoteServerBindAddress,
+  type RemoteServerLogLevel,
+} from '@dotagents/shared/remote-pairing';
+import {
   buildOperatorRemoteAccessDrafts as buildDrafts,
   type OperatorRemoteAccessDrafts as RemoteAccessDrafts,
 } from '@dotagents/shared/operator-remote-access-drafts';
@@ -1470,8 +1481,8 @@ export default function OperationsScreen({ navigation }: any) {
 
               <Text style={styles.label}>Bind Address</Text>
               <View style={styles.chipRow}>
-                {(['127.0.0.1', '0.0.0.0'] as const).map((value) => {
-                  const selected = (settings.remoteServerBindAddress ?? '127.0.0.1') === value;
+                {REMOTE_SERVER_BIND_ADDRESS_OPTIONS.map((value) => {
+                  const selected = (settings.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS) === value;
                   return (
                     <TouchableOpacity
                       key={value}
@@ -1481,7 +1492,7 @@ export default function OperationsScreen({ navigation }: any) {
                         controlsDisabled && styles.actionButtonDisabled,
                       ]}
                       onPress={() => void applySettingsUpdate(
-                        { remoteServerBindAddress: value },
+                        { remoteServerBindAddress: value as RemoteServerBindAddress },
                         'bind address',
                         value === '0.0.0.0'
                           ? 'Bind address saved for LAN/mobile access.'
@@ -1501,8 +1512,8 @@ export default function OperationsScreen({ navigation }: any) {
 
               <Text style={styles.label}>Log Level</Text>
               <View style={styles.chipRow}>
-                {(['error', 'info', 'debug'] as const).map((value) => {
-                  const selected = (settings.remoteServerLogLevel ?? 'info') === value;
+                {REMOTE_SERVER_LOG_LEVEL_OPTIONS.map((value) => {
+                  const selected = (settings.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL) === value;
                   return (
                     <TouchableOpacity
                       key={value}
@@ -1512,7 +1523,7 @@ export default function OperationsScreen({ navigation }: any) {
                         controlsDisabled && styles.actionButtonDisabled,
                       ]}
                       onPress={() => void applySettingsUpdate(
-                        { remoteServerLogLevel: value },
+                        { remoteServerLogLevel: value as RemoteServerLogLevel },
                         'remote server log level',
                         `Remote server log level saved as ${value}.`,
                       )}
@@ -1635,8 +1646,8 @@ export default function OperationsScreen({ navigation }: any) {
               <Text style={styles.subsectionTitle}>Cloudflare tunnel</Text>
               <Text style={styles.label}>Tunnel Mode</Text>
               <View style={styles.chipRow}>
-                {(['quick', 'named'] as const).map((value) => {
-                  const selected = (settings.cloudflareTunnelMode ?? 'quick') === value;
+                {CLOUDFLARE_TUNNEL_MODE_OPTIONS.map((value) => {
+                  const selected = (settings.cloudflareTunnelMode ?? DEFAULT_CLOUDFLARE_TUNNEL_MODE) === value;
                   return (
                     <TouchableOpacity
                       key={value}
@@ -1646,7 +1657,7 @@ export default function OperationsScreen({ navigation }: any) {
                         controlsDisabled && styles.actionButtonDisabled,
                       ]}
                       onPress={() => void applySettingsUpdate(
-                        { cloudflareTunnelMode: value },
+                        { cloudflareTunnelMode: value as CloudflareTunnelMode },
                         'tunnel mode',
                         `Cloudflare tunnel mode set to ${value}.`,
                       )}

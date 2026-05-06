@@ -8,9 +8,17 @@ export const DOTAGENTS_SECRET_REF_PREFIX = 'dotagents-secret://';
 export const DEFAULT_REMOTE_SERVER_SECRET_MASK = '••••••••';
 
 export type RemoteServerLifecycleAction = 'noop' | 'start' | 'stop' | 'restart';
-export type RemoteServerBindAddress = '127.0.0.1' | '0.0.0.0';
-export type RemoteServerLogLevel = 'error' | 'info' | 'debug';
-export type CloudflareTunnelMode = 'quick' | 'named';
+export const REMOTE_SERVER_BIND_ADDRESS_OPTIONS = ['127.0.0.1', '0.0.0.0'] as const;
+export const REMOTE_SERVER_LOG_LEVEL_OPTIONS = ['error', 'info', 'debug'] as const;
+export const CLOUDFLARE_TUNNEL_MODE_OPTIONS = ['quick', 'named'] as const;
+
+export type RemoteServerBindAddress = (typeof REMOTE_SERVER_BIND_ADDRESS_OPTIONS)[number];
+export type RemoteServerLogLevel = (typeof REMOTE_SERVER_LOG_LEVEL_OPTIONS)[number];
+export type CloudflareTunnelMode = (typeof CLOUDFLARE_TUNNEL_MODE_OPTIONS)[number];
+
+export const DEFAULT_REMOTE_SERVER_BIND_ADDRESS: RemoteServerBindAddress = '127.0.0.1';
+export const DEFAULT_REMOTE_SERVER_LOG_LEVEL: RemoteServerLogLevel = 'info';
+export const DEFAULT_CLOUDFLARE_TUNNEL_MODE: CloudflareTunnelMode = 'quick';
 
 export interface RemoteServerConfig {
   remoteServerEnabled?: boolean;
@@ -148,6 +156,21 @@ export function normalizeRemoteHostForComparison(host: string): string {
     return normalized.slice(1, -1);
   }
   return normalized;
+}
+
+export function isRemoteServerBindAddressUpdateValue(value: unknown): value is RemoteServerBindAddress {
+  return typeof value === 'string'
+    && REMOTE_SERVER_BIND_ADDRESS_OPTIONS.includes(value as RemoteServerBindAddress);
+}
+
+export function isRemoteServerLogLevelUpdateValue(value: unknown): value is RemoteServerLogLevel {
+  return typeof value === 'string'
+    && REMOTE_SERVER_LOG_LEVEL_OPTIONS.includes(value as RemoteServerLogLevel);
+}
+
+export function isCloudflareTunnelModeUpdateValue(value: unknown): value is CloudflareTunnelMode {
+  return typeof value === 'string'
+    && CLOUDFLARE_TUNNEL_MODE_OPTIONS.includes(value as CloudflareTunnelMode);
 }
 
 export function isWildcardRemoteHost(host: string): boolean {
@@ -374,9 +397,9 @@ export function getRemoteServerStartupPlan(
 
   return {
     shouldStart: true,
-    bind: options.bindAddressOverride || config.remoteServerBindAddress || '127.0.0.1',
+    bind: options.bindAddressOverride || config.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
     port: config.remoteServerPort || 3210,
-    logLevel: config.remoteServerLogLevel || 'info',
+    logLevel: config.remoteServerLogLevel || DEFAULT_REMOTE_SERVER_LOG_LEVEL,
     corsOrigins: config.remoteServerCorsOrigins || ['*'],
     resolvedApiKey,
     hasConfiguredApiKey,
@@ -524,9 +547,9 @@ export function getRemoteServerLifecycleAction(
 
   const runtimeChanged =
     (prev.remoteServerPort ?? 3210) !== (next.remoteServerPort ?? 3210)
-    || (prev.remoteServerBindAddress ?? '127.0.0.1') !== (next.remoteServerBindAddress ?? '127.0.0.1')
+    || (prev.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS) !== (next.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS)
     || (prev.remoteServerApiKey ?? '') !== (next.remoteServerApiKey ?? '')
-    || (prev.remoteServerLogLevel ?? 'info') !== (next.remoteServerLogLevel ?? 'info')
+    || (prev.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL) !== (next.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL)
     || !areStringArraysEqual(prev.remoteServerCorsOrigins ?? ['*'], next.remoteServerCorsOrigins ?? ['*']);
 
   return runtimeChanged ? 'restart' : 'noop';

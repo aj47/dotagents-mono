@@ -20,9 +20,18 @@ import { EyeOff, ExternalLink } from "lucide-react"
 import {
   buildDotAgentsConfigDeepLink,
   buildRemoteServerBaseUrl,
+  CLOUDFLARE_TUNNEL_MODE_OPTIONS,
+  DEFAULT_CLOUDFLARE_TUNNEL_MODE,
+  DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   isLoopbackRemoteHost,
   isUnconnectableRemoteHostForMobilePairing,
   isWildcardRemoteHost,
+  REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
+  REMOTE_SERVER_LOG_LEVEL_OPTIONS,
+  type CloudflareTunnelMode,
+  type RemoteServerBindAddress,
+  type RemoteServerLogLevel,
 } from "@dotagents/shared/remote-pairing"
 
 /**
@@ -136,13 +145,13 @@ export function RemoteServerSettingsGroups({
   const isCloudflaredInstalled = cloudflaredInstalledQuery.data ?? false
   const isCloudflaredLoggedIn = cloudflaredLoggedInQuery.data ?? false
   const tunnelList: Array<{ id: string; name: string; created_at: string }> = tunnelListQuery.data?.tunnels ?? []
-  const tunnelMode = cfg?.cloudflareTunnelMode ?? "quick"
+  const tunnelMode = cfg?.cloudflareTunnelMode ?? DEFAULT_CLOUDFLARE_TUNNEL_MODE
 
-  const bindOptions: Array<{ label: string; value: "127.0.0.1" | "0.0.0.0" }> = useMemo(
-    () => [
-      { label: "Localhost (127.0.0.1)", value: "127.0.0.1" },
-      { label: "All Interfaces (0.0.0.0)", value: "0.0.0.0" },
-    ],
+  const bindOptions: Array<{ label: string; value: RemoteServerBindAddress }> = useMemo(
+    () => REMOTE_SERVER_BIND_ADDRESS_OPTIONS.map((value) => ({
+      label: value === DEFAULT_REMOTE_SERVER_BIND_ADDRESS ? `Localhost (${value})` : `All Interfaces (${value})`,
+      value,
+    })),
     [],
   )
 
@@ -156,7 +165,7 @@ export function RemoteServerSettingsGroups({
   const hasRemoteServerApiKey = remoteServerPairingApiKey.length > 0
   const hasConfiguredRemoteServerApiKey = (cfg.remoteServerApiKey ?? "").trim().length > 0
   const shouldShowPairingSurface = streamerMode ? hasConfiguredRemoteServerApiKey : hasRemoteServerApiKey
-  const configuredBindAddress = cfg.remoteServerBindAddress || "127.0.0.1"
+  const configuredBindAddress = cfg.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS
   const isRemoteServerRunning = enabled && (remoteServerStatus?.running ?? false)
 
   const fallbackBaseUrl = !isUnconnectableRemoteHostForMobilePairing(configuredBindAddress) &&
@@ -247,8 +256,8 @@ export function RemoteServerSettingsGroups({
 
               <Control label={<ControlLabel label="Bind Address" tooltip="127.0.0.1 for local-only access; 0.0.0.0 to allow LAN access (requires API key)" />} className="px-3">
                 <Select
-                  value={(cfg.remoteServerBindAddress as any) || "127.0.0.1"}
-                  onValueChange={(value: any) =>
+                  value={cfg.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS}
+                  onValueChange={(value: RemoteServerBindAddress) =>
                     saveConfig({ remoteServerBindAddress: value })
                   }
                 >
@@ -315,16 +324,18 @@ export function RemoteServerSettingsGroups({
 
               <Control label={<ControlLabel label="Log Level" tooltip="Fastify logger level" />} className="px-3">
                 <Select
-                  value={(cfg.remoteServerLogLevel as any) || "info"}
-                  onValueChange={(value: any) => saveConfig({ remoteServerLogLevel: value })}
+                  value={cfg.remoteServerLogLevel || DEFAULT_REMOTE_SERVER_LOG_LEVEL}
+                  onValueChange={(value: RemoteServerLogLevel) => saveConfig({ remoteServerLogLevel: value })}
                 >
                   <SelectTrigger className="w-full sm:w-[160px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="error">error</SelectItem>
-                    <SelectItem value="info">info</SelectItem>
-                    <SelectItem value="debug">debug</SelectItem>
+                    {REMOTE_SERVER_LOG_LEVEL_OPTIONS.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {value}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </Control>
@@ -477,7 +488,7 @@ export function RemoteServerSettingsGroups({
                 <Control label={<ControlLabel label="Tunnel Mode" tooltip="Quick tunnels are easy but have random URLs. Named tunnels require setup but have persistent URLs." />} className="px-3">
                   <Select
                     value={tunnelMode}
-                    onValueChange={(value: "quick" | "named") => {
+                    onValueChange={(value: CloudflareTunnelMode) => {
                       // Stop any running tunnel when switching modes
                       if (tunnelStatus?.running) {
                         stopTunnelMutation.mutate()
@@ -489,8 +500,11 @@ export function RemoteServerSettingsGroups({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="quick">Quick Tunnel (Random URL)</SelectItem>
-                      <SelectItem value="named">Named Tunnel (Persistent)</SelectItem>
+                      {CLOUDFLARE_TUNNEL_MODE_OPTIONS.map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {value === DEFAULT_CLOUDFLARE_TUNNEL_MODE ? "Quick Tunnel (Random URL)" : "Named Tunnel (Persistent)"}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Control>

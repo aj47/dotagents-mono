@@ -18,6 +18,7 @@ import {
   buildRemoteServerBaseUrl,
   buildRemoteServerCorsOptions,
   buildRemoteServerStatusSnapshot,
+  DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
   ensureRemoteServerV1BaseUrl,
   getRemoteServerPairingApiKey as getRemoteServerPairingApiKeyFromConfig,
   getRemoteServerStartupPlan,
@@ -309,7 +310,7 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
 
   function getRemoteServerStatus() {
     const cfg = configStore.get()
-    const bind = cfg.remoteServerBindAddress || "127.0.0.1"
+    const bind = cfg.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS
     const port = cfg.remoteServerPort || 3210
     const running = !!server
     return buildRemoteServerStatusSnapshot({
@@ -345,7 +346,7 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
       // Use the override URL (e.g., Cloudflare tunnel URL)
       serverUrl = ensureRemoteServerV1BaseUrl(urlOverride)
     } else {
-      const bind = cfg.remoteServerBindAddress || "127.0.0.1"
+      const bind = cfg.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS
       const port = cfg.remoteServerPort || 3210
       const connectableBaseUrl = adapters.getConnectableBaseUrlForMobilePairing(bind, port)
       if (!connectableBaseUrl) {

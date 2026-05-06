@@ -43,7 +43,7 @@ import {
   getRemoteServerOperatorApiActionPath,
   isRemoteServerOperatorApiPath,
 } from "./remote-server-api"
-import type { CloudflareTunnelConfig } from "./remote-pairing"
+import { DEFAULT_CLOUDFLARE_TUNNEL_MODE, type CloudflareTunnelConfig } from "./remote-pairing"
 
 export type OperatorActionParseResult<T> =
   | { ok: true; request: T }
@@ -1149,7 +1149,7 @@ export function buildOperatorTunnelSetupSummary(
   return {
     installed: options.installed,
     loggedIn: options.loggedIn,
-    mode: options.config.cloudflareTunnelMode ?? "quick",
+    mode: options.config.cloudflareTunnelMode ?? DEFAULT_CLOUDFLARE_TUNNEL_MODE,
     autoStart: !!options.config.cloudflareTunnelAutoStart,
     namedTunnelConfigured: !!options.config.cloudflareTunnelId && !!options.config.cloudflareTunnelHostname,
     ...(options.config.cloudflareTunnelId ? { configuredTunnelId: options.config.cloudflareTunnelId } : {}),
@@ -1164,7 +1164,7 @@ export function buildOperatorTunnelSetupSummary(
 export function getConfiguredCloudflareTunnelStartPlan(
   config: OperatorTunnelSetupConfigLike,
 ): OperatorTunnelStartPlan {
-  const mode = config.cloudflareTunnelMode ?? "quick"
+  const mode = config.cloudflareTunnelMode ?? DEFAULT_CLOUDFLARE_TUNNEL_MODE
 
   if (mode !== "named") {
     return { ok: true, mode: "quick" }

@@ -18,9 +18,13 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Bind Address/);
   assert.match(operationsSource, /Log Level/);
   assert.match(operationsSource, /CORS Origins/);
+  assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_OPTIONS/);
+  assert.match(operationsSource, /REMOTE_SERVER_LOG_LEVEL_OPTIONS/);
+  assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_BIND_ADDRESS/);
+  assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_LOG_LEVEL/);
   assert.match(operationsSource, /buildOperatorRemoteAccessDrafts as buildDrafts/);
   assert.match(remoteAccessDraftsSource, /remoteServerCorsOrigins: formatConfigListInput\(settings\?\.remoteServerCorsOrigins \?\? \["\*"\]\)/);
-  assert.match(operationsSource, /remoteServerLogLevel: value/);
+  assert.match(operationsSource, /remoteServerLogLevel: value as RemoteServerLogLevel/);
   assert.match(operationsSource, /remoteServerCorsOrigins: origins\.length > 0 \? origins : \['\*'\]/);
   assert.match(operationsSource, /Auto-Show Panel/);
   assert.match(operationsSource, /Terminal QR/);
@@ -28,6 +32,8 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Current device ID:/);
   assert.match(operationsSource, /Trust this device/);
   assert.match(operationsSource, /Tunnel Mode/);
+  assert.match(operationsSource, /CLOUDFLARE_TUNNEL_MODE_OPTIONS/);
+  assert.match(operationsSource, /DEFAULT_CLOUDFLARE_TUNNEL_MODE/);
   assert.match(operationsSource, /Auto-Start Tunnel/);
   assert.match(operationsSource, /Tunnel Name/);
   assert.match(remoteAccessDraftsSource, /cloudflareTunnelName: settings\?\.cloudflareTunnelName \?\? ""/);

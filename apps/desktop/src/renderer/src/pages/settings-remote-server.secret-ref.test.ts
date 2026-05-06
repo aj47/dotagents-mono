@@ -9,6 +9,17 @@ function getRemoteServerSettingsSource(): string {
 }
 
 describe("remote server settings secret references", () => {
+  it("uses shared remote server option values", () => {
+    const source = getRemoteServerSettingsSource()
+
+    expect(source).toContain("REMOTE_SERVER_BIND_ADDRESS_OPTIONS")
+    expect(source).toContain("REMOTE_SERVER_LOG_LEVEL_OPTIONS")
+    expect(source).toContain("CLOUDFLARE_TUNNEL_MODE_OPTIONS")
+    expect(source).toContain("DEFAULT_REMOTE_SERVER_BIND_ADDRESS")
+    expect(source).toContain("DEFAULT_REMOTE_SERVER_LOG_LEVEL")
+    expect(source).toContain("DEFAULT_CLOUDFLARE_TUNNEL_MODE")
+  })
+
   it("uses the explicit pairing API key endpoint for copy and QR payloads", () => {
     const source = getRemoteServerSettingsSource()
 
