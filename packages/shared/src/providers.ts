@@ -46,6 +46,25 @@ export type PromptCachingConfig = {
   strategy: string;
   providerOptions?: Record<string, unknown>;
 };
+export type McpSamplingModelPreferenceHint = {
+  name?: string;
+};
+export type McpSamplingModelSelectionConfig = {
+  agentProviderId?: string | null;
+  mcpToolsProviderId?: string | null;
+  agentOpenaiModel?: string | null;
+  mcpToolsOpenaiModel?: string | null;
+  agentGroqModel?: string | null;
+  mcpToolsGroqModel?: string | null;
+  agentGeminiModel?: string | null;
+  mcpToolsGeminiModel?: string | null;
+  agentChatgptWebModel?: string | null;
+  mcpToolsChatgptWebModel?: string | null;
+};
+export type McpSamplingModelSelection = {
+  providerId: string;
+  model: string;
+};
 
 export const DEFAULT_CHAT_MODELS: Record<CHAT_PROVIDER_ID, Record<ChatModelContext, string>> = {
   openai: {
@@ -178,6 +197,27 @@ export function resolvePromptCachingConfig(
   }
 
   return undefined;
+}
+
+export function resolveMcpSamplingModelSelection(
+  config: McpSamplingModelSelectionConfig,
+  hints?: readonly McpSamplingModelPreferenceHint[] | null,
+): McpSamplingModelSelection {
+  const providerId = config.agentProviderId || config.mcpToolsProviderId || "openai";
+  let model = config.agentOpenaiModel || config.mcpToolsOpenaiModel || DEFAULT_CHAT_MODELS.openai.mcp;
+
+  const hint = hints?.[0];
+  if (hint?.name) {
+    model = hint.name;
+  } else if (providerId === "groq") {
+    model = config.agentGroqModel || config.mcpToolsGroqModel || DEFAULT_CHAT_MODELS.groq.mcp;
+  } else if (providerId === "gemini") {
+    model = config.agentGeminiModel || config.mcpToolsGeminiModel || DEFAULT_CHAT_MODELS.gemini.mcp;
+  } else if (providerId === "chatgpt-web") {
+    model = config.agentChatgptWebModel || config.mcpToolsChatgptWebModel || DEFAULT_CHAT_MODELS["chatgpt-web"].mcp;
+  }
+
+  return { providerId, model };
 }
 
 export const DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT = [

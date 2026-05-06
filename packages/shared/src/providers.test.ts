@@ -35,6 +35,7 @@ import {
   migrateDeprecatedEdgeTtsVoice,
   normalizeChatProviderId,
   resolveChatModelForTextUsage,
+  resolveMcpSamplingModelSelection,
   resolvePromptCachingConfig,
   resolveEdgeTtsVoice,
 } from './providers'
@@ -119,6 +120,42 @@ describe('CHAT_PROVIDERS', () => {
     })
     expect(resolvePromptCachingConfig('chatgpt-web', 'gpt-5.4')).toBeUndefined()
     expect(resolvePromptCachingConfig('openai', 'gpt-4.1-mini', 'https://custom.example/v1')).toBeUndefined()
+  })
+
+  it('resolves MCP sampling provider and reported model from shared config rules', () => {
+    expect(resolveMcpSamplingModelSelection({})).toEqual({
+      providerId: 'openai',
+      model: 'gpt-4.1-mini',
+    })
+    expect(resolveMcpSamplingModelSelection({
+      agentProviderId: 'groq',
+      agentOpenaiModel: 'gpt-4.1',
+      agentGroqModel: 'llama-3.3-70b-versatile',
+    })).toEqual({
+      providerId: 'groq',
+      model: 'llama-3.3-70b-versatile',
+    })
+    expect(resolveMcpSamplingModelSelection({
+      agentProviderId: 'gemini',
+      mcpToolsGeminiModel: 'gemini-2.5-pro',
+    })).toEqual({
+      providerId: 'gemini',
+      model: 'gemini-2.5-pro',
+    })
+    expect(resolveMcpSamplingModelSelection({
+      mcpToolsProviderId: 'chatgpt-web',
+      mcpToolsChatgptWebModel: 'gpt-5.4',
+    })).toEqual({
+      providerId: 'chatgpt-web',
+      model: 'gpt-5.4',
+    })
+    expect(resolveMcpSamplingModelSelection({
+      agentProviderId: 'groq',
+      agentGroqModel: 'openai/gpt-oss-120b',
+    }, [{ name: 'server-requested-model' }])).toEqual({
+      providerId: 'groq',
+      model: 'server-requested-model',
+    })
   })
 })
 
