@@ -21,9 +21,13 @@ test('keeps mobile agent edit errors text-first after removing banner emoji', ()
 test('uses shared per-agent model field helpers in the mobile agent editor', () => {
   assert.match(screenSource, /getAgentProfileAgentModelProvider/);
   assert.match(screenSource, /getAgentProfileAgentModelValue/);
+  assert.match(screenSource, /getAgentProfileModelConfigAfterProviderSelect/);
   assert.match(screenSource, /buildAgentProfileAgentModelUpdate/);
+  assert.match(screenSource, /mergeAgentProfileModelConfig/);
   assert.doesNotMatch(screenSource, /const getAgentModelField/);
   assert.doesNotMatch(screenSource, /const getAgentModelValue/);
+  assert.doesNotMatch(screenSource, /provider === 'global'\s*\?\s*\{\}/);
+  assert.doesNotMatch(screenSource, /agentProviderId: provider/);
 });
 
 test('uses shared profile property helpers in the mobile agent editor', () => {

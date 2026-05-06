@@ -38,6 +38,7 @@ import {
   formatAgentProfileMcpConfigForRequest,
   formatAgentProfileModelConfigForRequest,
   formatAgentProfileSkillsConfigForRequest,
+  getAgentProfileModelConfigAfterProviderSelect,
   getAgentProfileAgentModelProvider,
   getAgentProfileAgentModelValue,
   getAgentProfileMcpConfigAfterServerToggle,
@@ -50,10 +51,12 @@ import {
   isAgentProfileMcpToolEnabled,
   isAgentProfileRuntimeToolEnabled,
   isAgentProfileSkillEnabled,
+  mergeAgentProfileModelConfig,
   normalizeAgentProfileMcpConfigForEdit,
   normalizeAgentProfileModelConfigForEdit,
   normalizeAgentProfileSkillsConfigForEdit,
   toggleAgentProfileSkillConfig,
+  type AgentProfileAgentModelProvider,
 } from "@dotagents/shared/agent-profile-config-updates"
 
 // Curated palette of vivid colors to pick from deterministically
@@ -467,7 +470,7 @@ export function SettingsAgents() {
   // Model config helper
   const updateModelConfig = (updates: Partial<ProfileModelConfig>) => {
     if (!editing) return
-    setEditing({ ...editing, modelConfig: { ...editing.modelConfig, ...updates } })
+    setEditing({ ...editing, modelConfig: mergeAgentProfileModelConfig(editing.modelConfig, updates) })
   }
 
   // Avatar upload helper
@@ -877,11 +880,8 @@ export function SettingsAgents() {
                   <Select
                     value={selectedAgentModelProvider ?? "__global__"}
                     onValueChange={v => {
-                      if (v === "__global__") {
-                        setEditing({ ...editing, modelConfig: undefined })
-                      } else {
-                        updateModelConfig({ agentProviderId: v as "openai" | "groq" | "gemini" | "chatgpt-web" })
-                      }
+                      const provider = v === "__global__" ? undefined : v as AgentProfileAgentModelProvider
+                      setEditing({ ...editing, modelConfig: getAgentProfileModelConfigAfterProviderSelect(editing.modelConfig, provider) })
                     }}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>

@@ -396,6 +396,14 @@ export function getAgentProfileAgentModelProvider(
   return modelConfig?.agentProviderId ?? modelConfig?.mcpToolsProviderId
 }
 
+export function getAgentProfileModelConfigAfterProviderSelect(
+  existingConfig: AgentProfileModelConfigUpdateLike | undefined,
+  provider: AgentProfileAgentModelProvider | undefined,
+): AgentProfileModelConfigUpdateLike {
+  if (!provider) return {}
+  return mergeAgentProfileModelConfig(existingConfig, { agentProviderId: provider })
+}
+
 export function getAgentProfileAgentModelField(
   provider: AgentProfileAgentModelProvider,
 ): AgentProfileAgentModelField {

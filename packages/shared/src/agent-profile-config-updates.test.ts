@@ -15,6 +15,7 @@ import {
   getAgentProfileMcpConfigAfterServerToggle,
   getAgentProfileMcpConfigAfterSetAllServersEnabled,
   getAgentProfileMcpConfigAfterToolToggle,
+  getAgentProfileModelConfigAfterProviderSelect,
   getAgentProfileRuntimeToolsConfigAfterSetAllEnabled,
   getAgentProfileRuntimeToolsConfigAfterToggle,
   getAgentProfileSkillsConfigAfterSetAllEnabled,
@@ -223,6 +224,24 @@ describe("agent profile config updates", () => {
     expect(buildAgentProfileAgentModelUpdate("chatgpt-web", "gpt-5.4-mini")).toEqual({
       agentProviderId: "chatgpt-web",
       agentChatgptWebModel: "gpt-5.4-mini",
+    })
+  })
+
+  it("selects per-agent model providers with one shared config transition", () => {
+    expect(getAgentProfileModelConfigAfterProviderSelect({
+      agentProviderId: "openai",
+      mcpToolsProviderId: "openai",
+      agentOpenaiModel: "gpt-4.1",
+    }, undefined)).toEqual({})
+
+    expect(getAgentProfileModelConfigAfterProviderSelect({
+      agentProviderId: "openai",
+      mcpToolsProviderId: "openai",
+      agentOpenaiModel: "gpt-4.1",
+    }, "gemini")).toMatchObject({
+      agentProviderId: "gemini",
+      mcpToolsProviderId: "gemini",
+      agentOpenaiModel: "gpt-4.1",
     })
   })
 

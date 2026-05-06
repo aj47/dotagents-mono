@@ -34,8 +34,12 @@ describe("settings agents capability config", () => {
   it("uses shared per-agent model field helpers in the desktop agent editor", () => {
     expect(settingsAgentsSource).toContain("getAgentProfileAgentModelProvider")
     expect(settingsAgentsSource).toContain("getAgentProfileAgentModelValue")
+    expect(settingsAgentsSource).toContain("getAgentProfileModelConfigAfterProviderSelect")
     expect(settingsAgentsSource).toContain("buildAgentProfileAgentModelUpdate")
+    expect(settingsAgentsSource).toContain("mergeAgentProfileModelConfig")
     expect(settingsAgentsSource).not.toContain("editing.modelConfig.agentOpenaiModel || editing.modelConfig.mcpToolsOpenaiModel")
+    expect(settingsAgentsSource).not.toContain("setEditing({ ...editing, modelConfig: undefined })")
+    expect(settingsAgentsSource).not.toContain("updateModelConfig({ agentProviderId:")
   })
 
   it("uses shared connection normalization before saving desktop agents", () => {

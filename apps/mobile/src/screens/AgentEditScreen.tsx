@@ -51,6 +51,7 @@ import {
   getAgentProfileMcpConfigAfterServerToggle,
   getAgentProfileMcpConfigAfterSetAllServersEnabled,
   getAgentProfileMcpConfigAfterToolToggle,
+  getAgentProfileModelConfigAfterProviderSelect,
   getAgentProfileRuntimeToolsConfigAfterSetAllEnabled,
   getAgentProfileRuntimeToolsConfigAfterToggle,
   getAgentProfileSkillsConfigAfterSetAllEnabled,
@@ -58,6 +59,7 @@ import {
   isAgentProfileMcpToolEnabled,
   isAgentProfileRuntimeToolEnabled,
   isAgentProfileSkillEnabled,
+  mergeAgentProfileModelConfig,
   normalizeAgentProfileMcpConfigForEdit,
   normalizeAgentProfileModelConfigForEdit,
   normalizeAgentProfileSkillsConfigForEdit,
@@ -493,22 +495,20 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const setAgentModelProvider = useCallback((provider: AgentModelProvider | 'global') => {
     setFormData(prev => ({
       ...prev,
-      modelConfig: provider === 'global'
-        ? {}
-        : {
-          ...prev.modelConfig,
-          agentProviderId: provider,
-        },
+      modelConfig: getAgentProfileModelConfigAfterProviderSelect(
+        prev.modelConfig,
+        provider === 'global' ? undefined : provider,
+      ),
     }));
   }, []);
 
   const updateAgentModel = useCallback((provider: AgentModelProvider, model: string) => {
     setFormData(prev => ({
       ...prev,
-      modelConfig: {
-        ...prev.modelConfig,
-        ...buildAgentProfileAgentModelUpdate(provider, model),
-      },
+      modelConfig: mergeAgentProfileModelConfig(
+        prev.modelConfig,
+        buildAgentProfileAgentModelUpdate(provider, model),
+      ),
     }));
   }, []);
 
