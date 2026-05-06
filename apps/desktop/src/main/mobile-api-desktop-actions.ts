@@ -9,6 +9,11 @@ import {
   type ModelActionOptions,
 } from "@dotagents/shared/chat-utils"
 import {
+  synthesizeSpeechAction,
+  type TtsActionOptions,
+} from "@dotagents/shared/tts-api"
+import type { Config } from "../shared/types"
+import {
   exportBundle,
   getBundleExportableItems,
   importBundle,
@@ -93,10 +98,10 @@ import {
   toggleProfileSkill,
   updateSkill,
 } from "./skill-actions"
-import { synthesizeSpeech } from "./tts-actions"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
+import { generateTTS } from "./tts-service"
 
 const modelActionOptions: ModelActionOptions = {
   getConfig: () => configStore.get(),
@@ -115,6 +120,13 @@ const agentSessionCandidateActionOptions: AgentSessionCandidateActionOptions = {
   diagnostics: diagnosticsService,
 }
 
+const ttsActionOptions: TtsActionOptions<Config> = {
+  getConfig: () => configStore.get(),
+  generateSpeech: generateTTS,
+  encodeAudioBody: (audio) => Buffer.from(audio),
+  diagnostics: diagnosticsService,
+}
+
 function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
@@ -125,6 +137,10 @@ function getModels() {
 
 async function getProviderModels(providerId: string | undefined) {
   return getProviderModelsAction(providerId, modelActionOptions)
+}
+
+async function synthesizeSpeech(body: unknown) {
+  return synthesizeSpeechAction(body, ttsActionOptions)
 }
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {

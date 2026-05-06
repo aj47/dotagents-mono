@@ -347,12 +347,6 @@ function getMcpServerActionsSource(): string {
   return readFileSync(mcpServerActionsPath, "utf8")
 }
 
-function getTtsActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const ttsActionsPath = path.join(testDir, "tts-actions.ts")
-  return readFileSync(ttsActionsPath, "utf8")
-}
-
 function getPushActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const pushActionsPath = path.join(testDir, "push-actions.ts")
@@ -758,7 +752,6 @@ describe("remote-server route registration", () => {
       getRepeatTaskActionsSource(),
       getSettingsActionsSource(),
       getSkillActionsSource(),
-      getTtsActionsSource(),
     ]
     const operatorActionSources = [
       getOperatorAgentActionsSource(),
@@ -1132,7 +1125,6 @@ describe("remote-server route registration", () => {
     const mcpServerActionsSource = getMcpServerActionsSource()
     const sharedMcpApiSource = getSharedMcpApiSource()
     const sharedChatUtilsSource = getSharedChatUtilsSource()
-    const ttsActionsSource = getTtsActionsSource()
     const sharedTtsApiSource = getSharedTtsApiSource()
     const pushActionsSource = getPushActionsSource()
     const pushNotificationServiceSource = getPushNotificationServiceSource()
@@ -1198,7 +1190,9 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain("options.service.onMcpConfigSaved?.({")
     expect(sharedMcpApiSource).not.toContain("mcpService")
     expect(sharedMcpApiSource).not.toContain("diagnosticsService")
-    expect(ttsActionsSource).toContain("synthesizeSpeechAction(body, ttsActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("synthesizeSpeechAction(body, ttsActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("generateSpeech: generateTTS")
+    expect(mobileApiDesktopActionsSource).toContain("encodeAudioBody: (audio) => Buffer.from(audio)")
     expect(sharedTtsApiSource).toContain("export interface TtsActionOptions")
     expect(sharedTtsApiSource).toContain("export async function synthesizeSpeechAction")
     expect(sharedTtsApiSource).toContain("parseTtsSpeakRequestBody(body)")
