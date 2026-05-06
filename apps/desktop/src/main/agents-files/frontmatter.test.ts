@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { parseFrontmatterDocument, stringifyFrontmatterDocument } from "./frontmatter"
+import { parseFrontmatterDocument, stringifyFrontmatterDocument } from "@dotagents/shared/frontmatter"
 
 describe("frontmatter", () => {
   it("parses simple key:value frontmatter", () => {
