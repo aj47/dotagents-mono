@@ -8,7 +8,7 @@ import {
   buildChatCompletionSseHeaders,
   buildDotAgentsChatCompletionResponse,
   formatServerSentEventData,
-  parseChatCompletionRequestBody,
+  validateChatCompletionRequestBody,
 } from "@dotagents/shared/chat-utils"
 import type { AgentRunExecutor } from "@dotagents/shared/agent-run-utils"
 import { resolveActiveModelId } from "@dotagents/shared/model-presets"
@@ -71,18 +71,15 @@ export async function handleChatCompletionRequest(
   runAgent: ChatCompletionRunAgentExecutor,
 ) {
   try {
-    const chatRequest = parseChatCompletionRequestBody(body)
-    const { prompt, conversationId, profileId, stream: isStreaming } = chatRequest
-    if (!prompt) {
-      return reply.code(400).send({ error: "Missing user prompt" })
+    const validatedRequest = validateChatCompletionRequestBody(body, {
+      validateConversationId: getConversationIdValidationError,
+    })
+    if (!validatedRequest.ok) {
+      return reply.code(validatedRequest.statusCode).send(validatedRequest.body)
     }
 
-    if (conversationId) {
-      const conversationIdError = getConversationIdValidationError(conversationId)
-      if (conversationIdError) {
-        return reply.code(400).send({ error: conversationIdError })
-      }
-    }
+    const chatRequest = validatedRequest.request
+    const { prompt, conversationId, profileId, stream: isStreaming } = chatRequest
 
     console.log("[remote-server] Chat request:", { conversationId: conversationId || "new", promptLength: prompt.length, streaming: isStreaming })
     diagnosticsService.logInfo("remote-server", `Handling completion request${conversationId ? ` for conversation ${conversationId}` : ""}${isStreaming ? " (streaming)" : ""}`)

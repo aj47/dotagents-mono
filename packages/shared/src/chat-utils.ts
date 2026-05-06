@@ -58,6 +58,18 @@ export type ParsedChatCompletionRequestBody = {
   sendPushNotification: boolean;
 };
 
+export type ValidatedChatCompletionRequestBody = ParsedChatCompletionRequestBody & {
+  prompt: string;
+};
+
+export type ChatCompletionRequestValidationResult =
+  | { ok: true; request: ValidatedChatCompletionRequestBody }
+  | { ok: false; statusCode: 400; body: { error: string } };
+
+export interface ChatCompletionRequestValidationOptions {
+  validateConversationId?: (conversationId: string) => string | null | undefined;
+}
+
 export type OpenAIChatCompletionResponse = {
   id: string;
   object: 'chat.completion';
@@ -420,6 +432,39 @@ export function parseChatCompletionRequestBody(body: unknown): ParsedChatComplet
     profileId: rawProfileId !== '' ? rawProfileId : undefined,
     stream: requestBody.stream === true,
     sendPushNotification: requestBody.send_push_notification !== false,
+  };
+}
+
+export function validateChatCompletionRequestBody(
+  body: unknown,
+  options: ChatCompletionRequestValidationOptions = {},
+): ChatCompletionRequestValidationResult {
+  const request = parseChatCompletionRequestBody(body);
+  if (!request.prompt) {
+    return {
+      ok: false,
+      statusCode: 400,
+      body: { error: 'Missing user prompt' },
+    };
+  }
+
+  if (request.conversationId && options.validateConversationId) {
+    const conversationIdError = options.validateConversationId(request.conversationId);
+    if (conversationIdError) {
+      return {
+        ok: false,
+        statusCode: 400,
+        body: { error: conversationIdError },
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    request: {
+      ...request,
+      prompt: request.prompt,
+    },
   };
 }
 

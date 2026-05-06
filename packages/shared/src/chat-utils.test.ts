@@ -46,6 +46,7 @@ import {
   looksLikeToolPayloadContent,
   stripRawToolTextFromContent,
   filterVisibleChatMessages,
+  validateChatCompletionRequestBody,
 } from './chat-utils'
 
 // ── Collapse Logic ───────────────────────────────────────────────────────────
@@ -484,6 +485,50 @@ describe('parseChatCompletionRequestBody', () => {
       profileId: undefined,
       stream: false,
       sendPushNotification: true,
+    })
+  })
+})
+
+describe('validateChatCompletionRequestBody', () => {
+  it('returns a typed request for valid chat completion bodies', () => {
+    expect(validateChatCompletionRequestBody({
+      messages: [{ role: 'user', content: 'Hello' }],
+      conversation_id: 'conv-1',
+      profile_id: 'profile-1',
+      stream: true,
+      send_push_notification: false,
+    }, {
+      validateConversationId: () => null,
+    })).toEqual({
+      ok: true,
+      request: {
+        prompt: 'Hello',
+        conversationId: 'conv-1',
+        profileId: 'profile-1',
+        stream: true,
+        sendPushNotification: false,
+      },
+    })
+  })
+
+  it('builds route errors for missing prompts and invalid conversation IDs', () => {
+    expect(validateChatCompletionRequestBody({
+      messages: [{ role: 'assistant', content: 'No user message' }],
+    })).toEqual({
+      ok: false,
+      statusCode: 400,
+      body: { error: 'Missing user prompt' },
+    })
+
+    expect(validateChatCompletionRequestBody({
+      messages: [{ role: 'user', content: 'Hello' }],
+      conversation_id: 'bad/id',
+    }, {
+      validateConversationId: () => 'Invalid conversation ID format',
+    })).toEqual({
+      ok: false,
+      statusCode: 400,
+      body: { error: 'Invalid conversation ID format' },
     })
   })
 })
