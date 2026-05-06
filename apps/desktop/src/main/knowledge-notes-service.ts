@@ -19,9 +19,10 @@ import {
   getAgentsKnowledgeBackupDir,
   knowledgeNoteSlugToFilePath,
   loadAgentsKnowledgeNotesLayer,
+  readTextFileIfExistsSync,
+  safeWriteFileSync,
   writeKnowledgeNoteFile,
-} from "./agents-files/knowledge-notes"
-import { readTextFileIfExistsSync, safeWriteFileSync } from "@dotagents/core"
+} from "@dotagents/core"
 import {
   buildKnowledgeNoteSearchIndex,
   createReadableKnowledgeNoteId,

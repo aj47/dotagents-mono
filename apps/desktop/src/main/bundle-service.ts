@@ -10,11 +10,13 @@ import fs from "fs"
 import path from "path"
 import { dialog, BrowserWindow, type OpenDialogOptions, type SaveDialogOptions } from "electron"
 import {
+  loadAgentsKnowledgeNotesLayer,
   loadAgentsSkillsLayer,
   loadTasksLayer,
   skillIdToDirPath,
   writeTaskFile,
   writeAgentsSkillFile,
+  writeKnowledgeNoteFile,
   taskIdToFilePath,
   type AgentProfile,
   type AgentProfileConnection,
@@ -37,7 +39,6 @@ import { isAgentProfileConnectionTypeValue } from "@dotagents/shared/agent-profi
 import { isAgentProfileRole } from "@dotagents/shared/agent-profile-role"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
-import { loadAgentsKnowledgeNotesLayer, writeKnowledgeNoteFile } from "./agents-files/knowledge-notes"
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "@dotagents/core"
 import { logApp } from "./debug"
 

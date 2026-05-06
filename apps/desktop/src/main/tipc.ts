@@ -1982,7 +1982,7 @@ export const router = {
   getAgentsFolders: t.procedure.action(async () => {
     const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
     const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-    const { getAgentsKnowledgeDir } = await import("./agents-files/knowledge-notes")
+    const { getAgentsKnowledgeDir } = await import("@dotagents/core")
     const { getAgentsSkillsDir } = await import("@dotagents/core")
 
     const globalLayer = getAgentsLayerPaths(globalAgentsFolder)

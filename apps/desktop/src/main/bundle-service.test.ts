@@ -21,8 +21,8 @@ import {
 import type { HubPublishPayload } from "@dotagents/shared/hub"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
-import { writeKnowledgeNoteFile } from "./agents-files/knowledge-notes"
 import {
+  writeKnowledgeNoteFile,
   loadAgentsSkillsLayer,
   loadTasksLayer,
   writeAgentsSkillFile,
