@@ -21,9 +21,12 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_OPTIONS/);
   assert.match(operationsSource, /REMOTE_SERVER_LOG_LEVEL_OPTIONS/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_BIND_ADDRESS/);
+  assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_ENABLED/);
+  assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_LOG_LEVEL/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_CORS_ORIGINS/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_PORT/);
+  assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED/);
   assert.match(operationsSource, /REMOTE_SERVER_PORT_MIN/);
   assert.match(operationsSource, /REMOTE_SERVER_PORT_MAX/);
   assert.match(operationsSource, /isRemoteServerPortUpdateValue/);
@@ -42,6 +45,7 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Tunnel Mode/);
   assert.match(operationsSource, /CLOUDFLARE_TUNNEL_MODE_OPTIONS/);
   assert.match(operationsSource, /DEFAULT_CLOUDFLARE_TUNNEL_MODE/);
+  assert.match(operationsSource, /DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START/);
   assert.match(operationsSource, /Auto-Start Tunnel/);
   assert.match(operationsSource, /Tunnel Name/);
   assert.match(remoteAccessDraftsSource, /cloudflareTunnelName: settings\?\.cloudflareTunnelName \?\? ""/);

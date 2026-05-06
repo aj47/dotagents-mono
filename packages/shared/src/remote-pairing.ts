@@ -14,6 +14,10 @@ export const CLOUDFLARE_TUNNEL_MODE_OPTIONS = ['quick', 'named'] as const;
 export const DEFAULT_REMOTE_SERVER_CORS_ORIGINS = ['*'] as const;
 export const REMOTE_SERVER_PORT_MIN = 1;
 export const REMOTE_SERVER_PORT_MAX = 65535;
+export const DEFAULT_REMOTE_SERVER_ENABLED = false;
+export const DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL = false;
+export const DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED = false;
+export const DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START = false;
 
 export type RemoteServerBindAddress = (typeof REMOTE_SERVER_BIND_ADDRESS_OPTIONS)[number];
 export type RemoteServerLogLevel = (typeof REMOTE_SERVER_LOG_LEVEL_OPTIONS)[number];

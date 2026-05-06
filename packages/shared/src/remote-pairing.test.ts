@@ -11,12 +11,16 @@ import {
   buildRemoteServerCorsOptions,
   buildRemoteServerStatusSnapshot,
   CLOUDFLARE_TUNNEL_MODE_OPTIONS,
+  DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
+  DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
   DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
+  DEFAULT_REMOTE_SERVER_ENABLED,
   DEFAULT_REMOTE_SERVER_PORT,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   DEFAULT_REMOTE_SERVER_SECRET_MASK,
+  DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED,
   ensureRemoteServerV1BaseUrl,
   formatConnectableRemoteHostWarning,
   formatHostForHttpUrl,
@@ -88,6 +92,7 @@ describe('remote server config contracts', () => {
 
   it('describes remote server option defaults and validators', () => {
     expect(DEFAULT_REMOTE_SERVER_BIND_ADDRESS).toBe('127.0.0.1');
+    expect(DEFAULT_REMOTE_SERVER_ENABLED).toBe(false);
     expect(REMOTE_SERVER_BIND_ADDRESS_OPTIONS).toEqual(['127.0.0.1', '0.0.0.0']);
     expect(DEFAULT_REMOTE_SERVER_PORT).toBe(3210);
     expect(REMOTE_SERVER_PORT_MIN).toBe(1);
@@ -97,7 +102,10 @@ describe('remote server config contracts', () => {
     expect(DEFAULT_REMOTE_SERVER_CORS_ORIGINS).toEqual(['*']);
     expect(getDefaultRemoteServerCorsOrigins()).toEqual(['*']);
     expect(getDefaultRemoteServerCorsOrigins()).not.toBe(DEFAULT_REMOTE_SERVER_CORS_ORIGINS);
+    expect(DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL).toBe(false);
+    expect(DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED).toBe(false);
     expect(DEFAULT_CLOUDFLARE_TUNNEL_MODE).toBe('quick');
+    expect(DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START).toBe(false);
     expect(CLOUDFLARE_TUNNEL_MODE_OPTIONS).toEqual(['quick', 'named']);
 
     expect(isRemoteServerBindAddressUpdateValue('0.0.0.0')).toBe(true);

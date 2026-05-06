@@ -53,11 +53,15 @@ import {
 } from '@dotagents/shared/operator-display-utils';
 import {
   CLOUDFLARE_TUNNEL_MODE_OPTIONS,
+  DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
+  DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
   DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
+  DEFAULT_REMOTE_SERVER_ENABLED,
   DEFAULT_REMOTE_SERVER_PORT,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
+  DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED,
   isRemoteServerPortUpdateValue,
   REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
@@ -1461,12 +1465,12 @@ export default function OperationsScreen({ navigation }: any) {
                   <Text style={styles.helperText}>Enable the desktop server that powers mobile operator access.</Text>
                 </View>
                 <Switch
-                  value={settings.remoteServerEnabled ?? false}
+                  value={settings.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED}
                   onValueChange={handleRemoteServerEnabledToggle}
                   disabled={controlsDisabled}
                   accessibilityLabel={createSwitchAccessibilityLabel('Remote Server')}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                  thumbColor={settings.remoteServerEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                  thumbColor={(settings.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                 />
               </View>
 
@@ -1616,7 +1620,7 @@ export default function OperationsScreen({ navigation }: any) {
                   <Text style={styles.helperText}>Show the desktop operator panel when new remote work begins.</Text>
                 </View>
                 <Switch
-                  value={settings.remoteServerAutoShowPanel ?? false}
+                  value={settings.remoteServerAutoShowPanel ?? DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL}
                   onValueChange={(value) => void applySettingsUpdate(
                     { remoteServerAutoShowPanel: value },
                     'auto-show panel',
@@ -1625,7 +1629,7 @@ export default function OperationsScreen({ navigation }: any) {
                   disabled={controlsDisabled}
                   accessibilityLabel={createSwitchAccessibilityLabel('Auto-Show Panel')}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                  thumbColor={settings.remoteServerAutoShowPanel ? theme.colors.primaryForeground : theme.colors.background}
+                  thumbColor={(settings.remoteServerAutoShowPanel ?? DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL) ? theme.colors.primaryForeground : theme.colors.background}
                 />
               </View>
 
@@ -1635,7 +1639,7 @@ export default function OperationsScreen({ navigation }: any) {
                   <Text style={styles.helperText}>Print a pairing QR code in the desktop terminal when supported.</Text>
                 </View>
                 <Switch
-                  value={settings.remoteServerTerminalQrEnabled ?? false}
+                  value={settings.remoteServerTerminalQrEnabled ?? DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED}
                   onValueChange={(value) => void applySettingsUpdate(
                     { remoteServerTerminalQrEnabled: value },
                     'terminal QR',
@@ -1644,7 +1648,7 @@ export default function OperationsScreen({ navigation }: any) {
                   disabled={controlsDisabled}
                   accessibilityLabel={createSwitchAccessibilityLabel('Terminal QR')}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                  thumbColor={settings.remoteServerTerminalQrEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                  thumbColor={(settings.remoteServerTerminalQrEnabled ?? DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                 />
               </View>
 
@@ -1683,7 +1687,7 @@ export default function OperationsScreen({ navigation }: any) {
                   <Text style={styles.helperText}>Start the configured tunnel automatically when the desktop app is ready.</Text>
                 </View>
                 <Switch
-                  value={settings.cloudflareTunnelAutoStart ?? false}
+                  value={settings.cloudflareTunnelAutoStart ?? DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START}
                   onValueChange={(value) => void applySettingsUpdate(
                     { cloudflareTunnelAutoStart: value },
                     'tunnel auto-start',
@@ -1692,7 +1696,7 @@ export default function OperationsScreen({ navigation }: any) {
                   disabled={controlsDisabled}
                   accessibilityLabel={createSwitchAccessibilityLabel('Auto-Start Tunnel')}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                  thumbColor={settings.cloudflareTunnelAutoStart ? theme.colors.primaryForeground : theme.colors.background}
+                  thumbColor={(settings.cloudflareTunnelAutoStart ?? DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START) ? theme.colors.primaryForeground : theme.colors.background}
                 />
               </View>
 

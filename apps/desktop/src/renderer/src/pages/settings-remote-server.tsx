@@ -20,12 +20,16 @@ import { EyeOff, ExternalLink } from "lucide-react"
 import {
   buildDotAgentsConfigDeepLink,
   buildRemoteServerBaseUrl,
+  DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   CLOUDFLARE_TUNNEL_MODE_OPTIONS,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
+  DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
   DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_ENABLED,
   DEFAULT_REMOTE_SERVER_PORT,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
+  DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED,
   isLoopbackRemoteHost,
   isUnconnectableRemoteHostForMobilePairing,
   isWildcardRemoteHost,
@@ -106,14 +110,14 @@ export function RemoteServerSettingsGroups({
     queryKey: ["cloudflare-tunnel-status"],
     queryFn: () => tipcClient.getCloudflareTunnelStatus(),
     refetchInterval: 2000, // Poll every 2 seconds when tunnel is active
-    enabled: cfg?.remoteServerEnabled ?? false,
+    enabled: cfg?.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED,
   })
 
   const remoteServerStatusQuery = useQuery({
     queryKey: ["remote-server-status"],
     queryFn: () => tipcClient.getRemoteServerStatus(),
     refetchInterval: 2000,
-    enabled: cfg?.remoteServerEnabled ?? false,
+    enabled: cfg?.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED,
   })
 
   const remoteServerPairingApiKeyQuery = useQuery({
@@ -161,7 +165,7 @@ export function RemoteServerSettingsGroups({
 
   if (!cfg) return null
 
-  const enabled = cfg.remoteServerEnabled ?? false
+  const enabled = cfg.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED
   const streamerMode = cfg.streamerModeEnabled ?? false
   const remoteServerPairingApiKey = typeof remoteServerPairingApiKeyQuery.data === "string"
     ? remoteServerPairingApiKeyQuery.data
@@ -229,7 +233,7 @@ export function RemoteServerSettingsGroups({
             <>
               <Control label={<ControlLabel label="Auto-Show Panel" tooltip="Automatically show the floating panel when receiving messages from remote clients" />} className="px-3">
                 <Switch
-                  checked={cfg.remoteServerAutoShowPanel ?? false}
+                  checked={cfg.remoteServerAutoShowPanel ?? DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL}
                   onCheckedChange={(value) => {
                     saveConfig({ remoteServerAutoShowPanel: value })
                   }}
@@ -238,7 +242,7 @@ export function RemoteServerSettingsGroups({
 
               <Control label={<ControlLabel label="Terminal QR Code" tooltip="Print QR code to terminal on server start (auto-enabled in headless environments)" />} className="px-3">
                 <Switch
-                  checked={cfg.remoteServerTerminalQrEnabled ?? false}
+                  checked={cfg.remoteServerTerminalQrEnabled ?? DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED}
                   onCheckedChange={(value) => {
                     saveConfig({ remoteServerTerminalQrEnabled: value })
                   }}
@@ -515,7 +519,7 @@ export function RemoteServerSettingsGroups({
 
                 <Control label={<ControlLabel label="Auto-Start Tunnel" tooltip="Automatically start the Cloudflare Tunnel when the application launches (requires Remote Server to be enabled)" />} className="px-3">
                   <Switch
-                    checked={cfg?.cloudflareTunnelAutoStart ?? false}
+                    checked={cfg?.cloudflareTunnelAutoStart ?? DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START}
                     onCheckedChange={(value) => {
                       saveConfig({ cloudflareTunnelAutoStart: value })
                     }}
