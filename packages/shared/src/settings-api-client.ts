@@ -106,6 +106,8 @@ import type {
   SettingsUpdate,
   SkillCreateRequest,
   SkillDeleteResponse,
+  SkillExportMarkdownResponse,
+  SkillImportMarkdownRequest,
   SkillMutationResponse,
   SkillResponse,
   SkillToggleResponse,
@@ -1472,6 +1474,18 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async importSkillFromMarkdown(content: string): Promise<SkillMutationResponse> {
+    const data: SkillImportMarkdownRequest = { content };
+    return this.request<SkillMutationResponse>(API_PATHS.skillImportMarkdown, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async exportSkillToMarkdown(id: string): Promise<SkillExportMarkdownResponse> {
+    return this.request<SkillExportMarkdownResponse>(API_BUILDERS.skillExportMarkdown(id));
   }
 
   async updateSkill(id: string, data: SkillUpdateRequest): Promise<SkillMutationResponse> {

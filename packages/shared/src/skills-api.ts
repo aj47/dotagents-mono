@@ -2,6 +2,8 @@ import type {
   Skill,
   SkillCreateRequest,
   SkillDeleteResponse,
+  SkillExportMarkdownResponse,
+  SkillImportMarkdownRequest,
   SkillMutationResponse,
   SkillResponse,
   SkillsResponse,
@@ -44,6 +46,8 @@ export interface SkillActionService {
   getSkills(): SkillApiLike[]
   getSkill(id: string): SkillApiLike | undefined
   createSkill(name: string, description: string, instructions: string): SkillApiLike
+  importSkillFromMarkdown(content: string): SkillApiLike
+  exportSkillToMarkdown(id: string): string
   updateSkill(
     id: string,
     updates: Partial<Pick<SkillApiLike, "name" | "description" | "instructions">>,
@@ -368,6 +372,14 @@ export function buildSkillMutationResponse(
   }
 }
 
+export function buildSkillExportMarkdownResponse(skillId: string, markdown: string): SkillExportMarkdownResponse {
+  return {
+    success: true,
+    skillId,
+    markdown,
+  }
+}
+
 export function buildSkillDeleteResponse(skillId: string): SkillDeleteResponse {
   return {
     success: true,
@@ -472,6 +484,20 @@ export function parseSkillUpdateRequestBody(body: unknown): SkillUpdateParseResu
   return { ok: true, request }
 }
 
+export type SkillImportMarkdownParseResult =
+  | { ok: true; request: SkillImportMarkdownRequest }
+  | { ok: false; error: string }
+
+export function parseSkillImportMarkdownRequestBody(body: unknown): SkillImportMarkdownParseResult {
+  const record = getRequestRecord(body)
+  const content = getOptionalString(record.content)
+  if (!content || !content.trim()) {
+    return { ok: false, error: "Skill Markdown content is required" }
+  }
+
+  return { ok: true, request: { content } }
+}
+
 export function getSkillsAction(options: SkillActionOptions): SkillActionResult {
   try {
     const skills = options.service.getSkills()
@@ -525,6 +551,48 @@ export function createSkillAction(
   } catch (caughtError) {
     options.diagnostics.logError("skill-actions", "Failed to create skill", caughtError)
     return skillActionError(500, getUnknownErrorMessage(caughtError, "Failed to create skill"))
+  }
+}
+
+export function importSkillFromMarkdownAction(
+  body: unknown,
+  options: SkillActionOptions,
+): SkillActionResult {
+  const parsed = parseSkillImportMarkdownRequestBody(body)
+  if (parsed.ok === false) {
+    return skillActionError(400, parsed.error)
+  }
+
+  try {
+    const skill = options.service.importSkillFromMarkdown(parsed.request.content)
+    const currentProfile = options.service.enableSkillForCurrentProfile?.(skill.id)
+      ?? options.service.getCurrentProfile()
+    return skillActionOk(buildSkillMutationResponse(skill, currentProfile))
+  } catch (caughtError) {
+    options.diagnostics.logError("skill-actions", "Failed to import skill from Markdown", caughtError)
+    return skillActionError(400, getUnknownErrorMessage(caughtError, "Failed to import skill"))
+  }
+}
+
+export function exportSkillToMarkdownAction(
+  skillId: string | undefined,
+  options: SkillActionOptions,
+): SkillActionResult {
+  if (!skillId) {
+    return skillActionError(400, "Skill id is required")
+  }
+
+  try {
+    const existing = options.service.getSkill(skillId)
+    if (!existing) {
+      return skillActionError(404, "Skill not found")
+    }
+
+    const markdown = options.service.exportSkillToMarkdown(skillId)
+    return skillActionOk(buildSkillExportMarkdownResponse(skillId, markdown))
+  } catch (caughtError) {
+    options.diagnostics.logError("skill-actions", "Failed to export skill to Markdown", caughtError)
+    return skillActionError(500, getUnknownErrorMessage(caughtError, "Failed to export skill"))
   }
 }
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildDisabledRuntimeSkillPayload,
   buildSkillDeleteResponse,
+  buildSkillExportMarkdownResponse,
   buildSkillMutationResponse,
   buildSkillResponse,
   getSkillsAction,
@@ -10,6 +11,7 @@ import {
   buildSkillToggleResponse,
   createSkillAction,
   deleteSkillAction,
+  exportSkillToMarkdownAction,
   buildIgnoredExecuteCommandSkillIdWarning,
   buildRuntimeSkillInstructionsText,
   buildRuntimeSkillNotFoundPayload,
@@ -18,10 +20,12 @@ import {
   getEnabledSkillIdsForProfile,
   getSkillFolderIdFromFilePath,
   getSkillRuntimeIds,
+  importSkillFromMarkdownAction,
   isGitHubSkillMarkdownFileName,
   isSkillEnabledByConfig,
   isSkillEnabledForProfile,
   parseGitHubSkillIdentifier,
+  parseSkillImportMarkdownRequestBody,
   parseRuntimeSkillIdArg,
   resolveRuntimeSkill,
   toggleProfileSkillAction,
@@ -61,6 +65,12 @@ describe("skills API helpers", () => {
       getSkill: (id: string) => skills.find((skill) => skill.id === id),
       createSkill: () => {
         throw new Error("unexpected create")
+      },
+      importSkillFromMarkdown: () => {
+        throw new Error("unexpected import")
+      },
+      exportSkillToMarkdown: () => {
+        throw new Error("unexpected export")
       },
       updateSkill: () => {
         throw new Error("unexpected update")
@@ -167,6 +177,11 @@ describe("skills API helpers", () => {
         updatedAt: 2,
       },
     })
+    expect(buildSkillExportMarkdownResponse("research", "---\nname: Research\n---\nUse sources")).toEqual({
+      success: true,
+      skillId: "research",
+      markdown: "---\nname: Research\n---\nUse sources",
+    })
     expect(buildSkillDeleteResponse("research")).toEqual({
       success: true,
       id: "research",
@@ -262,6 +277,14 @@ describe("skills API helpers", () => {
         expect(skillId).toBe("created")
         return profile
       },
+      importSkillFromMarkdown: (content: string) => {
+        expect(content).toBe("---\nname: Created\n---\nDo it")
+        return created
+      },
+      exportSkillToMarkdown: (skillId: string) => {
+        expect(skillId).toBe("research")
+        return "---\nname: Research\n---\nUse sources"
+      },
       updateSkill: (skillId: string, updates: Record<string, unknown>) => {
         expect(skillId).toBe("research")
         expect(updates).toEqual({ description: "Updated description" })
@@ -289,6 +312,16 @@ describe("skills API helpers", () => {
     }, { service, diagnostics })).toEqual({
       statusCode: 200,
       body: buildSkillMutationResponse(created, profile),
+    })
+    expect(importSkillFromMarkdownAction({
+      content: "---\nname: Created\n---\nDo it",
+    }, { service, diagnostics })).toEqual({
+      statusCode: 200,
+      body: buildSkillMutationResponse(created, profile),
+    })
+    expect(exportSkillToMarkdownAction("research", { service, diagnostics })).toEqual({
+      statusCode: 200,
+      body: buildSkillExportMarkdownResponse("research", "---\nname: Research\n---\nUse sources"),
     })
     expect(updateSkillAction("research", {
       description: "Updated description",
@@ -336,6 +369,18 @@ describe("skills API helpers", () => {
       statusCode: 400,
       body: { error: "Skill name is required" },
     })
+    expect(importSkillFromMarkdownAction({ content: "   " }, { service, diagnostics })).toEqual({
+      statusCode: 400,
+      body: { error: "Skill Markdown content is required" },
+    })
+    expect(exportSkillToMarkdownAction(undefined, { service, diagnostics })).toEqual({
+      statusCode: 400,
+      body: { error: "Skill id is required" },
+    })
+    expect(exportSkillToMarkdownAction("missing", { service, diagnostics })).toEqual({
+      statusCode: 404,
+      body: { error: "Skill not found" },
+    })
     expect(updateSkillAction("research", {}, { service, diagnostics })).toEqual({
       statusCode: 400,
       body: { error: "No skill updates provided" },
@@ -351,6 +396,10 @@ describe("skills API helpers", () => {
     expect(deleteSkillAction("missing", { service, diagnostics })).toEqual({
       statusCode: 404,
       body: { error: "Skill not found" },
+    })
+    expect(parseSkillImportMarkdownRequestBody({ content: "  ---\nname: Research\n---" })).toEqual({
+      ok: true,
+      request: { content: "  ---\nname: Research\n---" },
     })
   })
 

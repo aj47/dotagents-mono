@@ -1,8 +1,10 @@
 import {
   createSkillAction,
   deleteSkillAction,
+  exportSkillToMarkdownAction,
   getSkillAction,
   getSkillsAction,
+  importSkillFromMarkdownAction,
   toggleProfileSkillAction,
   updateSkillAction,
   type SkillActionOptions,
@@ -22,6 +24,8 @@ const skillActionOptions: SkillActionOptions = {
     getSkills: () => skillsService.getSkills(),
     getSkill: (id) => skillsService.getSkill(id),
     createSkill: (name, description, instructions) => skillsService.createSkill(name, description, instructions),
+    importSkillFromMarkdown: (content) => skillsService.importSkillFromMarkdown(content),
+    exportSkillToMarkdown: (id) => skillsService.exportSkillToMarkdown(id),
     updateSkill: (id, updates) => skillsService.updateSkill(id, updates),
     deleteSkill: (id) => {
       const success = skillsService.deleteSkill(id)
@@ -58,6 +62,14 @@ export function getSkill(skillId: string | undefined): SkillActionResult {
 
 export function createSkill(body: unknown): SkillActionResult {
   return createSkillAction(body, skillActionOptions)
+}
+
+export function importSkillFromMarkdown(body: unknown): SkillActionResult {
+  return importSkillFromMarkdownAction(body, skillActionOptions)
+}
+
+export function exportSkillToMarkdown(skillId: string | undefined): SkillActionResult {
+  return exportSkillToMarkdownAction(skillId, skillActionOptions)
 }
 
 export function updateSkill(skillId: string | undefined, body: unknown): SkillActionResult {

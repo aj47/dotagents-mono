@@ -70,8 +70,10 @@ import {
 import {
   createSkill,
   deleteSkill,
+  exportSkillToMarkdown,
   getSkill,
   getSkills,
+  importSkillFromMarkdown,
   toggleProfileSkill,
   updateSkill,
 } from "./skill-actions"
@@ -113,6 +115,8 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   getSkills,
   getSkill,
   createSkill,
+  importSkillFromMarkdown,
+  exportSkillToMarkdown,
   updateSkill,
   deleteSkill,
   toggleProfileSkill,

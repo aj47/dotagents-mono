@@ -893,9 +893,19 @@ export interface SkillUpdateRequest {
   instructions?: string;
 }
 
+export interface SkillImportMarkdownRequest {
+  content: string;
+}
+
 export interface SkillMutationResponse {
   success: true;
   skill: Skill;
+}
+
+export interface SkillExportMarkdownResponse {
+  success: true;
+  skillId: string;
+  markdown: string;
 }
 
 export interface SkillDeleteResponse {

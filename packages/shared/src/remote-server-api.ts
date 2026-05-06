@@ -88,6 +88,8 @@ export const REMOTE_SERVER_API_PATHS = {
   emergencyStop: "/emergency-stop",
   skills: "/skills",
   skill: "/skills/:id",
+  skillImportMarkdown: "/skills/import/markdown",
+  skillExportMarkdown: "/skills/:id/export/markdown",
   skillToggleProfile: "/skills/:id/toggle-profile",
   knowledgeNotes: "/knowledge/notes",
   knowledgeNote: "/knowledge/notes/:id",
@@ -189,6 +191,8 @@ export const REMOTE_SERVER_API_ROUTES = [
   { method: "GET", path: REMOTE_SERVER_API_PATHS.skills },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.skill },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.skills },
+  { method: "POST", path: REMOTE_SERVER_API_PATHS.skillImportMarkdown },
+  { method: "GET", path: REMOTE_SERVER_API_PATHS.skillExportMarkdown },
   { method: "PATCH", path: REMOTE_SERVER_API_PATHS.skill },
   { method: "DELETE", path: REMOTE_SERVER_API_PATHS.skill },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.skillToggleProfile },
@@ -380,6 +384,9 @@ export const REMOTE_SERVER_API_BUILDERS = {
   },
   skill(skillId: string): string {
     return `/skills/${encodePathParam(skillId)}`;
+  },
+  skillExportMarkdown(skillId: string): string {
+    return `/skills/${encodePathParam(skillId)}/export/markdown`;
   },
   knowledgeNote(id: string): string {
     return `/knowledge/notes/${encodePathParam(id)}`;

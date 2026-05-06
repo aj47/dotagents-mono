@@ -267,6 +267,19 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // POST /v1/skills/import/markdown - Import a skill from SKILL.md content
+  fastify.post(API_ROUTES.skillImportMarkdown, async (req, reply) => {
+    const result = actions.importSkillFromMarkdown(req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
+  // GET /v1/skills/:id/export/markdown - Export one skill as SKILL.md content
+  fastify.get(API_ROUTES.skillExportMarkdown, async (req, reply) => {
+    const params = req.params as { id?: string }
+    const result = actions.exportSkillToMarkdown(params.id)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // PATCH /v1/skills/:id - Update a skill
   fastify.patch(API_ROUTES.skill, async (req, reply) => {
     const params = req.params as { id?: string }

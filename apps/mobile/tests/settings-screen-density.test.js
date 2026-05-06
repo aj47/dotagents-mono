@@ -107,3 +107,13 @@ test('lets mobile preview and import pasted DotAgents bundles through the shared
   assert.match(settingsSource, /createButtonAccessibilityLabel\('Import DotAgents bundle JSON'\)/);
   assert.match(settingsSource, /Preview DotAgents bundle JSON/);
 });
+
+test('lets mobile import and export skill Markdown through the shared client', () => {
+  assert.match(settingsSource, /showSkillImportModal/);
+  assert.match(settingsSource, /Import Skill/);
+  assert.match(settingsSource, /settingsClient\.importSkillFromMarkdown\(skillImportMarkdownText\.trim\(\)\)/);
+  assert.match(settingsSource, /settingsClient\.exportSkillToMarkdown\(skill\.id\)/);
+  assert.match(settingsSource, /Share\.share\(\{[\s\S]*?message: result\.markdown/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Import skill Markdown'\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\(`Export skill \$\{skill\.name\} as Markdown`\)/);
+});

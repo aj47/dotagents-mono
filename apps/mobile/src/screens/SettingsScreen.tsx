@@ -362,6 +362,10 @@ export default function SettingsScreen({ navigation }: any) {
   const [agentProfiles, setAgentProfiles] = useState<AgentProfile[]>([]);
   const [loops, setLoops] = useState<Loop[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
+  const [isImportingSkillMarkdown, setIsImportingSkillMarkdown] = useState(false);
+  const [isExportingSkillMarkdownId, setIsExportingSkillMarkdownId] = useState<string | null>(null);
+  const [showSkillImportModal, setShowSkillImportModal] = useState(false);
+  const [skillImportMarkdownText, setSkillImportMarkdownText] = useState('');
   const [isLoadingKnowledgeNotes, setIsLoadingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
@@ -1181,6 +1185,54 @@ export default function SettingsScreen({ navigation }: any) {
       Alert.alert('Error', 'Failed to toggle skill');
     }
   };
+
+  const closeSkillImportModal = useCallback(() => {
+    if (isImportingSkillMarkdown) return;
+    setShowSkillImportModal(false);
+    setSkillImportMarkdownText('');
+  }, [isImportingSkillMarkdown]);
+
+  const handleSkillMarkdownImport = useCallback(async () => {
+    if (!settingsClient || !skillImportMarkdownText.trim()) return;
+
+    setIsImportingSkillMarkdown(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importSkillFromMarkdown(skillImportMarkdownText.trim());
+      setShowSkillImportModal(false);
+      setSkillImportMarkdownText('');
+      setSaveStatusMessage(`Imported skill "${result.skill.name}"`);
+      await fetchSkills();
+      Alert.alert('Import Complete', `Imported "${result.skill.name}".`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to import skill Markdown:', error);
+      setRemoteError(error.message || 'Failed to import skill');
+      Alert.alert('Import Failed', error.message || 'Failed to import skill');
+    } finally {
+      setIsImportingSkillMarkdown(false);
+    }
+  }, [fetchSkills, settingsClient, skillImportMarkdownText]);
+
+  const handleSkillMarkdownExport = useCallback(async (skill: Skill) => {
+    if (!settingsClient) return;
+
+    setIsExportingSkillMarkdownId(skill.id);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportSkillToMarkdown(skill.id);
+      await Share.share({
+        message: result.markdown,
+        title: `${skill.name}.md`,
+      });
+      setSaveStatusMessage(`Exported skill "${skill.name}"`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export skill Markdown:', error);
+      setRemoteError(error.message || 'Failed to export skill');
+      Alert.alert('Export Failed', error.message || 'Failed to export skill');
+    } finally {
+      setIsExportingSkillMarkdownId(null);
+    }
+  }, [settingsClient]);
 
   const confirmDestructiveAction = useCallback(
     (title: string, message: string, onConfirm: () => Promise<void> | void, confirmLabel: string = 'Delete') => {
@@ -4076,6 +4128,21 @@ export default function SettingsScreen({ navigation }: any) {
                           thumbColor={skill.enabledForProfile && skill.enabled ? theme.colors.primaryForeground : theme.colors.background}
                         />
                         <TouchableOpacity
+                          style={[
+                            styles.agentSecondaryButton,
+                            isExportingSkillMarkdownId === skill.id && styles.agentActionButtonDisabled,
+                          ]}
+                          onPress={() => handleSkillMarkdownExport(skill)}
+                          disabled={isExportingSkillMarkdownId === skill.id}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Export skill ${skill.name} as Markdown`)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Text style={styles.agentSecondaryButtonText}>
+                            {isExportingSkillMarkdownId === skill.id ? 'Exporting...' : 'Export'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
                           style={styles.agentDeleteButton}
                           onPress={() => handleSkillDelete(skill)}
                           accessibilityRole="button"
@@ -4088,12 +4155,22 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
-                <TouchableOpacity
-                  style={styles.createAgentButton}
-                  onPress={() => handleSkillEdit()}
-                >
-                  <Text style={styles.createAgentButtonText}>+ Create New Skill</Text>
-                </TouchableOpacity>
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => handleSkillEdit()}
+                  >
+                    <Text style={styles.createAgentButtonText}>+ Create New Skill</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => setShowSkillImportModal(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import skill Markdown')}
+                  >
+                    <Text style={styles.createAgentButtonText}>Import Skill</Text>
+                  </TouchableOpacity>
+                </View>
                 <Text style={styles.helperText}>
                   Tap a skill to edit, or toggle to enable it for the Main Agent.
                 </Text>
@@ -4891,6 +4968,70 @@ export default function SettingsScreen({ navigation }: any) {
               >
                 <Text style={styles.importModalImportText}>
                   {isImportingBundle ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Skill Markdown Import Modal */}
+      <Modal
+        visible={showSkillImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeSkillImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import Skill</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeSkillImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close skill import modal"
+                disabled={isImportingSkillMarkdown}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.importJsonInput}
+              value={skillImportMarkdownText}
+              onChangeText={setSkillImportMarkdownText}
+              placeholder={'---\nname: research-helper\ndescription: Finds context\n---\nUse reliable sources.'}
+              placeholderTextColor={theme.colors.mutedForeground}
+              multiline
+              numberOfLines={8}
+              textAlignVertical="top"
+              autoCorrect={false}
+              autoCapitalize="none"
+              spellCheck={false}
+              editable={!isImportingSkillMarkdown}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeSkillImportModal}
+                disabled={isImportingSkillMarkdown}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!skillImportMarkdownText.trim() || isImportingSkillMarkdown) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={handleSkillMarkdownImport}
+                disabled={!skillImportMarkdownText.trim() || isImportingSkillMarkdown}
+                accessibilityRole="button"
+                accessibilityLabel="Import skill Markdown"
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingSkillMarkdown ? 'Importing...' : 'Import'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -5708,10 +5849,28 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     agentActions: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
+      justifyContent: 'flex-end',
       gap: spacing.sm,
       flexShrink: 0,
       alignSelf: 'flex-start',
+    },
+    agentSecondaryButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+    },
+    agentSecondaryButtonText: {
+      color: theme.colors.primary,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    agentActionButtonDisabled: {
+      opacity: 0.5,
     },
     agentDeleteButton: {
       ...createMinimumTouchTargetStyle({
@@ -5809,6 +5968,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
       color: theme.colors.primary,
       fontWeight: '500',
+    },
+    sectionActionRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginTop: spacing.md,
+    },
+    sectionActionButton: {
+      flex: 1,
+      minWidth: 150,
+      marginTop: 0,
     },
     // Model picker styles
     modelLabelRow: {
