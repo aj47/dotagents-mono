@@ -57,6 +57,7 @@ import {
 import { parseConfigListInput } from '@dotagents/shared/config-list-input';
 import {
   DEFAULT_PARAKEET_NUM_THREADS,
+  DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED,
   KNOWN_STT_MODEL_IDS,
   PARAKEET_NUM_THREAD_OPTIONS,
   getDefaultSttModel,
@@ -3369,10 +3370,10 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Transcription Preview</Text>
                   <Switch
-                    value={remoteSettings.transcriptionPreviewEnabled ?? true}
+                    value={remoteSettings.transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('transcriptionPreviewEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.transcriptionPreviewEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
                 <Text style={styles.helperText}>

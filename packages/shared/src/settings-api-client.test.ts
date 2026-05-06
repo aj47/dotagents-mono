@@ -22,6 +22,9 @@ import {
   DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
 } from './providers';
 import {
+  DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED,
+} from './stt-models';
+import {
   buildRemoteServerApiQueryPath,
   REMOTE_SERVER_API_BUILDERS,
   REMOTE_SERVER_API_PATHS,
@@ -412,6 +415,7 @@ describe('SettingsApiClient', () => {
       supertonicLanguage: 'en',
       supertonicSpeed: 1.05,
       supertonicSteps: 5,
+      transcriptionPreviewEnabled: DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED,
       transcriptPostProcessingEnabled: DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
       whatsappEnabled: DEFAULT_WHATSAPP_ENABLED,
       whatsappAutoReply: DEFAULT_WHATSAPP_AUTO_REPLY,

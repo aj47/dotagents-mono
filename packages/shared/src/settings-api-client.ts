@@ -42,6 +42,7 @@ import {
 } from './mcp-api';
 import {
   DEFAULT_PARAKEET_NUM_THREADS,
+  DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED,
   getDefaultSttModel,
   isParakeetNumThreadsUpdateValue,
 } from './stt-models';
@@ -403,7 +404,7 @@ export function buildSettingsResponse(
     mcpMaxIterations: cfg.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT,
     streamerModeEnabled: cfg.streamerModeEnabled ?? false,
     sttLanguage: cfg.sttLanguage ?? '',
-    transcriptionPreviewEnabled: cfg.transcriptionPreviewEnabled ?? true,
+    transcriptionPreviewEnabled: cfg.transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED,
     parakeetNumThreads: cfg.parakeetNumThreads ?? DEFAULT_PARAKEET_NUM_THREADS,
     openaiSttLanguage: cfg.openaiSttLanguage ?? '',
     openaiSttModel: cfg.openaiSttModel || getDefaultSttModel('openai')!,

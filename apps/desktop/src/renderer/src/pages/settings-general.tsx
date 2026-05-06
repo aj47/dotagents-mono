@@ -32,6 +32,7 @@ import {
   DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
   type STT_PROVIDER_ID,
 } from "@dotagents/shared/providers"
+import { DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED } from "@dotagents/shared/stt-models"
 import {
   DEFAULT_TTS_AUTO_PLAY,
   DEFAULT_TTS_CONVERT_MARKDOWN,
@@ -1136,7 +1137,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Transcription Preview" tooltip="Show a live transcription preview while recording. Audio is sent to your STT provider every ~10 seconds to display partial results. Note: this increases API usage — each chunk is billed separately (Groq has a 10-second minimum billing per request)." />} className="px-3">
             <Switch
-              defaultChecked={configQuery.data.transcriptionPreviewEnabled}
+              defaultChecked={configQuery.data.transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED}
               onCheckedChange={(value) => {
                 saveConfig({
                   transcriptionPreviewEnabled: value,

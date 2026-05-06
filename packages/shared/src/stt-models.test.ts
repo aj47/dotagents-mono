@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   DEFAULT_PARAKEET_NUM_THREADS,
   DEFAULT_STT_MODELS,
+  DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED,
   KNOWN_STT_MODEL_IDS,
   PARAKEET_NUM_THREAD_OPTIONS,
   isKnownSttModel,
@@ -17,6 +18,12 @@ describe('DEFAULT_STT_MODELS', () => {
 
   it('has groq default', () => {
     expect(DEFAULT_STT_MODELS.groq).toBe('whisper-large-v3-turbo')
+  })
+})
+
+describe('STT feature defaults', () => {
+  it('enables transcription preview by default', () => {
+    expect(DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED).toBe(true)
   })
 })
 

@@ -133,6 +133,12 @@ describe("panel recording layout", () => {
     expect(previewResizeSection).toContain("win.setMinimumSize(minWidth, targetHeight)")
   })
 
+  it("uses the shared transcription preview default when config is unset", () => {
+    expect(panelSource).toContain("DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED")
+    expect(panelSource).toContain("transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED")
+    expect(panelSource).toContain('configQuery.data?.sttProviderId !== "parakeet"')
+  })
+
   it("ignores non-finite panel sizes from IPC before they reach recording layout math", () => {
     expect(panelSource).toContain("Number.isFinite((value as { width: number }).width)")
     expect(panelSource).toContain("Number.isFinite((value as { height: number }).height)")

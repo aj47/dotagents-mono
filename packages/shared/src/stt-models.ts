@@ -5,6 +5,7 @@ export const DEFAULT_STT_MODELS = {
 
 export const DEFAULT_PARAKEET_NUM_THREADS = 2
 export const PARAKEET_NUM_THREAD_OPTIONS = [1, 2, 4, 8] as const
+export const DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED = true
 
 export const KNOWN_STT_MODEL_IDS = {
   openai: ["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"],

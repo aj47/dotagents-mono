@@ -167,6 +167,8 @@ test('lets mobile configure cloud desktop STT model details', () => {
 
   assert.match(settingsSource, /KNOWN_STT_MODEL_IDS/);
   assert.match(settingsSource, /getDefaultSttModel/);
+  assert.match(settingsSource, /DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED/);
+  assert.match(speechToTextSection, /remoteSettings\.transcriptionPreviewEnabled \?\? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED/);
   assert.match(settingsSource, /DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED/);
   assert.match(profileModelSection, /remoteSettings\.transcriptPostProcessingEnabled \?\? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED/);
   assert.match(remoteSettingsDraftsSource, /openaiSttLanguage: settings\.openaiSttLanguage \|\| ""/);
