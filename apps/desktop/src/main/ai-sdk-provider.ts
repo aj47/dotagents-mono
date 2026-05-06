@@ -11,23 +11,21 @@ import {
   DEFAULT_CHAT_MODELS,
   normalizeChatProviderId,
   resolveChatModelForTextUsage,
+  resolvePromptCachingConfig,
   type CHAT_PROVIDER_ID,
   type ChatModelContext,
+  type PromptCachingConfig,
 } from "@dotagents/shared/providers"
 import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
 
 export type ProviderType = CHAT_PROVIDER_ID
+export type { PromptCachingConfig } from "@dotagents/shared/providers"
 
 interface ProviderConfig {
   apiKey: string
   baseURL?: string
   model: string
-}
-
-export interface PromptCachingConfig {
-  strategy: string
-  providerOptions?: Record<string, unknown>
 }
 
 function normalizeProviderType(providerId: string): ProviderType {
@@ -217,24 +215,6 @@ export function getCurrentModelName(
   return getProviderConfig(effectiveProviderId, modelContext).model
 }
 
-/**
- * Check if the model name indicates an Anthropic/Claude model.
- * Common patterns: "claude-3.5-sonnet", "anthropic/claude-sonnet-4-5", etc.
- */
-function isAnthropicModel(model: string): boolean {
-  const normalized = model.trim().toLowerCase()
-  return normalized.includes("claude") || normalized.includes("anthropic")
-}
-
-/**
- * Check if the base URL points to a known proxy that routes to Anthropic.
- * OpenRouter, LiteLLM, and similar OpenAI-compatible gateways are common proxies.
- */
-function isAnthropicProxy(baseURL: string): boolean {
-  const normalized = baseURL.trim().toLowerCase()
-  return normalized.includes("openrouter.ai") || normalized.includes("anthropic")
-}
-
 export function getPromptCachingConfig(
   providerId?: ProviderType,
   modelContext: ChatModelContext = "mcp",
@@ -244,54 +224,7 @@ export function getPromptCachingConfig(
     providerId || (config.agentProviderId as ProviderType) || (config.mcpToolsProviderId as ProviderType) || "openai",
   )
   const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
-  const normalizedBaseURL = (providerConfig.baseURL || "").trim().toLowerCase()
-
-  if (effectiveProviderId === "chatgpt-web") {
-    return undefined
-  }
-
-  // Vercel AI Gateway handles caching automatically for all providers
-  if (normalizedBaseURL.includes("ai-gateway.vercel.sh")) {
-    return {
-      strategy: "gateway-auto",
-      providerOptions: {
-        gateway: {
-          caching: "auto",
-        },
-      },
-    }
-  }
-
-  // Anthropic/Claude via OpenAI-compatible proxy (e.g., OpenRouter, LiteLLM).
-  // Anthropic requires explicit cache_control markers — unlike OpenAI/Gemini which cache implicitly.
-  // The AI SDK translates message-level providerOptions.anthropic.cacheControl into
-  // block-level cache_control on the last content block of each message.
-  if (isAnthropicModel(providerConfig.model) || isAnthropicProxy(normalizedBaseURL)) {
-    return {
-      strategy: "anthropic-cache-control",
-      providerOptions: {
-        anthropic: {
-          cacheControl: { type: "ephemeral" },
-        },
-      },
-    }
-  }
-
-  // Direct OpenAI — automatic prefix caching, no API changes needed (≥1,024 tokens)
-  if (effectiveProviderId === "openai" && (!normalizedBaseURL || normalizedBaseURL.includes("api.openai.com"))) {
-    return {
-      strategy: "openai-implicit-prefix",
-    }
-  }
-
-  // Gemini — automatic caching for prompts ≥32,768 tokens
-  if (effectiveProviderId === "gemini") {
-    return {
-      strategy: "gemini-stable-prefix",
-    }
-  }
-
-  return undefined
+  return resolvePromptCachingConfig(effectiveProviderId, providerConfig.model, providerConfig.baseURL)
 }
 
 /**

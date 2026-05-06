@@ -27,12 +27,15 @@ import {
   getTranscriptPostProcessingModelSettingKey,
   getBuiltInModelPresets,
   getCurrentPresetName,
+  isAnthropicChatModel,
+  isAnthropicProxyBaseUrl,
   isChatGptWebOnlyModel,
   isChatProviderId,
   isTranscriptionOnlyChatModel,
   migrateDeprecatedEdgeTtsVoice,
   normalizeChatProviderId,
   resolveChatModelForTextUsage,
+  resolvePromptCachingConfig,
   resolveEdgeTtsVoice,
 } from './providers'
 import type { ModelPreset } from './providers'
@@ -94,6 +97,28 @@ describe('CHAT_PROVIDERS', () => {
     expect(resolveChatModelForTextUsage('chatgpt-web', 'gpt-5.3-codex', 'mcp')).toEqual({
       model: 'gpt-5.3-codex',
     })
+  })
+
+  it('resolves shared prompt caching strategies by provider, model, and base URL', () => {
+    expect(isAnthropicChatModel('anthropic/claude-3.5-sonnet')).toBe(true)
+    expect(isAnthropicChatModel('gpt-4.1-mini')).toBe(false)
+    expect(isAnthropicProxyBaseUrl('https://openrouter.ai/api/v1')).toBe(true)
+    expect(resolvePromptCachingConfig('openai', 'gpt-4.1-mini', 'https://api.openai.com/v1')).toEqual({
+      strategy: 'openai-implicit-prefix',
+    })
+    expect(resolvePromptCachingConfig('openai', 'gpt-4.1-mini', 'https://ai-gateway.vercel.sh/v1')).toEqual({
+      strategy: 'gateway-auto',
+      providerOptions: { gateway: { caching: 'auto' } },
+    })
+    expect(resolvePromptCachingConfig('openai', 'claude-sonnet-4-5', 'https://custom.example/v1')).toEqual({
+      strategy: 'anthropic-cache-control',
+      providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+    })
+    expect(resolvePromptCachingConfig('gemini', 'gemini-2.5-flash')).toEqual({
+      strategy: 'gemini-stable-prefix',
+    })
+    expect(resolvePromptCachingConfig('chatgpt-web', 'gpt-5.4')).toBeUndefined()
+    expect(resolvePromptCachingConfig('openai', 'gpt-4.1-mini', 'https://custom.example/v1')).toBeUndefined()
   })
 })
 

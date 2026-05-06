@@ -42,6 +42,10 @@ export type ChatModelSelectionResolution = {
   reason?: ChatModelSelectionResolutionReason;
   fallbackModel?: string;
 };
+export type PromptCachingConfig = {
+  strategy: string;
+  providerOptions?: Record<string, unknown>;
+};
 
 export const DEFAULT_CHAT_MODELS: Record<CHAT_PROVIDER_ID, Record<ChatModelContext, string>> = {
   openai: {
@@ -116,6 +120,64 @@ export function resolveChatModelForTextUsage(
   }
 
   return { model };
+}
+
+export function isAnthropicChatModel(model: string): boolean {
+  const normalizedModel = model.trim().toLowerCase();
+  return normalizedModel.includes("claude") || normalizedModel.includes("anthropic");
+}
+
+export function isAnthropicProxyBaseUrl(baseURL: string): boolean {
+  const normalizedBaseURL = baseURL.trim().toLowerCase();
+  return normalizedBaseURL.includes("openrouter.ai") || normalizedBaseURL.includes("anthropic");
+}
+
+export function resolvePromptCachingConfig(
+  providerId: CHAT_PROVIDER_ID,
+  model: string,
+  baseURL?: string | null,
+): PromptCachingConfig | undefined {
+  if (providerId === "chatgpt-web") {
+    return undefined;
+  }
+
+  const normalizedBaseURL = (baseURL || "").trim().toLowerCase();
+
+  if (normalizedBaseURL.includes("ai-gateway.vercel.sh")) {
+    return {
+      strategy: "gateway-auto",
+      providerOptions: {
+        gateway: {
+          caching: "auto",
+        },
+      },
+    };
+  }
+
+  if (isAnthropicChatModel(model) || isAnthropicProxyBaseUrl(normalizedBaseURL)) {
+    return {
+      strategy: "anthropic-cache-control",
+      providerOptions: {
+        anthropic: {
+          cacheControl: { type: "ephemeral" },
+        },
+      },
+    };
+  }
+
+  if (providerId === "openai" && (!normalizedBaseURL || normalizedBaseURL.includes("api.openai.com"))) {
+    return {
+      strategy: "openai-implicit-prefix",
+    };
+  }
+
+  if (providerId === "gemini") {
+    return {
+      strategy: "gemini-stable-prefix",
+    };
+  }
+
+  return undefined;
 }
 
 export const DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT = [
