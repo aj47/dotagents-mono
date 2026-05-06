@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { getSettingsSaveErrorMessage } from "@dotagents/shared/config-save-error"
 
 const { toastError } = vi.hoisted(() => ({
   toastError: vi.fn(),
@@ -10,7 +11,7 @@ vi.mock("sonner", () => ({
   },
 }))
 
-import { getSettingsSaveErrorMessage, reportConfigSaveError } from "./config-save-error"
+import { reportConfigSaveError } from "./config-save-error"
 
 describe("config-save-error", () => {
   beforeEach(() => {
