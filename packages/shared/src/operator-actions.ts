@@ -109,6 +109,40 @@ export interface OperatorMessageQueueActionOptions {
   service: OperatorMessageQueueActionService
 }
 
+export type OperatorRestartActionResult = {
+  statusCode: number
+  body: unknown
+  auditContext: OperatorActionAuditContext
+  shouldRestartRemoteServer?: boolean
+  shouldRestartApp?: boolean
+}
+
+export type OperatorApiKeyActionResult = {
+  statusCode: number
+  body: unknown
+  auditContext?: OperatorActionAuditContext
+  shouldRestartRemoteServer?: boolean
+}
+
+export interface OperatorApiKeyActionConfigLike {
+  remoteServerApiKey?: string
+}
+
+export interface OperatorApiKeyActionConfigStore<TConfig extends OperatorApiKeyActionConfigLike = OperatorApiKeyActionConfigLike> {
+  get(): TConfig
+  save(config: TConfig): void
+}
+
+export interface OperatorApiKeyActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void
+}
+
+export interface OperatorApiKeyActionOptions<TConfig extends OperatorApiKeyActionConfigLike = OperatorApiKeyActionConfigLike> {
+  config: OperatorApiKeyActionConfigStore<TConfig>
+  diagnostics: OperatorApiKeyActionDiagnostics
+  generateApiKey(): string
+}
+
 export type RunAgentResultLike = AgentRunResult
 
 export type OperatorHealthLike = Pick<OperatorHealthSnapshot, "overall" | "checks">
@@ -1656,6 +1690,49 @@ export function buildOperatorApiKeyRotationFailureAuditContext(): OperatorAction
   }
 }
 
+function operatorApiKeyActionResult(
+  statusCode: number,
+  body: unknown,
+  auditContext?: OperatorActionAuditContext,
+  shouldRestartRemoteServer = false,
+): OperatorApiKeyActionResult {
+  return {
+    statusCode,
+    body,
+    shouldRestartRemoteServer,
+    ...(auditContext ? { auditContext } : {}),
+  }
+}
+
+export function rotateOperatorRemoteServerApiKeyAction<TConfig extends OperatorApiKeyActionConfigLike>(
+  options: OperatorApiKeyActionOptions<TConfig>,
+): OperatorApiKeyActionResult {
+  try {
+    const cfg = options.config.get()
+    const apiKey = options.generateApiKey()
+    const nextConfig = { ...cfg, remoteServerApiKey: apiKey } as TConfig
+    options.config.save(nextConfig)
+
+    return operatorApiKeyActionResult(
+      200,
+      buildOperatorApiKeyRotationResponse(apiKey),
+      buildOperatorApiKeyRotationAuditContext(),
+      true,
+    )
+  } catch (caughtError) {
+    options.diagnostics.logError(
+      "operator-api-key-actions",
+      "Failed to rotate remote server API key",
+      caughtError,
+    )
+    return operatorApiKeyActionResult(
+      500,
+      { error: "Failed to rotate remote server API key" },
+      buildOperatorApiKeyRotationFailureAuditContext(),
+    )
+  }
+}
+
 export function buildOperatorDiscordConnectActionResponse(
   result: OperatorActionResultLike,
   status: Pick<OperatorDiscordStatusLike, "connected">,
@@ -1765,6 +1842,32 @@ export function buildOperatorRestartAppActionResponse(currentVersion: string): O
       currentVersion,
     },
   }
+}
+
+function operatorRestartActionResult(
+  body: OperatorActionResponse,
+  options: Pick<OperatorRestartActionResult, "shouldRestartRemoteServer" | "shouldRestartApp">,
+): OperatorRestartActionResult {
+  return {
+    statusCode: 200,
+    body,
+    auditContext: buildOperatorActionAuditContext(body),
+    ...options,
+  }
+}
+
+export function restartOperatorRemoteServerAction(isRunning: boolean): OperatorRestartActionResult {
+  return operatorRestartActionResult(
+    buildOperatorRestartRemoteServerActionResponse(isRunning),
+    { shouldRestartRemoteServer: true },
+  )
+}
+
+export function restartOperatorAppAction(appVersion: string): OperatorRestartActionResult {
+  return operatorRestartActionResult(
+    buildOperatorRestartAppActionResponse(appVersion),
+    { shouldRestartApp: true },
+  )
 }
 
 export function buildOperatorUpdaterCheckActionResponse(

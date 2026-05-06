@@ -94,13 +94,17 @@ import {
   parseOperatorQueuedMessageUpdateRequestBody,
   parseOperatorRunAgentRequestBody,
   removeOperatorQueuedMessageAction,
+  restartOperatorAppAction,
+  restartOperatorRemoteServerAction,
   resumeOperatorMessageQueueAction,
+  rotateOperatorRemoteServerApiKeyAction,
   retryOperatorQueuedMessageAction,
   sanitizeOperatorAuditDetails,
   sanitizeOperatorAuditText,
   serializeOperatorAuditLogEntries,
   SENSITIVE_OPERATOR_SETTINGS_KEYS,
   updateOperatorQueuedMessageAction,
+  type OperatorApiKeyActionOptions,
   type OperatorMessageQueueActionOptions,
 } from "./operator-actions"
 
@@ -316,6 +320,62 @@ describe("operator action API helpers", () => {
       success: false,
       failureReason: "rotate-api-key-route-error",
     })
+  })
+
+  it("rotates operator API keys through a shared config adapter", () => {
+    let savedConfig = { remoteServerApiKey: "old-key", remoteServerPort: 3899 }
+    const errors: string[] = []
+    const options: OperatorApiKeyActionOptions<typeof savedConfig> = {
+      config: {
+        get: () => savedConfig,
+        save: (config) => { savedConfig = config },
+      },
+      diagnostics: {
+        logError: (_source, message) => { errors.push(message) },
+      },
+      generateApiKey: () => "new-key",
+    }
+
+    expect(rotateOperatorRemoteServerApiKeyAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "rotate-api-key",
+        apiKey: "new-key",
+        restartScheduled: true,
+      },
+      auditContext: {
+        action: "rotate-api-key",
+        success: true,
+        details: { restartScheduled: true },
+      },
+      shouldRestartRemoteServer: true,
+    })
+    expect(savedConfig).toEqual({ remoteServerApiKey: "new-key", remoteServerPort: 3899 })
+    expect(errors).toEqual([])
+
+    const failingOptions: OperatorApiKeyActionOptions = {
+      config: {
+        get: () => ({ remoteServerApiKey: "old-key" }),
+        save: () => { throw new Error("disk denied") },
+      },
+      diagnostics: {
+        logError: (_source, message) => { errors.push(message) },
+      },
+      generateApiKey: () => "unused-key",
+    }
+
+    expect(rotateOperatorRemoteServerApiKeyAction(failingOptions)).toMatchObject({
+      statusCode: 500,
+      body: { error: "Failed to rotate remote server API key" },
+      auditContext: {
+        action: "rotate-api-key",
+        success: false,
+        failureReason: "rotate-api-key-route-error",
+      },
+      shouldRestartRemoteServer: false,
+    })
+    expect(errors).toContain("Failed to rotate remote server API key")
   })
 
   it("clamps operator counts and normalizes log levels", () => {
@@ -876,6 +936,35 @@ describe("operator action API helpers", () => {
       details: {
         currentVersion: "1.2.3",
       },
+    })
+
+    expect(restartOperatorRemoteServerAction(false)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "restart-remote-server",
+        details: { wasRunning: false },
+      },
+      auditContext: {
+        action: "restart-remote-server",
+        success: true,
+        details: { wasRunning: false },
+      },
+      shouldRestartRemoteServer: true,
+    })
+    expect(restartOperatorAppAction("1.2.3")).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "restart-app",
+        details: { currentVersion: "1.2.3" },
+      },
+      auditContext: {
+        action: "restart-app",
+        success: true,
+        details: { currentVersion: "1.2.3" },
+      },
+      shouldRestartApp: true,
     })
   })
 
