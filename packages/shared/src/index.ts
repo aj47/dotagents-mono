@@ -35,6 +35,7 @@ export * from './tool-activity-grouping';
 export * from './main-agent-selection';
 export * from './agent-profile-connection';
 export * from './agent-selector-options';
+export * from './agent-session-candidates';
 export * from './repeat-task-utils';
 export * from './repeat-task-markdown';
 export * from './knowledge-note-grouping';

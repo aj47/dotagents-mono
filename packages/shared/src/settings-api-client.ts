@@ -40,6 +40,7 @@ import { getSensitiveOperatorSettingsKeys } from './operator-actions';
 import type {
   AgentModelSelectionConfig,
   ChatProviderCredentialsConfig,
+  AgentSessionCandidatesResponse,
   AgentProfileCreateRequest,
   AgentProfileDeleteResponse,
   AgentProfileToggleResponse,
@@ -1085,6 +1086,12 @@ export class SettingsApiClient {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
+  }
+
+  async getAgentSessionCandidates(limit?: number): Promise<AgentSessionCandidatesResponse> {
+    return this.request<AgentSessionCandidatesResponse>(
+      buildRemoteServerApiQueryPath(API_PATHS.agentSessionCandidates, { limit }),
+    );
   }
 
   // Models Management

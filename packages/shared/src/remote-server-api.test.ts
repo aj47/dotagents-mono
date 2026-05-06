@@ -34,6 +34,7 @@ describe('remote server API contract', () => {
   it('normalizes prefixed and unprefixed route paths consistently', () => {
     expect(getRemoteServerApiRoutePath(REMOTE_SERVER_API_PATHS.settings)).toBe('/v1/settings');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.settings).toBe('/v1/settings');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.agentSessionCandidates).toBe('/v1/agent-sessions/candidates');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.conversation).toBe('/v1/conversations/:id');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.bundleExportableItems).toBe('/v1/bundles/exportable-items');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.bundleExport).toBe('/v1/bundles/export');

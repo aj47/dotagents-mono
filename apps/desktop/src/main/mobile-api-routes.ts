@@ -169,6 +169,12 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // GET /v1/agent-sessions/candidates - List active and recent sessions for pickers
+  fastify.get(API_ROUTES.agentSessionCandidates, async (req, reply) => {
+    const result = actions.getAgentSessionCandidates(req.query)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // GET /v1/conversations/:id - Fetch conversation state for recovery
   fastify.get(API_ROUTES.conversation, async (req, reply) => {
     const params = req.params as { id?: string }

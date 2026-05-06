@@ -44,3 +44,14 @@ test('exposes desktop repeat task execution options on mobile', () => {
   assert.match(screenSource, /Continue in same session/);
   assert.match(screenSource, /Max iterations \(optional\)/);
 });
+
+test('uses desktop session candidates for the continue-in-session picker', () => {
+  assert.match(screenSource, /settingsClient\.getAgentSessionCandidates\(20\)/);
+  assert.match(screenSource, /buildSessionCandidateOptions/);
+  assert.match(screenSource, /Continue from session/);
+  assert.match(screenSource, /Auto/);
+  assert.match(screenSource, /Uses this task's most recent session when it can be revived\./);
+  assert.match(screenSource, /onPress=\{\(\) => updateField\('lastSessionId', candidate\.id\)\}/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\(`Continue from \$\{formatSessionCandidateTitle\(candidate\)\}`\)/);
+  assert.doesNotMatch(screenSource, /Pinned session ID \(optional\)/);
+});

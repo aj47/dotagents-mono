@@ -422,6 +422,21 @@ function getSettingsActionsSource(): string {
   return readFileSync(settingsActionsPath, "utf8")
 }
 
+function getSessionCandidateActionsSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sessionCandidateActionsPath = path.join(testDir, "session-candidate-actions.ts")
+  return readFileSync(sessionCandidateActionsPath, "utf8")
+}
+
+function getSharedAgentSessionCandidatesSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedAgentSessionCandidatesPath = path.join(
+    testDir,
+    "../../../../packages/shared/src/agent-session-candidates.ts",
+  )
+  return readFileSync(sharedAgentSessionCandidatesPath, "utf8")
+}
+
 function getEmergencyStopActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const emergencyStopActionsPath = path.join(testDir, "emergency-stop-actions.ts")
@@ -974,6 +989,23 @@ describe("remote-server route registration", () => {
     expect(sharedSettingsApiClientSource).toContain("await options.applyDiscordLifecycleAction(discordLifecycleAction)")
     expect(sharedSettingsApiClientSource).toContain("await options.applyWhatsappToggle(prevEnabled, updates.whatsappEnabled)")
     expect(sharedSettingsApiClientSource).not.toContain('from "./config"')
+  })
+
+  it("delegates agent session candidate route behavior to shared session candidate actions", () => {
+    const source = getRemoteServerSource()
+    const mobileApiRoutesSource = getMobileApiRoutesSource()
+    const sessionCandidateActionsSource = getSessionCandidateActionsSource()
+    const sharedAgentSessionCandidatesSource = getSharedAgentSessionCandidatesSource()
+
+    expectRegisteredApiRoute(source, "GET", "agentSessionCandidates")
+    expect(mobileApiRoutesSource).toContain("actions.getAgentSessionCandidates(req.query)")
+    expect(sessionCandidateActionsSource).toContain("getAgentSessionCandidatesAction(query, sessionCandidateActionOptions)")
+    expect(sessionCandidateActionsSource).toContain("agentSessionTracker.getActiveSessions()")
+    expect(sessionCandidateActionsSource).toContain("agentSessionTracker.getRecentSessions(limit)")
+    expect(sharedAgentSessionCandidatesSource).toContain("export function getAgentSessionCandidatesAction")
+    expect(sharedAgentSessionCandidatesSource).toContain("parseAgentSessionCandidateLimit(query)")
+    expect(sharedAgentSessionCandidatesSource).toContain("buildAgentSessionCandidatesResponse(")
+    expect(sharedAgentSessionCandidatesSource).not.toContain('from "./agent-session-tracker"')
   })
 
   it("delegates emergency stop route behavior to emergency stop actions", () => {

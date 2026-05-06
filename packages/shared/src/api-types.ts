@@ -178,6 +178,20 @@ export interface OpenAICompatibleModelsResponse {
   data: OpenAICompatibleModelSummary[];
 }
 
+export interface AgentSessionCandidate {
+  id: string;
+  conversationId?: string;
+  conversationTitle?: string;
+  status: string;
+  startTime: number;
+  endTime?: number;
+}
+
+export interface AgentSessionCandidatesResponse {
+  activeSessions: AgentSessionCandidate[];
+  completedSessions: AgentSessionCandidate[];
+}
+
 export type OperatorHealthStatus = 'pass' | 'warning' | 'fail';
 export type OperatorHealthOverall = 'healthy' | 'warning' | 'critical';
 

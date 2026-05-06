@@ -15,6 +15,8 @@ export type {
   ModelsResponse,
   Settings,
   SettingsUpdate,
+  AgentSessionCandidate,
+  AgentSessionCandidatesResponse,
   ServerConversationMessage,
   ServerConversation,
   ServerConversationFull,

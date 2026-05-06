@@ -75,6 +75,7 @@ import {
   getSettings,
   updateSettings,
 } from "./settings-actions"
+import { getAgentSessionCandidates } from "./session-candidate-actions"
 import {
   createSkill,
   deleteSkill,
@@ -109,6 +110,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   deleteMcpServerConfig,
   getSettings,
   updateSettings,
+  getAgentSessionCandidates,
   recordOperatorAuditEvent,
   getConversation,
   getConversationVideoAsset,

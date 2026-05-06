@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import {
+  AgentSessionCandidate,
+  AgentSessionCandidatesResponse,
   AgentProfile,
   ExtendedSettingsApiClient,
   Loop,
@@ -36,6 +38,11 @@ import {
 } from '@dotagents/shared/repeat-task-utils';
 
 type ScheduleMode = 'continuous' | 'interval' | 'daily' | 'weekly';
+type SessionCandidateGroup = 'Active' | 'Recent' | 'Selected';
+
+type SessionCandidateOption = AgentSessionCandidate & {
+  group: SessionCandidateGroup;
+};
 
 type LoopFormData = {
   name: string;
@@ -92,6 +99,47 @@ function loopToFormData(loop: Loop): LoopFormData {
   };
 }
 
+function formatSessionCandidateTime(candidate: AgentSessionCandidate): string {
+  const timestamp = candidate.endTime ?? candidate.startTime;
+  return new Date(timestamp).toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function formatSessionCandidateTitle(candidate: AgentSessionCandidate): string {
+  return candidate.conversationTitle?.trim() || candidate.conversationId || candidate.id;
+}
+
+function buildSessionCandidateOptions(
+  candidates: AgentSessionCandidatesResponse | null,
+  selectedSessionId: string,
+): SessionCandidateOption[] {
+  const seen = new Set<string>();
+  const options: SessionCandidateOption[] = [];
+  for (const candidate of candidates?.activeSessions ?? []) {
+    if (seen.has(candidate.id)) continue;
+    seen.add(candidate.id);
+    options.push({ ...candidate, group: 'Active' });
+  }
+  for (const candidate of candidates?.completedSessions ?? []) {
+    if (seen.has(candidate.id)) continue;
+    seen.add(candidate.id);
+    options.push({ ...candidate, group: 'Recent' });
+  }
+  if (selectedSessionId && !seen.has(selectedSessionId)) {
+    options.unshift({
+      id: selectedSessionId,
+      status: 'unknown',
+      startTime: 0,
+      group: 'Selected',
+    });
+  }
+  return options;
+}
+
 export default function LoopEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -109,12 +157,19 @@ export default function LoopEditScreen({ navigation, route }: any) {
     loopFromRoute?.intervalMinutes ?? null
   );
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
+  const [sessionCandidates, setSessionCandidates] = useState<AgentSessionCandidatesResponse | null>(null);
   const [isLoading, setIsLoading] = useState(isEditing && !loopFromRoute);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
+  const [isLoadingSessionCandidates, setIsLoadingSessionCandidates] = useState(false);
+  const [sessionCandidateError, setSessionCandidateError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const sessionCandidateOptions = useMemo(() => buildSessionCandidateOptions(
+    sessionCandidates,
+    formData.lastSessionId.trim(),
+  ), [formData.lastSessionId, sessionCandidates]);
 
   const settingsClient = useMemo(() => {
     if (config.baseUrl && config.apiKey) {
@@ -151,6 +206,29 @@ export default function LoopEditScreen({ navigation, route }: any) {
       })
       .finally(() => {
         if (!cancelled) setIsLoadingProfiles(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [settingsClient]);
+
+  useEffect(() => {
+    if (!settingsClient) return;
+    let cancelled = false;
+    setIsLoadingSessionCandidates(true);
+    setSessionCandidateError(null);
+    settingsClient.getAgentSessionCandidates(20)
+      .then((res) => {
+        if (!cancelled) {
+          setSessionCandidates(res);
+        }
+      })
+      .catch((err: Error) => {
+        if (!cancelled) {
+          setSessionCandidateError(err.message || 'Failed to load sessions');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingSessionCandidates(false);
       });
 
     return () => { cancelled = true; };
@@ -489,16 +567,52 @@ export default function LoopEditScreen({ navigation, route }: any) {
       </View>
       {formData.continueInSession && (
         <>
-          <Text style={styles.label}>Pinned session ID (optional)</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.lastSessionId}
-            onChangeText={v => updateField('lastSessionId', v)}
-            placeholder="Auto uses this task's most recent session"
-            placeholderTextColor={theme.colors.mutedForeground}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <Text style={styles.label}>Continue from session</Text>
+          <View style={styles.profileOptions}>
+            <TouchableOpacity
+              style={[styles.profileOption, !formData.lastSessionId && styles.profileOptionActive]}
+              onPress={() => updateField('lastSessionId', '')}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Auto select this loop most recent session')}
+              accessibilityHint={!formData.lastSessionId ? 'Currently selected. Future runs use this task most recent session.' : 'Clears the pinned session for this loop.'}
+              accessibilityState={{ selected: !formData.lastSessionId }}
+            >
+              <View style={styles.profileOptionInfo}>
+                <Text style={[styles.profileOptionText, !formData.lastSessionId && styles.profileOptionTextActive]}>Auto</Text>
+                <Text style={[styles.profileOptionHelperText, !formData.lastSessionId && styles.profileOptionHelperTextActive]}>Uses this task's most recent session when it can be revived.</Text>
+              </View>
+              {!formData.lastSessionId && <Text style={styles.profileOptionCheckmark}>✓</Text>}
+            </TouchableOpacity>
+            {sessionCandidateOptions.map(candidate => {
+              const active = formData.lastSessionId === candidate.id;
+              return (
+                <TouchableOpacity
+                  key={`${candidate.group}:${candidate.id}`}
+                  style={[styles.profileOption, active && styles.profileOptionActive]}
+                  onPress={() => updateField('lastSessionId', candidate.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel(`Continue from ${formatSessionCandidateTitle(candidate)}`)}
+                  accessibilityHint={active ? 'Currently selected for this loop.' : 'Pins this session for the next loop run.'}
+                  accessibilityState={{ selected: active }}
+                >
+                  <View style={styles.profileOptionInfo}>
+                    <Text style={[styles.profileOptionText, active && styles.profileOptionTextActive]} numberOfLines={1}>
+                      {formatSessionCandidateTitle(candidate)}
+                    </Text>
+                    <Text style={[styles.profileOptionHelperText, active && styles.profileOptionHelperTextActive]} numberOfLines={1}>
+                      {candidate.group} - {candidate.status} - {candidate.startTime ? formatSessionCandidateTime(candidate) : candidate.id}
+                    </Text>
+                  </View>
+                  {active && <Text style={styles.profileOptionCheckmark}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {isLoadingSessionCandidates && <Text style={styles.helperText}>Loading sessions...</Text>}
+          {sessionCandidateError && <Text style={styles.helperText}>{sessionCandidateError}</Text>}
+          {!isLoadingSessionCandidates && !sessionCandidateError && sessionCandidateOptions.length === 0 && (
+            <Text style={styles.helperText}>No active or recent desktop sessions found. Auto still tracks the next session this loop creates.</Text>
+          )}
         </>
       )}
       <Text style={styles.label}>Max iterations (optional)</Text>

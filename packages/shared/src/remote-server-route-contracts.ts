@@ -76,6 +76,7 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
       langfuseSecretMask: string;
     },
   ) => RemoteServerMaybePromise<MobileApiActionResult>;
+  getAgentSessionCandidates: (query?: unknown) => MobileApiActionResult;
   recordOperatorAuditEvent: (
     request: Request,
     context: NonNullable<MobileApiActionResult['auditContext']>,

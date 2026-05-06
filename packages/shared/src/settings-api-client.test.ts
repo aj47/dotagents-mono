@@ -871,6 +871,7 @@ describe('SettingsApiClient', () => {
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.mcpConfigExport }, expectedPath: REMOTE_SERVER_API_PATHS.mcpConfigExport, run: () => client.exportMCPServerConfigs() },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.settings }, expectedPath: REMOTE_SERVER_API_PATHS.settings, run: () => client.getSettings() },
       { route: { method: 'PATCH', path: REMOTE_SERVER_API_PATHS.settings }, expectedPath: REMOTE_SERVER_API_PATHS.settings, run: () => client.updateSettings({ mcpMaxIterations: 20 }) },
+      { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.agentSessionCandidates }, expectedPath: buildRemoteServerApiQueryPath(REMOTE_SERVER_API_PATHS.agentSessionCandidates, { limit: 20 }), run: () => client.getAgentSessionCandidates(20) },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.models }, expectedPath: REMOTE_SERVER_API_PATHS.models, run: () => client.getOpenAICompatibleModels() },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.modelsByProvider }, expectedPath: REMOTE_SERVER_API_BUILDERS.modelsByProvider('openai'), run: () => client.getModels('openai') },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.operatorModelPresets }, expectedPath: REMOTE_SERVER_API_PATHS.operatorModelPresets, run: () => client.getModelPresets() },
