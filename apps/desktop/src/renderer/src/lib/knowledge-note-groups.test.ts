@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { KnowledgeNote } from "@shared/types"
 
-import { buildKnowledgeNoteSections, getKnowledgeNoteGrouping } from "./knowledge-note-groups"
+import { buildKnowledgeNoteSections, getKnowledgeNoteGrouping } from "@dotagents/shared/knowledge-note-grouping"
 
 function makeNote(id: string, overrides: Partial<KnowledgeNote> = {}): KnowledgeNote {
   return {

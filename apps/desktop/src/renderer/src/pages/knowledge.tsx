@@ -43,7 +43,7 @@ import {
   X,
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
-import { buildKnowledgeNoteSections } from "@renderer/lib/knowledge-note-groups"
+import { buildKnowledgeNoteSections } from "@dotagents/shared/knowledge-note-grouping"
 import {
   formatKnowledgeNoteReferencesInput,
   formatKnowledgeNoteTagsInput,
