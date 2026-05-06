@@ -33,6 +33,10 @@ export interface CloudflareTunnelConfig {
   cloudflareTunnelHostname?: string;
 }
 
+export interface StreamerModeConfig {
+  streamerModeEnabled?: boolean;
+}
+
 export type RemoteServerLifecycleConfigLike = {
   remoteServerEnabled?: boolean;
   remoteServerPort?: number;
@@ -80,14 +84,11 @@ export type RemoteServerCorsOptions = {
   strictPreflight: boolean;
 };
 
-export type RemoteServerPairingApiKeyConfigLike = RemoteServerApiKeyConfigLike & {
-  streamerModeEnabled?: boolean;
-};
+export type RemoteServerPairingApiKeyConfigLike = RemoteServerApiKeyConfigLike & StreamerModeConfig;
 
-export type RemoteServerPairingQrPrintOptions = {
+export type RemoteServerPairingQrPrintOptions = StreamerModeConfig & {
   skipAutoPrintQR?: boolean;
   apiKey?: string;
-  streamerModeEnabled?: boolean;
   headlessEnvironment?: boolean;
   terminalQrEnabled?: boolean;
 };

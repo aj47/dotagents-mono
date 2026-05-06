@@ -15,6 +15,7 @@ import type {
 import type {
   CloudflareTunnelConfig,
   RemoteServerConfig,
+  StreamerModeConfig,
 } from './remote-pairing';
 import type { ObservabilityConfig } from './observability-config';
 export type { LoopSchedule } from './types';
@@ -600,7 +601,7 @@ export interface AgentExecutionConfig {
   dualModelEnabled?: boolean;
 }
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig {
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -692,14 +693,11 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, Ob
   discordDefaultProfileId?: string;
   discordLogMessages?: boolean;
 
-  // Streamer Mode
-  streamerModeEnabled?: boolean;
-
   // acpx-capable agent profile summaries (read-only, from GET only)
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig {
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -789,9 +787,6 @@ export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConf
   discordOperatorAllowRoleIds?: string[];
   discordDefaultProfileId?: string;
   discordLogMessages?: boolean;
-
-  // Streamer Mode
-  streamerModeEnabled?: boolean;
 
 }
 

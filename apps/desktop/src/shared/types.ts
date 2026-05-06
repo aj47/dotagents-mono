@@ -17,7 +17,7 @@ import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
 import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
 import type { AgentExecutionConfig, PredefinedPromptsConfig } from '@dotagents/shared/api-types'
 import type { MainAgentConfig } from '@dotagents/shared/main-agent-selection'
-import type { CloudflareTunnelConfig, RemoteServerConfig } from '@dotagents/shared/remote-pairing'
+import type { CloudflareTunnelConfig, RemoteServerConfig, StreamerModeConfig } from '@dotagents/shared/remote-pairing'
 import type { ObservabilityConfig } from '@dotagents/shared/observability-config'
 import type {
   LegacyAcpAgentConfig,
@@ -49,7 +49,7 @@ export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from
 export type { KnowledgeNoteDateFilter, KnowledgeNoteGroupSummary, KnowledgeNoteSeriesSummary, KnowledgeNoteSort, KnowledgeNotesOverview } from '@dotagents/shared/knowledge-note-grouping'
 export type { PushNotificationToken } from '@dotagents/shared/push-notifications'
 export type { EnhancedModelInfo, ModelInfo, ModelsDevCost, ModelsDevData, ModelsDevLimit, ModelsDevModalities, ModelsDevModel, ModelsDevProvider } from '@dotagents/shared/api-types'
-export type { CloudflareTunnelConfig, RemoteServerBindAddress, RemoteServerConfig, RemoteServerLogLevel } from '@dotagents/shared/remote-pairing'
+export type { CloudflareTunnelConfig, RemoteServerBindAddress, RemoteServerConfig, RemoteServerLogLevel, StreamerModeConfig } from '@dotagents/shared/remote-pairing'
 export type { LangfuseObservabilityConfig, LocalTraceLoggingConfig, ObservabilityConfig } from '@dotagents/shared/observability-config'
 export type { MainAgentConfig, MainAgentMode } from '@dotagents/shared/main-agent-selection'
 export type { LegacyAcpAgentConfig, LegacyPersonaRecord, LegacyPersonasData, LegacyProfileRecord, LegacyProfilesData } from '@dotagents/shared/agent-profile-legacy-converters'
@@ -138,7 +138,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -410,10 +410,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
 
   // Unified Agent Profiles (managed by agent-profile-service)
   agentProfiles?: SharedAgentProfile[]
-
-  // Streamer Mode Configuration
-  // When enabled, hides sensitive information (phone numbers, QR codes, API keys) for screen sharing
-  streamerModeEnabled?: boolean
 
   // Push Notification Configuration for Mobile App
   // Stores registered push notification tokens from mobile clients

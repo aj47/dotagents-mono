@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { ModelPreset } from './providers'
+import type { StreamerModeConfig } from './remote-pairing'
 import type { QueuedMessage, MessageQueue, RecordingHistoryItem } from './types'
 import type {
   KnowledgeNoteCreateRequest,
@@ -371,6 +372,15 @@ describe('settings API request/response contracts', () => {
 
     assertType<AgentExecutionConfig>(config)
     expect(config.mcpMaxIterations).toBe(12)
+  })
+
+  it('accepts streamer mode config shared by settings and remote pairing', () => {
+    const config: StreamerModeConfig = {
+      streamerModeEnabled: true,
+    }
+
+    assertType<StreamerModeConfig>(config)
+    expect(config.streamerModeEnabled).toBe(true)
   })
 
   it('accepts repeat task create/update payloads with nullable schedules', () => {
