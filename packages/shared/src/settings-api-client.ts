@@ -58,6 +58,9 @@ import type {
 import type { MCPConfig, MCPServerConfig } from './mcp-utils';
 import { sanitizeConfigStringList } from './config-list-input';
 import {
+  DEFAULT_TEXT_INPUT_ENABLED,
+} from './key-utils';
+import {
   buildRemoteServerApiQueryPath,
   REMOTE_SERVER_API_BUILDERS,
   REMOTE_SERVER_API_PATHS,
@@ -392,7 +395,7 @@ export function buildSettingsResponse(
     panelWaveformSize: cfg.panelWaveformSize,
     panelTextInputSize: cfg.panelTextInputSize,
     panelProgressSize: cfg.panelProgressSize,
-    textInputEnabled: cfg.textInputEnabled ?? true,
+    textInputEnabled: cfg.textInputEnabled ?? DEFAULT_TEXT_INPUT_ENABLED,
     conversationsEnabled: cfg.conversationsEnabled ?? true,
     maxConversationsToKeep: cfg.maxConversationsToKeep ?? 100,
     autoSaveConversations: cfg.autoSaveConversations ?? true,

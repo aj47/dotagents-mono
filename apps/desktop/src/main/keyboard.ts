@@ -16,7 +16,12 @@ import { state, agentProcessManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { spawn, ChildProcess } from "child_process"
 import path from "path"
-import { matchesKeyCombo, getEffectiveShortcut } from "@dotagents/shared/key-utils"
+import {
+  DEFAULT_TEXT_INPUT_ENABLED,
+  DEFAULT_TEXT_INPUT_SHORTCUT,
+  matchesKeyCombo,
+  getEffectiveShortcut,
+} from "@dotagents/shared/key-utils"
 import { isDebugKeybinds, logKeybinds } from "./debug"
 import { captureSelectedScreenRegion } from "./screenshot-capture"
 
@@ -673,9 +678,10 @@ export function listenToKeyboardEvents() {
       }
 
       // Handle text input shortcuts
-      if (config.textInputEnabled) {
+      if (config.textInputEnabled ?? DEFAULT_TEXT_INPUT_ENABLED) {
+        const textInputShortcut = config.textInputShortcut ?? DEFAULT_TEXT_INPUT_SHORTCUT
         const effectiveTextInputShortcut = getEffectiveShortcut(
-          config.textInputShortcut,
+          textInputShortcut,
           config.customTextInputShortcut,
         )
 
@@ -707,7 +713,7 @@ export function listenToKeyboardEvents() {
         }
 
         if (
-          config.textInputShortcut === "ctrl-t" &&
+          textInputShortcut === "ctrl-t" &&
           e.data.key === "KeyT" &&
           isPressedCtrlKey &&
           !isPressedAltKey
@@ -728,7 +734,7 @@ export function listenToKeyboardEvents() {
           return
         }
         if (
-          config.textInputShortcut === "ctrl-shift-t" &&
+          textInputShortcut === "ctrl-shift-t" &&
           e.data.key === "KeyT" &&
           isPressedCtrlKey &&
           isPressedShiftKey &&
@@ -744,7 +750,7 @@ export function listenToKeyboardEvents() {
           return
         }
         if (
-          config.textInputShortcut === "alt-t" &&
+          textInputShortcut === "alt-t" &&
           e.data.key === "KeyT" &&
           !isPressedCtrlKey &&
           isPressedAltKey
@@ -767,7 +773,7 @@ export function listenToKeyboardEvents() {
 
         // Handle custom text input shortcut
         if (
-          config.textInputShortcut === "custom" &&
+          textInputShortcut === "custom" &&
           effectiveTextInputShortcut
         ) {
           const matches = matchesKeyCombo(

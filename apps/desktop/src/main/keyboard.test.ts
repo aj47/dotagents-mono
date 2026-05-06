@@ -236,3 +236,13 @@ describe("keyboard Escape handling", () => {
     )
   })
 })
+
+describe("keyboard text input defaults", () => {
+  it("uses shared text input defaults for the runtime hotkey gate", () => {
+    expect(keyboardSource).toContain("DEFAULT_TEXT_INPUT_ENABLED")
+    expect(keyboardSource).toContain("DEFAULT_TEXT_INPUT_SHORTCUT")
+    expect(keyboardSource).toContain("config.textInputEnabled ?? DEFAULT_TEXT_INPUT_ENABLED")
+    expect(keyboardSource).toContain("textInputShortcut = config.textInputShortcut ?? DEFAULT_TEXT_INPUT_SHORTCUT")
+    expect(keyboardSource).toContain('textInputShortcut === "ctrl-t"')
+  })
+})

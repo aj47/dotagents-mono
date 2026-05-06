@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DEFAULT_TEXT_INPUT_ENABLED,
+  DEFAULT_TEXT_INPUT_SHORTCUT,
   formatKeyComboForDisplay,
   getAgentShortcutDisplay,
   getDictationShortcutDisplay,
@@ -48,6 +50,11 @@ describe('formatKeyComboForDisplay', () => {
 })
 
 describe('shortcut display helpers', () => {
+  it('exports shared text input defaults', () => {
+    expect(DEFAULT_TEXT_INPUT_ENABLED).toBe(true)
+    expect(DEFAULT_TEXT_INPUT_SHORTCUT).toBe('ctrl-t')
+  })
+
   it('resolves custom shortcuts only when selected', () => {
     expect(getEffectiveShortcut('custom', 'ctrl-k')).toBe('ctrl-k')
     expect(getEffectiveShortcut('ctrl-t', 'ctrl-k')).toBe('ctrl-t')

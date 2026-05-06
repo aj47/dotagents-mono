@@ -61,6 +61,8 @@ import { useNavigate } from "react-router-dom"
 import { Config } from "@shared/types"
 import { KeyRecorder } from "@renderer/components/key-recorder"
 import {
+  DEFAULT_TEXT_INPUT_ENABLED,
+  DEFAULT_TEXT_INPUT_SHORTCUT,
   getEffectiveShortcut,
   formatKeyComboForDisplay,
 } from "@dotagents/shared/key-utils"
@@ -369,7 +371,8 @@ export function Component() {
   const sttProviderId: STT_PROVIDER_ID =
     (configQuery.data as any)?.sttProviderId || "openai"
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
-  const textInputShortcut = (configQuery.data as any)?.textInputShortcut || "ctrl-t"
+  const textInputEnabled = configQuery.data?.textInputEnabled ?? DEFAULT_TEXT_INPUT_ENABLED
+  const textInputShortcut = (configQuery.data as any)?.textInputShortcut || DEFAULT_TEXT_INPUT_SHORTCUT
   const recordingShortcutMode = cfg?.customShortcutMode || "hold"
   const effectiveRecordingShortcut = getEffectiveShortcut(shortcut, cfg?.customShortcut)
   const customRecordingShortcutDisplay = effectiveRecordingShortcut
@@ -836,7 +839,7 @@ export function Component() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Switch
-                  checked={configQuery.data?.textInputEnabled ?? true}
+                  checked={textInputEnabled}
                   onCheckedChange={(checked) => {
                     saveConfig({
                       textInputEnabled: checked,
@@ -851,7 +854,7 @@ export function Component() {
                         value as typeof configQuery.data.textInputShortcut,
                     })
                   }}
-                  disabled={!configQuery.data?.textInputEnabled}
+                  disabled={!textInputEnabled}
                 >
                   <SelectTrigger className="w-40">
                     <SelectValue />
@@ -866,7 +869,7 @@ export function Component() {
               </div>
 
               {textInputShortcut === "custom" &&
-                configQuery.data?.textInputEnabled && (
+                textInputEnabled && (
                   <KeyRecorder
                     value={configQuery.data?.customTextInputShortcut || ""}
                     onChange={(keyCombo) => {

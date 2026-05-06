@@ -25,6 +25,9 @@ import {
   DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED,
 } from './stt-models';
 import {
+  DEFAULT_TEXT_INPUT_ENABLED,
+} from './key-utils';
+import {
   buildRemoteServerApiQueryPath,
   REMOTE_SERVER_API_BUILDERS,
   REMOTE_SERVER_API_PATHS,
@@ -451,6 +454,16 @@ describe('SettingsApiClient', () => {
       apiKey: 'MASKED',
       hasApiKey: true,
     }));
+
+    const defaultResponse = buildSettingsResponse(
+      {},
+      {
+        providerSecretMask: 'MASKED',
+        remoteServerApiKey: 'REMOTE-MASK',
+        discordBotToken: 'DISCORD-MASK',
+      },
+    );
+    expect(defaultResponse.textInputEnabled).toBe(DEFAULT_TEXT_INPUT_ENABLED);
   });
 
   it('builds settings update responses and sensitive audit contexts', () => {

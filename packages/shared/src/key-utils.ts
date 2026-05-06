@@ -224,6 +224,9 @@ export const getMcpToolsShortcutDisplay = getAgentShortcutDisplay
  * Get the display string for the text input shortcut.
  * This provides a centralized mapping to ensure consistency across UI components.
  */
+export const DEFAULT_TEXT_INPUT_ENABLED = true
+export const DEFAULT_TEXT_INPUT_SHORTCUT = "ctrl-t"
+
 export function getTextInputShortcutDisplay(
   shortcut: "ctrl-t" | "ctrl-shift-t" | "alt-t" | "custom" | undefined,
   customShortcut?: string,
