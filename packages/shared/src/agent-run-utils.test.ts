@@ -10,6 +10,9 @@ import {
   describeAgentSessionId,
   getPreferredDelegationOutput,
   resolveAgentIterationLimits,
+  runRemoteAgentAction,
+  type RemoteAgentConversationLike,
+  type RemoteAgentRunActionService,
 } from './agent-run-utils';
 
 describe('resolveAgentIterationLimits', () => {
@@ -104,6 +107,120 @@ describe('describeAgentSessionId', () => {
     expect(describeAgentSessionId('acp-123')).toBe('unknown');
   });
 });
+
+describe('runRemoteAgentAction', () => {
+  function createRemoteAgentRunService(overrides: Partial<RemoteAgentRunActionService> = {}) {
+    const conversations = new Map<string, RemoteAgentConversationLike>()
+    conversations.set('conv-1', {
+      id: 'conv-1',
+      messages: [
+        { role: 'user', content: 'previous', timestamp: 1 },
+        { role: 'assistant', content: 'answer', timestamp: 2 },
+      ],
+    })
+
+    const calls: string[] = []
+    const revived: Array<{ sessionId: string; startSnoozed: boolean }> = []
+    const stateChanges: unknown[] = []
+    const service: RemoteAgentRunActionService = {
+      getConfig: () => ({ remoteServerAutoShowPanel: false }),
+      setAgentModeState: (state) => { stateChanges.push(state) },
+      addMessageToConversation: async (conversationId, prompt, role) => {
+        calls.push(`add:${conversationId}:${prompt}:${role}`)
+        const conversation = conversations.get(conversationId)
+        if (!conversation) return null
+        conversation.messages.push({ role, content: prompt, timestamp: 3 })
+        return conversation
+      },
+      createConversationWithId: async (conversationId, prompt, role) => {
+        calls.push(`create:${conversationId}:${prompt}:${role}`)
+        const conversation = {
+          id: conversationId,
+          messages: [{ role, content: prompt, timestamp: 1 }],
+        }
+        conversations.set(conversationId, conversation)
+        return conversation
+      },
+      generateConversationId: () => 'generated-conv',
+      findSessionByConversationId: (conversationId) => conversationId === 'conv-1' ? 'session-1' : undefined,
+      getSession: () => ({ status: 'active', isSnoozed: true }),
+      reviveSession: (sessionId, startSnoozed) => {
+        revived.push({ sessionId, startSnoozed })
+        return true
+      },
+      loadConversation: async (conversationId) => conversations.get(conversationId),
+      processAgentMode: async (prompt, conversationId, existingSessionId, startSnoozed, options) => {
+        calls.push(`process:${prompt}:${conversationId}:${existingSessionId ?? 'new'}:${startSnoozed}:${options.profileId ?? ''}`)
+        return 'done'
+      },
+      notifyConversationHistoryChanged: () => { calls.push('notify') },
+      ...overrides,
+    }
+
+    return { calls, conversations, revived, service, stateChanges }
+  }
+
+  it('continues existing conversations, revives active sessions, and returns formatted history', async () => {
+    const logMessages: string[] = []
+    const { calls, revived, service, stateChanges } = createRemoteAgentRunService()
+
+    await expect(runRemoteAgentAction({
+      prompt: 'next',
+      conversationId: 'conv-1',
+      profileId: 'profile-1',
+    }, {
+      service,
+      diagnostics: {
+        logInfo: (_source, message) => { logMessages.push(message) },
+      },
+    })).resolves.toEqual({
+      content: 'done',
+      conversationId: 'conv-1',
+      conversationHistory: [
+        { role: 'user', content: 'previous', timestamp: 1 },
+        { role: 'assistant', content: 'answer', timestamp: 2 },
+        { role: 'user', content: 'next', timestamp: 3 },
+      ],
+    })
+
+    expect(calls).toEqual([
+      'add:conv-1:next:user',
+      'process:next:conv-1:session-1:true:profile-1',
+      'notify',
+    ])
+    expect(revived).toEqual([{ sessionId: 'session-1', startSnoozed: true }])
+    expect(logMessages).toContain('Continuing conversation conv-1 with 2 previous messages')
+    expect(logMessages).toContain('Revived existing session session-1')
+    expect(stateChanges).toEqual([
+      { isAgentModeActive: true, shouldStopAgent: false, agentIterationCount: 0 },
+      { isAgentModeActive: false, shouldStopAgent: false, agentIterationCount: 0 },
+    ])
+  })
+
+  it('creates a generated conversation and notifies on agent failure before resetting state', async () => {
+    const { calls, service, stateChanges } = createRemoteAgentRunService({
+      processAgentMode: async () => { throw new Error('agent failed') },
+    })
+
+    await expect(runRemoteAgentAction({
+      prompt: 'new prompt',
+    }, {
+      service,
+      diagnostics: {
+        logInfo: () => {},
+      },
+    })).rejects.toThrow('agent failed')
+
+    expect(calls).toEqual([
+      'create:generated-conv:new prompt:user',
+      'notify',
+    ])
+    expect(stateChanges).toEqual([
+      { isAgentModeActive: true, shouldStopAgent: false, agentIterationCount: 0 },
+      { isAgentModeActive: false, shouldStopAgent: false, agentIterationCount: 0 },
+    ])
+  })
+})
 
 describe('buildProfileContext', () => {
   it('combines existing context with display name, prompts, and delegation guardrails', () => {

@@ -1,7 +1,9 @@
 import {
   RESPOND_TO_USER_TOOL,
   extractRespondToUserContentFromArgs,
+  formatConversationHistoryForApi,
   resolveLatestUserFacingResponse,
+  type ConversationHistoryForApiEntryLike,
 } from './chat-utils';
 import type { AgentProgressUpdate } from './agent-progress';
 import type { ConversationHistoryMessage } from './types';
@@ -31,6 +33,55 @@ export type AgentRunResult = {
 }
 
 export type AgentRunExecutor = (options: AgentRunOptions) => Promise<AgentRunResult>
+
+export type RemoteAgentRunConfigLike = {
+  remoteServerAutoShowPanel?: boolean
+}
+
+export type RemoteAgentConversationLike = {
+  id: string
+  messages: ConversationHistoryForApiEntryLike[]
+}
+
+export type RemoteAgentSessionLike = {
+  status?: string
+  isSnoozed?: boolean
+}
+
+export type RemoteAgentRunModeState = {
+  isAgentModeActive: boolean
+  shouldStopAgent: boolean
+  agentIterationCount: number
+}
+
+export interface RemoteAgentRunActionService<TConversation extends RemoteAgentConversationLike = RemoteAgentConversationLike> {
+  getConfig(): RemoteAgentRunConfigLike
+  setAgentModeState(state: RemoteAgentRunModeState): void
+  addMessageToConversation(conversationId: string, prompt: string, role: 'user'): Promise<TConversation | null | undefined>
+  createConversationWithId(conversationId: string, prompt: string, role: 'user'): Promise<TConversation>
+  generateConversationId(): string
+  findSessionByConversationId(conversationId: string): string | undefined
+  getSession(sessionId: string): RemoteAgentSessionLike | undefined
+  reviveSession(sessionId: string, startSnoozed: boolean): boolean
+  loadConversation(conversationId: string): Promise<TConversation | null | undefined>
+  processAgentMode(
+    prompt: string,
+    conversationId: string,
+    existingSessionId: string | undefined,
+    startSnoozed: boolean,
+    options: Pick<AgentRunOptions, 'profileId' | 'onProgress'>,
+  ): Promise<string>
+  notifyConversationHistoryChanged(): void
+}
+
+export interface RemoteAgentRunActionDiagnostics {
+  logInfo(source: string, message: string): void
+}
+
+export interface RemoteAgentRunActionOptions<TConversation extends RemoteAgentConversationLike = RemoteAgentConversationLike> {
+  service: RemoteAgentRunActionService<TConversation>
+  diagnostics: RemoteAgentRunActionDiagnostics
+}
 
 export interface AgentStoppedProgressUpdateOptions {
   sessionId: string
@@ -169,6 +220,97 @@ export function describeAgentSessionId(sessionId?: string | null): AgentSessionI
   if (sessionId.startsWith("subsession_")) return "subsession"
   if (sessionId.startsWith("session_")) return "session"
   return "unknown"
+}
+
+export async function runRemoteAgentAction<TConversation extends RemoteAgentConversationLike = RemoteAgentConversationLike>(
+  options: AgentRunOptions,
+  actionOptions: RemoteAgentRunActionOptions<TConversation>,
+): Promise<AgentRunResult> {
+  const { prompt, conversationId: inputConversationId, profileId, onProgress } = options
+  const { service, diagnostics } = actionOptions
+  const cfg = service.getConfig()
+
+  service.setAgentModeState({
+    isAgentModeActive: true,
+    shouldStopAgent: false,
+    agentIterationCount: 0,
+  })
+
+  let conversationId = inputConversationId
+
+  if (conversationId) {
+    const updatedConversation = await service.addMessageToConversation(
+      conversationId,
+      prompt,
+      "user",
+    )
+
+    if (updatedConversation) {
+      diagnostics.logInfo(
+        "remote-server",
+        `Continuing conversation ${conversationId} with ${Math.max(0, updatedConversation.messages.length - 1)} previous messages`,
+      )
+    } else {
+      diagnostics.logInfo("remote-server", `Conversation ${conversationId} not found, creating with provided ID`)
+      const newConversation = await service.createConversationWithId(conversationId, prompt, "user")
+      conversationId = newConversation.id
+      diagnostics.logInfo("remote-server", `Created new conversation with ID ${newConversation.id}`)
+    }
+  }
+
+  if (!conversationId) {
+    const newConversation = await service.createConversationWithId(
+      service.generateConversationId(),
+      prompt,
+      "user",
+    )
+    conversationId = newConversation.id
+    diagnostics.logInfo("remote-server", `Created new conversation ${conversationId}`)
+  }
+
+  const activeConversationId = conversationId
+  const startSnoozed = !cfg.remoteServerAutoShowPanel
+  let existingSessionId: string | undefined
+  const foundSessionId = service.findSessionByConversationId(activeConversationId)
+  if (foundSessionId) {
+    const existingSession = service.getSession(foundSessionId)
+    const isAlreadyActive = existingSession && existingSession.status === "active"
+    const snoozeForRevive = isAlreadyActive ? existingSession.isSnoozed ?? false : startSnoozed
+    const revived = service.reviveSession(foundSessionId, snoozeForRevive)
+    if (revived) {
+      existingSessionId = foundSessionId
+      diagnostics.logInfo("remote-server", `Revived existing session ${existingSessionId}`)
+    }
+  }
+
+  const loadFormattedConversationHistory = async () => {
+    const latestConversation = await service.loadConversation(activeConversationId)
+    return formatConversationHistoryForApi(latestConversation?.messages || [])
+  }
+
+  try {
+    const content = await service.processAgentMode(
+      prompt,
+      activeConversationId,
+      existingSessionId,
+      startSnoozed,
+      { profileId, onProgress },
+    )
+
+    const formattedHistory = await loadFormattedConversationHistory()
+    service.notifyConversationHistoryChanged()
+
+    return { content, conversationId: activeConversationId, conversationHistory: formattedHistory }
+  } catch (caughtError) {
+    service.notifyConversationHistoryChanged()
+    throw caughtError
+  } finally {
+    service.setAgentModeState({
+      isAgentModeActive: false,
+      shouldStopAgent: false,
+      agentIterationCount: 0,
+    })
+  }
 }
 
 function getLatestAssistantMessageContent(
