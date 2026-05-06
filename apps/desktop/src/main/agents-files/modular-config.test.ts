@@ -10,7 +10,7 @@ import {
   loadMergedAgentsConfig,
   writeAgentsLayerFromConfig,
   writeAgentsPrompts,
-} from "./modular-config"
+} from "@dotagents/core"
 
 const DEFAULT_PROMPT = "DEFAULT PROMPT\nLine2"
 

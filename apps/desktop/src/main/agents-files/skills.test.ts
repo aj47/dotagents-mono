@@ -12,7 +12,7 @@ import {
   writeAgentsSkillFile,
   type AgentSkill,
 } from "@dotagents/core"
-import { getAgentsLayerPaths } from "./modular-config"
+import { getAgentsLayerPaths } from "@dotagents/core"
 
 function mkTempDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix))

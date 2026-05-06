@@ -14,7 +14,7 @@ import type {
 } from "@dotagents/shared/knowledge-note-grouping"
 import { logLLM, isDebugLLM } from "./debug"
 import { globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
-import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
+import { getAgentsLayerPaths, type AgentsLayerPaths } from "@dotagents/core"
 import {
   getAgentsKnowledgeBackupDir,
   knowledgeNoteSlugToFilePath,

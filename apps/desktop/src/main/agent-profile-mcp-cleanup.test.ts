@@ -3,7 +3,7 @@ import fs from "fs"
 import os from "os"
 import path from "path"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles, type AgentProfile } from "@dotagents/core"
-import { getAgentsLayerPaths } from "./agents-files/modular-config"
+import { getAgentsLayerPaths } from "@dotagents/core"
 import { cleanupInvalidMcpServerReferencesInLayers } from "./agent-profile-mcp-cleanup"
 
 function createTempDir(): string {

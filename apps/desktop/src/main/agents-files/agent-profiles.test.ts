@@ -9,7 +9,7 @@ import {
   type AgentProfileConnectionType,
   type AgentProfileRole,
 } from "@dotagents/core"
-import { getAgentsLayerPaths, type AgentsLayerPaths } from "./modular-config"
+import { getAgentsLayerPaths, type AgentsLayerPaths } from "@dotagents/core"
 
 function mkTempLayer(prefix: string): AgentsLayerPaths {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))

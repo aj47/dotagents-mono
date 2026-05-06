@@ -19,7 +19,7 @@ import {
   type ImportConflictStrategy,
 } from "./bundle-service"
 import type { HubPublishPayload } from "@dotagents/shared/hub"
-import { getAgentsLayerPaths } from "./agents-files/modular-config"
+import { getAgentsLayerPaths } from "@dotagents/core"
 import {
   loadAgentProfilesLayer,
   writeKnowledgeNoteFile,

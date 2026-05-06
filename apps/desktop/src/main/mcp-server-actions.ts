@@ -9,7 +9,7 @@ import {
 } from "@dotagents/shared/mcp-api"
 import type { MCPConfig } from "@dotagents/shared/mcp-utils"
 import type { MobileApiActionResult } from "@dotagents/shared/remote-server-route-contracts"
-import { getAgentsLayerPaths } from "./agents-files/modular-config"
+import { getAgentsLayerPaths } from "@dotagents/core"
 import { cleanupInvalidMcpServerReferencesInLayers } from "./agent-profile-mcp-cleanup"
 import { agentProfileService } from "./agent-profile-service"
 import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"

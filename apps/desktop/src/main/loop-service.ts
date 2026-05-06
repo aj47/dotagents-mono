@@ -26,7 +26,7 @@ import {
 import { formatRepeatTaskTitle } from "@dotagents/shared/repeat-task-utils"
 import type { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
-import { getAgentsLayerPaths } from "./agents-files/modular-config"
+import { getAgentsLayerPaths } from "@dotagents/core"
 import {
   describeRepeatTaskScheduleForLog,
   getNextRepeatTaskDelayMs,

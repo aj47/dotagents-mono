@@ -9,7 +9,7 @@ import {
   type AgentProfile,
   type AgentSkill,
 } from "@dotagents/core"
-import { getAgentsLayerPaths } from "./agents-files/modular-config"
+import { getAgentsLayerPaths } from "@dotagents/core"
 import {
   cleanupInvalidSkillReferencesInLayers,
   cleanupInvalidSkillReferencesInProfiles,

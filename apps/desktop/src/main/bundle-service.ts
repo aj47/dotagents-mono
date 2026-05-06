@@ -39,7 +39,7 @@ import {
 import { DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION } from "@dotagents/shared/bundle-api"
 import { isAgentProfileConnectionTypeValue } from "@dotagents/shared/agent-profile-connection"
 import { isAgentProfileRole } from "@dotagents/shared/agent-profile-role"
-import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
+import { getAgentsLayerPaths, type AgentsLayerPaths } from "@dotagents/core"
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "@dotagents/core"
 import { logApp } from "./debug"
 

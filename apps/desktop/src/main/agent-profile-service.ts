@@ -84,7 +84,7 @@ import { randomUUID } from "crypto"
 import { logApp } from "./debug"
 import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { getRuntimeToolNames } from "./runtime-tool-definitions"
-import { getAgentsLayerPaths } from "./agents-files/modular-config"
+import { getAgentsLayerPaths } from "@dotagents/core"
 import {
   deleteAgentProfileFiles,
   loadAgentProfilesLayer,

@@ -1,5 +1,5 @@
 import { loadAgentProfilesLayer, writeAgentsProfileFiles, type AgentProfile } from "@dotagents/core"
-import type { AgentsLayerPaths } from "./agents-files/modular-config"
+import type { AgentsLayerPaths } from "@dotagents/core"
 import {
   cleanupInvalidMcpServerReferencesInProfiles as cleanupSharedInvalidMcpServerReferencesInProfiles,
   type AgentProfileMcpReferenceCleanupSummary,

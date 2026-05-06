@@ -13,7 +13,7 @@ import {
 import type { MobileApiActionResult } from "@dotagents/shared/remote-server-route-contracts"
 import { cleanupInvalidSkillReferencesInLayers } from "./agent-profile-skill-cleanup"
 import { agentProfileService } from "./agent-profile-service"
-import { getAgentsLayerPaths } from "./agents-files/modular-config"
+import { getAgentsLayerPaths } from "@dotagents/core"
 import { globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { diagnosticsService } from "./diagnostics"
 import { skillsService } from "./skills-service"

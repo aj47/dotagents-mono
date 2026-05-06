@@ -1,5 +1,5 @@
 import { loadAgentProfilesLayer, writeAgentsProfileFiles, type AgentProfile } from "@dotagents/core"
-import type { AgentsLayerPaths } from "./agents-files/modular-config"
+import type { AgentsLayerPaths } from "@dotagents/core"
 import {
   cleanupInvalidSkillReferencesInProfiles as cleanupSharedInvalidSkillReferencesInProfiles,
   type AgentProfileSkillReferenceCleanupSummary,

@@ -32,7 +32,7 @@ import { getRendererHandlers } from "@egoist/tipc/main"
 import type { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
 import { dataFolder, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
-import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
+import { getAgentsLayerPaths, type AgentsLayerPaths } from "@dotagents/core"
 import { readTextFileIfExistsSync, safeWriteFileSync } from "@dotagents/core"
 
 type SkillOrigin = {

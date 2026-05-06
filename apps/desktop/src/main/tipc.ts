@@ -1981,7 +1981,7 @@ export const router = {
 
   getAgentsFolders: t.procedure.action(async () => {
     const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getAgentsLayerPaths } = await import("@dotagents/core")
     const { getAgentsKnowledgeDir } = await import("@dotagents/core")
     const { getAgentsSkillsDir } = await import("@dotagents/core")
 
@@ -2029,7 +2029,7 @@ export const router = {
 
   openSystemPromptFile: t.procedure.action(async () => {
     const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths, writeAgentsPrompts } = await import("./agents-files/modular-config")
+    const { getAgentsLayerPaths, writeAgentsPrompts } = await import("@dotagents/core")
     const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts-default")
 
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -2053,7 +2053,7 @@ export const router = {
 
   openAgentsGuidelinesFile: t.procedure.action(async () => {
     const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths, writeAgentsPrompts } = await import("./agents-files/modular-config")
+    const { getAgentsLayerPaths, writeAgentsPrompts } = await import("@dotagents/core")
     const { DEFAULT_SYSTEM_PROMPT } = await import("./system-prompts-default")
 
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -2111,7 +2111,7 @@ export const router = {
 
       try {
         const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-        const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+        const { getAgentsLayerPaths } = await import("@dotagents/core")
         const { cleanupInvalidMcpServerReferencesInLayers } = await import("./agent-profile-mcp-cleanup")
 
         const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -3615,7 +3615,7 @@ export const router = {
       if (!success) return false
 
       const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-      const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+      const { getAgentsLayerPaths } = await import("@dotagents/core")
       const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
 
       const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -3640,7 +3640,7 @@ export const router = {
 
       if (results.some(result => result.success)) {
         const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-        const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+        const { getAgentsLayerPaths } = await import("@dotagents/core")
         const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
 
         const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -3658,7 +3658,7 @@ export const router = {
   cleanupStaleSkillReferences: t.procedure.action(async () => {
     const { skillsService } = await import("./skills-service")
     const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getAgentsLayerPaths } = await import("@dotagents/core")
     const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
 
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -3675,7 +3675,7 @@ export const router = {
 
   cleanupStaleMcpServerReferences: t.procedure.action(async () => {
     const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getAgentsLayerPaths } = await import("@dotagents/core")
     const { cleanupInvalidMcpServerReferencesInLayers } = await import("./agent-profile-mcp-cleanup")
 
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -3798,7 +3798,7 @@ export const router = {
 
   openSkillsFolder: t.procedure.action(async () => {
     const { globalAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getAgentsLayerPaths } = await import("@dotagents/core")
     const { getAgentsSkillsDir } = await import("@dotagents/core")
 
     // Canonical skills location is the global layer.
@@ -3812,7 +3812,7 @@ export const router = {
 
   openWorkspaceSkillsFolder: t.procedure.action(async () => {
     const { resolveWorkspaceAgentsFolder } = await import("./config")
-    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { getAgentsLayerPaths } = await import("@dotagents/core")
     const { getAgentsSkillsDir } = await import("@dotagents/core")
 
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -4454,7 +4454,7 @@ export const router = {
       }
 
       const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
-      const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+      const { getAgentsLayerPaths } = await import("@dotagents/core")
       const { loadTasksLayer, taskIdToFilePath, writeTaskFile } = await import("@dotagents/core")
 
       const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
