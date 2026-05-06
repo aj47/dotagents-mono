@@ -7,7 +7,13 @@ import type { WhatsAppIntegrationConfig } from './whatsapp-config'
 import {
   DEFAULT_AUTO_SAVE_CONVERSATIONS,
   DEFAULT_CONVERSATIONS_ENABLED,
+  DEFAULT_FLOATING_PANEL_AUTO_SHOW,
+  DEFAULT_HIDE_DOCK_ICON,
+  DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED,
+  DEFAULT_LAUNCH_AT_LOGIN,
   DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
+  DEFAULT_PANEL_DRAG_ENABLED,
+  DEFAULT_PANEL_POSITION,
 } from './api-types'
 import type {
   KnowledgeNoteCreateRequest,
@@ -483,6 +489,10 @@ describe('settings API request/response contracts', () => {
   })
 
   it('accepts desktop display settings through the shared settings API', () => {
+    const defaultConfig: Required<Pick<DesktopDisplayConfig, 'floatingPanelAutoShow' | 'hidePanelWhenMainFocused'>> = {
+      floatingPanelAutoShow: DEFAULT_FLOATING_PANEL_AUTO_SHOW,
+      hidePanelWhenMainFocused: DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED,
+    }
     const config: DesktopDisplayConfig = {
       themePreference: 'dark',
       floatingPanelAutoShow: false,
@@ -494,10 +504,16 @@ describe('settings API request/response contracts', () => {
 
     assertType<DesktopDisplayConfig>(config)
     assertType<SettingsUpdate>(update)
+    expect(defaultConfig.floatingPanelAutoShow).toBe(true)
+    expect(defaultConfig.hidePanelWhenMainFocused).toBe(true)
     expect(update.themePreference).toBe('dark')
   })
 
   it('accepts desktop shell settings through the shared settings API', () => {
+    const defaultConfig: Required<DesktopShellConfig> = {
+      hideDockIcon: DEFAULT_HIDE_DOCK_ICON,
+      launchAtLogin: DEFAULT_LAUNCH_AT_LOGIN,
+    }
     const config: DesktopShellConfig = {
       hideDockIcon: true,
       launchAtLogin: true,
@@ -508,10 +524,16 @@ describe('settings API request/response contracts', () => {
 
     assertType<DesktopShellConfig>(config)
     assertType<SettingsUpdate>(update)
+    expect(defaultConfig.hideDockIcon).toBe(false)
+    expect(defaultConfig.launchAtLogin).toBe(false)
     expect(update.launchAtLogin).toBe(true)
   })
 
   it('accepts desktop panel layout settings through the shared settings API', () => {
+    const defaultConfig: Required<Pick<DesktopPanelLayoutConfig, 'panelPosition' | 'panelDragEnabled'>> = {
+      panelPosition: DEFAULT_PANEL_POSITION,
+      panelDragEnabled: DEFAULT_PANEL_DRAG_ENABLED,
+    }
     const config: DesktopPanelLayoutConfig = {
       panelPosition: 'custom',
       panelCustomPosition: { x: 40, y: -20 },
@@ -527,6 +549,8 @@ describe('settings API request/response contracts', () => {
 
     assertType<DesktopPanelLayoutConfig>(config)
     assertType<SettingsUpdate>(update)
+    expect(defaultConfig.panelPosition).toBe('top-right')
+    expect(defaultConfig.panelDragEnabled).toBe(true)
     expect(update.panelPosition).toBe('custom')
   })
 

@@ -74,7 +74,13 @@ import {
 import {
   DEFAULT_AUTO_SAVE_CONVERSATIONS,
   DEFAULT_CONVERSATIONS_ENABLED,
+  DEFAULT_FLOATING_PANEL_AUTO_SHOW,
+  DEFAULT_HIDE_DOCK_ICON,
+  DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED,
+  DEFAULT_LAUNCH_AT_LOGIN,
   DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
+  DEFAULT_PANEL_DRAG_ENABLED,
+  DEFAULT_PANEL_POSITION,
 } from './api-types';
 
 function jsonResponse(body: unknown, status: number = 200) {
@@ -487,6 +493,12 @@ describe('SettingsApiClient', () => {
     expect(defaultResponse.sttProviderId).toBe(DEFAULT_STT_PROVIDER_ID);
     expect(defaultResponse.ttsProviderId).toBe(DEFAULT_TTS_PROVIDER_ID);
     expect(defaultResponse.transcriptPostProcessingProviderId).toBe(DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID);
+    expect(defaultResponse.floatingPanelAutoShow).toBe(DEFAULT_FLOATING_PANEL_AUTO_SHOW);
+    expect(defaultResponse.hidePanelWhenMainFocused).toBe(DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED);
+    expect(defaultResponse.hideDockIcon).toBe(DEFAULT_HIDE_DOCK_ICON);
+    expect(defaultResponse.launchAtLogin).toBe(DEFAULT_LAUNCH_AT_LOGIN);
+    expect(defaultResponse.panelPosition).toBe(DEFAULT_PANEL_POSITION);
+    expect(defaultResponse.panelDragEnabled).toBe(DEFAULT_PANEL_DRAG_ENABLED);
     expect(defaultResponse.textInputEnabled).toBe(DEFAULT_TEXT_INPUT_ENABLED);
     expect(defaultResponse.conversationsEnabled).toBe(DEFAULT_CONVERSATIONS_ENABLED);
     expect(defaultResponse.maxConversationsToKeep).toBe(DEFAULT_MAX_CONVERSATIONS_TO_KEEP);

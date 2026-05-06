@@ -751,10 +751,16 @@ export interface DesktopDisplayConfig {
   hidePanelWhenMainFocused?: boolean;
 }
 
+export const DEFAULT_FLOATING_PANEL_AUTO_SHOW = true;
+export const DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED = true;
+
 export interface DesktopShellConfig {
   hideDockIcon?: boolean;
   launchAtLogin?: boolean;
 }
+
+export const DEFAULT_HIDE_DOCK_ICON = false;
+export const DEFAULT_LAUNCH_AT_LOGIN = false;
 
 export type PanelPosition =
   | "top-left"
@@ -764,6 +770,9 @@ export type PanelPosition =
   | "bottom-center"
   | "bottom-right"
   | "custom";
+
+export const DEFAULT_PANEL_POSITION: PanelPosition = "top-right";
+export const DEFAULT_PANEL_DRAG_ENABLED = true;
 
 export interface PanelPoint {
   x: number;
