@@ -1,5 +1,9 @@
 import type { MobileApiRouteActions } from "./mobile-api-routes"
 import {
+  getAgentSessionCandidatesAction,
+  type AgentSessionCandidateActionOptions,
+} from "@dotagents/shared/agent-session-candidates"
+import {
   exportBundle,
   getBundleExportableItems,
   importBundle,
@@ -77,7 +81,6 @@ import {
   getSettings,
   updateSettings,
 } from "./settings-actions"
-import { getAgentSessionCandidates } from "./session-candidate-actions"
 import {
   createSkill,
   deleteSkill,
@@ -90,6 +93,20 @@ import {
   updateSkill,
 } from "./skill-actions"
 import { synthesizeSpeech } from "./tts-actions"
+import { agentSessionTracker } from "./agent-session-tracker"
+import { diagnosticsService } from "./diagnostics"
+
+const agentSessionCandidateActionOptions: AgentSessionCandidateActionOptions = {
+  service: {
+    getActiveSessions: () => agentSessionTracker.getActiveSessions(),
+    getRecentSessions: (limit) => agentSessionTracker.getRecentSessions(limit),
+  },
+  diagnostics: diagnosticsService,
+}
+
+function getAgentSessionCandidates(query: unknown) {
+  return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
+}
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {
   handleChatCompletionRequest,

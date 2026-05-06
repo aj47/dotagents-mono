@@ -404,12 +404,6 @@ function getSettingsActionsSource(): string {
   return readFileSync(settingsActionsPath, "utf8")
 }
 
-function getSessionCandidateActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const sessionCandidateActionsPath = path.join(testDir, "session-candidate-actions.ts")
-  return readFileSync(sessionCandidateActionsPath, "utf8")
-}
-
 function getSharedAgentSessionCandidatesSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedAgentSessionCandidatesPath = path.join(
@@ -973,14 +967,16 @@ describe("remote-server route registration", () => {
   it("delegates agent session candidate route behavior to shared session candidate actions", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
-    const sessionCandidateActionsSource = getSessionCandidateActionsSource()
+    const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedAgentSessionCandidatesSource = getSharedAgentSessionCandidatesSource()
 
     expectRegisteredApiRoute(source, "GET", "agentSessionCandidates")
     expect(mobileApiRoutesSource).toContain("actions.getAgentSessionCandidates(req.query)")
-    expect(sessionCandidateActionsSource).toContain("getAgentSessionCandidatesAction(query, sessionCandidateActionOptions)")
-    expect(sessionCandidateActionsSource).toContain("agentSessionTracker.getActiveSessions()")
-    expect(sessionCandidateActionsSource).toContain("agentSessionTracker.getRecentSessions(limit)")
+    expect(mobileApiDesktopActionsSource).toContain(
+      "getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)",
+    )
+    expect(mobileApiDesktopActionsSource).toContain("agentSessionTracker.getActiveSessions()")
+    expect(mobileApiDesktopActionsSource).toContain("agentSessionTracker.getRecentSessions(limit)")
     expect(sharedAgentSessionCandidatesSource).toContain("export function getAgentSessionCandidatesAction")
     expect(sharedAgentSessionCandidatesSource).toContain("parseAgentSessionCandidateLimit(query)")
     expect(sharedAgentSessionCandidatesSource).toContain("buildAgentSessionCandidatesResponse(")
