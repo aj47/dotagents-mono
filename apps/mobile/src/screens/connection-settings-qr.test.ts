@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { resolveQrScannerActivation } from './connection-settings-qr';
+import { resolveQrScannerActivation } from '@dotagents/shared/qr-scanner-activation';
 
 describe('resolveQrScannerActivation', () => {
   it('returns a visible browser guidance error when camera permission is denied', async () => {

@@ -356,6 +356,11 @@
       "import": "./dist/remote-pairing.mjs",
       "require": "./dist/remote-pairing.js"
     },
+    "./qr-scanner-activation": {
+      "types": "./dist/qr-scanner-activation.d.ts",
+      "import": "./dist/qr-scanner-activation.mjs",
+      "require": "./dist/qr-scanner-activation.js"
+    },
     "./remote-server-api": {
       "types": "./dist/remote-server-api.d.ts",
       "import": "./dist/remote-server-api.mjs",

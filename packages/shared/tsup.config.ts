@@ -72,6 +72,7 @@ export default defineConfig({
     'conversation-sync': 'src/conversation-sync.ts',
     'config-list-input': 'src/config-list-input.ts',
     'remote-pairing': 'src/remote-pairing.ts',
+    'qr-scanner-activation': 'src/qr-scanner-activation.ts',
     'remote-server-api': 'src/remote-server-api.ts',
     'remote-server-controller-contracts': 'src/remote-server-controller-contracts.ts',
     'remote-server-route-contracts': 'src/remote-server-route-contracts.ts',
