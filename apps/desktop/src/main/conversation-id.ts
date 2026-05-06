@@ -1,7 +1,6 @@
-// Re-export from @dotagents/core
 export {
   sanitizeConversationId,
   getConversationIdValidationError,
   assertSafeConversationId,
   validateAndSanitizeConversationId,
-} from "@dotagents/core"
+} from "@dotagents/shared/conversation-id"

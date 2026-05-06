@@ -65,6 +65,7 @@ export * from './key-utils';
 export * from './agent-run-utils';
 export * from './conversation-history-utils';
 export * from './conversation-context-builder';
+export * from './conversation-id';
 export * from './llm-continuation-guards';
 export * from './agent-profile-reference-cleanup';
 export * from './agent-profile-session-snapshot';

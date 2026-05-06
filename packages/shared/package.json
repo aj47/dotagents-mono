@@ -316,6 +316,11 @@
       "import": "./dist/conversation-context-builder.mjs",
       "require": "./dist/conversation-context-builder.js"
     },
+    "./conversation-id": {
+      "types": "./dist/conversation-id.d.ts",
+      "import": "./dist/conversation-id.mjs",
+      "require": "./dist/conversation-id.js"
+    },
     "./llm-continuation-guards": {
       "types": "./dist/llm-continuation-guards.d.ts",
       "import": "./dist/llm-continuation-guards.mjs",
