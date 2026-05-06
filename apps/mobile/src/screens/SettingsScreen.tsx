@@ -52,10 +52,12 @@ import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/c
 import { getDefaultSttModel, KNOWN_STT_MODEL_IDS } from '@dotagents/shared/stt-models';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
 import {
+  RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   formatMcpMaxIterationsValidationMessage,
   MCP_MAX_ITERATIONS_DEFAULT,
   parseMcpMaxIterationsDraft,
 } from '@dotagents/shared/mcp-api';
+import { isReservedMcpServerName } from '@dotagents/shared/mcp-utils';
 
 const getRemoteTtsModelValue = (settings?: Settings | null): string | undefined => {
   if (!settings) return undefined;
@@ -972,6 +974,25 @@ export default function SettingsScreen({ navigation }: any) {
       'Delete All'
     );
   }, [confirmDestructiveAction, connectionManager, sessionStore]);
+
+  const handleMcpServerDelete = useCallback((server: MCPServer) => {
+    if (!settingsClient) return;
+
+    confirmDestructiveAction(
+      'Delete MCP Server',
+      `Delete "${server.name}" from the connected desktop MCP config?`,
+      async () => {
+        try {
+          await settingsClient.deleteMCPServerConfig(server.name);
+          setMcpServers(prev => prev.filter(item => item.name !== server.name));
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete MCP server:', error);
+          Alert.alert('Error', error.message || 'Failed to delete MCP server');
+          fetchRemoteSettings();
+        }
+      }
+    );
+  }, [confirmDestructiveAction, fetchRemoteSettings, settingsClient]);
 
   // Handle knowledge note delete
   const handleKnowledgeNoteDelete = async (noteId: string) => {
@@ -3095,31 +3116,48 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4h. MCP Servers */}
             {mcpServers.length > 0 && (
               <CollapsibleSection id="mcpServers" title="MCP Servers">
-                {mcpServers.map((server) => (
-                  <View key={server.name} style={styles.serverRow}>
-                    <View style={styles.serverInfo}>
-                      <View style={styles.serverNameRow}>
-                        <View style={[
-                          styles.statusDot,
-                          server.connected ? styles.statusConnected : styles.statusDisconnected,
-                        ]} />
-                        <Text style={styles.serverName}>{server.name}</Text>
+                {mcpServers.map((server) => {
+                  const canDeleteServer = !isReservedMcpServerName(server.name, RESERVED_RUNTIME_TOOL_SERVER_NAMES);
+
+                  return (
+                    <View key={server.name} style={styles.serverRow}>
+                      <View style={styles.serverInfo}>
+                        <View style={styles.serverNameRow}>
+                          <View style={[
+                            styles.statusDot,
+                            server.connected ? styles.statusConnected : styles.statusDisconnected,
+                          ]} />
+                          <Text style={styles.serverName}>{server.name}</Text>
+                        </View>
+                        <Text style={styles.serverMeta}>
+                          {server.toolCount} tool{server.toolCount !== 1 ? 's' : ''}
+                          {server.error && ` • ${server.error}`}
+                        </Text>
                       </View>
-                      <Text style={styles.serverMeta}>
-                        {server.toolCount} tool{server.toolCount !== 1 ? 's' : ''}
-                        {server.error && ` • ${server.error}`}
-                      </Text>
+                      <View style={styles.agentActions}>
+                        <Switch
+                          value={server.enabled}
+                          onValueChange={(v) => handleServerToggle(server.name, v)}
+                          accessibilityLabel={createMcpServerSwitchAccessibilityLabel(server.name)}
+                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                          thumbColor={server.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                          disabled={server.configDisabled}
+                        />
+                        {canDeleteServer && (
+                          <TouchableOpacity
+                            style={styles.agentDeleteButton}
+                            onPress={() => handleMcpServerDelete(server)}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Delete MCP server ${server.name}`)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={styles.agentDeleteButtonText}>Delete</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
-                    <Switch
-                      value={server.enabled}
-                      onValueChange={(v) => handleServerToggle(server.name, v)}
-                      accessibilityLabel={createMcpServerSwitchAccessibilityLabel(server.name)}
-                      trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                      thumbColor={server.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                      disabled={server.configDisabled}
-                    />
-                  </View>
-                ))}
+                  );
+                })}
               </CollapsibleSection>
             )}
 

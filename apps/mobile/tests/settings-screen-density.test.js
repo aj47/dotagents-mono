@@ -47,3 +47,10 @@ test('sorts mobile skills like desktop without mutating fetched state', () => {
   assert.match(settingsSource, /return a\.name\.localeCompare\(b\.name\);/);
   assert.match(settingsSource, /displaySkills\.map\(\(skill\) => \(/);
 });
+
+test('lets mobile delete non-reserved desktop MCP server configs', () => {
+  assert.match(settingsSource, /handleMcpServerDelete/);
+  assert.match(settingsSource, /settingsClient\.deleteMCPServerConfig\(server\.name\)/);
+  assert.match(settingsSource, /isReservedMcpServerName\(server\.name, RESERVED_RUNTIME_TOOL_SERVER_NAMES\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\(`Delete MCP server \$\{server\.name\}`\)/);
+});
