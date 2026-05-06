@@ -15,9 +15,11 @@ test('keeps the mobile handsfree MVP guidance visible in settings', () => {
 
 test('exposes wake and sleep phrase fields for handsfree tuning', () => {
   assert.match(settingsSource, />Wake phrase<\/Text>/);
-  assert.match(settingsSource, /placeholder='hey dot agents'/);
+  assert.match(settingsSource, /DEFAULT_HANDS_FREE_WAKE_PHRASE/);
+  assert.match(settingsSource, /placeholder=\{DEFAULT_HANDS_FREE_WAKE_PHRASE\}/);
   assert.match(settingsSource, />Sleep phrase<\/Text>/);
-  assert.match(settingsSource, /placeholder='go to sleep'/);
+  assert.match(settingsSource, /DEFAULT_HANDS_FREE_SLEEP_PHRASE/);
+  assert.match(settingsSource, /placeholder=\{DEFAULT_HANDS_FREE_SLEEP_PHRASE\}/);
   assert.match(settingsSource, />Send after silence<\/Text>/);
   assert.match(settingsSource, /Wait this many milliseconds without new speech before sending a hands-free message\./);
   assert.match(settingsSource, /Current: \{Math\.round\(\(draft\.handsFreeMessageDebounceMs \?\? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS\) \/ 10\) \/ 100\}s\./);

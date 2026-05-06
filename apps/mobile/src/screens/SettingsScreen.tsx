@@ -5,6 +5,8 @@ import {
   AppConfig,
   DEFAULT_APP_CONFIG,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+  DEFAULT_HANDS_FREE_WAKE_PHRASE,
   saveConfig,
   useConfigContext,
 } from '../store/config';
@@ -558,6 +560,8 @@ export default function SettingsScreen({ navigation }: any) {
   const draftHandsFreeForegroundOnly = draft.handsFreeForegroundOnly ?? DEFAULT_APP_CONFIG.handsFreeForegroundOnly ?? true;
   const draftTtsEnabled = draft.ttsEnabled ?? DEFAULT_APP_CONFIG.ttsEnabled ?? true;
   const draftMessageQueueEnabled = draft.messageQueueEnabled ?? DEFAULT_APP_CONFIG.messageQueueEnabled ?? true;
+  const draftHandsFreeWakePhrase = draft.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE;
+  const draftHandsFreeSleepPhrase = draft.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE;
 
   const handleHandsFreeDebounceInputChange = useCallback((value: string) => {
     const sanitized = value.replace(/[^0-9]/g, '');
@@ -2686,10 +2690,10 @@ export default function SettingsScreen({ navigation }: any) {
         <Text style={[styles.label, { marginTop: spacing.md }]}>Wake phrase</Text>
         <TextInput
           style={styles.input}
-          value={draft.handsFreeWakePhrase || 'hey dot agents'}
+          value={draftHandsFreeWakePhrase}
           onChangeText={(value) => updateDraftField({ handsFreeWakePhrase: value })}
-          onEndEditing={() => updateLocalConfig({ handsFreeWakePhrase: draft.handsFreeWakePhrase || 'hey dot agents' })}
-          placeholder='hey dot agents'
+          onEndEditing={() => updateLocalConfig({ handsFreeWakePhrase: draftHandsFreeWakePhrase })}
+          placeholder={DEFAULT_HANDS_FREE_WAKE_PHRASE}
           placeholderTextColor={theme.colors.mutedForeground}
           autoCapitalize='none'
           autoCorrect={false}
@@ -2698,10 +2702,10 @@ export default function SettingsScreen({ navigation }: any) {
         <Text style={[styles.label, { marginTop: spacing.md }]}>Sleep phrase</Text>
         <TextInput
           style={styles.input}
-          value={draft.handsFreeSleepPhrase || 'go to sleep'}
+          value={draftHandsFreeSleepPhrase}
           onChangeText={(value) => updateDraftField({ handsFreeSleepPhrase: value })}
-          onEndEditing={() => updateLocalConfig({ handsFreeSleepPhrase: draft.handsFreeSleepPhrase || 'go to sleep' })}
-          placeholder='go to sleep'
+          onEndEditing={() => updateLocalConfig({ handsFreeSleepPhrase: draftHandsFreeSleepPhrase })}
+          placeholder={DEFAULT_HANDS_FREE_SLEEP_PHRASE}
           placeholderTextColor={theme.colors.mutedForeground}
           autoCapitalize='none'
           autoCorrect={false}
