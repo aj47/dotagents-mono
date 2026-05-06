@@ -20,6 +20,8 @@ import {
 } from "@dotagents/shared/agent-profile-presets"
 import {
   type AgentEditConnectionType,
+  buildAgentConnectionCommandPreview,
+  normalizeAgentConnectionArgs,
   normalizeAgentEditConnectionType,
   sanitizeAgentProfileConnection,
 } from "@dotagents/shared/agent-profile-connection"
@@ -116,10 +118,6 @@ interface ExternalAgentCommandVerificationResult {
 }
 
 type ServerInfo = { connected: boolean; toolCount: number; runtimeEnabled?: boolean; configDisabled?: boolean }
-
-function buildCommandPreview(command?: string, args?: string): string {
-  return [command?.trim(), args?.trim()].filter(Boolean).join(" ")
-}
 
 function emptyAgent(): EditingAgent {
   return {
@@ -519,7 +517,7 @@ export function SettingsAgents() {
     try {
       const result = await tipcClient.verifyExternalAgentCommand({
         command: editing.connectionCommand || "",
-        args: editing.connectionArgs?.split(" ").filter(Boolean),
+        args: normalizeAgentConnectionArgs(editing.connectionArgs),
         cwd: editing.connectionCwd || undefined,
         probeArgs: selectedPreset?.verifyArgs,
       })
@@ -649,7 +647,7 @@ export function SettingsAgents() {
   function renderEditForm() {
     if (!editing) return null
     const isInternal = editing.connectionType === "internal"
-    const externalCommandPreview = buildCommandPreview(editing.connectionCommand, editing.connectionArgs)
+    const externalCommandPreview = buildAgentConnectionCommandPreview(editing.connectionCommand, editing.connectionArgs)
 
     return (
       <Card className="max-w-5xl">
@@ -825,7 +823,10 @@ export function SettingsAgents() {
                       </Button>
                       <p className="text-[11px] text-muted-foreground">
                         {selectedPreset?.verifyArgs?.length
-                          ? `Runs ${buildCommandPreview(editing.connectionCommand, `${editing.connectionArgs || ""} ${selectedPreset.verifyArgs.join(" ")}`)} to confirm the command is runnable.`
+                          ? `Runs ${buildAgentConnectionCommandPreview(editing.connectionCommand, [
+                            ...normalizeAgentConnectionArgs(editing.connectionArgs),
+                            ...selectedPreset.verifyArgs,
+                          ])} to confirm the command is runnable.`
                           : "Checks the command path and working directory before you save."}
                       </p>
                     </div>

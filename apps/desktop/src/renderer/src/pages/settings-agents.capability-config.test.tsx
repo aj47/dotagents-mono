@@ -43,8 +43,12 @@ describe("settings agents capability config", () => {
   })
 
   it("uses shared connection normalization before saving desktop agents", () => {
+    expect(settingsAgentsSource).toContain("buildAgentConnectionCommandPreview")
+    expect(settingsAgentsSource).toContain("normalizeAgentConnectionArgs")
     expect(settingsAgentsSource).toContain("sanitizeAgentProfileConnection")
     expect(settingsAgentsSource).toContain("normalizeAgentEditConnectionType")
+    expect(settingsAgentsSource).not.toContain("function buildCommandPreview")
+    expect(settingsAgentsSource).not.toContain("editing.connectionArgs?.split(\" \").filter(Boolean)")
     expect(settingsAgentsSource).not.toContain("const connection: AgentProfileConnection")
     expect(settingsAgentsSource).not.toContain("baseUrl: editing.connectionBaseUrl")
     expect(settingsAgentsSource).not.toContain("connectionType: agent.connection.type")

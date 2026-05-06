@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest"
 
 import {
   applyConnectionTypeChange,
+  buildAgentConnectionCommandPreview,
   buildAgentConnectionRequestFields,
   normalizeAgentEditConnectionType,
+  normalizeAgentConnectionArgs,
   sanitizeAgentProfileConnection,
 } from "./agent-profile-connection"
 
@@ -112,6 +114,13 @@ describe("agent connection request helpers", () => {
       connectionArgs: "agent.js --acp",
       connectionCwd: "/tmp/agent",
     })
+  })
+
+  it("normalizes command args and previews consistently for command verification", () => {
+    expect(normalizeAgentConnectionArgs(" -y  @example/agent --acp ")).toEqual(["-y", "@example/agent", "--acp"])
+    expect(normalizeAgentConnectionArgs([" --acp ", "", "profile with spaces"])).toEqual(["--acp", "profile with spaces"])
+    expect(normalizeAgentConnectionArgs("   ")).toEqual([])
+    expect(buildAgentConnectionCommandPreview(" npx ", " -y @example/agent ")).toBe("npx -y @example/agent")
   })
 
   it("omits hidden Base URL fields from acpx saves while preserving visible local launch fields", () => {

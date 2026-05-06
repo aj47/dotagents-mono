@@ -18,7 +18,7 @@ test('lets mobile verify external agent setup through the shared settings client
   assert.match(screenSource, /const \[commandVerification, setCommandVerification\]/);
   assert.match(screenSource, /settingsClient\.verifyExternalAgentCommand\(\{/);
   assert.match(screenSource, /command: formData\.connectionCommand/);
-  assert.match(screenSource, /args: formData\.connectionArgs\.split\(\/\\s\+\/\)\.filter\(Boolean\)/);
+  assert.match(screenSource, /args: normalizeAgentConnectionArgs\(formData\.connectionArgs\)/);
   assert.match(screenSource, /probeArgs: selectedPreset\?\.verifyArgs/);
 });
 

@@ -1,6 +1,7 @@
 export {
   applyConnectionTypeChange,
   buildAgentConnectionRequestFields,
+  normalizeAgentConnectionArgs,
   normalizeAgentEditConnectionType,
 } from '@dotagents/shared/agent-profile-connection';
 export type {

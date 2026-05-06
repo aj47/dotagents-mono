@@ -46,14 +46,25 @@ function normalizeText(value: string | undefined): string | undefined {
   return trimmed ? trimmed : undefined
 }
 
-function normalizeArgs(value: string | string[] | undefined): string[] | undefined {
+export function normalizeAgentConnectionArgs(value: string | string[] | undefined): string[] {
   if (Array.isArray(value)) {
-    const trimmed = value.map((part) => part.trim()).filter(Boolean)
-    return trimmed.length > 0 ? trimmed : undefined
+    return value.map((part) => part.trim()).filter(Boolean)
   }
 
   const trimmed = normalizeText(value)
-  return trimmed ? trimmed.split(/\s+/).filter(Boolean) : undefined
+  return trimmed ? trimmed.split(/\s+/).filter(Boolean) : []
+}
+
+function normalizeArgs(value: string | string[] | undefined): string[] | undefined {
+  const args = normalizeAgentConnectionArgs(value)
+  return args.length > 0 ? args : undefined
+}
+
+export function buildAgentConnectionCommandPreview(
+  command: string | undefined,
+  args?: string | string[],
+): string {
+  return [normalizeText(command), ...normalizeAgentConnectionArgs(args)].filter(Boolean).join(" ")
 }
 
 function isLocalConnectionType(value: string | undefined): value is "acpx" | "acp" | "stdio" {

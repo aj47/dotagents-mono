@@ -1,6 +1,10 @@
 import { spawn } from "node:child_process"
 import { constants } from "node:fs"
 import fs from "node:fs/promises"
+import {
+  buildAgentConnectionCommandPreview,
+  normalizeAgentConnectionArgs,
+} from "@dotagents/shared/agent-profile-connection"
 import { getErrorMessage } from "./error-utils"
 import { mcpService } from "./mcp-service"
 
@@ -21,14 +25,6 @@ export interface ExternalAgentCommandVerificationResult {
 
 const VERIFY_TIMEOUT_MS = 4000
 const OUTPUT_PREVIEW_LIMIT = 240
-
-function normalizeArgs(args?: string[]): string[] {
-  return (args || []).map(arg => arg.trim()).filter(Boolean)
-}
-
-function buildCommandPreview(command: string, args: string[]): string {
-  return [command, ...args].filter(Boolean).join(" ")
-}
 
 function trimOutput(output: string): string | undefined {
   const trimmed = output.trim()
@@ -54,7 +50,7 @@ async function runProbe(
   probeArgs: string[],
   cwd?: string,
 ): Promise<ExternalAgentCommandVerificationResult> {
-  const probePreview = buildCommandPreview(resolvedCommand, probeArgs)
+  const probePreview = buildAgentConnectionCommandPreview(resolvedCommand, probeArgs)
 
   return await new Promise((resolve) => {
     const child = spawn(resolvedCommand, probeArgs, {
@@ -132,15 +128,15 @@ export async function verifyExternalAgentCommand(
 
   try {
     const cwd = await verifyWorkingDirectory(input.cwd)
-    const args = normalizeArgs(input.args)
-    const probeArgs = normalizeArgs(input.probeArgs)
+    const args = normalizeAgentConnectionArgs(input.args)
+    const probeArgs = normalizeAgentConnectionArgs(input.probeArgs)
     const resolvedCommand = await mcpService.resolveCommandPath(command)
 
     if (probeArgs.length === 0) {
       return {
         ok: true,
         resolvedCommand,
-        details: `Resolved ${buildCommandPreview(resolvedCommand, args)}${cwd ? ` with working directory ${cwd}` : ""}.`,
+        details: `Resolved ${buildAgentConnectionCommandPreview(resolvedCommand, args)}${cwd ? ` with working directory ${cwd}` : ""}.`,
       }
     }
 

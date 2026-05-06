@@ -18,6 +18,7 @@ import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '.
 import {
   applyConnectionTypeChange,
   buildAgentConnectionRequestFields,
+  normalizeAgentConnectionArgs,
   normalizeAgentEditConnectionType,
   type AgentConnectionFormFields,
   type ConnectionType,
@@ -461,7 +462,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
     try {
       const result = await settingsClient.verifyExternalAgentCommand({
         command: formData.connectionCommand,
-        args: formData.connectionArgs.split(/\s+/).filter(Boolean),
+        args: normalizeAgentConnectionArgs(formData.connectionArgs),
         cwd: formData.connectionCwd.trim() || undefined,
         probeArgs: selectedPreset?.verifyArgs,
       });
