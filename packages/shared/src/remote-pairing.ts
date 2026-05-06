@@ -461,6 +461,23 @@ export function resolveDotAgentsSecretReference(
   return undefined;
 }
 
+export function resolveDotAgentsSecretReferenceFromStore(
+  value: string,
+  loadStore: () => unknown,
+): string | undefined {
+  const directValue = resolveDotAgentsSecretReference(value, undefined);
+  if (directValue !== undefined) {
+    return directValue;
+  }
+
+  try {
+    const secrets = getDotAgentsSecretsRecord(loadStore());
+    return resolveDotAgentsSecretReference(value, secrets);
+  } catch {
+    return undefined;
+  }
+}
+
 export function getRemoteServerLifecycleAction(
   prev: RemoteServerLifecycleConfigLike,
   next: RemoteServerLifecycleConfigLike,

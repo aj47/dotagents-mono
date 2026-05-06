@@ -26,6 +26,7 @@ import {
   isLoopbackRemoteHost,
   redactSecretForDisplay,
   resolveDotAgentsSecretReference,
+  resolveDotAgentsSecretReferenceFromStore,
   resolveRemoteServerApiKey,
   shouldAutoPrintRemoteServerPairingQr,
   isUnconnectableRemoteHostForMobilePairing,
@@ -297,6 +298,14 @@ describe('remote pairing deep links', () => {
     expect(resolveDotAgentsSecretReference('dotagents-secret://empty', secretStore.secrets)).toBeUndefined();
     expect(resolveDotAgentsSecretReference('dotagents-secret://count', secretStore.secrets)).toBeUndefined();
     expect(resolveDotAgentsSecretReference('dotagents-secret://remote%252Fapi', undefined)).toBeUndefined();
+    expect(resolveDotAgentsSecretReferenceFromStore('plain-secret', () => {
+      throw new Error('should not load direct values');
+    })).toBe('plain-secret');
+    expect(resolveDotAgentsSecretReferenceFromStore('dotagents-secret://remote%252Fapi', () => secretStore)).toBe('resolved-secret');
+    expect(resolveDotAgentsSecretReferenceFromStore('dotagents-secret://missing', () => secretStore)).toBeUndefined();
+    expect(resolveDotAgentsSecretReferenceFromStore('dotagents-secret://remote%252Fapi', () => {
+      throw new Error('bad store');
+    })).toBeUndefined();
   });
 
   it('decides remote server lifecycle actions from settings changes', () => {

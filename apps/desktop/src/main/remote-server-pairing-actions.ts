@@ -5,11 +5,10 @@ import QRCode from "qrcode"
 import {
   buildDotAgentsConfigDeepLink,
   formatConnectableRemoteHostWarning,
-  getDotAgentsSecretsRecord,
   hasConfiguredRemoteServerApiKey as hasConfiguredRemoteServerApiKeyFromConfig,
   redactSecretForDisplay,
   resolveConnectableRemoteServerPairingBaseUrl,
-  resolveDotAgentsSecretReference,
+  resolveDotAgentsSecretReferenceFromStore,
   resolveRemoteServerApiKey,
 } from "@dotagents/shared/remote-pairing"
 import type { Config } from "../shared/types"
@@ -47,21 +46,10 @@ export async function printTerminalQRCode(url: string, apiKey: string): Promise<
 }
 
 export function readDotAgentsSecretReference(value: string): string | undefined {
-  const directValue = resolveDotAgentsSecretReference(value, undefined)
-  if (directValue !== undefined) {
-    return directValue
-  }
-
-  try {
+  return resolveDotAgentsSecretReferenceFromStore(value, () => {
     const secretsPath = path.join(globalAgentsFolder, DOTAGENTS_SECRETS_LOCAL_JSON)
-    const parsed = JSON.parse(fs.readFileSync(secretsPath, "utf8"))
-    const secrets = getDotAgentsSecretsRecord(parsed)
-    return resolveDotAgentsSecretReference(value, secrets)
-  } catch {
-    // Missing or invalid local secret storage should not expose the reference.
-  }
-
-  return undefined
+    return JSON.parse(fs.readFileSync(secretsPath, "utf8"))
+  })
 }
 
 export function getResolvedRemoteServerApiKey(cfg: Pick<Config, "remoteServerApiKey"> = configStore.get()): string {

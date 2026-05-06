@@ -72,6 +72,12 @@ function getSharedRemoteServerControllerContractsSource(): string {
   return readFileSync(sharedRemoteServerControllerContractsPath, "utf8")
 }
 
+function getSharedRemotePairingSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedRemotePairingPath = path.join(testDir, "../../../../packages/shared/src/remote-pairing.ts")
+  return readFileSync(sharedRemotePairingPath, "utf8")
+}
+
 function getSharedOperatorAuditStoreSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedOperatorAuditStorePath = path.join(testDir, "../../../../packages/shared/src/operator-audit-store.ts")
@@ -1567,13 +1573,16 @@ describe("remote-server route registration", () => {
     const desktopAdaptersSource = getRemoteServerDesktopAdaptersSource()
     const settingsActionsSource = getSettingsActionsSource()
     const remoteServerPairingActionsSource = getRemoteServerPairingActionsSource()
+    const sharedRemotePairingSource = getSharedRemotePairingSource()
     const sharedSettingsApiClientSource = getSharedSettingsApiClientSource()
 
-    expect(remoteServerPairingActionsSource).toContain("getDotAgentsSecretsRecord(parsed)")
-    expect(remoteServerPairingActionsSource).toContain("resolveDotAgentsSecretReference(value, secrets)")
+    expect(remoteServerPairingActionsSource).toContain("resolveDotAgentsSecretReferenceFromStore(value, () =>")
     expect(remoteServerPairingActionsSource).toContain('const DOTAGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"')
     expect(remoteServerPairingActionsSource).toContain("function getResolvedRemoteServerApiKey")
     expect(remoteServerPairingActionsSource).toContain("function hasConfiguredRemoteServerApiKey")
+    expect(sharedRemotePairingSource).toContain("export function resolveDotAgentsSecretReferenceFromStore(")
+    expect(sharedRemotePairingSource).toContain("getDotAgentsSecretsRecord(loadStore())")
+    expect(sharedRemotePairingSource).toContain("resolveDotAgentsSecretReference(value, secrets)")
     expect(controllerSource).toContain("const startupPlan = getRemoteServerStartupPlan(cfg, {")
     expect(controllerSource).toContain("resolveApiKey: adapters.resolveApiKeyReference")
     expect(controllerSource).toContain("startupPlan.apiKeyAction === \"generate\"")
