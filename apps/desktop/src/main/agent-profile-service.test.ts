@@ -31,8 +31,6 @@ vi.mock("./debug", () => ({
   logApp: vi.fn(),
 }))
 
-vi.mock("@shared/types", async () => await import("../shared/types"))
-
 describe("agentProfileService skills", () => {
   const tempDirs: string[] = []
 
