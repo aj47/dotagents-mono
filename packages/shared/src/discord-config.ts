@@ -2,6 +2,26 @@ export const DISCORD_SECRET_MASK = "••••••••"
 
 export type DiscordConfigSource = "config" | "env"
 export type DiscordLifecycleAction = "noop" | "start" | "stop" | "restart"
+export type DiscordConversationEpochs = Record<string, number>
+
+export interface DiscordIntegrationConfig {
+  discordEnabled?: boolean
+  discordBotToken?: string
+  discordDmEnabled?: boolean
+  discordRequireMention?: boolean
+  discordAllowUserIds?: string[]
+  discordAllowGuildIds?: string[]
+  discordAllowChannelIds?: string[]
+  discordAllowRoleIds?: string[]
+  discordDmAllowUserIds?: string[]
+  discordOperatorAllowUserIds?: string[]
+  discordOperatorAllowGuildIds?: string[]
+  discordOperatorAllowChannelIds?: string[]
+  discordOperatorAllowRoleIds?: string[]
+  discordDefaultProfileId?: string
+  discordLogMessages?: boolean
+  discordConversationEpochs?: DiscordConversationEpochs
+}
 
 export interface DiscordEnvironmentLike {
   [key: string]: string | undefined | null

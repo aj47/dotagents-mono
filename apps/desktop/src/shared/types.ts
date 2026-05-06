@@ -22,6 +22,7 @@ import type {
   LegacyProfileRecord,
   LegacyProfilesData,
 } from '@dotagents/shared/agent-profile-legacy-converters'
+import type { DiscordIntegrationConfig } from '@dotagents/shared/discord-config'
 import {
   legacyAcpAgentConfigToAgentProfile as sharedLegacyAcpAgentConfigToAgentProfile,
   legacyPersonaToAgentProfile as sharedLegacyPersonaToAgentProfile,
@@ -43,6 +44,7 @@ export type { KnowledgeNoteDateFilter, KnowledgeNoteGroupSummary, KnowledgeNoteS
 export type { PushNotificationToken } from '@dotagents/shared/push-notifications'
 export type { EnhancedModelInfo, ModelInfo, ModelsDevCost, ModelsDevData, ModelsDevLimit, ModelsDevModalities, ModelsDevModel, ModelsDevProvider } from '@dotagents/shared/api-types'
 export type { LegacyAcpAgentConfig, LegacyPersonaRecord, LegacyPersonasData, LegacyProfileRecord, LegacyProfilesData } from '@dotagents/shared/agent-profile-legacy-converters'
+export type { DiscordIntegrationConfig } from '@dotagents/shared/discord-config'
 
 // Agent Mode Progress Tracking Types — re-exported from @dotagents/shared (see above)
 
@@ -126,7 +128,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = {
+export type Config = Record<string, unknown> & DiscordIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -442,33 +444,6 @@ export type Config = {
   whatsappOperatorAllowFrom?: string[] // Phone numbers allowed to issue /ops commands
   whatsappAutoReply?: boolean   // Auto-reply to messages using agent
   whatsappLogMessages?: boolean // Log message content (privacy concern)
-
-  // Discord Integration Configuration
-  discordEnabled?: boolean
-  discordBotToken?: string
-  discordDmEnabled?: boolean
-  discordRequireMention?: boolean
-  discordAllowUserIds?: string[]
-  discordAllowGuildIds?: string[]
-  discordAllowChannelIds?: string[]
-  discordAllowRoleIds?: string[]
-  discordDmAllowUserIds?: string[]
-  discordOperatorAllowUserIds?: string[]
-  discordOperatorAllowGuildIds?: string[]
-  discordOperatorAllowChannelIds?: string[]
-  discordOperatorAllowRoleIds?: string[]
-  discordDefaultProfileId?: string
-  discordLogMessages?: boolean
-  /**
-   * Session epoch counter per Discord conversation key (DM channel, guild
-   * channel, or thread). Incremented by the `/new` slash command to fork a
-   * fresh conversation while preserving the previous session's history in
-   * the agent's conversation store.
-   *
-   * Absent or 0 means "no suffix" (backward-compatible with pre-session
-   * behavior). See `getDiscordConversationId` in discord-utils.ts.
-   */
-  discordConversationEpochs?: Record<string, number>
 
   // Stream Status Watcher Configuration
   streamStatusWatcherEnabled?: boolean

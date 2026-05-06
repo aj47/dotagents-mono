@@ -5,9 +5,40 @@ import {
   getDiscordResolvedDefaultProfileId,
   getDiscordResolvedToken,
   getMaskedDiscordBotToken,
+  type DiscordIntegrationConfig,
 } from './discord-config';
 
+function assertType<T>(_value: T): void {
+  // Compile-time assertion only.
+}
+
 describe('discord config helpers', () => {
+  it('exposes the persisted Discord integration config contract', () => {
+    const config: DiscordIntegrationConfig = {
+      discordEnabled: true,
+      discordBotToken: 'token',
+      discordDmEnabled: true,
+      discordRequireMention: false,
+      discordAllowUserIds: ['user-1'],
+      discordAllowGuildIds: ['guild-1'],
+      discordAllowChannelIds: ['channel-1'],
+      discordAllowRoleIds: ['role-1'],
+      discordDmAllowUserIds: ['user-2'],
+      discordOperatorAllowUserIds: ['operator-1'],
+      discordOperatorAllowGuildIds: ['guild-2'],
+      discordOperatorAllowChannelIds: ['channel-2'],
+      discordOperatorAllowRoleIds: ['role-2'],
+      discordDefaultProfileId: 'agent-1',
+      discordLogMessages: true,
+      discordConversationEpochs: {
+        discord_dm_1: 2,
+      },
+    };
+
+    assertType<DiscordIntegrationConfig>(config);
+    expect(config.discordConversationEpochs?.discord_dm_1).toBe(2);
+  });
+
   it('resolves token and default profile from config first, then environment', () => {
     expect(getDiscordResolvedToken({ discordBotToken: 'cfg-token' })).toEqual({ token: 'cfg-token', source: 'config' });
     expect(getDiscordResolvedToken({ discordBotToken: '' }, { DOTAGENTS_DISCORD_BOT_TOKEN: 'env-token' })).toEqual({ token: 'env-token', source: 'env' });
