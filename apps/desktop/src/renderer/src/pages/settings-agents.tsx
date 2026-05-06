@@ -20,6 +20,10 @@ import {
 } from "@dotagents/shared/agent-profile-presets"
 import { sanitizeAgentProfileConnection } from "@dotagents/shared/agent-profile-connection"
 import {
+  formatAgentProfilePropertiesForRequest,
+  normalizeAgentProfileProperties,
+} from "@dotagents/shared/agent-profile-mutations"
+import {
   buildAgentProfileAgentModelUpdate,
   getAgentProfileAgentModelProvider,
   getAgentProfileAgentModelValue,
@@ -270,7 +274,7 @@ export function SettingsAgents() {
       modelConfig: agent.modelConfig ? { ...agent.modelConfig } : undefined,
       toolConfig: agent.toolConfig ? { ...agent.toolConfig } : undefined,
       skillsConfig: agent.skillsConfig ? { ...agent.skillsConfig } : undefined,
-      properties: agent.properties ? { ...agent.properties } : {},
+      properties: normalizeAgentProfileProperties(agent.properties),
       avatarDataUrl: agent.avatarDataUrl ?? null,
       presetKey: detectAgentProfilePresetKey({
         connectionType: agent.connection.type,
@@ -308,7 +312,7 @@ export function SettingsAgents() {
       modelConfig: editing.modelConfig,
       toolConfig: editing.toolConfig,
       skillsConfig: editing.skillsConfig,
-      properties: editing.properties && Object.keys(editing.properties).length > 0 ? editing.properties : undefined,
+      properties: formatAgentProfilePropertiesForRequest(editing.properties),
       avatarDataUrl: editing.avatarDataUrl ?? null,
     }
     if (isCreating) await tipcClient.createAgentProfile({ profile: data })

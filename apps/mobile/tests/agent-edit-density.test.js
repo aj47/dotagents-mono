@@ -25,3 +25,10 @@ test('uses shared per-agent model field helpers in the mobile agent editor', () 
   assert.doesNotMatch(screenSource, /const getAgentModelField/);
   assert.doesNotMatch(screenSource, /const getAgentModelValue/);
 });
+
+test('uses shared profile property helpers in the mobile agent editor', () => {
+  assert.match(screenSource, /normalizeAgentProfileProperties/);
+  assert.match(screenSource, /formatAgentProfilePropertiesForRequest/);
+  assert.doesNotMatch(screenSource, /const normalizeAgentProperties/);
+  assert.doesNotMatch(screenSource, /const formatPropertiesForRequest/);
+});

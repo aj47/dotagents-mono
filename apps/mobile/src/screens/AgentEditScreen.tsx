@@ -28,6 +28,10 @@ import {
   type AgentProfilePresetKey,
 } from '@dotagents/shared/agent-profile-presets';
 import {
+  formatAgentProfilePropertiesForRequest,
+  normalizeAgentProfileProperties,
+} from '@dotagents/shared/agent-profile-mutations';
+import {
   buildAgentProfileAgentModelUpdate,
   getAgentProfileAgentModelProvider,
   getAgentProfileAgentModelValue,
@@ -173,13 +177,6 @@ const normalizeAgentModelConfig = (value?: Record<string, unknown>): AgentModelC
   };
 };
 
-const normalizeAgentProperties = (value?: Record<string, unknown>): Record<string, string> => {
-  if (!value) return {};
-  return Object.fromEntries(
-    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
-  );
-};
-
 const normalizeAgentToolConfig = (value?: Record<string, unknown>): AgentToolConfig | undefined => {
   if (!value) return undefined;
   return {
@@ -233,13 +230,6 @@ const getAgentModelPlaceholder = (provider: AgentModelProvider): string => {
 const formatModelConfigForRequest = (modelConfig?: AgentModelConfig): Record<string, unknown> | undefined => {
   if (!modelConfig) return undefined;
   return { ...modelConfig };
-};
-
-const formatPropertiesForRequest = (properties: Record<string, string>): Record<string, string> | undefined => {
-  const entries = Object.entries(properties)
-    .map(([key, value]) => [key.trim(), value] as const)
-    .filter(([key]) => key.length > 0);
-  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 };
 
 const formatToolConfigForRequest = (toolConfig?: AgentToolConfig): Record<string, unknown> | undefined => {
@@ -334,7 +324,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             connectionCwd: profile.connection?.cwd || '',
             enabled: profile.enabled,
             autoSpawn: profile.autoSpawn || false,
-            properties: normalizeAgentProperties(profile.properties),
+            properties: normalizeAgentProfileProperties(profile.properties),
             modelConfig: normalizeAgentModelConfig(profile.modelConfig),
             toolConfig: normalizeAgentToolConfig(profile.toolConfig),
             skillsConfig: normalizeAgentSkillsConfig(profile.skillsConfig),
@@ -462,7 +452,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             ...connectionFields,
             enabled: formData.enabled,
             autoSpawn: formData.autoSpawn,
-            properties: formatPropertiesForRequest(formData.properties),
+            properties: formatAgentProfilePropertiesForRequest(formData.properties),
             modelConfig: formatModelConfigForRequest(formData.modelConfig),
             toolConfig: formatToolConfigForRequest(formData.toolConfig),
             skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),
@@ -478,7 +468,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           ...connectionFields,
           enabled: formData.enabled,
           autoSpawn: formData.autoSpawn,
-          properties: formatPropertiesForRequest(formData.properties),
+          properties: formatAgentProfilePropertiesForRequest(formData.properties),
           modelConfig: formatModelConfigForRequest(formData.modelConfig),
           toolConfig: formatToolConfigForRequest(formData.toolConfig),
           skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),

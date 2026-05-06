@@ -25,6 +25,8 @@ export type AgentProfileDisplayNameUpdate = {
   name?: string
 }
 
+export type AgentProfileProperties = Record<string, string>
+
 export function createAgentProfileRecord<TInput extends AgentProfileCreateInputLike>(
   profile: TInput,
   id: string,
@@ -78,4 +80,26 @@ export function canSetCurrentAgentProfile<TProfile extends { id: string }>(
   id: string,
 ): boolean {
   return profiles.some((profile) => profile.id === id)
+}
+
+export function normalizeAgentProfileProperties(
+  value: Record<string, unknown> | null | undefined,
+): AgentProfileProperties {
+  if (!value) return {}
+
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  )
+}
+
+export function formatAgentProfilePropertiesForRequest(
+  properties: Record<string, string> | null | undefined,
+): AgentProfileProperties | undefined {
+  if (!properties) return undefined
+
+  const entries = Object.entries(properties)
+    .map(([key, value]) => [key.trim(), value] as const)
+    .filter(([key]) => key.length > 0)
+
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined
 }

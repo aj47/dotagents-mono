@@ -5,7 +5,9 @@ import {
   canDeleteAgentProfile,
   canSetCurrentAgentProfile,
   createAgentProfileRecord,
+  formatAgentProfilePropertiesForRequest,
   getDeletableAgentProfileIndex,
+  normalizeAgentProfileProperties,
 } from "./agent-profile-mutations"
 
 describe("agent profile mutations", () => {
@@ -82,5 +84,29 @@ describe("agent profile mutations", () => {
   it("checks whether current profile can be set", () => {
     expect(canSetCurrentAgentProfile([{ id: "profile-1" }], "profile-1")).toBe(true)
     expect(canSetCurrentAgentProfile([{ id: "profile-1" }], "missing")).toBe(false)
+  })
+
+  it("normalizes and formats profile properties for editable request payloads", () => {
+    expect(normalizeAgentProfileProperties({
+      language: "TypeScript",
+      invalid: 123,
+      empty: "",
+    })).toEqual({
+      language: "TypeScript",
+      empty: "",
+    })
+
+    expect(formatAgentProfilePropertiesForRequest({
+      " language ": "TypeScript",
+      "": "drop",
+      "   ": "drop",
+      tone: "direct",
+    })).toEqual({
+      language: "TypeScript",
+      tone: "direct",
+    })
+
+    expect(formatAgentProfilePropertiesForRequest({ " ": "drop" })).toBeUndefined()
+    expect(formatAgentProfilePropertiesForRequest(undefined)).toBeUndefined()
   })
 })
