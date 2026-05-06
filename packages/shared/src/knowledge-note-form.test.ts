@@ -2,17 +2,22 @@ import { describe, expect, it } from "vitest"
 import type { KnowledgeNote } from "./api-types"
 
 import {
+  buildKnowledgeNotesDeleteAllResponse,
+  buildKnowledgeNotesDeleteMultipleResponse,
   buildKnowledgeNoteDeleteResponse,
   buildKnowledgeNoteMutationResponse,
   buildKnowledgeNoteResponse,
   buildKnowledgeNotesResponse,
   createKnowledgeNoteAction,
+  deleteAllKnowledgeNotesAction,
   deleteKnowledgeNoteAction,
+  deleteMultipleKnowledgeNotesAction,
   formatKnowledgeNoteReferencesInput,
   formatKnowledgeNoteTagsInput,
   getKnowledgeNoteAction,
   getKnowledgeNotesAction,
   parseKnowledgeNoteCreateRequestBody,
+  parseKnowledgeNotesDeleteMultipleRequestBody,
   parseKnowledgeNoteReferencesInput,
   parseKnowledgeNoteSearchRequestBody,
   parseKnowledgeNoteTagsInput,
@@ -131,6 +136,23 @@ describe("knowledge note form helpers", () => {
     })
   })
 
+  it("parses delete-multiple request bodies for the remote knowledge note API", () => {
+    expect(parseKnowledgeNotesDeleteMultipleRequestBody({
+      ids: [" note-1 ", "note-2", "note-1", "", 1],
+    })).toEqual({
+      ok: true,
+      request: {
+        ids: ["note-1", "note-2"],
+      },
+    })
+
+    expect(parseKnowledgeNotesDeleteMultipleRequestBody({ ids: [] })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "ids must be a non-empty array of strings",
+    })
+  })
+
   it("serializes knowledge notes to the shared API shape", () => {
     const note: KnowledgeNote = {
       id: "note-1",
@@ -166,6 +188,12 @@ describe("knowledge note form helpers", () => {
     expect(buildKnowledgeNoteResponse(note)).toEqual({ note: serialized })
     expect(buildKnowledgeNoteMutationResponse(note)).toEqual({ success: true, note: serialized })
     expect(buildKnowledgeNoteDeleteResponse("note-1")).toEqual({ success: true, id: "note-1" })
+    expect(buildKnowledgeNotesDeleteMultipleResponse(["note-1"], 1)).toEqual({
+      success: true,
+      deletedCount: 1,
+      ids: ["note-1"],
+    })
+    expect(buildKnowledgeNotesDeleteAllResponse(3)).toEqual({ success: true, deletedCount: 3 })
   })
 
   it("runs shared knowledge note route actions through service adapters", async () => {
@@ -207,6 +235,11 @@ describe("knowledge note form helpers", () => {
         return [note]
       },
       deleteNote: async (id: string) => notesById.delete(id),
+      deleteMultipleNotes: async (ids: string[]) => {
+        expect(ids).toEqual(["note-3", "note-4"])
+        return { deletedCount: 2 }
+      },
+      deleteAllNotes: async () => ({ deletedCount: notesById.size }),
       createNote: (request: any) => {
         expect(request.body).toBe("Created body")
         return createdNote
@@ -259,6 +292,16 @@ describe("knowledge note form helpers", () => {
       statusCode: 200,
       body: buildKnowledgeNoteDeleteResponse("note-2"),
     })
+    await expect(deleteMultipleKnowledgeNotesAction({
+      ids: [" note-3 ", "note-4", "note-3"],
+    }, options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNotesDeleteMultipleResponse(["note-3", "note-4"], 2),
+    })
+    await expect(deleteAllKnowledgeNotesAction(options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNotesDeleteAllResponse(1),
+    })
   })
 
   it("returns shared knowledge note route validation and state errors", async () => {
@@ -284,6 +327,8 @@ describe("knowledge note form helpers", () => {
         getNote: (id: string) => id === "note-1" ? note : undefined,
         searchNotes: () => [],
         deleteNote: () => false,
+        deleteMultipleNotes: () => ({ deletedCount: 0, error: "Failed to delete note note-1" }),
+        deleteAllNotes: () => ({ deletedCount: 0, error: "Failed to delete all notes" }),
         createNote: () => note,
         saveNote: () => false,
         updateNote: () => false,
@@ -322,6 +367,18 @@ describe("knowledge note form helpers", () => {
       statusCode: 500,
       body: { error: "Failed to persist knowledge note deletion" },
     })
+    await expect(deleteMultipleKnowledgeNotesAction({ ids: [] }, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "ids must be a non-empty array of strings" },
+    })
+    await expect(deleteMultipleKnowledgeNotesAction({ ids: ["note-1"] }, options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "Failed to delete note note-1" },
+    })
+    await expect(deleteAllKnowledgeNotesAction(options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "Failed to delete all notes" },
+    })
   })
 
   it("logs shared knowledge note route failures and returns route errors", async () => {
@@ -344,6 +401,8 @@ describe("knowledge note form helpers", () => {
           throw new Error("unexpected search")
         },
         deleteNote: () => false,
+        deleteMultipleNotes: () => ({ deletedCount: 0 }),
+        deleteAllNotes: () => ({ deletedCount: 0 }),
         createNote: () => {
           throw new Error("unexpected create")
         },

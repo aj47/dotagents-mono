@@ -693,6 +693,7 @@ export class KnowledgeNotesService {
   }
 
   async deleteMultipleNotes(ids: string[]): Promise<{ deletedCount: number; error?: string }> {
+    await this.initialize()
     let deletedCount = 0
     for (const id of ids) {
       if (!this.notes.some((note) => note.id === id)) continue

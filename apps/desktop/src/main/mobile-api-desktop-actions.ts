@@ -24,7 +24,9 @@ import {
 import { triggerEmergencyStop } from "./emergency-stop-actions"
 import {
   createKnowledgeNote,
+  deleteAllKnowledgeNotes,
   deleteKnowledgeNote,
+  deleteMultipleKnowledgeNotes,
   getKnowledgeNote,
   getKnowledgeNotes,
   searchKnowledgeNotes,
@@ -129,6 +131,8 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   getKnowledgeNote,
   searchKnowledgeNotes,
   deleteKnowledgeNote,
+  deleteMultipleKnowledgeNotes,
+  deleteAllKnowledgeNotes,
   getAgentProfiles,
   toggleAgentProfile,
   getAgentProfile,

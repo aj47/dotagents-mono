@@ -53,6 +53,8 @@ import type {
   KnowledgeNoteMutationResponse,
   KnowledgeNoteResponse,
   KnowledgeNoteSearchRequest,
+  KnowledgeNotesDeleteAllResponse,
+  KnowledgeNotesDeleteMultipleResponse,
   KnowledgeNoteUpdateRequest,
   KnowledgeNotesResponse,
   LocalSpeechModelProviderId,
@@ -1553,6 +1555,19 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   async deleteKnowledgeNote(id: string): Promise<KnowledgeNoteDeleteResponse> {
     return this.request<KnowledgeNoteDeleteResponse>(API_BUILDERS.knowledgeNote(id), {
       method: 'DELETE',
+    });
+  }
+
+  async deleteKnowledgeNotes(ids: string[]): Promise<KnowledgeNotesDeleteMultipleResponse> {
+    return this.request<KnowledgeNotesDeleteMultipleResponse>(API_PATHS.knowledgeNotesDeleteMultiple, {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+  }
+
+  async deleteAllKnowledgeNotes(): Promise<KnowledgeNotesDeleteAllResponse> {
+    return this.request<KnowledgeNotesDeleteAllResponse>(API_PATHS.knowledgeNotesDeleteAll, {
+      method: 'POST',
     });
   }
 

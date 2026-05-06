@@ -115,6 +115,8 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   getKnowledgeNote: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   searchKnowledgeNotes: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
   deleteKnowledgeNote: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
+  deleteMultipleKnowledgeNotes: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
+  deleteAllKnowledgeNotes: () => RemoteServerMaybePromise<MobileApiActionResult>;
   getAgentProfiles: (role?: string) => MobileApiActionResult;
   toggleAgentProfile: (id?: string) => MobileApiActionResult;
   getAgentProfile: (id?: string) => MobileApiActionResult;

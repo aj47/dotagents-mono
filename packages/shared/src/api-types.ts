@@ -952,6 +952,21 @@ export interface KnowledgeNoteDeleteResponse {
   id: string;
 }
 
+export interface KnowledgeNotesDeleteMultipleRequest {
+  ids: string[];
+}
+
+export interface KnowledgeNotesDeleteMultipleResponse {
+  success: true;
+  deletedCount: number;
+  ids: string[];
+}
+
+export interface KnowledgeNotesDeleteAllResponse {
+  success: true;
+  deletedCount: number;
+}
+
 export interface KnowledgeNoteCreateRequest {
   id?: string;
   title?: string;

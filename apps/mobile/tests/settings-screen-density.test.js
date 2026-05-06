@@ -134,6 +134,15 @@ test('lets mobile search desktop knowledge notes through the shared client', () 
   assert.match(settingsSource, /accessibilityLabel="Search knowledge notes"/);
 });
 
+test('lets mobile delete selected and all desktop knowledge notes through the shared client', () => {
+  assert.match(settingsSource, /selectedKnowledgeNoteIds/);
+  assert.match(settingsSource, /toggleKnowledgeNoteSelection/);
+  assert.match(settingsSource, /settingsClient\.deleteKnowledgeNotes\(ids\)/);
+  assert.match(settingsSource, /settingsClient\.deleteAllKnowledgeNotes\(\)/);
+  assert.match(settingsSource, /Delete Selected \(\{visibleSelectedKnowledgeNoteIds\.length\}\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Delete all knowledge notes'\)/);
+});
+
 test('lets mobile import and export loop Markdown through the shared client', () => {
   assert.match(settingsSource, /showLoopImportModal/);
   assert.match(settingsSource, /Import Loop/);

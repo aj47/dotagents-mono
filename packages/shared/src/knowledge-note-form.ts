@@ -5,6 +5,9 @@ import type {
   KnowledgeNoteMutationResponse,
   KnowledgeNoteResponse,
   KnowledgeNoteSearchRequest,
+  KnowledgeNotesDeleteAllResponse,
+  KnowledgeNotesDeleteMultipleRequest,
+  KnowledgeNotesDeleteMultipleResponse,
   KnowledgeNotesResponse,
   KnowledgeNoteUpdateRequest,
 } from "./api-types"
@@ -39,12 +42,21 @@ export type KnowledgeNoteSearchParseResult =
   | { ok: true; request: KnowledgeNoteSearchRequest }
   | { ok: false; statusCode: 400; error: string }
 
+export type KnowledgeNotesDeleteMultipleParseResult =
+  | { ok: true; request: KnowledgeNotesDeleteMultipleRequest }
+  | { ok: false; statusCode: 400; error: string }
+
 export type KnowledgeNoteActionResult = {
   statusCode: number
   body: unknown
 }
 
 type KnowledgeNoteMaybePromise<T> = T | Promise<T>
+
+export type KnowledgeNotesDeleteResult = {
+  deletedCount: number
+  error?: string
+}
 
 export interface KnowledgeNoteActionDiagnostics {
   logError(source: string, message: string, error: unknown): void
@@ -58,6 +70,8 @@ export interface KnowledgeNoteActionService {
     filter: Omit<KnowledgeNoteSearchRequest, "query">,
   ): KnowledgeNoteMaybePromise<KnowledgeNote[]>
   deleteNote(id: string): KnowledgeNoteMaybePromise<boolean>
+  deleteMultipleNotes(ids: string[]): KnowledgeNoteMaybePromise<KnowledgeNotesDeleteResult>
+  deleteAllNotes(): KnowledgeNoteMaybePromise<KnowledgeNotesDeleteResult>
   createNote(request: KnowledgeNoteCreateRequest): KnowledgeNote
   saveNote(note: KnowledgeNote): KnowledgeNoteMaybePromise<boolean>
   updateNote(id: string, request: KnowledgeNoteUpdateRequest): KnowledgeNoteMaybePromise<boolean>
@@ -135,6 +149,17 @@ export function buildKnowledgeNoteMutationResponse(note: KnowledgeNote): Knowled
 
 export function buildKnowledgeNoteDeleteResponse(id: string): KnowledgeNoteDeleteResponse {
   return { success: true, id }
+}
+
+export function buildKnowledgeNotesDeleteMultipleResponse(
+  ids: string[],
+  deletedCount: number,
+): KnowledgeNotesDeleteMultipleResponse {
+  return { success: true, deletedCount, ids }
+}
+
+export function buildKnowledgeNotesDeleteAllResponse(deletedCount: number): KnowledgeNotesDeleteAllResponse {
+  return { success: true, deletedCount }
 }
 
 function knowledgeNoteActionOk(body: unknown, statusCode = 200): KnowledgeNoteActionResult {
@@ -227,6 +252,47 @@ export async function deleteKnowledgeNoteAction(
   } catch (caughtError) {
     options.diagnostics.logError("knowledge-note-actions", "Failed to delete knowledge note", caughtError)
     return knowledgeNoteActionError(500, getUnknownErrorMessage(caughtError, "Failed to delete knowledge note"))
+  }
+}
+
+export async function deleteMultipleKnowledgeNotesAction(
+  body: unknown,
+  options: KnowledgeNoteActionOptions,
+): Promise<KnowledgeNoteActionResult> {
+  try {
+    const parsedRequest = parseKnowledgeNotesDeleteMultipleRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return knowledgeNoteActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const result = await options.service.deleteMultipleNotes(parsedRequest.request.ids)
+    if (result.error) {
+      return knowledgeNoteActionError(500, result.error)
+    }
+
+    return knowledgeNoteActionOk(buildKnowledgeNotesDeleteMultipleResponse(
+      parsedRequest.request.ids,
+      result.deletedCount,
+    ))
+  } catch (caughtError) {
+    options.diagnostics.logError("knowledge-note-actions", "Failed to delete knowledge notes", caughtError)
+    return knowledgeNoteActionError(500, getUnknownErrorMessage(caughtError, "Failed to delete knowledge notes"))
+  }
+}
+
+export async function deleteAllKnowledgeNotesAction(
+  options: KnowledgeNoteActionOptions,
+): Promise<KnowledgeNoteActionResult> {
+  try {
+    const result = await options.service.deleteAllNotes()
+    if (result.error) {
+      return knowledgeNoteActionError(500, result.error)
+    }
+
+    return knowledgeNoteActionOk(buildKnowledgeNotesDeleteAllResponse(result.deletedCount))
+  } catch (caughtError) {
+    options.diagnostics.logError("knowledge-note-actions", "Failed to delete all knowledge notes", caughtError)
+    return knowledgeNoteActionError(500, getUnknownErrorMessage(caughtError, "Failed to delete all knowledge notes"))
   }
 }
 
@@ -410,4 +476,26 @@ export function parseKnowledgeNoteSearchRequestBody(body: unknown): KnowledgeNot
   }
 
   return { ok: true, request }
+}
+
+export function parseKnowledgeNotesDeleteMultipleRequestBody(
+  body: unknown,
+): KnowledgeNotesDeleteMultipleParseResult {
+  if (!isRequestObject(body)) {
+    return { ok: false, statusCode: 400, error: "Request body must be a JSON object" }
+  }
+
+  if (!Array.isArray(body.ids)) {
+    return { ok: false, statusCode: 400, error: "ids must be a non-empty array of strings" }
+  }
+
+  const ids = uniqueTrimmed(body.ids.filter((id): id is string => typeof id === "string"))
+  if (ids.length === 0) {
+    return { ok: false, statusCode: 400, error: "ids must be a non-empty array of strings" }
+  }
+
+  return {
+    ok: true,
+    request: { ids },
+  }
 }

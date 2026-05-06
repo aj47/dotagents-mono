@@ -319,6 +319,18 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // POST /v1/knowledge/notes/delete-multiple - Delete selected knowledge notes
+  fastify.post(API_ROUTES.knowledgeNotesDeleteMultiple, async (req, reply) => {
+    const result = await actions.deleteMultipleKnowledgeNotes(req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
+  // POST /v1/knowledge/notes/delete-all - Delete all knowledge notes
+  fastify.post(API_ROUTES.knowledgeNotesDeleteAll, async (_req, reply) => {
+    const result = await actions.deleteAllKnowledgeNotes()
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // GET /v1/knowledge/notes/:id - Get one knowledge note
   fastify.get(API_ROUTES.knowledgeNote, async (req, reply) => {
     const params = req.params as { id?: string }

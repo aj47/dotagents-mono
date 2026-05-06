@@ -1,6 +1,8 @@
 import {
   createKnowledgeNoteAction,
+  deleteAllKnowledgeNotesAction,
   deleteKnowledgeNoteAction,
+  deleteMultipleKnowledgeNotesAction,
   getKnowledgeNoteAction,
   getKnowledgeNotesAction,
   searchKnowledgeNotesAction,
@@ -19,6 +21,8 @@ const knowledgeNoteActionOptions: KnowledgeNoteActionOptions = {
     getNote: (id) => knowledgeNotesService.getNote(id),
     searchNotes: (query, filter) => knowledgeNotesService.searchNotes(query, filter),
     deleteNote: (id) => knowledgeNotesService.deleteNote(id),
+    deleteMultipleNotes: (ids) => knowledgeNotesService.deleteMultipleNotes(ids),
+    deleteAllNotes: () => knowledgeNotesService.deleteAllNotes(),
     createNote: (request) => knowledgeNotesService.createNote(request),
     saveNote: (note) => knowledgeNotesService.saveNote(note),
     updateNote: (id, request) => knowledgeNotesService.updateNote(id, request),
@@ -40,6 +44,14 @@ export async function searchKnowledgeNotes(body: unknown): Promise<KnowledgeNote
 
 export async function deleteKnowledgeNote(id: string | undefined): Promise<KnowledgeNoteActionResult> {
   return deleteKnowledgeNoteAction(id, knowledgeNoteActionOptions)
+}
+
+export async function deleteMultipleKnowledgeNotes(body: unknown): Promise<KnowledgeNoteActionResult> {
+  return deleteMultipleKnowledgeNotesAction(body, knowledgeNoteActionOptions)
+}
+
+export async function deleteAllKnowledgeNotes(): Promise<KnowledgeNoteActionResult> {
+  return deleteAllKnowledgeNotesAction(knowledgeNoteActionOptions)
 }
 
 export async function createKnowledgeNote(body: unknown): Promise<KnowledgeNoteActionResult> {
