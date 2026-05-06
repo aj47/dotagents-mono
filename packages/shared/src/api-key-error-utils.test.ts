@@ -4,6 +4,7 @@ import {
   isEmptyResponseErrorMessage,
   isLocalConfigurationErrorMessage,
   isMissingApiKeyErrorMessage,
+  isRateLimitError,
 } from './api-key-error-utils'
 
 describe('isMissingApiKeyErrorMessage', () => {
@@ -77,5 +78,29 @@ describe('isEmptyResponseError', () => {
 
   it('ignores non-Error values', () => {
     expect(isEmptyResponseError('LLM returned empty response')).toBe(false)
+  })
+})
+
+describe('isRateLimitError', () => {
+  it('detects structured 429 status errors', () => {
+    expect(
+      isRateLimitError(Object.assign(new Error('Too many requests'), { statusCode: 429 }))
+    ).toBe(true)
+    expect(
+      isRateLimitError(Object.assign(new Error('Too many requests'), { status: 429 }))
+    ).toBe(true)
+  })
+
+  it('detects message-based rate limit errors', () => {
+    expect(isRateLimitError(new Error('Rate limit exceeded'))).toBe(true)
+    expect(isRateLimitError(new Error('Provider returned 429 Too Many Requests'))).toBe(true)
+  })
+
+  it('ignores non-rate-limit errors and non-Error values', () => {
+    expect(isRateLimitError(new Error('Connection timed out'))).toBe(false)
+    expect(
+      isRateLimitError(Object.assign(new Error('Bad request'), { statusCode: 400 }))
+    ).toBe(false)
+    expect(isRateLimitError('Rate limit exceeded')).toBe(false)
   })
 })

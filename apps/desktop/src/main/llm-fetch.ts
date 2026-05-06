@@ -36,6 +36,7 @@ import type { AgentConversationState } from "@dotagents/shared/conversation-stat
 import {
   isEmptyResponseError,
   isLocalConfigurationErrorMessage,
+  isRateLimitError,
 } from "@dotagents/shared/api-key-error-utils"
 import { hasRawToolCallMarkerTokens, stripRawToolMarkerTokens } from "@dotagents/shared/chat-utils"
 import {
@@ -554,21 +555,8 @@ async function withRetry<T>(
       // See: https://github.com/aj47/dotagents-mono/issues/964
       const isEmptyResponse = isEmptyResponseError(error)
 
-      // Check for rate limit (429) using structured error fields when available
-      let isRateLimit = false
-      if (error instanceof Error) {
-        // Check for AI SDK structured error fields (AI_APICallError, etc.)
-        const errorWithStatus = error as { statusCode?: number; status?: number }
-        const statusCode = errorWithStatus.statusCode ?? errorWithStatus.status
-
-        if (typeof statusCode === "number" && statusCode === 429) {
-          isRateLimit = true
-        } else {
-          // Fallback to message-based detection for errors without structured fields
-          const message = error.message.toLowerCase()
-          isRateLimit = message.includes("429") || message.includes("rate limit")
-        }
-      }
+      // Check for rate limit (429) using structured status and message fallback.
+      const isRateLimit = isRateLimitError(error)
 
       // Rate limits retry indefinitely, other errors respect the limit
       // Empty response errors also respect the limit but skip backoff
