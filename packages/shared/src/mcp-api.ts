@@ -2,6 +2,7 @@ import { MARK_WORK_COMPLETE_TOOL, RESPOND_TO_USER_TOOL } from "./chat-utils"
 import type {
   MCPServer,
   MCPServersResponse,
+  OperatorActionResponse,
   OperatorMCPServerLogEntry,
   OperatorMCPServerLogsResponse,
   OperatorMCPServerSummary,
@@ -88,6 +89,30 @@ export interface OperatorMcpReadActionDiagnostics {
 export interface OperatorMcpReadActionOptions {
   service: OperatorMcpReadActionService
   diagnostics: OperatorMcpReadActionDiagnostics
+}
+
+export type OperatorMcpMutationActionResult<TAuditContext = unknown> = {
+  statusCode: number
+  body: unknown
+  auditContext?: TAuditContext
+}
+
+export interface OperatorMcpMutationActionService {
+  getServerStatus(): McpServerStatusMapLike
+  clearServerLogs(serverName: string): void
+  setToolEnabled(toolName: string, enabled: boolean): boolean
+}
+
+export interface OperatorMcpMutationActionAudit<TAuditContext> {
+  buildClearLogsAuditContext(serverName: string): TAuditContext
+  buildClearLogsFailureAuditContext(failureReason: string): TAuditContext
+  buildToolToggleAuditContext(response: OperatorMCPToolToggleResponse): TAuditContext
+}
+
+export interface OperatorMcpMutationActionOptions<TAuditContext = unknown> {
+  service: OperatorMcpMutationActionService
+  diagnostics: OperatorMcpReadActionDiagnostics
+  audit?: OperatorMcpMutationActionAudit<TAuditContext>
 }
 
 export type McpServerLogEntryLike = {
@@ -196,6 +221,29 @@ function mcpServerActionError(statusCode: number, message: string): McpServerAct
   return {
     statusCode,
     body: { error: message },
+  }
+}
+
+function operatorMcpActionOk<TAuditContext>(
+  body: unknown,
+  auditContext?: TAuditContext,
+): OperatorMcpMutationActionResult<TAuditContext> {
+  return {
+    statusCode: 200,
+    body,
+    ...(auditContext ? { auditContext } : {}),
+  }
+}
+
+function operatorMcpActionError<TAuditContext>(
+  statusCode: number,
+  message: string,
+  auditContext?: TAuditContext,
+): OperatorMcpMutationActionResult<TAuditContext> {
+  return {
+    statusCode,
+    body: { error: message },
+    ...(auditContext ? { auditContext } : {}),
   }
 }
 
@@ -312,6 +360,15 @@ export function buildOperatorMcpServerLogsResponse(
   }
 }
 
+function buildOperatorMcpClearLogsResponse(server: string): OperatorActionResponse {
+  return {
+    success: true,
+    action: "mcp-clear-logs",
+    message: `Cleared logs for ${server}`,
+    details: { server },
+  }
+}
+
 export function getOperatorMcpServerLogsAction(
   serverName: string | undefined,
   count: string | number | undefined,
@@ -336,6 +393,44 @@ export function getOperatorMcpServerLogsAction(
     const errorMessage = options.diagnostics.getErrorMessage(caughtError)
     options.diagnostics.logError("operator-mcp-actions", `Failed to get MCP server logs for ${serverName}: ${errorMessage}`, caughtError)
     return mcpServerActionError(500, `Failed to get MCP server logs: ${errorMessage}`)
+  }
+}
+
+export function clearOperatorMcpServerLogsAction<TAuditContext = unknown>(
+  serverName: string | undefined,
+  options: OperatorMcpMutationActionOptions<TAuditContext>,
+): OperatorMcpMutationActionResult<TAuditContext> {
+  if (!serverName) {
+    return operatorMcpActionError(
+      400,
+      "Missing server name",
+      options.audit?.buildClearLogsFailureAuditContext("missing-server-name"),
+    )
+  }
+
+  try {
+    const status = options.service.getServerStatus()[serverName]
+    if (!status) {
+      return operatorMcpActionError(
+        404,
+        `Server ${serverName} not found in configuration`,
+        options.audit?.buildClearLogsFailureAuditContext("server-not-found"),
+      )
+    }
+
+    options.service.clearServerLogs(serverName)
+    return operatorMcpActionOk(
+      buildOperatorMcpClearLogsResponse(serverName),
+      options.audit?.buildClearLogsAuditContext(serverName),
+    )
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    options.diagnostics.logError("operator-mcp-actions", `Failed to clear MCP server logs for ${serverName}: ${errorMessage}`, caughtError)
+    return operatorMcpActionError(
+      500,
+      `Failed to clear MCP server logs: ${errorMessage}`,
+      options.audit?.buildClearLogsFailureAuditContext("mcp-clear-logs-error"),
+    )
   }
 }
 
@@ -377,6 +472,32 @@ export function getOperatorMcpToolsAction(
     const errorMessage = options.diagnostics.getErrorMessage(caughtError)
     options.diagnostics.logError("operator-mcp-actions", `Failed to list MCP tools: ${errorMessage}`, caughtError)
     return mcpServerActionError(500, `Failed to list MCP tools: ${errorMessage}`)
+  }
+}
+
+export function setOperatorMcpToolEnabledAction<TAuditContext = unknown>(
+  toolName: string | undefined,
+  body: unknown,
+  options: OperatorMcpMutationActionOptions<TAuditContext>,
+): OperatorMcpMutationActionResult<TAuditContext> {
+  if (!toolName) {
+    return operatorMcpActionError(400, "Missing tool name")
+  }
+
+  const parsedRequest = parseMcpServerToggleRequestBody(body)
+  if (parsedRequest.ok === false) {
+    return operatorMcpActionError(parsedRequest.statusCode, parsedRequest.error)
+  }
+
+  try {
+    const enabled = parsedRequest.request.enabled
+    const success = options.service.setToolEnabled(toolName, enabled)
+    const response = buildOperatorMcpToolToggleResponse(toolName, enabled, success)
+    return operatorMcpActionOk(response, options.audit?.buildToolToggleAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    options.diagnostics.logError("operator-mcp-actions", `Failed to toggle MCP tool ${toolName}: ${errorMessage}`, caughtError)
+    return operatorMcpActionError(500, `Failed to toggle MCP tool: ${errorMessage}`)
   }
 }
 

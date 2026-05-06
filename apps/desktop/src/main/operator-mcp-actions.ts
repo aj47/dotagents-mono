@@ -1,16 +1,16 @@
 import {
-  buildOperatorMcpToolToggleResponse,
+  clearOperatorMcpServerLogsAction,
   getOperatorMcpServerLogsAction,
   getOperatorMcpStatusAction,
   getOperatorMcpToolsAction,
-  parseMcpServerToggleRequestBody,
+  setOperatorMcpToolEnabledAction,
+  type OperatorMcpMutationActionOptions,
   type OperatorMcpReadActionOptions,
 } from "@dotagents/shared/mcp-api"
 import {
   buildOperatorActionAuditContext,
   buildOperatorMcpClearLogsAuditContext,
   buildOperatorMcpClearLogsFailureAuditContext,
-  buildOperatorMcpClearLogsResponse,
   buildOperatorMcpRestartAuditContext,
   buildOperatorMcpRestartFailureAuditContext,
   buildOperatorMcpRestartResponse,
@@ -48,6 +48,23 @@ const operatorMcpReadActionOptions: OperatorMcpReadActionOptions = {
   },
 }
 
+const operatorMcpMutationActionOptions: OperatorMcpMutationActionOptions<OperatorActionAuditContext> = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+    getErrorMessage,
+  },
+  service: {
+    getServerStatus: () => mcpService.getServerStatus(),
+    clearServerLogs: (serverName) => mcpService.clearServerLogs(serverName),
+    setToolEnabled: (toolName, enabled) => mcpService.setToolEnabled(toolName, enabled),
+  },
+  audit: {
+    buildClearLogsAuditContext: (serverName) => buildOperatorMcpClearLogsAuditContext(serverName),
+    buildClearLogsFailureAuditContext: (failureReason) => buildOperatorMcpClearLogsFailureAuditContext(failureReason),
+    buildToolToggleAuditContext: (response) => buildOperatorActionAuditContext(response),
+  },
+}
+
 function ok(body: unknown, auditContext?: OperatorActionAuditContext): OperatorMcpActionResult {
   return {
     statusCode: 200,
@@ -76,31 +93,7 @@ export function getOperatorMcpServerLogs(
 }
 
 export function clearOperatorMcpServerLogs(serverName: string | undefined): OperatorMcpActionResult {
-  if (!serverName) {
-    return error(400, "Missing server name", buildOperatorMcpClearLogsFailureAuditContext("missing-server-name"))
-  }
-
-  try {
-    const status = mcpService.getServerStatus()[serverName]
-    if (!status) {
-      return error(
-        404,
-        `Server ${serverName} not found in configuration`,
-        buildOperatorMcpClearLogsFailureAuditContext("server-not-found"),
-      )
-    }
-
-    mcpService.clearServerLogs(serverName)
-    return ok(buildOperatorMcpClearLogsResponse(serverName), buildOperatorMcpClearLogsAuditContext(serverName))
-  } catch (caughtError) {
-    const errorMessage = getErrorMessage(caughtError)
-    diagnosticsService.logError("operator-mcp-actions", `Failed to clear MCP server logs for ${serverName}: ${errorMessage}`, caughtError)
-    return error(
-      500,
-      `Failed to clear MCP server logs: ${errorMessage}`,
-      buildOperatorMcpClearLogsFailureAuditContext("mcp-clear-logs-error"),
-    )
-  }
+  return clearOperatorMcpServerLogsAction(serverName, operatorMcpMutationActionOptions)
 }
 
 export async function testOperatorMcpServer(serverName: string | undefined): Promise<OperatorMcpActionResult> {
@@ -140,25 +133,7 @@ export function setOperatorMcpToolEnabled(
   toolName: string | undefined,
   body: unknown,
 ): OperatorMcpActionResult {
-  if (!toolName) {
-    return error(400, "Missing tool name")
-  }
-
-  const parsedRequest = parseMcpServerToggleRequestBody(body)
-  if (parsedRequest.ok === false) {
-    return error(parsedRequest.statusCode, parsedRequest.error)
-  }
-
-  try {
-    const enabled = parsedRequest.request.enabled
-    const success = mcpService.setToolEnabled(toolName, enabled)
-    const response = buildOperatorMcpToolToggleResponse(toolName, enabled, success)
-    return ok(response, buildOperatorActionAuditContext(response))
-  } catch (caughtError) {
-    const errorMessage = getErrorMessage(caughtError)
-    diagnosticsService.logError("operator-mcp-actions", `Failed to toggle MCP tool ${toolName}: ${errorMessage}`, caughtError)
-    return error(500, `Failed to toggle MCP tool: ${errorMessage}`)
-  }
+  return setOperatorMcpToolEnabledAction(toolName, body, operatorMcpMutationActionOptions)
 }
 
 export async function startOperatorMcpServer(body: unknown): Promise<OperatorMcpActionResult> {

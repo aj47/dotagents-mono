@@ -17,6 +17,7 @@ import {
   buildOperatorMcpToolToggleResponse,
   buildMcpServerToggleResponse,
   buildOperatorMcpStatusResponse,
+  clearOperatorMcpServerLogsAction,
   formatMcpMaxIterationsValidationMessage,
   getMcpServersAction,
   getOperatorMcpServerLogsAction,
@@ -26,7 +27,9 @@ import {
   parseInjectedMcpToolCallRequestBody,
   parseMcpMaxIterationsDraft,
   parseMcpServerToggleRequestBody,
+  setOperatorMcpToolEnabledAction,
   toggleMcpServerAction,
+  type OperatorMcpMutationActionOptions,
   type McpServerStatusMapLike,
 } from "./mcp-api"
 
@@ -383,6 +386,112 @@ describe("MCP API helpers", () => {
       body: { error: "Failed to get MCP server logs: logs denied" },
     })
     expect(logs).toContain("Failed to get MCP server logs for throw: logs denied")
+  })
+
+  it("runs operator MCP mutation routes through shared service adapters", () => {
+    const status: McpServerStatusMapLike = {
+      filesystem: {
+        connected: true,
+        toolCount: 2,
+        runtimeEnabled: true,
+        configDisabled: false,
+      },
+      throw: {
+        connected: true,
+        toolCount: 0,
+      },
+    }
+    const clearedServers: string[] = []
+    const toggles: Array<{ toolName: string; enabled: boolean }> = []
+    const logs: string[] = []
+    type MutationAuditContext = {
+      action: string
+      serverName?: string
+      failureReason?: string
+      success?: boolean
+    }
+    const options: OperatorMcpMutationActionOptions<MutationAuditContext> = {
+      service: {
+        getServerStatus: () => status,
+        clearServerLogs: (serverName: string) => {
+          if (serverName === "throw") throw new Error("clear denied")
+          clearedServers.push(serverName)
+        },
+        setToolEnabled: (toolName: string, enabled: boolean) => {
+          if (toolName === "throw") throw new Error("toggle denied")
+          toggles.push({ toolName, enabled })
+          return toolName === "filesystem:read"
+        },
+      },
+      diagnostics: {
+        logError: (_source: string, message: string) => { logs.push(message) },
+        getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error),
+      },
+      audit: {
+        buildClearLogsAuditContext: (serverName: string) => ({ action: "clear", serverName }),
+        buildClearLogsFailureAuditContext: (failureReason: string) => ({ action: "clear-failed", failureReason }),
+        buildToolToggleAuditContext: (response: { action: string; success: boolean }) => ({
+          action: response.action,
+          success: response.success,
+        }),
+      },
+    }
+
+    expect(clearOperatorMcpServerLogsAction(undefined, options)).toEqual({
+      statusCode: 400,
+      body: { error: "Missing server name" },
+      auditContext: { action: "clear-failed", failureReason: "missing-server-name" },
+    })
+    expect(clearOperatorMcpServerLogsAction("missing", options)).toEqual({
+      statusCode: 404,
+      body: { error: "Server missing not found in configuration" },
+      auditContext: { action: "clear-failed", failureReason: "server-not-found" },
+    })
+    expect(clearOperatorMcpServerLogsAction("filesystem", options)).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "mcp-clear-logs",
+        message: "Cleared logs for filesystem",
+        details: { server: "filesystem" },
+      },
+      auditContext: { action: "clear", serverName: "filesystem" },
+    })
+    expect(clearOperatorMcpServerLogsAction("throw", options)).toEqual({
+      statusCode: 500,
+      body: { error: "Failed to clear MCP server logs: clear denied" },
+      auditContext: { action: "clear-failed", failureReason: "mcp-clear-logs-error" },
+    })
+
+    expect(setOperatorMcpToolEnabledAction(undefined, { enabled: true }, options)).toEqual({
+      statusCode: 400,
+      body: { error: "Missing tool name" },
+    })
+    expect(setOperatorMcpToolEnabledAction("filesystem:read", { enabled: "yes" }, options)).toEqual({
+      statusCode: 400,
+      body: { error: "Missing or invalid 'enabled' boolean" },
+    })
+    expect(setOperatorMcpToolEnabledAction("filesystem:read", { enabled: false }, options)).toEqual({
+      statusCode: 200,
+      body: buildOperatorMcpToolToggleResponse("filesystem:read", false, true),
+      auditContext: { action: "mcp-tool-toggle", success: true },
+    })
+    expect(setOperatorMcpToolEnabledAction("filesystem:missing", { enabled: true }, options)).toEqual({
+      statusCode: 200,
+      body: buildOperatorMcpToolToggleResponse("filesystem:missing", true, false),
+      auditContext: { action: "mcp-tool-toggle", success: false },
+    })
+    expect(setOperatorMcpToolEnabledAction("throw", { enabled: true }, options)).toEqual({
+      statusCode: 500,
+      body: { error: "Failed to toggle MCP tool: toggle denied" },
+    })
+    expect(clearedServers).toEqual(["filesystem"])
+    expect(toggles).toEqual([
+      { toolName: "filesystem:read", enabled: false },
+      { toolName: "filesystem:missing", enabled: true },
+    ])
+    expect(logs).toContain("Failed to clear MCP server logs for throw: clear denied")
+    expect(logs).toContain("Failed to toggle MCP tool throw: toggle denied")
   })
 
   it("parses injected MCP tool call requests", () => {
