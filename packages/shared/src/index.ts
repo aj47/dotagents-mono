@@ -22,6 +22,7 @@ export * from './bundle-api';
 export * from './hub';
 export * from './conversation-state';
 export * from './session-presentation';
+export * from './session-progress-hydration';
 export {
   type SidebarActivityKind,
   type SidebarActivityPresentation,

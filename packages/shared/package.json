@@ -101,6 +101,11 @@
       "import": "./dist/session-presentation.mjs",
       "require": "./dist/session-presentation.js"
     },
+    "./session-progress-hydration": {
+      "types": "./dist/session-progress-hydration.d.ts",
+      "import": "./dist/session-progress-hydration.mjs",
+      "require": "./dist/session-progress-hydration.js"
+    },
     "./sidebar-sessions": {
       "types": "./dist/sidebar-sessions.d.ts",
       "import": "./dist/sidebar-sessions.mjs",
