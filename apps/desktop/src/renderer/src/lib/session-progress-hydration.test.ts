@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import type { AgentProgressUpdate, LoadedConversation } from "@shared/types"
+import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
+import type { LoadedConversation } from "@dotagents/shared/conversation-domain"
 import {
   hasConversationHistoryForDisplay,
   mergeLoadedConversationIntoProgress,

@@ -22,7 +22,7 @@ import { DEFAULT_PANEL_DRAG_ENABLED } from "@dotagents/shared/api-types"
 import { DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED } from "@dotagents/shared/stt-models"
 import { Send, Bot } from "lucide-react"
 import { useSelectedAgentId } from "@renderer/components/agent-selector"
-import type { AgentProfile } from "@shared/types"
+import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
 
 type PendingScreenshotAttachment = { name?: string; dataUrl: string }
 

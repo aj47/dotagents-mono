@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { Bot, Check, Edit2, Plus } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
-import type { AgentProfile } from "../../../shared/types"
+import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
 import {
   getDefaultAgentProfile,
   getDisplayAgentProfile,

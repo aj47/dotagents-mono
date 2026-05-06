@@ -3,7 +3,7 @@ import {
   resolveAgentProfileIdForNextSession,
 } from "@dotagents/shared/agent-selector-options"
 
-import type { AgentProfile } from "@shared/types"
+import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
 
 import { tipcClient } from "./tipc-client"
 

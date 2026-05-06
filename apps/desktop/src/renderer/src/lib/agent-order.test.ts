@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { AgentProfile } from "@shared/types"
+import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
 
 import {
   sortAgentProfilesWithDefaultFirst as sortAgentsWithDefaultFirst,

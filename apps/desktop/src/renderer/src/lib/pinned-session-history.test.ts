@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { ConversationHistoryItem } from "@shared/types"
+import type { ConversationHistoryItem } from "@dotagents/shared/conversation-domain"
 
 import { orderConversationHistoryByPinnedFirst } from "@dotagents/shared/session"
 
