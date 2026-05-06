@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import type {
+  CloudflareTunnelConfig,
+  RemoteServerConfig,
+} from './remote-pairing';
 import {
   buildDotAgentsConfigDeepLink,
   buildConnectableRemoteServerBaseUrl,
@@ -34,6 +38,39 @@ import {
   normalizeRemoteHostForComparison,
   parseDotAgentsConfigDeepLink,
 } from './remote-pairing';
+
+function assertType<T>(_value: T): void {
+  // Compile-time assertion only.
+}
+
+describe('remote server config contracts', () => {
+  it('exposes persisted remote server and Cloudflare tunnel config contracts', () => {
+    const remoteServerConfig: RemoteServerConfig = {
+      remoteServerEnabled: true,
+      remoteServerPort: 3210,
+      remoteServerBindAddress: '0.0.0.0',
+      remoteServerApiKey: 'secret',
+      remoteServerLogLevel: 'debug',
+      remoteServerCorsOrigins: ['https://app.example'],
+      remoteServerOperatorAllowDeviceIds: ['device-1'],
+      remoteServerAutoShowPanel: true,
+      remoteServerTerminalQrEnabled: false,
+    };
+    const tunnelConfig: CloudflareTunnelConfig = {
+      cloudflareTunnelMode: 'named',
+      cloudflareTunnelAutoStart: true,
+      cloudflareTunnelId: 'tunnel-id',
+      cloudflareTunnelName: 'agent',
+      cloudflareTunnelCredentialsPath: '/tmp/credentials.json',
+      cloudflareTunnelHostname: 'agent.example.com',
+    };
+
+    assertType<RemoteServerConfig>(remoteServerConfig);
+    assertType<CloudflareTunnelConfig>(tunnelConfig);
+    expect(remoteServerConfig.remoteServerBindAddress).toBe('0.0.0.0');
+    expect(tunnelConfig.cloudflareTunnelMode).toBe('named');
+  });
+});
 
 describe('remote pairing deep links', () => {
   it('normalizes hostnames for connectability checks and HTTP URLs', () => {

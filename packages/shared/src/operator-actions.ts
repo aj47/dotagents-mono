@@ -43,6 +43,7 @@ import {
   getRemoteServerOperatorApiActionPath,
   isRemoteServerOperatorApiPath,
 } from "./remote-server-api"
+import type { CloudflareTunnelConfig } from "./remote-pairing"
 
 export type OperatorActionParseResult<T> =
   | { ok: true; request: T }
@@ -320,13 +321,14 @@ export type OperatorTunnelStatusLike = {
   error?: string | null
 }
 
-export type OperatorTunnelSetupConfigLike = {
-  cloudflareTunnelMode?: "quick" | "named"
-  cloudflareTunnelAutoStart?: boolean
-  cloudflareTunnelId?: string
-  cloudflareTunnelHostname?: string
-  cloudflareTunnelCredentialsPath?: string
-}
+export type OperatorTunnelSetupConfigLike = Pick<
+  CloudflareTunnelConfig,
+  | "cloudflareTunnelMode"
+  | "cloudflareTunnelAutoStart"
+  | "cloudflareTunnelId"
+  | "cloudflareTunnelHostname"
+  | "cloudflareTunnelCredentialsPath"
+>
 
 export type OperatorTunnelSetupTunnelLike = {
   id: string

@@ -8,13 +8,37 @@ export const DOTAGENTS_SECRET_REF_PREFIX = 'dotagents-secret://';
 export const DEFAULT_REMOTE_SERVER_SECRET_MASK = '••••••••';
 
 export type RemoteServerLifecycleAction = 'noop' | 'start' | 'stop' | 'restart';
+export type RemoteServerBindAddress = '127.0.0.1' | '0.0.0.0';
+export type RemoteServerLogLevel = 'error' | 'info' | 'debug';
+export type CloudflareTunnelMode = 'quick' | 'named';
+
+export interface RemoteServerConfig {
+  remoteServerEnabled?: boolean;
+  remoteServerPort?: number;
+  remoteServerBindAddress?: RemoteServerBindAddress;
+  remoteServerApiKey?: string;
+  remoteServerLogLevel?: RemoteServerLogLevel;
+  remoteServerCorsOrigins?: string[];
+  remoteServerOperatorAllowDeviceIds?: string[];
+  remoteServerAutoShowPanel?: boolean;
+  remoteServerTerminalQrEnabled?: boolean;
+}
+
+export interface CloudflareTunnelConfig {
+  cloudflareTunnelMode?: CloudflareTunnelMode;
+  cloudflareTunnelAutoStart?: boolean;
+  cloudflareTunnelId?: string;
+  cloudflareTunnelName?: string;
+  cloudflareTunnelCredentialsPath?: string;
+  cloudflareTunnelHostname?: string;
+}
 
 export type RemoteServerLifecycleConfigLike = {
   remoteServerEnabled?: boolean;
   remoteServerPort?: number;
-  remoteServerBindAddress?: string;
+  remoteServerBindAddress?: RemoteServerBindAddress | string;
   remoteServerApiKey?: string;
-  remoteServerLogLevel?: string;
+  remoteServerLogLevel?: RemoteServerLogLevel | string;
   remoteServerCorsOrigins?: string[];
 };
 

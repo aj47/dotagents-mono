@@ -10,6 +10,10 @@ import type {
   KnowledgeNoteContext,
   KnowledgeNoteEntryType,
 } from './knowledge-note-domain';
+import type {
+  CloudflareTunnelConfig,
+  RemoteServerConfig,
+} from './remote-pairing';
 export type { LoopSchedule } from './types';
 export type {
   KnowledgeNote,
@@ -576,7 +580,7 @@ export interface PredefinedPromptSummary {
 
 export type PredefinedPrompt = PredefinedPromptSummary;
 
-export interface Settings {
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -660,25 +664,6 @@ export interface Settings {
   supertonicSpeed?: number;
   supertonicSteps?: number;
 
-  // Remote Server Configuration
-  remoteServerEnabled?: boolean;
-  remoteServerPort?: number;
-  remoteServerBindAddress?: '127.0.0.1' | '0.0.0.0';
-  remoteServerApiKey?: string;
-  remoteServerLogLevel?: 'error' | 'info' | 'debug';
-  remoteServerCorsOrigins?: string[];
-  remoteServerOperatorAllowDeviceIds?: string[];
-  remoteServerAutoShowPanel?: boolean;
-  remoteServerTerminalQrEnabled?: boolean;
-
-  // Cloudflare Tunnel Configuration
-  cloudflareTunnelMode?: 'quick' | 'named';
-  cloudflareTunnelAutoStart?: boolean;
-  cloudflareTunnelId?: string;
-  cloudflareTunnelName?: string;
-  cloudflareTunnelCredentialsPath?: string;
-  cloudflareTunnelHostname?: string;
-
   // WhatsApp Integration
   whatsappEnabled?: boolean;
   whatsappAllowFrom?: string[];
@@ -727,7 +712,7 @@ export interface Settings {
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate {
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -808,25 +793,6 @@ export interface SettingsUpdate {
   supertonicLanguage?: string;
   supertonicSpeed?: number;
   supertonicSteps?: number;
-
-  // Remote Server Configuration
-  remoteServerEnabled?: boolean;
-  remoteServerPort?: number;
-  remoteServerBindAddress?: '127.0.0.1' | '0.0.0.0';
-  remoteServerApiKey?: string;
-  remoteServerLogLevel?: 'error' | 'info' | 'debug';
-  remoteServerCorsOrigins?: string[];
-  remoteServerOperatorAllowDeviceIds?: string[];
-  remoteServerAutoShowPanel?: boolean;
-  remoteServerTerminalQrEnabled?: boolean;
-
-  // Cloudflare Tunnel Configuration
-  cloudflareTunnelMode?: 'quick' | 'named';
-  cloudflareTunnelAutoStart?: boolean;
-  cloudflareTunnelId?: string;
-  cloudflareTunnelName?: string;
-  cloudflareTunnelCredentialsPath?: string;
-  cloudflareTunnelHostname?: string;
 
   // WhatsApp Integration
   whatsappEnabled?: boolean;

@@ -15,6 +15,7 @@ import type {
 import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
 import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
 import type { PredefinedPrompt as SharedPredefinedPrompt } from '@dotagents/shared/api-types'
+import type { CloudflareTunnelConfig, RemoteServerConfig } from '@dotagents/shared/remote-pairing'
 import type {
   LegacyAcpAgentConfig,
   LegacyPersonaRecord,
@@ -44,6 +45,7 @@ export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from
 export type { KnowledgeNoteDateFilter, KnowledgeNoteGroupSummary, KnowledgeNoteSeriesSummary, KnowledgeNoteSort, KnowledgeNotesOverview } from '@dotagents/shared/knowledge-note-grouping'
 export type { PushNotificationToken } from '@dotagents/shared/push-notifications'
 export type { EnhancedModelInfo, ModelInfo, ModelsDevCost, ModelsDevData, ModelsDevLimit, ModelsDevModalities, ModelsDevModel, ModelsDevProvider } from '@dotagents/shared/api-types'
+export type { CloudflareTunnelConfig, RemoteServerBindAddress, RemoteServerConfig, RemoteServerLogLevel } from '@dotagents/shared/remote-pairing'
 export type { LegacyAcpAgentConfig, LegacyPersonaRecord, LegacyPersonasData, LegacyProfileRecord, LegacyProfilesData } from '@dotagents/shared/agent-profile-legacy-converters'
 export type { DiscordIntegrationConfig } from '@dotagents/shared/discord-config'
 export type { WhatsAppIntegrationConfig } from '@dotagents/shared/whatsapp-config'
@@ -130,7 +132,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -417,28 +419,6 @@ export type Config = Record<string, unknown> & DiscordIntegrationConfig & WhatsA
 
   // Predefined Prompts - frequently used prompts that can be quickly accessed
   predefinedPrompts?: SharedPredefinedPrompt[]
-
-	  // Remote Server Configuration
-	  remoteServerEnabled?: boolean
-	  remoteServerPort?: number
-	  remoteServerBindAddress?: "127.0.0.1" | "0.0.0.0"
-	  remoteServerApiKey?: string
-	  remoteServerLogLevel?: "error" | "info" | "debug"
-	  remoteServerCorsOrigins?: string[]
-		  remoteServerOperatorAllowDeviceIds?: string[]
-	  remoteServerAutoShowPanel?: boolean // Auto-show floating panel when receiving remote messages
-	  remoteServerTerminalQrEnabled?: boolean // Print QR code to terminal for mobile app pairing (auto-enabled in headless mode)
-
-  // Cloudflare Tunnel Configuration
-  // Tunnel mode: "quick" for random URLs (no account required), "named" for persistent URLs (requires account)
-  cloudflareTunnelMode?: "quick" | "named"
-  // Auto-start tunnel on app startup (requires remote server to be enabled)
-  cloudflareTunnelAutoStart?: boolean
-  // Named tunnel configuration (for persistent URLs)
-  cloudflareTunnelId?: string // The tunnel UUID (e.g., "abc123-def456-...")
-  cloudflareTunnelName?: string // Human-readable tunnel name
-  cloudflareTunnelCredentialsPath?: string // Path to credentials JSON file (defaults to ~/.cloudflared/<tunnel-id>.json)
-  cloudflareTunnelHostname?: string // Custom hostname for the tunnel (e.g., "myapp.example.com")
 
   // Stream Status Watcher Configuration
   streamStatusWatcherEnabled?: boolean
