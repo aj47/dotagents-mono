@@ -15,7 +15,7 @@ import { emitAgentProgress } from "./emit-agent-progress"
 import { getErrorMessage } from "@dotagents/shared/error-utils"
 import { resolvePreferredTopLevelAcpAgentSelection } from "@dotagents/shared/main-agent-selection"
 import { mcpService, type MCPToolCall, type MCPToolResult } from "./mcp-service"
-import { agentSessionStateManager, toolApprovalManager } from "./state"
+import { agentSessionStateManager, toolApprovalManager } from "@dotagents/core"
 import { getWindowRendererHandlers } from "./window"
 
 export type ProcessWithAgentModeOptions = {

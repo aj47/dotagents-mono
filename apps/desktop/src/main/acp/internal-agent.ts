@@ -15,7 +15,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { agentRuntime } from '../agent-runtime';
-import { agentSessionStateManager } from '../state';
+import { agentSessionStateManager } from '@dotagents/core';
 import { agentSessionTracker } from '../agent-session-tracker';
 import { emitAgentProgress } from '../emit-agent-progress';
 import { skillsService } from '../skills-service';

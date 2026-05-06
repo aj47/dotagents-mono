@@ -63,7 +63,7 @@ vi.mock("./debug", () => ({
   logLLM: vi.fn(),
 }))
 
-vi.mock("./state", () => ({
+vi.mock("@dotagents/core", () => ({
   state: {
     shouldStopAgent: false,
     isAgentModeActive: false,

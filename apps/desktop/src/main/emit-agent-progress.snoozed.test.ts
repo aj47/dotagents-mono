@@ -21,7 +21,7 @@ vi.mock("./window", () => ({
   resizePanelForAgentMode: mocks.resizePanelForAgentMode,
 }))
 
-vi.mock("./state", () => ({
+vi.mock("@dotagents/core", () => ({
   isPanelAutoShowSuppressed: vi.fn(() => false),
   agentSessionStateManager: { shouldStopSession: mocks.shouldStopSession, getSessionRunId: mocks.getSessionRunId },
 }))

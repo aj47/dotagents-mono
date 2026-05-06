@@ -14,7 +14,7 @@ vi.mock("./mcp-service", () => ({
 }))
 
 vi.mock("./agent-session-tracker", () => ({ agentSessionTracker: { getActiveSessions: vi.fn(() => []), getSession: mockGetSession } }))
-vi.mock("./state", () => ({ agentSessionStateManager: { getSessionRunId: vi.fn(() => 1) }, toolApprovalManager: {} }))
+vi.mock("@dotagents/core", () => ({ agentSessionStateManager: { getSessionRunId: vi.fn(() => 1) }, toolApprovalManager: {} }))
 vi.mock("./emergency-stop", () => ({ emergencyStopAll: vi.fn() }))
 vi.mock("./acp/acp-router-tools", () => ({ executeACPRouterTool: vi.fn(), isACPRouterTool: vi.fn(() => false) }))
 vi.mock("./message-queue-service", () => ({ messageQueueService: {} }))

@@ -22,7 +22,7 @@ vi.mock("./agent-session-tracker", () => ({
   },
 }))
 
-vi.mock("./state", () => ({
+vi.mock("@dotagents/core", () => ({
   agentSessionStateManager: { getSessionRunId: mockGetSessionRunId },
   toolApprovalManager: {},
 }))

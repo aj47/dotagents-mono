@@ -1,4 +1,4 @@
-import { agentProcessManager, llmRequestAbortManager, state, agentSessionStateManager, toolApprovalManager } from "./state"
+import { agentProcessManager, llmRequestAbortManager, state, agentSessionStateManager, toolApprovalManager } from "@dotagents/core"
 import { buildAgentStoppedProgressUpdate } from "@dotagents/shared/agent-run-utils"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"

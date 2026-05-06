@@ -11,7 +11,7 @@ import {
   stopRecordingAndHidePanelWindow,
 } from "./window"
 import { configStore } from "./config"
-import { state } from "./state"
+import { state } from "@dotagents/core"
 import { DEFAULT_FLOATING_PANEL_AUTO_SHOW } from "@dotagents/shared/api-types"
 
 // Use PNG for macOS and Linux (Waybar/SNI tray), ICO only for Windows

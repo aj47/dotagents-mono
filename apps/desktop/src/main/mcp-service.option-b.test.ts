@@ -17,7 +17,7 @@ vi.mock("electron", () => ({ app: { getPath: vi.fn(() => "/tmp"), getAppPath: vi
 vi.mock("./config", () => ({ dataFolder: "/tmp/dotagents-test", configStore: { get: () => currentConfig, save: mockConfigSave } }))
 vi.mock("./debug", () => ({ isDebugTools: () => false, logTools: vi.fn(), logMCP: vi.fn() }))
 vi.mock("./diagnostics", () => ({ diagnosticsService: { logError: vi.fn(), logWarning: vi.fn(), logInfo: vi.fn() } }))
-vi.mock("./state", () => ({ state: {}, agentProcessManager: {} }))
+vi.mock("@dotagents/core", () => ({ state: {}, agentProcessManager: {} }))
 vi.mock("./oauth-client", () => ({ OAuthClient: class {} }))
 vi.mock("./oauth-storage", () => ({ oauthStorage: {} }))
 vi.mock("./mcp-elicitation", () => ({ requestElicitation: vi.fn(), handleElicitationComplete: vi.fn(), cancelAllElicitations: vi.fn() }))

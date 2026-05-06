@@ -12,7 +12,7 @@ import {
 import { snoozeAgentSessionsAndHidePanelWindow } from "./floating-panel-session-state"
 import { systemPreferences } from "electron"
 import { configStore } from "./config"
-import { state, agentProcessManager } from "./state"
+import { state, agentProcessManager } from "@dotagents/core"
 import { conversationService } from "./conversation-service"
 import { spawn, ChildProcess } from "child_process"
 import path from "path"

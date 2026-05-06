@@ -110,7 +110,7 @@ vi.mock("./keyboard", () => ({
   getFocusedAppInfo: vi.fn(),
 }))
 
-vi.mock("./state", () => ({
+vi.mock("@dotagents/core", () => ({
   agentProcessManager: {},
   isHeadlessMode: false,
   state: {},

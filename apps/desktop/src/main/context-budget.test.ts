@@ -42,7 +42,7 @@ vi.mock('./system-prompts', () => ({
   constructMinimalSystemPrompt: () => '[minimal system prompt]',
 }))
 
-vi.mock('./state', () => ({
+vi.mock('@dotagents/core', () => ({
   agentSessionStateManager: {
     shouldStopSession: () => false,
   },

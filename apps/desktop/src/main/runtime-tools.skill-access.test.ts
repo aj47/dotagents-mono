@@ -17,7 +17,7 @@ vi.mock("./agent-session-tracker", () => ({
     getSessionProfileSnapshot: mockGetTrackerSessionProfileSnapshot,
   },
 }))
-vi.mock("./state", () => ({
+vi.mock("@dotagents/core", () => ({
   agentSessionStateManager: {
     getSessionRunId: vi.fn(() => 1),
     getSessionProfileSnapshot: mockGetSessionProfileSnapshot,

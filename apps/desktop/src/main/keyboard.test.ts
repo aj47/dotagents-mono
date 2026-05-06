@@ -26,7 +26,7 @@ vi.mock("./floating-panel-session-state", () => ({
   snoozeAgentSessionsAndHidePanelWindow: vi.fn(),
 }))
 vi.mock("./config", () => ({ configStore: { get: vi.fn(() => ({})) } }))
-vi.mock("./state", () => ({
+vi.mock("@dotagents/core", () => ({
   state: {
     isAgentModeActive: false,
     isRecording: false,

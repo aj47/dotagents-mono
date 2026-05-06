@@ -62,7 +62,7 @@ vi.mock("../emit-agent-progress", () => ({
   emitAgentProgress: vi.fn(() => Promise.resolve()),
 }))
 
-vi.mock("../state", () => ({
+vi.mock("@dotagents/core", () => ({
   agentSessionStateManager: {
     getSessionRunId: vi.fn(() => 7),
   },

@@ -6,7 +6,7 @@ describe("agentSessionStateManager", () => {
   })
 
   it("stopSession aborts and unregisters session controllers and cancels pending approvals", async () => {
-    const { agentSessionStateManager, state, toolApprovalManager } = await import("./state")
+    const { agentSessionStateManager, state, toolApprovalManager } = await import("@dotagents/core")
 
     agentSessionStateManager.createSession("session-stop")
     const controller = new AbortController()
@@ -26,7 +26,7 @@ describe("agentSessionStateManager", () => {
   })
 
   it("cleanupSession aborts and unregisters controllers, cancels approvals, and preserves run id", async () => {
-    const { agentSessionStateManager, state, toolApprovalManager } = await import("./state")
+    const { agentSessionStateManager, state, toolApprovalManager } = await import("@dotagents/core")
 
     const runId = agentSessionStateManager.startSessionRun("session-cleanup")
     const controller = new AbortController()

@@ -16,7 +16,7 @@ import { diagnosticsService } from "./diagnostics"
 
 import { makeLLMCallWithFetch, makeTextCompletionWithFetch, verifyCompletionWithFetch, makeLLMCallWithStreamingAndTools, StreamingCallback } from "./llm-fetch"
 import { constructSystemPrompt } from "./system-prompts"
-import { state, agentSessionStateManager } from "./state"
+import { state, agentSessionStateManager } from "@dotagents/core"
 import { isDebugLLM, logLLM, isDebugTools, logTools } from "./debug"
 import { shrinkMessagesForLLM, estimateTokensFromMessages, clearActualTokenUsage, clearIterativeSummary, clearContextRefs, clearArchiveFrontier, clearSummarizationFailureFlags } from "./context-budget"
 import { emitAgentProgress } from "./emit-agent-progress"

@@ -3,7 +3,7 @@ import { isDebugLLM, logLLM } from "./debug"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId } from "./models-dev-service"
 import { constructMinimalSystemPrompt } from "./system-prompts"
-import { agentSessionStateManager } from "./state"
+import { agentSessionStateManager } from "@dotagents/core"
 import { summarizationService } from "./summarization-service"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared/message-display-utils"
 import {

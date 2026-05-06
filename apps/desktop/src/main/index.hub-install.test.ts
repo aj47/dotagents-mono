@@ -169,7 +169,7 @@ async function loadIndexForHubInstall(
   vi.doMock("./loop-service", () => ({
     loopService: { startAllLoops: vi.fn(), stopAllLoops: vi.fn() },
   }))
-  vi.doMock("./state", () => ({ setHeadlessMode: vi.fn(), state }))
+  vi.doMock("@dotagents/core", () => ({ setHeadlessMode: vi.fn(), state }))
   vi.doMock("./bundle-service", () => ({ findHubBundleHandoffFilePath }))
   vi.doMock("./hub-install", () => ({
     findHubBundleInstallBundleUrl,

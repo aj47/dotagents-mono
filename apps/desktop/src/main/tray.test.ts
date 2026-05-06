@@ -36,7 +36,7 @@ vi.mock("./config", () => ({
   configStore: { get: vi.fn(() => ({ floatingPanelAutoShow: true })), save: vi.fn() },
 }))
 
-vi.mock("./state", () => ({ state: { isRecording: false } }))
+vi.mock("@dotagents/core", () => ({ state: { isRecording: false } }))
 
 describe("tray lifecycle", () => {
   beforeEach(async () => {

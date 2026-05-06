@@ -20,7 +20,7 @@ describe("emergencyStopAll", () => {
     const shutdown = vi.fn(async () => {})
     const clearSessionUserResponse = vi.fn()
 
-    vi.doMock("./state", () => ({
+    vi.doMock("@dotagents/core", () => ({
       agentProcessManager: { emergencyStop, getActiveProcessCount },
       llmRequestAbortManager: { abortAll },
       state: { agentSessions: new Map([["session-1", { id: "session-1" }]]), isAgentModeActive: true, agentIterationCount: 3 },

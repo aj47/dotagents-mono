@@ -5,7 +5,7 @@ import {
   type MCPToolCall,
   type MCPToolResult,
 } from "./mcp-service"
-import { agentSessionStateManager } from "./state"
+import { agentSessionStateManager } from "@dotagents/core"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import type { ConversationCompactionMetadata } from "@dotagents/shared/conversation-domain"

@@ -7,7 +7,7 @@ import {
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { messageQueueService } from "./message-queue-service"
-import { agentSessionStateManager, toolApprovalManager } from "./state"
+import { agentSessionStateManager, toolApprovalManager } from "@dotagents/core"
 
 export type StopAgentSessionResult = {
   success: true

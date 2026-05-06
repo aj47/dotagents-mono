@@ -16,7 +16,7 @@ import { configStore } from '../config';
 import { acpService, ACPContentBlock, ACPToolCallUpdate } from '../acp-service';
 import { buildProfileContext, getPreferredDelegationOutput } from '@dotagents/shared/agent-run-utils';
 import { emitAgentProgress } from '../emit-agent-progress';
-import { agentSessionStateManager } from '../state';
+import { agentSessionStateManager } from '@dotagents/core';
 import type { ACPDelegationProgress, ACPSubAgentMessage } from '@dotagents/shared/agent-progress';
 import type { LegacyAcpAgentConfig } from '@dotagents/shared/agent-profile-legacy-converters';
 import type { AgentProfile } from '@dotagents/core';

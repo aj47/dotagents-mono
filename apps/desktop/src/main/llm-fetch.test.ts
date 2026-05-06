@@ -40,7 +40,7 @@ vi.mock('./debug', () => ({
   logLLM: vi.fn(),
 }))
 
-vi.mock('./state', () => ({
+vi.mock('@dotagents/core', () => ({
   state: {
     shouldStopAgent: false,
     isAgentModeActive: false,
@@ -1074,7 +1074,7 @@ describe('LLM Fetch with AI SDK', () => {
   it('should not retry and throw "Session stopped by kill switch" when session stopped after API failure', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
-    const { agentSessionStateManager } = await import('./state')
+    const { agentSessionStateManager } = await import('@dotagents/core')
 
     // Start with session not stopped; flip to stopped after first API call fails
     let sessionStopped = false
@@ -1111,7 +1111,7 @@ describe('LLM Fetch with AI SDK', () => {
   it('should throw "Session stopped by kill switch" (not API error) when stopped mid-retry', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
-    const { agentSessionStateManager } = await import('./state')
+    const { agentSessionStateManager } = await import('@dotagents/core')
 
     const isRegisteredSpy = vi.spyOn(agentSessionStateManager, 'isSessionRegistered')
       .mockReturnValue(true)
@@ -1143,7 +1143,7 @@ describe('LLM Fetch with AI SDK', () => {
   it('should interrupt backoff delay and throw "Session stopped by kill switch" when session stopped during wait', async () => {
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
-    const { agentSessionStateManager } = await import('./state')
+    const { agentSessionStateManager } = await import('@dotagents/core')
 
     // Session stop is triggered after the first API failure, during backoff wait
     let sessionStopped = false

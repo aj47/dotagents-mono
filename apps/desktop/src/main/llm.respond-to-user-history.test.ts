@@ -41,7 +41,7 @@ vi.mock("./llm-fetch", () => ({
   makeTextCompletionWithFetch: vi.fn(),
 }))
 vi.mock("./system-prompts", () => ({ constructSystemPrompt: vi.fn(() => "system prompt") }))
-vi.mock("./state", () => ({ state: mocks.state, agentSessionStateManager: mocks }))
+vi.mock("@dotagents/core", () => ({ state: mocks.state, agentSessionStateManager: mocks }))
 vi.mock("./debug", () => ({ isDebugLLM: () => false, isDebugTools: () => false, logLLM: vi.fn(), logTools: vi.fn(), logApp: vi.fn() }))
 vi.mock("./diagnostics", () => ({ diagnosticsService: { logError: mocks.diagnosticsLogError, logWarning: vi.fn(), logInfo: vi.fn() } }))
 vi.mock("./context-budget", () => ({

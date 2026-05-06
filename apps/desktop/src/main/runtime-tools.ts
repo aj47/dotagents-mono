@@ -10,7 +10,7 @@
 
 import { mcpService, type MCPToolResult } from "./mcp-service"
 import { agentSessionTracker } from "./agent-session-tracker"
-import { agentSessionStateManager, toolApprovalManager } from "./state"
+import { agentSessionStateManager, toolApprovalManager } from "@dotagents/core"
 import { emergencyStopAll } from "./emergency-stop"
 import { executeACPRouterTool, isACPRouterTool } from "./acp/acp-router-tools"
 import { messageQueueService } from "./message-queue-service"

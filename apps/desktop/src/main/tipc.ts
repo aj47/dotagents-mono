@@ -94,7 +94,7 @@ import {
   updatePanelPosition,
   constrainPositionToScreen,
 } from "./panel-position"
-import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "./state"
+import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "@dotagents/core"
 import { generateTTS } from "./tts-service"
 
 

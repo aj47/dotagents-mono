@@ -25,7 +25,7 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { diagnosticsService } from "./diagnostics"
 import { mcpService } from "./mcp-service"
 import { isRuntimeTool } from "./runtime-tools"
-import { agentSessionStateManager } from "./state"
+import { agentSessionStateManager } from "@dotagents/core"
 
 interface AcpMcpRequestContext {
   appSessionId: string

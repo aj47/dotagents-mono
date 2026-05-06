@@ -11,7 +11,7 @@ import { configStore } from "./config"
 import { conversationService } from "./conversation-service"
 import { diagnosticsService } from "./diagnostics"
 import { processWithAgentMode } from "./agent-loop-runner"
-import { state } from "./state"
+import { state } from "@dotagents/core"
 import { notifyConversationHistoryChanged } from "./conversation-history-notifier"
 
 export type RunAgentOptions = AgentRunOptions
