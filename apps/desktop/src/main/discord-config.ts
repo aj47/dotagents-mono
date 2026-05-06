@@ -8,6 +8,7 @@ import {
 } from "@dotagents/shared/discord-config"
 
 export {
+  DEFAULT_DISCORD_ENABLED,
   DEFAULT_DISCORD_DM_ENABLED,
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,

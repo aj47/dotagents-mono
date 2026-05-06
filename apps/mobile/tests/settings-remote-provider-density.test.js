@@ -292,6 +292,8 @@ test('lets mobile configure desktop Discord integration settings without echoing
   assert.match(settingsSource, /DEFAULT_DISCORD_DM_ENABLED/);
   assert.match(settingsSource, /DEFAULT_DISCORD_REQUIRE_MENTION/);
   assert.match(settingsSource, /DEFAULT_DISCORD_LOG_MESSAGES/);
+  assert.match(settingsSource, /DEFAULT_DISCORD_ENABLED/);
+  assert.match(discordSection, /remoteSettings\.discordEnabled \?\? DEFAULT_DISCORD_ENABLED/);
   assert.match(discordSection, /remoteSettings\.discordDmEnabled \?\? DEFAULT_DISCORD_DM_ENABLED/);
   assert.match(discordSection, /handleRemoteSettingToggle\('discordDmEnabled', v\)/);
   assert.match(discordSection, /remoteSettings\.discordRequireMention \?\? DEFAULT_DISCORD_REQUIRE_MENTION/);

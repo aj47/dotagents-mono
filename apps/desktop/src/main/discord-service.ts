@@ -5,6 +5,7 @@ import { logApp } from "./debug"
 import { agentProfileService } from "./agent-profile-service"
 import { runAgent } from "./remote-agent-runner"
 import {
+  DEFAULT_DISCORD_ENABLED,
   DEFAULT_DISCORD_DM_ENABLED,
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
@@ -907,7 +908,7 @@ class DiscordService {
     return {
       ...this.status,
       available: dependencyStatus.available,
-      enabled: !!cfg.discordEnabled,
+      enabled: cfg.discordEnabled ?? DEFAULT_DISCORD_ENABLED,
       tokenConfigured: !!token.token,
       tokenSource: token.source,
       defaultProfileId: defaultProfile.profileId,
@@ -928,14 +929,14 @@ class DiscordService {
   async start(): Promise<{ success: boolean; error?: string }> {
     if (this.startPromise) return this.startPromise
     if (this.client?.isReady()) {
-      this.setStatus({ connected: true, connecting: false, enabled: !!configStore.get().discordEnabled })
+      this.setStatus({ connected: true, connecting: false, enabled: configStore.get().discordEnabled ?? DEFAULT_DISCORD_ENABLED })
       return { success: true }
     }
 
     const cfg = configStore.get()
     const dependencyStatus = getDiscordDependencyStatus()
     const token = getDiscordResolvedToken(cfg).token
-    if (!cfg.discordEnabled) {
+    if (!(cfg.discordEnabled ?? DEFAULT_DISCORD_ENABLED)) {
       const error = "Discord integration is disabled"
       this.setStatus({ enabled: false, connected: false, connecting: false, lastError: error })
       return { success: false, error }
@@ -1118,7 +1119,7 @@ class DiscordService {
     if (message.author.bot) return
 
     const cfg = configStore.get()
-    if (!cfg.discordEnabled) {
+    if (!(cfg.discordEnabled ?? DEFAULT_DISCORD_ENABLED)) {
       this.addLog("info", "Dropped messageCreate: discordEnabled=false")
       return
     }

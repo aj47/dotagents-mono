@@ -17,6 +17,7 @@ import {
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
 import { ttsManager } from "@renderer/lib/tts-manager"
+import { DEFAULT_DISCORD_ENABLED } from "@dotagents/shared/discord-config"
 import { applySelectedAgentToNextSession as applySelectedAgentForNextSession } from "@renderer/lib/apply-selected-agent"
 import { hasUnreadAgentResponse } from "@renderer/lib/sidebar-sessions"
 import { useAgentStore } from "@renderer/stores"
@@ -107,7 +108,7 @@ export const Component = () => {
   }, [isCollapsed, refetchSessionData])
 
   const whatsappEnabled = configQuery.data?.whatsappEnabled ?? false
-  const discordEnabled = configQuery.data?.discordEnabled ?? false
+  const discordEnabled = configQuery.data?.discordEnabled ?? DEFAULT_DISCORD_ENABLED
   const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
   const trackedActiveSessions = sessionData?.activeSessions ?? []
   const collapsedActiveSessions = useMemo(() => {

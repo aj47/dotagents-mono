@@ -31,4 +31,9 @@ describe("app layout session retention", () => {
     expect(appLayoutSource).toContain("mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden")
     expect(appLayoutSource).toContain('className="shrink-0"')
   })
+
+  it("uses the shared Discord sidebar default", () => {
+    expect(appLayoutSource).toContain("DEFAULT_DISCORD_ENABLED")
+    expect(appLayoutSource).toContain("configQuery.data?.discordEnabled ?? DEFAULT_DISCORD_ENABLED")
+  })
 })

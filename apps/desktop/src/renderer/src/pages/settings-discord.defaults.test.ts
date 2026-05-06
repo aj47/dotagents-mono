@@ -12,8 +12,10 @@ describe("settings discord defaults", () => {
   it("uses shared Discord integration defaults", () => {
     const source = getSettingsDiscordSource()
 
+    expect(source).toContain("DEFAULT_DISCORD_ENABLED")
     expect(source).toContain("DEFAULT_DISCORD_DM_ENABLED")
     expect(source).toContain("DEFAULT_DISCORD_REQUIRE_MENTION")
     expect(source).toContain("DEFAULT_DISCORD_LOG_MESSAGES")
+    expect(source).toContain("cfg.discordEnabled ?? DEFAULT_DISCORD_ENABLED")
   })
 })

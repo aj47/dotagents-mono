@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_DISCORD_ENABLED,
   DEFAULT_DISCORD_DM_ENABLED,
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
@@ -20,6 +21,7 @@ function assertType<T>(_value: T): void {
 describe('discord config helpers', () => {
   it('exposes shared Discord integration defaults', () => {
     expect(DEFAULT_DISCORD_DM_ENABLED).toBe(true);
+    expect(DEFAULT_DISCORD_ENABLED).toBe(false);
     expect(DEFAULT_DISCORD_REQUIRE_MENTION).toBe(true);
     expect(DEFAULT_DISCORD_LOG_MESSAGES).toBe(false);
   });

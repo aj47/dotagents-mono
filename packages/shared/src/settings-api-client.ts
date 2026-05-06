@@ -93,6 +93,7 @@ import {
   type RemoteServerLifecycleConfigLike,
 } from './remote-pairing';
 import {
+  DEFAULT_DISCORD_ENABLED,
   DEFAULT_DISCORD_DM_ENABLED,
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
@@ -411,7 +412,7 @@ export function buildSettingsResponse(
     mcpRequireApprovalBeforeToolCall: cfg.mcpRequireApprovalBeforeToolCall ?? DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL,
     ttsEnabled: cfg.ttsEnabled ?? DEFAULT_TTS_ENABLED,
     whatsappEnabled: cfg.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED,
-    discordEnabled: cfg.discordEnabled ?? false,
+    discordEnabled: cfg.discordEnabled ?? DEFAULT_DISCORD_ENABLED,
     mcpMaxIterations: cfg.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT,
     streamerModeEnabled: cfg.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED,
     sttLanguage: cfg.sttLanguage ?? '',

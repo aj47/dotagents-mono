@@ -71,6 +71,7 @@ import {
   type MainAgentMode,
 } from '@dotagents/shared/main-agent-selection';
 import {
+  DEFAULT_DISCORD_ENABLED,
   DEFAULT_DISCORD_DM_ENABLED,
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
@@ -4116,14 +4117,14 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Discord Integration</Text>
                   <Switch
-                    value={remoteSettings.discordEnabled ?? false}
+                    value={remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('discordEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.discordEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
 
-                {remoteSettings.discordEnabled && (
+                {(remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED) && (
                   <>
                     <Text style={styles.label}>Bot Token</Text>
                     <TextInput

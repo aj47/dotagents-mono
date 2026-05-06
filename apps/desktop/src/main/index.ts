@@ -51,6 +51,7 @@ import { startAgentsFolderWatcher } from "./agents-folder-watcher"
 import { setHeadlessMode } from "./state"
 import { stopRemoteServer } from "./remote-server"
 import { discordService } from "./discord-service"
+import { DEFAULT_DISCORD_ENABLED } from "./discord-config"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import {
   downloadHubBundleToTempFile,
@@ -113,7 +114,7 @@ async function startDiscordIfConfigured(
   context: "headless" | "desktop",
 ): Promise<void> {
   const cfg = configStore.get()
-  if (!cfg.discordEnabled) return
+  if (!(cfg.discordEnabled ?? DEFAULT_DISCORD_ENABLED)) return
 
   const result = await discordService.start()
   if (!result.success) {

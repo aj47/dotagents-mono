@@ -48,6 +48,7 @@ import {
   DEFAULT_STREAMER_MODE_ENABLED,
 } from './remote-pairing';
 import {
+  DEFAULT_DISCORD_ENABLED,
   DEFAULT_DISCORD_DM_ENABLED,
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
@@ -440,6 +441,7 @@ describe('SettingsApiClient', () => {
       remoteServerBindAddress: '127.0.0.1',
       discordBotToken: 'DISCORD-MASK',
       discordDefaultProfileId: 'agent-1',
+      discordEnabled: DEFAULT_DISCORD_ENABLED,
       discordDmEnabled: DEFAULT_DISCORD_DM_ENABLED,
       discordRequireMention: DEFAULT_DISCORD_REQUIRE_MENTION,
       discordLogMessages: DEFAULT_DISCORD_LOG_MESSAGES,

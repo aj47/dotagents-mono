@@ -23,6 +23,7 @@ import {
   MAIN_AGENT_MODE_OPTIONS,
   type MainAgentMode,
 } from "@dotagents/shared/main-agent-selection"
+import { DEFAULT_DISCORD_ENABLED } from "@dotagents/shared/discord-config"
 import { DEFAULT_WHATSAPP_ENABLED } from "@dotagents/shared/whatsapp-config"
 import {
   DEFAULT_LANGFUSE_ENABLED,
@@ -1385,7 +1386,7 @@ export function Component() {
           // disabled. The Discord settings page is hidden from the sidebar
           // while disabled, so this section is the only place to turn it on
           // — surface it by default until the user enables it.
-          forceOpen={isSearching || !(configQuery.data?.discordEnabled ?? false)}
+          forceOpen={isSearching || !(configQuery.data?.discordEnabled ?? DEFAULT_DISCORD_ENABLED)}
           endDescription={(
             <div className="break-words whitespace-normal">
               Enable a Discord bot for DMs, mentions, and threads. {" "}
@@ -1395,7 +1396,7 @@ export function Component() {
         >
           <Control label={<ControlLabel label="Enable Discord" tooltip="When enabled, DotAgents can receive Discord DMs and server mentions using your configured bot token. The Discord settings page only appears in the sidebar while this is on." />} className="px-3">
             <Switch
-              checked={configQuery.data?.discordEnabled ?? false}
+              checked={configQuery.data?.discordEnabled ?? DEFAULT_DISCORD_ENABLED}
               onCheckedChange={(value) => saveConfig({ discordEnabled: value })}
             />
           </Control>

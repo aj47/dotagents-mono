@@ -10,6 +10,7 @@ import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-clien
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { formatConfigListInput, parseConfigListInput } from "@dotagents/shared/config-list-input"
 import {
+  DEFAULT_DISCORD_ENABLED,
   DEFAULT_DISCORD_DM_ENABLED,
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
@@ -149,7 +150,7 @@ export function Component() {
 
   if (!cfg) return null
 
-  const enabled = cfg.discordEnabled ?? false
+  const enabled = cfg.discordEnabled ?? DEFAULT_DISCORD_ENABLED
   const unavailable = status?.available === false
   const statusMessage = statusError || status?.lastError
 
