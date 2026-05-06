@@ -166,6 +166,11 @@
       "import": "./dist/repeat-task-utils.mjs",
       "require": "./dist/repeat-task-utils.js"
     },
+    "./repeat-task-markdown": {
+      "types": "./dist/repeat-task-markdown.d.ts",
+      "import": "./dist/repeat-task-markdown.mjs",
+      "require": "./dist/repeat-task-markdown.js"
+    },
     "./knowledge-note-grouping": {
       "types": "./dist/knowledge-note-grouping.d.ts",
       "import": "./dist/knowledge-note-grouping.mjs",

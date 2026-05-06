@@ -34,6 +34,7 @@ export default defineConfig({
     'agent-profile-connection': 'src/agent-profile-connection.ts',
     'agent-selector-options': 'src/agent-selector-options.ts',
     'repeat-task-utils': 'src/repeat-task-utils.ts',
+    'repeat-task-markdown': 'src/repeat-task-markdown.ts',
     'knowledge-note-grouping': 'src/knowledge-note-grouping.ts',
     'knowledge-note-form': 'src/knowledge-note-form.ts',
     'settings-api-client': 'src/settings-api-client.ts',
