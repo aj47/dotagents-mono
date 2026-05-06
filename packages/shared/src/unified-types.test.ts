@@ -16,6 +16,7 @@ import type {
   ModelsDevData,
   ModelsDevModel,
   AgentExecutionConfig,
+  AgentGenerationOptionsConfig,
   AgentModelSelectionConfig,
   AudioDeviceConfig,
   AudioInputDeviceConfig,
@@ -425,6 +426,20 @@ describe('settings API request/response contracts', () => {
     assertType<SettingsUpdate>(update)
     expect(update.agentProviderId).toBe('chatgpt-web')
     expect(update.chatgptWebBaseUrl).toBe('https://chatgpt.com')
+  })
+
+  it('accepts generation options shared by desktop and mobile settings', () => {
+    const config: AgentGenerationOptionsConfig = {
+      openaiReasoningEffort: 'xhigh',
+      codexTextVerbosity: 'high',
+    }
+    const update: SettingsUpdate = {
+      ...config,
+    }
+
+    assertType<AgentGenerationOptionsConfig>(config)
+    assertType<SettingsUpdate>(update)
+    expect(update.openaiReasoningEffort).toBe('xhigh')
   })
 
   it('accepts streamer mode config shared by settings and remote pairing', () => {

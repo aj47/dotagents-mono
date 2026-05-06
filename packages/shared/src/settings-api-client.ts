@@ -235,6 +235,8 @@ export function buildSettingsResponse(
     groqBaseUrl: cfg.groqBaseUrl ?? '',
     geminiApiKey: cfg.geminiApiKey ? options.providerSecretMask : '',
     geminiBaseUrl: cfg.geminiBaseUrl ?? '',
+    openaiReasoningEffort: cfg.openaiReasoningEffort,
+    codexTextVerbosity: cfg.codexTextVerbosity,
     transcriptPostProcessingEnabled: cfg.transcriptPostProcessingEnabled ?? true,
     mcpRequireApprovalBeforeToolCall: cfg.mcpRequireApprovalBeforeToolCall ?? false,
     ttsEnabled: cfg.ttsEnabled ?? true,
@@ -640,6 +642,12 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.chatgptWebSessionToken === 'string') updates.chatgptWebSessionToken = requestBody.chatgptWebSessionToken;
   if (typeof requestBody.chatgptWebAccountId === 'string') updates.chatgptWebAccountId = requestBody.chatgptWebAccountId;
   if (typeof requestBody.chatgptWebBaseUrl === 'string') updates.chatgptWebBaseUrl = requestBody.chatgptWebBaseUrl;
+  if (typeof requestBody.openaiReasoningEffort === 'string' && ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'].includes(requestBody.openaiReasoningEffort)) {
+    updates.openaiReasoningEffort = requestBody.openaiReasoningEffort;
+  }
+  if (typeof requestBody.codexTextVerbosity === 'string' && ['low', 'medium', 'high'].includes(requestBody.codexTextVerbosity)) {
+    updates.codexTextVerbosity = requestBody.codexTextVerbosity;
+  }
   if (typeof requestBody.openaiApiKey === 'string' && requestBody.openaiApiKey !== providerSecretMask) updates.openaiApiKey = requestBody.openaiApiKey.trim();
   if (typeof requestBody.openaiBaseUrl === 'string') updates.openaiBaseUrl = requestBody.openaiBaseUrl.trim();
   if (typeof requestBody.groqApiKey === 'string' && requestBody.groqApiKey !== providerSecretMask) updates.groqApiKey = requestBody.groqApiKey.trim();

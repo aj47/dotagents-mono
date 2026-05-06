@@ -698,7 +698,20 @@ export interface ChatGptWebAuthConfig {
   chatgptWebConnectedAt?: number;
 }
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {
+export type OpenAiReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+export type CodexTextVerbosity = "low" | "medium" | "high";
+
+export interface AgentGenerationOptionsConfig {
+  /**
+   * Reasoning effort for reasoning-capable OpenAI/Codex models. The sentinel
+   * "none" leaves reasoning unset for providers that support omitting it.
+   */
+  openaiReasoningEffort?: OpenAiReasoningEffort;
+  /** Output verbosity for Codex (ChatGPT Web) responses. */
+  codexTextVerbosity?: CodexTextVerbosity;
+}
+
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, AgentGenerationOptionsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: CHAT_PROVIDER_ID;
   mcpToolsProviderId: CHAT_PROVIDER_ID;
@@ -708,7 +721,7 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, St
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, ChatGptWebAuthConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {}
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, ChatGptWebAuthConfig, AgentGenerationOptionsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {}
 
 // Conversation Sync Types
 export interface ServerConversationMessage {
