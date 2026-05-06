@@ -377,6 +377,15 @@ function getSharedConversationSyncSource(): string {
   return readFileSync(sharedConversationSyncPath, "utf8")
 }
 
+function getSharedConversationMediaAssetsSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedConversationMediaAssetsPath = path.join(
+    testDir,
+    "../../../../packages/shared/src/conversation-media-assets.ts",
+  )
+  return readFileSync(sharedConversationMediaAssetsPath, "utf8")
+}
+
 function getSettingsActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const settingsActionsPath = path.join(testDir, "settings-actions.ts")
@@ -1084,6 +1093,7 @@ describe("remote-server route registration", () => {
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const conversationActionsSource = getConversationActionsSource()
     const sharedConversationSyncSource = getSharedConversationSyncSource()
+    const sharedConversationMediaAssetsSource = getSharedConversationMediaAssetsSource()
 
     expectRegisteredApiRoute(source, "GET", "conversation")
     expectRegisteredApiRoute(source, "GET", "conversationVideoAsset")
@@ -1114,7 +1124,9 @@ describe("remote-server route registration", () => {
     expect(sharedConversationSyncSource).toContain("applyServerConversationUpdate(conversation, parsedRequest.request, timestamp)")
     expect(sharedConversationSyncSource).not.toContain('from "./conversation-service"')
     expect(conversationActionsSource).toContain("getConversationVideoAssetPath(conversationId, fileName ?? \"\")")
-    expect(conversationActionsSource).toContain("getConversationVideoByteRange(rangeHeader, stat.size)")
+    expect(conversationActionsSource).toContain("buildConversationVideoAssetStreamPlan(fileName ?? \"\", rangeHeader, stat.size)")
+    expect(sharedConversationMediaAssetsSource).toContain("export function buildConversationVideoAssetStreamPlan(")
+    expect(sharedConversationMediaAssetsSource).toContain("getConversationVideoByteRange(rangeHeader, totalSize)")
     expect(conversationActionsSource).toContain("fs.createReadStream(assetPath")
   })
 

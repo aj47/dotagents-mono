@@ -11,8 +11,7 @@ import {
   type ConversationActionOptions,
 } from "@dotagents/shared/conversation-sync"
 import {
-  getConversationVideoByteRange,
-  getConversationVideoMimeTypeFromFileName,
+  buildConversationVideoAssetStreamPlan,
 } from "@dotagents/shared/conversation-media-assets"
 import type { MobileApiActionResult } from "@dotagents/shared/remote-server-route-contracts"
 
@@ -77,27 +76,23 @@ export async function getConversationVideoAsset(
       return error(404, "Video asset not found")
     }
 
-    const contentType = getConversationVideoMimeTypeFromFileName(fileName ?? "")
-    const range = getConversationVideoByteRange(rangeHeader, stat.size)
-    if (range.satisfiable === false) {
+    const streamPlan = buildConversationVideoAssetStreamPlan(fileName ?? "", rangeHeader, stat.size)
+    if (!streamPlan.ok) {
       return {
-        statusCode: 416,
-        headers: { "Content-Range": range.contentRange },
+        statusCode: streamPlan.statusCode,
+        headers: streamPlan.headers,
       }
     }
 
-    const headers: Record<string, string> = {
-      "Accept-Ranges": "bytes",
-      "Content-Type": contentType,
-      "Content-Length": String(range.contentLength),
+    if (streamPlan.range) {
+      return ok(
+        fs.createReadStream(assetPath, { start: streamPlan.range.start, end: streamPlan.range.end }),
+        streamPlan.statusCode,
+        streamPlan.headers,
+      )
     }
 
-    if (range.partial) {
-      headers["Content-Range"] = range.contentRange
-      return ok(fs.createReadStream(assetPath, { start: range.start, end: range.end }), 206, headers)
-    }
-
-    return ok(fs.createReadStream(assetPath), 200, headers)
+    return ok(fs.createReadStream(assetPath), streamPlan.statusCode, streamPlan.headers)
   } catch (caughtError: any) {
     if (caughtError?.code === "ENOENT") {
       return error(404, "Video asset not found")

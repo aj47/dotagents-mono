@@ -58,6 +58,19 @@ export type ConversationVideoByteRange =
       contentRange: string;
     };
 
+export type ConversationVideoAssetStreamPlan =
+  | {
+      ok: true;
+      statusCode: 200 | 206;
+      headers: Record<string, string>;
+      range?: { start: number; end: number };
+    }
+  | {
+      ok: false;
+      statusCode: 416;
+      headers: Record<string, string>;
+    };
+
 export type RespondToUserLocalAssetResolution = {
   resolvedPath: string;
   fileBytes: number;
@@ -580,5 +593,43 @@ export function getConversationVideoByteRange(
     end: boundedEnd,
     contentLength,
     contentRange: `bytes ${start}-${boundedEnd}/${size}`,
+  };
+}
+
+export function buildConversationVideoAssetStreamPlan(
+  fileName: string,
+  rangeHeader: string | string[] | undefined,
+  totalSize: number,
+): ConversationVideoAssetStreamPlan {
+  const contentType = getConversationVideoMimeTypeFromFileName(fileName);
+  const range = getConversationVideoByteRange(rangeHeader, totalSize);
+  if (range.satisfiable === false) {
+    return {
+      ok: false,
+      statusCode: 416,
+      headers: { 'Content-Range': range.contentRange },
+    };
+  }
+
+  const headers: Record<string, string> = {
+    'Accept-Ranges': 'bytes',
+    'Content-Type': contentType,
+    'Content-Length': String(range.contentLength),
+  };
+
+  if (!range.partial) {
+    return {
+      ok: true,
+      statusCode: 200,
+      headers,
+    };
+  }
+
+  headers['Content-Range'] = range.contentRange;
+  return {
+    ok: true,
+    statusCode: 206,
+    headers,
+    range: { start: range.start, end: range.end },
   };
 }

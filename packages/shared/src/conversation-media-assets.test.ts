@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildConversationVideoAssetStreamPlan,
   buildConversationVideoAssetUrl,
   buildConversationVideoAssetHttpUrl,
   escapeMarkdownAltText,
@@ -359,6 +360,38 @@ describe('conversation video asset utilities', () => {
     expect(getConversationVideoByteRange('bytes=10-1', 1000)).toEqual({
       satisfiable: false,
       contentRange: 'bytes */1000',
+    });
+  });
+
+  it('builds reusable video stream response plans for full and partial content', () => {
+    expect(buildConversationVideoAssetStreamPlan('abcdef1234567890.mp4', undefined, 1000)).toEqual({
+      ok: true,
+      statusCode: 200,
+      headers: {
+        'Accept-Ranges': 'bytes',
+        'Content-Type': 'video/mp4',
+        'Content-Length': '1000',
+      },
+    });
+
+    expect(buildConversationVideoAssetStreamPlan('abcdef1234567890.webm', 'bytes=10-19', 1000)).toEqual({
+      ok: true,
+      statusCode: 206,
+      headers: {
+        'Accept-Ranges': 'bytes',
+        'Content-Type': 'video/webm',
+        'Content-Length': '10',
+        'Content-Range': 'bytes 10-19/1000',
+      },
+      range: { start: 10, end: 19 },
+    });
+  });
+
+  it('builds reusable video stream response plans for unsatisfiable ranges', () => {
+    expect(buildConversationVideoAssetStreamPlan('abcdef1234567890.mp4', 'bytes=1000-1001', 1000)).toEqual({
+      ok: false,
+      statusCode: 416,
+      headers: { 'Content-Range': 'bytes */1000' },
     });
   });
 });
