@@ -5,7 +5,7 @@ import dayjs from "dayjs"
 import { AlertTriangle, Archive, Clock, Loader2, Pin, Search, Trash2 } from "lucide-react"
 
 import { cn } from "@renderer/lib/utils"
-import { orderConversationHistoryByPinnedFirst } from "@renderer/lib/pinned-session-history"
+import { orderConversationHistoryByPinnedFirst } from "@dotagents/shared/session"
 import { getSidebarStatusPresentation } from "@renderer/lib/session-presentation"
 import {
   getLatestUserFacingResponse,
@@ -28,7 +28,7 @@ import {
 } from "@renderer/components/ui/dialog"
 import { toast } from "sonner"
 import { useAgentStore } from "@renderer/stores"
-import type { AgentProgressUpdate } from "@shared/types"
+import type { AgentProgressUpdate, ConversationHistoryItem } from "@shared/types"
 import {
   CONVERSATION_SEARCH_RESULT_LIMIT,
   filterConversationSearchEntries,
@@ -352,7 +352,7 @@ export function SavedConversationsDialog({
         .filter((conversationId): conversationId is string => !!conversationId),
     )
 
-    return orderConversationHistoryByPinnedFirst(all, pinnedSessionIds)
+    return orderConversationHistoryByPinnedFirst<ConversationHistoryItem>(all, pinnedSessionIds)
       .filter((conversation) => !activeConversationIds.has(conversation.id))
       .map((conversation) => ({
         key: `saved:${conversation.id}`,

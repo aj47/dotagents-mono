@@ -11,7 +11,7 @@ import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progres
 import { toast } from "sonner"
 
 import { logUI } from "@renderer/lib/debug"
-import { orderConversationHistoryByPinnedFirst } from "@renderer/lib/pinned-session-history"
+import { orderConversationHistoryByPinnedFirst } from "@dotagents/shared/session"
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
 import { AgentSelector } from "@renderer/components/agent-selector"
 import { useConfigQuery } from "@renderer/lib/query-client"

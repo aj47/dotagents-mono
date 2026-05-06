@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { ConversationHistoryItem } from "@shared/types"
 
-import { orderConversationHistoryByPinnedFirst } from "./pinned-session-history"
+import { orderConversationHistoryByPinnedFirst } from "@dotagents/shared/session"
 
 const createSession = (id: string, updatedAt: number): ConversationHistoryItem => ({
   id,
