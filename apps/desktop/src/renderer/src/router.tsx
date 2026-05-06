@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs } from "react-router-dom"
 import { createBrowserRouter, redirect } from "react-router-dom"
-import { getLegacySettingsRedirectPath } from "./lib/legacy-settings-redirect"
+import { getLegacySettingsRedirectPath } from "@dotagents/shared/legacy-settings-redirect"
 
 const legacySettingsRedirect =
   (targetPath: string) =>

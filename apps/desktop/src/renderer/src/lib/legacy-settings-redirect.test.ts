@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { getLegacySettingsRedirectPath } from "./legacy-settings-redirect"
+import { getLegacySettingsRedirectPath } from "@dotagents/shared/legacy-settings-redirect"
 
 describe("getLegacySettingsRedirectPath", () => {
   it("preserves query params and hashes from legacy settings links", () => {
