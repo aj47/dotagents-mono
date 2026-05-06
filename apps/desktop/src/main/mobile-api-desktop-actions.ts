@@ -39,6 +39,18 @@ import {
   type EmergencyStopActionOptions,
 } from "@dotagents/shared/settings-api-client"
 import {
+  createSkillAction,
+  deleteSkillAction,
+  exportSkillToMarkdownAction,
+  getSkillAction,
+  getSkillsAction,
+  importSkillFromGitHubAction,
+  importSkillFromMarkdownAction,
+  toggleProfileSkillAction,
+  updateSkillAction,
+  type SkillActionOptions,
+} from "@dotagents/shared/skills-api"
+import {
   clearPushBadgeAction,
   getPushStatusAction,
   registerPushTokenAction,
@@ -99,18 +111,8 @@ import {
   getSettings,
   updateSettings,
 } from "./settings-actions"
-import {
-  createSkill,
-  deleteSkill,
-  exportSkillToMarkdown,
-  getSkill,
-  getSkills,
-  importSkillFromGitHub,
-  importSkillFromMarkdown,
-  toggleProfileSkill,
-  updateSkill,
-} from "./skill-actions"
 import { cleanupInvalidMcpServerReferencesInLayers } from "./agent-profile-mcp-cleanup"
+import { cleanupInvalidSkillReferencesInLayers } from "./agent-profile-skill-cleanup"
 import { agentProfileService, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { verifyExternalAgentCommand as verifyExternalAgentCommandService } from "./command-verification-service"
@@ -120,6 +122,7 @@ import { emergencyStopAll } from "./emergency-stop"
 import { knowledgeNotesService } from "./knowledge-notes-service"
 import { mcpService } from "./mcp-service"
 import { clearBadgeCount } from "./push-notification-service"
+import { skillsService } from "./skills-service"
 import { generateTTS } from "./tts-service"
 
 type DesktopProfileActionProfile = ReturnType<typeof agentProfileService.setCurrentProfileStrict>
@@ -291,6 +294,43 @@ const mcpServerConfigActionOptions = {
   diagnostics: diagnosticsService,
   reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
 } satisfies Parameters<typeof upsertMcpServerConfigAction>[2]
+
+function cleanupDeletedSkillReferences(): void {
+  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+  const layers = workspaceAgentsFolder
+    ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
+    : [getAgentsLayerPaths(globalAgentsFolder)]
+
+  cleanupInvalidSkillReferencesInLayers(
+    layers,
+    skillsService.getSkills().map((skill) => skill.id),
+  )
+  agentProfileService.reload()
+}
+
+const skillActionOptions: SkillActionOptions = {
+  service: {
+    getSkills: () => skillsService.getSkills(),
+    getSkill: (id) => skillsService.getSkill(id),
+    createSkill: (name, description, instructions) => skillsService.createSkill(name, description, instructions),
+    importSkillFromMarkdown: (content) => skillsService.importSkillFromMarkdown(content),
+    importSkillFromGitHub: (repoIdentifier) => skillsService.importSkillFromGitHub(repoIdentifier),
+    exportSkillToMarkdown: (id) => skillsService.exportSkillToMarkdown(id),
+    updateSkill: (id, updates) => skillsService.updateSkill(id, updates),
+    deleteSkill: (id) => {
+      const success = skillsService.deleteSkill(id)
+      if (success) {
+        cleanupDeletedSkillReferences()
+      }
+      return success
+    },
+    getCurrentProfile: () => agentProfileService.getCurrentProfile(),
+    enableSkillForCurrentProfile: (skillId) => agentProfileService.enableSkillForCurrentProfile(skillId),
+    toggleProfileSkill: (profileId, skillId, allSkillIds) =>
+      agentProfileService.toggleProfileSkill(profileId, skillId, allSkillIds),
+  },
+  diagnostics: diagnosticsService,
+}
 
 function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
@@ -478,6 +518,42 @@ function upsertMcpServerConfig(serverName: string | undefined, body: unknown) {
 
 function deleteMcpServerConfig(serverName: string | undefined) {
   return deleteMcpServerConfigAction(serverName, mcpServerConfigActionOptions)
+}
+
+function getSkills() {
+  return getSkillsAction(skillActionOptions)
+}
+
+function getSkill(skillId: string | undefined) {
+  return getSkillAction(skillId, skillActionOptions)
+}
+
+function createSkill(body: unknown) {
+  return createSkillAction(body, skillActionOptions)
+}
+
+function importSkillFromMarkdown(body: unknown) {
+  return importSkillFromMarkdownAction(body, skillActionOptions)
+}
+
+async function importSkillFromGitHub(body: unknown) {
+  return importSkillFromGitHubAction(body, skillActionOptions)
+}
+
+function exportSkillToMarkdown(skillId: string | undefined) {
+  return exportSkillToMarkdownAction(skillId, skillActionOptions)
+}
+
+function updateSkill(skillId: string | undefined, body: unknown) {
+  return updateSkillAction(skillId, body, skillActionOptions)
+}
+
+function deleteSkill(skillId: string | undefined) {
+  return deleteSkillAction(skillId, skillActionOptions)
+}
+
+function toggleProfileSkill(skillId: string | undefined) {
+  return toggleProfileSkillAction(skillId, skillActionOptions)
 }
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {

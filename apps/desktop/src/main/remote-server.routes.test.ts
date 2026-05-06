@@ -311,12 +311,6 @@ function getSharedRepeatTaskUtilsSource(): string {
   return readFileSync(sharedRepeatTaskUtilsPath, "utf8")
 }
 
-function getSkillActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const skillActionsPath = path.join(testDir, "skill-actions.ts")
-  return readFileSync(skillActionsPath, "utf8")
-}
-
 function getPushNotificationServiceSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const pushNotificationServicePath = path.join(testDir, "push-notification-service.ts")
@@ -702,7 +696,6 @@ describe("remote-server route registration", () => {
     const mobileActionSources = [
       getConversationActionsSource(),
       getSettingsActionsSource(),
-      getSkillActionsSource(),
     ]
     const operatorActionSources = [
       getOperatorAgentActionsSource(),
@@ -791,7 +784,7 @@ describe("remote-server route registration", () => {
   it("exposes full skill instructions to the mobile prompt picker", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
-    const skillActionsSource = getSkillActionsSource()
+    const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedSkillsApiSource = getSharedSkillsApiSource()
 
     expectRegisteredApiRoute(source, "GET", "skills")
@@ -812,15 +805,17 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.updateSkill(params.id, req.body)")
     expect(mobileApiRoutesSource).toContain("actions.deleteSkill(params.id)")
     expect(mobileApiRoutesSource).toContain("actions.toggleProfileSkill(params.id)")
-    expect(skillActionsSource).toContain("getSkillsAction(skillActionOptions)")
-    expect(skillActionsSource).toContain("getSkillAction(skillId, skillActionOptions)")
-    expect(skillActionsSource).toContain("createSkillAction(body, skillActionOptions)")
-    expect(skillActionsSource).toContain("importSkillFromMarkdownAction(body, skillActionOptions)")
-    expect(skillActionsSource).toContain("importSkillFromGitHubAction(body, skillActionOptions)")
-    expect(skillActionsSource).toContain("exportSkillToMarkdownAction(skillId, skillActionOptions)")
-    expect(skillActionsSource).toContain("updateSkillAction(skillId, body, skillActionOptions)")
-    expect(skillActionsSource).toContain("deleteSkillAction(skillId, skillActionOptions)")
-    expect(skillActionsSource).toContain("toggleProfileSkillAction(skillId, skillActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getSkillsAction(skillActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getSkillAction(skillId, skillActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("createSkillAction(body, skillActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("importSkillFromMarkdownAction(body, skillActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("importSkillFromGitHubAction(body, skillActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("exportSkillToMarkdownAction(skillId, skillActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("updateSkillAction(skillId, body, skillActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("deleteSkillAction(skillId, skillActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("toggleProfileSkillAction(skillId, skillActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("cleanupInvalidSkillReferencesInLayers(")
+    expect(mobileApiDesktopActionsSource).toContain("agentProfileService.reload()")
     expect(sharedSkillsApiSource).toContain("export interface SkillActionOptions")
     expect(sharedSkillsApiSource).toContain("export function getSkillsAction")
     expect(sharedSkillsApiSource).toContain("export function getSkillAction")
