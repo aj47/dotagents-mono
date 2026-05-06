@@ -87,6 +87,7 @@ type DiscordListSettingKey =
   | 'discordDmAllowUserIds';
 
 type ModelPresetEditorMode = 'create' | 'edit';
+type McpServerEditorMode = 'create' | 'replace';
 
 type ModelPresetDraft = {
   id?: string;
@@ -371,6 +372,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   // MCP server editor state
   const [showMcpServerEditor, setShowMcpServerEditor] = useState(false);
+  const [mcpServerEditorMode, setMcpServerEditorMode] = useState<McpServerEditorMode>('create');
   const [mcpServerDraft, setMcpServerDraft] = useState<McpServerDraft>(EMPTY_MCP_SERVER_DRAFT);
   const [isSavingMcpServer, setIsSavingMcpServer] = useState(false);
 
@@ -1042,13 +1044,25 @@ export default function SettingsScreen({ navigation }: any) {
   }, [confirmDestructiveAction, fetchRemoteSettings, settingsClient]);
 
   const openMcpServerEditor = useCallback(() => {
+    setMcpServerEditorMode('create');
     setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
+    setShowMcpServerEditor(true);
+  }, []);
+
+  const openMcpServerReplaceEditor = useCallback((server: MCPServer) => {
+    setMcpServerEditorMode('replace');
+    setMcpServerDraft({
+      ...EMPTY_MCP_SERVER_DRAFT,
+      name: server.name,
+      disabled: server.configDisabled,
+    });
     setShowMcpServerEditor(true);
   }, []);
 
   const closeMcpServerEditor = useCallback(() => {
     if (isSavingMcpServer) return;
     setShowMcpServerEditor(false);
+    setMcpServerEditorMode('create');
     setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
   }, [isSavingMcpServer]);
 
@@ -1069,7 +1083,7 @@ export default function SettingsScreen({ navigation }: any) {
       setRemoteError(`MCP server name "${name}" is reserved`);
       return null;
     }
-    if (mcpServers.some(server => server.name === name)) {
+    if (mcpServerEditorMode === 'create' && mcpServers.some(server => server.name === name)) {
       setRemoteError(`MCP server "${name}" already exists`);
       return null;
     }
@@ -1150,6 +1164,7 @@ export default function SettingsScreen({ navigation }: any) {
       const serversRes = await settingsClient.getMCPServers();
       setMcpServers(serversRes.servers);
       setShowMcpServerEditor(false);
+      setMcpServerEditorMode('create');
       setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
       setSaveStatusMessage('Saved');
     } catch (error: any) {
@@ -3312,15 +3327,26 @@ export default function SettingsScreen({ navigation }: any) {
                           disabled={server.configDisabled}
                         />
                         {canDeleteServer && (
-                          <TouchableOpacity
-                            style={styles.agentDeleteButton}
-                            onPress={() => handleMcpServerDelete(server)}
-                            accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Delete MCP server ${server.name}`)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Text style={styles.agentDeleteButtonText}>Delete</Text>
-                          </TouchableOpacity>
+                          <>
+                            <TouchableOpacity
+                              style={styles.agentDeleteButton}
+                              onPress={() => openMcpServerReplaceEditor(server)}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`Replace MCP server ${server.name} config`)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={styles.notePromoteButtonText}>Replace</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.agentDeleteButton}
+                              onPress={() => handleMcpServerDelete(server)}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`Delete MCP server ${server.name}`)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={styles.agentDeleteButtonText}>Delete</Text>
+                            </TouchableOpacity>
+                          </>
                         )}
                       </View>
                     </View>
@@ -4202,7 +4228,9 @@ export default function SettingsScreen({ navigation }: any) {
         <View style={styles.importModalOverlay}>
           <View style={[styles.importModalContainer, styles.presetEditorContainer]}>
             <View style={styles.importModalHeader}>
-              <Text style={styles.importModalTitle}>New MCP Server</Text>
+              <Text style={styles.importModalTitle}>
+                {mcpServerEditorMode === 'create' ? 'New MCP Server' : 'Replace MCP Server'}
+              </Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={closeMcpServerEditor}
@@ -4217,14 +4245,14 @@ export default function SettingsScreen({ navigation }: any) {
             <ScrollView style={styles.presetEditorBody} keyboardShouldPersistTaps="handled">
               <Text style={styles.label}>Name</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, mcpServerEditorMode === 'replace' && styles.inputDisabled]}
                 value={mcpServerDraft.name}
                 onChangeText={(v) => handleMcpServerDraftChange('name', v)}
                 placeholder="filesystem"
                 placeholderTextColor={theme.colors.mutedForeground}
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!isSavingMcpServer}
+                editable={mcpServerEditorMode === 'create' && !isSavingMcpServer}
               />
 
               <Text style={styles.label}>Transport</Text>
@@ -4365,7 +4393,7 @@ export default function SettingsScreen({ navigation }: any) {
                 accessibilityLabel="Save MCP server"
               >
                 <Text style={styles.importModalImportText}>
-                  {isSavingMcpServer ? 'Saving...' : 'Save'}
+                  {isSavingMcpServer ? 'Saving...' : mcpServerEditorMode === 'create' ? 'Save' : 'Replace'}
                 </Text>
               </TouchableOpacity>
             </View>

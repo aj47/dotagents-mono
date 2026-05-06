@@ -63,3 +63,11 @@ test('lets mobile create desktop MCP server configs through the shared client', 
   assert.match(settingsSource, /parseMcpKeyValueDraft\(mcpServerDraft\.headers, 'Header'\)/);
   assert.match(settingsSource, /setMcpServerDraft\(EMPTY_MCP_SERVER_DRAFT\)/);
 });
+
+test('lets mobile replace existing MCP server configs without reading secrets', () => {
+  assert.match(settingsSource, /openMcpServerReplaceEditor/);
+  assert.match(settingsSource, /mcpServerEditorMode === 'replace'/);
+  assert.match(settingsSource, /Replace MCP Server/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\(`Replace MCP server \$\{server\.name\} config`\)/);
+  assert.match(settingsSource, /mcpServerEditorMode === 'create' && mcpServers\.some/);
+});
