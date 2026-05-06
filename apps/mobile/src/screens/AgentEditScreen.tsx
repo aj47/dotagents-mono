@@ -3,7 +3,7 @@ import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
-import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest, AgentProfileUpdateRequest, Skill } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest, AgentProfileUpdateRequest, MCPServer, Skill } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { applyConnectionTypeChange, buildAgentConnectionRequestFields, type AgentConnectionFormFields, type ConnectionType } from './agent-edit-connection-utils';
 import { useConfigContext } from '../store/config';
@@ -33,8 +33,17 @@ interface AgentFormData extends AgentConnectionFormFields {
   guidelines: string;
   enabled: boolean;
   autoSpawn: boolean;
+  toolConfig?: AgentToolConfig;
   skillsConfig?: AgentSkillsConfig;
 }
+
+type AgentToolConfig = {
+  disabledServers?: string[];
+  enabledServers?: string[];
+  disabledTools?: string[];
+  enabledRuntimeTools?: string[];
+  allServersDisabledByDefault?: boolean;
+};
 
 type AgentSkillsConfig = {
   enabledSkillIds?: string[];
@@ -73,13 +82,44 @@ const normalizeAgentSkillsConfig = (value?: Record<string, unknown>): AgentSkill
   };
 };
 
+const normalizeAgentToolConfig = (value?: Record<string, unknown>): AgentToolConfig | undefined => {
+  if (!value) return undefined;
+  return {
+    disabledServers: normalizeSkillIds(value.disabledServers),
+    enabledServers: normalizeSkillIds(value.enabledServers),
+    disabledTools: normalizeSkillIds(value.disabledTools),
+    enabledRuntimeTools: normalizeSkillIds(value.enabledRuntimeTools),
+    allServersDisabledByDefault: value.allServersDisabledByDefault === true,
+  };
+};
+
+const isMcpServerEnabledByConfig = (serverName: string, toolConfig?: AgentToolConfig): boolean => {
+  if (toolConfig?.allServersDisabledByDefault) return (toolConfig.enabledServers ?? []).includes(serverName);
+  return !(toolConfig?.disabledServers ?? []).includes(serverName);
+};
+
 const isSkillEnabledByConfig = (skillId: string, skillsConfig?: AgentSkillsConfig): boolean => {
   if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true;
   return (skillsConfig.enabledSkillIds ?? []).includes(skillId);
 };
 
+const countEnabledMcpServers = (servers: MCPServer[], toolConfig?: AgentToolConfig): number => {
+  return servers.filter((server) => isMcpServerEnabledByConfig(server.name, toolConfig)).length;
+};
+
 const countEnabledSkills = (skills: Skill[], skillsConfig?: AgentSkillsConfig): number => {
   return skills.filter((skill) => isSkillEnabledByConfig(skill.id, skillsConfig)).length;
+};
+
+const formatToolConfigForRequest = (toolConfig?: AgentToolConfig): Record<string, unknown> | undefined => {
+  if (!toolConfig) return undefined;
+  return {
+    disabledServers: toolConfig.disabledServers,
+    enabledServers: toolConfig.enabledServers,
+    disabledTools: toolConfig.disabledTools,
+    enabledRuntimeTools: toolConfig.enabledRuntimeTools,
+    allServersDisabledByDefault: toolConfig.allServersDisabledByDefault === true,
+  };
 };
 
 const formatSkillsConfigForRequest = (skillsConfig?: AgentSkillsConfig): Record<string, unknown> | undefined => {
@@ -103,10 +143,17 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const [error, setError] = useState<string | null>(null);
   const [originalProfile, setOriginalProfile] = useState<AgentProfileFull | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
   const [isSkillsLoading, setIsSkillsLoading] = useState(false);
+  const [isMcpServersLoading, setIsMcpServersLoading] = useState(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const displayMcpServers = useMemo(() => [...mcpServers].sort((a, b) => a.name.localeCompare(b.name)), [mcpServers]);
   const displaySkills = useMemo(() => [...skills].sort((a, b) => a.name.localeCompare(b.name)), [skills]);
+  const enabledMcpServerCount = useMemo(
+    () => countEnabledMcpServers(displayMcpServers, formData.toolConfig),
+    [displayMcpServers, formData.toolConfig],
+  );
   const enabledSkillCount = useMemo(
     () => countEnabledSkills(displaySkills, formData.skillsConfig),
     [displaySkills, formData.skillsConfig],
@@ -140,6 +187,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             connectionCwd: profile.connection?.cwd || '',
             enabled: profile.enabled,
             autoSpawn: profile.autoSpawn || false,
+            toolConfig: normalizeAgentToolConfig(profile.toolConfig),
             skillsConfig: normalizeAgentSkillsConfig(profile.skillsConfig),
           });
         })
@@ -167,6 +215,24 @@ export default function AgentEditScreen({ navigation, route }: any) {
         setError(err.message || 'Failed to load skills');
       })
       .finally(() => setIsSkillsLoading(false));
+  }, [settingsClient]);
+
+  useEffect(() => {
+    if (!settingsClient) {
+      setMcpServers([]);
+      return;
+    }
+
+    setIsMcpServersLoading(true);
+    settingsClient.getMCPServers()
+      .then((res) => {
+        setMcpServers(res.servers);
+      })
+      .catch((err) => {
+        console.error('[AgentEdit] Failed to fetch MCP servers:', err);
+        setError(err.message || 'Failed to load MCP servers');
+      })
+      .finally(() => setIsMcpServersLoading(false));
   }, [settingsClient]);
 
   // Set navigation title
@@ -204,6 +270,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             ...connectionFields,
             enabled: formData.enabled,
             autoSpawn: formData.autoSpawn,
+            toolConfig: formatToolConfigForRequest(formData.toolConfig),
             skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),
           };
         await settingsClient.updateAgentProfile(agentId, updateData);
@@ -216,6 +283,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           ...connectionFields,
           enabled: formData.enabled,
           autoSpawn: formData.autoSpawn,
+          toolConfig: formatToolConfigForRequest(formData.toolConfig),
           skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),
         };
         await settingsClient.createAgentProfile(createData);
@@ -235,6 +303,55 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
   const handleConnectionTypeSelect = useCallback((connectionType: ConnectionType) => {
     setFormData(prev => applyConnectionTypeChange(prev, connectionType));
+  }, []);
+
+  const setAllMcpServersEnabled = useCallback((enabled: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      toolConfig: {
+        ...prev.toolConfig,
+        disabledServers: enabled ? [] : undefined,
+        enabledServers: enabled ? undefined : [],
+        allServersDisabledByDefault: !enabled,
+      },
+    }));
+  }, []);
+
+  const toggleMcpServer = useCallback((serverName: string) => {
+    setFormData(prev => {
+      const currentConfig = prev.toolConfig ?? {};
+      if (currentConfig.allServersDisabledByDefault) {
+        const currentEnabledServers = currentConfig.enabledServers ?? [];
+        const enabledServers = currentEnabledServers.includes(serverName)
+          ? currentEnabledServers.filter(name => name !== serverName)
+          : [...currentEnabledServers, serverName];
+
+        return {
+          ...prev,
+          toolConfig: {
+            ...currentConfig,
+            enabledServers,
+            disabledServers: undefined,
+            allServersDisabledByDefault: true,
+          },
+        };
+      }
+
+      const currentDisabledServers = currentConfig.disabledServers ?? [];
+      const disabledServers = currentDisabledServers.includes(serverName)
+        ? currentDisabledServers.filter(name => name !== serverName)
+        : [...currentDisabledServers, serverName];
+
+      return {
+        ...prev,
+        toolConfig: {
+          ...currentConfig,
+          disabledServers,
+          enabledServers: undefined,
+          allServersDisabledByDefault: false,
+        },
+      };
+    });
   }, []);
 
   const setAllSkillsEnabled = useCallback((enabled: boolean) => {
@@ -493,6 +610,63 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 onValueChange={() => toggleSkill(skill.id)}
                 disabled={isBuiltInAgent}
                 accessibilityLabel={createButtonAccessibilityLabel(`${enabled ? 'Disable' : 'Enable'} ${skill.name} for this agent`)}
+                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                thumbColor={enabled ? theme.colors.primaryForeground : theme.colors.background}
+              />
+            </View>
+          );
+        })}
+      </View>
+
+      <View style={styles.capabilitySection}>
+        <View style={styles.capabilityHeader}>
+          <View style={styles.capabilityTitleBlock}>
+            <Text style={styles.sectionTitle}>MCP Servers</Text>
+            <Text style={styles.sectionHelperText}>{enabledMcpServerCount} of {displayMcpServers.length} enabled</Text>
+          </View>
+          <View style={styles.skillBulkActions}>
+            <TouchableOpacity
+              style={[styles.chipButton, isBuiltInAgent && styles.chipButtonDisabled]}
+              onPress={() => setAllMcpServersEnabled(true)}
+              disabled={isBuiltInAgent}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Enable all agent MCP servers')}
+            >
+              <Text style={styles.chipButtonText}>All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.chipButton, isBuiltInAgent && styles.chipButtonDisabled]}
+              onPress={() => setAllMcpServersEnabled(false)}
+              disabled={isBuiltInAgent}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Disable all agent MCP servers')}
+            >
+              <Text style={styles.chipButtonText}>None</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        {isMcpServersLoading ? (
+          <View style={styles.inlineLoadingRow}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Text style={styles.sectionHelperText}>Loading MCP servers...</Text>
+          </View>
+        ) : displayMcpServers.length === 0 ? (
+          <Text style={styles.sectionHelperText}>No MCP servers configured.</Text>
+        ) : displayMcpServers.map(server => {
+          const enabled = isMcpServerEnabledByConfig(server.name, formData.toolConfig);
+          return (
+            <View key={server.name} style={styles.skillRow}>
+              <View style={styles.skillInfo}>
+                <Text style={styles.skillName}>{server.name}</Text>
+                <Text style={styles.skillDescription} numberOfLines={2}>
+                  {server.connected ? 'Connected' : 'Offline'} - {server.toolCount} tool{server.toolCount === 1 ? '' : 's'}
+                </Text>
+              </View>
+              <Switch
+                value={enabled}
+                onValueChange={() => toggleMcpServer(server.name)}
+                disabled={isBuiltInAgent}
+                accessibilityLabel={createButtonAccessibilityLabel(`${enabled ? 'Disable' : 'Enable'} ${server.name} MCP server for this agent`)}
                 trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                 thumbColor={enabled ? theme.colors.primaryForeground : theme.colors.background}
               />

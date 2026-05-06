@@ -30,6 +30,23 @@ test('keeps agent skill controls compact and accessible on mobile', () => {
   assert.match(screenSource, /minSize:\s*44/);
 });
 
+test('lets mobile edit per-agent MCP server capability config through the shared client', () => {
+  assert.match(screenSource, /AgentToolConfig/);
+  assert.match(screenSource, /settingsClient\.getMCPServers\(\)/);
+  assert.match(screenSource, /normalizeAgentToolConfig\(profile\.toolConfig\)/);
+  assert.match(screenSource, /toolConfig: formatToolConfigForRequest\(formData\.toolConfig\)/);
+  assert.match(screenSource, /isMcpServerEnabledByConfig\(server\.name, formData\.toolConfig\)/);
+});
+
+test('keeps mobile MCP server controls bulk-editable and accessible', () => {
+  assert.match(screenSource, /<Text style=\{styles\.sectionTitle\}>MCP Servers<\/Text>/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\('Enable all agent MCP servers'\)/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\('Disable all agent MCP servers'\)/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\(`\$\{enabled \? 'Disable' : 'Enable'\} \$\{server\.name\} MCP server for this agent`\)/);
+  assert.match(screenSource, /disabledServers,\s*enabledServers: undefined,\s*allServersDisabledByDefault: false/s);
+  assert.match(screenSource, /enabledServers,\s*disabledServers: undefined,\s*allServersDisabledByDefault: true/s);
+});
+
 test('shared agent profile request types expose persisted profile config fields', () => {
   assert.match(sharedApiTypesSource, /modelConfig\?: Record<string, unknown>;/);
   assert.match(sharedApiTypesSource, /toolConfig\?: Record<string, unknown>;/);
