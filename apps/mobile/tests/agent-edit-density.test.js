@@ -32,3 +32,18 @@ test('uses shared profile property helpers in the mobile agent editor', () => {
   assert.doesNotMatch(screenSource, /const normalizeAgentProperties/);
   assert.doesNotMatch(screenSource, /const formatPropertiesForRequest/);
 });
+
+test('uses shared profile config edit helpers in the mobile agent editor', () => {
+  assert.match(screenSource, /normalizeAgentProfileModelConfigForEdit/);
+  assert.match(screenSource, /normalizeAgentProfileMcpConfigForEdit/);
+  assert.match(screenSource, /normalizeAgentProfileSkillsConfigForEdit/);
+  assert.match(screenSource, /formatAgentProfileModelConfigForRequest/);
+  assert.match(screenSource, /formatAgentProfileMcpConfigForRequest/);
+  assert.match(screenSource, /formatAgentProfileSkillsConfigForRequest/);
+  assert.doesNotMatch(screenSource, /const normalizeAgentModelConfig/);
+  assert.doesNotMatch(screenSource, /const normalizeAgentToolConfig/);
+  assert.doesNotMatch(screenSource, /const normalizeAgentSkillsConfig/);
+  assert.doesNotMatch(screenSource, /const formatModelConfigForRequest/);
+  assert.doesNotMatch(screenSource, /const formatToolConfigForRequest/);
+  assert.doesNotMatch(screenSource, /const formatSkillsConfigForRequest/);
+});

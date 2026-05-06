@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildAgentProfileAgentModelUpdate,
+  formatAgentProfileMcpConfigForRequest,
+  formatAgentProfileModelConfigForRequest,
+  formatAgentProfileSkillsConfigForRequest,
   getAgentProfileAgentModelField,
   getAgentProfileAgentModelProvider,
   getAgentProfileAgentModelValue,
@@ -20,6 +23,9 @@ import {
   mergeAgentProfileMcpConfig,
   mergeAgentProfileModelConfig,
   mergeAgentProfileSkillsConfig,
+  normalizeAgentProfileMcpConfigForEdit,
+  normalizeAgentProfileModelConfigForEdit,
+  normalizeAgentProfileSkillsConfigForEdit,
   toggleAgentProfileSkillConfig,
 } from "./agent-profile-config-updates"
 
@@ -177,6 +183,66 @@ describe("agent profile config updates", () => {
     expect(buildAgentProfileAgentModelUpdate("chatgpt-web", "gpt-5.4-mini")).toEqual({
       agentProviderId: "chatgpt-web",
       agentChatgptWebModel: "gpt-5.4-mini",
+    })
+  })
+
+  it("normalizes editable agent profile config payloads", () => {
+    const modelConfig = normalizeAgentProfileModelConfigForEdit({
+      mcpToolsProviderId: "gemini",
+      mcpToolsGeminiModel: "gemini-2.5-flash",
+      agentOpenaiModel: 123,
+      currentModelPresetId: "preset-1",
+      sttProviderId: "parakeet",
+      transcriptPostProcessingProviderId: "openai",
+      transcriptPostProcessingOpenaiModel: "gpt-5.4-mini",
+      ttsProviderId: "edge",
+      invalid: "ignored",
+    })
+
+    expect(modelConfig).toEqual({
+      agentProviderId: "gemini",
+      mcpToolsProviderId: "gemini",
+      agentGeminiModel: "gemini-2.5-flash",
+      mcpToolsGeminiModel: "gemini-2.5-flash",
+      currentModelPresetId: "preset-1",
+      sttProviderId: "parakeet",
+      transcriptPostProcessingProviderId: "openai",
+      transcriptPostProcessingOpenaiModel: "gpt-5.4-mini",
+      ttsProviderId: "edge",
+    })
+    expect(formatAgentProfileModelConfigForRequest(modelConfig)).toEqual(modelConfig)
+
+    const mcpConfig = normalizeAgentProfileMcpConfigForEdit({
+      disabledServers: ["filesystem", 1, "github"],
+      enabledServers: "drop",
+      enabledRuntimeTools: ["mark_work_complete"],
+      allServersDisabledByDefault: true,
+    })
+    expect(mcpConfig).toEqual({
+      disabledServers: ["filesystem", "github"],
+      enabledRuntimeTools: ["mark_work_complete"],
+      allServersDisabledByDefault: true,
+    })
+    expect(formatAgentProfileMcpConfigForRequest(mcpConfig)).toEqual({
+      disabledServers: ["filesystem", "github"],
+      disabledTools: undefined,
+      enabledServers: undefined,
+      enabledRuntimeTools: ["mark_work_complete"],
+      allServersDisabledByDefault: true,
+    })
+
+    const skillsConfig = normalizeAgentProfileSkillsConfigForEdit({
+      enabledSkillIds: ["research", false, "writing"],
+      allSkillsDisabledByDefault: true,
+    })
+    expect(skillsConfig).toEqual({
+      enabledSkillIds: ["research", "writing"],
+      allSkillsDisabledByDefault: true,
+    })
+    expect(formatAgentProfileSkillsConfigForRequest(skillsConfig)).toEqual(skillsConfig)
+    expect(formatAgentProfileSkillsConfigForRequest({ allSkillsDisabledByDefault: true })).toEqual({
+      enabledSkillIds: [],
+      allSkillsDisabledByDefault: true,
     })
   })
 

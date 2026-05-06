@@ -1,3 +1,10 @@
+import {
+  isChatProviderId,
+  STT_PROVIDERS,
+  TTS_PROVIDERS,
+  type STT_PROVIDER_ID,
+  type TTS_PROVIDER_ID,
+} from "./providers"
 import type {
   AgentProfileMcpServerValidationConfigLike,
   AgentProfileModelConfigLike,
@@ -15,12 +22,136 @@ export type AgentProfileAgentModelField =
   | "agentChatgptWebModel"
 
 const DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES = ["mark_work_complete"]
+const STT_PROVIDER_IDS = STT_PROVIDERS.map((provider) => provider.value)
+const TTS_PROVIDER_IDS = TTS_PROVIDERS.map((provider) => provider.value)
 
 function hasOwnUpdate<T extends object>(
   updates: T,
   key: keyof T,
 ): boolean {
   return Object.prototype.hasOwnProperty.call(updates, key)
+}
+
+function normalizeStringList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const values = value.filter((item): item is string => typeof item === "string")
+  return values.length > 0 ? values : undefined
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined
+}
+
+function isSttProviderId(value: unknown): value is STT_PROVIDER_ID {
+  return typeof value === "string" && STT_PROVIDER_IDS.includes(value as STT_PROVIDER_ID)
+}
+
+function isTtsProviderId(value: unknown): value is TTS_PROVIDER_ID {
+  return typeof value === "string" && TTS_PROVIDER_IDS.includes(value as TTS_PROVIDER_ID)
+}
+
+function omitUndefinedValues<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter((entry) => entry[1] !== undefined),
+  ) as T
+}
+
+export function normalizeAgentProfileModelConfigForEdit(
+  value: AgentProfileModelConfigUpdateLike | Record<string, unknown> | null | undefined,
+): AgentProfileModelConfigUpdateLike | undefined {
+  if (!value) return undefined
+
+  const config = value as Record<string, unknown>
+  const agentProviderId = isChatProviderId(config.agentProviderId)
+    ? config.agentProviderId
+    : isChatProviderId(config.mcpToolsProviderId)
+      ? config.mcpToolsProviderId
+      : undefined
+  const mcpToolsProviderId = isChatProviderId(config.mcpToolsProviderId)
+    ? config.mcpToolsProviderId
+    : agentProviderId
+
+  return omitUndefinedValues({
+    agentProviderId,
+    mcpToolsProviderId,
+    agentOpenaiModel: stringValue(config.agentOpenaiModel) ?? stringValue(config.mcpToolsOpenaiModel),
+    agentGroqModel: stringValue(config.agentGroqModel) ?? stringValue(config.mcpToolsGroqModel),
+    agentGeminiModel: stringValue(config.agentGeminiModel) ?? stringValue(config.mcpToolsGeminiModel),
+    agentChatgptWebModel: stringValue(config.agentChatgptWebModel) ?? stringValue(config.mcpToolsChatgptWebModel),
+    mcpToolsOpenaiModel: stringValue(config.mcpToolsOpenaiModel) ?? stringValue(config.agentOpenaiModel),
+    mcpToolsGroqModel: stringValue(config.mcpToolsGroqModel) ?? stringValue(config.agentGroqModel),
+    mcpToolsGeminiModel: stringValue(config.mcpToolsGeminiModel) ?? stringValue(config.agentGeminiModel),
+    mcpToolsChatgptWebModel: stringValue(config.mcpToolsChatgptWebModel) ?? stringValue(config.agentChatgptWebModel),
+    currentModelPresetId: stringValue(config.currentModelPresetId),
+    sttProviderId: isSttProviderId(config.sttProviderId) ? config.sttProviderId : undefined,
+    openaiSttModel: stringValue(config.openaiSttModel),
+    groqSttModel: stringValue(config.groqSttModel),
+    transcriptPostProcessingProviderId: isChatProviderId(config.transcriptPostProcessingProviderId)
+      ? config.transcriptPostProcessingProviderId
+      : undefined,
+    transcriptPostProcessingOpenaiModel: stringValue(config.transcriptPostProcessingOpenaiModel),
+    transcriptPostProcessingGroqModel: stringValue(config.transcriptPostProcessingGroqModel),
+    transcriptPostProcessingGeminiModel: stringValue(config.transcriptPostProcessingGeminiModel),
+    transcriptPostProcessingChatgptWebModel: stringValue(config.transcriptPostProcessingChatgptWebModel),
+    ttsProviderId: isTtsProviderId(config.ttsProviderId) ? config.ttsProviderId : undefined,
+  })
+}
+
+export function normalizeAgentProfileMcpConfigForEdit(
+  value: AgentProfileMcpConfigUpdateLike | Record<string, unknown> | null | undefined,
+): AgentProfileMcpConfigUpdateLike | undefined {
+  if (!value) return undefined
+
+  const config = value as Record<string, unknown>
+  return omitUndefinedValues({
+    disabledServers: normalizeStringList(config.disabledServers),
+    enabledServers: normalizeStringList(config.enabledServers),
+    disabledTools: normalizeStringList(config.disabledTools),
+    enabledRuntimeTools: normalizeStringList(config.enabledRuntimeTools),
+    allServersDisabledByDefault: config.allServersDisabledByDefault === true,
+  })
+}
+
+export function normalizeAgentProfileSkillsConfigForEdit(
+  value: AgentProfileSkillsConfigUpdateLike | Record<string, unknown> | null | undefined,
+): AgentProfileSkillsConfigUpdateLike | undefined {
+  if (!value) return undefined
+
+  const config = value as Record<string, unknown>
+  return omitUndefinedValues({
+    enabledSkillIds: normalizeStringList(config.enabledSkillIds),
+    allSkillsDisabledByDefault: config.allSkillsDisabledByDefault === true,
+  })
+}
+
+export function formatAgentProfileModelConfigForRequest(
+  modelConfig: AgentProfileModelConfigUpdateLike | null | undefined,
+): AgentProfileModelConfigUpdateLike | undefined {
+  if (!modelConfig) return undefined
+  return { ...modelConfig }
+}
+
+export function formatAgentProfileMcpConfigForRequest(
+  mcpConfig: AgentProfileMcpConfigUpdateLike | null | undefined,
+): AgentProfileMcpConfigUpdateLike | undefined {
+  if (!mcpConfig) return undefined
+  return {
+    disabledServers: mcpConfig.disabledServers,
+    enabledServers: mcpConfig.enabledServers,
+    disabledTools: mcpConfig.disabledTools,
+    enabledRuntimeTools: mcpConfig.enabledRuntimeTools,
+    allServersDisabledByDefault: mcpConfig.allServersDisabledByDefault === true,
+  }
+}
+
+export function formatAgentProfileSkillsConfigForRequest(
+  skillsConfig: AgentProfileSkillsConfigUpdateLike | null | undefined,
+): AgentProfileSkillsConfigUpdateLike | undefined {
+  if (!skillsConfig) return undefined
+  return {
+    enabledSkillIds: skillsConfig.enabledSkillIds ?? [],
+    allSkillsDisabledByDefault: skillsConfig.allSkillsDisabledByDefault === true,
+  }
 }
 
 export function mergeAgentProfileMcpConfig(

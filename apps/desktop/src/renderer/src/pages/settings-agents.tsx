@@ -25,6 +25,9 @@ import {
 } from "@dotagents/shared/agent-profile-mutations"
 import {
   buildAgentProfileAgentModelUpdate,
+  formatAgentProfileMcpConfigForRequest,
+  formatAgentProfileModelConfigForRequest,
+  formatAgentProfileSkillsConfigForRequest,
   getAgentProfileAgentModelProvider,
   getAgentProfileAgentModelValue,
   getAgentProfileMcpConfigAfterServerToggle,
@@ -36,6 +39,9 @@ import {
   isAgentProfileMcpToolEnabled,
   isAgentProfileRuntimeToolEnabled,
   isAgentProfileSkillEnabled,
+  normalizeAgentProfileMcpConfigForEdit,
+  normalizeAgentProfileModelConfigForEdit,
+  normalizeAgentProfileSkillsConfigForEdit,
   toggleAgentProfileSkillConfig,
 } from "@dotagents/shared/agent-profile-config-updates"
 
@@ -271,9 +277,9 @@ export function SettingsAgents() {
       connectionBaseUrl: agent.connection.baseUrl,
       connectionCwd: agent.connection.cwd,
       enabled: agent.enabled, autoSpawn: agent.autoSpawn,
-      modelConfig: agent.modelConfig ? { ...agent.modelConfig } : undefined,
-      toolConfig: agent.toolConfig ? { ...agent.toolConfig } : undefined,
-      skillsConfig: agent.skillsConfig ? { ...agent.skillsConfig } : undefined,
+      modelConfig: normalizeAgentProfileModelConfigForEdit(agent.modelConfig),
+      toolConfig: normalizeAgentProfileMcpConfigForEdit(agent.toolConfig),
+      skillsConfig: normalizeAgentProfileSkillsConfigForEdit(agent.skillsConfig),
       properties: normalizeAgentProfileProperties(agent.properties),
       avatarDataUrl: agent.avatarDataUrl ?? null,
       presetKey: detectAgentProfilePresetKey({
@@ -309,9 +315,9 @@ export function SettingsAgents() {
       connection, enabled: editing.enabled,
       isUserProfile: false, isAgentTarget: true,
       autoSpawn: editing.autoSpawn,
-      modelConfig: editing.modelConfig,
-      toolConfig: editing.toolConfig,
-      skillsConfig: editing.skillsConfig,
+      modelConfig: formatAgentProfileModelConfigForRequest(editing.modelConfig),
+      toolConfig: formatAgentProfileMcpConfigForRequest(editing.toolConfig),
+      skillsConfig: formatAgentProfileSkillsConfigForRequest(editing.skillsConfig),
       properties: formatAgentProfilePropertiesForRequest(editing.properties),
       avatarDataUrl: editing.avatarDataUrl ?? null,
     }

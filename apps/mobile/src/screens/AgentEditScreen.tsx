@@ -33,6 +33,9 @@ import {
 } from '@dotagents/shared/agent-profile-mutations';
 import {
   buildAgentProfileAgentModelUpdate,
+  formatAgentProfileMcpConfigForRequest,
+  formatAgentProfileModelConfigForRequest,
+  formatAgentProfileSkillsConfigForRequest,
   getAgentProfileAgentModelProvider,
   getAgentProfileAgentModelValue,
   getAgentProfileMcpConfigAfterServerToggle,
@@ -44,9 +47,15 @@ import {
   isAgentProfileMcpToolEnabled,
   isAgentProfileRuntimeToolEnabled,
   isAgentProfileSkillEnabled,
+  normalizeAgentProfileMcpConfigForEdit,
+  normalizeAgentProfileModelConfigForEdit,
+  normalizeAgentProfileSkillsConfigForEdit,
   toggleAgentProfileSkillConfig,
+  type AgentProfileMcpConfigUpdateLike,
+  type AgentProfileModelConfigUpdateLike,
+  type AgentProfileSkillsConfigUpdateLike,
 } from '@dotagents/shared/agent-profile-config-updates';
-import { isChatProviderId, type CHAT_PROVIDER_ID } from '@dotagents/shared/providers';
+import { type CHAT_PROVIDER_ID } from '@dotagents/shared/providers';
 
 const CONNECTION_TYPES = [
   {
@@ -89,36 +98,10 @@ interface AgentFormData extends AgentConnectionFormFields {
   enabled: boolean;
   autoSpawn: boolean;
   properties: Record<string, string>;
-  modelConfig?: AgentModelConfig;
-  toolConfig?: AgentToolConfig;
-  skillsConfig?: AgentSkillsConfig;
+  modelConfig?: AgentProfileModelConfigUpdateLike;
+  toolConfig?: AgentProfileMcpConfigUpdateLike;
+  skillsConfig?: AgentProfileSkillsConfigUpdateLike;
 }
-
-type AgentModelConfig = {
-  agentProviderId?: AgentModelProvider;
-  agentOpenaiModel?: string;
-  agentGroqModel?: string;
-  agentGeminiModel?: string;
-  agentChatgptWebModel?: string;
-  mcpToolsProviderId?: AgentModelProvider;
-  mcpToolsOpenaiModel?: string;
-  mcpToolsGroqModel?: string;
-  mcpToolsGeminiModel?: string;
-  mcpToolsChatgptWebModel?: string;
-};
-
-type AgentToolConfig = {
-  disabledServers?: string[];
-  enabledServers?: string[];
-  disabledTools?: string[];
-  enabledRuntimeTools?: string[];
-  allServersDisabledByDefault?: boolean;
-};
-
-type AgentSkillsConfig = {
-  enabledSkillIds?: string[];
-  allSkillsDisabledByDefault?: boolean;
-};
 
 const defaultFormData: AgentFormData = {
   displayName: '',
@@ -148,75 +131,35 @@ const normalizeConnectionType = (value?: string): ConnectionType => {
   return 'internal';
 };
 
-const normalizeSkillIds = (value: unknown): string[] => {
-  return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
-};
-
-const normalizeAgentSkillsConfig = (value?: Record<string, unknown>): AgentSkillsConfig | undefined => {
-  if (!value) return undefined;
-  return {
-    enabledSkillIds: normalizeSkillIds(value.enabledSkillIds),
-    allSkillsDisabledByDefault: value.allSkillsDisabledByDefault === true,
-  };
-};
-
-const normalizeAgentModelConfig = (value?: Record<string, unknown>): AgentModelConfig | undefined => {
-  if (!value) return undefined;
-  const agentProviderId = isChatProviderId(value.agentProviderId)
-    ? value.agentProviderId
-    : isChatProviderId(value.mcpToolsProviderId)
-      ? value.mcpToolsProviderId
-      : undefined;
-
-  return {
-    agentProviderId,
-    agentOpenaiModel: typeof value.agentOpenaiModel === 'string' ? value.agentOpenaiModel : typeof value.mcpToolsOpenaiModel === 'string' ? value.mcpToolsOpenaiModel : undefined,
-    agentGroqModel: typeof value.agentGroqModel === 'string' ? value.agentGroqModel : typeof value.mcpToolsGroqModel === 'string' ? value.mcpToolsGroqModel : undefined,
-    agentGeminiModel: typeof value.agentGeminiModel === 'string' ? value.agentGeminiModel : typeof value.mcpToolsGeminiModel === 'string' ? value.mcpToolsGeminiModel : undefined,
-    agentChatgptWebModel: typeof value.agentChatgptWebModel === 'string' ? value.agentChatgptWebModel : typeof value.mcpToolsChatgptWebModel === 'string' ? value.mcpToolsChatgptWebModel : undefined,
-  };
-};
-
-const normalizeAgentToolConfig = (value?: Record<string, unknown>): AgentToolConfig | undefined => {
-  if (!value) return undefined;
-  return {
-    disabledServers: normalizeSkillIds(value.disabledServers),
-    enabledServers: normalizeSkillIds(value.enabledServers),
-    disabledTools: normalizeSkillIds(value.disabledTools),
-    enabledRuntimeTools: normalizeSkillIds(value.enabledRuntimeTools),
-    allServersDisabledByDefault: value.allServersDisabledByDefault === true,
-  };
-};
-
-const isMcpServerEnabledByConfig = (serverName: string, toolConfig?: AgentToolConfig): boolean => {
+const isMcpServerEnabledByConfig = (serverName: string, toolConfig?: AgentProfileMcpConfigUpdateLike): boolean => {
   return isAgentProfileMcpServerEnabled(toolConfig, serverName);
 };
 
-const isMcpToolEnabledByConfig = (toolName: string, toolConfig?: AgentToolConfig): boolean => {
+const isMcpToolEnabledByConfig = (toolName: string, toolConfig?: AgentProfileMcpConfigUpdateLike): boolean => {
   return isAgentProfileMcpToolEnabled(toolConfig, toolName);
 };
 
-const isRuntimeToolEnabledByConfig = (toolName: string, toolConfig?: AgentToolConfig): boolean => {
+const isRuntimeToolEnabledByConfig = (toolName: string, toolConfig?: AgentProfileMcpConfigUpdateLike): boolean => {
   return isAgentProfileRuntimeToolEnabled(toolConfig, toolName, [ESSENTIAL_RUNTIME_TOOL_NAME]);
 };
 
-const isSkillEnabledByConfig = (skillId: string, skillsConfig?: AgentSkillsConfig): boolean => {
+const isSkillEnabledByConfig = (skillId: string, skillsConfig?: AgentProfileSkillsConfigUpdateLike): boolean => {
   return isAgentProfileSkillEnabled(skillsConfig, skillId);
 };
 
-const countEnabledMcpServers = (servers: MCPServer[], toolConfig?: AgentToolConfig): number => {
+const countEnabledMcpServers = (servers: MCPServer[], toolConfig?: AgentProfileMcpConfigUpdateLike): number => {
   return servers.filter((server) => isMcpServerEnabledByConfig(server.name, toolConfig)).length;
 };
 
-const countEnabledMcpTools = (tools: OperatorMCPToolSummary[], toolConfig?: AgentToolConfig): number => {
+const countEnabledMcpTools = (tools: OperatorMCPToolSummary[], toolConfig?: AgentProfileMcpConfigUpdateLike): number => {
   return tools.filter((tool) => isMcpToolEnabledByConfig(tool.name, toolConfig)).length;
 };
 
-const countEnabledRuntimeTools = (tools: RuntimeToolDefinition[], toolConfig?: AgentToolConfig): number => {
+const countEnabledRuntimeTools = (tools: RuntimeToolDefinition[], toolConfig?: AgentProfileMcpConfigUpdateLike): number => {
   return tools.filter((tool) => isRuntimeToolEnabledByConfig(tool.name, toolConfig)).length;
 };
 
-const countEnabledSkills = (skills: Skill[], skillsConfig?: AgentSkillsConfig): number => {
+const countEnabledSkills = (skills: Skill[], skillsConfig?: AgentProfileSkillsConfigUpdateLike): number => {
   return skills.filter((skill) => isSkillEnabledByConfig(skill.id, skillsConfig)).length;
 };
 
@@ -225,30 +168,6 @@ const getAgentModelPlaceholder = (provider: AgentModelProvider): string => {
   if (provider === 'groq') return 'openai/gpt-oss-120b';
   if (provider === 'gemini') return 'gemini-2.5-flash';
   return 'gpt-5.4-mini';
-};
-
-const formatModelConfigForRequest = (modelConfig?: AgentModelConfig): Record<string, unknown> | undefined => {
-  if (!modelConfig) return undefined;
-  return { ...modelConfig };
-};
-
-const formatToolConfigForRequest = (toolConfig?: AgentToolConfig): Record<string, unknown> | undefined => {
-  if (!toolConfig) return undefined;
-  return {
-    disabledServers: toolConfig.disabledServers,
-    enabledServers: toolConfig.enabledServers,
-    disabledTools: toolConfig.disabledTools,
-    enabledRuntimeTools: toolConfig.enabledRuntimeTools,
-    allServersDisabledByDefault: toolConfig.allServersDisabledByDefault === true,
-  };
-};
-
-const formatSkillsConfigForRequest = (skillsConfig?: AgentSkillsConfig): Record<string, unknown> | undefined => {
-  if (!skillsConfig) return undefined;
-  return {
-    enabledSkillIds: skillsConfig.enabledSkillIds ?? [],
-    allSkillsDisabledByDefault: skillsConfig.allSkillsDisabledByDefault === true,
-  };
 };
 
 export default function AgentEditScreen({ navigation, route }: any) {
@@ -325,9 +244,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
             enabled: profile.enabled,
             autoSpawn: profile.autoSpawn || false,
             properties: normalizeAgentProfileProperties(profile.properties),
-            modelConfig: normalizeAgentModelConfig(profile.modelConfig),
-            toolConfig: normalizeAgentToolConfig(profile.toolConfig),
-            skillsConfig: normalizeAgentSkillsConfig(profile.skillsConfig),
+            modelConfig: normalizeAgentProfileModelConfigForEdit(profile.modelConfig),
+            toolConfig: normalizeAgentProfileMcpConfigForEdit(profile.toolConfig),
+            skillsConfig: normalizeAgentProfileSkillsConfigForEdit(profile.skillsConfig),
           });
         })
         .catch(err => {
@@ -453,9 +372,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
             enabled: formData.enabled,
             autoSpawn: formData.autoSpawn,
             properties: formatAgentProfilePropertiesForRequest(formData.properties),
-            modelConfig: formatModelConfigForRequest(formData.modelConfig),
-            toolConfig: formatToolConfigForRequest(formData.toolConfig),
-            skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),
+            modelConfig: formatAgentProfileModelConfigForRequest(formData.modelConfig),
+            toolConfig: formatAgentProfileMcpConfigForRequest(formData.toolConfig),
+            skillsConfig: formatAgentProfileSkillsConfigForRequest(formData.skillsConfig),
           };
         await settingsClient.updateAgentProfile(agentId, updateData);
       } else {
@@ -469,9 +388,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
           enabled: formData.enabled,
           autoSpawn: formData.autoSpawn,
           properties: formatAgentProfilePropertiesForRequest(formData.properties),
-          modelConfig: formatModelConfigForRequest(formData.modelConfig),
-          toolConfig: formatToolConfigForRequest(formData.toolConfig),
-          skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),
+          modelConfig: formatAgentProfileModelConfigForRequest(formData.modelConfig),
+          toolConfig: formatAgentProfileMcpConfigForRequest(formData.toolConfig),
+          skillsConfig: formatAgentProfileSkillsConfigForRequest(formData.skillsConfig),
         };
         await settingsClient.createAgentProfile(createData);
       }

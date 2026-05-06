@@ -37,4 +37,16 @@ describe("settings agents capability config", () => {
     expect(settingsAgentsSource).toContain("formatAgentProfilePropertiesForRequest")
     expect(settingsAgentsSource).not.toContain("Object.keys(editing.properties).length > 0 ? editing.properties : undefined")
   })
+
+  it("uses shared profile config edit helpers in the desktop agent editor", () => {
+    expect(settingsAgentsSource).toContain("normalizeAgentProfileModelConfigForEdit")
+    expect(settingsAgentsSource).toContain("normalizeAgentProfileMcpConfigForEdit")
+    expect(settingsAgentsSource).toContain("normalizeAgentProfileSkillsConfigForEdit")
+    expect(settingsAgentsSource).toContain("formatAgentProfileModelConfigForRequest")
+    expect(settingsAgentsSource).toContain("formatAgentProfileMcpConfigForRequest")
+    expect(settingsAgentsSource).toContain("formatAgentProfileSkillsConfigForRequest")
+    expect(settingsAgentsSource).not.toContain("modelConfig: agent.modelConfig ? { ...agent.modelConfig } : undefined")
+    expect(settingsAgentsSource).not.toContain("toolConfig: agent.toolConfig ? { ...agent.toolConfig } : undefined")
+    expect(settingsAgentsSource).not.toContain("skillsConfig: agent.skillsConfig ? { ...agent.skillsConfig } : undefined")
+  })
 })
