@@ -28,8 +28,10 @@ import {
   parseMcpMaxIterationsDraft,
   parseMcpServerToggleRequestBody,
   setOperatorMcpToolEnabledAction,
+  testOperatorMcpServerAction,
   toggleMcpServerAction,
   type OperatorMcpMutationActionOptions,
+  type OperatorMcpTestActionOptions,
   type McpServerStatusMapLike,
 } from "./mcp-api"
 
@@ -492,6 +494,90 @@ describe("MCP API helpers", () => {
     ])
     expect(logs).toContain("Failed to clear MCP server logs for throw: clear denied")
     expect(logs).toContain("Failed to toggle MCP tool throw: toggle denied")
+  })
+
+  it("runs operator MCP server tests through shared service adapters", async () => {
+    const configs = {
+      filesystem: { command: "npx", args: ["filesystem"] },
+      failing: { command: "npx", args: ["failing"] },
+      throw: { command: "npx", args: ["throw"] },
+    }
+    const testedServers: string[] = []
+    const logs: string[] = []
+    type TestAuditContext = {
+      action: string
+      success: boolean
+      server?: string
+      failureReason?: string
+    }
+    const options: OperatorMcpTestActionOptions<typeof configs.filesystem, TestAuditContext> = {
+      service: {
+        getServerConfig: (serverName: string) => configs[serverName as keyof typeof configs],
+        testServerConnection: async (serverName: string) => {
+          if (serverName === "throw") throw new Error("test denied")
+          testedServers.push(serverName)
+          return serverName === "failing"
+            ? { success: false, error: "connection refused" }
+            : { success: true, toolCount: 3 }
+        },
+      },
+      diagnostics: {
+        logError: (_source: string, message: string) => { logs.push(message) },
+        getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error),
+      },
+      audit: {
+        buildTestAuditContext: (response) => ({
+          action: response.action,
+          success: response.success,
+          server: response.server,
+        }),
+        buildTestFailureAuditContext: (failureReason: string) => ({
+          action: "mcp-test",
+          success: false,
+          failureReason,
+        }),
+      },
+    }
+
+    await expect(testOperatorMcpServerAction(undefined, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "Missing server name" },
+      auditContext: { action: "mcp-test", success: false, failureReason: "missing-server-name" },
+    })
+    await expect(testOperatorMcpServerAction("missing", options)).resolves.toEqual({
+      statusCode: 404,
+      body: { error: "Server missing not found in configuration" },
+      auditContext: { action: "mcp-test", success: false, failureReason: "server-not-found" },
+    })
+    await expect(testOperatorMcpServerAction("filesystem", options)).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "mcp-test",
+        server: "filesystem",
+        message: "Connection test successful for filesystem",
+        toolCount: 3,
+      },
+      auditContext: { action: "mcp-test", success: true, server: "filesystem" },
+    })
+    await expect(testOperatorMcpServerAction("failing", options)).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        success: false,
+        action: "mcp-test",
+        server: "failing",
+        message: "connection refused",
+        error: "connection refused",
+      },
+      auditContext: { action: "mcp-test", success: false, server: "failing" },
+    })
+    await expect(testOperatorMcpServerAction("throw", options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "Failed to test MCP server: test denied" },
+      auditContext: { action: "mcp-test", success: false, failureReason: "mcp-test-error" },
+    })
+    expect(testedServers).toEqual(["filesystem", "failing"])
+    expect(logs).toContain("Failed to test MCP server throw: test denied")
   })
 
   it("parses injected MCP tool call requests", () => {

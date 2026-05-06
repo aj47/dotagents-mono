@@ -4,8 +4,10 @@ import {
   getOperatorMcpStatusAction,
   getOperatorMcpToolsAction,
   setOperatorMcpToolEnabledAction,
+  testOperatorMcpServerAction,
   type OperatorMcpMutationActionOptions,
   type OperatorMcpReadActionOptions,
+  type OperatorMcpTestActionOptions,
 } from "@dotagents/shared/mcp-api"
 import {
   buildOperatorActionAuditContext,
@@ -22,7 +24,6 @@ import {
   buildOperatorMcpStopResponse,
   buildOperatorMcpTestAuditContext,
   buildOperatorMcpTestFailureAuditContext,
-  buildOperatorMcpTestResponse,
   parseOperatorMcpRestartRequestBody,
   parseOperatorMcpServerActionRequestBody,
   type OperatorActionAuditContext,
@@ -65,6 +66,21 @@ const operatorMcpMutationActionOptions: OperatorMcpMutationActionOptions<Operato
   },
 }
 
+const operatorMcpTestActionOptions: OperatorMcpTestActionOptions<MCPServerConfig, OperatorActionAuditContext> = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+    getErrorMessage,
+  },
+  service: {
+    getServerConfig: (serverName) => configStore.get().mcpConfig?.mcpServers?.[serverName] as MCPServerConfig | undefined,
+    testServerConnection: (serverName, serverConfig) => mcpService.testServerConnection(serverName, serverConfig),
+  },
+  audit: {
+    buildTestAuditContext: (response) => buildOperatorMcpTestAuditContext(response),
+    buildTestFailureAuditContext: (failureReason) => buildOperatorMcpTestFailureAuditContext(failureReason),
+  },
+}
+
 function ok(body: unknown, auditContext?: OperatorActionAuditContext): OperatorMcpActionResult {
   return {
     statusCode: 200,
@@ -97,32 +113,7 @@ export function clearOperatorMcpServerLogs(serverName: string | undefined): Oper
 }
 
 export async function testOperatorMcpServer(serverName: string | undefined): Promise<OperatorMcpActionResult> {
-  if (!serverName) {
-    return error(400, "Missing server name", buildOperatorMcpTestFailureAuditContext("missing-server-name"))
-  }
-
-  try {
-    const serverConfig = configStore.get().mcpConfig?.mcpServers?.[serverName] as MCPServerConfig | undefined
-    if (!serverConfig) {
-      return error(
-        404,
-        `Server ${serverName} not found in configuration`,
-        buildOperatorMcpTestFailureAuditContext("server-not-found"),
-      )
-    }
-
-    const result = await mcpService.testServerConnection(serverName, serverConfig)
-    const response = buildOperatorMcpTestResponse(serverName, result)
-    return ok(response, buildOperatorMcpTestAuditContext(response))
-  } catch (caughtError) {
-    const errorMessage = getErrorMessage(caughtError)
-    diagnosticsService.logError("operator-mcp-actions", `Failed to test MCP server ${serverName}: ${errorMessage}`, caughtError)
-    return error(
-      500,
-      `Failed to test MCP server: ${errorMessage}`,
-      buildOperatorMcpTestFailureAuditContext("mcp-test-error"),
-    )
-  }
+  return testOperatorMcpServerAction(serverName, operatorMcpTestActionOptions)
 }
 
 export function getOperatorMcpTools(server: unknown): OperatorMcpActionResult {

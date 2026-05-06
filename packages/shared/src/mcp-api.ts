@@ -6,6 +6,7 @@ import type {
   OperatorMCPServerLogEntry,
   OperatorMCPServerLogsResponse,
   OperatorMCPServerSummary,
+  OperatorMCPServerTestResponse,
   OperatorMCPStatusResponse,
   OperatorMCPToolsResponse,
   OperatorMCPToolSummary,
@@ -113,6 +114,30 @@ export interface OperatorMcpMutationActionOptions<TAuditContext = unknown> {
   service: OperatorMcpMutationActionService
   diagnostics: OperatorMcpReadActionDiagnostics
   audit?: OperatorMcpMutationActionAudit<TAuditContext>
+}
+
+export type McpConnectionTestResultLike = {
+  success: boolean
+  error?: string
+  toolCount?: number
+}
+
+export type OperatorMcpTestActionResult<TAuditContext = unknown> = OperatorMcpMutationActionResult<TAuditContext>
+
+export interface OperatorMcpTestActionService<TServerConfig = unknown> {
+  getServerConfig(serverName: string): TServerConfig | undefined
+  testServerConnection(serverName: string, serverConfig: TServerConfig): Promise<McpConnectionTestResultLike>
+}
+
+export interface OperatorMcpTestActionAudit<TAuditContext> {
+  buildTestAuditContext(response: OperatorMCPServerTestResponse): TAuditContext
+  buildTestFailureAuditContext(failureReason: string): TAuditContext
+}
+
+export interface OperatorMcpTestActionOptions<TServerConfig = unknown, TAuditContext = unknown> {
+  service: OperatorMcpTestActionService<TServerConfig>
+  diagnostics: OperatorMcpReadActionDiagnostics
+  audit?: OperatorMcpTestActionAudit<TAuditContext>
 }
 
 export type McpServerLogEntryLike = {
@@ -369,6 +394,20 @@ function buildOperatorMcpClearLogsResponse(server: string): OperatorActionRespon
   }
 }
 
+function buildOperatorMcpTestResponse(
+  server: string,
+  result: McpConnectionTestResultLike,
+): OperatorMCPServerTestResponse {
+  return {
+    success: result.success,
+    action: "mcp-test",
+    server,
+    message: result.success ? `Connection test successful for ${server}` : result.error || "Connection test failed",
+    ...(result.error ? { error: result.error } : {}),
+    ...(typeof result.toolCount === "number" ? { toolCount: result.toolCount } : {}),
+  }
+}
+
 export function getOperatorMcpServerLogsAction(
   serverName: string | undefined,
   count: string | number | undefined,
@@ -393,6 +432,42 @@ export function getOperatorMcpServerLogsAction(
     const errorMessage = options.diagnostics.getErrorMessage(caughtError)
     options.diagnostics.logError("operator-mcp-actions", `Failed to get MCP server logs for ${serverName}: ${errorMessage}`, caughtError)
     return mcpServerActionError(500, `Failed to get MCP server logs: ${errorMessage}`)
+  }
+}
+
+export async function testOperatorMcpServerAction<TServerConfig = unknown, TAuditContext = unknown>(
+  serverName: string | undefined,
+  options: OperatorMcpTestActionOptions<TServerConfig, TAuditContext>,
+): Promise<OperatorMcpTestActionResult<TAuditContext>> {
+  if (!serverName) {
+    return operatorMcpActionError(
+      400,
+      "Missing server name",
+      options.audit?.buildTestFailureAuditContext("missing-server-name"),
+    )
+  }
+
+  try {
+    const serverConfig = options.service.getServerConfig(serverName)
+    if (!serverConfig) {
+      return operatorMcpActionError(
+        404,
+        `Server ${serverName} not found in configuration`,
+        options.audit?.buildTestFailureAuditContext("server-not-found"),
+      )
+    }
+
+    const result = await options.service.testServerConnection(serverName, serverConfig)
+    const response = buildOperatorMcpTestResponse(serverName, result)
+    return operatorMcpActionOk(response, options.audit?.buildTestAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    options.diagnostics.logError("operator-mcp-actions", `Failed to test MCP server ${serverName}: ${errorMessage}`, caughtError)
+    return operatorMcpActionError(
+      500,
+      `Failed to test MCP server: ${errorMessage}`,
+      options.audit?.buildTestFailureAuditContext("mcp-test-error"),
+    )
   }
 }
 
