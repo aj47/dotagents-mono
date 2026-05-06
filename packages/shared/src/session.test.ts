@@ -6,6 +6,7 @@ import {
   generateConversationTitleFromMessage,
   normalizeConversationTitleText,
   sortSessionsByPinnedFirst,
+  orderConversationHistoryByPinnedFirst,
   sanitizeSessionText,
   sessionToListItem,
   createSessionSearchSnippet,
@@ -155,6 +156,37 @@ describe('sortSessionsByPinnedFirst', () => {
     const original = [...sessions]
     sortSessionsByPinnedFirst(sessions)
     expect(sessions).toEqual(original)
+  })
+})
+
+// ── orderConversationHistoryByPinnedFirst ───────────────────────────────────
+
+describe('orderConversationHistoryByPinnedFirst', () => {
+  it('moves pinned sessions ahead while preserving each group existing order', () => {
+    const sessions = [
+      { id: 'session-4', updatedAt: 40 },
+      { id: 'session-3', updatedAt: 30 },
+      { id: 'session-2', updatedAt: 20 },
+      { id: 'session-1', updatedAt: 10 },
+    ]
+
+    const ordered = orderConversationHistoryByPinnedFirst(
+      sessions,
+      new Set(['session-3', 'session-1']),
+    )
+
+    expect(ordered.map((session) => session.id)).toEqual([
+      'session-3',
+      'session-1',
+      'session-4',
+      'session-2',
+    ])
+  })
+
+  it('returns the original array when no pinned session IDs are configured', () => {
+    const sessions = [{ id: 'session-1' }, { id: 'session-2' }]
+
+    expect(orderConversationHistoryByPinnedFirst(sessions, new Set())).toBe(sessions)
   })
 })
 

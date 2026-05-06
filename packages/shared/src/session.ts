@@ -99,6 +99,28 @@ export function sortSessionsByPinnedFirst<T extends Pick<Session, 'updatedAt' | 
   });
 }
 
+export function orderConversationHistoryByPinnedFirst<T extends { id: string }>(
+  sessions: T[],
+  pinnedSessionIds: ReadonlySet<string>,
+): T[] {
+  if (sessions.length <= 1 || pinnedSessionIds.size === 0) {
+    return sessions;
+  }
+
+  const pinnedSessions: T[] = [];
+  const unpinnedSessions: T[] = [];
+
+  for (const session of sessions) {
+    if (pinnedSessionIds.has(session.id)) {
+      pinnedSessions.push(session);
+    } else {
+      unpinnedSessions.push(session);
+    }
+  }
+
+  return [...pinnedSessions, ...unpinnedSessions];
+}
+
 /**
  * Generate a unique session ID
  */
