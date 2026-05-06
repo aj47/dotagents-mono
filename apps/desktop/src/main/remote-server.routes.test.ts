@@ -233,12 +233,6 @@ function getOperatorTunnelActionsSource(): string {
   return readFileSync(operatorTunnelActionsPath, "utf8")
 }
 
-function getOperatorUpdaterActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const operatorUpdaterActionsPath = path.join(testDir, "operator-updater-actions.ts")
-  return readFileSync(operatorUpdaterActionsPath, "utf8")
-}
-
 function getOperatorIntegrationActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const operatorIntegrationActionsPath = path.join(testDir, "operator-integration-actions.ts")
@@ -686,7 +680,6 @@ describe("remote-server route registration", () => {
       getOperatorModelPresetActionsSource(),
       getOperatorObservabilityActionsSource(),
       getOperatorTunnelActionsSource(),
-      getOperatorUpdaterActionsSource(),
     ]
 
     for (const source of operatorActionSources) {
@@ -1294,7 +1287,6 @@ describe("remote-server route registration", () => {
       "  // GET /v1/operator/mcp - Operator-level MCP summary",
     )
     const operatorTunnelActionsSource = getOperatorTunnelActionsSource()
-    const operatorUpdaterActionsSource = getOperatorUpdaterActionsSource()
     const operatorIntegrationActionsSource = getOperatorIntegrationActionsSource()
     const operatorIntegrationSummarySource = getOperatorIntegrationSummarySource()
     const operatorObservabilityActionsSource = getOperatorObservabilityActionsSource()
@@ -1395,16 +1387,20 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.revealOperatorUpdateAsset()")
     expect(operatorRoutesSource).toContain("actions.openOperatorUpdateAsset()")
     expect(operatorRoutesSource).toContain("actions.openOperatorReleasesPage()")
-    expect(operatorUpdaterActionsSource).toContain("getOperatorUpdaterAction(currentVersion, MANUAL_RELEASES_URL, updaterActionOptions)")
-    expect(operatorUpdaterActionsSource).toContain("checkOperatorUpdaterAction(MANUAL_RELEASES_URL, updaterActionOptions)")
-    expect(operatorUpdaterActionsSource).toContain("downloadLatestOperatorUpdateAssetAction(updaterActionOptions)")
-    expect(operatorUpdaterActionsSource).toContain("openOperatorReleasesPageAction(updaterActionOptions)")
-    expect(operatorUpdaterActionsSource).toContain("service: {")
-    expect(operatorUpdaterActionsSource).toContain("checkForUpdatesAndDownload")
-    expect(operatorUpdaterActionsSource).toContain("downloadLatestReleaseAsset")
-    expect(operatorUpdaterActionsSource).toContain("revealDownloadedReleaseAsset")
-    expect(operatorUpdaterActionsSource).toContain("openDownloadedReleaseAsset")
-    expect(operatorUpdaterActionsSource).toContain("openManualReleasesPage")
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "getOperatorUpdaterAction(currentVersion, MANUAL_RELEASES_URL, updaterActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "checkOperatorUpdaterAction(MANUAL_RELEASES_URL, updaterActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain("downloadLatestOperatorUpdateAssetAction(updaterActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("openOperatorReleasesPageAction(updaterActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("service: {")
+    expect(operatorRouteDesktopActionsSource).toContain("checkForUpdatesAndDownload")
+    expect(operatorRouteDesktopActionsSource).toContain("downloadLatestReleaseAsset")
+    expect(operatorRouteDesktopActionsSource).toContain("revealDownloadedReleaseAsset")
+    expect(operatorRouteDesktopActionsSource).toContain("openDownloadedReleaseAsset")
+    expect(operatorRouteDesktopActionsSource).toContain("openManualReleasesPage")
     expect(sharedOperatorActionsSource).toContain("export function getOperatorUpdaterAction(")
     expect(sharedOperatorActionsSource).toContain("export async function checkOperatorUpdaterAction(")
     expect(sharedOperatorActionsSource).toContain("buildOperatorUpdaterStatus({")
