@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSelectorProfiles } from './agentSelectorOptions';
+import { buildSelectorProfiles } from '@dotagents/shared/agent-selector-options';
 
 describe('buildSelectorProfiles', () => {
   it('uses enabled agent profiles for the mobile selector in API mode', () => {

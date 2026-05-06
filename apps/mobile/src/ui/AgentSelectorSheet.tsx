@@ -20,7 +20,10 @@ import { spacing, radius, Theme } from './theme';
 import { useConfigContext } from '../store/config';
 import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi';
 import { useProfile } from '../store/profile';
-import { SelectableProfile, buildSelectorProfiles } from './agentSelectorOptions';
+import {
+  buildSelectorProfiles,
+  type SelectableAgentProfile as SelectableProfile,
+} from '@dotagents/shared/agent-selector-options';
 
 interface AgentSelectorSheetProps {
   visible: boolean;
