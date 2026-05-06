@@ -76,6 +76,11 @@
       "import": "./dist/conversation-state.mjs",
       "require": "./dist/conversation-state.js"
     },
+    "./session-presentation": {
+      "types": "./dist/session-presentation.d.ts",
+      "import": "./dist/session-presentation.mjs",
+      "require": "./dist/session-presentation.js"
+    },
     "./agent-progress": {
       "types": "./dist/agent-progress.d.ts",
       "import": "./dist/agent-progress.mjs",
