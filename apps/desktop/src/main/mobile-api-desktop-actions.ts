@@ -23,6 +23,14 @@ import {
   unregisterPushTokenAction,
   type PushTokenRecord,
 } from "@dotagents/shared/push-notifications"
+import {
+  exportProfileAction,
+  getCurrentProfileAction,
+  getProfilesAction,
+  importProfileAction,
+  setCurrentProfileAction,
+  type ProfileActionOptions,
+} from "@dotagents/shared/profile-api"
 import type { Config } from "../shared/types"
 import {
   exportBundle,
@@ -68,13 +76,6 @@ import {
 } from "./mcp-server-actions"
 import { recordOperatorAuditEvent } from "./operator-audit-actions"
 import {
-  exportProfile,
-  getCurrentProfile,
-  getProfiles,
-  importProfile,
-  setCurrentProfile,
-} from "./profile-actions"
-import {
   createRepeatTask,
   deleteRepeatTask,
   exportRepeatTaskToMarkdown,
@@ -102,12 +103,16 @@ import {
   toggleProfileSkill,
   updateSkill,
 } from "./skill-actions"
+import { agentProfileService, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
 import { emergencyStopAll } from "./emergency-stop"
+import { mcpService } from "./mcp-service"
 import { clearBadgeCount } from "./push-notification-service"
 import { generateTTS } from "./tts-service"
+
+type DesktopProfileActionProfile = ReturnType<typeof agentProfileService.setCurrentProfileStrict>
 
 const modelActionOptions: ModelActionOptions = {
   getConfig: () => configStore.get(),
@@ -153,6 +158,27 @@ const pushActionOptions = {
   },
 }
 
+const profileActionOptions: ProfileActionOptions<DesktopProfileActionProfile> = {
+  service: {
+    getUserProfiles: () => agentProfileService.getUserProfiles(),
+    getCurrentProfile: () => agentProfileService.getCurrentProfile(),
+    setCurrentProfileStrict: (profileId) => agentProfileService.setCurrentProfileStrict(profileId),
+    exportProfile: (profileId) => agentProfileService.exportProfile(profileId),
+    importProfile: (profileJson) => agentProfileService.importProfile(profileJson),
+  },
+  diagnostics: diagnosticsService,
+  applyCurrentProfile: (profile) => {
+    const mcpServerConfig = toolConfigToMcpServerConfig(profile.toolConfig)
+    mcpService.applyProfileMcpConfig(
+      mcpServerConfig?.disabledServers,
+      mcpServerConfig?.disabledTools,
+      mcpServerConfig?.allServersDisabledByDefault,
+      mcpServerConfig?.enabledServers,
+      mcpServerConfig?.enabledRuntimeTools,
+    )
+  },
+}
+
 function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
@@ -187,6 +213,26 @@ function getPushStatus() {
 
 function clearPushBadge(body: unknown) {
   return clearPushBadgeAction(body, pushActionOptions)
+}
+
+function getProfiles() {
+  return getProfilesAction(profileActionOptions)
+}
+
+function getCurrentProfile() {
+  return getCurrentProfileAction(profileActionOptions)
+}
+
+function setCurrentProfile(body: unknown) {
+  return setCurrentProfileAction(body, profileActionOptions)
+}
+
+function exportProfile(id: string | undefined) {
+  return exportProfileAction(id, profileActionOptions)
+}
+
+function importProfile(body: unknown) {
+  return importProfileAction(body, profileActionOptions)
 }
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {

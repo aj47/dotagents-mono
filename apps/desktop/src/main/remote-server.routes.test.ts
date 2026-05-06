@@ -293,12 +293,6 @@ function getOperatorApiKeyActionsSource(): string {
   return readFileSync(operatorApiKeyActionsPath, "utf8")
 }
 
-function getProfileActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const profileActionsPath = path.join(testDir, "profile-actions.ts")
-  return readFileSync(profileActionsPath, "utf8")
-}
-
 function getBundleActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const bundleActionsPath = path.join(testDir, "bundle-actions.ts")
@@ -734,7 +728,6 @@ describe("remote-server route registration", () => {
       getConversationActionsSource(),
       getKnowledgeNoteActionsSource(),
       getMcpServerActionsSource(),
-      getProfileActionsSource(),
       getRepeatTaskActionsSource(),
       getSettingsActionsSource(),
       getSkillActionsSource(),
@@ -977,7 +970,7 @@ describe("remote-server route registration", () => {
   it("delegates profile route behavior to profile actions", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
-    const profileActionsSource = getProfileActionsSource()
+    const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedProfileApiSource = getSharedProfileApiSource()
 
     expectRegisteredApiRoute(source, "GET", "profiles")
@@ -990,11 +983,11 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.setCurrentProfile(req.body)")
     expect(mobileApiRoutesSource).toContain("actions.exportProfile(params.id)")
     expect(mobileApiRoutesSource).toContain("actions.importProfile(req.body)")
-    expect(profileActionsSource).toContain("getProfilesAction(profileActionOptions)")
-    expect(profileActionsSource).toContain("getCurrentProfileAction(profileActionOptions)")
-    expect(profileActionsSource).toContain("setCurrentProfileAction(body, profileActionOptions)")
-    expect(profileActionsSource).toContain("exportProfileAction(id, profileActionOptions)")
-    expect(profileActionsSource).toContain("importProfileAction(body, profileActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getProfilesAction(profileActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getCurrentProfileAction(profileActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("setCurrentProfileAction(body, profileActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("exportProfileAction(id, profileActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("importProfileAction(body, profileActionOptions)")
     expect(sharedProfileApiSource).toContain("export interface ProfileActionOptions")
     expect(sharedProfileApiSource).toContain("export function getProfilesAction")
     expect(sharedProfileApiSource).toContain("export function getCurrentProfileAction")
@@ -1009,8 +1002,8 @@ describe("remote-server route registration", () => {
     expect(sharedProfileApiSource).toContain("options.applyCurrentProfile?.(profile)")
     expect(sharedProfileApiSource).not.toContain('from "./agent-profile-service"')
     expect(sharedProfileApiSource).not.toContain('from "./mcp-service"')
-    expect(profileActionsSource).toContain("toolConfigToMcpServerConfig(profile.toolConfig)")
-    expect(profileActionsSource).toContain("mcpService.applyProfileMcpConfig(")
+    expect(mobileApiDesktopActionsSource).toContain("toolConfigToMcpServerConfig(profile.toolConfig)")
+    expect(mobileApiDesktopActionsSource).toContain("mcpService.applyProfileMcpConfig(")
   })
 
   it("delegates bundle export routes to shared bundle actions", () => {
