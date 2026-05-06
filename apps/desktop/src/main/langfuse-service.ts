@@ -24,6 +24,7 @@ import {
   appendLocalTraceEvent,
   resetLocalTraceLogger,
 } from "./local-trace-logger"
+import { DEFAULT_LANGFUSE_ENABLED } from "@dotagents/shared/observability-config"
 
 // Singleton Langfuse instance
 let langfuseInstance: LangfuseInstance | null = null
@@ -50,7 +51,7 @@ export function isLangfuseInstalled(): boolean {
 export function isLangfuseEnabled(): boolean {
   if (!isInstalled) return false
   const config = configStore.get()
-  return !!(config.langfuseEnabled && config.langfuseSecretKey && config.langfusePublicKey)
+  return !!((config.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED) && config.langfuseSecretKey && config.langfusePublicKey)
 }
 
 /**

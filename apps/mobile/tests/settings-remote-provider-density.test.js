@@ -210,10 +210,15 @@ test('lets mobile configure desktop local trace logging', () => {
 
   assert.match(remoteSettingsDraftsSource, /localTraceLogPath: settings\.localTraceLogPath \|\| ""/);
   assert.match(settingsSource, /updates\.localTraceLogPath = inputDrafts\.localTraceLogPath \?\? ''/);
-  assert.match(langfuseSection, /value=\{remoteSettings\.localTraceLoggingEnabled \?\? false\}/);
+  assert.match(settingsSource, /DEFAULT_LOCAL_TRACE_LOGGING_ENABLED/);
+  assert.match(settingsSource, /DEFAULT_LANGFUSE_ENABLED/);
+  assert.match(langfuseSection, /value=\{remoteSettings\.localTraceLoggingEnabled \?\? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED\}/);
   assert.match(langfuseSection, /handleRemoteSettingToggle\('localTraceLoggingEnabled', v\)/);
-  assert.match(langfuseSection, /remoteSettings\.localTraceLoggingEnabled &&/);
+  assert.match(langfuseSection, /remoteSettings\.localTraceLoggingEnabled \?\? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED/);
   assert.match(langfuseSection, /handleRemoteSettingUpdate\('localTraceLogPath', v\)/);
+  assert.match(langfuseSection, /value=\{remoteSettings\.langfuseEnabled \?\? DEFAULT_LANGFUSE_ENABLED\}/);
+  assert.match(langfuseSection, /handleRemoteSettingToggle\('langfuseEnabled', v\)/);
+  assert.match(langfuseSection, /remoteSettings\.langfuseEnabled \?\? DEFAULT_LANGFUSE_ENABLED/);
   assert.match(langfuseSection, />Langfuse tracing</);
 });
 

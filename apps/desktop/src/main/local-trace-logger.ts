@@ -19,6 +19,7 @@ import fs from "fs"
 import path from "path"
 import { configStore, dataFolder } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
+import { DEFAULT_LOCAL_TRACE_LOGGING_ENABLED } from "@dotagents/shared/observability-config"
 
 export type LocalTraceEventType =
   | "trace.start"
@@ -60,7 +61,7 @@ const generationTraceIds = new Map<string, string>()
 export function isLocalTraceLoggingEnabled(): boolean {
   try {
     const config = configStore.get()
-    return config.localTraceLoggingEnabled === true
+    return (config.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) === true
   } catch {
     return false
   }

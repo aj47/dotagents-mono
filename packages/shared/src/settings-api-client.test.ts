@@ -36,6 +36,10 @@ import {
   DEFAULT_WHATSAPP_ENABLED,
   DEFAULT_WHATSAPP_LOG_MESSAGES,
 } from './whatsapp-config';
+import {
+  DEFAULT_LANGFUSE_ENABLED,
+  DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
+} from './observability-config';
 
 function jsonResponse(body: unknown, status: number = 200) {
   return new Response(JSON.stringify(body), {
@@ -401,7 +405,9 @@ describe('SettingsApiClient', () => {
       discordDmEnabled: DEFAULT_DISCORD_DM_ENABLED,
       discordRequireMention: DEFAULT_DISCORD_REQUIRE_MENTION,
       discordLogMessages: DEFAULT_DISCORD_LOG_MESSAGES,
+      langfuseEnabled: DEFAULT_LANGFUSE_ENABLED,
       langfuseSecretKey: 'MASKED',
+      localTraceLoggingEnabled: DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
       acpxAgents: [{ name: 'agent', displayName: 'Agent' }],
       mcpAutoPasteEnabled: true,
       mcpAutoPasteDelay: 1500,

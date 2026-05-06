@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  DEFAULT_LANGFUSE_ENABLED,
+  DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
+} from './observability-config';
 import type {
   LangfuseObservabilityConfig,
   LocalTraceLoggingConfig,
@@ -11,6 +15,11 @@ function assertType<T>(_value: T): void {
 }
 
 describe('observability config contracts', () => {
+  it('exposes shared observability defaults', () => {
+    expect(DEFAULT_LANGFUSE_ENABLED).toBe(false);
+    expect(DEFAULT_LOCAL_TRACE_LOGGING_ENABLED).toBe(false);
+  });
+
   it('exposes persisted Langfuse and local trace logging config contracts', () => {
     const langfuseConfig: LangfuseObservabilityConfig = {
       langfuseEnabled: true,

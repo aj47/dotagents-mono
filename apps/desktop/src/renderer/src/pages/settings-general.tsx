@@ -24,6 +24,10 @@ import {
   type MainAgentMode,
 } from "@dotagents/shared/main-agent-selection"
 import { DEFAULT_WHATSAPP_ENABLED } from "@dotagents/shared/whatsapp-config"
+import {
+  DEFAULT_LANGFUSE_ENABLED,
+  DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
+} from "@dotagents/shared/observability-config"
 import type { STT_PROVIDER_ID } from "@dotagents/shared/providers"
 import { SUPPORTED_LANGUAGES } from "@dotagents/shared/languages"
 import { Textarea } from "@renderer/components/ui/textarea"
@@ -1410,7 +1414,7 @@ export function Component() {
             className="px-3"
           >
             <Switch
-              checked={configQuery.data?.localTraceLoggingEnabled ?? false}
+              checked={configQuery.data?.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED}
               onCheckedChange={(value) => {
                 saveConfig({ localTraceLoggingEnabled: value })
               }}
@@ -1427,7 +1431,7 @@ export function Component() {
             className="px-3"
           >
             <Switch
-              checked={configQuery.data?.langfuseEnabled ?? false}
+              checked={configQuery.data?.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED}
               disabled={!isLangfuseInstalled}
               onCheckedChange={(value) => {
                 saveConfig({ langfuseEnabled: value })
@@ -1441,7 +1445,7 @@ export function Component() {
             </div>
           )}
 
-          {configQuery.data?.langfuseEnabled && (
+          {(configQuery.data?.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED) && (
             <>
               <Control label={<ControlLabel label="Public Key" tooltip="Your Langfuse project's public key" />} className="px-3">
                 <Input

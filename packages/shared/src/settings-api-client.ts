@@ -84,6 +84,10 @@ import {
   DEFAULT_WHATSAPP_ENABLED,
   DEFAULT_WHATSAPP_LOG_MESSAGES,
 } from './whatsapp-config';
+import {
+  DEFAULT_LANGFUSE_ENABLED,
+  DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
+} from './observability-config';
 import { getSensitiveOperatorSettingsKeys } from './operator-actions';
 import {
   DEFAULT_OPENAI_TTS_RESPONSE_FORMAT,
@@ -447,11 +451,11 @@ export function buildSettingsResponse(
     discordOperatorAllowRoleIds: cfg.discordOperatorAllowRoleIds ?? [],
     discordDefaultProfileId: options.discordDefaultProfileId ?? '',
     discordLogMessages: cfg.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES,
-    langfuseEnabled: cfg.langfuseEnabled ?? false,
+    langfuseEnabled: cfg.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED,
     langfusePublicKey: cfg.langfusePublicKey ?? '',
     langfuseSecretKey: cfg.langfuseSecretKey ? langfuseSecretMask : '',
     langfuseBaseUrl: cfg.langfuseBaseUrl ?? '',
-    localTraceLoggingEnabled: cfg.localTraceLoggingEnabled ?? false,
+    localTraceLoggingEnabled: cfg.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
     localTraceLogPath: cfg.localTraceLogPath ?? '',
     sttProviderId: cfg.sttProviderId || 'openai',
     ttsProviderId: cfg.ttsProviderId || 'openai',

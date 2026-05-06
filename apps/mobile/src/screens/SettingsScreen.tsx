@@ -75,6 +75,10 @@ import {
   DEFAULT_WHATSAPP_ENABLED,
   DEFAULT_WHATSAPP_LOG_MESSAGES,
 } from '@dotagents/shared/whatsapp-config';
+import {
+  DEFAULT_LANGFUSE_ENABLED,
+  DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
+} from '@dotagents/shared/observability-config';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
 import {
   BUNDLE_COMPONENT_OPTIONS,
@@ -4239,17 +4243,17 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Local trace logging</Text>
                   <Switch
-                    value={remoteSettings.localTraceLoggingEnabled ?? false}
+                    value={remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('localTraceLoggingEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.localTraceLoggingEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
                 <Text style={styles.helperText}>
                   Write agent session traces to JSONL files on the desktop machine.
                 </Text>
 
-                {remoteSettings.localTraceLoggingEnabled && (
+                {(remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) && (
                   <>
                     <Text style={styles.label}>Trace Folder</Text>
                     <TextInput
@@ -4269,14 +4273,14 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Langfuse tracing</Text>
                   <Switch
-                    value={remoteSettings.langfuseEnabled ?? false}
+                    value={remoteSettings.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('langfuseEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.langfuseEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
 
-                {remoteSettings.langfuseEnabled && (
+                {(remoteSettings.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED) && (
                   <>
                     <Text style={styles.label}>Public Key</Text>
                     <TextInput
