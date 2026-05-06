@@ -1,4 +1,13 @@
+import crypto from "crypto"
 import type { OperatorRouteActions } from "./operator-routes"
+import type { Config } from "../shared/types"
+import {
+  createOperatorModelPresetAction,
+  deleteOperatorModelPresetAction,
+  getOperatorModelPresetsAction,
+  updateOperatorModelPresetAction,
+  type ModelPresetActionOptions,
+} from "@dotagents/shared/model-presets"
 import {
   runOperatorAgent,
   stopOperatorAgentSession,
@@ -19,12 +28,6 @@ import {
   getOperatorLocalSpeechModelStatus,
   getOperatorLocalSpeechModelStatuses,
 } from "./operator-local-speech-actions"
-import {
-  createOperatorModelPreset,
-  deleteOperatorModelPreset,
-  getOperatorModelPresets,
-  updateOperatorModelPreset,
-} from "./operator-model-preset-actions"
 import {
   clearOperatorDiscordLogs,
   connectOperatorDiscord,
@@ -96,6 +99,16 @@ import {
   revealDownloadedReleaseAsset,
 } from "./updater"
 
+const modelPresetActionOptions: ModelPresetActionOptions<Config> = {
+  config: {
+    get: () => configStore.get(),
+    save: (config) => configStore.save(config),
+  },
+  diagnostics: diagnosticsService,
+  createPresetId: () => `custom-${crypto.randomUUID()}`,
+  now: () => Date.now(),
+}
+
 const tunnelActionOptions: OperatorTunnelActionOptions = {
   config: {
     get: () => configStore.get(),
@@ -121,6 +134,26 @@ const updaterActionOptions: OperatorUpdaterActionOptions = {
     openDownloadedReleaseAsset,
     openManualReleasesPage,
   },
+}
+
+async function getOperatorModelPresets(secretMask: string) {
+  return getOperatorModelPresetsAction(secretMask, modelPresetActionOptions)
+}
+
+async function createOperatorModelPreset(body: unknown, secretMask: string) {
+  return createOperatorModelPresetAction(body, secretMask, modelPresetActionOptions)
+}
+
+async function updateOperatorModelPreset(
+  presetId: string | undefined,
+  body: unknown,
+  secretMask: string,
+) {
+  return updateOperatorModelPresetAction(presetId, body, secretMask, modelPresetActionOptions)
+}
+
+async function deleteOperatorModelPreset(presetId: string | undefined, secretMask: string) {
+  return deleteOperatorModelPresetAction(presetId, secretMask, modelPresetActionOptions)
 }
 
 function getOperatorTunnel() {

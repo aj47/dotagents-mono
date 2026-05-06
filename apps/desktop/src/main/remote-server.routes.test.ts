@@ -215,12 +215,6 @@ function getSharedLocalSpeechModelsSource(): string {
   return readFileSync(sharedLocalSpeechModelsPath, "utf8")
 }
 
-function getOperatorModelPresetActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const operatorModelPresetActionsPath = path.join(testDir, "operator-model-preset-actions.ts")
-  return readFileSync(operatorModelPresetActionsPath, "utf8")
-}
-
 function getSharedModelPresetsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedModelPresetsPath = path.join(testDir, "../../../../packages/shared/src/model-presets.ts")
@@ -671,7 +665,6 @@ describe("remote-server route registration", () => {
       getOperatorLocalSpeechActionsSource(),
       getOperatorMcpActionsSource(),
       getOperatorMessageQueueActionsSource(),
-      getOperatorModelPresetActionsSource(),
       getOperatorObservabilityActionsSource(),
     ]
 
@@ -1617,17 +1610,22 @@ describe("remote-server route registration", () => {
     expect(operatorLocalSpeechActionsSource).toContain('await import("./parakeet-stt")')
     expect(operatorLocalSpeechActionsSource).toContain('await import("./kitten-tts")')
     expect(operatorLocalSpeechActionsSource).toContain('await import("./supertonic-tts")')
-    const operatorModelPresetActionsSource = getOperatorModelPresetActionsSource()
     const sharedModelPresetsSource = getSharedModelPresetsSource()
     expect(source).toContain("providerSecretMask: PROVIDER_SECRET_MASK")
     expect(operatorRoutesSource).toContain("actions.getOperatorModelPresets(providerSecretMask)")
     expect(operatorRoutesSource).toContain("actions.createOperatorModelPreset(req.body, providerSecretMask)")
     expect(operatorRoutesSource).toContain("actions.updateOperatorModelPreset(params.presetId, req.body, providerSecretMask)")
     expect(operatorRoutesSource).toContain("actions.deleteOperatorModelPreset(params.presetId, providerSecretMask)")
-    expect(operatorModelPresetActionsSource).toContain("getOperatorModelPresetsAction(secretMask, modelPresetActionOptions)")
-    expect(operatorModelPresetActionsSource).toContain("createOperatorModelPresetAction(body, secretMask, modelPresetActionOptions)")
-    expect(operatorModelPresetActionsSource).toContain("updateOperatorModelPresetAction(presetId, body, secretMask, modelPresetActionOptions)")
-    expect(operatorModelPresetActionsSource).toContain("deleteOperatorModelPresetAction(presetId, secretMask, modelPresetActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorModelPresetsAction(secretMask, modelPresetActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "createOperatorModelPresetAction(body, secretMask, modelPresetActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "updateOperatorModelPresetAction(presetId, body, secretMask, modelPresetActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "deleteOperatorModelPresetAction(presetId, secretMask, modelPresetActionOptions)",
+    )
     expect(source).toContain("PROVIDER_SECRET_MASK")
     expect(sharedModelPresetsSource).toContain("export interface ModelPresetActionOptions")
     expect(sharedModelPresetsSource).toContain("export async function getOperatorModelPresetsAction")
