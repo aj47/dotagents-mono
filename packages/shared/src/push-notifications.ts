@@ -22,6 +22,23 @@ export type PushActionResult = {
   body: unknown;
 };
 
+export interface PushNotificationPayload {
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+  badge?: number;
+  sound?: 'default' | null;
+  channelId?: string;
+  priority?: 'default' | 'high' | 'normal';
+}
+
+export interface BuildMessagePushNotificationPayloadOptions {
+  conversationId: string;
+  conversationTitle: string;
+  messagePreview: string;
+  maxPreviewLength?: number;
+}
+
 export interface PushActionTokenStore {
   getPushNotificationTokens(): PushTokenRecord[];
   savePushNotificationTokens(tokens: PushTokenRecord[]): void;
@@ -42,6 +59,8 @@ export interface PushActionOptions {
   badgeService?: PushActionBadgeService;
   now?: () => number;
 }
+
+const DEFAULT_MESSAGE_PUSH_NOTIFICATION_PREVIEW_LENGTH = 100;
 
 export function parsePushTokenRegistrationBody(body: unknown): PushRegistrationParseResult {
   const requestBody = body && typeof body === 'object'
@@ -146,6 +165,30 @@ export function buildPushStatusResponse<T extends { platform: PushTokenRegistrat
     enabled: tokens.length > 0,
     tokenCount: tokens.length,
     platforms: [...new Set(tokens.map(token => token.platform))],
+  };
+}
+
+export function buildMessagePushNotificationPayload(
+  options: BuildMessagePushNotificationPayloadOptions,
+): PushNotificationPayload {
+  const maxPreviewLength = Math.max(
+    0,
+    Math.floor(options.maxPreviewLength ?? DEFAULT_MESSAGE_PUSH_NOTIFICATION_PREVIEW_LENGTH),
+  );
+  const body = options.messagePreview.length > maxPreviewLength
+    ? `${options.messagePreview.substring(0, maxPreviewLength)}...`
+    : options.messagePreview;
+
+  return {
+    title: 'DotAgents',
+    body,
+    data: {
+      type: 'message',
+      conversationId: options.conversationId,
+      conversationTitle: options.conversationTitle,
+    },
+    sound: 'default',
+    priority: 'high',
   };
 }
 

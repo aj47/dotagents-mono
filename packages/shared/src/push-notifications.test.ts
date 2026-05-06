@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildMessagePushNotificationPayload,
   buildPushBadgeClearResponse,
   buildPushRegistrationResponse,
   buildPushStatusResponse,
@@ -118,6 +119,30 @@ describe('push notification API helpers', () => {
       tokenCount: 3,
       platforms: ['ios', 'android'],
     });
+  });
+
+  it('builds message push notification payloads with capped previews', () => {
+    expect(buildMessagePushNotificationPayload({
+      conversationId: 'conv-1',
+      conversationTitle: 'Planning',
+      messagePreview: 'Done',
+    })).toEqual({
+      title: 'DotAgents',
+      body: 'Done',
+      data: {
+        type: 'message',
+        conversationId: 'conv-1',
+        conversationTitle: 'Planning',
+      },
+      sound: 'default',
+      priority: 'high',
+    });
+
+    expect(buildMessagePushNotificationPayload({
+      conversationId: 'conv-1',
+      conversationTitle: 'Planning',
+      messagePreview: 'x'.repeat(105),
+    }).body).toBe(`${'x'.repeat(100)}...`);
   });
 
   it('runs push registration actions through shared token store adapters', () => {

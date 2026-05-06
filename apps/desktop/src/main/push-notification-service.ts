@@ -3,21 +3,15 @@
  * Sends push notifications to registered mobile clients via Expo Push Notification Service.
  */
 
+import {
+  buildMessagePushNotificationPayload,
+  type PushNotificationPayload,
+} from "@dotagents/shared/push-notifications"
+import { PushNotificationToken } from "../shared/types"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
-import { PushNotificationToken } from "../shared/types"
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
-
-export interface PushNotificationPayload {
-  title: string
-  body: string
-  data?: Record<string, unknown>
-  badge?: number
-  sound?: "default" | null
-  channelId?: string
-  priority?: "default" | "high" | "normal"
-}
 
 interface ExpoPushMessage {
   to: string
@@ -147,22 +141,11 @@ export async function sendMessageNotification(
   conversationTitle: string,
   messagePreview: string
 ): Promise<void> {
-  const truncatedPreview = messagePreview.length > 100
-    ? messagePreview.substring(0, 100) + "..."
-    : messagePreview
-
-  await sendPushNotification({
-    title: "DotAgents",
-    body: truncatedPreview,
-    data: {
-      type: "message",
-      conversationId,
-      conversationTitle,
-    },
-    // badge is now handled per-token in sendPushNotification
-    sound: "default",
-    priority: "high",
-  })
+  await sendPushNotification(buildMessagePushNotificationPayload({
+    conversationId,
+    conversationTitle,
+    messagePreview,
+  }))
 }
 
 /**
@@ -190,4 +173,3 @@ export function clearBadgeCount(tokenValue: string): void {
   configStore.save({ ...cfg, pushNotificationTokens: updatedTokens })
   diagnosticsService.logInfo("push-service", `Badge count cleared for token: ${tokenValue.substring(0, 20)}...`)
 }
-

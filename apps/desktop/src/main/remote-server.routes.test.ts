@@ -365,6 +365,12 @@ function getPushActionsSource(): string {
   return readFileSync(pushActionsPath, "utf8")
 }
 
+function getPushNotificationServiceSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const pushNotificationServicePath = path.join(testDir, "push-notification-service.ts")
+  return readFileSync(pushNotificationServicePath, "utf8")
+}
+
 function getConversationActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const conversationActionsPath = path.join(testDir, "conversation-actions.ts")
@@ -1033,6 +1039,7 @@ describe("remote-server route registration", () => {
     const ttsActionsSource = getTtsActionsSource()
     const sharedTtsApiSource = getSharedTtsApiSource()
     const pushActionsSource = getPushActionsSource()
+    const pushNotificationServiceSource = getPushNotificationServiceSource()
     const sharedPushNotificationsSource = getSharedPushNotificationsSource()
 
     expectRegisteredApiRoute(source, "GET", "models")
@@ -1088,6 +1095,8 @@ describe("remote-server route registration", () => {
     expect(sharedPushNotificationsSource).toContain("export function unregisterPushTokenAction")
     expect(sharedPushNotificationsSource).toContain("export function getPushStatusAction")
     expect(sharedPushNotificationsSource).toContain("export function clearPushBadgeAction")
+    expect(sharedPushNotificationsSource).toContain("export function buildMessagePushNotificationPayload(")
+    expect(pushNotificationServiceSource).toContain("buildMessagePushNotificationPayload({")
     expect(sharedPushNotificationsSource).toContain("options.tokenStore.savePushNotificationTokens(registrationResult.tokens)")
     expect(sharedPushNotificationsSource).not.toContain("configStore")
     expect(sharedPushNotificationsSource).not.toContain("push-notification-service")
