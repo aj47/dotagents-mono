@@ -12,6 +12,7 @@ import type {
   ModelMatchResult,
   ModelsDevData,
   ModelsDevModel,
+  AgentExecutionConfig,
   PredefinedPrompt,
   PredefinedPromptsConfig,
   EmergencyStopResponse,
@@ -352,6 +353,24 @@ describe('settings API request/response contracts', () => {
 
     assertType<PredefinedPromptsConfig>(config)
     expect(config.predefinedPrompts?.[0]?.name).toBe('Standup')
+  })
+
+  it('accepts agent execution config shared by desktop and mobile settings', () => {
+    const config: AgentExecutionConfig = {
+      mcpRequireApprovalBeforeToolCall: true,
+      mcpMaxIterations: 12,
+      mcpUnlimitedIterations: false,
+      mcpVerifyCompletionEnabled: true,
+      mcpFinalSummaryEnabled: false,
+      mcpContextReductionEnabled: true,
+      mcpToolResponseProcessingEnabled: true,
+      mcpParallelToolExecution: true,
+      mcpMessageQueueEnabled: true,
+      dualModelEnabled: false,
+    }
+
+    assertType<AgentExecutionConfig>(config)
+    expect(config.mcpMaxIterations).toBe(12)
   })
 
   it('accepts repeat task create/update payloads with nullable schedules', () => {

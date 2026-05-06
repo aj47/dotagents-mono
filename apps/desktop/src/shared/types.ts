@@ -15,7 +15,7 @@ import type {
 } from '@dotagents/shared/conversation-state'
 import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
 import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
-import type { PredefinedPromptsConfig } from '@dotagents/shared/api-types'
+import type { AgentExecutionConfig, PredefinedPromptsConfig } from '@dotagents/shared/api-types'
 import type { MainAgentConfig } from '@dotagents/shared/main-agent-selection'
 import type { CloudflareTunnelConfig, RemoteServerConfig } from '@dotagents/shared/remote-pairing'
 import type { ObservabilityConfig } from '@dotagents/shared/observability-config'
@@ -36,7 +36,7 @@ import {
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, RecordingHistoryItem, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
 export type { SessionHistoryConfig } from '@dotagents/shared/session'
-export type { PredefinedPrompt, PredefinedPromptsConfig } from '@dotagents/shared/api-types'
+export type { AgentExecutionConfig, PredefinedPrompt, PredefinedPromptsConfig } from '@dotagents/shared/api-types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
@@ -138,7 +138,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -326,11 +326,8 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   mcpCurrentProfileId?: string
   /** @deprecated Agent mode is now always enabled. This field is kept for backwards compatibility but ignored. */
   mcpAgentModeEnabled?: boolean
-  mcpRequireApprovalBeforeToolCall?: boolean
   mcpAutoPasteEnabled?: boolean
   mcpAutoPasteDelay?: number
-  mcpMaxIterations?: number
-  mcpUnlimitedIterations?: boolean
 
   // MCP Server Configuration
   mcpConfig?: SharedMCPConfig
@@ -389,35 +386,20 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   apiRetryMaxDelay?: number
 
   // Context Reduction Configuration
-  mcpContextReductionEnabled?: boolean
   mcpContextTargetRatio?: number
   mcpContextLastNMessages?: number
   mcpContextSummarizeCharThreshold?: number
   mcpMaxContextTokensOverride?: number
 
   // Tool Response Processing Configuration
-  mcpToolResponseProcessingEnabled?: boolean
   mcpToolResponseLargeThreshold?: number
   mcpToolResponseCriticalThreshold?: number
   mcpToolResponseChunkSize?: number
   mcpToolResponseProgressUpdates?: boolean
 
   // Completion Verification Configuration
-  mcpVerifyCompletionEnabled?: boolean
   mcpVerifyContextMaxItems?: number
   mcpVerifyRetryCount?: number
-
-  // Final Summary Configuration
-  mcpFinalSummaryEnabled?: boolean
-
-  // Dual-Model Configuration
-  dualModelEnabled?: boolean
-
-  // Parallel Tool Execution Configuration
-  mcpParallelToolExecution?: boolean
-
-  // Message Queue Configuration - when enabled, users can queue messages while agent is processing
-  mcpMessageQueueEnabled?: boolean
 
   // Stream Status Watcher Configuration
   streamStatusWatcherEnabled?: boolean

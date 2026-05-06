@@ -587,7 +587,20 @@ export interface PredefinedPromptsConfig {
   predefinedPrompts?: PredefinedPromptSummary[];
 }
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig {
+export interface AgentExecutionConfig {
+  mcpRequireApprovalBeforeToolCall?: boolean;
+  mcpMaxIterations?: number;
+  mcpUnlimitedIterations?: boolean;
+  mcpVerifyCompletionEnabled?: boolean;
+  mcpFinalSummaryEnabled?: boolean;
+  mcpContextReductionEnabled?: boolean;
+  mcpToolResponseProcessingEnabled?: boolean;
+  mcpParallelToolExecution?: boolean;
+  mcpMessageQueueEnabled?: boolean;
+  dualModelEnabled?: boolean;
+}
+
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -608,19 +621,6 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, Ob
   geminiApiKey?: string;
   geminiBaseUrl?: string;
 
-  // Agent Execution Settings
-  mcpRequireApprovalBeforeToolCall?: boolean;
-  mcpMaxIterations?: number;
-  mcpUnlimitedIterations?: boolean;
-  mcpVerifyCompletionEnabled?: boolean;
-  mcpFinalSummaryEnabled?: boolean;
-
-  // Context Reduction & Tool Response Processing
-  mcpContextReductionEnabled?: boolean;
-  mcpToolResponseProcessingEnabled?: boolean;
-  mcpParallelToolExecution?: boolean;
-  mcpMessageQueueEnabled?: boolean;
-
   // Speech-to-Text Configuration
   sttProviderId?: 'openai' | 'groq' | 'parakeet';
   sttLanguage?: string;
@@ -692,9 +692,6 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, Ob
   discordDefaultProfileId?: string;
   discordLogMessages?: boolean;
 
-  // Dual-Model Settings
-  dualModelEnabled?: boolean;
-
   // Streamer Mode
   streamerModeEnabled?: boolean;
 
@@ -702,7 +699,7 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, Ob
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig {
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -722,19 +719,6 @@ export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConf
   geminiApiKey?: string;
   geminiBaseUrl?: string;
 
-  // Agent Execution Settings
-  mcpRequireApprovalBeforeToolCall?: boolean;
-  mcpMaxIterations?: number;
-  mcpUnlimitedIterations?: boolean;
-  mcpVerifyCompletionEnabled?: boolean;
-  mcpFinalSummaryEnabled?: boolean;
-
-  // Context Reduction & Tool Response Processing
-  mcpContextReductionEnabled?: boolean;
-  mcpToolResponseProcessingEnabled?: boolean;
-  mcpParallelToolExecution?: boolean;
-  mcpMessageQueueEnabled?: boolean;
-
   // Speech-to-Text Configuration
   sttProviderId?: 'openai' | 'groq' | 'parakeet';
   sttLanguage?: string;
@@ -805,9 +789,6 @@ export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConf
   discordOperatorAllowRoleIds?: string[];
   discordDefaultProfileId?: string;
   discordLogMessages?: boolean;
-
-  // Dual-Model Settings
-  dualModelEnabled?: boolean;
 
   // Streamer Mode
   streamerModeEnabled?: boolean;
