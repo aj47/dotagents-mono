@@ -13,18 +13,6 @@ import {
 } from '@dotagents/shared/hands-free-controller';
 import type { VoiceDebugLog } from '@dotagents/shared/voice-debug-log';
 
-export {
-  DEFAULT_HANDS_FREE_MAX_AWAKE_MS,
-  DEFAULT_HANDS_FREE_NO_SPEECH_TIMEOUT_MS,
-  DEFAULT_HANDS_FREE_REPEATED_ERROR_THRESHOLD,
-  createInitialHandsFreeState,
-  getHandsFreeResumePhase,
-  getHandsFreeStatusLabel,
-  resolveHandsFreeUtterance,
-  transitionHandsFreeToSleeping,
-};
-export type { HandsFreeControllerState, HandsFreeUtteranceAction } from '@dotagents/shared/hands-free-controller';
-
 type HandsFreeControllerOptions = {
   enabled: boolean;
   runtimeActive: boolean;

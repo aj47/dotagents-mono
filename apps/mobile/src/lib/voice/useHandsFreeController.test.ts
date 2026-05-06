@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createInitialHandsFreeState, resolveHandsFreeUtterance } from './useHandsFreeController';
+import {
+  createInitialHandsFreeState,
+  resolveHandsFreeUtterance,
+} from '@dotagents/shared/hands-free-controller';
 
 type EffectRecord = {
   callback?: () => void | (() => void);
