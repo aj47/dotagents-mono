@@ -22,6 +22,7 @@ import type {
   AudioInputDeviceConfig,
   ChatGptWebAuthConfig,
   ChatProviderCredentialsConfig,
+  ConversationStorageConfig,
   DesktopDisplayConfig,
   PredefinedPrompt,
   PredefinedPromptsConfig,
@@ -456,6 +457,21 @@ describe('settings API request/response contracts', () => {
     assertType<DesktopDisplayConfig>(config)
     assertType<SettingsUpdate>(update)
     expect(update.themePreference).toBe('dark')
+  })
+
+  it('accepts conversation storage settings through the shared settings API', () => {
+    const config: ConversationStorageConfig = {
+      conversationsEnabled: true,
+      maxConversationsToKeep: 250,
+      autoSaveConversations: false,
+    }
+    const update: SettingsUpdate = {
+      ...config,
+    }
+
+    assertType<ConversationStorageConfig>(config)
+    assertType<SettingsUpdate>(update)
+    expect(update.maxConversationsToKeep).toBe(250)
   })
 
   it('accepts streamer mode config shared by settings and remote pairing', () => {

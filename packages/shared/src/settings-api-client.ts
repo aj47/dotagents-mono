@@ -240,6 +240,9 @@ export function buildSettingsResponse(
     themePreference: cfg.themePreference ?? 'system',
     floatingPanelAutoShow: cfg.floatingPanelAutoShow ?? true,
     hidePanelWhenMainFocused: cfg.hidePanelWhenMainFocused ?? true,
+    conversationsEnabled: cfg.conversationsEnabled ?? true,
+    maxConversationsToKeep: cfg.maxConversationsToKeep ?? 100,
+    autoSaveConversations: cfg.autoSaveConversations ?? true,
     transcriptPostProcessingEnabled: cfg.transcriptPostProcessingEnabled ?? true,
     mcpRequireApprovalBeforeToolCall: cfg.mcpRequireApprovalBeforeToolCall ?? false,
     ttsEnabled: cfg.ttsEnabled ?? true,
@@ -658,6 +661,14 @@ export function buildSettingsUpdatePatch(
   }
   if (typeof requestBody.floatingPanelAutoShow === 'boolean') updates.floatingPanelAutoShow = requestBody.floatingPanelAutoShow;
   if (typeof requestBody.hidePanelWhenMainFocused === 'boolean') updates.hidePanelWhenMainFocused = requestBody.hidePanelWhenMainFocused;
+  if (typeof requestBody.conversationsEnabled === 'boolean') updates.conversationsEnabled = requestBody.conversationsEnabled;
+  if (typeof requestBody.autoSaveConversations === 'boolean') updates.autoSaveConversations = requestBody.autoSaveConversations;
+  if (typeof requestBody.maxConversationsToKeep === 'number' && Number.isFinite(requestBody.maxConversationsToKeep)) {
+    const maxConversationsToKeep = Math.floor(requestBody.maxConversationsToKeep);
+    if (maxConversationsToKeep >= 1 && maxConversationsToKeep <= 10000) {
+      updates.maxConversationsToKeep = maxConversationsToKeep;
+    }
+  }
   if (typeof requestBody.openaiApiKey === 'string' && requestBody.openaiApiKey !== providerSecretMask) updates.openaiApiKey = requestBody.openaiApiKey.trim();
   if (typeof requestBody.openaiBaseUrl === 'string') updates.openaiBaseUrl = requestBody.openaiBaseUrl.trim();
   if (typeof requestBody.groqApiKey === 'string' && requestBody.groqApiKey !== providerSecretMask) updates.groqApiKey = requestBody.groqApiKey.trim();
