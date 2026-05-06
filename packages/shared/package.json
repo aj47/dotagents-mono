@@ -316,6 +316,11 @@
       "import": "./dist/discord-config.mjs",
       "require": "./dist/discord-config.js"
     },
+    "./whatsapp-config": {
+      "types": "./dist/whatsapp-config.d.ts",
+      "import": "./dist/whatsapp-config.mjs",
+      "require": "./dist/whatsapp-config.js"
+    },
     "./linux-artifacts": {
       "types": "./dist/linux-artifacts.d.ts",
       "import": "./dist/linux-artifacts.mjs",

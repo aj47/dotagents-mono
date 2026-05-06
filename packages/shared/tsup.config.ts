@@ -64,6 +64,7 @@ export default defineConfig({
     'frontmatter': 'src/frontmatter.ts',
     'discord-utils': 'src/discord-utils.ts',
     'discord-config': 'src/discord-config.ts',
+    'whatsapp-config': 'src/whatsapp-config.ts',
     'linux-artifacts': 'src/linux-artifacts.ts',
     'key-utils': 'src/key-utils.ts',
     'agent-run-utils': 'src/agent-run-utils.ts',

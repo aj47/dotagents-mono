@@ -63,6 +63,7 @@ export * from './oauth-examples';
 export * from './frontmatter';
 export * from './discord-utils';
 export * from './discord-config';
+export * from './whatsapp-config';
 export * from './linux-artifacts';
 export * from './key-utils';
 export * from './agent-run-utils';

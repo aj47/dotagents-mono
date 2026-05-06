@@ -23,6 +23,7 @@ import type {
   LegacyProfilesData,
 } from '@dotagents/shared/agent-profile-legacy-converters'
 import type { DiscordIntegrationConfig } from '@dotagents/shared/discord-config'
+import type { WhatsAppIntegrationConfig } from '@dotagents/shared/whatsapp-config'
 import {
   legacyAcpAgentConfigToAgentProfile as sharedLegacyAcpAgentConfigToAgentProfile,
   legacyPersonaToAgentProfile as sharedLegacyPersonaToAgentProfile,
@@ -45,6 +46,7 @@ export type { PushNotificationToken } from '@dotagents/shared/push-notifications
 export type { EnhancedModelInfo, ModelInfo, ModelsDevCost, ModelsDevData, ModelsDevLimit, ModelsDevModalities, ModelsDevModel, ModelsDevProvider } from '@dotagents/shared/api-types'
 export type { LegacyAcpAgentConfig, LegacyPersonaRecord, LegacyPersonasData, LegacyProfileRecord, LegacyProfilesData } from '@dotagents/shared/agent-profile-legacy-converters'
 export type { DiscordIntegrationConfig } from '@dotagents/shared/discord-config'
+export type { WhatsAppIntegrationConfig } from '@dotagents/shared/whatsapp-config'
 
 // Agent Mode Progress Tracking Types — re-exported from @dotagents/shared (see above)
 
@@ -128,7 +130,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & DiscordIntegrationConfig & {
+export type Config = Record<string, unknown> & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -437,13 +439,6 @@ export type Config = Record<string, unknown> & DiscordIntegrationConfig & {
   cloudflareTunnelName?: string // Human-readable tunnel name
   cloudflareTunnelCredentialsPath?: string // Path to credentials JSON file (defaults to ~/.cloudflared/<tunnel-id>.json)
   cloudflareTunnelHostname?: string // Custom hostname for the tunnel (e.g., "myapp.example.com")
-
-  // WhatsApp Integration Configuration
-  whatsappEnabled?: boolean
-  whatsappAllowFrom?: string[]  // Phone numbers allowed to message (international format without +)
-  whatsappOperatorAllowFrom?: string[] // Phone numbers allowed to issue /ops commands
-  whatsappAutoReply?: boolean   // Auto-reply to messages using agent
-  whatsappLogMessages?: boolean // Log message content (privacy concern)
 
   // Stream Status Watcher Configuration
   streamStatusWatcherEnabled?: boolean
