@@ -33,38 +33,7 @@ export type { DetailedToolInfo, MCPConfig, MCPServerConfig, MCPTransportType, OA
 export type { AgentConversationState } from '@dotagents/shared/conversation-state'
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared/agent-progress'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '@dotagents/shared/knowledge-note-domain'
-
-export type KnowledgeNoteSort =
-  | "relevance"
-  | "updated-desc"
-  | "updated-asc"
-  | "created-desc"
-  | "created-asc"
-  | "title-asc"
-  | "title-desc"
-
-export type KnowledgeNoteDateFilter = "all" | "7d" | "30d" | "90d" | "year"
-
-export type KnowledgeNoteSeriesSummary = {
-  key: string
-  label: string
-  count: number
-}
-
-export type KnowledgeNoteGroupSummary = {
-  key: string
-  label: string
-  totalCount: number
-  directCount: number
-  seriesSummaries: KnowledgeNoteSeriesSummary[]
-}
-
-export type KnowledgeNotesOverview = {
-  total: number
-  autoCount: number
-  searchOnlyCount: number
-  groups: KnowledgeNoteGroupSummary[]
-}
+export type { KnowledgeNoteDateFilter, KnowledgeNoteGroupSummary, KnowledgeNoteSeriesSummary, KnowledgeNoteSort, KnowledgeNotesOverview } from '@dotagents/shared/knowledge-note-grouping'
 
 export type RecordingHistoryItem = {
   id: string

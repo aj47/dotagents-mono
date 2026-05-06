@@ -5,6 +5,7 @@ import {
   getKnowledgeNoteGrouping,
   inferKnowledgeNoteGrouping,
   type KnowledgeNoteGroupingInput,
+  type KnowledgeNotesOverview,
 } from "./knowledge-note-grouping"
 
 function makeNote(id: string, overrides: Partial<KnowledgeNoteGroupingInput> = {}): KnowledgeNoteGroupingInput {
@@ -58,5 +59,24 @@ describe("knowledge note grouping", () => {
     expect(sections[0].seriesSections[0].notes.map((note) => note.id)).toEqual(["discord-recaps-2026-03-19"])
     expect(sections[1].notes.map((note) => note.id)).toEqual(["architecture-overview"])
     expect(sections[2].seriesSections[0].label).toBe("Summaries")
+  })
+
+  it("exposes overview summary contracts for app surfaces", () => {
+    const overview: KnowledgeNotesOverview = {
+      total: 3,
+      autoCount: 2,
+      searchOnlyCount: 1,
+      groups: [
+        {
+          key: "discord",
+          label: "Discord",
+          totalCount: 2,
+          directCount: 1,
+          seriesSummaries: [{ key: "discord:recaps", label: "Recaps", count: 1 }],
+        },
+      ],
+    }
+
+    expect(overview.groups[0].seriesSummaries[0].count).toBe(1)
   })
 })

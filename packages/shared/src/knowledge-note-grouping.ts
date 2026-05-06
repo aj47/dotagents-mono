@@ -16,10 +16,27 @@ export type KnowledgeNoteGrouping = {
   entryType?: KnowledgeNoteEntryType
 }
 
+export type KnowledgeNoteSort =
+  | "relevance"
+  | "updated-desc"
+  | "updated-asc"
+  | "created-desc"
+  | "created-asc"
+  | "title-asc"
+  | "title-desc"
+
+export type KnowledgeNoteDateFilter = "all" | "7d" | "30d" | "90d" | "year"
+
 export type KnowledgeNoteSeriesSection<T extends KnowledgeNoteGroupingInput = KnowledgeNoteGroupingInput> = {
   key: string
   label: string
   notes: T[]
+}
+
+export type KnowledgeNoteSeriesSummary = {
+  key: string
+  label: string
+  count: number
 }
 
 export type KnowledgeNoteGroupSection<T extends KnowledgeNoteGroupingInput = KnowledgeNoteGroupingInput> = {
@@ -27,6 +44,21 @@ export type KnowledgeNoteGroupSection<T extends KnowledgeNoteGroupingInput = Kno
   label: string
   notes: T[]
   seriesSections: KnowledgeNoteSeriesSection<T>[]
+}
+
+export type KnowledgeNoteGroupSummary = {
+  key: string
+  label: string
+  totalCount: number
+  directCount: number
+  seriesSummaries: KnowledgeNoteSeriesSummary[]
+}
+
+export type KnowledgeNotesOverview = {
+  total: number
+  autoCount: number
+  searchOnlyCount: number
+  groups: KnowledgeNoteGroupSummary[]
 }
 
 function normalizePathLikeValue(value: string | undefined): string | undefined {
