@@ -412,6 +412,8 @@ export const DEFAULT_MCP_UNLIMITED_ITERATIONS = true
 export const DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED = true
 export const DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED = true
 export const DEFAULT_MCP_PARALLEL_TOOL_EXECUTION = true
+export const DEFAULT_MCP_AUTO_PASTE_ENABLED = false
+export const DEFAULT_MCP_AUTO_PASTE_DELAY = 1000
 
 // Name advertised for DotAgents runtime tools when they are grouped as an MCP source.
 export const RUNTIME_TOOLS_SERVER_NAME = "dotagents-runtime-tools"

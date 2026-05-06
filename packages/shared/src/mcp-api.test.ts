@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  DEFAULT_MCP_AUTO_PASTE_DELAY,
+  DEFAULT_MCP_AUTO_PASTE_ENABLED,
   DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED,
   DEFAULT_MCP_FINAL_SUMMARY_ENABLED,
   DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
@@ -157,6 +159,8 @@ describe("MCP API helpers", () => {
     expect(DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED).toBe(true)
     expect(DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED).toBe(true)
     expect(DEFAULT_MCP_PARALLEL_TOOL_EXECUTION).toBe(true)
+    expect(DEFAULT_MCP_AUTO_PASTE_ENABLED).toBe(false)
+    expect(DEFAULT_MCP_AUTO_PASTE_DELAY).toBe(1000)
 
     expect(parseMcpMaxIterationsDraft("100")).toBe(100)
     expect(parseMcpMaxIterationsDraft("0")).toBeNull()

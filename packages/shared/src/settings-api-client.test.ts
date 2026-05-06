@@ -28,6 +28,10 @@ import {
   DEFAULT_TEXT_INPUT_ENABLED,
 } from './key-utils';
 import {
+  DEFAULT_MCP_AUTO_PASTE_DELAY,
+  DEFAULT_MCP_AUTO_PASTE_ENABLED,
+} from './mcp-api';
+import {
   buildRemoteServerApiQueryPath,
   REMOTE_SERVER_API_BUILDERS,
   REMOTE_SERVER_API_PATHS,
@@ -464,6 +468,8 @@ describe('SettingsApiClient', () => {
       },
     );
     expect(defaultResponse.textInputEnabled).toBe(DEFAULT_TEXT_INPUT_ENABLED);
+    expect(defaultResponse.mcpAutoPasteEnabled).toBe(DEFAULT_MCP_AUTO_PASTE_ENABLED);
+    expect(defaultResponse.mcpAutoPasteDelay).toBe(DEFAULT_MCP_AUTO_PASTE_DELAY);
   });
 
   it('builds settings update responses and sensitive audit contexts', () => {

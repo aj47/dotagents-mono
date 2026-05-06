@@ -27,6 +27,8 @@ import {
 } from './agent-generation-options';
 import {
   DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED,
+  DEFAULT_MCP_AUTO_PASTE_DELAY,
+  DEFAULT_MCP_AUTO_PASTE_ENABLED,
   DEFAULT_MCP_FINAL_SUMMARY_ENABLED,
   DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
   DEFAULT_MCP_PARALLEL_TOOL_EXECUTION,
@@ -431,8 +433,8 @@ export function buildSettingsResponse(
     mcpContextReductionEnabled: cfg.mcpContextReductionEnabled ?? DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED,
     mcpToolResponseProcessingEnabled: cfg.mcpToolResponseProcessingEnabled ?? DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED,
     mcpParallelToolExecution: cfg.mcpParallelToolExecution ?? DEFAULT_MCP_PARALLEL_TOOL_EXECUTION,
-    mcpAutoPasteEnabled: cfg.mcpAutoPasteEnabled ?? false,
-    mcpAutoPasteDelay: cfg.mcpAutoPasteDelay ?? 1000,
+    mcpAutoPasteEnabled: cfg.mcpAutoPasteEnabled ?? DEFAULT_MCP_AUTO_PASTE_ENABLED,
+    mcpAutoPasteDelay: cfg.mcpAutoPasteDelay ?? DEFAULT_MCP_AUTO_PASTE_DELAY,
     mcpRuntimeDisabledServers: sanitizeConfigStringList(cfg.mcpRuntimeDisabledServers),
     mcpDisabledTools: sanitizeConfigStringList(cfg.mcpDisabledTools),
     remoteServerEnabled: cfg.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED,

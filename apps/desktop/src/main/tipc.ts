@@ -69,7 +69,11 @@ import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared/stt
 import { DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED } from "@dotagents/shared/providers"
 import { DEFAULT_TTS_ENABLED } from "@dotagents/shared/text-to-speech-settings"
 import { buildConversationImageMarkdownMessage } from "@dotagents/shared/conversation-media-assets"
-import { parseMcpServerConfigImportRequestBody } from "@dotagents/shared/mcp-api"
+import {
+  DEFAULT_MCP_AUTO_PASTE_DELAY,
+  DEFAULT_MCP_AUTO_PASTE_ENABLED,
+  parseMcpServerConfigImportRequestBody,
+} from "@dotagents/shared/mcp-api"
 import { conversationService } from "./conversation-service"
 import { RendererHandlers } from "./renderer-handlers"
 import {
@@ -1356,14 +1360,14 @@ export const router = {
       }
 
       // Auto-paste if enabled
-      if (config.mcpAutoPasteEnabled && state.focusedAppBeforeRecording) {
+      if ((config.mcpAutoPasteEnabled ?? DEFAULT_MCP_AUTO_PASTE_ENABLED) && state.focusedAppBeforeRecording) {
         setTimeout(async () => {
           try {
             await writeText(processedText)
           } catch (error) {
             // Ignore paste errors
           }
-        }, config.mcpAutoPasteDelay || 1000)
+        }, config.mcpAutoPasteDelay ?? DEFAULT_MCP_AUTO_PASTE_DELAY)
       }
     }),
 
@@ -1503,14 +1507,14 @@ export const router = {
 
           // Auto-paste if enabled
           const pasteConfig = configStore.get()
-          if (pasteConfig.mcpAutoPasteEnabled && state.focusedAppBeforeRecording) {
+          if ((pasteConfig.mcpAutoPasteEnabled ?? DEFAULT_MCP_AUTO_PASTE_ENABLED) && state.focusedAppBeforeRecording) {
             setTimeout(async () => {
               try {
                 await writeText(finalResponse)
               } catch (error) {
                 // Ignore paste errors
               }
-            }, pasteConfig.mcpAutoPasteDelay || 1000)
+            }, pasteConfig.mcpAutoPasteDelay ?? DEFAULT_MCP_AUTO_PASTE_DELAY)
           }
         })
         .catch((error) => {
