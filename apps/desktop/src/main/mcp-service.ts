@@ -19,14 +19,14 @@ import type {
   ProfilesData,
   ProfileMcpServerConfig,
 } from "@dotagents/core"
-import {
+import type {
+  DetailedToolInfo,
   MCPConfig,
   MCPServerConfig,
   MCPTransportType,
-  Config,
   ServerLogEntry,
-  DetailedToolInfo,
-} from "../shared/types"
+} from "@dotagents/shared/mcp-utils"
+import type { Config } from "../shared/types"
 import { requestElicitation, handleElicitationComplete, cancelAllElicitations } from "./mcp-elicitation"
 import { requestSampling, cancelAllSamplingRequests } from "./mcp-sampling"
 import { inferTransportType, normalizeMcpConfig } from "@dotagents/shared/mcp-utils"
