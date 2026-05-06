@@ -1,5 +1,5 @@
 import { logApp, logLLM } from "./debug"
-import { getAppSessionForAcpSession } from "./acp-session-state"
+import { getAppSessionForAcpSession } from "./acpx/acpx-session-state"
 import {
   buildAgentStoppedProgressUpdate,
   describeAgentSessionId,

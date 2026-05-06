@@ -26,7 +26,7 @@ import {
   resolveAgentModeMaxIterations,
 } from '@dotagents/shared/agent-run-utils';
 import { configStore } from '../config';
-import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
+import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acpx/acpx-session-state';
 import { stringifySubAgentToolResultContent } from '@dotagents/shared/delegation-tool-display'
 import type { AgentProfile, SessionProfileSnapshot } from '@dotagents/core';
 import type { ACPDelegationProgress, ACPSubAgentMessage, AgentProgressUpdate } from '@dotagents/shared/agent-progress';

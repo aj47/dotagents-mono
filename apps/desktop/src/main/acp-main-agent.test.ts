@@ -20,7 +20,7 @@ vi.mock("./acp-service", () => ({
   },
 }))
 
-vi.mock("./acp-session-state", () => ({
+vi.mock("./acpx/acpx-session-state", () => ({
   getMainAcpxSessionName: vi.fn((conversationId: string) => `dotagents:main:${conversationId}`),
   getSessionForConversation: vi.fn(() => undefined),
   registerKnownAppSessionId: vi.fn(),
@@ -780,7 +780,7 @@ describe("acp-main-agent", () => {
   })
 
   it("passes the stable acpx session name back into getOrCreateSession for restart-safe reuse", async () => {
-    const acpSessionState = await import("./acp-session-state")
+    const acpSessionState = await import("./acpx/acpx-session-state")
     vi.mocked(acpSessionState.getSessionForConversation).mockReturnValue({
       sessionId: "persisted-acp-session",
       agentName: "test-agent",
@@ -810,7 +810,7 @@ describe("acp-main-agent", () => {
   })
 
   it("does not redundantly touch a reused ACP conversation mapping after persisting it", async () => {
-    const acpSessionState = await import("./acp-session-state")
+    const acpSessionState = await import("./acpx/acpx-session-state")
     vi.mocked(acpSessionState.getSessionForConversation).mockReturnValue({
       sessionId: "persisted-acp-session",
       agentName: "test-agent",

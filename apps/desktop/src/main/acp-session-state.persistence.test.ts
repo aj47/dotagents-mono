@@ -7,7 +7,7 @@ const loadAcpSessionState = async (dataFolder: string) => {
   vi.resetModules()
   vi.doMock("./config", () => ({ dataFolder }))
   vi.doMock("./debug", () => ({ logApp: vi.fn() }))
-  return import("./acp-session-state")
+  return import("./acpx/acpx-session-state")
 }
 
 describe("acp-session-state persistence", () => {

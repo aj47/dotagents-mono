@@ -22,7 +22,7 @@ import { shrinkMessagesForLLM, estimateTokensFromMessages, clearActualTokenUsage
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
-import { getAcpSessionTitleOverride } from "./acp-session-state"
+import { getAcpSessionTitleOverride } from "./acpx/acpx-session-state"
 import { hasRepeatTaskTitlePrefix } from "@dotagents/shared/repeat-task-utils"
 import {
   DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,

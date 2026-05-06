@@ -68,7 +68,7 @@ vi.mock("../state", () => ({
   },
 }))
 
-vi.mock("../acp-session-state", () => ({
+vi.mock("../acpx/acpx-session-state", () => ({
   getDelegationAcpxSessionName: vi.fn((parentSessionId: string, runId: string) => `dotagents:delegation:${parentSessionId}:${runId}`),
   setAcpToAppSessionMapping: mockSetAcpToAppSessionMapping,
   clearAcpToAppSessionMapping: vi.fn(),

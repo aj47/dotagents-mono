@@ -52,7 +52,7 @@ vi.mock("./context-budget", () => ({
 vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: mocks.emitAgentProgress }))
 vi.mock("./agent-session-tracker", () => ({ agentSessionTracker: mocks }))
 vi.mock("./conversation-service", () => ({ conversationService: { addMessageToConversation: mocks.addMessageToConversation, maybeAutoGenerateConversationTitle: mocks.maybeAutoGenerateConversationTitle } }))
-vi.mock("./acp-session-state", () => ({ getAcpSessionTitleOverride: mocks.getAcpSessionTitleOverride }))
+vi.mock("./acpx/acpx-session-state", () => ({ getAcpSessionTitleOverride: mocks.getAcpSessionTitleOverride }))
 vi.mock("./langfuse-service", () => ({ isLangfuseEnabled: vi.fn(() => false), createAgentTrace: vi.fn(), endAgentTrace: vi.fn(), flushLangfuse: vi.fn(async () => undefined) }))
 vi.mock("./summarization-service", () => ({ isSummarizationEnabled: vi.fn(() => false), shouldSummarizeStep: vi.fn(() => false), summarizeAgentStep: vi.fn(), summarizationService: { getSummaries: vi.fn(() => []), getLatestSummary: vi.fn(() => undefined), addSummary: vi.fn() } }))
 vi.mock("./knowledge-notes-service", () => ({ knowledgeNotesService: { createNoteFromSummary: vi.fn(), saveNote: vi.fn() } }))

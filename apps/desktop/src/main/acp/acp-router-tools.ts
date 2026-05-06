@@ -29,8 +29,8 @@ import {
   generateSubSessionId,
 } from './internal-agent';
 import { agentProfileService } from '../agent-profile-service';
-import { getDelegationAcpxSessionName } from '../acp-session-state';
-import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
+import { getDelegationAcpxSessionName } from '../acpx/acpx-session-state';
+import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acpx/acpx-session-state';
 
 // ============================================================================
 // Consolidated Delegation State

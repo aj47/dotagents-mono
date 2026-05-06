@@ -39,7 +39,7 @@ vi.mock("./conversation-service", () => ({
 }))
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
 vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: vi.fn() }))
-vi.mock("./acp-session-state", () => ({
+vi.mock("./acpx/acpx-session-state", () => ({
   getAppSessionForAcpSession: mockGetAppSessionForAcpSession,
   getRootAppSessionForAcpSession: mockGetRootAppSessionForAcpSession,
   setAcpSessionTitleOverride: vi.fn(),

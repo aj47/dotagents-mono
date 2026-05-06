@@ -22,7 +22,7 @@ vi.mock("./session-user-response-store", () => ({ appendSessionUserResponse: vi.
 vi.mock("./conversation-service", () => ({ conversationService: { loadConversation: mockLoadConversation } }))
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
 vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: vi.fn() }))
-vi.mock("./acp-session-state", () => ({
+vi.mock("./acpx/acpx-session-state", () => ({
   getAppSessionForAcpSession: vi.fn(() => undefined),
   getRootAppSessionForAcpSession: vi.fn(() => undefined),
   setAcpSessionTitleOverride: vi.fn(),

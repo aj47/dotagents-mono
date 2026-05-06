@@ -19,7 +19,7 @@ import {
   setSessionForConversation,
   setAcpToAppSessionMapping,
   updateConversationRuntimeSessionId,
-} from "./acp-session-state"
+} from "./acpx/acpx-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { ACPConfigOption, AgentProgressStep, AgentProgressUpdate } from "@dotagents/shared/agent-progress"

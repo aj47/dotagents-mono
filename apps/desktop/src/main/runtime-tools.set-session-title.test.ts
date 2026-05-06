@@ -31,7 +31,7 @@ vi.mock("./message-queue-service", () => ({ messageQueueService: {} }))
 vi.mock("./session-user-response-store", () => ({ appendSessionUserResponse: vi.fn() }))
 vi.mock("./conversation-service", () => ({ conversationService: { renameConversationTitle: mockRenameConversationTitle } }))
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
-vi.mock("./acp-session-state", () => ({
+vi.mock("./acpx/acpx-session-state", () => ({
   getRootAppSessionForAcpSession: mockGetRootAppSessionForAcpSession,
   setAcpSessionTitleOverride: mockSetAcpSessionTitleOverride,
 }))

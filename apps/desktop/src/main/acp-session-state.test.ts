@@ -18,7 +18,7 @@ describe("acp-session-state", () => {
   })
 
   it("clears client token mappings even when no app session mapping exists", async () => {
-    const sessionState = await import("./acp-session-state")
+    const sessionState = await import("./acpx/acpx-session-state")
 
     sessionState.setAcpClientSessionTokenMapping("client-token-only", "acp-token-only")
     expect(sessionState.getAcpSessionForClientSessionToken("client-token-only")).toBe("acp-token-only")
@@ -31,7 +31,7 @@ describe("acp-session-state", () => {
   })
 
   it("tracks transient ACP session title overrides and clears them with the session mapping", async () => {
-    const sessionState = await import("./acp-session-state")
+    const sessionState = await import("./acpx/acpx-session-state")
 
     sessionState.setAcpToAppSessionMapping("delegated-session-1", "app-session-1")
     sessionState.setAcpSessionTitleOverride("delegated-session-1", "  Delegated research  ")
@@ -43,7 +43,7 @@ describe("acp-session-state", () => {
   })
 
   it("resolves nested delegated sessions to their root app session", async () => {
-    const sessionState = await import("./acp-session-state")
+    const sessionState = await import("./acpx/acpx-session-state")
 
     sessionState.registerKnownAppSessionId("app-session-1")
     sessionState.setAcpToAppSessionMapping("level-2-subsession", "app-session-1")
@@ -55,7 +55,7 @@ describe("acp-session-state", () => {
   })
 
   it("does not treat unresolved delegated chain nodes as app sessions", async () => {
-    const sessionState = await import("./acp-session-state")
+    const sessionState = await import("./acpx/acpx-session-state")
 
     sessionState.setAcpToAppSessionMapping("unresolved-level-3-subsession", "unresolved-level-2-subsession")
     sessionState.setAcpToAppRunIdMapping("unresolved-level-2-subsession", "run-unresolved-2")
@@ -64,7 +64,7 @@ describe("acp-session-state", () => {
   })
 
   it("does not infer app sessions from unknown terminal mapping values", async () => {
-    const sessionState = await import("./acp-session-state")
+    const sessionState = await import("./acpx/acpx-session-state")
 
     sessionState.setAcpToAppSessionMapping("inferred-level-3-subsession", "inferred-level-2-subsession")
 
@@ -72,7 +72,7 @@ describe("acp-session-state", () => {
   })
 
   it("resolves direct internal subagent mappings when the parent is explicitly registered as an app session", async () => {
-    const sessionState = await import("./acp-session-state")
+    const sessionState = await import("./acpx/acpx-session-state")
 
     sessionState.setAcpToAppSessionMapping(
       "internal-subsession-1",
@@ -85,7 +85,7 @@ describe("acp-session-state", () => {
   })
 
   it("resolves nested delegated sessions when the terminal session is tracked by a conversation", async () => {
-    const sessionState = await import("./acp-session-state")
+    const sessionState = await import("./acpx/acpx-session-state")
 
     sessionState.setSessionForConversation("conversation-1", "app-session-from-conversation", "test-agent")
     sessionState.setAcpToAppSessionMapping("level-2-subsession", "app-session-from-conversation")
@@ -95,7 +95,7 @@ describe("acp-session-state", () => {
   })
 
   it("caps tracked known app sessions to avoid unbounded persisted growth", async () => {
-    const sessionState = await import("./acp-session-state")
+    const sessionState = await import("./acpx/acpx-session-state")
 
     for (let index = 0; index < 2100; index += 1) {
       sessionState.registerKnownAppSessionId(`app-session-${index}`)
@@ -109,7 +109,7 @@ describe("acp-session-state", () => {
   })
 
   it("resolves pending app-session mappings for injected MCP tokens and clears them", async () => {
-    const sessionState = await import("./acp-session-state")
+    const sessionState = await import("./acpx/acpx-session-state")
 
     sessionState.setPendingAcpClientSessionTokenMapping("pending-client-token", "app-session-1")
     expect(sessionState.getPendingAppSessionForClientSessionToken("pending-client-token")).toBe("app-session-1")
@@ -121,7 +121,7 @@ describe("acp-session-state", () => {
   })
 
   it("clears pending token mappings when promoting them to ACP session mappings", async () => {
-    const sessionState = await import("./acp-session-state")
+    const sessionState = await import("./acpx/acpx-session-state")
 
     sessionState.setPendingAcpClientSessionTokenMapping("pending-client-token", "app-session-2")
     sessionState.setAcpClientSessionTokenMapping("pending-client-token", "acp-session-2")

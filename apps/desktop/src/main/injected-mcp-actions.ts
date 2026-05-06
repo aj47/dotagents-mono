@@ -20,7 +20,7 @@ import {
   getAcpSessionForClientSessionToken,
   getAppSessionForAcpSession,
   getPendingAppSessionForClientSessionToken,
-} from "./acp-session-state"
+} from "./acpx/acpx-session-state"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { diagnosticsService } from "./diagnostics"
 import { mcpService } from "./mcp-service"
