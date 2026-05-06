@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { formatSidebarDuration } from "./sidebar-duration"
+import { formatSidebarDuration } from "@dotagents/shared/turn-duration"
 
 const NOW = Date.UTC(2026, 0, 15, 12, 0, 0)
 const MIN = 60_000

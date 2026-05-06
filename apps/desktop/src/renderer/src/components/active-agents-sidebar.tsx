@@ -42,7 +42,7 @@ import {
   readBooleanPreference,
   writeBooleanPreference,
 } from "@dotagents/shared/boolean-preference-storage"
-import { formatSidebarDuration } from "@renderer/lib/sidebar-duration"
+import { formatSidebarDuration } from "@dotagents/shared/turn-duration"
 import { useLocation, useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
