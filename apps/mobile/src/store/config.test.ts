@@ -9,12 +9,14 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 
 import {
   DEFAULT_APP_CONFIG,
+  normalizeStoredConfig,
+} from './config';
+import {
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   DEFAULT_HANDS_FREE_SLEEP_PHRASE,
   DEFAULT_HANDS_FREE_WAKE_PHRASE,
   MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
-  normalizeStoredConfig,
-} from './config';
+} from '@dotagents/shared/mobile-app-config';
 
 describe('normalizeStoredConfig', () => {
   it('backfills the handsfree defaults for older configs', () => {

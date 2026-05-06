@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 import { EventEmitter } from 'expo-modules-core';
-import { DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS } from '../../store/config';
+import { DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS } from '@dotagents/shared/mobile-app-config';
 import type { VoiceDebugLog } from '@dotagents/shared/voice-debug-log';
 import { mergeVoiceText, normalizeVoiceText } from '@dotagents/shared/voice-text-utils';
 

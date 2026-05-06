@@ -1,23 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState } from 'react';
 import {
-  DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
-  DEFAULT_HANDS_FREE_SLEEP_PHRASE,
-  DEFAULT_HANDS_FREE_WAKE_PHRASE,
   DEFAULT_MOBILE_APP_CONFIG,
-  MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   normalizeMobileStoredConfig,
   type MobileAppConfig,
 } from '@dotagents/shared/mobile-app-config';
 
 export type AppConfig = MobileAppConfig;
-
-export {
-  DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
-  DEFAULT_HANDS_FREE_SLEEP_PHRASE,
-  DEFAULT_HANDS_FREE_WAKE_PHRASE,
-  MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
-};
 
 export const DEFAULT_APP_CONFIG: AppConfig = DEFAULT_MOBILE_APP_CONFIG;
 

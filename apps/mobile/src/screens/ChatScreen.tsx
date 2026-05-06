@@ -25,13 +25,15 @@ const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-	DEFAULT_APP_CONFIG,
-	DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
-	DEFAULT_HANDS_FREE_SLEEP_PHRASE,
-	DEFAULT_HANDS_FREE_WAKE_PHRASE,
-	useConfigContext,
-	saveConfig,
+  DEFAULT_APP_CONFIG,
+  useConfigContext,
+  saveConfig,
 } from '../store/config';
+import {
+  DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+  DEFAULT_HANDS_FREE_WAKE_PHRASE,
+} from '@dotagents/shared/mobile-app-config';
 import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import { MessageQueuePanel } from '../ui/MessageQueuePanel';
