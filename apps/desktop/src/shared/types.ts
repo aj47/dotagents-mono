@@ -18,6 +18,7 @@ import type {
   AgentConversationState,
 } from '@dotagents/shared/conversation-state'
 import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
+import type { PredefinedPrompt as SharedPredefinedPrompt } from '@dotagents/shared/api-types'
 import {
   legacyAcpAgentConfigToAgentProfile as sharedLegacyAcpAgentConfigToAgentProfile,
   legacyPersonaToAgentProfile as sharedLegacyPersonaToAgentProfile,
@@ -25,6 +26,7 @@ import {
 } from '@dotagents/shared/agent-profile-legacy-converters'
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
+export type { PredefinedPrompt } from '@dotagents/shared/api-types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
@@ -41,15 +43,6 @@ export type RecordingHistoryItem = {
   createdAt: number
   duration: number
   transcript: string
-}
-
-// Predefined Prompts Types
-export interface PredefinedPrompt {
-  id: string
-  name: string
-  content: string
-  createdAt: number
-  updatedAt: number
 }
 
 // Agent Mode Progress Tracking Types — re-exported from @dotagents/shared (see above)
@@ -775,7 +768,7 @@ export type Config = {
   mcpMessageQueueEnabled?: boolean
 
   // Predefined Prompts - frequently used prompts that can be quickly accessed
-  predefinedPrompts?: PredefinedPrompt[]
+  predefinedPrompts?: SharedPredefinedPrompt[]
 
 	  // Remote Server Configuration
 	  remoteServerEnabled?: boolean

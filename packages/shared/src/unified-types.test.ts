@@ -7,6 +7,7 @@ import type {
   KnowledgeNoteUpdateRequest,
   LoopCreateRequest,
   LoopUpdateRequest,
+  PredefinedPrompt,
   EmergencyStopResponse,
   OperatorDiscordLogsResponse,
   OperatorTunnelSetupSummary,
@@ -220,6 +221,19 @@ describe('settings API request/response contracts', () => {
     assertType<KnowledgeNoteUpdateRequest>(updatePayload)
     assertType<KnowledgeNoteResponse>(response)
     expect(response.note.group).toBe('engineering')
+  })
+
+  it('accepts predefined prompt records shared by desktop config and mobile settings', () => {
+    const prompt: PredefinedPrompt = {
+      id: 'prompt-1',
+      name: 'Standup',
+      content: 'Summarize the last session.',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+
+    assertType<PredefinedPrompt>(prompt)
+    expect(prompt.name).toBe('Standup')
   })
 
   it('accepts repeat task create/update payloads with nullable schedules', () => {

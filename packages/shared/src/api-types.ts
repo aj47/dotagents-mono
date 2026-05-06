@@ -479,6 +479,8 @@ export interface PredefinedPromptSummary {
   updatedAt: number;
 }
 
+export type PredefinedPrompt = PredefinedPromptSummary;
+
 export interface Settings {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
