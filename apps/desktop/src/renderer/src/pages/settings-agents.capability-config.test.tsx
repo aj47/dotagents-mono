@@ -69,6 +69,7 @@ describe("settings agents capability config", () => {
   it("uses shared profile property helpers in the desktop agent editor", () => {
     expect(settingsAgentsSource).toContain("normalizeAgentProfileProperties")
     expect(settingsAgentsSource).toContain("formatAgentProfilePropertiesForRequest")
+    expect(settingsAgentsSource).toContain("getAgentProfileAvatarFileSizeError")
     expect(settingsAgentsSource).not.toContain("Object.keys(editing.properties).length > 0 ? editing.properties : undefined")
   })
 

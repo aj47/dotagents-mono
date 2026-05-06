@@ -30,6 +30,7 @@ import {
 } from "@dotagents/shared/agent-profile-connection"
 import {
   formatAgentProfilePropertiesForRequest,
+  getAgentProfileAvatarFileSizeError,
   normalizeAgentProfileProperties,
 } from "@dotagents/shared/agent-profile-mutations"
 import {
@@ -465,6 +466,12 @@ export function SettingsAgents() {
   const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !editing) return
+    const fileSizeError = getAgentProfileAvatarFileSizeError(file.size)
+    if (fileSizeError) {
+      toast.error(fileSizeError)
+      e.target.value = ""
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => setEditing({ ...editing, avatarDataUrl: reader.result as string })
     reader.readAsDataURL(file)

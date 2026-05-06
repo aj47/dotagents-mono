@@ -37,7 +37,10 @@ import {
   type AgentProfilePresetKey,
 } from '@dotagents/shared/agent-profile-presets';
 import {
+  buildAgentProfileAvatarDataUrl,
   formatAgentProfilePropertiesForRequest,
+  getAgentProfileAvatarFileSizeError,
+  getApproxAgentProfileAvatarBase64Bytes,
   normalizeAgentProfileProperties,
 } from '@dotagents/shared/agent-profile-mutations';
 import {
@@ -103,8 +106,6 @@ type AgentModelProvider = CHAT_PROVIDER_ID;
 
 const ESSENTIAL_RUNTIME_TOOL_NAME = 'mark_work_complete';
 const RUNTIME_TOOLS = buildRuntimeToolDefinitions(acpRouterToolDefinitions);
-const MAX_AGENT_AVATAR_FILE_SIZE_BYTES = 2 * 1024 * 1024;
-
 interface AgentFormData extends AgentConnectionFormFields {
   displayName: string;
   description: string;
@@ -133,12 +134,6 @@ const defaultFormData: AgentFormData = {
   enabled: true,
   autoSpawn: false,
   properties: {},
-};
-
-const getApproxBase64Bytes = (base64: string): number => {
-  const normalized = base64.replace(/\s+/g, '');
-  const padding = normalized.endsWith('==') ? 2 : normalized.endsWith('=') ? 1 : 0;
-  return Math.max(0, Math.floor((normalized.length * 3) / 4) - padding);
 };
 
 const isMcpServerEnabledByConfig = (serverName: string, toolConfig?: AgentProfileMcpConfigUpdateLike): boolean => {
@@ -420,24 +415,26 @@ export default function AgentEditScreen({ navigation, route }: any) {
       if (result.canceled || !result.assets || result.assets.length === 0) return;
 
       const asset = result.assets[0];
-      if (!asset.base64) {
+      const base64 = asset.base64;
+      if (!base64) {
         Alert.alert('Photo unavailable', 'Could not read the selected photo.');
         return;
       }
 
-      const inferredBytes = getApproxBase64Bytes(asset.base64);
+      const inferredBytes = getApproxAgentProfileAvatarBase64Bytes(base64);
       const fileSizeBytes = typeof asset.fileSize === 'number' && asset.fileSize > 0
         ? asset.fileSize
         : inferredBytes;
-      if (fileSizeBytes > MAX_AGENT_AVATAR_FILE_SIZE_BYTES) {
-        Alert.alert('Photo too large', 'Choose a photo under 2 MB.');
+      const fileSizeError = getAgentProfileAvatarFileSizeError(fileSizeBytes);
+      if (fileSizeError) {
+        Alert.alert('Photo too large', fileSizeError);
         return;
       }
 
       const mimeType = asset.mimeType || 'image/jpeg';
       setFormData(prev => ({
         ...prev,
-        avatarDataUrl: `data:${mimeType};base64,${asset.base64}`,
+        avatarDataUrl: buildAgentProfileAvatarDataUrl(base64, mimeType),
       }));
     } catch (err: any) {
       console.error('[AgentEdit] Failed to pick avatar:', err);

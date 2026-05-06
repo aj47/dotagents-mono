@@ -23,6 +23,11 @@ const profileApiSource = fs.readFileSync(
   'utf8'
 );
 
+const profileMutationsSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'agent-profile-mutations.ts'),
+  'utf8'
+);
+
 test('mobile agent editor can pick and persist avatar data URLs', () => {
   assert.match(editScreenSource, /import \* as ImagePicker from 'expo-image-picker'/);
   assert.match(editScreenSource, /Image \} from 'react-native'/);
@@ -34,14 +39,18 @@ test('mobile agent editor can pick and persist avatar data URLs', () => {
   assert.match(editScreenSource, /allowsEditing: true/);
   assert.match(editScreenSource, /aspect: \[1, 1\]/);
   assert.match(editScreenSource, /base64: true/);
-  assert.match(editScreenSource, /`data:\$\{mimeType\};base64,\$\{asset\.base64\}`/);
+  assert.match(editScreenSource, /const base64 = asset\.base64/);
+  assert.match(editScreenSource, /buildAgentProfileAvatarDataUrl\(base64, mimeType\)/);
+  assert.match(editScreenSource, /getApproxAgentProfileAvatarBase64Bytes\(base64\)/);
+  assert.match(editScreenSource, /getAgentProfileAvatarFileSizeError\(fileSizeBytes\)/);
 });
 
 test('mobile agent avatar controls are compact and accessible', () => {
   assert.match(editScreenSource, /<Image\s+source=\{\{ uri: formData\.avatarDataUrl \}\}/);
   assert.match(editScreenSource, /createButtonAccessibilityLabel\('Choose agent photo'\)/);
   assert.match(editScreenSource, /createButtonAccessibilityLabel\('Remove agent photo'\)/);
-  assert.match(editScreenSource, /MAX_AGENT_AVATAR_FILE_SIZE_BYTES = 2 \* 1024 \* 1024/);
+  assert.doesNotMatch(editScreenSource, /MAX_AGENT_AVATAR_FILE_SIZE_BYTES = 2 \* 1024 \* 1024/);
+  assert.match(profileMutationsSource, /MAX_AGENT_PROFILE_AVATAR_FILE_SIZE_BYTES = 2 \* 1024 \* 1024/);
   assert.match(editScreenSource, /disabled=\{!formData\.avatarDataUrl \|\| isBuiltInAgent\}/);
 });
 

@@ -27,6 +27,8 @@ export type AgentProfileDisplayNameUpdate = {
 
 export type AgentProfileProperties = Record<string, string>
 
+export const MAX_AGENT_PROFILE_AVATAR_FILE_SIZE_BYTES = 2 * 1024 * 1024
+
 export function createAgentProfileRecord<TInput extends AgentProfileCreateInputLike>(
   profile: TInput,
   id: string,
@@ -102,4 +104,24 @@ export function formatAgentProfilePropertiesForRequest(
     .filter(([key]) => key.length > 0)
 
   return entries.length > 0 ? Object.fromEntries(entries) : undefined
+}
+
+export function getApproxAgentProfileAvatarBase64Bytes(base64: string): number {
+  const normalized = base64.replace(/\s+/g, "")
+  const padding = normalized.endsWith("==") ? 2 : normalized.endsWith("=") ? 1 : 0
+  return Math.max(0, Math.floor((normalized.length * 3) / 4) - padding)
+}
+
+export function getAgentProfileAvatarFileSizeError(
+  fileSizeBytes: number,
+  maxFileSizeBytes: number = MAX_AGENT_PROFILE_AVATAR_FILE_SIZE_BYTES,
+): string | undefined {
+  return fileSizeBytes > maxFileSizeBytes ? "Choose a photo under 2 MB." : undefined
+}
+
+export function buildAgentProfileAvatarDataUrl(
+  base64: string,
+  mimeType: string | undefined,
+): string {
+  return `data:${mimeType || "image/jpeg"};base64,${base64}`
 }

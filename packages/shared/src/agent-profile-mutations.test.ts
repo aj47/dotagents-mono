@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  buildAgentProfileAvatarDataUrl,
   buildAgentProfileUpdatePatch,
   canDeleteAgentProfile,
   canSetCurrentAgentProfile,
   createAgentProfileRecord,
   formatAgentProfilePropertiesForRequest,
+  getAgentProfileAvatarFileSizeError,
+  getApproxAgentProfileAvatarBase64Bytes,
   getDeletableAgentProfileIndex,
+  MAX_AGENT_PROFILE_AVATAR_FILE_SIZE_BYTES,
   normalizeAgentProfileProperties,
 } from "./agent-profile-mutations"
 
@@ -108,5 +112,14 @@ describe("agent profile mutations", () => {
 
     expect(formatAgentProfilePropertiesForRequest({ " ": "drop" })).toBeUndefined()
     expect(formatAgentProfilePropertiesForRequest(undefined)).toBeUndefined()
+  })
+
+  it("builds and validates avatar data URLs for profile edits", () => {
+    expect(MAX_AGENT_PROFILE_AVATAR_FILE_SIZE_BYTES).toBe(2 * 1024 * 1024)
+    expect(getApproxAgentProfileAvatarBase64Bytes(" YWJjZA== ")).toBe(4)
+    expect(getAgentProfileAvatarFileSizeError(MAX_AGENT_PROFILE_AVATAR_FILE_SIZE_BYTES + 1)).toBe("Choose a photo under 2 MB.")
+    expect(getAgentProfileAvatarFileSizeError(MAX_AGENT_PROFILE_AVATAR_FILE_SIZE_BYTES)).toBeUndefined()
+    expect(buildAgentProfileAvatarDataUrl("abc", "image/png")).toBe("data:image/png;base64,abc")
+    expect(buildAgentProfileAvatarDataUrl("abc", undefined)).toBe("data:image/jpeg;base64,abc")
   })
 })
