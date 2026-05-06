@@ -20,6 +20,7 @@ export default defineConfig({
     'bundle-api': 'src/bundle-api.ts',
     hub: 'src/hub.ts',
     'conversation-state': 'src/conversation-state.ts',
+    'legacy-settings-redirect': 'src/legacy-settings-redirect.ts',
     'session-presentation': 'src/session-presentation.ts',
     'session-progress-hydration': 'src/session-progress-hydration.ts',
     'sidebar-sessions': 'src/sidebar-sessions.ts',
