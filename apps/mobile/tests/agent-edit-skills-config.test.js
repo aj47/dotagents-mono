@@ -47,6 +47,23 @@ test('keeps mobile MCP server controls bulk-editable and accessible', () => {
   assert.match(screenSource, /enabledServers,\s*disabledServers: undefined,\s*allServersDisabledByDefault: true/s);
 });
 
+test('lets mobile edit per-agent model overrides through the shared profile config', () => {
+  assert.match(screenSource, /AgentModelConfig/);
+  assert.match(screenSource, /AGENT_MODEL_PROVIDERS/);
+  assert.match(screenSource, /normalizeAgentModelConfig\(profile\.modelConfig\)/);
+  assert.match(screenSource, /modelConfig: formatModelConfigForRequest\(formData\.modelConfig\)/);
+  assert.match(screenSource, /getAgentModelField\(provider\)/);
+});
+
+test('keeps model override controls compact and accessible', () => {
+  assert.match(screenSource, /<Text style=\{styles\.sectionTitle\}>Model<\/Text>/);
+  assert.match(screenSource, /formData\.connectionType === 'internal'/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\(`Use \$\{provider\.label\} model for this agent`\)/);
+  assert.match(screenSource, /accessibilityState=\{\{ selected, disabled: isBuiltInAgent \}\}/);
+  assert.match(screenSource, /onChangeText=\{v => updateAgentModel\(selectedModelProvider, v\)\}/);
+  assert.match(screenSource, /placeholder=\{getAgentModelPlaceholder\(selectedModelProvider\)\}/);
+});
+
 test('shared agent profile request types expose persisted profile config fields', () => {
   assert.match(sharedApiTypesSource, /modelConfig\?: Record<string, unknown>;/);
   assert.match(sharedApiTypesSource, /toolConfig\?: Record<string, unknown>;/);

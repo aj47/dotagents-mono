@@ -26,6 +26,16 @@ const CONNECTION_TYPES = [
   },
 ] as const;
 
+const AGENT_MODEL_PROVIDERS = [
+  { label: 'Global', value: 'global' },
+  { label: 'OpenAI', value: 'openai' },
+  { label: 'Groq', value: 'groq' },
+  { label: 'Gemini', value: 'gemini' },
+  { label: 'ChatGPT Web', value: 'chatgpt-web' },
+] as const;
+
+type AgentModelProvider = Exclude<(typeof AGENT_MODEL_PROVIDERS)[number]['value'], 'global'>;
+
 interface AgentFormData extends AgentConnectionFormFields {
   displayName: string;
   description: string;
@@ -33,9 +43,23 @@ interface AgentFormData extends AgentConnectionFormFields {
   guidelines: string;
   enabled: boolean;
   autoSpawn: boolean;
+  modelConfig?: AgentModelConfig;
   toolConfig?: AgentToolConfig;
   skillsConfig?: AgentSkillsConfig;
 }
+
+type AgentModelConfig = {
+  agentProviderId?: AgentModelProvider;
+  agentOpenaiModel?: string;
+  agentGroqModel?: string;
+  agentGeminiModel?: string;
+  agentChatgptWebModel?: string;
+  mcpToolsProviderId?: AgentModelProvider;
+  mcpToolsOpenaiModel?: string;
+  mcpToolsGroqModel?: string;
+  mcpToolsGeminiModel?: string;
+  mcpToolsChatgptWebModel?: string;
+};
 
 type AgentToolConfig = {
   disabledServers?: string[];
@@ -70,6 +94,10 @@ const normalizeConnectionType = (value?: string): ConnectionType => {
   return 'internal';
 };
 
+const isAgentModelProvider = (value: unknown): value is AgentModelProvider => {
+  return value === 'openai' || value === 'groq' || value === 'gemini' || value === 'chatgpt-web';
+};
+
 const normalizeSkillIds = (value: unknown): string[] => {
   return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
 };
@@ -79,6 +107,23 @@ const normalizeAgentSkillsConfig = (value?: Record<string, unknown>): AgentSkill
   return {
     enabledSkillIds: normalizeSkillIds(value.enabledSkillIds),
     allSkillsDisabledByDefault: value.allSkillsDisabledByDefault === true,
+  };
+};
+
+const normalizeAgentModelConfig = (value?: Record<string, unknown>): AgentModelConfig | undefined => {
+  if (!value) return undefined;
+  const agentProviderId = isAgentModelProvider(value.agentProviderId)
+    ? value.agentProviderId
+    : isAgentModelProvider(value.mcpToolsProviderId)
+      ? value.mcpToolsProviderId
+      : undefined;
+
+  return {
+    agentProviderId,
+    agentOpenaiModel: typeof value.agentOpenaiModel === 'string' ? value.agentOpenaiModel : typeof value.mcpToolsOpenaiModel === 'string' ? value.mcpToolsOpenaiModel : undefined,
+    agentGroqModel: typeof value.agentGroqModel === 'string' ? value.agentGroqModel : typeof value.mcpToolsGroqModel === 'string' ? value.mcpToolsGroqModel : undefined,
+    agentGeminiModel: typeof value.agentGeminiModel === 'string' ? value.agentGeminiModel : typeof value.mcpToolsGeminiModel === 'string' ? value.mcpToolsGeminiModel : undefined,
+    agentChatgptWebModel: typeof value.agentChatgptWebModel === 'string' ? value.agentChatgptWebModel : typeof value.mcpToolsChatgptWebModel === 'string' ? value.mcpToolsChatgptWebModel : undefined,
   };
 };
 
@@ -109,6 +154,33 @@ const countEnabledMcpServers = (servers: MCPServer[], toolConfig?: AgentToolConf
 
 const countEnabledSkills = (skills: Skill[], skillsConfig?: AgentSkillsConfig): number => {
   return skills.filter((skill) => isSkillEnabledByConfig(skill.id, skillsConfig)).length;
+};
+
+const getAgentModelProvider = (modelConfig?: AgentModelConfig): AgentModelProvider | undefined => {
+  return modelConfig?.agentProviderId ?? modelConfig?.mcpToolsProviderId;
+};
+
+const getAgentModelField = (provider: AgentModelProvider): keyof AgentModelConfig => {
+  if (provider === 'openai') return 'agentOpenaiModel';
+  if (provider === 'groq') return 'agentGroqModel';
+  if (provider === 'gemini') return 'agentGeminiModel';
+  return 'agentChatgptWebModel';
+};
+
+const getAgentModelValue = (modelConfig: AgentModelConfig | undefined, provider: AgentModelProvider): string => {
+  return String(modelConfig?.[getAgentModelField(provider)] ?? '');
+};
+
+const getAgentModelPlaceholder = (provider: AgentModelProvider): string => {
+  if (provider === 'openai') return 'gpt-5.4-mini';
+  if (provider === 'groq') return 'openai/gpt-oss-120b';
+  if (provider === 'gemini') return 'gemini-2.5-flash';
+  return 'gpt-5.4-mini';
+};
+
+const formatModelConfigForRequest = (modelConfig?: AgentModelConfig): Record<string, unknown> | undefined => {
+  if (!modelConfig) return undefined;
+  return { ...modelConfig };
 };
 
 const formatToolConfigForRequest = (toolConfig?: AgentToolConfig): Record<string, unknown> | undefined => {
@@ -158,6 +230,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
     () => countEnabledSkills(displaySkills, formData.skillsConfig),
     [displaySkills, formData.skillsConfig],
   );
+  const selectedModelProvider = getAgentModelProvider(formData.modelConfig);
 
   const settingsClient = useMemo(() => {
     if (config.baseUrl && config.apiKey) {
@@ -187,6 +260,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             connectionCwd: profile.connection?.cwd || '',
             enabled: profile.enabled,
             autoSpawn: profile.autoSpawn || false,
+            modelConfig: normalizeAgentModelConfig(profile.modelConfig),
             toolConfig: normalizeAgentToolConfig(profile.toolConfig),
             skillsConfig: normalizeAgentSkillsConfig(profile.skillsConfig),
           });
@@ -270,6 +344,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             ...connectionFields,
             enabled: formData.enabled,
             autoSpawn: formData.autoSpawn,
+            modelConfig: formatModelConfigForRequest(formData.modelConfig),
             toolConfig: formatToolConfigForRequest(formData.toolConfig),
             skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),
           };
@@ -283,6 +358,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           ...connectionFields,
           enabled: formData.enabled,
           autoSpawn: formData.autoSpawn,
+          modelConfig: formatModelConfigForRequest(formData.modelConfig),
           toolConfig: formatToolConfigForRequest(formData.toolConfig),
           skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),
         };
@@ -303,6 +379,30 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
   const handleConnectionTypeSelect = useCallback((connectionType: ConnectionType) => {
     setFormData(prev => applyConnectionTypeChange(prev, connectionType));
+  }, []);
+
+  const setAgentModelProvider = useCallback((provider: AgentModelProvider | 'global') => {
+    setFormData(prev => ({
+      ...prev,
+      modelConfig: provider === 'global'
+        ? {}
+        : {
+          ...prev.modelConfig,
+          agentProviderId: provider,
+        },
+    }));
+  }, []);
+
+  const updateAgentModel = useCallback((provider: AgentModelProvider, model: string) => {
+    const modelField = getAgentModelField(provider);
+    setFormData(prev => ({
+      ...prev,
+      modelConfig: {
+        ...prev.modelConfig,
+        agentProviderId: provider,
+        [modelField]: model,
+      },
+    }));
   }, []);
 
   const setAllMcpServersEnabled = useCallback((enabled: boolean) => {
@@ -563,6 +663,54 @@ export default function AgentEditScreen({ navigation, route }: any) {
         textAlignVertical="top"
       />
 
+      {formData.connectionType === 'internal' && (
+        <View style={styles.capabilitySection}>
+          <View style={styles.capabilityHeader}>
+            <View style={styles.capabilityTitleBlock}>
+              <Text style={styles.sectionTitle}>Model</Text>
+              <Text style={styles.sectionHelperText}>{selectedModelProvider ?? 'Global default'}</Text>
+            </View>
+          </View>
+          <View style={styles.providerChipGrid}>
+            {AGENT_MODEL_PROVIDERS.map(provider => {
+              const selected = (selectedModelProvider ?? 'global') === provider.value;
+              return (
+                <TouchableOpacity
+                  key={provider.value}
+                  style={[
+                    styles.chipButton,
+                    styles.providerChip,
+                    selected && styles.chipButtonActive,
+                    isBuiltInAgent && styles.chipButtonDisabled,
+                  ]}
+                  onPress={() => setAgentModelProvider(provider.value)}
+                  disabled={isBuiltInAgent}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected, disabled: isBuiltInAgent }}
+                  accessibilityLabel={createButtonAccessibilityLabel(`Use ${provider.label} model for this agent`)}
+                >
+                  <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>{provider.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {selectedModelProvider && (
+            <>
+              <Text style={styles.label}>Agent Model</Text>
+              <TextInput
+                style={styles.input}
+                value={getAgentModelValue(formData.modelConfig, selectedModelProvider)}
+                onChangeText={v => updateAgentModel(selectedModelProvider, v)}
+                placeholder={getAgentModelPlaceholder(selectedModelProvider)}
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                editable={!isBuiltInAgent}
+              />
+            </>
+          )}
+        </View>
+      )}
+
       <View style={styles.capabilitySection}>
         <View style={styles.capabilityHeader}>
           <View style={styles.capabilityTitleBlock}>
@@ -819,10 +967,25 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     chipButtonDisabled: {
       opacity: 0.5,
     },
+    chipButtonActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary,
+    },
     chipButtonText: {
       color: theme.colors.foreground,
       fontSize: 12,
       fontWeight: '600',
+    },
+    chipButtonTextActive: {
+      color: theme.colors.primaryForeground,
+    },
+    providerChipGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+    },
+    providerChip: {
+      flexGrow: 1,
     },
     inlineLoadingRow: {
       flexDirection: 'row',
