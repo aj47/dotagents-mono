@@ -15,6 +15,7 @@ import {
   describeLoopCadence,
   describeRepeatTaskScheduleForLog,
   describeSchedule,
+  formatRepeatTaskTitle,
   formatLoopInterval,
   formatLoopIntervalDraft,
   getNextRepeatTaskDelayMs,
@@ -30,13 +31,23 @@ import {
   parseRepeatTaskScheduleInput,
   parseRepeatTaskUpdateRequestBody,
   formatRepeatTaskForApi,
+  hasRepeatTaskTitlePrefix,
   runRepeatTaskAction,
   sanitizeScheduleTimes,
+  TASK_SESSION_TITLE_PREFIX,
   toggleRepeatTaskAction,
   updateRepeatTaskAction,
 } from "./repeat-task-utils"
 
 describe("repeat task schedule helpers", () => {
+  it("formats and detects repeat-task session titles", () => {
+    expect(TASK_SESSION_TITLE_PREFIX).toBe("[Repeat] ")
+    expect(formatRepeatTaskTitle("Daily standup")).toBe("[Repeat] Daily standup")
+    expect(hasRepeatTaskTitlePrefix("[Repeat] Daily standup")).toBe(true)
+    expect(hasRepeatTaskTitlePrefix("Daily standup")).toBe(false)
+    expect(hasRepeatTaskTitlePrefix(undefined)).toBe(false)
+  })
+
   it("merges global and workspace task layers by id with workspace overrides", () => {
     expect(mergeRepeatTaskLayers(
       [

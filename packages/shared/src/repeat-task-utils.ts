@@ -153,6 +153,15 @@ export interface RepeatTaskActionOptions<
 export const REPEAT_TASK_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const
 export const DEFAULT_REPEAT_TASK_SCHEDULE_TIMES = ["09:00"] as const
 export const DEFAULT_REPEAT_TASK_WEEKDAYS = [1, 2, 3, 4, 5] as const
+export const TASK_SESSION_TITLE_PREFIX = "[Repeat] "
+
+export function formatRepeatTaskTitle(taskName: string): string {
+  return `${TASK_SESSION_TITLE_PREFIX}${taskName}`
+}
+
+export function hasRepeatTaskTitlePrefix(title: string | undefined | null): boolean {
+  return typeof title === "string" && title.startsWith(TASK_SESSION_TITLE_PREFIX)
+}
 
 export function mergeRepeatTaskLayers<TTask extends RepeatTaskLayerRecord>(
   globalTasks: readonly TTask[],
