@@ -25,6 +25,12 @@ import {
 } from "@dotagents/shared/agent-profile-mutations"
 import {
   buildAgentProfileAgentModelUpdate,
+  hasAllAgentProfileMcpServersEnabled,
+  hasAllAgentProfileRuntimeToolsEnabled,
+  hasAllAgentProfileSkillsEnabled,
+  hasNoAgentProfileMcpServersEnabled,
+  hasNoAgentProfileSkillsEnabled,
+  hasOnlyEssentialAgentProfileRuntimeToolsEnabled,
   formatAgentProfileMcpConfigForRequest,
   formatAgentProfileModelConfigForRequest,
   formatAgentProfileSkillsConfigForRequest,
@@ -399,8 +405,8 @@ export function SettingsAgents() {
     if (!editing) return
     setEditing({ ...editing, skillsConfig: getAgentProfileSkillsConfigAfterSetAllEnabled(false) })
   }
-  const allSkillsEnabled = !editing?.skillsConfig?.allSkillsDisabledByDefault || (editing?.skillsConfig?.enabledSkillIds?.length === skills.length)
-  const allSkillsDisabled = !!editing?.skillsConfig?.allSkillsDisabledByDefault && (editing?.skillsConfig?.enabledSkillIds?.length ?? 0) === 0
+  const allSkillsEnabled = hasAllAgentProfileSkillsEnabled(editing?.skillsConfig, skills.map(s => s.id))
+  const allSkillsDisabled = hasNoAgentProfileSkillsEnabled(editing?.skillsConfig, skills.map(s => s.id))
 
   const enableAllServers = () => {
     if (!editing) return
@@ -410,8 +416,8 @@ export function SettingsAgents() {
     if (!editing) return
     setEditing({ ...editing, toolConfig: getAgentProfileMcpConfigAfterSetAllServersEnabled(editing.toolConfig, false) })
   }
-  const allServersEnabled = serverNames.length > 0 && serverNames.every(n => isServerEnabled(n))
-  const allServersDisabled = serverNames.length > 0 && serverNames.every(n => !isServerEnabled(n))
+  const allServersEnabled = hasAllAgentProfileMcpServersEnabled(editing?.toolConfig, serverNames)
+  const allServersDisabled = hasNoAgentProfileMcpServersEnabled(editing?.toolConfig, serverNames)
 
   const enableAllRuntimeTools = () => {
     if (!editing) return
@@ -421,8 +427,8 @@ export function SettingsAgents() {
     if (!editing) return
     setEditing({ ...editing, toolConfig: getAgentProfileRuntimeToolsConfigAfterSetAllEnabled(editing.toolConfig, false) })
   }
-  const allRuntimeEnabled = !editing?.toolConfig?.enabledRuntimeTools || editing.toolConfig.enabledRuntimeTools.length === 0
-  const allRuntimeDisabled = (editing?.toolConfig?.enabledRuntimeTools?.length ?? 0) > 0 && editing?.toolConfig?.enabledRuntimeTools?.every(n => n === "mark_work_complete")
+  const allRuntimeEnabled = hasAllAgentProfileRuntimeToolsEnabled(editing?.toolConfig, runtimeTools.map(t => t.name))
+  const allRuntimeDisabled = hasOnlyEssentialAgentProfileRuntimeToolsEnabled(editing?.toolConfig)
 
   // Section collapse helpers
   const isSectionCollapsed = (section: string) => collapsedSections.has(section)

@@ -10,8 +10,14 @@ describe("settings agents capability config", () => {
     expect(settingsAgentsSource).toContain("getAgentProfileMcpConfigAfterToolToggle")
     expect(settingsAgentsSource).toContain("getAgentProfileRuntimeToolsConfigAfterSetAllEnabled")
     expect(settingsAgentsSource).toContain("getAgentProfileRuntimeToolsConfigAfterToggle")
+    expect(settingsAgentsSource).toContain("hasAllAgentProfileMcpServersEnabled(editing?.toolConfig, serverNames)")
+    expect(settingsAgentsSource).toContain("hasNoAgentProfileMcpServersEnabled(editing?.toolConfig, serverNames)")
+    expect(settingsAgentsSource).toContain("hasAllAgentProfileRuntimeToolsEnabled(editing?.toolConfig, runtimeTools.map(t => t.name))")
+    expect(settingsAgentsSource).toContain("hasOnlyEssentialAgentProfileRuntimeToolsEnabled(editing?.toolConfig)")
     expect(settingsAgentsSource).toContain("isAgentProfileMcpServerEnabled(editing?.toolConfig, serverName)")
     expect(settingsAgentsSource).toContain("isAgentProfileRuntimeToolEnabled(editing?.toolConfig, toolName)")
+    expect(settingsAgentsSource).not.toContain("serverNames.every(n => isServerEnabled(n))")
+    expect(settingsAgentsSource).not.toContain("editing.toolConfig.enabledRuntimeTools.length === 0")
   })
 
   it("uses shared skill enablement semantics in the desktop agent editor", () => {
@@ -19,7 +25,10 @@ describe("settings agents capability config", () => {
     expect(settingsAgentsSource).toContain("toggleAgentProfileSkillConfig(editing.skillsConfig, skillId, skills.map(s => s.id))")
     expect(settingsAgentsSource).toContain("getAgentProfileSkillsConfigAfterSetAllEnabled(true)")
     expect(settingsAgentsSource).toContain("getAgentProfileSkillsConfigAfterSetAllEnabled(false)")
+    expect(settingsAgentsSource).toContain("hasAllAgentProfileSkillsEnabled(editing?.skillsConfig, skills.map(s => s.id))")
+    expect(settingsAgentsSource).toContain("hasNoAgentProfileSkillsEnabled(editing?.skillsConfig, skills.map(s => s.id))")
     expect(settingsAgentsSource).not.toContain("skillsConfig: { enabledSkillIds: [], allSkillsDisabledByDefault")
+    expect(settingsAgentsSource).not.toContain("editing?.skillsConfig?.enabledSkillIds?.length === skills.length")
   })
 
   it("uses shared per-agent model field helpers in the desktop agent editor", () => {

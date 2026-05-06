@@ -188,6 +188,34 @@ export function isAgentProfileMcpToolEnabled(
   return !(mcpConfig?.disabledTools ?? []).includes(toolName)
 }
 
+export function countEnabledAgentProfileMcpServers(
+  mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
+  serverNames: readonly string[],
+): number {
+  return serverNames.filter((serverName) => isAgentProfileMcpServerEnabled(mcpConfig, serverName)).length
+}
+
+export function hasAllAgentProfileMcpServersEnabled(
+  mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
+  serverNames: readonly string[],
+): boolean {
+  return serverNames.length > 0 && countEnabledAgentProfileMcpServers(mcpConfig, serverNames) === serverNames.length
+}
+
+export function hasNoAgentProfileMcpServersEnabled(
+  mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
+  serverNames: readonly string[],
+): boolean {
+  return serverNames.length > 0 && countEnabledAgentProfileMcpServers(mcpConfig, serverNames) === 0
+}
+
+export function countEnabledAgentProfileMcpTools(
+  mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
+  toolNames: readonly string[],
+): number {
+  return toolNames.filter((toolName) => isAgentProfileMcpToolEnabled(mcpConfig, toolName)).length
+}
+
 export function isAgentProfileRuntimeToolEnabled(
   mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
   toolName: string,
@@ -197,6 +225,36 @@ export function isAgentProfileRuntimeToolEnabled(
   const enabledRuntimeTools = mcpConfig?.enabledRuntimeTools
   if (!enabledRuntimeTools || enabledRuntimeTools.length === 0) return true
   return enabledRuntimeTools.includes(toolName)
+}
+
+export function countEnabledAgentProfileRuntimeTools(
+  mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
+  runtimeToolNames: readonly string[],
+  essentialRuntimeToolNames: readonly string[] = DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
+): number {
+  return runtimeToolNames.filter((toolName) => (
+    isAgentProfileRuntimeToolEnabled(mcpConfig, toolName, essentialRuntimeToolNames)
+  )).length
+}
+
+export function hasAllAgentProfileRuntimeToolsEnabled(
+  mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
+  runtimeToolNames: readonly string[],
+  essentialRuntimeToolNames: readonly string[] = DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
+): boolean {
+  const enabledRuntimeTools = mcpConfig?.enabledRuntimeTools
+  if (!enabledRuntimeTools || enabledRuntimeTools.length === 0) return true
+  return runtimeToolNames.length > 0
+    && countEnabledAgentProfileRuntimeTools(mcpConfig, runtimeToolNames, essentialRuntimeToolNames) === runtimeToolNames.length
+}
+
+export function hasOnlyEssentialAgentProfileRuntimeToolsEnabled(
+  mcpConfig: AgentProfileMcpConfigUpdateLike | undefined,
+  essentialRuntimeToolNames: readonly string[] = DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
+): boolean {
+  const enabledRuntimeTools = mcpConfig?.enabledRuntimeTools
+  if (!enabledRuntimeTools || enabledRuntimeTools.length === 0) return false
+  return enabledRuntimeTools.every((toolName) => essentialRuntimeToolNames.includes(toolName))
 }
 
 export function getAgentProfileMcpConfigAfterServerToggle(
@@ -398,6 +456,29 @@ export function isAgentProfileSkillEnabled(
 ): boolean {
   if (hasAllAgentProfileSkillsEnabledByDefault(skillsConfig) || !skillsConfig) return true
   return (skillsConfig.enabledSkillIds ?? []).includes(skillId)
+}
+
+export function countEnabledAgentProfileSkills(
+  skillsConfig: AgentProfileSkillsConfigUpdateLike | undefined,
+  skillIds: readonly string[],
+): number {
+  return skillIds.filter((skillId) => isAgentProfileSkillEnabled(skillsConfig, skillId)).length
+}
+
+export function hasAllAgentProfileSkillsEnabled(
+  skillsConfig: AgentProfileSkillsConfigUpdateLike | undefined,
+  skillIds: readonly string[],
+): boolean {
+  return hasAllAgentProfileSkillsEnabledByDefault(skillsConfig)
+    || countEnabledAgentProfileSkills(skillsConfig, skillIds) === skillIds.length
+}
+
+export function hasNoAgentProfileSkillsEnabled(
+  skillsConfig: AgentProfileSkillsConfigUpdateLike | undefined,
+  skillIds: readonly string[],
+): boolean {
+  return !hasAllAgentProfileSkillsEnabledByDefault(skillsConfig)
+    && countEnabledAgentProfileSkills(skillsConfig, skillIds) === 0
 }
 
 export function toggleAgentProfileSkillConfig(

@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildAgentProfileAgentModelUpdate,
+  countEnabledAgentProfileMcpServers,
+  countEnabledAgentProfileMcpTools,
+  countEnabledAgentProfileRuntimeTools,
+  countEnabledAgentProfileSkills,
   formatAgentProfileMcpConfigForRequest,
   formatAgentProfileModelConfigForRequest,
   formatAgentProfileSkillsConfigForRequest,
@@ -17,6 +21,12 @@ import {
   getAgentProfileSkillsConfigAfterEnable,
   getEnabledAgentProfileSkillIds,
   hasAllAgentProfileSkillsEnabledByDefault,
+  hasAllAgentProfileMcpServersEnabled,
+  hasAllAgentProfileRuntimeToolsEnabled,
+  hasAllAgentProfileSkillsEnabled,
+  hasNoAgentProfileMcpServersEnabled,
+  hasNoAgentProfileSkillsEnabled,
+  hasOnlyEssentialAgentProfileRuntimeToolsEnabled,
   isAgentProfileMcpServerEnabled,
   isAgentProfileMcpToolEnabled,
   isAgentProfileRuntimeToolEnabled,
@@ -79,6 +89,23 @@ describe("agent profile config updates", () => {
       enabledServers: ["github"],
     }, "filesystem")).toBe(false)
     expect(isAgentProfileMcpToolEnabled({ disabledTools: ["filesystem.read"] }, "filesystem.read")).toBe(false)
+  })
+
+  it("counts per-agent MCP server and tool enablement", () => {
+    const serverNames = ["filesystem", "github"]
+    expect(countEnabledAgentProfileMcpServers(undefined, serverNames)).toBe(2)
+    expect(hasAllAgentProfileMcpServersEnabled(undefined, serverNames)).toBe(true)
+    expect(hasNoAgentProfileMcpServersEnabled(undefined, serverNames)).toBe(false)
+
+    const strictConfig = {
+      allServersDisabledByDefault: true,
+      enabledServers: ["github"],
+      disabledTools: ["github.search"],
+    }
+    expect(countEnabledAgentProfileMcpServers(strictConfig, serverNames)).toBe(1)
+    expect(hasAllAgentProfileMcpServersEnabled(strictConfig, serverNames)).toBe(false)
+    expect(hasNoAgentProfileMcpServersEnabled({ allServersDisabledByDefault: true, enabledServers: [] }, serverNames)).toBe(true)
+    expect(countEnabledAgentProfileMcpTools(strictConfig, ["github.search", "github.fetch"])).toBe(1)
   })
 
   it("toggles per-agent MCP server lists in default and strict modes", () => {
@@ -144,6 +171,18 @@ describe("agent profile config updates", () => {
       enabledRuntimeTools: undefined,
     })
     expect(getAgentProfileRuntimeToolsConfigAfterToggle(withoutScreenshot, "mark_work_complete", runtimeTools)).toEqual(withoutScreenshot)
+  })
+
+  it("counts runtime tool enablement and all/essential-only states", () => {
+    const runtimeTools = ["respond_to_user", "mark_work_complete", "screenshot"]
+    expect(countEnabledAgentProfileRuntimeTools(undefined, runtimeTools)).toBe(3)
+    expect(hasAllAgentProfileRuntimeToolsEnabled(undefined, runtimeTools)).toBe(true)
+    expect(hasOnlyEssentialAgentProfileRuntimeToolsEnabled(undefined)).toBe(false)
+
+    const onlyEssential = { enabledRuntimeTools: ["mark_work_complete"] }
+    expect(countEnabledAgentProfileRuntimeTools(onlyEssential, runtimeTools)).toBe(1)
+    expect(hasAllAgentProfileRuntimeToolsEnabled(onlyEssential, runtimeTools)).toBe(false)
+    expect(hasOnlyEssentialAgentProfileRuntimeToolsEnabled(onlyEssential)).toBe(true)
   })
 
   it("keeps agent and legacy MCP model fields synchronized in both directions", () => {
@@ -269,6 +308,24 @@ describe("agent profile config updates", () => {
     expect(hasAllAgentProfileSkillsEnabledByDefault(strictConfig)).toBe(false)
     expect(getEnabledAgentProfileSkillIds(strictConfig)).toEqual(["research"])
     expect(isAgentProfileSkillEnabled(strictConfig, "writing")).toBe(false)
+  })
+
+  it("counts profile skill enablement and all/none states", () => {
+    const skillIds = ["research", "writing"]
+    expect(countEnabledAgentProfileSkills(undefined, skillIds)).toBe(2)
+    expect(hasAllAgentProfileSkillsEnabled(undefined, skillIds)).toBe(true)
+    expect(hasNoAgentProfileSkillsEnabled(undefined, skillIds)).toBe(false)
+
+    const strictConfig = {
+      enabledSkillIds: ["research"],
+      allSkillsDisabledByDefault: true,
+    }
+    expect(countEnabledAgentProfileSkills(strictConfig, skillIds)).toBe(1)
+    expect(hasAllAgentProfileSkillsEnabled(strictConfig, skillIds)).toBe(false)
+    expect(hasNoAgentProfileSkillsEnabled({
+      enabledSkillIds: [],
+      allSkillsDisabledByDefault: true,
+    }, skillIds)).toBe(true)
   })
 
   it("toggles from all-enabled mode into opt-in mode and collapses back when all skills are selected", () => {

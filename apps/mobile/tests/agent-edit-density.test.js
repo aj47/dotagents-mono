@@ -52,3 +52,14 @@ test('uses shared bulk skill config helpers in the mobile agent editor', () => {
   assert.match(screenSource, /getAgentProfileSkillsConfigAfterSetAllEnabled\(enabled\)/);
   assert.doesNotMatch(screenSource, /allSkillsDisabledByDefault: !enabled/);
 });
+
+test('uses shared enabled-count helpers in the mobile agent editor', () => {
+  assert.match(screenSource, /countEnabledAgentProfileMcpServers/);
+  assert.match(screenSource, /countEnabledAgentProfileMcpTools/);
+  assert.match(screenSource, /countEnabledAgentProfileRuntimeTools/);
+  assert.match(screenSource, /countEnabledAgentProfileSkills/);
+  assert.doesNotMatch(screenSource, /const countEnabledMcpServers/);
+  assert.doesNotMatch(screenSource, /const countEnabledMcpTools/);
+  assert.doesNotMatch(screenSource, /const countEnabledRuntimeTools/);
+  assert.doesNotMatch(screenSource, /const countEnabledSkills/);
+});

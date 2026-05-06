@@ -33,6 +33,10 @@ import {
 } from '@dotagents/shared/agent-profile-mutations';
 import {
   buildAgentProfileAgentModelUpdate,
+  countEnabledAgentProfileMcpServers,
+  countEnabledAgentProfileMcpTools,
+  countEnabledAgentProfileRuntimeTools,
+  countEnabledAgentProfileSkills,
   formatAgentProfileMcpConfigForRequest,
   formatAgentProfileModelConfigForRequest,
   formatAgentProfileSkillsConfigForRequest,
@@ -148,22 +152,6 @@ const isSkillEnabledByConfig = (skillId: string, skillsConfig?: AgentProfileSkil
   return isAgentProfileSkillEnabled(skillsConfig, skillId);
 };
 
-const countEnabledMcpServers = (servers: MCPServer[], toolConfig?: AgentProfileMcpConfigUpdateLike): number => {
-  return servers.filter((server) => isMcpServerEnabledByConfig(server.name, toolConfig)).length;
-};
-
-const countEnabledMcpTools = (tools: OperatorMCPToolSummary[], toolConfig?: AgentProfileMcpConfigUpdateLike): number => {
-  return tools.filter((tool) => isMcpToolEnabledByConfig(tool.name, toolConfig)).length;
-};
-
-const countEnabledRuntimeTools = (tools: RuntimeToolDefinition[], toolConfig?: AgentProfileMcpConfigUpdateLike): number => {
-  return tools.filter((tool) => isRuntimeToolEnabledByConfig(tool.name, toolConfig)).length;
-};
-
-const countEnabledSkills = (skills: Skill[], skillsConfig?: AgentProfileSkillsConfigUpdateLike): number => {
-  return skills.filter((skill) => isSkillEnabledByConfig(skill.id, skillsConfig)).length;
-};
-
 const getAgentModelPlaceholder = (provider: AgentModelProvider): string => {
   if (provider === 'openai') return 'gpt-5.4-mini';
   if (provider === 'groq') return 'openai/gpt-oss-120b';
@@ -198,17 +186,20 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const runtimeTools = useMemo(() => RUNTIME_TOOLS, []);
   const displayMcpServers = useMemo(() => [...mcpServers].sort((a, b) => a.name.localeCompare(b.name)), [mcpServers]);
   const displaySkills = useMemo(() => [...skills].sort((a, b) => a.name.localeCompare(b.name)), [skills]);
+  const displayMcpServerNames = useMemo(() => displayMcpServers.map(server => server.name), [displayMcpServers]);
+  const displaySkillIds = useMemo(() => displaySkills.map(skill => skill.id), [displaySkills]);
+  const runtimeToolNames = useMemo(() => runtimeTools.map(tool => tool.name), [runtimeTools]);
   const enabledMcpServerCount = useMemo(
-    () => countEnabledMcpServers(displayMcpServers, formData.toolConfig),
-    [displayMcpServers, formData.toolConfig],
+    () => countEnabledAgentProfileMcpServers(formData.toolConfig, displayMcpServerNames),
+    [displayMcpServerNames, formData.toolConfig],
   );
   const enabledRuntimeToolCount = useMemo(
-    () => countEnabledRuntimeTools(runtimeTools, formData.toolConfig),
-    [runtimeTools, formData.toolConfig],
+    () => countEnabledAgentProfileRuntimeTools(formData.toolConfig, runtimeToolNames, [ESSENTIAL_RUNTIME_TOOL_NAME]),
+    [runtimeToolNames, formData.toolConfig],
   );
   const enabledSkillCount = useMemo(
-    () => countEnabledSkills(displaySkills, formData.skillsConfig),
-    [displaySkills, formData.skillsConfig],
+    () => countEnabledAgentProfileSkills(formData.skillsConfig, displaySkillIds),
+    [displaySkillIds, formData.skillsConfig],
   );
   const selectedModelProvider = getAgentProfileAgentModelProvider(formData.modelConfig);
   const selectedPresetKey = detectAgentProfilePresetKey(formData);
@@ -1044,7 +1035,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         ) : displayMcpServers.map(server => {
           const enabled = isMcpServerEnabledByConfig(server.name, formData.toolConfig);
           const tools = mcpToolsByServer[server.name] ?? [];
-          const enabledToolCount = countEnabledMcpTools(tools, formData.toolConfig);
+          const enabledToolCount = countEnabledAgentProfileMcpTools(formData.toolConfig, tools.map(tool => tool.name));
           return (
             <View key={server.name}>
               <View style={styles.skillRow}>
