@@ -70,8 +70,15 @@ import {
   buildOperatorWhatsAppIntegrationSummary,
   buildOperatorWhatsAppServerUnavailableActionResponse,
   clampOperatorCount,
+  clearOperatorDiscordLogsAction,
+  connectOperatorDiscordAction,
+  connectOperatorWhatsAppAction,
   getConfiguredCloudflareTunnelStartPlan,
+  getOperatorDiscordAction,
+  getOperatorDiscordLogsAction,
+  getOperatorIntegrationsAction,
   getOperatorMessageQueuesAction,
+  getOperatorWhatsAppAction,
   getRemoteServerBearerToken,
   getOperatorAuditDeviceId,
   getOperatorAuditPath,
@@ -92,6 +99,8 @@ import {
   isOperatorAuditEntry,
   isProtectedOperatorAccessPath,
   isSensitiveOperatorSettingsKey,
+  disconnectOperatorDiscordAction,
+  logoutOperatorWhatsAppAction,
   mergeOperatorWhatsAppStatusPayload,
   normalizeOperatorLogLevel,
   checkOperatorUpdaterAction,
@@ -119,6 +128,7 @@ import {
   SENSITIVE_OPERATOR_SETTINGS_KEYS,
   updateOperatorQueuedMessageAction,
   type OperatorApiKeyActionOptions,
+  type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
   type OperatorObservabilityActionOptions,
   type OperatorTunnelActionOptions,
@@ -1312,6 +1322,208 @@ describe("operator action API helpers", () => {
     })
 
     expect(mergeOperatorWhatsAppStatusPayload(summary, "not json")).toBe(summary)
+  })
+
+  it("runs integration route actions through a shared service adapter", async () => {
+    const calls: string[] = []
+    const discordLogs = [
+      { id: "log-1", level: "info", message: "one", timestamp: 1 },
+      { id: "log-2", level: "error", message: "two", timestamp: 2 },
+    ]
+    const whatsappSummary = {
+      enabled: true,
+      available: true,
+      connected: false,
+      serverConfigured: true,
+      serverConnected: true,
+      autoReplyEnabled: false,
+      logMessagesEnabled: true,
+      allowedSenderCount: 1,
+      logs: { total: 0 },
+    }
+    const integrationsSummary = {
+      discord: {
+        available: true,
+        enabled: true,
+        connected: false,
+        connecting: false,
+        logs: { total: 0 },
+      },
+      whatsapp: whatsappSummary,
+      pushNotifications: {
+        enabled: false,
+        tokenCount: 0,
+        platforms: [],
+      },
+    }
+    let discordConnected = false
+    let whatsappConnected = false
+    let whatsappToolResult = {
+      isError: false,
+      content: [{ type: "text", text: JSON.stringify({ status: "connected", connected: true }) }],
+    }
+    const options: OperatorIntegrationActionOptions = {
+      diagnostics: {
+        logError: (_source, message) => { calls.push(`error:${message}`) },
+        getErrorMessage: (error) => error instanceof Error ? error.message : String(error),
+      },
+      service: {
+        getIntegrationsSummary: async () => integrationsSummary,
+        getDiscordStatus: () => ({
+          available: true,
+          enabled: true,
+          connected: discordConnected,
+          connecting: false,
+          tokenConfigured: true,
+        }),
+        getDiscordLogs: () => discordLogs,
+        startDiscord: async () => {
+          calls.push("discord:start")
+          discordConnected = true
+          return { success: true }
+        },
+        stopDiscord: async () => {
+          calls.push("discord:stop")
+          discordConnected = false
+          return { success: true }
+        },
+        clearDiscordLogs: () => { calls.push("discord:clear") },
+        getWhatsAppSummary: async () => whatsappSummary,
+        isWhatsAppServerConnected: () => whatsappConnected,
+        executeWhatsAppTool: async (toolName) => {
+          calls.push(`whatsapp:${toolName}`)
+          return whatsappToolResult
+        },
+      },
+    }
+
+    expect(await getOperatorIntegrationsAction(options)).toEqual({
+      statusCode: 200,
+      body: integrationsSummary,
+    })
+    expect(getOperatorDiscordAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        available: true,
+        enabled: true,
+        connected: false,
+        logs: { total: 2 },
+      },
+    })
+    expect(getOperatorDiscordLogsAction(1, options)).toEqual({
+      statusCode: 200,
+      body: {
+        count: 1,
+        logs: [discordLogs[1]],
+      },
+    })
+    expect(await connectOperatorDiscordAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "discord-connect",
+        details: { connected: true },
+      },
+      auditContext: {
+        action: "discord-connect",
+        success: true,
+      },
+    })
+    expect(await disconnectOperatorDiscordAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "discord-disconnect",
+      },
+      auditContext: {
+        action: "discord-disconnect",
+        success: true,
+      },
+    })
+    expect(clearOperatorDiscordLogsAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "discord-clear-logs",
+      },
+      auditContext: {
+        action: "discord-clear-logs",
+        success: true,
+      },
+    })
+    expect(await getOperatorWhatsAppAction(options)).toEqual({
+      statusCode: 200,
+      body: whatsappSummary,
+    })
+    expect(await connectOperatorWhatsAppAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: false,
+        action: "whatsapp-connect",
+        error: "WhatsApp server is not running",
+      },
+      auditContext: {
+        action: "whatsapp-connect",
+        success: false,
+        failureReason: "WhatsApp server is not running",
+      },
+    })
+
+    whatsappConnected = true
+    expect(await connectOperatorWhatsAppAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "whatsapp-connect",
+        message: "WhatsApp connected",
+        details: {
+          status: "connected",
+          connected: true,
+        },
+      },
+      auditContext: {
+        action: "whatsapp-connect",
+        success: true,
+      },
+    })
+
+    whatsappToolResult = {
+      isError: true,
+      content: [{ type: "text", text: "logout failed" }],
+    }
+    expect(await logoutOperatorWhatsAppAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: false,
+        action: "whatsapp-logout",
+        error: "logout failed",
+      },
+      auditContext: {
+        action: "whatsapp-logout",
+        success: false,
+        failureReason: "logout failed",
+      },
+    })
+    expect(calls).toEqual(expect.arrayContaining([
+      "discord:start",
+      "discord:stop",
+      "discord:clear",
+      "whatsapp:whatsapp_connect",
+      "whatsapp:whatsapp_logout",
+    ]))
+
+    const failingOptions: OperatorIntegrationActionOptions = {
+      ...options,
+      service: {
+        ...options.service,
+        getIntegrationsSummary: async () => { throw new Error("summary denied") },
+      },
+    }
+    expect(await getOperatorIntegrationsAction(failingOptions)).toEqual({
+      statusCode: 500,
+      body: { error: "Failed to build operator integrations summary" },
+    })
+    expect(calls).toContain("error:Failed to build operator integrations summary")
   })
 
   it("builds compact operator log summaries", () => {

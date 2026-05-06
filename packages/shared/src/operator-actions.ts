@@ -224,6 +224,40 @@ export interface OperatorObservabilityActionOptions {
   service: OperatorObservabilityActionService
 }
 
+export type OperatorIntegrationActionResult = {
+  statusCode: number
+  body: unknown
+  auditContext?: OperatorActionAuditContext
+}
+
+export type OperatorWhatsAppActionToolName = "whatsapp_connect" | "whatsapp_logout"
+
+export type OperatorWhatsAppActionToolResultLike = OperatorMcpToolResultLike & {
+  isError?: boolean
+}
+
+export interface OperatorIntegrationActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void
+  getErrorMessage(error: unknown): string
+}
+
+export interface OperatorIntegrationActionService {
+  getIntegrationsSummary(): Promise<OperatorIntegrationsSummary>
+  getDiscordStatus(): OperatorDiscordStatusLike
+  getDiscordLogs(): OperatorDiscordLogLike[]
+  startDiscord(): Promise<OperatorActionResultLike>
+  stopDiscord(): Promise<OperatorActionResultLike>
+  clearDiscordLogs(): void
+  getWhatsAppSummary(): Promise<OperatorWhatsAppIntegrationSummary>
+  isWhatsAppServerConnected(): boolean
+  executeWhatsAppTool(toolName: OperatorWhatsAppActionToolName): Promise<OperatorWhatsAppActionToolResultLike>
+}
+
+export interface OperatorIntegrationActionOptions {
+  diagnostics: OperatorIntegrationActionDiagnostics
+  service: OperatorIntegrationActionService
+}
+
 export type RunAgentResultLike = AgentRunResult
 
 export type OperatorHealthLike = Pick<OperatorHealthSnapshot, "overall" | "checks">
@@ -1966,6 +2000,142 @@ export function buildOperatorDiscordClearLogsActionResponse(): OperatorActionRes
     action: "discord-clear-logs",
     message: "Discord logs cleared",
   }
+}
+
+function operatorIntegrationActionResult(
+  statusCode: number,
+  body: unknown,
+  auditContext?: OperatorActionAuditContext,
+): OperatorIntegrationActionResult {
+  return {
+    statusCode,
+    body,
+    ...(auditContext ? { auditContext } : {}),
+  }
+}
+
+function operatorIntegrationActionError(
+  statusCode: number,
+  message: string,
+  auditContext?: OperatorActionAuditContext,
+): OperatorIntegrationActionResult {
+  return operatorIntegrationActionResult(statusCode, { error: message }, auditContext)
+}
+
+function operatorIntegrationResponseResult(
+  response: OperatorActionResponse,
+): OperatorIntegrationActionResult {
+  return operatorIntegrationActionResult(200, response, buildOperatorActionAuditContext(response))
+}
+
+async function runOperatorWhatsAppAction(
+  toolName: OperatorWhatsAppActionToolName,
+  action: string,
+  successMessage: string,
+  options: OperatorIntegrationActionOptions,
+): Promise<OperatorActionResponse> {
+  try {
+    if (!options.service.isWhatsAppServerConnected()) {
+      return buildOperatorWhatsAppServerUnavailableActionResponse(action)
+    }
+
+    const result = await options.service.executeWhatsAppTool(toolName)
+    const text = getOperatorMcpToolResultText(result)
+    if (result.isError) {
+      const message = text || `${action} failed`
+      return buildOperatorWhatsAppActionErrorResponse(action, message)
+    }
+
+    return buildOperatorWhatsAppActionSuccessResponse({ action, text, successMessage })
+  } catch (caughtError) {
+    return buildOperatorWhatsAppActionErrorResponse(action, options.diagnostics.getErrorMessage(caughtError))
+  }
+}
+
+export async function getOperatorIntegrationsAction(
+  options: OperatorIntegrationActionOptions,
+): Promise<OperatorIntegrationActionResult> {
+  try {
+    return operatorIntegrationActionResult(200, await options.service.getIntegrationsSummary())
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-integration-actions", "Failed to build operator integrations summary", caughtError)
+    return operatorIntegrationActionError(500, "Failed to build operator integrations summary")
+  }
+}
+
+export function getOperatorDiscordAction(
+  options: OperatorIntegrationActionOptions,
+): OperatorIntegrationActionResult {
+  return operatorIntegrationActionResult(200, buildOperatorDiscordIntegrationSummary(
+    options.service.getDiscordStatus(),
+    options.service.getDiscordLogs(),
+  ))
+}
+
+export function getOperatorDiscordLogsAction(
+  count: string | number | undefined,
+  options: OperatorIntegrationActionOptions,
+): OperatorIntegrationActionResult {
+  return operatorIntegrationActionResult(200, buildOperatorDiscordLogsResponse(options.service.getDiscordLogs(), count))
+}
+
+export async function connectOperatorDiscordAction(
+  options: OperatorIntegrationActionOptions,
+): Promise<OperatorIntegrationActionResult> {
+  const result = await options.service.startDiscord()
+  const response = buildOperatorDiscordConnectActionResponse(result, options.service.getDiscordStatus())
+  return operatorIntegrationResponseResult(response)
+}
+
+export async function disconnectOperatorDiscordAction(
+  options: OperatorIntegrationActionOptions,
+): Promise<OperatorIntegrationActionResult> {
+  const result = await options.service.stopDiscord()
+  const response = buildOperatorDiscordDisconnectActionResponse(result)
+  return operatorIntegrationResponseResult(response)
+}
+
+export function clearOperatorDiscordLogsAction(
+  options: OperatorIntegrationActionOptions,
+): OperatorIntegrationActionResult {
+  options.service.clearDiscordLogs()
+  const response = buildOperatorDiscordClearLogsActionResponse()
+  return operatorIntegrationResponseResult(response)
+}
+
+export async function getOperatorWhatsAppAction(
+  options: OperatorIntegrationActionOptions,
+): Promise<OperatorIntegrationActionResult> {
+  try {
+    return operatorIntegrationActionResult(200, await options.service.getWhatsAppSummary())
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-integration-actions", "Failed to build WhatsApp operator summary", caughtError)
+    return operatorIntegrationActionError(500, "Failed to build WhatsApp operator summary")
+  }
+}
+
+export async function connectOperatorWhatsAppAction(
+  options: OperatorIntegrationActionOptions,
+): Promise<OperatorIntegrationActionResult> {
+  const response = await runOperatorWhatsAppAction(
+    "whatsapp_connect",
+    "whatsapp-connect",
+    "WhatsApp connection initiated",
+    options,
+  )
+  return operatorIntegrationResponseResult(response)
+}
+
+export async function logoutOperatorWhatsAppAction(
+  options: OperatorIntegrationActionOptions,
+): Promise<OperatorIntegrationActionResult> {
+  const response = await runOperatorWhatsAppAction(
+    "whatsapp_logout",
+    "whatsapp-logout",
+    "WhatsApp logout completed",
+    options,
+  )
+  return operatorIntegrationResponseResult(response)
 }
 
 export function buildOperatorTunnelStartRemoteServerRequiredResponse(): OperatorActionResponse {
