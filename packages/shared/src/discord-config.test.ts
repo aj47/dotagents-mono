@@ -6,6 +6,8 @@ import {
   getDiscordResolvedToken,
   getMaskedDiscordBotToken,
   type DiscordIntegrationConfig,
+  type DiscordIntegrationRuntimeStateConfig,
+  type DiscordIntegrationSettingsConfig,
 } from './discord-config';
 
 function assertType<T>(_value: T): void {
@@ -14,7 +16,7 @@ function assertType<T>(_value: T): void {
 
 describe('discord config helpers', () => {
   it('exposes the persisted Discord integration config contract', () => {
-    const config: DiscordIntegrationConfig = {
+    const settingsConfig: DiscordIntegrationSettingsConfig = {
       discordEnabled: true,
       discordBotToken: 'token',
       discordDmEnabled: true,
@@ -30,11 +32,19 @@ describe('discord config helpers', () => {
       discordOperatorAllowRoleIds: ['role-2'],
       discordDefaultProfileId: 'agent-1',
       discordLogMessages: true,
+    };
+    const runtimeState: DiscordIntegrationRuntimeStateConfig = {
       discordConversationEpochs: {
         discord_dm_1: 2,
       },
     };
+    const config: DiscordIntegrationConfig = {
+      ...settingsConfig,
+      ...runtimeState,
+    };
 
+    assertType<DiscordIntegrationSettingsConfig>(settingsConfig);
+    assertType<DiscordIntegrationRuntimeStateConfig>(runtimeState);
     assertType<DiscordIntegrationConfig>(config);
     expect(config.discordConversationEpochs?.discord_dm_1).toBe(2);
   });

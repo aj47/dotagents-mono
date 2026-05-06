@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import type { ModelPreset } from './providers'
 import type { StreamerModeConfig } from './remote-pairing'
 import type { QueuedMessage, MessageQueue, RecordingHistoryItem } from './types'
+import type { DiscordIntegrationSettingsConfig } from './discord-config'
+import type { WhatsAppIntegrationConfig } from './whatsapp-config'
 import type {
   KnowledgeNoteCreateRequest,
   KnowledgeNoteResponse,
@@ -22,6 +24,7 @@ import type {
   EmergencyStopResponse,
   OperatorDiscordLogsResponse,
   OperatorTunnelSetupSummary,
+  SettingsUpdate,
 } from './api-types'
 import { RESPOND_TO_USER_TOOL } from './chat-utils'
 
@@ -447,6 +450,41 @@ describe('settings API request/response contracts', () => {
 
     assertType<TextToSpeechConfig>(config)
     expect(config.ttsProviderId).toBe('supertonic')
+  })
+
+  it('accepts operator integration settings shared by desktop and mobile settings', () => {
+    const discordConfig: DiscordIntegrationSettingsConfig = {
+      discordEnabled: true,
+      discordBotToken: 'token',
+      discordDmEnabled: true,
+      discordRequireMention: false,
+      discordAllowUserIds: ['user-1'],
+      discordAllowGuildIds: ['guild-1'],
+      discordAllowChannelIds: ['channel-1'],
+      discordAllowRoleIds: ['role-1'],
+      discordDmAllowUserIds: ['user-2'],
+      discordOperatorAllowUserIds: ['operator-1'],
+      discordOperatorAllowGuildIds: ['guild-2'],
+      discordOperatorAllowChannelIds: ['channel-2'],
+      discordOperatorAllowRoleIds: ['role-2'],
+      discordDefaultProfileId: 'agent-1',
+      discordLogMessages: true,
+    }
+    const whatsappConfig: WhatsAppIntegrationConfig = {
+      whatsappEnabled: true,
+      whatsappAllowFrom: ['15551234567'],
+      whatsappOperatorAllowFrom: ['15557654321'],
+      whatsappAutoReply: true,
+      whatsappLogMessages: false,
+    }
+    const update: SettingsUpdate = {
+      ...discordConfig,
+      ...whatsappConfig,
+    }
+
+    assertType<SettingsUpdate>(update)
+    expect(update.discordDefaultProfileId).toBe('agent-1')
+    expect(update.whatsappAllowFrom).toEqual(['15551234567'])
   })
 
   it('accepts repeat task create/update payloads with nullable schedules', () => {

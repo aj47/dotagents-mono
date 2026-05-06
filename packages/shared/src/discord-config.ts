@@ -4,7 +4,7 @@ export type DiscordConfigSource = "config" | "env"
 export type DiscordLifecycleAction = "noop" | "start" | "stop" | "restart"
 export type DiscordConversationEpochs = Record<string, number>
 
-export interface DiscordIntegrationConfig {
+export interface DiscordIntegrationSettingsConfig {
   discordEnabled?: boolean
   discordBotToken?: string
   discordDmEnabled?: boolean
@@ -20,8 +20,13 @@ export interface DiscordIntegrationConfig {
   discordOperatorAllowRoleIds?: string[]
   discordDefaultProfileId?: string
   discordLogMessages?: boolean
+}
+
+export interface DiscordIntegrationRuntimeStateConfig {
   discordConversationEpochs?: DiscordConversationEpochs
 }
+
+export interface DiscordIntegrationConfig extends DiscordIntegrationSettingsConfig, DiscordIntegrationRuntimeStateConfig {}
 
 export interface DiscordEnvironmentLike {
   [key: string]: string | undefined | null

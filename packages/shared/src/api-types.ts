@@ -18,6 +18,8 @@ import type {
   StreamerModeConfig,
 } from './remote-pairing';
 import type { ObservabilityConfig } from './observability-config';
+import type { DiscordIntegrationSettingsConfig } from './discord-config';
+import type { WhatsAppIntegrationConfig } from './whatsapp-config';
 export type { LoopSchedule } from './types';
 export type {
   KnowledgeNote,
@@ -649,7 +651,7 @@ export interface TextToSpeechConfig {
   supertonicSteps?: number;
 }
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig {
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -670,35 +672,11 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, St
   geminiApiKey?: string;
   geminiBaseUrl?: string;
 
-  // WhatsApp Integration
-  whatsappEnabled?: boolean;
-  whatsappAllowFrom?: string[];
-  whatsappOperatorAllowFrom?: string[];
-  whatsappAutoReply?: boolean;
-  whatsappLogMessages?: boolean;
-
-  // Discord Integration
-  discordEnabled?: boolean;
-  discordBotToken?: string;
-  discordDmEnabled?: boolean;
-  discordRequireMention?: boolean;
-  discordAllowUserIds?: string[];
-  discordAllowGuildIds?: string[];
-  discordAllowChannelIds?: string[];
-  discordAllowRoleIds?: string[];
-  discordDmAllowUserIds?: string[];
-  discordOperatorAllowUserIds?: string[];
-  discordOperatorAllowGuildIds?: string[];
-  discordOperatorAllowChannelIds?: string[];
-  discordOperatorAllowRoleIds?: string[];
-  discordDefaultProfileId?: string;
-  discordLogMessages?: boolean;
-
   // acpx-capable agent profile summaries (read-only, from GET only)
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig {
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -717,30 +695,6 @@ export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConf
   groqBaseUrl?: string;
   geminiApiKey?: string;
   geminiBaseUrl?: string;
-
-  // WhatsApp Integration
-  whatsappEnabled?: boolean;
-  whatsappAllowFrom?: string[];
-  whatsappOperatorAllowFrom?: string[];
-  whatsappAutoReply?: boolean;
-  whatsappLogMessages?: boolean;
-
-  // Discord Integration
-  discordEnabled?: boolean;
-  discordBotToken?: string;
-  discordDmEnabled?: boolean;
-  discordRequireMention?: boolean;
-  discordAllowUserIds?: string[];
-  discordAllowGuildIds?: string[];
-  discordAllowChannelIds?: string[];
-  discordAllowRoleIds?: string[];
-  discordDmAllowUserIds?: string[];
-  discordOperatorAllowUserIds?: string[];
-  discordOperatorAllowGuildIds?: string[];
-  discordOperatorAllowChannelIds?: string[];
-  discordOperatorAllowRoleIds?: string[];
-  discordDefaultProfileId?: string;
-  discordLogMessages?: boolean;
 
 }
 
