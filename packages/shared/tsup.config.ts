@@ -54,6 +54,7 @@ export default defineConfig({
     'operator-actions': 'src/operator-actions.ts',
     'operator-audit-store': 'src/operator-audit-store.ts',
     'mcp-api': 'src/mcp-api.ts',
+    'mcp-utils': 'src/mcp-utils.ts',
     'discord-utils': 'src/discord-utils.ts',
     'discord-config': 'src/discord-config.ts',
     'agent-run-utils': 'src/agent-run-utils.ts',

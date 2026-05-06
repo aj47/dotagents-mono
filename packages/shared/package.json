@@ -266,6 +266,11 @@
       "import": "./dist/mcp-api.mjs",
       "require": "./dist/mcp-api.js"
     },
+    "./mcp-utils": {
+      "types": "./dist/mcp-utils.d.ts",
+      "import": "./dist/mcp-utils.mjs",
+      "require": "./dist/mcp-utils.js"
+    },
     "./discord-utils": {
       "types": "./dist/discord-utils.d.ts",
       "import": "./dist/discord-utils.mjs",
