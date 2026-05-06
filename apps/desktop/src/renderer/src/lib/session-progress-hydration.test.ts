@@ -3,7 +3,7 @@ import type { AgentProgressUpdate, LoadedConversation } from "@shared/types"
 import {
   hasConversationHistoryForDisplay,
   mergeLoadedConversationIntoProgress,
-} from "./session-progress-hydration"
+} from "@dotagents/shared/session-progress-hydration"
 
 const baseProgress = (): AgentProgressUpdate => ({
   sessionId: "session-1",

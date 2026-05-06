@@ -24,7 +24,7 @@ import {
   getLoadedConversationHistoryStartIndex,
   hasConversationHistoryForDisplay,
   mergeLoadedConversationIntoProgress,
-} from "@renderer/lib/session-progress-hydration"
+} from "@dotagents/shared/session-progress-hydration"
 
 const CLEAR_INACTIVE_EVENT = "sessions:clear-inactive"
 
