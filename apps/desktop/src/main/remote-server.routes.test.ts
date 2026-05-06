@@ -78,6 +78,12 @@ function getSharedOperatorAuditStoreSource(): string {
   return readFileSync(sharedOperatorAuditStorePath, "utf8")
 }
 
+function getSharedOperatorActionsSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedOperatorActionsPath = path.join(testDir, "../../../../packages/shared/src/operator-actions.ts")
+  return readFileSync(sharedOperatorActionsPath, "utf8")
+}
+
 function getSharedMcpApiSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedMcpApiPath = path.join(testDir, "../../../../packages/shared/src/mcp-api.ts")
@@ -1331,14 +1337,20 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.removeOperatorQueuedMessage(params.conversationId, params.messageId)")
     expect(operatorRoutesSource).toContain("actions.retryOperatorQueuedMessage(params.conversationId, params.messageId)")
     expect(operatorRoutesSource).toContain("actions.updateOperatorQueuedMessage(params.conversationId, params.messageId, req.body)")
-    expect(operatorMessageQueueActionsSource).toContain("buildOperatorMessageQueuesResponse(")
-    expect(operatorMessageQueueActionsSource).toContain("messageQueueService.getAllQueues()")
-    expect(operatorMessageQueueActionsSource).toContain("messageQueueService.clearQueue(conversationId)")
-    expect(operatorMessageQueueActionsSource).toContain("pauseMessageQueueByConversationId(conversationId)")
-    expect(operatorMessageQueueActionsSource).toContain("resumeMessageQueueByConversationId(conversationId)")
-    expect(operatorMessageQueueActionsSource).toContain("removeQueuedMessageById(conversationId, messageId)")
-    expect(operatorMessageQueueActionsSource).toContain("retryQueuedMessageById(conversationId, messageId)")
-    expect(operatorMessageQueueActionsSource).toContain("updateQueuedMessageTextById(conversationId, messageId, parsed.request.text)")
+    expect(operatorMessageQueueActionsSource).toContain("getOperatorMessageQueuesAction(messageQueueActionOptions)")
+    expect(operatorMessageQueueActionsSource).toContain("clearOperatorMessageQueueAction(conversationIdParam, messageQueueActionOptions)")
+    expect(operatorMessageQueueActionsSource).toContain("getAllQueues: () => messageQueueService.getAllQueues()")
+    expect(operatorMessageQueueActionsSource).toContain("clearQueue: (conversationId) => messageQueueService.clearQueue(conversationId)")
+    expect(operatorMessageQueueActionsSource).toContain("pauseQueue: (conversationId) => pauseMessageQueueByConversationId(conversationId)")
+    expect(operatorMessageQueueActionsSource).toContain("resumeQueue: (conversationId) => resumeMessageQueueByConversationId(conversationId)")
+    expect(operatorMessageQueueActionsSource).toContain("removeQueuedMessage: (conversationId, messageId) => removeQueuedMessageById(conversationId, messageId)")
+    expect(operatorMessageQueueActionsSource).toContain("retryQueuedMessage: (conversationId, messageId) => retryQueuedMessageById(conversationId, messageId)")
+    expect(operatorMessageQueueActionsSource).toContain("updateQueuedMessageTextById(conversationId, messageId, text)")
+    const sharedOperatorActionsSource = getSharedOperatorActionsSource()
+    expect(sharedOperatorActionsSource).toContain("export function getOperatorMessageQueuesAction(")
+    expect(sharedOperatorActionsSource).toContain("buildOperatorMessageQueuesResponse(")
+    expect(sharedOperatorActionsSource).toContain("parseOperatorQueuedMessageUpdateRequestBody(body)")
+    expect(sharedOperatorActionsSource).toContain("buildOperatorQueuedMessageUpdateResponse(")
     const messageQueueServiceSource = getMessageQueueServiceSource()
     const sharedMessageQueueStoreSource = getSharedMessageQueueStoreSource()
     expect(messageQueueServiceSource).toContain('from "@dotagents/shared/message-queue-store"')

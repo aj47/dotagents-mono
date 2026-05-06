@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   appendOperatorAuditLogEntry,
   authorizeRemoteServerRequest,
+  clearOperatorMessageQueueAction,
   buildOperatorActionErrorResponse,
   buildOperatorActionAuditContext,
   buildOperatorAgentSessionStopResponse,
@@ -70,6 +71,7 @@ import {
   buildOperatorWhatsAppServerUnavailableActionResponse,
   clampOperatorCount,
   getConfiguredCloudflareTunnelStartPlan,
+  getOperatorMessageQueuesAction,
   getRemoteServerBearerToken,
   getOperatorAuditDeviceId,
   getOperatorAuditPath,
@@ -83,6 +85,7 @@ import {
   isSensitiveOperatorSettingsKey,
   mergeOperatorWhatsAppStatusPayload,
   normalizeOperatorLogLevel,
+  pauseOperatorMessageQueueAction,
   OPERATOR_AUDIT_DEVICE_HEADER_KEYS,
   parseOperatorJsonRecord,
   parseOperatorAuditLogEntries,
@@ -90,10 +93,15 @@ import {
   parseOperatorMcpServerActionRequestBody,
   parseOperatorQueuedMessageUpdateRequestBody,
   parseOperatorRunAgentRequestBody,
+  removeOperatorQueuedMessageAction,
+  resumeOperatorMessageQueueAction,
+  retryOperatorQueuedMessageAction,
   sanitizeOperatorAuditDetails,
   sanitizeOperatorAuditText,
   serializeOperatorAuditLogEntries,
   SENSITIVE_OPERATOR_SETTINGS_KEYS,
+  updateOperatorQueuedMessageAction,
+  type OperatorMessageQueueActionOptions,
 } from "./operator-actions"
 
 describe("operator action API helpers", () => {
@@ -1319,6 +1327,145 @@ describe("operator action API helpers", () => {
       message: "Updated queued message msg-1",
       details: { conversationId: "conv-1", messageId: "msg-1", processingStarted: false },
     })
+  })
+
+  it("runs message queue route actions through a shared service adapter", () => {
+    const calls: string[] = []
+    const options: OperatorMessageQueueActionOptions = {
+      service: {
+        getAllQueues: () => [{
+          conversationId: "conv-1",
+          messages: [{
+            id: "msg-1",
+            conversationId: "conv-1",
+            text: "retry this",
+            createdAt: 1,
+            status: "failed",
+            errorMessage: "timeout",
+          }],
+        }],
+        isQueuePaused: (conversationId) => conversationId === "conv-1",
+        clearQueue: (conversationId) => {
+          calls.push(`clear:${conversationId}`)
+          return conversationId === "conv-1"
+        },
+        pauseQueue: (conversationId) => {
+          calls.push(`pause:${conversationId}`)
+          return { conversationId }
+        },
+        resumeQueue: (conversationId) => {
+          calls.push(`resume:${conversationId}`)
+          return { conversationId, processingStarted: true }
+        },
+        removeQueuedMessage: (conversationId, messageId) => {
+          calls.push(`remove:${conversationId}:${messageId}`)
+          return { success: messageId === "msg-1" }
+        },
+        retryQueuedMessage: (conversationId, messageId) => {
+          calls.push(`retry:${conversationId}:${messageId}`)
+          return { success: true, processingStarted: true }
+        },
+        updateQueuedMessageText: (conversationId, messageId, text) => {
+          calls.push(`update:${conversationId}:${messageId}:${text}`)
+          return { success: true, processingStarted: false }
+        },
+      },
+    }
+
+    expect(getOperatorMessageQueuesAction(options)).toEqual({
+      statusCode: 200,
+      body: {
+        count: 1,
+        totalMessages: 1,
+        queues: [{
+          conversationId: "conv-1",
+          isPaused: true,
+          messageCount: 1,
+          messages: [{
+            id: "msg-1",
+            conversationId: "conv-1",
+            text: "retry this",
+            createdAt: 1,
+            status: "failed",
+            errorMessage: "timeout",
+          }],
+        }],
+      },
+    })
+
+    expect(clearOperatorMessageQueueAction(" conv-1 ", options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "message-queue-clear",
+        details: { conversationId: "conv-1" },
+      },
+      auditContext: {
+        action: "message-queue-clear",
+        success: true,
+        details: { conversationId: "conv-1" },
+      },
+    })
+    expect(clearOperatorMessageQueueAction(" ", options)).toMatchObject({
+      statusCode: 400,
+      body: {
+        success: false,
+        action: "message-queue-clear",
+        error: "Missing conversation ID",
+      },
+      auditContext: {
+        action: "message-queue-clear",
+        success: false,
+        failureReason: "Missing conversation ID",
+      },
+    })
+    expect(pauseOperatorMessageQueueAction("conv-1", options).body).toMatchObject({
+      success: true,
+      action: "message-queue-pause",
+    })
+    expect(resumeOperatorMessageQueueAction("conv-1", options).body).toMatchObject({
+      success: true,
+      action: "message-queue-resume",
+      details: { conversationId: "conv-1", processingStarted: true },
+    })
+    expect(removeOperatorQueuedMessageAction("conv-1", "missing", options)).toMatchObject({
+      statusCode: 409,
+      body: {
+        success: false,
+        action: "message-queue-message-remove",
+      },
+    })
+    expect(removeOperatorQueuedMessageAction("conv-1", "msg-1", options).body).toMatchObject({
+      success: true,
+      action: "message-queue-message-remove",
+    })
+    expect(retryOperatorQueuedMessageAction("conv-1", "msg-1", options).body).toMatchObject({
+      success: true,
+      action: "message-queue-message-retry",
+      details: { conversationId: "conv-1", messageId: "msg-1", processingStarted: true },
+    })
+    expect(updateOperatorQueuedMessageAction("conv-1", "msg-1", { text: "  edited  " }, options).body).toMatchObject({
+      success: true,
+      action: "message-queue-message-update",
+      details: { conversationId: "conv-1", messageId: "msg-1", processingStarted: false },
+    })
+    expect(updateOperatorQueuedMessageAction("conv-1", "msg-1", { text: " " }, options)).toMatchObject({
+      statusCode: 400,
+      body: {
+        success: false,
+        action: "message-queue-message-update",
+        error: "Message text is required",
+      },
+    })
+    expect(calls).toEqual([
+      "clear:conv-1",
+      "pause:conv-1",
+      "resume:conv-1",
+      "remove:conv-1:missing",
+      "remove:conv-1:msg-1",
+      "retry:conv-1:msg-1",
+      "update:conv-1:msg-1:edited",
+    ])
   })
 
   it("builds system metrics from raw process and OS values", () => {

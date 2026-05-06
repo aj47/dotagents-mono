@@ -31,6 +31,10 @@ import type {
 import { sanitizeConfigStringList } from "./config-list-input"
 import type { AgentRunResult } from "./agent-run-utils"
 import {
+  buildOperatorMessageQueuesResponse,
+  type MessageQueue,
+} from "./message-queue-utils"
+import {
   REMOTE_SERVER_API_PATHS,
   getRemoteServerApiRoutePath,
   getRemoteServerOperatorApiActionPath,
@@ -64,6 +68,45 @@ export type OperatorMcpServerActionRequest = {
 
 export type OperatorQueuedMessageUpdateRequest = {
   text: string
+}
+
+export type OperatorMessageQueueActionResult = {
+  statusCode: number
+  body: unknown
+  auditContext?: OperatorActionAuditContext
+}
+
+export type OperatorMessageQueuePauseResultLike = {
+  conversationId: string
+}
+
+export type OperatorMessageQueueResumeResultLike = {
+  conversationId: string
+  processingStarted: boolean
+}
+
+export type OperatorQueuedMessageMutationResultLike = {
+  success: boolean
+  processingStarted?: boolean
+}
+
+export interface OperatorMessageQueueActionService {
+  getAllQueues(): MessageQueue[]
+  isQueuePaused(conversationId: string): boolean
+  clearQueue(conversationId: string): boolean
+  pauseQueue(conversationId: string): OperatorMessageQueuePauseResultLike
+  resumeQueue(conversationId: string): OperatorMessageQueueResumeResultLike
+  removeQueuedMessage(conversationId: string, messageId: string): OperatorQueuedMessageMutationResultLike
+  retryQueuedMessage(conversationId: string, messageId: string): OperatorQueuedMessageMutationResultLike
+  updateQueuedMessageText(
+    conversationId: string,
+    messageId: string,
+    text: string,
+  ): OperatorQueuedMessageMutationResultLike
+}
+
+export interface OperatorMessageQueueActionOptions {
+  service: OperatorMessageQueueActionService
 }
 
 export type RunAgentResultLike = AgentRunResult
@@ -1410,6 +1453,178 @@ export function parseOperatorQueuedMessageUpdateRequestBody(body: unknown): Oper
   }
 
   return { ok: true, request: { text: record.text.trim() } }
+}
+
+export function normalizeOperatorPathParam(value: string | undefined): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed || undefined
+}
+
+function operatorMessageQueueActionResult(
+  statusCode: number,
+  body: unknown,
+  auditContext?: OperatorActionAuditContext,
+): OperatorMessageQueueActionResult {
+  return {
+    statusCode,
+    body,
+    ...(auditContext ? { auditContext } : {}),
+  }
+}
+
+function operatorMessageQueueResponseResult(
+  statusCode: number,
+  response: OperatorActionResponse,
+): OperatorMessageQueueActionResult {
+  return operatorMessageQueueActionResult(
+    statusCode,
+    response,
+    buildOperatorActionAuditContext(response),
+  )
+}
+
+export function getOperatorMessageQueuesAction(
+  options: OperatorMessageQueueActionOptions,
+): OperatorMessageQueueActionResult {
+  return operatorMessageQueueActionResult(200, buildOperatorMessageQueuesResponse(
+    options.service.getAllQueues().map((queue) => ({
+      ...queue,
+      isPaused: options.service.isQueuePaused(queue.conversationId),
+    })),
+  ))
+}
+
+export function clearOperatorMessageQueueAction(
+  conversationIdParam: string | undefined,
+  options: OperatorMessageQueueActionOptions,
+): OperatorMessageQueueActionResult {
+  const conversationId = normalizeOperatorPathParam(conversationIdParam)
+  if (!conversationId) {
+    return operatorMessageQueueResponseResult(
+      400,
+      buildOperatorActionErrorResponse("message-queue-clear", "Missing conversation ID"),
+    )
+  }
+
+  const response = buildOperatorMessageQueueClearResponse(
+    conversationId,
+    options.service.clearQueue(conversationId),
+  )
+  return operatorMessageQueueResponseResult(response.success ? 200 : 409, response)
+}
+
+export function pauseOperatorMessageQueueAction(
+  conversationIdParam: string | undefined,
+  options: OperatorMessageQueueActionOptions,
+): OperatorMessageQueueActionResult {
+  const conversationId = normalizeOperatorPathParam(conversationIdParam)
+  if (!conversationId) {
+    return operatorMessageQueueResponseResult(
+      400,
+      buildOperatorActionErrorResponse("message-queue-pause", "Missing conversation ID"),
+    )
+  }
+
+  const queueResult = options.service.pauseQueue(conversationId)
+  return operatorMessageQueueResponseResult(
+    200,
+    buildOperatorMessageQueuePauseResponse(queueResult.conversationId),
+  )
+}
+
+export function resumeOperatorMessageQueueAction(
+  conversationIdParam: string | undefined,
+  options: OperatorMessageQueueActionOptions,
+): OperatorMessageQueueActionResult {
+  const conversationId = normalizeOperatorPathParam(conversationIdParam)
+  if (!conversationId) {
+    return operatorMessageQueueResponseResult(
+      400,
+      buildOperatorActionErrorResponse("message-queue-resume", "Missing conversation ID"),
+    )
+  }
+
+  const queueResult = options.service.resumeQueue(conversationId)
+  return operatorMessageQueueResponseResult(
+    200,
+    buildOperatorMessageQueueResumeResponse(conversationId, queueResult.processingStarted),
+  )
+}
+
+export function removeOperatorQueuedMessageAction(
+  conversationIdParam: string | undefined,
+  messageIdParam: string | undefined,
+  options: OperatorMessageQueueActionOptions,
+): OperatorMessageQueueActionResult {
+  const conversationId = normalizeOperatorPathParam(conversationIdParam)
+  const messageId = normalizeOperatorPathParam(messageIdParam)
+  if (!conversationId || !messageId) {
+    return operatorMessageQueueResponseResult(
+      400,
+      buildOperatorActionErrorResponse("message-queue-message-remove", "Missing conversation ID or message ID"),
+    )
+  }
+
+  const queueResult = options.service.removeQueuedMessage(conversationId, messageId)
+  const response = buildOperatorQueuedMessageRemoveResponse(conversationId, messageId, queueResult.success)
+  return operatorMessageQueueResponseResult(response.success ? 200 : 409, response)
+}
+
+export function retryOperatorQueuedMessageAction(
+  conversationIdParam: string | undefined,
+  messageIdParam: string | undefined,
+  options: OperatorMessageQueueActionOptions,
+): OperatorMessageQueueActionResult {
+  const conversationId = normalizeOperatorPathParam(conversationIdParam)
+  const messageId = normalizeOperatorPathParam(messageIdParam)
+  if (!conversationId || !messageId) {
+    return operatorMessageQueueResponseResult(
+      400,
+      buildOperatorActionErrorResponse("message-queue-message-retry", "Missing conversation ID or message ID"),
+    )
+  }
+
+  const queueResult = options.service.retryQueuedMessage(conversationId, messageId)
+  const response = buildOperatorQueuedMessageRetryResponse(
+    conversationId,
+    messageId,
+    queueResult.success,
+    queueResult.processingStarted ?? false,
+  )
+  return operatorMessageQueueResponseResult(response.success ? 200 : 409, response)
+}
+
+export function updateOperatorQueuedMessageAction(
+  conversationIdParam: string | undefined,
+  messageIdParam: string | undefined,
+  body: unknown,
+  options: OperatorMessageQueueActionOptions,
+): OperatorMessageQueueActionResult {
+  const conversationId = normalizeOperatorPathParam(conversationIdParam)
+  const messageId = normalizeOperatorPathParam(messageIdParam)
+  if (!conversationId || !messageId) {
+    return operatorMessageQueueResponseResult(
+      400,
+      buildOperatorActionErrorResponse("message-queue-message-update", "Missing conversation ID or message ID"),
+    )
+  }
+
+  const parsed = parseOperatorQueuedMessageUpdateRequestBody(body)
+  if (parsed.ok === false) {
+    return operatorMessageQueueResponseResult(
+      parsed.statusCode,
+      buildOperatorActionErrorResponse("message-queue-message-update", parsed.error),
+    )
+  }
+
+  const queueResult = options.service.updateQueuedMessageText(conversationId, messageId, parsed.request.text)
+  const response = buildOperatorQueuedMessageUpdateResponse(
+    conversationId,
+    messageId,
+    queueResult.success,
+    queueResult.processingStarted ?? false,
+  )
+  return operatorMessageQueueResponseResult(response.success ? 200 : 409, response)
 }
 
 export function buildOperatorApiKeyRotationResponse(apiKey: string): OperatorApiKeyRotationResponse {
