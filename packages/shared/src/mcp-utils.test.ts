@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inferTransportType, normalizeMcpConfig, type MCPConfigLike } from './mcp-utils'
+import { inferTransportType, normalizeMcpConfig, type MCPConfig, type MCPConfigLike } from './mcp-utils'
 
 describe('normalizeMcpConfig', () => {
   it('infers streamableHttp when url is present and transport is missing', () => {
@@ -60,6 +60,33 @@ describe('normalizeMcpConfig', () => {
     const { normalized, changed } = normalizeMcpConfig(input)
 
     expect(normalized.mcpServers?.wsServer.transport).toBe('websocket')
+    expect(changed).toBe(true)
+  })
+
+  it('preserves canonical OAuth server configuration while normalizing transport', () => {
+    const input: MCPConfig = {
+      mcpServers: {
+        secure: {
+          url: 'https://example.com/mcp',
+          oauth: {
+            clientId: 'client-id',
+            tokens: {
+              access_token: 'token',
+              token_type: 'Bearer',
+            },
+            pendingAuth: {
+              codeVerifier: 'verifier',
+              state: 'state',
+            },
+          },
+        },
+      },
+    }
+
+    const { normalized, changed } = normalizeMcpConfig(input)
+
+    expect(normalized.mcpServers.secure.transport).toBe('streamableHttp')
+    expect(normalized.mcpServers.secure.oauth?.tokens?.access_token).toBe('token')
     expect(changed).toBe(true)
   })
 })
