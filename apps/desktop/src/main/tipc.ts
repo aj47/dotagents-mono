@@ -66,6 +66,7 @@ import type {
   SessionProfileSnapshot,
 } from "@dotagents/core"
 import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared/stt-models"
+import { buildConversationImageMarkdownMessage } from "@dotagents/shared/conversation-media-assets"
 import { inferTransportType, normalizeMcpConfig } from "../shared/mcp-utils"
 import { conversationService } from "./conversation-service"
 import { RendererHandlers } from "./renderer-handlers"
@@ -265,16 +266,14 @@ const t = tipc.create()
 
 type ScreenshotAttachmentInput = { name?: string; dataUrl: string }
 
-function escapeMarkdownImageAlt(text: string): string {
-  return text.replace(/[\[\]]/g, "")
-}
-
 function appendScreenshotToTranscript(transcript: string, screenshot?: ScreenshotAttachmentInput): string {
   if (!screenshot?.dataUrl) return transcript
 
-  const alt = escapeMarkdownImageAlt(screenshot.name || "Screen selection") || "Screen selection"
-  const screenshotMarkdown = `![${alt}](${screenshot.dataUrl})`
-  return transcript ? `${transcript}\n\n${screenshotMarkdown}` : screenshotMarkdown
+  return buildConversationImageMarkdownMessage(transcript, [{
+    url: screenshot.dataUrl,
+    altText: screenshot.name,
+    fallbackAltText: "Screen selection",
+  }])
 }
 
 function getLatestStoredUserMessageContent(conversation: Conversation | null, fallback: string): string {

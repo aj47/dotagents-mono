@@ -3,6 +3,8 @@ import {
   buildConversationVideoAssetStreamPlan,
   buildConversationVideoAssetUrl,
   buildConversationImageAssetUrl,
+  buildConversationImageMarkdownMessage,
+  buildConversationImageMarkdownReference,
   buildConversationVideoAssetHttpUrl,
   escapeMarkdownAltText,
   extractConversationImageMarkdownReferences,
@@ -196,6 +198,40 @@ describe('conversation video asset utilities', () => {
     expect(escapeMarkdownAltText(' [demo]\\ ')).toBe('demo');
     expect(MAX_RESPOND_TO_USER_IMAGES).toBe(4);
     expect(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES).toBe(12 * 1024 * 1024);
+  });
+
+  it('builds markdown image references with escaped alt text', () => {
+    expect(buildConversationImageMarkdownReference({
+      url: 'data:image/png;base64,AAAA',
+      altText: ' [demo]\\ ',
+    })).toBe('![demo](data:image/png;base64,AAAA)');
+
+    expect(buildConversationImageMarkdownReference({
+      url: 'data:image/png;base64,BBBB',
+      altText: '',
+      fallbackAltText: 'Screen [selection]',
+    })).toBe('![Screen selection](data:image/png;base64,BBBB)');
+  });
+
+  it('appends markdown image references to text messages', () => {
+    expect(buildConversationImageMarkdownMessage('  Describe this  ', [
+      {
+        url: 'data:image/png;base64,AAAA',
+        altText: 'First',
+        fallbackAltText: 'Image 1',
+      },
+      {
+        url: 'data:image/jpeg;base64,BBBB',
+        fallbackAltText: 'Image 2',
+      },
+    ])).toBe('Describe this\n\n![First](data:image/png;base64,AAAA)\n\n![Image 2](data:image/jpeg;base64,BBBB)');
+
+    expect(buildConversationImageMarkdownMessage('', [
+      {
+        url: 'data:image/png;base64,AAAA',
+        fallbackAltText: 'Only image',
+      },
+    ])).toBe('![Only image](data:image/png;base64,AAAA)');
   });
 
   it('extracts markdown conversation image references for model adapters', () => {

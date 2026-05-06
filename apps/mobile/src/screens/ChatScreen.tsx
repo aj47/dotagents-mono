@@ -74,7 +74,10 @@ import {
   type ToolActivityGroup,
 } from '@dotagents/shared/tool-activity-grouping';
 import { sanitizeMessageMediaContentForPreview } from '@dotagents/shared/message-display-utils';
-import { extractDataImageMarkdownReferences } from '@dotagents/shared/conversation-media-assets';
+import {
+  buildConversationImageMarkdownMessage,
+  extractDataImageMarkdownReferences,
+} from '@dotagents/shared/conversation-media-assets';
 import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
 import type { HandsFreePhase } from '@dotagents/shared/types';
 import type {
@@ -133,8 +136,6 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.heif': 'image/heif',
 };
 
-const escapeMarkdownImageAlt = (value: string) => value.replace(/[\[\]\\]/g, '').trim();
-
 const normalizeAutoTtsTextKey = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase();
 
 const getApproxBase64Bytes = (base64: string) => {
@@ -170,16 +171,14 @@ const inferImageMimeType = (asset: {
 };
 
 const buildMessageWithPendingImages = (text: string, images: PendingImageAttachment[]) => {
-  const trimmed = text.trim();
-  const imageMarkdown = images
-    .map((image, index) => {
-      const fallbackName = `Image ${index + 1}`;
-      const safeName = escapeMarkdownImageAlt(image.name || fallbackName) || fallbackName;
-      return `![${safeName}](${image.dataUrl})`;
-    })
-    .join('\n\n');
-
-  return [trimmed, imageMarkdown].filter(Boolean).join('\n\n');
+  return buildConversationImageMarkdownMessage(
+    text,
+    images.map((image, index) => ({
+      url: image.dataUrl,
+      altText: image.name,
+      fallbackAltText: `Image ${index + 1}`,
+    })),
+  );
 };
 
 type QuickStartShortcut = {

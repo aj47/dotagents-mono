@@ -89,6 +89,12 @@ export interface ConversationImageMarkdownReference {
   index: number;
 }
 
+export interface ConversationImageMarkdownInput {
+  url: string;
+  altText?: string | null;
+  fallbackAltText?: string | null;
+}
+
 export type ConversationVideoByteRange =
   | {
       satisfiable: true;
@@ -354,6 +360,21 @@ export function getConversationVideoExtensionForMimeType(mimeType: string): stri
 
 export function escapeMarkdownAltText(value: string): string {
   return value.replace(/[\[\]\\]/g, '').trim();
+}
+
+export function buildConversationImageMarkdownReference(input: ConversationImageMarkdownInput): string {
+  const fallbackAltText = input.fallbackAltText?.trim() || 'Image';
+  const safeAltText = escapeMarkdownAltText(input.altText || fallbackAltText) || fallbackAltText;
+  return `![${safeAltText}](${input.url})`;
+}
+
+export function buildConversationImageMarkdownMessage(
+  text: string,
+  images: ConversationImageMarkdownInput[],
+): string {
+  const trimmedText = text.trim();
+  const imageMarkdown = images.map(buildConversationImageMarkdownReference).join('\n\n');
+  return [trimmedText, imageMarkdown].filter(Boolean).join('\n\n');
 }
 
 export function getDecodedBase64ByteLength(rawBase64: string): number {
