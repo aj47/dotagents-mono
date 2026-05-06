@@ -1,4 +1,8 @@
-import type { KnowledgeNoteEntryType } from "./knowledge-note-domain"
+import {
+  normalizeKnowledgeNotePathValue,
+  titleizeKnowledgeNotePath,
+  type KnowledgeNoteEntryType,
+} from "./knowledge-note-domain"
 
 export type { KnowledgeNoteDateFilter, KnowledgeNoteSort } from "./knowledge-note-domain"
 
@@ -52,18 +56,6 @@ export type KnowledgeNotesOverview = {
   groups: KnowledgeNoteGroupSummary[]
 }
 
-function normalizePathLikeValue(value: string | undefined): string | undefined {
-  const normalized = (value ?? "")
-    .trim()
-    .replace(/\\+/g, "/")
-    .split("/")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join("/")
-
-  return normalized || undefined
-}
-
 function inferEntryType(group: string | undefined, series: string | undefined, text: string): KnowledgeNoteEntryType | undefined {
   if (/(^|\b)(index|overview|current state|current-state)(\b|$)/.test(text)) return "overview"
   if (series) return "entry"
@@ -71,22 +63,9 @@ function inferEntryType(group: string | undefined, series: string | undefined, t
   return undefined
 }
 
-function titleizePath(value: string): string {
-  return value
-    .split("/")
-    .map((segment) =>
-      segment
-        .split(/[-_]+/)
-        .filter(Boolean)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(" "),
-    )
-    .join(" / ")
-}
-
 export function inferKnowledgeNoteGrouping(note: KnowledgeNoteGroupingInput): KnowledgeNoteGrouping {
-  const explicitGroup = normalizePathLikeValue(note.group)
-  const explicitSeries = normalizePathLikeValue(note.series)
+  const explicitGroup = normalizeKnowledgeNotePathValue(note.group)
+  const explicitSeries = normalizeKnowledgeNotePathValue(note.series)
   const explicitEntryType = note.entryType
   const text = [note.id, note.title, note.summary ?? "", ...(note.tags ?? [])].join(" ").toLowerCase()
 
@@ -127,13 +106,13 @@ export function buildKnowledgeNoteSections<T extends KnowledgeNoteGroupingInput>
   for (const note of notes) {
     const grouping = getKnowledgeNoteGrouping(note)
     const groupKey = grouping.group ?? "__ungrouped__"
-    const groupLabel = grouping.group ? titleizePath(grouping.group) : "Ungrouped"
+    const groupLabel = grouping.group ? titleizeKnowledgeNotePath(grouping.group) : "Ungrouped"
     const group = groups.get(groupKey) ?? { label: groupLabel, notes: [], series: new Map<string, KnowledgeNoteSeriesSection<T>>() }
 
     if (grouping.series) {
       const existingSeries = group.series.get(grouping.series) ?? {
         key: `${groupKey}:${grouping.series}`,
-        label: titleizePath(grouping.series),
+        label: titleizeKnowledgeNotePath(grouping.series),
         notes: [],
       }
       existingSeries.notes.push(note)
