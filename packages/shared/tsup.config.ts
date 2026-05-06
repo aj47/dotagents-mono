@@ -58,6 +58,7 @@ export default defineConfig({
     'mcp-api': 'src/mcp-api.ts',
     'mcp-utils': 'src/mcp-utils.ts',
     'oauth-examples': 'src/oauth-examples.ts',
+    'frontmatter': 'src/frontmatter.ts',
     'discord-utils': 'src/discord-utils.ts',
     'discord-config': 'src/discord-config.ts',
     'linux-artifacts': 'src/linux-artifacts.ts',

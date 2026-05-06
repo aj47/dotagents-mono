@@ -286,6 +286,11 @@
       "import": "./dist/oauth-examples.mjs",
       "require": "./dist/oauth-examples.js"
     },
+    "./frontmatter": {
+      "types": "./dist/frontmatter.d.ts",
+      "import": "./dist/frontmatter.mjs",
+      "require": "./dist/frontmatter.js"
+    },
     "./discord-utils": {
       "types": "./dist/discord-utils.d.ts",
       "import": "./dist/discord-utils.mjs",
