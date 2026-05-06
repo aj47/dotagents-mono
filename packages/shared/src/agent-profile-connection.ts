@@ -30,6 +30,11 @@ export interface AgentConnectionFormFields {
   connectionCwd: string
 }
 
+export interface AgentConnectionEditableFields {
+  connectionType: AgentEditConnectionType
+  connectionBaseUrl?: string
+}
+
 export interface AgentConnectionRequestFields {
   connectionType: AgentEditConnectionType
   connectionAgent?: string
@@ -127,7 +132,7 @@ export function sanitizeAgentProfileConnection(
   return { type: "internal" }
 }
 
-export function applyConnectionTypeChange<T extends AgentConnectionFormFields>(
+export function applyConnectionTypeChange<T extends AgentConnectionEditableFields>(
   formData: T,
   nextConnectionType: AgentEditConnectionType,
 ): T {

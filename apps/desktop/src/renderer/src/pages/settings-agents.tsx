@@ -20,6 +20,7 @@ import {
 } from "@dotagents/shared/agent-profile-presets"
 import {
   type AgentEditConnectionType,
+  applyConnectionTypeChange,
   buildAgentConnectionCommandPreview,
   normalizeAgentConnectionArgs,
   normalizeAgentEditConnectionType,
@@ -755,7 +756,7 @@ export function SettingsAgents() {
               )}
               <div className="space-y-2">
                 <Label htmlFor="connectionType">Connection Type</Label>
-                <Select value={editing.connectionType} onValueChange={(v: ConnectionType) => setEditing({ ...editing, connectionType: v })}>
+                <Select value={editing.connectionType} onValueChange={(v: ConnectionType) => setEditing(applyConnectionTypeChange(editing, v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="internal">Internal (built-in agent)</SelectItem>

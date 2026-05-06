@@ -114,6 +114,16 @@ describe("agent connection request helpers", () => {
       connectionArgs: "agent.js --acp",
       connectionCwd: "/tmp/agent",
     })
+
+    expect(applyConnectionTypeChange({
+      connectionType: "remote",
+      connectionBaseUrl: "https://remote.example/v1",
+      displayName: "Desktop Agent",
+    }, "internal")).toEqual({
+      connectionType: "internal",
+      connectionBaseUrl: "",
+      displayName: "Desktop Agent",
+    })
   })
 
   it("normalizes command args and previews consistently for command verification", () => {
