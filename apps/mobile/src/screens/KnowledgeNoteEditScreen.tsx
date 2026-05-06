@@ -3,13 +3,13 @@ import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Activi
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
-import {
-  ExtendedSettingsApiClient,
+import type {
   KnowledgeNote,
   KnowledgeNoteContext,
   KnowledgeNoteCreateRequest,
   KnowledgeNoteUpdateRequest,
-} from '../lib/settingsApi';
+} from '@dotagents/shared/api-types';
+import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '@dotagents/shared/accessibility-utils';
 import { useConfigContext } from '../store/config';
 import {

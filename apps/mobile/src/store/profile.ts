@@ -6,7 +6,8 @@
  */
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { ExtendedSettingsApiClient, Profile } from '../lib/settingsApi';
+import type { Profile } from '@dotagents/shared/api-types';
+import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { getAcpxMainAgentOptions, toMainAgentProfile } from '@dotagents/shared/main-agent-selection';
 
 export interface ProfileContextValue {

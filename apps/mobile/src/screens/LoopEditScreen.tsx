@@ -14,13 +14,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
-import {
+import type {
   AgentSessionCandidatesResponse,
-  AgentProfile,
-  ExtendedSettingsApiClient,
+  ApiAgentProfile as AgentProfile,
   Loop,
   LoopCreateRequest,
   LoopUpdateRequest,
+} from '@dotagents/shared/api-types';
+import {
+  ExtendedSettingsApiClient,
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '@dotagents/shared/accessibility-utils';
 import { useConfigContext } from '../store/config';
