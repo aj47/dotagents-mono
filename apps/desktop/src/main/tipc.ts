@@ -67,7 +67,7 @@ import type {
 } from "@dotagents/core"
 import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared/stt-models"
 import { buildConversationImageMarkdownMessage } from "@dotagents/shared/conversation-media-assets"
-import { inferTransportType, normalizeMcpConfig } from "@dotagents/shared/mcp-utils"
+import { parseMcpServerConfigImportRequestBody } from "@dotagents/shared/mcp-api"
 import { conversationService } from "./conversation-service"
 import { RendererHandlers } from "./renderer-handlers"
 import {
@@ -112,6 +112,14 @@ import { stopAgentSessionById } from "./agent-session-actions"
 import { describeAgentSessionId } from "./agent-run-utils"
 
 export { runAgentLoopSession } from "./agent-loop-runner"
+
+function parseMcpConfigImportBody(body: unknown): MCPConfig {
+  const parsedRequest = parseMcpServerConfigImportRequestBody(body)
+  if (parsedRequest.ok === false) {
+    throw new Error(parsedRequest.error)
+  }
+  return parsedRequest.request.config as MCPConfig
+}
 
 async function withRepeatTaskSessionFlag<T extends {
   conversationId?: string
@@ -2313,42 +2321,7 @@ export const router = {
 
     try {
       const configContent = fs.readFileSync(result.filePaths[0], "utf8")
-      const mcpConfig = JSON.parse(configContent) as MCPConfig
-      const { normalized: normalizedConfig } = normalizeMcpConfig(mcpConfig)
-
-      // Basic validation
-      if (!normalizedConfig.mcpServers || typeof normalizedConfig.mcpServers !== "object") {
-        throw new Error("Invalid MCP config: missing or invalid mcpServers")
-      }
-
-      // Validate each server config based on transport type
-      for (const [serverName, serverConfig] of Object.entries(
-        normalizedConfig.mcpServers,
-      )) {
-        const transportType = inferTransportType(serverConfig)
-
-        if (transportType === "stdio") {
-          // stdio transport requires command and args
-          if (!serverConfig.command || !Array.isArray(serverConfig.args)) {
-            throw new Error(
-              `Invalid server config for "${serverName}": stdio transport requires "command" and "args" fields. For HTTP servers, use "transport": "streamableHttp" with "url" field.`,
-            )
-          }
-        } else if (transportType === "websocket" || transportType === "streamableHttp") {
-          // Remote transports require url
-          if (!serverConfig.url) {
-            throw new Error(
-              `Invalid server config for "${serverName}": ${transportType} transport requires "url" field`,
-            )
-          }
-        } else {
-          throw new Error(
-            `Invalid server config for "${serverName}": unsupported transport type "${transportType}". Valid types: "stdio", "websocket", "streamableHttp"`,
-          )
-        }
-      }
-
-      return normalizedConfig
+      return parseMcpConfigImportBody(JSON.parse(configContent))
     } catch (error) {
       throw new Error(
         `Failed to load MCP config: ${error instanceof Error ? error.message : String(error)}`,
@@ -2360,42 +2333,7 @@ export const router = {
     .input<{ text: string }>()
     .action(async ({ input }) => {
       try {
-        const mcpConfig = JSON.parse(input.text) as MCPConfig
-        const { normalized: normalizedConfig } = normalizeMcpConfig(mcpConfig)
-
-        // Basic validation - same as file upload
-        if (!normalizedConfig.mcpServers || typeof normalizedConfig.mcpServers !== "object") {
-          throw new Error("Invalid MCP config: missing or invalid mcpServers")
-        }
-
-        // Validate each server config based on transport type
-        for (const [serverName, serverConfig] of Object.entries(
-          normalizedConfig.mcpServers,
-        )) {
-          const transportType = inferTransportType(serverConfig)
-
-          if (transportType === "stdio") {
-            // stdio transport requires command and args
-            if (!serverConfig.command || !Array.isArray(serverConfig.args)) {
-              throw new Error(
-                `Invalid server config for "${serverName}": stdio transport requires "command" and "args" fields. For HTTP servers, use "transport": "streamableHttp" with "url" field.`,
-              )
-            }
-          } else if (transportType === "websocket" || transportType === "streamableHttp") {
-            // Remote transports require url
-            if (!serverConfig.url) {
-              throw new Error(
-                `Invalid server config for "${serverName}": ${transportType} transport requires "url" field`,
-              )
-            }
-          } else {
-            throw new Error(
-              `Invalid server config for "${serverName}": unsupported transport type "${transportType}". Valid types: "stdio", "websocket", "streamableHttp"`,
-            )
-          }
-        }
-
-        return normalizedConfig
+        return parseMcpConfigImportBody(JSON.parse(input.text))
       } catch (error) {
         throw new Error(
           `Invalid MCP config: ${error instanceof Error ? error.message : String(error)}`,
@@ -2433,74 +2371,7 @@ export const router = {
     .input<{ config: MCPConfig }>()
     .action(async ({ input }) => {
       try {
-        const { normalized: normalizedConfig } = normalizeMcpConfig(input.config)
-
-        if (!normalizedConfig.mcpServers || typeof normalizedConfig.mcpServers !== "object") {
-          return { valid: false, error: "Missing or invalid mcpServers" }
-        }
-
-        for (const [serverName, serverConfig] of Object.entries(
-          normalizedConfig.mcpServers,
-        )) {
-          const transportType = inferTransportType(serverConfig)
-
-          // Validate based on transport type
-          if (transportType === "stdio") {
-            // stdio transport requires command and args
-            if (!serverConfig.command) {
-              return {
-                valid: false,
-                error: `Server "${serverName}": stdio transport requires "command" field. For HTTP servers, use "transport": "streamableHttp" with "url" field.`,
-              }
-            }
-            if (!Array.isArray(serverConfig.args)) {
-              return {
-                valid: false,
-                error: `Server "${serverName}": stdio transport requires "args" as an array`,
-              }
-            }
-          } else if (transportType === "websocket" || transportType === "streamableHttp") {
-            // Remote transports require url
-            if (!serverConfig.url) {
-              return {
-                valid: false,
-                error: `Server "${serverName}": ${transportType} transport requires "url" field`,
-              }
-            }
-          } else {
-            return {
-              valid: false,
-              error: `Server "${serverName}": unsupported transport type "${transportType}". Valid types: "stdio", "websocket", "streamableHttp"`,
-            }
-          }
-
-          // Common validations for all transport types
-          if (serverConfig.env && typeof serverConfig.env !== "object") {
-            return {
-              valid: false,
-              error: `Server "${serverName}": env must be an object`,
-            }
-          }
-          if (
-            serverConfig.timeout &&
-            typeof serverConfig.timeout !== "number"
-          ) {
-            return {
-              valid: false,
-              error: `Server "${serverName}": timeout must be a number`,
-            }
-          }
-          if (
-            serverConfig.disabled &&
-            typeof serverConfig.disabled !== "boolean"
-          ) {
-            return {
-              valid: false,
-              error: `Server "${serverName}": disabled must be a boolean`,
-            }
-          }
-        }
-
+        parseMcpConfigImportBody(input.config)
         return { valid: true }
       } catch (error) {
         return {
