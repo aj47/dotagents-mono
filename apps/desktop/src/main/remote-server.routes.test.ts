@@ -36,6 +36,12 @@ function getRemoteServerDesktopAdaptersSource(): string {
   return readFileSync(remoteServerDesktopAdaptersPath, "utf8")
 }
 
+function getServeSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const servePath = path.join(testDir, "serve.ts")
+  return readFileSync(servePath, "utf8")
+}
+
 function getAgentLoopRunnerSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const agentLoopRunnerPath = path.join(testDir, "agent-loop-runner.ts")
@@ -1119,6 +1125,7 @@ describe("remote-server route registration", () => {
 
   it("delegates conversation sync and media routes to conversation actions", () => {
     const source = getRemoteServerSource()
+    const serveSource = getServeSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const conversationActionsSource = getConversationActionsSource()
     const conversationImageAssetsSource = getConversationImageAssetsSource()
@@ -1167,9 +1174,13 @@ describe("remote-server route registration", () => {
     expect(sharedConversationMediaAssetsSource).toContain("export const CONVERSATION_IMAGE_ASSETS_DIR_NAME = '_images'")
     expect(sharedConversationMediaAssetsSource).toContain("export function buildConversationImageAssetUrl(")
     expect(sharedConversationMediaAssetsSource).toContain("export function isSafeConversationImageAssetFileName(")
+    expect(sharedConversationMediaAssetsSource).toContain("export function parseConversationImageAssetUrl(")
+    expect(sharedConversationMediaAssetsSource).toContain("export function isConversationImageAssetUrl(")
     expect(conversationImageAssetsSource).toContain('from "@dotagents/shared/conversation-media-assets"')
     expect(conversationImageAssetsSource).toContain("isSafeConversationImageAssetFileName(fileName)")
     expect(conversationImageAssetsSource).not.toContain("SAFE_IMAGE_ASSET_FILE_REGEX")
+    expect(serveSource).toContain("parseConversationImageAssetUrl(request.url)")
+    expect(serveSource).toContain("parseConversationVideoAssetUrl(request.url)")
     expect(conversationActionsSource).toContain("fs.createReadStream(assetPath")
   })
 

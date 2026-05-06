@@ -6,6 +6,7 @@ export const CONVERSATION_IMAGE_ASSET_HOST = 'conversation-image';
 export const CONVERSATION_IMAGE_ASSETS_DIR_NAME = '_images';
 
 const CONVERSATION_VIDEO_ASSET_URL_REGEX = /^assets:\/\/conversation-video\/([^/]+)\/([^/?#]+)(?:[?#].*)?$/i;
+const CONVERSATION_IMAGE_ASSET_URL_REGEX = /^assets:\/\/conversation-image\/([^/]+)\/([^/?#]+)(?:[?#].*)?$/i;
 const VIDEO_EXTENSION_REGEX = /\.(?:mp4|m4v|webm|mov|ogv)(?:[?#].*)?$/i;
 const SAFE_VIDEO_ASSET_FILE_REGEX = /^[a-f0-9]{16,64}\.(?:mp4|m4v|webm|mov|ogv)$/u;
 const SAFE_IMAGE_ASSET_FILE_REGEX = /^[a-f0-9]{16,64}\.(?:png|apng|gif|jpe?g|webp|bmp|avif)$/u;
@@ -38,6 +39,11 @@ export const MAX_RESPOND_TO_USER_TOTAL_VIDEO_BYTES = 500 * 1024 * 1024;
 export const MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES = 12 * 1024 * 1024;
 
 export interface ConversationVideoAssetRef {
+  conversationId: string;
+  fileName: string;
+}
+
+export interface ConversationImageAssetRef {
   conversationId: string;
   fileName: string;
 }
@@ -150,8 +156,26 @@ export function parseConversationVideoAssetUrl(rawUrl: string): ConversationVide
   }
 }
 
+export function parseConversationImageAssetUrl(rawUrl: string): ConversationImageAssetRef | null {
+  const match = rawUrl.trim().match(CONVERSATION_IMAGE_ASSET_URL_REGEX);
+  if (!match) return null;
+
+  try {
+    return {
+      conversationId: decodeURIComponent(match[1]),
+      fileName: decodeURIComponent(match[2]),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function isConversationVideoAssetUrl(rawUrl?: string): boolean {
   return !!rawUrl && parseConversationVideoAssetUrl(rawUrl) !== null;
+}
+
+export function isConversationImageAssetUrl(rawUrl?: string): boolean {
+  return !!rawUrl && parseConversationImageAssetUrl(rawUrl) !== null;
 }
 
 export function isRenderableVideoUrl(rawUrl?: string): boolean {

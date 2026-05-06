@@ -17,6 +17,7 @@ import {
   isAllowedRespondToUserVideoUrl,
   isSafeConversationVideoAssetFileName,
   isSafeConversationImageAssetFileName,
+  isConversationImageAssetUrl,
   isConversationVideoAssetUrl,
   isRenderableVideoUrl,
   parseRespondToUserArgs,
@@ -25,6 +26,7 @@ import {
   MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES,
   MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES,
   MAX_RESPOND_TO_USER_VIDEO_FILE_BYTES,
+  parseConversationImageAssetUrl,
   parseConversationVideoAssetUrl,
   type RespondToUserAssetHandlers,
   validateRespondToUserImageFile,
@@ -42,6 +44,15 @@ describe('conversation video asset utilities', () => {
       conversationId: 'conv_1',
       fileName: 'abcdef1234567890.mp4',
     });
+  });
+
+  it('parses conversation image asset urls', () => {
+    expect(parseConversationImageAssetUrl('assets://conversation-image/conv%201/abcdef1234567890.png?preview=1')).toEqual({
+      conversationId: 'conv 1',
+      fileName: 'abcdef1234567890.png',
+    });
+    expect(parseConversationImageAssetUrl('assets://conversation-image/%E0%A4%A/abcdef1234567890.png')).toBeNull();
+    expect(parseConversationImageAssetUrl('assets://conversation-video/conv_1/abcdef1234567890.mp4')).toBeNull();
   });
 
   it('detects renderable video urls', () => {
@@ -65,6 +76,13 @@ describe('conversation video asset utilities', () => {
     expect(isConversationVideoAssetUrl('assets://recording/recording_1/demo.mp4')).toBe(false);
     expect(isConversationVideoAssetUrl('https://example.com/demo.mp4')).toBe(false);
     expect(isConversationVideoAssetUrl(undefined)).toBe(false);
+  });
+
+  it('detects conversation image asset urls', () => {
+    expect(isConversationImageAssetUrl('assets://conversation-image/conv_1/abcdef1234567890.png')).toBe(true);
+    expect(isConversationImageAssetUrl('assets://conversation-video/conv_1/abcdef1234567890.mp4')).toBe(false);
+    expect(isConversationImageAssetUrl('https://example.com/image.png')).toBe(false);
+    expect(isConversationImageAssetUrl(undefined)).toBe(false);
   });
 
   it('uses link text before filename for labels', () => {
