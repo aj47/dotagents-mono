@@ -41,6 +41,8 @@ export interface AgentStoppedProgressUpdateOptions {
   clearPendingToolApproval?: boolean
 }
 
+export type AgentSessionIdKind = "missing" | "pending" | "subsession" | "session" | "unknown"
+
 export interface AgentIterationLimits {
   loopMaxIterations: number
   guardrailBudget: number
@@ -159,6 +161,14 @@ export function buildAgentStoppedProgressUpdate(
     finalContent: AGENT_STOP_NOTE,
     ...(options.clearPendingToolApproval ? { pendingToolApproval: undefined } : {}),
   }
+}
+
+export function describeAgentSessionId(sessionId?: string | null): AgentSessionIdKind {
+  if (!sessionId) return "missing"
+  if (sessionId.startsWith("pending-")) return "pending"
+  if (sessionId.startsWith("subsession_")) return "subsession"
+  if (sessionId.startsWith("session_")) return "session"
+  return "unknown"
 }
 
 function getLatestAssistantMessageContent(

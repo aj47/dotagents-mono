@@ -107,16 +107,9 @@ import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
 import { stopAgentSessionById } from "./agent-session-actions"
+import { describeAgentSessionId } from "./agent-run-utils"
 
 export { runAgentLoopSession } from "./agent-loop-runner"
-
-function describeAgentSessionId(sessionId?: string | null): "missing" | "pending" | "subsession" | "session" | "unknown" {
-  if (!sessionId) return "missing"
-  if (sessionId.startsWith("pending-")) return "pending"
-  if (sessionId.startsWith("subsession_")) return "subsession"
-  if (sessionId.startsWith("session_")) return "session"
-  return "unknown"
-}
 
 async function withRepeatTaskSessionFlag<T extends {
   conversationId?: string

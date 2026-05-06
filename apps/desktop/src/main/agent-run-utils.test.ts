@@ -7,6 +7,7 @@ import {
   appendAgentStopNote,
   buildAgentStoppedProgressUpdate,
   buildProfileContext,
+  describeAgentSessionId,
   getPreferredDelegationOutput,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
@@ -81,6 +82,16 @@ describe("buildAgentStoppedProgressUpdate", () => {
       isComplete: true,
       finalContent: AGENT_STOP_NOTE,
     })
+  })
+})
+
+describe("describeAgentSessionId", () => {
+  it("re-exports the shared session ID classifier", () => {
+    expect(describeAgentSessionId(undefined)).toBe("missing")
+    expect(describeAgentSessionId("pending-client-token")).toBe("pending")
+    expect(describeAgentSessionId("subsession_123")).toBe("subsession")
+    expect(describeAgentSessionId("session_123")).toBe("session")
+    expect(describeAgentSessionId("acp-123")).toBe("unknown")
   })
 })
 

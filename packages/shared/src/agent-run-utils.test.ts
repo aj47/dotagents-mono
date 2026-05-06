@@ -7,6 +7,7 @@ import {
   appendAgentStopNote,
   buildAgentStoppedProgressUpdate,
   buildProfileContext,
+  describeAgentSessionId,
   getPreferredDelegationOutput,
   resolveAgentIterationLimits,
 } from './agent-run-utils';
@@ -89,6 +90,18 @@ describe('buildAgentStoppedProgressUpdate', () => {
       timestamp: 1234,
       clearPendingToolApproval: true,
     })).toHaveProperty('pendingToolApproval', undefined);
+  });
+});
+
+describe('describeAgentSessionId', () => {
+  it('classifies known desktop and ACP session ID families', () => {
+    expect(describeAgentSessionId(undefined)).toBe('missing');
+    expect(describeAgentSessionId(null)).toBe('missing');
+    expect(describeAgentSessionId('')).toBe('missing');
+    expect(describeAgentSessionId('pending-client-token')).toBe('pending');
+    expect(describeAgentSessionId('subsession_123')).toBe('subsession');
+    expect(describeAgentSessionId('session_123')).toBe('session');
+    expect(describeAgentSessionId('acp-123')).toBe('unknown');
   });
 });
 

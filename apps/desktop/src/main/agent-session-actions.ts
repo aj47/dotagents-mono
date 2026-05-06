@@ -1,25 +1,18 @@
 import { logApp, logLLM } from "./debug"
 import { getAppSessionForAcpSession } from "./acp-session-state"
-import { buildAgentStoppedProgressUpdate } from "./agent-run-utils"
+import {
+  buildAgentStoppedProgressUpdate,
+  describeAgentSessionId,
+} from "./agent-run-utils"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { messageQueueService } from "./message-queue-service"
 import { agentSessionStateManager, toolApprovalManager } from "./state"
 
-type AgentSessionIdKind = "missing" | "pending" | "subsession" | "session" | "unknown"
-
 export type StopAgentSessionResult = {
   success: true
   sessionId: string
   conversationId?: string
-}
-
-function describeAgentSessionId(sessionId?: string | null): AgentSessionIdKind {
-  if (!sessionId) return "missing"
-  if (sessionId.startsWith("pending-")) return "pending"
-  if (sessionId.startsWith("subsession_")) return "subsession"
-  if (sessionId.startsWith("session_")) return "session"
-  return "unknown"
 }
 
 export async function stopAgentSessionById(sessionId: string): Promise<StopAgentSessionResult> {
