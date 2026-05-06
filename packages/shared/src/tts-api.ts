@@ -7,6 +7,8 @@ import {
 } from './tts-preprocessing';
 import {
   DEFAULT_OPENAI_TTS_RESPONSE_FORMAT,
+  DEFAULT_TTS_PREPROCESSING_ENABLED,
+  DEFAULT_TTS_USE_LLM_PREPROCESSING,
   GROQ_ARABIC_TTS_MODEL,
   getTextToSpeechModelDefault,
   getTextToSpeechSpeedDefault,
@@ -272,8 +274,8 @@ export async function generateTTS<TConfig extends GenerateTtsConfigLike>(
   const provider = input.providerId || config.ttsProviderId || 'openai';
 
   let processedText = input.text;
-  if (config.ttsPreprocessingEnabled !== false) {
-    if (config.ttsUseLLMPreprocessing && options.preprocessTextForTTSWithLLM) {
+  if (config.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED) {
+    if ((config.ttsUseLLMPreprocessing ?? DEFAULT_TTS_USE_LLM_PREPROCESSING) && options.preprocessTextForTTSWithLLM) {
       processedText = await options.preprocessTextForTTSWithLLM(input.text, config.ttsLLMPreprocessingProviderId);
     } else {
       processedText = preprocessTextForTTS(input.text, getTTSPreprocessingOptionsFromConfig(config));

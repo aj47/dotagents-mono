@@ -6,6 +6,12 @@
  * consistent TTS output across platforms.
  */
 
+import {
+  DEFAULT_TTS_CONVERT_MARKDOWN,
+  DEFAULT_TTS_REMOVE_CODE_BLOCKS,
+  DEFAULT_TTS_REMOVE_URLS,
+} from "./text-to-speech-settings"
+
 export interface TTSPreprocessingOptions {
   removeCodeBlocks?: boolean
   removeUrls?: boolean
@@ -23,9 +29,9 @@ export interface TTSPreprocessingConfigLike {
 }
 
 const DEFAULT_OPTIONS: TTSPreprocessingOptions = {
-  removeCodeBlocks: true,
-  removeUrls: true,
-  convertMarkdown: true,
+  removeCodeBlocks: DEFAULT_TTS_REMOVE_CODE_BLOCKS,
+  removeUrls: DEFAULT_TTS_REMOVE_URLS,
+  convertMarkdown: DEFAULT_TTS_CONVERT_MARKDOWN,
   removeSymbols: true,
   convertNumbers: true,
   maxLength: 4000, // Reasonable limit for TTS
@@ -39,9 +45,9 @@ export function getTTSPreprocessingOptionsFromConfig(
   config: TTSPreprocessingConfigLike,
 ): Pick<TTSPreprocessingOptions, "removeCodeBlocks" | "removeUrls" | "convertMarkdown"> {
   return {
-    removeCodeBlocks: config.ttsRemoveCodeBlocks ?? true,
-    removeUrls: config.ttsRemoveUrls ?? true,
-    convertMarkdown: config.ttsConvertMarkdown ?? true,
+    removeCodeBlocks: config.ttsRemoveCodeBlocks ?? DEFAULT_TTS_REMOVE_CODE_BLOCKS,
+    removeUrls: config.ttsRemoveUrls ?? DEFAULT_TTS_REMOVE_URLS,
+    convertMarkdown: config.ttsConvertMarkdown ?? DEFAULT_TTS_CONVERT_MARKDOWN,
   }
 }
 
@@ -51,13 +57,13 @@ export function getTTSPreprocessingOptionsFromConfig(
 export function buildTTSPreprocessingPrompt(config: TTSPreprocessingConfigLike): string {
   const instructions: string[] = []
 
-  if (config.ttsRemoveCodeBlocks ?? true) {
+  if (config.ttsRemoveCodeBlocks ?? DEFAULT_TTS_REMOVE_CODE_BLOCKS) {
     instructions.push("- Remove code blocks and replace with brief description if relevant")
   }
-  if (config.ttsRemoveUrls ?? true) {
+  if (config.ttsRemoveUrls ?? DEFAULT_TTS_REMOVE_URLS) {
     instructions.push("- Remove URLs but mention if a link was shared")
   }
-  if (config.ttsConvertMarkdown ?? true) {
+  if (config.ttsConvertMarkdown ?? DEFAULT_TTS_CONVERT_MARKDOWN) {
     instructions.push("- Convert markdown formatting to natural speech")
     instructions.push("- Strip bullet/list markers silently; do not say or add words like \"item\" for list entries")
   }

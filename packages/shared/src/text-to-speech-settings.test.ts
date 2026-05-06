@@ -5,6 +5,13 @@ import {
   DEFAULT_OPENAI_TTS_RESPONSE_FORMAT,
   DEFAULT_SUPERTONIC_TTS_LANGUAGE,
   DEFAULT_SUPERTONIC_TTS_STEPS,
+  DEFAULT_TTS_AUTO_PLAY,
+  DEFAULT_TTS_CONVERT_MARKDOWN,
+  DEFAULT_TTS_ENABLED,
+  DEFAULT_TTS_PREPROCESSING_ENABLED,
+  DEFAULT_TTS_REMOVE_CODE_BLOCKS,
+  DEFAULT_TTS_REMOVE_URLS,
+  DEFAULT_TTS_USE_LLM_PREPROCESSING,
   GROQ_ARABIC_TTS_MODEL,
   MAX_SUPERTONIC_TTS_STEPS,
   MIN_SUPERTONIC_TTS_STEPS,
@@ -30,6 +37,16 @@ import {
 } from "./text-to-speech-settings"
 
 describe("text to speech settings helpers", () => {
+  it("exports shared boolean defaults", () => {
+    expect(DEFAULT_TTS_ENABLED).toBe(true)
+    expect(DEFAULT_TTS_AUTO_PLAY).toBe(true)
+    expect(DEFAULT_TTS_PREPROCESSING_ENABLED).toBe(true)
+    expect(DEFAULT_TTS_REMOVE_CODE_BLOCKS).toBe(true)
+    expect(DEFAULT_TTS_REMOVE_URLS).toBe(true)
+    expect(DEFAULT_TTS_CONVERT_MARKDOWN).toBe(true)
+    expect(DEFAULT_TTS_USE_LLM_PREPROCESSING).toBe(false)
+  })
+
   it("selects provider-specific model values", () => {
     expect(getTextToSpeechModelValue({
       ttsProviderId: "openai",

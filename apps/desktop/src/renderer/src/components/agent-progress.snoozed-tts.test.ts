@@ -37,6 +37,13 @@ describe("agent progress TTS guardrails", () => {
     expect(agentProgressSource).toContain('isLast &&')
   })
 
+  it("uses shared TTS defaults when config fields are unset", () => {
+    expect(agentProgressSource).toContain("DEFAULT_TTS_ENABLED")
+    expect(agentProgressSource).toContain("DEFAULT_TTS_AUTO_PLAY")
+    expect(agentProgressSource).toContain("configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED")
+    expect(agentProgressSource).toContain("configQuery.data?.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY")
+  })
+
   it("suppresses auto-play for historical sessions that mount with progress already complete", () => {
     expect(agentProgressSource).toContain('const observedLiveProgressRef = useRef(false)')
     expect(agentProgressSource).toContain('if (!observedLiveProgressRef.current) {')

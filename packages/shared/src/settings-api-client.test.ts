@@ -43,6 +43,15 @@ import {
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
 } from './observability-config';
+import {
+  DEFAULT_TTS_AUTO_PLAY,
+  DEFAULT_TTS_CONVERT_MARKDOWN,
+  DEFAULT_TTS_ENABLED,
+  DEFAULT_TTS_PREPROCESSING_ENABLED,
+  DEFAULT_TTS_REMOVE_CODE_BLOCKS,
+  DEFAULT_TTS_REMOVE_URLS,
+  DEFAULT_TTS_USE_LLM_PREPROCESSING,
+} from './text-to-speech-settings';
 
 function jsonResponse(body: unknown, status: number = 200) {
   return new Response(JSON.stringify(body), {
@@ -380,6 +389,13 @@ describe('SettingsApiClient', () => {
       maxConversationsToKeep: 250,
       autoSaveConversations: false,
       ttsLLMPreprocessingProviderId: 'gemini',
+      ttsEnabled: DEFAULT_TTS_ENABLED,
+      ttsAutoPlay: DEFAULT_TTS_AUTO_PLAY,
+      ttsPreprocessingEnabled: DEFAULT_TTS_PREPROCESSING_ENABLED,
+      ttsRemoveCodeBlocks: DEFAULT_TTS_REMOVE_CODE_BLOCKS,
+      ttsRemoveUrls: DEFAULT_TTS_REMOVE_URLS,
+      ttsConvertMarkdown: DEFAULT_TTS_CONVERT_MARKDOWN,
+      ttsUseLLMPreprocessing: DEFAULT_TTS_USE_LLM_PREPROCESSING,
       openaiTtsModel: 'gpt-4o-mini-tts',
       openaiTtsVoice: 'alloy',
       openaiTtsSpeed: 1.0,

@@ -50,6 +50,13 @@ export const DEFAULT_OPENAI_TTS_RESPONSE_FORMAT: OpenAITtsResponseFormat = "mp3"
 export const OPENAI_TTS_RESPONSE_FORMATS = ["mp3", "opus", "aac", "flac", "wav", "pcm"] as const
 export const GROQ_ARABIC_TTS_MODEL = "canopylabs/orpheus-arabic-saudi"
 export const DEFAULT_GROQ_ARABIC_TTS_VOICE = "fahad"
+export const DEFAULT_TTS_ENABLED = true
+export const DEFAULT_TTS_AUTO_PLAY = true
+export const DEFAULT_TTS_PREPROCESSING_ENABLED = true
+export const DEFAULT_TTS_REMOVE_CODE_BLOCKS = true
+export const DEFAULT_TTS_REMOVE_URLS = true
+export const DEFAULT_TTS_CONVERT_MARKDOWN = true
+export const DEFAULT_TTS_USE_LLM_PREPROCESSING = false
 
 const TEXT_TO_SPEECH_SPEED_SETTINGS: Record<string, TextToSpeechSpeedSetting> = {
   openai: {

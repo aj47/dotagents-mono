@@ -32,6 +32,15 @@ import {
   DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
   type STT_PROVIDER_ID,
 } from "@dotagents/shared/providers"
+import {
+  DEFAULT_TTS_AUTO_PLAY,
+  DEFAULT_TTS_CONVERT_MARKDOWN,
+  DEFAULT_TTS_ENABLED,
+  DEFAULT_TTS_PREPROCESSING_ENABLED,
+  DEFAULT_TTS_REMOVE_CODE_BLOCKS,
+  DEFAULT_TTS_REMOVE_URLS,
+  DEFAULT_TTS_USE_LLM_PREPROCESSING,
+} from "@dotagents/shared/text-to-speech-settings"
 import { SUPPORTED_LANGUAGES } from "@dotagents/shared/languages"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Input } from "@renderer/components/ui/input"
@@ -1141,7 +1150,7 @@ export function Component() {
         <ControlGroup collapsible defaultCollapsed title="Text to Speech" forceOpen={isSearching}>
           <Control label="Enabled" className="px-3">
             <Switch
-              defaultChecked={configQuery.data.ttsEnabled ?? false}
+              defaultChecked={configQuery.data.ttsEnabled ?? DEFAULT_TTS_ENABLED}
               onCheckedChange={async (value) => {
                 if (!value) {
                   ttsManager.stopAll("settings-global-tts-disabled")
@@ -1159,10 +1168,10 @@ export function Component() {
             />
           </Control>
 
-          {configQuery.data.ttsEnabled && (
+          {(configQuery.data.ttsEnabled ?? DEFAULT_TTS_ENABLED) && (
             <Control label={<ControlLabel label="Auto-play" tooltip="Automatically play TTS audio when assistant responses complete" />} className="px-3">
               <Switch
-                defaultChecked={configQuery.data.ttsAutoPlay ?? true}
+                defaultChecked={configQuery.data.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY}
                 onCheckedChange={(value) => {
                   saveConfig({
                     ttsAutoPlay: value,
@@ -1172,7 +1181,7 @@ export function Component() {
             </Control>
           )}
 
-          {configQuery.data.ttsEnabled && (
+          {(configQuery.data.ttsEnabled ?? DEFAULT_TTS_ENABLED) && (
             <div className="px-3 py-1.5">
               <button
                 type="button"
@@ -1184,11 +1193,11 @@ export function Component() {
             </div>
           )}
 
-          {configQuery.data.ttsEnabled && (
+          {(configQuery.data.ttsEnabled ?? DEFAULT_TTS_ENABLED) && (
             <>
               <Control label={<ControlLabel label="Text Preprocessing" tooltip="Enable preprocessing to make text more speech-friendly by removing code blocks, URLs, and converting markdown" />} className="px-3">
                 <Switch
-                  defaultChecked={configQuery.data.ttsPreprocessingEnabled ?? true}
+                  defaultChecked={configQuery.data.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED}
                   onCheckedChange={(value) => {
                     saveConfig({
                       ttsPreprocessingEnabled: value,
@@ -1197,11 +1206,11 @@ export function Component() {
                 />
               </Control>
 
-              {configQuery.data.ttsPreprocessingEnabled !== false && (
+              {(configQuery.data.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED) && (
                 <>
                   <Control label={<ControlLabel label="Remove Code Blocks" tooltip="Remove code blocks and replace with descriptive text" />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsRemoveCodeBlocks ?? true}
+                      defaultChecked={configQuery.data.ttsRemoveCodeBlocks ?? DEFAULT_TTS_REMOVE_CODE_BLOCKS}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsRemoveCodeBlocks: value,
@@ -1212,7 +1221,7 @@ export function Component() {
 
                   <Control label={<ControlLabel label="Remove URLs" tooltip="Remove URLs and replace with descriptive text" />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsRemoveUrls ?? true}
+                      defaultChecked={configQuery.data.ttsRemoveUrls ?? DEFAULT_TTS_REMOVE_URLS}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsRemoveUrls: value,
@@ -1223,7 +1232,7 @@ export function Component() {
 
                   <Control label={<ControlLabel label="Convert Markdown" tooltip="Convert markdown formatting to speech-friendly text" />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsConvertMarkdown ?? true}
+                      defaultChecked={configQuery.data.ttsConvertMarkdown ?? DEFAULT_TTS_CONVERT_MARKDOWN}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsConvertMarkdown: value,
@@ -1234,7 +1243,7 @@ export function Component() {
 
                   <Control label={<ControlLabel label="Use AI for TTS Preprocessing" tooltip="Use an LLM to intelligently convert text to natural speech. More robust handling of abbreviations, acronyms, and context-dependent pronunciation. Adds ~1-2 seconds latency. Falls back to regex if disabled or unavailable." />} className="px-3">
                     <Switch
-                      defaultChecked={configQuery.data.ttsUseLLMPreprocessing ?? false}
+                      defaultChecked={configQuery.data.ttsUseLLMPreprocessing ?? DEFAULT_TTS_USE_LLM_PREPROCESSING}
                       onCheckedChange={(value) => {
                         saveConfig({
                           ttsUseLLMPreprocessing: value,

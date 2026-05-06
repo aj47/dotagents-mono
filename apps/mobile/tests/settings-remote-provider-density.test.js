@@ -113,6 +113,16 @@ test('lets mobile configure local desktop TTS provider details', () => {
   assert.match(settingsSource, /getTtsVoicesForProvider/);
   assert.match(settingsSource, /DEFAULT_SUPERTONIC_TTS_LANGUAGE/);
   assert.match(settingsSource, /DEFAULT_SUPERTONIC_TTS_STEPS/);
+  assert.match(settingsSource, /DEFAULT_TTS_ENABLED/);
+  assert.match(settingsSource, /DEFAULT_TTS_AUTO_PLAY/);
+  assert.match(settingsSource, /DEFAULT_TTS_PREPROCESSING_ENABLED/);
+  assert.match(settingsSource, /DEFAULT_TTS_REMOVE_CODE_BLOCKS/);
+  assert.match(settingsSource, /DEFAULT_TTS_REMOVE_URLS/);
+  assert.match(settingsSource, /DEFAULT_TTS_CONVERT_MARKDOWN/);
+  assert.match(settingsSource, /DEFAULT_TTS_USE_LLM_PREPROCESSING/);
+  assert.match(ttsSection, /remoteSettings\.ttsEnabled \?\? DEFAULT_TTS_ENABLED/);
+  assert.match(ttsSection, /remoteSettings\.ttsAutoPlay \?\? DEFAULT_TTS_AUTO_PLAY/);
+  assert.match(ttsSection, /remoteSettings\.ttsPreprocessingEnabled \?\? DEFAULT_TTS_PREPROCESSING_ENABLED/);
   assert.match(settingsSource, /handleRemoteSettingUpdate\('supertonicLanguage', language\.value\)/);
   assert.match(settingsSource, /getTextToSpeechSpeedSetting as getRemoteTtsSpeedSetting/);
   assert.match(ttsSection, /remoteTtsSpeedSetting/);

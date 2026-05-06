@@ -116,6 +116,13 @@ import { THEME_PREFERENCE_VALUES } from '@dotagents/shared/theme-preference';
 import {
   DEFAULT_SUPERTONIC_TTS_LANGUAGE,
   DEFAULT_SUPERTONIC_TTS_STEPS,
+  DEFAULT_TTS_AUTO_PLAY,
+  DEFAULT_TTS_CONVERT_MARKDOWN,
+  DEFAULT_TTS_ENABLED,
+  DEFAULT_TTS_PREPROCESSING_ENABLED,
+  DEFAULT_TTS_REMOVE_CODE_BLOCKS,
+  DEFAULT_TTS_REMOVE_URLS,
+  DEFAULT_TTS_USE_LLM_PREPROCESSING,
   MAX_SUPERTONIC_TTS_STEPS,
   MIN_SUPERTONIC_TTS_STEPS,
   formatLocalSpeechModelProgress as formatLocalModelProgress,
@@ -3453,17 +3460,17 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>TTS Enabled</Text>
                   <Switch
-                    value={remoteSettings.ttsEnabled ?? false}
+                    value={remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('ttsEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.ttsEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
                 <Text style={styles.helperText}>
                   Enable text-to-speech for responses on desktop
                 </Text>
 
-                {remoteSettings.ttsEnabled && (
+                {(remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED) && (
                   <>
                     {/* TTS Provider Selector */}
                     <Text style={[styles.label, { marginTop: spacing.md }]}>TTS Provider</Text>
@@ -3679,65 +3686,65 @@ export default function SettingsScreen({ navigation }: any) {
                     <View style={[styles.row, { marginTop: spacing.md }]}>
                       <Text style={styles.label}>Auto-Play</Text>
                       <Switch
-                        value={remoteSettings.ttsAutoPlay ?? true}
+                        value={remoteSettings.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY}
                         onValueChange={(v) => handleRemoteSettingToggle('ttsAutoPlay', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.ttsAutoPlay ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
 
                     <View style={styles.row}>
                       <Text style={styles.label}>TTS Preprocessing</Text>
                       <Switch
-                        value={remoteSettings.ttsPreprocessingEnabled ?? true}
+                        value={remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED}
                         onValueChange={(v) => handleRemoteSettingToggle('ttsPreprocessingEnabled', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.ttsPreprocessingEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
                     <Text style={styles.helperText}>
                       Clean up text before speaking
                     </Text>
 
-                    {remoteSettings.ttsPreprocessingEnabled && (
+                    {(remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED) && (
                       <>
                         <View style={[styles.row, { paddingLeft: spacing.md }]}>
                           <Text style={styles.label}>Remove Code Blocks</Text>
                           <Switch
-                            value={remoteSettings.ttsRemoveCodeBlocks ?? true}
+                            value={remoteSettings.ttsRemoveCodeBlocks ?? DEFAULT_TTS_REMOVE_CODE_BLOCKS}
                             onValueChange={(v) => handleRemoteSettingToggle('ttsRemoveCodeBlocks', v)}
                             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={remoteSettings.ttsRemoveCodeBlocks ? theme.colors.primaryForeground : theme.colors.background}
+                            thumbColor={(remoteSettings.ttsRemoveCodeBlocks ?? DEFAULT_TTS_REMOVE_CODE_BLOCKS) ? theme.colors.primaryForeground : theme.colors.background}
                           />
                         </View>
 
                         <View style={[styles.row, { paddingLeft: spacing.md }]}>
                           <Text style={styles.label}>Remove URLs</Text>
                           <Switch
-                            value={remoteSettings.ttsRemoveUrls ?? true}
+                            value={remoteSettings.ttsRemoveUrls ?? DEFAULT_TTS_REMOVE_URLS}
                             onValueChange={(v) => handleRemoteSettingToggle('ttsRemoveUrls', v)}
                             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={remoteSettings.ttsRemoveUrls ? theme.colors.primaryForeground : theme.colors.background}
+                            thumbColor={(remoteSettings.ttsRemoveUrls ?? DEFAULT_TTS_REMOVE_URLS) ? theme.colors.primaryForeground : theme.colors.background}
                           />
                         </View>
 
                         <View style={[styles.row, { paddingLeft: spacing.md }]}>
                           <Text style={styles.label}>Convert Markdown</Text>
                           <Switch
-                            value={remoteSettings.ttsConvertMarkdown ?? true}
+                            value={remoteSettings.ttsConvertMarkdown ?? DEFAULT_TTS_CONVERT_MARKDOWN}
                             onValueChange={(v) => handleRemoteSettingToggle('ttsConvertMarkdown', v)}
                             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={remoteSettings.ttsConvertMarkdown ? theme.colors.primaryForeground : theme.colors.background}
+                            thumbColor={(remoteSettings.ttsConvertMarkdown ?? DEFAULT_TTS_CONVERT_MARKDOWN) ? theme.colors.primaryForeground : theme.colors.background}
                           />
                         </View>
 
                         <View style={[styles.row, { paddingLeft: spacing.md }]}>
                           <Text style={styles.label}>Use LLM Preprocessing</Text>
                           <Switch
-                            value={remoteSettings.ttsUseLLMPreprocessing ?? false}
+                            value={remoteSettings.ttsUseLLMPreprocessing ?? DEFAULT_TTS_USE_LLM_PREPROCESSING}
                             onValueChange={(v) => handleRemoteSettingToggle('ttsUseLLMPreprocessing', v)}
                             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={remoteSettings.ttsUseLLMPreprocessing ? theme.colors.primaryForeground : theme.colors.background}
+                            thumbColor={(remoteSettings.ttsUseLLMPreprocessing ?? DEFAULT_TTS_USE_LLM_PREPROCESSING) ? theme.colors.primaryForeground : theme.colors.background}
                           />
                         </View>
                       </>

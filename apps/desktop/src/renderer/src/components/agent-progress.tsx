@@ -56,6 +56,10 @@ import {
   type CHAT_PROVIDER_ID,
 } from "@dotagents/shared/providers"
 import {
+  DEFAULT_TTS_AUTO_PLAY,
+  DEFAULT_TTS_ENABLED,
+} from "@dotagents/shared/text-to-speech-settings"
+import {
   CODEX_TEXT_VERBOSITY_OPTIONS,
   DEFAULT_CODEX_TEXT_VERBOSITY,
   getOpenAiReasoningEffortDefault,
@@ -824,7 +828,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
 
   // TTS functionality
   const generateAudio = async (): Promise<ArrayBuffer> => {
-    if (!configQuery.data?.ttsEnabled) {
+    if (!(configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED)) {
       throw new Error("TTS is not enabled")
     }
 
@@ -913,7 +917,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   // Check if TTS button should be shown for this message (any completed assistant message with content)
   const shouldShowTTSButton =
     message.role === "assistant" &&
-    configQuery.data?.ttsEnabled &&
+    (configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED) &&
     !!ttsSource &&
     (isComplete || !!message.responseEvent)
   // Auto-play only the latest assistant message. Older response-linked messages
@@ -922,7 +926,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const shouldAutoPlayLoadedAudio =
     shouldAutoPlayTTS &&
     shouldAutoPlayTTSForVariant(messageVariant, isSnoozed, isFocused, isFloatingPanelVisible) &&
-    (configQuery.data?.ttsAutoPlay ?? true) &&
+    (configQuery.data?.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY) &&
     lastAutoPlayedSourceRef.current === ttsSource
 
   // Auto-play TTS when assistant message completes (but NOT if agent was stopped by kill switch)
@@ -937,7 +941,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   //   single-session and multi-session views in the panel)
   useEffect(() => {
     const shouldAutoPlay = shouldAutoPlayTTSForVariant(messageVariant, isSnoozed, isFocused, isFloatingPanelVisible)
-    const ttsAutoPlayEnabled = configQuery.data?.ttsAutoPlay ?? true
+    const ttsAutoPlayEnabled = configQuery.data?.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY
 
     if (!shouldAutoPlay || !shouldAutoPlayTTS || !ttsAutoPlayEnabled || audioData || isGeneratingAudio || ttsError || wasStopped) {
       return

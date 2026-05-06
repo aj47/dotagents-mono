@@ -67,6 +67,7 @@ import type {
 } from "@dotagents/core"
 import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared/stt-models"
 import { DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED } from "@dotagents/shared/providers"
+import { DEFAULT_TTS_ENABLED } from "@dotagents/shared/text-to-speech-settings"
 import { buildConversationImageMarkdownMessage } from "@dotagents/shared/conversation-media-assets"
 import { parseMcpServerConfigImportRequestBody } from "@dotagents/shared/mcp-api"
 import { conversationService } from "./conversation-service"
@@ -2686,7 +2687,7 @@ export const router = {
         const config = configStore.get()
         // Desktop-local TTS respects the user's global toggle. Remote clients
         // (mobile via /v1/tts/speak) intentionally bypass this gate.
-        if (!config.ttsEnabled) {
+        if (!(config.ttsEnabled ?? DEFAULT_TTS_ENABLED)) {
           throw new Error("Text-to-Speech is not enabled")
         }
         return await generateTTS(input, config)
