@@ -862,7 +862,7 @@ export function ActiveAgentsSidebar({
   )
 
   const renderEditableTitle = useCallback(
-    (session: SidebarSessionRecord, className: string, prefix?: string, canRenameOnClick = false) => {
+    (session: SidebarSessionRecord, className: string, prefix?: string) => {
       const conversationId = session.conversationId
       const title = session.conversationTitle || "Untitled conversation"
 
@@ -914,29 +914,21 @@ export function ActiveAgentsSidebar({
         )
       }
 
-      if (!canRenameOnClick) {
-        return (
-          <span
-            className={cn("min-w-0 truncate text-left", className)}
-            title={conversationId ? "Select conversation to rename" : title}
-          >
-            {prefix ? `${prefix}${title}` : title}
-          </span>
-        )
-      }
-
+      // Single-click is reserved for selecting the row. Rename is opt-in via
+      // double-click so subagents and other rows can be focused without
+      // accidentally entering edit mode.
       return (
-        <button
-          type="button"
-          onClick={(event) => {
+        <span
+          onDoubleClick={(event) => {
             event.stopPropagation()
+            event.preventDefault()
             startTitleEditing(session)
           }}
-          className={cn("min-w-0 truncate text-left cursor-text", className)}
-          title="Rename conversation title"
+          className={cn("min-w-0 truncate text-left select-none", className)}
+          title="Double-click to rename"
         >
           {prefix ? `${prefix}${title}` : title}
-        </button>
+        </span>
       )
     },
     [
@@ -1169,8 +1161,6 @@ export function ActiveAgentsSidebar({
                     {renderEditableTitle(
                       session,
                       cn("block flex-1", isCurrentView && "text-foreground"),
-                      undefined,
-                      isCurrentView,
                     )}
                   </div>
                   {lastMessageMinutesAgo && (
@@ -1330,7 +1320,6 @@ export function ActiveAgentsSidebar({
                         isFinalResponsePreview && !isNestedSubagent && "text-[11px] font-normal text-muted-foreground",
                       ),
                       isLifecycleNeedsInput ? "⚠ " : undefined,
-                      isCurrentView,
                     )}
                     {isNestedSubagent && lastMessageMinutesAgo && (
                       <span className="shrink-0 text-[10px] leading-4 tabular-nums text-muted-foreground/60 transition-opacity group-hover:opacity-0">
