@@ -720,22 +720,13 @@ class AgentProfileService {
       const allServerNames = Object.keys(appConfig.mcpConfig?.mcpServers || {})
       const runtimeToolNames = getRuntimeToolNames()
 
-      const newProfile = this.create({
-        name: importData.name,
-        displayName: importData.name,
-        guidelines: importData.guidelines || "",
-        systemPrompt: importData.systemPrompt,
-        connection: { type: "internal" },
-        role: "delegation-target",
-        enabled: true,
-        isUserProfile: false,
-        isAgentTarget: true,
-        toolConfig: {
-          disabledServers: allServerNames,
-          disabledTools: runtimeToolNames,
-          allServersDisabledByDefault: true,
-        },
-      })
+      const newProfile = this.create(buildInternalDelegationAgentProfileCreateInput(
+        importData.name,
+        importData.guidelines || "",
+        importData.systemPrompt,
+        allServerNames,
+        runtimeToolNames,
+      ) as Omit<AgentProfile, "id" | "createdAt" | "updatedAt">)
 
       const mcpServerMerge = mergeImportedAgentProfileMcpServers(
         appConfig.mcpConfig?.mcpServers || {},

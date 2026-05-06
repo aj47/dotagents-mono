@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import fs from "fs"
 import os from "os"
 import path from "path"
+import { DEFAULT_AGENT_PROFILE_ENABLED } from "@dotagents/shared/agent-profile-mutations"
 
 const mockPaths = vi.hoisted(() => ({
   globalAgentsFolder: "",
@@ -68,5 +69,41 @@ describe("agentProfileService skills", () => {
     })
     expect(agentProfileService.hasAllSkillsEnabledByDefault(profile.id)).toBe(true)
     expect(agentProfileService.getEnabledSkillIdsForProfile(profile.id)).toBeNull()
+  })
+
+  it("imports profiles with shared internal delegation defaults", async () => {
+    mockConfigStore.get.mockReturnValue({
+      mcpConfig: {
+        mcpServers: {
+          filesystem: { command: "filesystem" },
+          github: { command: "github" },
+        },
+      },
+    })
+
+    const { agentProfileService } = await import("./agent-profile-service")
+
+    const profile = agentProfileService.importProfile(JSON.stringify({
+      name: "Imported Agent",
+      guidelines: "Use sources.",
+      systemPrompt: "Be precise.",
+    }))
+
+    expect(profile).toMatchObject({
+      name: "Imported Agent",
+      displayName: "Imported Agent",
+      guidelines: "Use sources.",
+      systemPrompt: "Be precise.",
+      connection: { type: "internal" },
+      role: "delegation-target",
+      enabled: DEFAULT_AGENT_PROFILE_ENABLED,
+      isUserProfile: false,
+      isAgentTarget: true,
+      toolConfig: {
+        disabledServers: ["filesystem", "github"],
+        allServersDisabledByDefault: true,
+      },
+    })
+    expect(profile.toolConfig?.disabledTools?.length).toBeGreaterThan(0)
   })
 })
