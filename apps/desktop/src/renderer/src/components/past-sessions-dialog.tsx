@@ -29,31 +29,16 @@ import {
 import { toast } from "sonner"
 import { useAgentStore } from "@renderer/stores"
 import type { AgentProgressUpdate } from "@shared/types"
+import {
+  CONVERSATION_SEARCH_RESULT_LIMIT,
+  filterConversationSearchEntries,
+} from "@dotagents/shared/conversation-list-search"
 import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
 
 const INITIAL_SAVED_CONVERSATIONS = 20
-const SEARCH_RESULT_LIMIT = 50
-const DEFAULT_FUZZY_THRESHOLD = 0.33
-const TITLE_MATCH_WEIGHT = 0.6
-const PREVIEW_MATCH_WEIGHT = 0.25
-const LAST_MESSAGE_MATCH_WEIGHT = 0.15
 const KEYBOARD_SHORTCUT_HINT = navigator.platform.toLowerCase().includes("mac") ? "⌘K" : "Ctrl+K"
 const PIN_SHORTCUT_HINT = navigator.platform.toLowerCase().includes("mac") ? "⌘P" : "Ctrl+P"
 const VOICE_SHORTCUT_HINT = "V"
-
-
-type SearchableConversationField = "title" | "preview" | "lastMessage"
-
-type SearchableConversation = {
-  title: string
-  preview: string
-  lastMessage: string
-}
-
-type ConversationSearchResult = {
-  field: SearchableConversationField
-  score: number
-}
 
 interface AgentSessionRecord {
   id: string
@@ -108,23 +93,6 @@ function formatTimestamp(timestamp: number): string {
   return date.format("MMM D")
 }
 
-function getFieldWeight(field: SearchableConversationField): number {
-  switch (field) {
-    case "title":
-      return TITLE_MATCH_WEIGHT
-    case "preview":
-      return PREVIEW_MATCH_WEIGHT
-    case "lastMessage":
-      return LAST_MESSAGE_MATCH_WEIGHT
-    default:
-      return 0
-  }
-}
-
-function normalizeSearchText(value: string | undefined): string {
-  return (value ?? "").toLowerCase().replace(/\s+/g, " ").trim()
-}
-
 function normalizeConversationText(value: string | undefined): string {
   return normalizeMessagePreviewText(value) ?? ""
 }
@@ -162,71 +130,6 @@ function getSessionUpdatedAt(
   ]?.timestamp
   const lastStepTimestamp = progress?.steps?.[(progress.steps?.length ?? 1) - 1]?.timestamp
   return lastConversationTimestamp ?? lastStepTimestamp ?? session.endTime ?? session.startTime
-}
-
-function scoreSearchField(fieldValue: string, query: string): number {
-  const normalizedField = normalizeSearchText(fieldValue)
-  const normalizedQuery = normalizeSearchText(query)
-
-  if (!normalizedField || !normalizedQuery) {
-    return 0
-  }
-
-  if (normalizedField.includes(normalizedQuery)) {
-    const position = normalizedField.indexOf(normalizedQuery)
-    const positionBonus = position === 0 ? 0.15 : Math.max(0, 0.08 - position * 0.002)
-    const lengthPenalty = Math.min(0.15, normalizedField.length / 500)
-    return Math.min(1, 0.85 + positionBonus - lengthPenalty)
-  }
-
-  let score = 0
-  let lastMatchedIndex = -1
-  for (const character of normalizedQuery) {
-    const nextIndex = normalizedField.indexOf(character, lastMatchedIndex + 1)
-    if (nextIndex === -1) {
-      return 0
-    }
-
-    score += 1
-    if (nextIndex === lastMatchedIndex + 1) {
-      score += 0.35
-    }
-    if (nextIndex === 0 || normalizedField[nextIndex - 1] === " ") {
-      score += 0.2
-    }
-    lastMatchedIndex = nextIndex
-  }
-
-  return Math.min(1, score / (normalizedQuery.length * 1.55))
-}
-
-function getConversationSearchResult(
-  conversation: SearchableConversation,
-  query: string,
-): ConversationSearchResult | null {
-  const normalizedQuery = normalizeSearchText(query)
-  if (!normalizedQuery) {
-    return { field: "title", score: 1 }
-  }
-
-  const orderedFields: SearchableConversationField[] = ["title", "preview", "lastMessage"]
-  let bestResult: ConversationSearchResult | null = null
-
-  for (const field of orderedFields) {
-    const rawScore = scoreSearchField(conversation[field], normalizedQuery)
-    if (rawScore <= 0) continue
-
-    const weightedScore = rawScore * getFieldWeight(field)
-    if (!bestResult || weightedScore > bestResult.score) {
-      bestResult = { field, score: weightedScore }
-    }
-  }
-
-  if (!bestResult || bestResult.score < DEFAULT_FUZZY_THRESHOLD) {
-    return null
-  }
-
-  return bestResult
 }
 
 export function SavedConversationsDialog({
@@ -472,48 +375,9 @@ export function SavedConversationsDialog({
 
   const filteredConversationEntries = useMemo(() => {
     const all = [...activeConversationEntries, ...savedConversationEntries]
-    const normalizedQuery = searchQuery.trim()
-
-    if (!normalizedQuery) {
-      return all.slice(0, SEARCH_RESULT_LIMIT)
-    }
-
-    const rankedConversations = all
-      .map((conversation) => {
-        const result = getConversationSearchResult(
-          {
-            title: conversation.title,
-            preview: conversation.preview,
-            lastMessage: conversation.lastMessage,
-          },
-          normalizedQuery,
-        )
-
-        if (!result) return null
-
-        return {
-          conversation,
-          rank: result.score,
-          kindPriority: conversation.kind === "active" ? 0 : 1,
-          fieldPriority:
-            result.field === "title" ? 0 : result.field === "preview" ? 1 : 2,
-        }
-      })
-      .filter((entry): entry is {
-        conversation: ConversationListEntry
-        rank: number
-        kindPriority: number
-        fieldPriority: number
-      } => entry !== null)
-      .sort((a, b) => {
-        if (b.rank !== a.rank) return b.rank - a.rank
-        if (a.kindPriority !== b.kindPriority) return a.kindPriority - b.kindPriority
-        if (a.fieldPriority !== b.fieldPriority) return a.fieldPriority - b.fieldPriority
-        return b.conversation.updatedAt - a.conversation.updatedAt
-      })
-      .map((entry) => entry.conversation)
-
-    return rankedConversations.slice(0, SEARCH_RESULT_LIMIT)
+    return filterConversationSearchEntries(all, searchQuery, {
+      limit: CONVERSATION_SEARCH_RESULT_LIMIT,
+    })
   }, [activeConversationEntries, savedConversationEntries, searchQuery])
 
   const visibleConversationEntries = useMemo(

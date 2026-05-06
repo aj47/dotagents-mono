@@ -26,6 +26,7 @@ export default defineConfig({
     'session-progress-hydration': 'src/session-progress-hydration.ts',
     'sidebar-sessions': 'src/sidebar-sessions.ts',
     'conversation-progress': 'src/conversation-progress.ts',
+    'conversation-list-search': 'src/conversation-list-search.ts',
     'conversation-media-assets': 'src/conversation-media-assets.ts',
     'agent-progress': 'src/agent-progress.ts',
     'agent-user-response-store': 'src/agent-user-response-store.ts',

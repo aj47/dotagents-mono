@@ -126,6 +126,11 @@
       "import": "./dist/conversation-progress.mjs",
       "require": "./dist/conversation-progress.js"
     },
+    "./conversation-list-search": {
+      "types": "./dist/conversation-list-search.d.ts",
+      "import": "./dist/conversation-list-search.mjs",
+      "require": "./dist/conversation-list-search.js"
+    },
     "./agent-progress": {
       "types": "./dist/agent-progress.d.ts",
       "import": "./dist/agent-progress.mjs",

@@ -49,6 +49,7 @@ export {
   partitionTaskAndUserEntries,
 } from './sidebar-sessions';
 export * from './conversation-progress';
+export * from './conversation-list-search';
 export * from './agent-progress';
 export * from './agent-user-response-store';
 export * from './agent-avatar-colors';
