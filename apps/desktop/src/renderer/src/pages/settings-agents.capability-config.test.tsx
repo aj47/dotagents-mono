@@ -5,6 +5,7 @@ const settingsAgentsSource = readFileSync(new URL("./settings-agents.tsx", impor
 
 describe("settings agents capability config", () => {
   it("uses shared agent profile capability helpers for desktop MCP and runtime toggles", () => {
+    expect(settingsAgentsSource).toContain("countEnabledAgentProfileMcpServers(agent.toolConfig, serverNames)")
     expect(settingsAgentsSource).toContain("getAgentProfileMcpConfigAfterServerToggle")
     expect(settingsAgentsSource).toContain("getAgentProfileMcpConfigAfterSetAllServersEnabled")
     expect(settingsAgentsSource).toContain("getAgentProfileMcpConfigAfterToolToggle")
@@ -17,6 +18,7 @@ describe("settings agents capability config", () => {
     expect(settingsAgentsSource).toContain("isAgentProfileEssentialRuntimeToolName(tool.name)")
     expect(settingsAgentsSource).toContain("isAgentProfileMcpServerEnabled(editing?.toolConfig, serverName)")
     expect(settingsAgentsSource).toContain("isAgentProfileRuntimeToolEnabled(editing?.toolConfig, toolName)")
+    expect(settingsAgentsSource).not.toContain("agent.toolConfig?.enabledServers?.length")
     expect(settingsAgentsSource).not.toContain("serverNames.every(n => isServerEnabled(n))")
     expect(settingsAgentsSource).not.toContain("editing.toolConfig.enabledRuntimeTools.length === 0")
     expect(settingsAgentsSource).not.toContain("tool.name === \"mark_work_complete\"")

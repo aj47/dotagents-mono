@@ -37,6 +37,7 @@ import {
 import {
   AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS,
   buildAgentProfileAgentModelUpdate,
+  countEnabledAgentProfileMcpServers,
   countEnabledAgentProfileRuntimeTools,
   countEnabledAgentProfileSkills,
   hasAllAgentProfileMcpServersEnabled,
@@ -138,7 +139,12 @@ function emptyAgent(): EditingAgent {
   }
 }
 
-function getAgentCardSummaryItems(agent: AgentProfile, availableSkillIds: readonly string[], runtimeToolNames: readonly string[]): string[] {
+function getAgentCardSummaryItems(
+  agent: AgentProfile,
+  serverNames: readonly string[],
+  availableSkillIds: readonly string[],
+  runtimeToolNames: readonly string[],
+): string[] {
   const items: string[] = [agent.connection.type]
 
   const agentProviderId = agent.modelConfig?.agentProviderId || agent.modelConfig?.mcpToolsProviderId
@@ -146,8 +152,8 @@ function getAgentCardSummaryItems(agent: AgentProfile, availableSkillIds: readon
     items.push(agentProviderId)
   }
 
-  const enabledServerCount = agent.toolConfig?.enabledServers?.length ?? 0
-  if (enabledServerCount > 0) {
+  if (serverNames.length > 0) {
+    const enabledServerCount = countEnabledAgentProfileMcpServers(agent.toolConfig, serverNames)
     items.push(`${enabledServerCount} server${enabledServerCount === 1 ? "" : "s"}`)
   }
 
@@ -584,6 +590,7 @@ export function SettingsAgents() {
         {sortedAgents.map(agent => {
           const summaryItems = getAgentCardSummaryItems(
             agent,
+            serverNames,
             skills.map(skill => skill.id),
             runtimeTools.map(tool => tool.name),
           )
