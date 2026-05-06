@@ -1,42 +1,14 @@
 import { useState, useCallback, useRef, useEffect } from "react"
+import {
+  SIDEBAR_DIMENSIONS,
+  clearPersistedSidebarState,
+  clampSidebarWidth,
+  loadPersistedSidebarState,
+  savePersistedSidebarState,
+  type SidebarState,
+} from "@dotagents/shared/sidebar-persistence"
 
-// Sidebar dimension constants
-export const SIDEBAR_DIMENSIONS = {
-  width: {
-    default: 176, // 44 in tailwind w-44 = 11rem = 176px
-    min: 120,
-    max: 400,
-    collapsed: 48, // Width when collapsed (just icons)
-  },
-} as const
-
-const STORAGE_KEY = "dotagents-sidebar"
-
-interface SidebarState {
-  isCollapsed: boolean
-  width: number
-}
-
-function loadPersistedState(): SidebarState | null {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      if (typeof parsed.isCollapsed === "boolean" && typeof parsed.width === "number") {
-        return parsed
-      }
-    }
-  } catch {
-    return null
-  }
-  return null
-}
-
-function savePersistedState(state: SidebarState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  } catch {}
-}
+export { SIDEBAR_DIMENSIONS }
 
 export interface UseSidebarOptions {
   initialWidth?: number
@@ -64,17 +36,14 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
   } = options
 
   // Use lazy state initialization to read localStorage only once on mount
-  // We use a single initializer to avoid calling loadPersistedState multiple times
+  // We use a single initializer to avoid calling loadPersistedSidebarState multiple times
   const [{ isCollapsed: initialIsCollapsed, width: initialWidthValue }] = useState(
     (): SidebarState => {
-      const persisted = loadPersistedState()
+      const persisted = loadPersistedSidebarState()
       if (persisted) {
         return {
           isCollapsed: persisted.isCollapsed,
-          width: Math.min(
-            SIDEBAR_DIMENSIONS.width.max,
-            Math.max(SIDEBAR_DIMENSIONS.width.min, persisted.width)
-          ),
+          width: clampSidebarWidth(persisted.width),
         }
       }
       return { isCollapsed: initialCollapsed, width: initialWidth }
@@ -90,11 +59,7 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
   // Store ref for removing listeners only (for unmount cleanup without triggering state/callbacks)
   const removeListenersRef = useRef<(() => void) | null>(null)
 
-  const clampWidth = useCallback(
-    (w: number) =>
-      Math.min(SIDEBAR_DIMENSIONS.width.max, Math.max(SIDEBAR_DIMENSIONS.width.min, w)),
-    []
-  )
+  const clampWidth = useCallback((w: number) => clampSidebarWidth(w), [])
 
   const toggleCollapse = useCallback(() => {
     // Compute new state before calling setState to avoid side effects inside updater
@@ -109,7 +74,7 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
       isCollapsed: newCollapsed,
       width: newCollapsed ? widthBeforeCollapseRef.current : width,
     }
-    savePersistedState(newState)
+    savePersistedSidebarState(newState)
     onToggle?.(newCollapsed)
   }, [isCollapsed, width, onToggle])
 
@@ -120,7 +85,7 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
       }
       setIsCollapsed(collapsed)
       // When expanding, persist current width; when collapsing, persist the stored width
-      savePersistedState({
+      savePersistedSidebarState({
         isCollapsed: collapsed,
         width: collapsed ? widthBeforeCollapseRef.current : width,
       })
@@ -160,7 +125,7 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
       const fullCleanup = () => {
         removeListeners()
         setIsResizing(false)
-        savePersistedState({ isCollapsed: false, width: lastWidth })
+        savePersistedSidebarState({ isCollapsed: false, width: lastWidth })
         onResizeEnd?.(lastWidth)
       }
 
@@ -185,9 +150,7 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
   const reset = useCallback(() => {
     setIsCollapsed(initialCollapsed)
     setWidth(initialWidth)
-    try {
-      localStorage.removeItem(STORAGE_KEY)
-    } catch {}
+    clearPersistedSidebarState()
   }, [initialWidth, initialCollapsed])
 
   // Cleanup resize listeners on unmount - only remove listeners, don't trigger state/callbacks
@@ -209,4 +172,3 @@ export function useSidebar(options: UseSidebarOptions = {}): UseSidebarReturn {
     reset,
   }
 }
-

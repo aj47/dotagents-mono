@@ -191,6 +191,11 @@
       "import": "./dist/resizable-persistence.mjs",
       "require": "./dist/resizable-persistence.js"
     },
+    "./sidebar-persistence": {
+      "types": "./dist/sidebar-persistence.d.ts",
+      "import": "./dist/sidebar-persistence.mjs",
+      "require": "./dist/sidebar-persistence.js"
+    },
     "./tool-activity-grouping": {
       "types": "./dist/tool-activity-grouping.d.ts",
       "import": "./dist/tool-activity-grouping.mjs",
