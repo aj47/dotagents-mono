@@ -6,10 +6,10 @@ import type {
   AgentProfileConnectionType,
   AgentProfileRole,
   AgentProfileToolConfig,
-  PreferredAgentProfileRole,
   ProfileModelConfig,
   ProfileSkillsConfig,
 } from "../types"
+import { normalizeAgentProfileRole } from "../types"
 import type { AgentsLayerPaths } from "./modular-config"
 import { AGENTS_AGENT_PROFILES_DIR, getAgentsLayerPaths } from "./modular-config"
 import { parseFrontmatterOrBody, stringifyFrontmatterDocument } from "./frontmatter"
@@ -70,13 +70,6 @@ function tryGetFileMtimeMs(filePath: string | undefined): number | undefined {
 }
 
 const VALID_CONNECTION_TYPES = new Set<string>(['internal', 'acpx', 'acp', 'stdio', 'remote'])
-const VALID_ROLES = new Set<string>(["chat-agent", "user-profile", "delegation-target", "external-agent"])
-
-function normalizeAgentProfileRole(role: string | undefined): PreferredAgentProfileRole | undefined {
-  if (!role) return undefined
-  if (role === "user-profile") return "chat-agent"
-  return VALID_ROLES.has(role) ? (role as PreferredAgentProfileRole) : undefined
-}
 
 // ============================================================================
 // Directory / Path helpers

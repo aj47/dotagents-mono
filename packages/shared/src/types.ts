@@ -162,3 +162,10 @@ export interface AgentSkill {
 export interface AgentSkillsData {
   skills: AgentSkill[];
 }
+
+export type {
+  AgentProfileRole,
+  LegacyAgentProfileRole,
+  PreferredAgentProfileRole,
+} from './agent-profile-role';
+export { normalizeAgentProfileRole } from './agent-profile-role';

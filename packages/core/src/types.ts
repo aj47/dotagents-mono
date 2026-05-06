@@ -6,6 +6,8 @@
  * Desktop's types.ts may define more detailed versions that are assignable to these.
  */
 
+import type { AgentProfileRole as SharedAgentProfileRole } from '@dotagents/shared/types'
+
 // Re-export shared types
 export type { ModelPreset } from '@dotagents/shared/providers'
 
@@ -41,6 +43,12 @@ export interface KnowledgeNote {
 export type { AgentSkill, AgentSkillsData } from '@dotagents/shared/types'
 
 export type { LoopConfig, LoopSchedule } from '@dotagents/shared/types'
+export type {
+  AgentProfileRole,
+  LegacyAgentProfileRole,
+  PreferredAgentProfileRole,
+} from '@dotagents/shared/types'
+export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 
 // ============================================================================
 // Profile & Agent Types
@@ -139,17 +147,6 @@ export type AgentProfileToolConfig = {
   allServersDisabledByDefault?: boolean
 }
 
-export type PreferredAgentProfileRole = "chat-agent" | "delegation-target" | "external-agent"
-export type LegacyAgentProfileRole = "user-profile"
-export type AgentProfileRole = PreferredAgentProfileRole | LegacyAgentProfileRole
-
-export function normalizeAgentProfileRole(role: AgentProfileRole | string | undefined): PreferredAgentProfileRole | undefined {
-  if (!role) return undefined
-  if (role === "user-profile") return "chat-agent"
-  if (role === "chat-agent" || role === "delegation-target" || role === "external-agent") return role
-  return undefined
-}
-
 export type AgentProfile = {
   id: string
   name: string
@@ -165,7 +162,7 @@ export type AgentProfile = {
   connection: AgentProfileConnection
   isStateful?: boolean
   conversationId?: string
-  role?: AgentProfileRole
+  role?: SharedAgentProfileRole
   enabled: boolean
   isBuiltIn?: boolean
   isUserProfile?: boolean

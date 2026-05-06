@@ -6,6 +6,7 @@ import type {
   ModelPreset,
 } from '@dotagents/shared/providers'
 import type {
+  AgentProfileRole as SharedAgentProfileRole,
   ToolCall,
   ToolResult,
   LoopConfig as SharedLoopConfig,
@@ -19,7 +20,8 @@ import {
   legacyProfileToAgentProfile as sharedLegacyProfileToAgentProfile,
 } from '@dotagents/shared/agent-profile-legacy-converters'
 
-export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData } from '@dotagents/shared/types'
+export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
+export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentConversationState } from '@dotagents/shared/conversation-state'
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared/agent-progress'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '@dotagents/core'
@@ -617,17 +619,6 @@ export type AgentProfileToolConfig = {
  * - "external-agent": External acpx agent
  * - "user-profile": Deprecated alias for "chat-agent" kept for compatibility
  */
-export type PreferredAgentProfileRole = "chat-agent" | "delegation-target" | "external-agent"
-export type LegacyAgentProfileRole = "user-profile"
-export type AgentProfileRole = PreferredAgentProfileRole | LegacyAgentProfileRole
-
-export function normalizeAgentProfileRole(role: AgentProfileRole | string | undefined): PreferredAgentProfileRole | undefined {
-  if (!role) return undefined
-  if (role === "user-profile") return "chat-agent"
-  if (role === "chat-agent" || role === "delegation-target" || role === "external-agent") return role
-  return undefined
-}
-
 export type AgentProfile = {
   /** Unique identifier */
   id: string
@@ -672,7 +663,7 @@ export type AgentProfile = {
 
   // Role Classification
   /** Role classification for this agent profile */
-  role?: AgentProfileRole
+  role?: SharedAgentProfileRole
 
   // Flags
   /** Whether this agent is enabled */

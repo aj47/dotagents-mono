@@ -151,6 +151,11 @@
       "import": "./dist/main-agent-selection.mjs",
       "require": "./dist/main-agent-selection.js"
     },
+    "./agent-profile-role": {
+      "types": "./dist/agent-profile-role.d.ts",
+      "import": "./dist/agent-profile-role.mjs",
+      "require": "./dist/agent-profile-role.js"
+    },
     "./agent-profile-connection": {
       "types": "./dist/agent-profile-connection.d.ts",
       "import": "./dist/agent-profile-connection.mjs",
