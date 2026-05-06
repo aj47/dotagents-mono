@@ -17,6 +17,12 @@ import {
   getSelectedAgentProfile,
 } from "@dotagents/shared/agent-selector-options"
 import {
+  SELECTED_AGENT_CHANGED_EVENT,
+  SELECTED_AGENT_STORAGE_KEY,
+  loadSelectedAgentId,
+  saveSelectedAgentId as saveSelectedAgentIdToStorage,
+} from "@dotagents/shared/selected-agent-persistence"
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -38,28 +44,11 @@ function agentColors(seed: string): string[] {
   return [0, 7, 13].map(offset => AVATAR_PALETTE[(h + offset) % AVATAR_PALETTE.length])
 }
 
-const STORAGE_KEY = "dotagents-selected-agent"
-const STORAGE_EVENT = "dotagents-selected-agent-changed"
-
-function loadSelectedAgentId(): string | null {
-  try {
-    return localStorage.getItem(STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
-
 function saveSelectedAgentId(agentId: string | null): void {
-  try {
-    if (agentId) {
-      localStorage.setItem(STORAGE_KEY, agentId)
-    } else {
-      localStorage.removeItem(STORAGE_KEY)
-    }
-  } catch {}
+  saveSelectedAgentIdToStorage(agentId)
 
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent<string | null>(STORAGE_EVENT, { detail: agentId }))
+    window.dispatchEvent(new CustomEvent<string | null>(SELECTED_AGENT_CHANGED_EVENT, { detail: agentId }))
   }
 }
 
@@ -70,7 +59,7 @@ export function useSelectedAgentId(): [string | null, (id: string | null) => voi
     if (typeof window === "undefined") return undefined
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) {
+      if (event.key === SELECTED_AGENT_STORAGE_KEY) {
         setSelectedId(event.newValue)
       }
     }
@@ -81,11 +70,11 @@ export function useSelectedAgentId(): [string | null, (id: string | null) => voi
     }
 
     window.addEventListener("storage", handleStorage)
-    window.addEventListener(STORAGE_EVENT, handleSelectedAgentChanged as EventListener)
+    window.addEventListener(SELECTED_AGENT_CHANGED_EVENT, handleSelectedAgentChanged as EventListener)
 
     return () => {
       window.removeEventListener("storage", handleStorage)
-      window.removeEventListener(STORAGE_EVENT, handleSelectedAgentChanged as EventListener)
+      window.removeEventListener(SELECTED_AGENT_CHANGED_EVENT, handleSelectedAgentChanged as EventListener)
     }
   }, [])
 

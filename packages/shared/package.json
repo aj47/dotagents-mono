@@ -196,6 +196,11 @@
       "import": "./dist/sidebar-persistence.mjs",
       "require": "./dist/sidebar-persistence.js"
     },
+    "./selected-agent-persistence": {
+      "types": "./dist/selected-agent-persistence.d.ts",
+      "import": "./dist/selected-agent-persistence.mjs",
+      "require": "./dist/selected-agent-persistence.js"
+    },
     "./tool-activity-grouping": {
       "types": "./dist/tool-activity-grouping.d.ts",
       "import": "./dist/tool-activity-grouping.mjs",
