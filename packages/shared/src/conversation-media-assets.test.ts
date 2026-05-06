@@ -5,6 +5,7 @@ import {
   buildConversationImageAssetUrl,
   buildConversationVideoAssetHttpUrl,
   escapeMarkdownAltText,
+  extractConversationImageMarkdownReferences,
   getConversationImageExtensionForMimeType,
   getConversationImageMimeTypeFromFileName,
   getConversationVideoByteRange,
@@ -194,6 +195,30 @@ describe('conversation video asset utilities', () => {
     expect(escapeMarkdownAltText(' [demo]\\ ')).toBe('demo');
     expect(MAX_RESPOND_TO_USER_IMAGES).toBe(4);
     expect(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES).toBe(12 * 1024 * 1024);
+  });
+
+  it('extracts markdown conversation image references for model adapters', () => {
+    const content = [
+      'Before ![inline](data:image/png;base64,AAAA) middle',
+      '![asset](assets://conversation-image/conv_1/abcdef1234567890.png)',
+      '![remote](https://example.com/image.png)',
+    ].join('\n');
+
+    const refs = extractConversationImageMarkdownReferences(content);
+    expect(refs).toEqual([
+      {
+        fullMatch: '![inline](data:image/png;base64,AAAA)',
+        altText: 'inline',
+        url: 'data:image/png;base64,AAAA',
+        index: content.indexOf('![inline]'),
+      },
+      {
+        fullMatch: '![asset](assets://conversation-image/conv_1/abcdef1234567890.png)',
+        altText: 'asset',
+        url: 'assets://conversation-image/conv_1/abcdef1234567890.png',
+        index: content.indexOf('![asset]'),
+      },
+    ]);
   });
 
   it('parses respond_to_user top-level args once for callers that need media counts', () => {

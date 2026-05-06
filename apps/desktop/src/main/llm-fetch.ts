@@ -35,6 +35,7 @@ import { state, agentSessionStateManager, llmRequestAbortManager } from "./state
 import type { AgentConversationState } from "@dotagents/shared/conversation-state"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
 import {
+  extractConversationImageMarkdownReferences,
   getConversationImageMimeTypeFromFileName,
   parseDataImageUrl,
   parseConversationImageAssetUrl,
@@ -677,8 +678,6 @@ async function withRetry<T>(
  */
 type MarkdownImageForModel = { image: string | URL; mediaType?: string }
 
-const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi
-
 const MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES = 8 * 1024 * 1024
 
 function resolveAssetsImageUrlForModel(imageUrl: string): MarkdownImageForModel | null {
@@ -720,19 +719,18 @@ function convertMarkdownImagesToModelContent(content: string): UserContent {
   let lastIndex = 0
   let hasResolvedImage = false
 
-  MARKDOWN_IMAGE_REGEX.lastIndex = 0
-  for (let match = MARKDOWN_IMAGE_REGEX.exec(content); match; match = MARKDOWN_IMAGE_REGEX.exec(content)) {
-    const before = content.slice(lastIndex, match.index)
+  for (const reference of extractConversationImageMarkdownReferences(content)) {
+    const before = content.slice(lastIndex, reference.index)
     if (before) parts.push({ type: "text", text: before })
 
-    const image = resolveMarkdownImageForModel(match[1])
+    const image = resolveMarkdownImageForModel(reference.url)
     if (image) {
       parts.push({ type: "image", ...image })
       hasResolvedImage = true
     } else {
-      parts.push({ type: "text", text: match[0] })
+      parts.push({ type: "text", text: reference.fullMatch })
     }
-    lastIndex = match.index + match[0].length
+    lastIndex = reference.index + reference.fullMatch.length
   }
 
   const after = content.slice(lastIndex)

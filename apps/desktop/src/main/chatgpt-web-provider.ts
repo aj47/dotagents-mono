@@ -4,6 +4,7 @@ import os from "os"
 import path from "path"
 import type { OAuthTokens } from "@shared/types"
 import {
+  extractConversationImageMarkdownReferences,
   getConversationImageMimeTypeFromFileName,
   parseConversationImageAssetUrl,
 } from "@dotagents/shared/conversation-media-assets"
@@ -77,8 +78,6 @@ interface PreparedCodexTools {
   tools: Array<Record<string, unknown>>
   nameMap: Map<string, string>
 }
-
-const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi
 
 const MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES = 8 * 1024 * 1024
 
@@ -621,20 +620,19 @@ function buildCodexMessageContent(content: string): CodexInputContent {
   let lastIndex = 0
   let hasResolvedImage = false
 
-  MARKDOWN_IMAGE_REGEX.lastIndex = 0
-  for (let match = MARKDOWN_IMAGE_REGEX.exec(content); match; match = MARKDOWN_IMAGE_REGEX.exec(content)) {
-    const before = content.slice(lastIndex, match.index)
+  for (const reference of extractConversationImageMarkdownReferences(content)) {
+    const before = content.slice(lastIndex, reference.index)
     if (before) parts.push({ type: "input_text", text: before })
 
-    const imageUrl = resolveMarkdownImageUrlForCodex(match[1])
+    const imageUrl = resolveMarkdownImageUrlForCodex(reference.url)
     if (imageUrl) {
       parts.push({ type: "input_image", image_url: imageUrl })
       hasResolvedImage = true
     } else {
-      parts.push({ type: "input_text", text: match[0] })
+      parts.push({ type: "input_text", text: reference.fullMatch })
     }
 
-    lastIndex = match.index + match[0].length
+    lastIndex = reference.index + reference.fullMatch.length
   }
 
   const after = content.slice(lastIndex)

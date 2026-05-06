@@ -54,6 +54,8 @@ const IMAGE_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
 
 const DATA_IMAGE_BASE64_PREFIX_REGEX = /^data:image\/[a-z0-9.+-]+;base64,/i;
 const DATA_IMAGE_URL_REGEX = /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i;
+const CONVERSATION_IMAGE_MARKDOWN_REFERENCE_REGEX =
+  /!\[([^\]]*)\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi;
 
 export const MAX_RESPOND_TO_USER_IMAGES = 4;
 export const MAX_RESPOND_TO_USER_VIDEOS = 2;
@@ -76,6 +78,13 @@ export interface ConversationImageAssetRef {
 export interface ParsedDataImageUrl {
   mimeType: string;
   base64: string;
+}
+
+export interface ConversationImageMarkdownReference {
+  fullMatch: string;
+  altText: string;
+  url: string;
+  index: number;
 }
 
 export type ConversationVideoByteRange =
@@ -220,6 +229,15 @@ export function parseDataImageUrl(rawUrl: string): ParsedDataImageUrl | null {
     mimeType: match[1].toLowerCase(),
     base64: match[2],
   };
+}
+
+export function extractConversationImageMarkdownReferences(content: string): ConversationImageMarkdownReference[] {
+  return Array.from(content.matchAll(CONVERSATION_IMAGE_MARKDOWN_REFERENCE_REGEX), (match) => ({
+    fullMatch: match[0],
+    altText: match[1] ?? '',
+    url: match[2] ?? '',
+    index: match.index ?? 0,
+  }));
 }
 
 export function isRenderableVideoUrl(rawUrl?: string): boolean {
