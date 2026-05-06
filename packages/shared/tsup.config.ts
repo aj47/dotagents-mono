@@ -10,6 +10,7 @@ export default defineConfig({
     'voice-text-utils': 'src/voice-text-utils.ts',
     'voice-phrase-matcher': 'src/voice-phrase-matcher.ts',
     'voice-debug-log': 'src/voice-debug-log.ts',
+    'hands-free-controller': 'src/hands-free-controller.ts',
     'chat-utils': 'src/chat-utils.ts',
     providers: 'src/providers.ts',
     'provider-tool-utils': 'src/provider-tool-utils.ts',

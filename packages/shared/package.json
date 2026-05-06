@@ -46,6 +46,11 @@
       "import": "./dist/voice-debug-log.mjs",
       "require": "./dist/voice-debug-log.js"
     },
+    "./hands-free-controller": {
+      "types": "./dist/hands-free-controller.d.ts",
+      "import": "./dist/hands-free-controller.mjs",
+      "require": "./dist/hands-free-controller.js"
+    },
     "./chat-utils": {
       "types": "./dist/chat-utils.d.ts",
       "import": "./dist/chat-utils.mjs",

@@ -11,6 +11,7 @@ export * from './tts-tracking';
 export * from './voice-text-utils';
 export * from './voice-phrase-matcher';
 export * from './voice-debug-log';
+export * from './hands-free-controller';
 export * from './chat-utils';
 export * from './providers';
 export * from './provider-tool-utils';
