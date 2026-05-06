@@ -5,6 +5,7 @@ import {
   isLocalConfigurationErrorMessage,
   isMissingApiKeyErrorMessage,
   isRateLimitError,
+  isRetryableLlmProviderError,
 } from './api-key-error-utils'
 
 describe('isMissingApiKeyErrorMessage', () => {
@@ -102,5 +103,63 @@ describe('isRateLimitError', () => {
       isRateLimitError(Object.assign(new Error('Bad request'), { statusCode: 400 }))
     ).toBe(false)
     expect(isRateLimitError('Rate limit exceeded')).toBe(false)
+  })
+})
+
+describe('isRetryableLlmProviderError', () => {
+  it('rejects non-error values, aborts, and local configuration errors', () => {
+    expect(isRetryableLlmProviderError('Network failed')).toBe(false)
+    expect(
+      isRetryableLlmProviderError(Object.assign(new Error('Aborted'), { name: 'AbortError' }))
+    ).toBe(false)
+    expect(isRetryableLlmProviderError(new Error('API key is required for openai'))).toBe(false)
+    expect(isRetryableLlmProviderError(new Error('Unknown provider: acme'))).toBe(false)
+  })
+
+  it('preserves empty-response retries even for structured 4xx errors', () => {
+    expect(
+      isRetryableLlmProviderError(
+        Object.assign(new Error('LLM returned empty response'), { statusCode: 401 })
+      )
+    ).toBe(true)
+  })
+
+  it('honors explicit provider retryability after empty-response handling', () => {
+    expect(
+      isRetryableLlmProviderError(Object.assign(new Error('Bad request'), { isRetryable: false }))
+    ).toBe(false)
+    expect(
+      isRetryableLlmProviderError(
+        Object.assign(new Error('Transient provider issue'), { isRetryable: true })
+      )
+    ).toBe(true)
+  })
+
+  it('handles structured status codes with non-transient 4xx filtering', () => {
+    expect(
+      isRetryableLlmProviderError(Object.assign(new Error('Timeout'), { statusCode: 408 }))
+    ).toBe(true)
+    expect(
+      isRetryableLlmProviderError(Object.assign(new Error('Too many requests'), { status: 429 }))
+    ).toBe(true)
+    expect(
+      isRetryableLlmProviderError(Object.assign(new Error('Unauthorized'), { statusCode: 401 }))
+    ).toBe(false)
+    expect(
+      isRetryableLlmProviderError(Object.assign(new Error('Server error'), { statusCode: 503 }))
+    ).toBe(true)
+  })
+
+  it('only retries unstructured stream errors for known Codex transient signatures', () => {
+    expect(
+      isRetryableLlmProviderError(new Error('stream error while parsing provider payload'))
+    ).toBe(false)
+    expect(isRetryableLlmProviderError(new Error('ChatGPT Codex stream error'))).toBe(true)
+    expect(isRetryableLlmProviderError(new Error('ChatGPT Codex response failed'))).toBe(true)
+    expect(isRetryableLlmProviderError(new Error('ChatGPT Codex response.failed'))).toBe(true)
+  })
+
+  it('retries by default when no deterministic failure signal is present', () => {
+    expect(isRetryableLlmProviderError(new Error('Connection timed out'))).toBe(true)
   })
 })

@@ -35,8 +35,8 @@ import { state, agentSessionStateManager, llmRequestAbortManager } from "./state
 import type { AgentConversationState } from "@dotagents/shared/conversation-state"
 import {
   isEmptyResponseError,
-  isLocalConfigurationErrorMessage,
   isRateLimitError,
+  isRetryableLlmProviderError,
 } from "@dotagents/shared/api-key-error-utils"
 import { hasRawToolCallMarkerTokens, stripRawToolMarkerTokens } from "@dotagents/shared/chat-utils"
 import {
@@ -378,88 +378,6 @@ async function interruptibleDelay(delay: number, sessionId?: string): Promise<vo
 }
 
 /**
- * Check if an error is retryable.
- *
- * Uses a denylist approach: retry by default, and only refuse to retry when
- * we have strong evidence that retrying cannot succeed (aborts, explicit
- * isRetryable=false, or non-transient 4xx status codes like auth/validation).
- *
- * This avoids the fragility of pattern-matching every transient error string
- * a provider might emit (see https://github.com/aj47/dotagents-mono/issues/391
- * for an example where a new "ChatGPT Codex stream error" string slipped past
- * a hardcoded allowlist and silently killed the agent session).
- *
- * NOTE: Empty response errors are handled separately - they retry immediately
- * without backoff (see withRetry function).
- */
-function isRetryableError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false
-  }
-
-  const message = error.message.toLowerCase()
-
-  // Abort errors should never be retried
-  if (
-    error.name === "AbortError" ||
-    message.includes("abort")
-  ) {
-    return false
-  }
-
-  // Deterministic local setup/configuration errors should fail fast instead of
-  // adding retry delay/noise.
-  if (isLocalConfigurationErrorMessage(error.message)) {
-    return false
-  }
-
-  // Preserve empty-response retries regardless of status code. withRetry()
-  // handles these via an immediate retry path without backoff.
-  if (isEmptyResponseError(error)) {
-    return true
-  }
-
-  // Check for AI SDK structured error fields (AI_APICallError, etc.)
-  const errorWithStatus = error as { statusCode?: number; isRetryable?: boolean; status?: number }
-
-  // Honor the SDK's explicit retryability signal when present
-  if (typeof errorWithStatus.isRetryable === "boolean") {
-    return errorWithStatus.isRetryable
-  }
-
-  // Non-transient 4xx (auth, validation, not-found, etc.) won't succeed on retry.
-  // 408 (timeout) and 429 (rate limit) are explicitly retryable.
-  const statusCode = errorWithStatus.statusCode ?? errorWithStatus.status
-  const hasStructuredStatusCode = typeof statusCode === "number"
-  if (hasStructuredStatusCode) {
-    if (statusCode === 408 || statusCode === 429) {
-      return true
-    }
-    if (statusCode >= 400 && statusCode < 500) {
-      return false
-    }
-  }
-
-  // Guard against broad stream-error retries. Keep known transient Codex
-  // chatgpt-web failure signatures retryable, but avoid retrying generic
-  // "stream error" failures that may be deterministic for other providers.
-  if (!hasStructuredStatusCode && message.includes("stream error")) {
-    const isKnownCodexTransient =
-      message.includes("chatgpt codex stream error") ||
-      message.includes("chatgpt codex response failed") ||
-      message.includes("chatgpt codex response.failed")
-    if (!isKnownCodexTransient) {
-      return false
-    }
-  }
-
-  // Default: retry. Empty responses, network blips, known transient provider
-  // stream errors, transient 5xx, etc. all fall through to here. The bounded
-  // retry count in withRetry caps the cost if the failure turns out permanent.
-  return true
-}
-
-/**
  * Execute an async function with retry logic
  */
 async function withRetry<T>(
@@ -541,7 +459,7 @@ async function withRetry<T>(
       }
 
       // Check if retryable
-      if (!isRetryableError(error)) {
+      if (!isRetryableLlmProviderError(error)) {
         diagnosticsService.logError(
           "llm-fetch",
           "Non-retryable API error",

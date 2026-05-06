@@ -33,6 +33,59 @@ export function isRateLimitError(error: unknown): boolean {
   return message.includes("429") || message.includes("rate limit")
 }
 
+export function isRetryableLlmProviderError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const message = error.message.toLowerCase()
+
+  if (error.name === "AbortError" || message.includes("abort")) {
+    return false
+  }
+
+  if (isLocalConfigurationErrorMessage(error.message)) {
+    return false
+  }
+
+  if (isEmptyResponseError(error)) {
+    return true
+  }
+
+  const errorWithStatus = error as {
+    statusCode?: number
+    isRetryable?: boolean
+    status?: number
+  }
+
+  if (typeof errorWithStatus.isRetryable === "boolean") {
+    return errorWithStatus.isRetryable
+  }
+
+  const statusCode = errorWithStatus.statusCode ?? errorWithStatus.status
+  const hasStructuredStatusCode = typeof statusCode === "number"
+  if (hasStructuredStatusCode) {
+    if (statusCode === 408 || statusCode === 429) {
+      return true
+    }
+    if (statusCode >= 400 && statusCode < 500) {
+      return false
+    }
+  }
+
+  if (!hasStructuredStatusCode && message.includes("stream error")) {
+    const isKnownCodexTransient =
+      message.includes("chatgpt codex stream error") ||
+      message.includes("chatgpt codex response failed") ||
+      message.includes("chatgpt codex response.failed")
+    if (!isKnownCodexTransient) {
+      return false
+    }
+  }
+
+  return true
+}
+
 export function isLocalConfigurationErrorMessage(message: string): boolean {
   if (isMissingApiKeyErrorMessage(message)) {
     return true
