@@ -61,6 +61,7 @@ import type {
 import type { MCPConfig, MCPServerConfig } from "@dotagents/shared/mcp-utils"
 import type { RecordingHistoryItem } from "@dotagents/shared/types"
 import type { Config } from "../shared/types"
+import type { PanelPosition } from "@dotagents/shared/api-types"
 import type {
   AgentProfile,
   AgentProfileConnection,
@@ -92,7 +93,6 @@ import {
   saveCustomPosition,
   updatePanelPosition,
   constrainPositionToScreen,
-  PanelPosition,
 } from "./panel-position"
 import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "./state"
 import { generateTTS } from "./tts-service"

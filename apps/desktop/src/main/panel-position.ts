@@ -5,8 +5,6 @@ import {
   type PanelPosition,
 } from "@dotagents/shared/api-types"
 
-export type { PanelPosition } from "@dotagents/shared/api-types"
-
 export interface PanelSize {
   width: number
   height: number
