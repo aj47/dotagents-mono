@@ -2,7 +2,7 @@ import type { AgentConversationState } from "@dotagents/shared/conversation-stat
 import type { AgentUserResponseEvent } from "@dotagents/shared/agent-progress"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared/message-display-utils"
 import { collectRecentRealUserRequestIndices } from "@dotagents/shared/conversation-history-utils"
-import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
+import { resolveLatestUserFacingResponse } from "@dotagents/shared/chat-utils"
 
 type ToolCallLike = {
   name?: string

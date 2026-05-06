@@ -17,8 +17,7 @@ import { agentSessionStateManager } from '../state';
 import type { ACPDelegationProgress, ACPSubAgentMessage } from '@dotagents/shared/agent-progress';
 import type { LegacyAcpAgentConfig } from '@dotagents/shared/agent-profile-legacy-converters';
 import type { AgentProfile } from '@dotagents/core';
-import { RESPOND_TO_USER_TOOL } from '@dotagents/shared/chat-utils';
-import { extractRespondToUserContentFromArgs } from '../respond-to-user-utils';
+import { extractRespondToUserContentFromArgs, RESPOND_TO_USER_TOOL } from '@dotagents/shared/chat-utils';
 import {
   runInternalSubSession,
   cancelSubSession,

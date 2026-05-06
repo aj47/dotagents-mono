@@ -1,4 +1,3 @@
-import { extractRespondToUserContentFromArgs as extractSharedRespondToUserContentFromArgs } from "@dotagents/shared/chat-utils"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -7,9 +6,9 @@ import {
   getLatestRespondToUserContentFromConversationHistory,
   getUnmaterializedUserResponseEvents,
   resolveLatestUserFacingResponse,
-} from "./respond-to-user-utils"
+} from "@dotagents/shared/chat-utils"
 
-describe("respond-to-user-utils", () => {
+describe("respond-to-user chat utils", () => {
   it("skips path-only images when extracting planned respond_to_user args", () => {
     expect(extractRespondToUserContentFromArgs({
       text: "Done",
@@ -24,13 +23,13 @@ describe("respond-to-user-utils", () => {
   })
 
   it("keeps shared respond_to_user image URL extraction aligned", () => {
-    expect(extractSharedRespondToUserContentFromArgs({
+    expect(extractRespondToUserContentFromArgs({
       images: [{ alt: "Preview", url: "https://example.com/result.png" }],
     })).toBe("![Preview](https://example.com/result.png)")
   })
 
   it("keeps shared legacy embedded-image extraction working", () => {
-    expect(extractSharedRespondToUserContentFromArgs({
+    expect(extractRespondToUserContentFromArgs({
       images: [{ altText: "Preview", mimeType: "image/png", data: "ZmFrZQ==" }],
     })).toBe("![Preview](data:image/png;base64,ZmFrZQ==)")
   })
@@ -41,7 +40,7 @@ describe("respond-to-user-utils", () => {
     }
 
     expect(extractRespondToUserContentFromArgs(args)).toBe("[Demo clip](assets://conversation-video/conv_1/demo.mp4)")
-    expect(extractSharedRespondToUserContentFromArgs(args)).toBe("[Demo clip](assets://conversation-video/conv_1/demo.mp4)")
+    expect(extractRespondToUserContentFromArgs(args)).toBe("[Demo clip](assets://conversation-video/conv_1/demo.mp4)")
   })
 
   it("falls back to the latest respond_to_user entry in conversation history", () => {

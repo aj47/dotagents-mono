@@ -108,7 +108,7 @@ function makeExecuteToolCall(sessionId: string, runId: number, overrides: Record
 
     if (toolCall.name === "respond_to_user" && !result?.isError) {
       const { appendSessionUserResponse } = await import("./session-user-response-store")
-      const { extractRespondToUserContentFromArgs } = await import("./respond-to-user-utils")
+      const { extractRespondToUserContentFromArgs } = await import("@dotagents/shared/chat-utils")
       const responseContent = extractRespondToUserContentFromArgs(toolCall.arguments)
       if (responseContent) {
         appendSessionUserResponse({ sessionId, runId, text: responseContent })

@@ -53,7 +53,7 @@ import {
   getUnmaterializedUserResponseEvents,
   normalizeUserFacingResponseContent,
   resolveLatestUserFacingResponse,
-} from "./respond-to-user-utils"
+} from "@dotagents/shared/chat-utils"
 import {
   MARK_WORK_COMPLETE_TOOL,
   RESPOND_TO_USER_TOOL,
