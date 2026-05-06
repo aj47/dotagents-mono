@@ -792,6 +792,24 @@ describe("dedupeTaskEntriesByTitle", () => {
 
     expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["newer"])
   })
+
+  it("prefers the parent session over a newer subsession that adopted the same title", () => {
+    const entries = [
+      { session: { id: "session_parent", conversationTitle: "[Repeat] Fix Auth Sync", status: "active", startTime: 100 } },
+      { session: { id: "subsession_child", conversationTitle: "[Repeat] Fix Auth Sync", status: "active", startTime: 200, parentSessionId: "session_parent" } },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["session_parent"])
+  })
+
+  it("prefers a top-level entry over an entry with a parentSessionId set", () => {
+    const entries = [
+      { session: { id: "child", conversationTitle: "Shared Title", status: "active", startTime: 300, parentSessionId: "parent" } },
+      { session: { id: "top", conversationTitle: "Shared Title", status: "active", startTime: 100 } },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["top"])
+  })
 })
 
 describe("paginateSidebarEntries", () => {

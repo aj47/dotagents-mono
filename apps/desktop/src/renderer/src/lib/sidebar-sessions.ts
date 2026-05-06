@@ -145,10 +145,24 @@ function getTaskEntryTimestamp(session: TitledSessionLike & { startTime?: number
   return Math.max(session.endTime ?? 0, session.startTime ?? 0)
 }
 
+function isSubagentLikeEntry(session: TitledSessionLike): boolean {
+  if (isLikelyInternalSubSessionId(session.id)) return true
+  const parentSessionId = session.parentSessionId?.trim()
+  return !!parentSessionId && parentSessionId !== session.id
+}
+
 function isBetterTaskEntry<T extends { session: TitledSessionLike & { status?: string; startTime?: number; endTime?: number } }>(
   candidate: T,
   current: T,
 ): boolean {
+  // Prefer top-level entries over subagent/subsession entries that share the
+  // same dedupe key. A running subsession inherits its parent's conversation
+  // title, so without this bias dedup would drop the parent row and surface
+  // the subsession's truncated context as the focused session.
+  const candidateIsSubagent = isSubagentLikeEntry(candidate.session)
+  const currentIsSubagent = isSubagentLikeEntry(current.session)
+  if (candidateIsSubagent !== currentIsSubagent) return !candidateIsSubagent
+
   const candidateIsActive = candidate.session.status === "active"
   const currentIsActive = current.session.status === "active"
   if (candidateIsActive !== currentIsActive) return candidateIsActive
