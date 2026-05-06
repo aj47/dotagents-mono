@@ -74,7 +74,7 @@ import {
   parseMcpServerConfigImportRequestBody,
   parseMcpMaxIterationsDraft,
 } from '@dotagents/shared/mcp-api';
-import { isReservedMcpServerName, type MCPServerConfig, type MCPTransportType } from '@dotagents/shared/mcp-utils';
+import { isReservedMcpServerName, parseMcpKeyValueDraft, type MCPServerConfig, type MCPTransportType } from '@dotagents/shared/mcp-utils';
 
 const getRemoteTtsModelValue = (settings?: Settings | null): string | undefined => {
   if (!settings) return undefined;
@@ -264,24 +264,6 @@ const EMPTY_MODEL_PRESET_DRAFT: ModelPresetDraft = {
   isBuiltIn: false,
   hasApiKey: false,
 };
-
-function parseMcpKeyValueDraft(text: string, label: string): { value?: Record<string, string>; error?: string } {
-  const value: Record<string, string> = {};
-  for (const line of text.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    const separatorIndex = trimmed.indexOf('=');
-    if (separatorIndex <= 0) {
-      return { error: `${label} entries must use KEY=value` };
-    }
-    const key = trimmed.slice(0, separatorIndex).trim();
-    if (!key) {
-      return { error: `${label} entries must include a key` };
-    }
-    value[key] = trimmed.slice(separatorIndex + 1).trim();
-  }
-  return { value };
-}
 
 function buildRemoteSettingsInputDrafts(settings: Settings): Record<string, string> {
   return {

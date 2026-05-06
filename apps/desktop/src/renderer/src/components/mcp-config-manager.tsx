@@ -69,8 +69,10 @@ import { Spinner } from "@renderer/components/ui/spinner"
 import { MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry, DetailedToolInfo } from "@shared/types"
 import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@dotagents/shared/mcp-api"
 import {
+  formatMcpKeyValueDraft,
   isReservedMcpServerName,
   mergeImportedMcpServers,
+  parseMcpKeyValueDraft,
   removeMcpServerConfig,
   renameMcpServerConfig,
   upsertMcpServerConfig,
@@ -131,11 +133,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
   })
   const [url, setUrl] = useState(server?.config.url || "")
   const [env, setEnv] = useState(
-    server?.config.env
-      ? Object.entries(server.config.env)
-          .map(([k, v]) => `${k}=${v}`)
-          .join("\n")
-      : "",
+    formatMcpKeyValueDraft(server?.config.env),
   )
   const [timeout, setTimeout] = useState(
     server?.config.timeout?.toString() || "",
@@ -143,11 +141,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
   const [selectedExample, setSelectedExample] = useState<string>("")
   const [disabled, setDisabled] = useState(server?.config.disabled || false)
   const [headers, setHeaders] = useState(
-    server?.config.headers
-      ? Object.entries(server.config.headers)
-          .map(([k, v]) => `${k}=${v}`)
-          .join("\n")
-      : "",
+    formatMcpKeyValueDraft(server?.config.headers),
   )
   const [oauthConfig, setOAuthConfig] = useState<OAuthConfig>(
     server?.config.oauth || {}
@@ -172,23 +166,11 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
     }
 
     setUrl(server?.config.url || "")
-    setEnv(
-      server?.config.env
-        ? Object.entries(server.config.env)
-            .map(([k, v]) => `${k}=${v}`)
-            .join("\n")
-        : ""
-    )
+    setEnv(formatMcpKeyValueDraft(server?.config.env))
     setTimeout(server?.config.timeout?.toString() || "")
     setSelectedExample("")
     setDisabled(server?.config.disabled || false)
-    setHeaders(
-      server?.config.headers
-        ? Object.entries(server.config.headers)
-            .map(([k, v]) => `${k}=${v}`)
-            .join("\n")
-        : ""
-    )
+    setHeaders(formatMcpKeyValueDraft(server?.config.headers))
     setOAuthConfig(server?.config.oauth || {})
   }, [server])
 
@@ -247,35 +229,19 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
       }
     }
 
-    const envObject: Record<string, string> = {}
-    if (env.trim()) {
-      try {
-        env.split("\n").forEach((line) => {
-          const [key, ...valueParts] = line.split("=")
-          if (key && valueParts.length > 0) {
-            envObject[key.trim()] = valueParts.join("=").trim()
-          }
-        })
-      } catch (error) {
-        toast.error("Invalid environment variables format")
-        return
-      }
+    const envResult = parseMcpKeyValueDraft(env, "Environment")
+    if (envResult.error) {
+      toast.error(envResult.error)
+      return
     }
+    const envObject = envResult.value
 
-    const headersObject: Record<string, string> = {}
-    if (headers.trim()) {
-      try {
-        headers.split("\n").forEach((line) => {
-          const [key, ...valueParts] = line.split("=")
-          if (key && valueParts.length > 0) {
-            headersObject[key.trim()] = valueParts.join("=").trim()
-          }
-        })
-      } catch (error) {
-        toast.error("Invalid headers format")
-        return
-      }
+    const headersResult = parseMcpKeyValueDraft(headers, "Header")
+    if (headersResult.error) {
+      toast.error(headersResult.error)
+      return
     }
+    const headersObject = headersResult.value
 
     // Parse the full command into command and args
     let parsedCommand = ""
@@ -512,25 +478,19 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   }
                   try {
                     // Create server config for testing
-                    const envObject: Record<string, string> = {}
-                    if (env.trim()) {
-                      env.split("\n").forEach((line) => {
-                        const [key, ...valueParts] = line.split("=")
-                        if (key && valueParts.length > 0) {
-                          envObject[key.trim()] = valueParts.join("=").trim()
-                        }
-                      })
+                    const envResult = parseMcpKeyValueDraft(env, "Environment")
+                    if (envResult.error) {
+                      toast.error(envResult.error)
+                      return
                     }
+                    const envObject = envResult.value
 
-                    const headersObject: Record<string, string> = {}
-                    if (headers.trim()) {
-                      headers.split("\n").forEach((line) => {
-                        const [key, ...valueParts] = line.split("=")
-                        if (key && valueParts.length > 0) {
-                          headersObject[key.trim()] = valueParts.join("=").trim()
-                        }
-                      })
+                    const headersResult = parseMcpKeyValueDraft(headers, "Header")
+                    if (headersResult.error) {
+                      toast.error(headersResult.error)
+                      return
                     }
+                    const headersObject = headersResult.value
 
                     const testServerConfig: MCPServerConfig = { transport }
 
@@ -704,23 +664,11 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                           const args = example.config.args?.join(" ") || ""
                           setFullCommand(args ? `${cmd} ${args}` : cmd)
                           setUrl(example.config.url || "")
-                          setEnv(
-                            example.config.env
-                              ? Object.entries(example.config.env)
-                                  .map(([k, v]) => `${k}=${v}`)
-                                  .join("\n")
-                              : ""
-                          )
+                          setEnv(formatMcpKeyValueDraft(example.config.env))
                           setTimeout(example.config.timeout?.toString() || "")
                           setDisabled(example.config.disabled || false)
                           // Set headers if the example has them
-                          setHeaders(
-                            example.config.headers
-                              ? Object.entries(example.config.headers)
-                                  .map(([k, v]) => `${k}=${v}`)
-                                  .join("\n")
-                              : ""
-                          )
+                          setHeaders(formatMcpKeyValueDraft(example.config.headers))
                           // Reset OAuth config when switching examples to prevent stale fields
                           setOAuthConfig({})
                           setActiveTab('manual')
@@ -765,13 +713,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                             const args = example.config.args?.join(" ") || ""
                             setFullCommand(args ? `${cmd} ${args}` : cmd)
                             setUrl(example.config.url || "")
-                            setEnv(
-                              example.config.env
-                                ? Object.entries(example.config.env)
-                                    .map(([k, v]) => `${k}=${v}`)
-                                    .join("\n")
-                                : ""
-                            )
+                            setEnv(formatMcpKeyValueDraft(example.config.env))
                             setTimeout(example.config.timeout?.toString() || "")
                             setDisabled(example.config.disabled || false)
                             setOAuthConfig(example.config.oauth || {})

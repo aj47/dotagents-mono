@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   inferTransportType,
+  formatMcpKeyValueDraft,
   isReservedMcpServerName,
   mergeImportedMcpServers,
   normalizeMcpConfig,
+  parseMcpKeyValueDraft,
   removeMcpServerConfig,
   renameMcpServerConfig,
   upsertMcpServerConfig,
@@ -128,6 +130,44 @@ describe('inferTransportType', () => {
 
   it('infers streamableHttp when url starts with https://', () => {
     expect(inferTransportType({ url: 'https://exa.ai/mcp' })).toBe('streamableHttp')
+  })
+})
+
+describe('MCP key/value draft helpers', () => {
+  it('formats server env and header records as newline-separated draft text', () => {
+    expect(formatMcpKeyValueDraft({
+      API_KEY: 'secret',
+      'X-Feature': 'enabled',
+    })).toBe('API_KEY=secret\nX-Feature=enabled')
+    expect(formatMcpKeyValueDraft()).toBe('')
+  })
+
+  it('parses KEY=value draft text while preserving equals signs in values', () => {
+    expect(parseMcpKeyValueDraft('API_KEY=secret\nTOKEN=a=b=c', 'Environment')).toEqual({
+      value: {
+        API_KEY: 'secret',
+        TOKEN: 'a=b=c',
+      },
+    })
+  })
+
+  it('ignores blank lines and trims keys and values', () => {
+    expect(parseMcpKeyValueDraft('\n API_KEY = secret \n\n', 'Environment')).toEqual({
+      value: {
+        API_KEY: 'secret',
+      },
+    })
+  })
+
+  it('returns a labeled error for malformed draft lines', () => {
+    expect(parseMcpKeyValueDraft('API_KEY', 'Environment')).toEqual({
+      value: {},
+      error: 'Environment entries must use KEY=value',
+    })
+    expect(parseMcpKeyValueDraft('=secret', 'Header')).toEqual({
+      value: {},
+      error: 'Header entries must use KEY=value',
+    })
   })
 })
 

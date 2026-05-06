@@ -140,6 +140,36 @@ export function isReservedMcpServerName(
   )
 }
 
+export type McpKeyValueDraftParseResult = {
+  value: Record<string, string>
+  error?: string
+}
+
+export function formatMcpKeyValueDraft(value?: Record<string, string>): string {
+  if (!value) return ""
+  return Object.entries(value)
+    .map(([key, entryValue]) => `${key}=${entryValue}`)
+    .join("\n")
+}
+
+export function parseMcpKeyValueDraft(text: string, label: string): McpKeyValueDraftParseResult {
+  const value: Record<string, string> = {}
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const separatorIndex = trimmed.indexOf("=")
+    if (separatorIndex <= 0) {
+      return { value, error: `${label} entries must use KEY=value` }
+    }
+    const key = trimmed.slice(0, separatorIndex).trim()
+    if (!key) {
+      return { value, error: `${label} entries must include a key` }
+    }
+    value[key] = trimmed.slice(separatorIndex + 1).trim()
+  }
+  return { value }
+}
+
 export function upsertMcpServerConfig<
   TServerConfig extends MCPServerConfigLike,
   TConfig extends MCPConfigLike<TServerConfig>,
