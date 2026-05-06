@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   computeTurnDurations,
+  formatSidebarDuration,
   formatTurnDuration,
   type TurnDurationMessage,
 } from './turn-duration'
@@ -80,5 +81,30 @@ describe('formatTurnDuration', () => {
     expect(formatTurnDuration(75_000)).toBe('1m 15s')
     expect(formatTurnDuration(3_600_000)).toBe('1h')
     expect(formatTurnDuration(3_700_000)).toBe('1h 1m')
+  })
+})
+
+describe('formatSidebarDuration', () => {
+  const now = Date.UTC(2026, 0, 15, 12, 0, 0)
+  const minute = 60_000
+  const hour = 60 * minute
+  const day = 24 * hour
+
+  it('returns null for missing or non-finite timestamps', () => {
+    expect(formatSidebarDuration(0, now)).toBeNull()
+    expect(formatSidebarDuration(Number.NaN, now)).toBeNull()
+    expect(formatSidebarDuration(Number.POSITIVE_INFINITY, now)).toBeNull()
+  })
+
+  it('formats minute, hour, day, and week elapsed labels', () => {
+    expect(formatSidebarDuration(now, now)).toBe('0m')
+    expect(formatSidebarDuration(now - minute, now)).toBe('1m')
+    expect(formatSidebarDuration(now - (2 * hour + 30 * minute), now)).toBe('2h 30m')
+    expect(formatSidebarDuration(now - 6 * day, now)).toBe('6d')
+    expect(formatSidebarDuration(now - 7 * day, now)).toBe('1w')
+  })
+
+  it('clamps future timestamps to 0m', () => {
+    expect(formatSidebarDuration(now + 5 * minute, now)).toBe('0m')
   })
 })
