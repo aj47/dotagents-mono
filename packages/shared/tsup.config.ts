@@ -40,6 +40,7 @@ export default defineConfig({
     'stt-models': 'src/stt-models.ts',
     'api-key-error-utils': 'src/api-key-error-utils.ts',
     'error-utils': 'src/error-utils.ts',
+    'accessibility-utils': 'src/accessibility-utils.ts',
     'config-save-error': 'src/config-save-error.ts',
     'audio-input-device-utils': 'src/audio-input-device-utils.ts',
     'boolean-preference-storage': 'src/boolean-preference-storage.ts',

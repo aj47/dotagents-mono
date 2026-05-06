@@ -196,6 +196,11 @@
       "import": "./dist/error-utils.mjs",
       "require": "./dist/error-utils.js"
     },
+    "./accessibility-utils": {
+      "types": "./dist/accessibility-utils.d.ts",
+      "import": "./dist/accessibility-utils.mjs",
+      "require": "./dist/accessibility-utils.js"
+    },
     "./config-save-error": {
       "types": "./dist/config-save-error.d.ts",
       "import": "./dist/config-save-error.mjs",

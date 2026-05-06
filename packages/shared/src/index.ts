@@ -63,6 +63,7 @@ export * from './mobile-app-config';
 export * from './stt-models';
 export * from './api-key-error-utils';
 export * from './error-utils';
+export * from './accessibility-utils';
 export * from './config-save-error';
 export * from './audio-input-device-utils';
 export * from './boolean-preference-storage';
