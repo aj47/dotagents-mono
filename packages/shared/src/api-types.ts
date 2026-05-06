@@ -1054,6 +1054,11 @@ export interface ApiAgentProfilesResponse {
   profiles: ApiAgentProfile[];
 }
 
+export interface AgentProfilesReloadResponse {
+  success: true;
+  profiles: ApiAgentProfile[];
+}
+
 export interface AgentProfileToggleResponse {
   success: true;
   id: string;

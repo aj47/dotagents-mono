@@ -364,6 +364,12 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // POST /v1/agent-profiles/reload - Reload modular agent profile files
+  fastify.post(API_ROUTES.agentProfilesReload, async (_req, reply) => {
+    const result = actions.reloadAgentProfiles()
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // POST /v1/agent-profiles/:id/toggle - Toggle agent profile enabled state
   fastify.post(API_ROUTES.agentProfileToggle, async (req, reply) => {
     const params = req.params as { id?: string }

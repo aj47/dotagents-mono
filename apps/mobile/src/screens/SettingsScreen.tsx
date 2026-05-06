@@ -433,6 +433,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingKnowledgeNotes, setIsLoadingKnowledgeNotes] = useState(false);
   const [isSearchingKnowledgeNotes, setIsSearchingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
+  const [isReloadingAgentProfiles, setIsReloadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
   const [isImportingLoopMarkdown, setIsImportingLoopMarkdown] = useState(false);
   const [isExportingLoopMarkdownId, setIsExportingLoopMarkdownId] = useState<string | null>(null);
@@ -1826,6 +1827,21 @@ export default function SettingsScreen({ navigation }: any) {
       Alert.alert('Error', 'Failed to toggle agent profile');
     }
   };
+
+  const handleAgentProfilesReload = useCallback(async () => {
+    if (!settingsClient || isReloadingAgentProfiles) return;
+
+    setIsReloadingAgentProfiles(true);
+    try {
+      const res = await settingsClient.reloadAgentProfiles();
+      setAgentProfiles(res.profiles);
+    } catch (error: any) {
+      console.error('[Settings] Failed to reload agent profiles:', error);
+      Alert.alert('Error', error.message || 'Failed to rescan agent files');
+    } finally {
+      setIsReloadingAgentProfiles(false);
+    }
+  }, [isReloadingAgentProfiles, settingsClient]);
 
   // Handle agent profile delete
   const handleAgentProfileDelete = useCallback(async (profile: AgentProfile) => {
@@ -4675,6 +4691,23 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4m. Agents */}
             {isDotAgentsServer && (
               <CollapsibleSection id="agents" title="Agents">
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.profileActionButton,
+                      styles.sectionActionButton,
+                      isReloadingAgentProfiles && styles.profileActionButtonDisabled,
+                    ]}
+                    onPress={handleAgentProfilesReload}
+                    disabled={isReloadingAgentProfiles}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Rescan agent files')}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isReloadingAgentProfiles ? 'Rescanning...' : 'Rescan Files'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
                 {isLoadingAgentProfiles ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : agentProfiles.length === 0 ? (

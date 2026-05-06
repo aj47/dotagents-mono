@@ -43,6 +43,7 @@ import type {
   AgentSessionCandidatesResponse,
   AgentProfileCreateRequest,
   AgentProfileDeleteResponse,
+  AgentProfilesReloadResponse,
   AgentProfileToggleResponse,
   AgentProfileUpdateRequest,
   ApiAgentProfile,
@@ -1602,6 +1603,12 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
     return this.request<VerifyExternalAgentCommandResponse>(API_PATHS.agentProfileVerifyCommand, {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  async reloadAgentProfiles(): Promise<AgentProfilesReloadResponse> {
+    return this.request<AgentProfilesReloadResponse>(API_PATHS.agentProfilesReload, {
+      method: 'POST',
     });
   }
 

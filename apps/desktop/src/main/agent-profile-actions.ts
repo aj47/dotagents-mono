@@ -3,10 +3,12 @@ import {
   deleteAgentProfileAction,
   getAgentProfileAction,
   getAgentProfilesAction,
+  reloadAgentProfilesAction,
   toggleAgentProfileAction,
   updateAgentProfileAction,
   verifyExternalAgentCommandAction,
   type AgentProfileActionOptions,
+  type AgentProfileReloadActionOptions,
   type ExternalAgentCommandVerificationActionOptions,
 } from "@dotagents/shared/profile-api"
 import type { MobileApiActionResult } from "@dotagents/shared/remote-server-route-contracts"
@@ -28,6 +30,14 @@ const agentProfileActionOptions: AgentProfileActionOptions<DesktopAgentProfileAc
   diagnostics: diagnosticsService,
 }
 
+const agentProfileReloadActionOptions: AgentProfileReloadActionOptions<DesktopAgentProfileActionProfile> = {
+  service: {
+    ...agentProfileActionOptions.service,
+    reload: () => agentProfileService.reload(),
+  },
+  diagnostics: diagnosticsService,
+}
+
 const externalAgentCommandVerificationActionOptions: ExternalAgentCommandVerificationActionOptions = {
   service: {
     verifyExternalAgentCommand: verifyExternalAgentCommandService,
@@ -37,6 +47,10 @@ const externalAgentCommandVerificationActionOptions: ExternalAgentCommandVerific
 
 export function getAgentProfiles(role: string | undefined): AgentProfileActionResult {
   return getAgentProfilesAction(role, agentProfileActionOptions)
+}
+
+export function reloadAgentProfiles(): AgentProfileActionResult {
+  return reloadAgentProfilesAction(agentProfileReloadActionOptions)
 }
 
 export function toggleAgentProfile(id: string | undefined): AgentProfileActionResult {

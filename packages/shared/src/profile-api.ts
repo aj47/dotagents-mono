@@ -1,6 +1,7 @@
 import type {
   ApiAgentProfile,
   AgentProfileDeleteResponse,
+  AgentProfilesReloadResponse,
   ApiAgentProfileFull,
   ApiAgentProfilesResponse,
   AgentProfileToggleResponse,
@@ -146,8 +147,18 @@ export interface AgentProfileActionService<TProfile extends AgentProfileApiLike 
   deleteProfile(profileId: string): boolean
 }
 
+export interface AgentProfileReloadActionService<TProfile extends AgentProfileApiLike = AgentProfileApiLike>
+  extends AgentProfileActionService<TProfile> {
+  reload(): void
+}
+
 export interface AgentProfileActionOptions<TProfile extends AgentProfileApiLike = AgentProfileApiLike> {
   service: AgentProfileActionService<TProfile>
+  diagnostics: ProfileActionDiagnostics
+}
+
+export interface AgentProfileReloadActionOptions<TProfile extends AgentProfileApiLike = AgentProfileApiLike> {
+  service: AgentProfileReloadActionService<TProfile>
   diagnostics: ProfileActionDiagnostics
 }
 
@@ -439,6 +450,18 @@ export function getAgentProfilesAction<TProfile extends AgentProfileApiLike>(
   } catch (caughtError) {
     options.diagnostics.logError("agent-profile-actions", "Failed to get agent profiles", caughtError)
     return profileActionError(500, "Failed to get agent profiles")
+  }
+}
+
+export function reloadAgentProfilesAction<TProfile extends AgentProfileApiLike>(
+  options: AgentProfileReloadActionOptions<TProfile>,
+): AgentProfileActionResult {
+  try {
+    options.service.reload()
+    return profileActionOk(buildAgentProfilesReloadResponse(options.service.getAll()))
+  } catch (caughtError) {
+    options.diagnostics.logError("agent-profile-actions", "Failed to reload agent profiles", caughtError)
+    return profileActionError(500, getUnknownErrorMessage(caughtError, "Failed to reload agent profiles"))
   }
 }
 
@@ -739,6 +762,13 @@ export function formatAgentProfileFullForApi(profile: AgentProfileApiLike): ApiA
 
 export function buildAgentProfilesResponse(profiles: AgentProfileApiLike[]): ApiAgentProfilesResponse {
   return { profiles: profiles.map(formatAgentProfileSummaryForApi) }
+}
+
+export function buildAgentProfilesReloadResponse(profiles: AgentProfileApiLike[]): AgentProfilesReloadResponse {
+  return {
+    success: true,
+    profiles: profiles.map(formatAgentProfileSummaryForApi),
+  }
 }
 
 export function buildAgentProfileDetailResponse(profile: AgentProfileApiLike): { profile: ApiAgentProfileFull } {

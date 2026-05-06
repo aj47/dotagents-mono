@@ -29,6 +29,21 @@ test('keeps the mobile Agents subsection free of decorative delete emoji chrome'
   assert.match(agentsSection, /accessibilityLabel=\{`Delete agent \$\{profile\.displayName\}`\}/);
 });
 
+test('lets mobile rescan desktop agent profile files from the Agents subsection', () => {
+  const agentsSection = extractBetween(
+    '<CollapsibleSection id="agents" title="Agents">',
+    '{/* 4n. Agent Loops */}'
+  );
+
+  assert.match(settingsSource, /const \[isReloadingAgentProfiles, setIsReloadingAgentProfiles\]/);
+  assert.match(settingsSource, /const handleAgentProfilesReload = useCallback\(async \(\) => \{/);
+  assert.match(settingsSource, /settingsClient\.reloadAgentProfiles\(\)/);
+  assert.match(settingsSource, /setAgentProfiles\(res\.profiles\)/);
+  assert.match(agentsSection, /Rescan Files/);
+  assert.match(agentsSection, /createButtonAccessibilityLabel\('Rescan agent files'\)/);
+  assert.match(agentsSection, /disabled=\{isReloadingAgentProfiles\}/);
+});
+
 test('keeps mobile Agent Loop actions text-first and explicitly labeled', () => {
   const loopsSection = extractBetween(
     '<CollapsibleSection id="agentLoops" title="Agent Loops">',

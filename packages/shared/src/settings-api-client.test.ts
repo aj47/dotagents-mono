@@ -971,6 +971,7 @@ describe('SettingsApiClient', () => {
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.knowledgeNotesDeleteAll }, expectedPath: REMOTE_SERVER_API_PATHS.knowledgeNotesDeleteAll, run: () => client.deleteAllKnowledgeNotes() },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.agentProfiles }, expectedPath: REMOTE_SERVER_API_PATHS.agentProfiles, run: () => client.getAgentProfiles() },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.agentProfileVerifyCommand }, expectedPath: REMOTE_SERVER_API_PATHS.agentProfileVerifyCommand, run: () => client.verifyExternalAgentCommand({ command: 'codex-acp', args: [], probeArgs: ['--help'] }) },
+      { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.agentProfilesReload }, expectedPath: REMOTE_SERVER_API_PATHS.agentProfilesReload, run: () => client.reloadAgentProfiles() },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.agentProfile }, expectedPath: REMOTE_SERVER_API_BUILDERS.agentProfile(agentProfileId), run: () => client.getAgentProfile(agentProfileId) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.agentProfiles }, expectedPath: REMOTE_SERVER_API_PATHS.agentProfiles, run: () => client.createAgentProfile({ displayName: 'Agent', connectionType: 'internal' }) },
       { route: { method: 'PATCH', path: REMOTE_SERVER_API_PATHS.agentProfile }, expectedPath: REMOTE_SERVER_API_BUILDERS.agentProfile(agentProfileId), run: () => client.updateAgentProfile(agentProfileId, { displayName: 'Updated' }) },

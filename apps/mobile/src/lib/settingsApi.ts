@@ -52,6 +52,7 @@ export type {
   KnowledgeNoteUpdateRequest,
   AgentProfileCreateRequest,
   AgentProfileDeleteResponse,
+  AgentProfilesReloadResponse,
   AgentProfileToggleResponse,
   AgentProfileUpdateRequest,
   VerifyExternalAgentCommandRequest,

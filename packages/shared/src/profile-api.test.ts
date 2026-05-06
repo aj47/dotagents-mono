@@ -6,6 +6,7 @@ import {
   buildAgentProfileDeleteResponse,
   buildAgentProfileDetailResponse,
   buildAgentProfileMutationDetailResponse,
+  buildAgentProfilesReloadResponse,
   buildAgentProfilesResponse,
   buildAgentProfileToggleResponse,
   buildProfileExportResponse,
@@ -24,6 +25,7 @@ import {
   parseImportProfileRequestBody,
   parseSetCurrentProfileRequestBody,
   parseVerifyExternalAgentCommandRequestBody,
+  reloadAgentProfilesAction,
   setCurrentProfileAction,
   toggleAgentProfileAction,
   updateAgentProfileAction,
@@ -467,6 +469,28 @@ describe("profile API helpers", () => {
         updatedAt: 20,
       }],
     })
+    expect(buildAgentProfilesReloadResponse([agentProfile])).toEqual({
+      success: true,
+      profiles: [{
+        id: "agent-1",
+        name: "research-agent",
+        displayName: "Research Agent",
+        description: "Finds context",
+        avatarDataUrl: "data:image/png;base64,abc",
+        enabled: true,
+        isBuiltIn: false,
+        isUserProfile: true,
+        isAgentTarget: false,
+        isDefault: false,
+        role: "chat-agent",
+        connectionType: "remote",
+        autoSpawn: true,
+        guidelines: "Guidelines",
+        systemPrompt: "System",
+        createdAt: 10,
+        updatedAt: 20,
+      }],
+    })
 
     expect(buildAgentProfileDetailResponse(agentProfile).profile).toMatchObject({
       id: "agent-1",
@@ -521,6 +545,7 @@ describe("profile API helpers", () => {
     }
     const updateRequests: unknown[] = []
     const deletedProfileIds: string[] = []
+    let reloadCount = 0
     const service = {
       getAll: () => [agentProfile],
       getById: (profileId: string) => profileId === "agent-1" ? agentProfile : undefined,
@@ -538,6 +563,9 @@ describe("profile API helpers", () => {
       deleteProfile: (profileId: string) => {
         deletedProfileIds.push(profileId)
         return true
+      },
+      reload: () => {
+        reloadCount += 1
       },
     }
     const diagnostics = {
@@ -566,6 +594,10 @@ describe("profile API helpers", () => {
       statusCode: 201,
       body: buildAgentProfileDetailResponse(createdProfile),
     })
+    expect(reloadAgentProfilesAction(options)).toEqual({
+      statusCode: 200,
+      body: buildAgentProfilesReloadResponse([agentProfile]),
+    })
     expect(updateAgentProfileAction("agent-1", { displayName: " Renamed Agent " }, options)).toEqual({
       statusCode: 200,
       body: buildAgentProfileMutationDetailResponse(updatedProfile),
@@ -579,6 +611,7 @@ describe("profile API helpers", () => {
       { name: "Renamed Agent", displayName: "Renamed Agent" },
     ])
     expect(deletedProfileIds).toEqual(["agent-1"])
+    expect(reloadCount).toBe(1)
   })
 
   it("runs external agent command verification through a shared action adapter", async () => {

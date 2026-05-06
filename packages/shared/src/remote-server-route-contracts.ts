@@ -120,6 +120,7 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   deleteAllKnowledgeNotes: () => RemoteServerMaybePromise<MobileApiActionResult>;
   getAgentProfiles: (role?: string) => MobileApiActionResult;
   verifyExternalAgentCommand: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
+  reloadAgentProfiles: () => MobileApiActionResult;
   toggleAgentProfile: (id?: string) => MobileApiActionResult;
   getAgentProfile: (id?: string) => MobileApiActionResult;
   createAgentProfile: (body: unknown) => MobileApiActionResult;
