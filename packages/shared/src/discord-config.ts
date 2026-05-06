@@ -1,4 +1,7 @@
 export const DISCORD_SECRET_MASK = "••••••••"
+export const DEFAULT_DISCORD_DM_ENABLED = true
+export const DEFAULT_DISCORD_REQUIRE_MENTION = true
+export const DEFAULT_DISCORD_LOG_MESSAGES = false
 
 export type DiscordConfigSource = "config" | "env"
 export type DiscordLifecycleAction = "noop" | "start" | "stop" | "restart"

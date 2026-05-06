@@ -5,6 +5,9 @@ import { logApp } from "./debug"
 import { agentProfileService } from "./agent-profile-service"
 import { runAgent } from "./remote-agent-runner"
 import {
+  DEFAULT_DISCORD_DM_ENABLED,
+  DEFAULT_DISCORD_LOG_MESSAGES,
+  DEFAULT_DISCORD_REQUIRE_MENTION,
   getDiscordResolvedDefaultProfileId,
   getDiscordResolvedToken,
 } from "./discord-config"
@@ -1156,8 +1159,8 @@ class DiscordService {
       isDirectMessage,
       mentioned: atMentioned,
       nameMentioned,
-      requireMention: cfg.discordRequireMention ?? true,
-      dmEnabled: cfg.discordDmEnabled ?? true,
+      requireMention: cfg.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION,
+      dmEnabled: cfg.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED,
       allowUserIds: cfg.discordAllowUserIds,
       allowGuildIds: cfg.discordAllowGuildIds,
       allowChannelIds: cfg.discordAllowChannelIds,
@@ -1192,7 +1195,7 @@ class DiscordService {
       // into verbose diagnostics via `discordLogMessages`, include the author
       // ID — mirroring the privacy escalation used by the accepted-message
       // path below.
-      const shouldLogAuthor = cfg.discordLogMessages ?? false
+      const shouldLogAuthor = cfg.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES
       const context = isDirectMessage ? "DM" : "guild message"
       const authorSuffix = shouldLogAuthor ? ` from ${message.author.id}` : ""
       this.addLog("info", `Dropped Discord ${context}${authorSuffix}: ${rejectionReason}`)
@@ -1248,7 +1251,7 @@ class DiscordService {
     const processingChain = (this.processingChains.get(conversationId) || Promise.resolve())
       .catch(() => undefined)
       .then(async () => {
-        const shouldLogMessages = cfg.discordLogMessages ?? false
+        const shouldLogMessages = cfg.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES
         const promptSummary = shouldLogMessages ? `: ${prompt}` : ` (${prompt.length} chars)`
         const contextNote = pendingMessages.length > 0 ? ` (+${pendingMessages.length} context msgs)` : ""
         this.addLog("info", `Processing Discord message for ${conversationId}${promptSummary}${contextNote}`)
@@ -1732,8 +1735,8 @@ class DiscordService {
       `**Bot Status**`,
       `• Connected: ${status.connected ? "✅ yes" : "❌ no"}${status.botUsername ? ` (${status.botUsername})` : ""}`,
       ownerLine,
-      `• DMs: ${cfg.discordDmEnabled ? "✅ enabled" : "❌ disabled"}`,
-      `• Require mention: ${cfg.discordRequireMention !== false ? "yes" : "no"}`,
+      `• DMs: ${(cfg.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED) ? "✅ enabled" : "❌ disabled"}`,
+      `• Require mention: ${(cfg.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION) ? "yes" : "no"}`,
       `• DM allowlist: ${(cfg.discordDmAllowUserIds || []).length} users`,
       `• User allowlist: ${(cfg.discordAllowUserIds || []).length} users`,
       `• Role allowlist: ${(cfg.discordAllowRoleIds || []).length} roles`,

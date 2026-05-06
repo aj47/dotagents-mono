@@ -65,6 +65,11 @@ import {
   MAIN_AGENT_MODE_OPTIONS,
   type MainAgentMode,
 } from '@dotagents/shared/main-agent-selection';
+import {
+  DEFAULT_DISCORD_DM_ENABLED,
+  DEFAULT_DISCORD_LOG_MESSAGES,
+  DEFAULT_DISCORD_REQUIRE_MENTION,
+} from '@dotagents/shared/discord-config';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
 import {
   BUNDLE_COMPONENT_OPTIONS,
@@ -4171,20 +4176,20 @@ export default function SettingsScreen({ navigation }: any) {
                     <View style={styles.row}>
                       <Text style={styles.label}>Allow Direct Messages</Text>
                       <Switch
-                        value={remoteSettings.discordDmEnabled ?? true}
+                        value={remoteSettings.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED}
                         onValueChange={(v) => handleRemoteSettingToggle('discordDmEnabled', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.discordDmEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
 
                     <View style={styles.row}>
                       <Text style={styles.label}>Require Mention</Text>
                       <Switch
-                        value={remoteSettings.discordRequireMention ?? true}
+                        value={remoteSettings.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION}
                         onValueChange={(v) => handleRemoteSettingToggle('discordRequireMention', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.discordRequireMention ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
 
@@ -4209,10 +4214,10 @@ export default function SettingsScreen({ navigation }: any) {
                     <View style={styles.row}>
                       <Text style={styles.label}>Log Messages</Text>
                       <Switch
-                        value={remoteSettings.discordLogMessages ?? false}
+                        value={remoteSettings.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES}
                         onValueChange={(v) => handleRemoteSettingToggle('discordLogMessages', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.discordLogMessages ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
                     <Text style={styles.helperText}>

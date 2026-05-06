@@ -231,9 +231,15 @@ test('lets mobile configure desktop Discord integration settings without echoing
   assert.match(discordSection, /placeholder=\{remoteSettings\.discordBotToken === SECRET_MASK \? 'Configured' : 'Paste your Discord bot token'\}/);
   assert.doesNotMatch(discordSection, /value=\{remoteSettings\.discordBotToken/);
   assert.match(discordSection, /handleRemoteSettingUpdate\('discordDefaultProfileId', profile\.id\)/);
+  assert.match(settingsSource, /DEFAULT_DISCORD_DM_ENABLED/);
+  assert.match(settingsSource, /DEFAULT_DISCORD_REQUIRE_MENTION/);
+  assert.match(settingsSource, /DEFAULT_DISCORD_LOG_MESSAGES/);
+  assert.match(discordSection, /remoteSettings\.discordDmEnabled \?\? DEFAULT_DISCORD_DM_ENABLED/);
   assert.match(discordSection, /handleRemoteSettingToggle\('discordDmEnabled', v\)/);
+  assert.match(discordSection, /remoteSettings\.discordRequireMention \?\? DEFAULT_DISCORD_REQUIRE_MENTION/);
   assert.match(discordSection, /handleRemoteSettingToggle\('discordRequireMention', v\)/);
   assert.match(discordSection, /handleRemoteListSettingUpdate\(section\.key, v\)/);
+  assert.match(discordSection, /remoteSettings\.discordLogMessages \?\? DEFAULT_DISCORD_LOG_MESSAGES/);
   assert.match(discordSection, /handleRemoteSettingToggle\('discordLogMessages', v\)/);
 });
 

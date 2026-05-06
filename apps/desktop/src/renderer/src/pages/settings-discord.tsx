@@ -9,6 +9,11 @@ import { Textarea } from "@renderer/components/ui/textarea"
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { formatConfigListInput, parseConfigListInput } from "@dotagents/shared/config-list-input"
+import {
+  DEFAULT_DISCORD_DM_ENABLED,
+  DEFAULT_DISCORD_LOG_MESSAGES,
+  DEFAULT_DISCORD_REQUIRE_MENTION,
+} from "@dotagents/shared/discord-config"
 import type { AgentProfile, Config } from "@shared/types"
 
 interface DiscordStatus {
@@ -246,14 +251,14 @@ export function Component() {
 
           <Control label="Allow direct messages" className="px-3">
             <Switch
-              checked={cfg.discordDmEnabled ?? true}
+              checked={cfg.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED}
               onCheckedChange={(value) => saveConfig({ discordDmEnabled: value })}
             />
           </Control>
 
           <Control label="Require mention in servers" className="px-3">
             <Switch
-              checked={cfg.discordRequireMention ?? true}
+              checked={cfg.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION}
               onCheckedChange={(value) => saveConfig({ discordRequireMention: value })}
             />
           </Control>
@@ -302,7 +307,7 @@ export function Component() {
 
           <Control label="Log message content" className="px-3">
             <Switch
-              checked={cfg.discordLogMessages ?? false}
+              checked={cfg.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES}
               onCheckedChange={(value) => saveConfig({ discordLogMessages: value })}
             />
           </Control>

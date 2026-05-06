@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
+  DEFAULT_DISCORD_DM_ENABLED,
+  DEFAULT_DISCORD_LOG_MESSAGES,
+  DEFAULT_DISCORD_REQUIRE_MENTION,
   DISCORD_SECRET_MASK,
   getDiscordLifecycleAction,
   getDiscordResolvedDefaultProfileId,
@@ -8,6 +11,12 @@ import {
 } from "./discord-config"
 
 describe("discord config helpers", () => {
+  it("re-exports shared Discord integration defaults", () => {
+    expect(DEFAULT_DISCORD_DM_ENABLED).toBe(true)
+    expect(DEFAULT_DISCORD_REQUIRE_MENTION).toBe(true)
+    expect(DEFAULT_DISCORD_LOG_MESSAGES).toBe(false)
+  })
+
   it("resolves token and default profile from config first, then environment", () => {
     expect(getDiscordResolvedToken({ discordBotToken: "cfg-token" })).toEqual({ token: "cfg-token", source: "config" })
     expect(getDiscordResolvedToken({ discordBotToken: "" }, { DOTAGENTS_DISCORD_BOT_TOKEN: "env-token" } as unknown as NodeJS.ProcessEnv)).toEqual({ token: "env-token", source: "env" })

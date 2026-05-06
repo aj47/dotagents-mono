@@ -26,6 +26,11 @@ import {
   getRemoteServerApiRouteKey,
   getRemoteServerApiRoutePath,
 } from './remote-server-api';
+import {
+  DEFAULT_DISCORD_DM_ENABLED,
+  DEFAULT_DISCORD_LOG_MESSAGES,
+  DEFAULT_DISCORD_REQUIRE_MENTION,
+} from './discord-config';
 
 function jsonResponse(body: unknown, status: number = 200) {
   return new Response(JSON.stringify(body), {
@@ -385,6 +390,9 @@ describe('SettingsApiClient', () => {
       remoteServerBindAddress: '127.0.0.1',
       discordBotToken: 'DISCORD-MASK',
       discordDefaultProfileId: 'agent-1',
+      discordDmEnabled: DEFAULT_DISCORD_DM_ENABLED,
+      discordRequireMention: DEFAULT_DISCORD_REQUIRE_MENTION,
+      discordLogMessages: DEFAULT_DISCORD_LOG_MESSAGES,
       langfuseSecretKey: 'MASKED',
       acpxAgents: [{ name: 'agent', displayName: 'Agent' }],
       mcpAutoPasteEnabled: true,

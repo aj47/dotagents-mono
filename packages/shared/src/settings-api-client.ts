@@ -74,6 +74,11 @@ import {
   type RemoteServerLifecycleAction,
   type RemoteServerLifecycleConfigLike,
 } from './remote-pairing';
+import {
+  DEFAULT_DISCORD_DM_ENABLED,
+  DEFAULT_DISCORD_LOG_MESSAGES,
+  DEFAULT_DISCORD_REQUIRE_MENTION,
+} from './discord-config';
 import { getSensitiveOperatorSettingsKeys } from './operator-actions';
 import {
   DEFAULT_OPENAI_TTS_RESPONSE_FORMAT,
@@ -424,8 +429,8 @@ export function buildSettingsResponse(
     whatsappAutoReply: cfg.whatsappAutoReply ?? false,
     whatsappLogMessages: cfg.whatsappLogMessages ?? false,
     discordBotToken: options.discordBotToken,
-    discordDmEnabled: cfg.discordDmEnabled ?? true,
-    discordRequireMention: cfg.discordRequireMention ?? true,
+    discordDmEnabled: cfg.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED,
+    discordRequireMention: cfg.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION,
     discordAllowUserIds: cfg.discordAllowUserIds ?? [],
     discordAllowGuildIds: cfg.discordAllowGuildIds ?? [],
     discordAllowChannelIds: cfg.discordAllowChannelIds ?? [],
@@ -436,7 +441,7 @@ export function buildSettingsResponse(
     discordOperatorAllowChannelIds: cfg.discordOperatorAllowChannelIds ?? [],
     discordOperatorAllowRoleIds: cfg.discordOperatorAllowRoleIds ?? [],
     discordDefaultProfileId: options.discordDefaultProfileId ?? '',
-    discordLogMessages: cfg.discordLogMessages ?? false,
+    discordLogMessages: cfg.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES,
     langfuseEnabled: cfg.langfuseEnabled ?? false,
     langfusePublicKey: cfg.langfusePublicKey ?? '',
     langfuseSecretKey: cfg.langfuseSecretKey ? langfuseSecretMask : '',
