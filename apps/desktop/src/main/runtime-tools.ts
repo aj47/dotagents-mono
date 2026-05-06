@@ -70,20 +70,25 @@ import {
   validateRespondToUserImagePath,
   validateRespondToUserVideoFile,
 } from "@dotagents/shared/conversation-media-assets"
+import {
+  dotagentsRuntimeToolDefinitions,
+  getRuntimeToolNames as getSharedRuntimeToolNames,
+  type RuntimeToolDefinition,
+} from "@dotagents/shared/runtime-tool-utils"
+import { RUNTIME_TOOLS_SERVER_NAME } from "@dotagents/shared/mcp-api"
 
 const execAsync = promisify(exec)
 
-// Re-export from the dependency-free definitions module.
-// This breaks the circular dependency: profile-service -> runtime-tool-definitions (no cycle)
-// while runtime-tools -> profile-service is still valid since profile-service no longer imports from here.
-export {
-  RUNTIME_TOOLS_SERVER_NAME,
-  runtimeToolDefinitions as runtimeTools,
-  getRuntimeToolNames,
-} from "./runtime-tool-definitions"
+export { RUNTIME_TOOLS_SERVER_NAME }
+export type { RuntimeToolDefinition }
 
-// Import for local use
-import { runtimeToolDefinitions } from "./runtime-tool-definitions"
+export const runtimeTools: RuntimeToolDefinition[] = dotagentsRuntimeToolDefinitions
+
+export function getRuntimeToolNames(): string[] {
+  return getSharedRuntimeToolNames(runtimeTools)
+}
+
+const runtimeToolDefinitions = runtimeTools
 
 interface BuiltinToolContext {
   sessionId?: string

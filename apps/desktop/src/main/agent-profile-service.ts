@@ -83,7 +83,10 @@ import {
 import { randomUUID } from "crypto"
 import { logApp } from "./debug"
 import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
-import { getRuntimeToolNames } from "./runtime-tool-definitions"
+import {
+  dotagentsRuntimeToolDefinitions,
+  getRuntimeToolNames as getSharedRuntimeToolNames,
+} from "@dotagents/shared/runtime-tool-utils"
 import { getAgentsLayerPaths } from "@dotagents/core"
 import {
   deleteAgentProfileFiles,
@@ -117,6 +120,10 @@ export {
   refreshSessionSnapshotSkillsFromProfile,
   toolConfigToMcpServerConfig,
 } from "@dotagents/shared/agent-profile-session-snapshot"
+
+function getRuntimeToolNames(): string[] {
+  return getSharedRuntimeToolNames(dotagentsRuntimeToolDefinitions)
+}
 
 /**
  * Type for agent profile conversations storage.

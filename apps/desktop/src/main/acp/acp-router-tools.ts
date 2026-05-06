@@ -3,7 +3,10 @@
  * These tools allow the main agent to discover, spawn, delegate to, and manage sub-agents.
  */
 
-import { acpRouterToolDefinitions, resolveToolName } from './acp-router-tool-definitions';
+import {
+  acpRouterToolDefinitions,
+  resolveAcpRouterToolName as resolveToolName,
+} from '@dotagents/shared/runtime-tool-utils';
 import type {
   ACPRunResult,
   ACPSubAgentState,
@@ -597,8 +600,8 @@ acpService.on('sessionUpdate', (event: {
   }
 });
 
-// Re-export tool definitions from the dependency-free module
-export { acpRouterToolDefinitions } from './acp-router-tool-definitions';
+// Re-export shared tool definitions for callers that already import router tools.
+export { acpRouterToolDefinitions } from '@dotagents/shared/runtime-tool-utils';
 
 // ============================================================================
 // Handler Functions
