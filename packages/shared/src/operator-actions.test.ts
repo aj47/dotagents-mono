@@ -120,13 +120,16 @@ import {
   restartOperatorRemoteServerAction,
   resumeOperatorMessageQueueAction,
   rotateOperatorRemoteServerApiKeyAction,
+  runOperatorAgentAction,
   retryOperatorQueuedMessageAction,
   revealOperatorUpdateAssetAction,
   sanitizeOperatorAuditDetails,
   sanitizeOperatorAuditText,
   serializeOperatorAuditLogEntries,
+  stopOperatorAgentSessionAction,
   SENSITIVE_OPERATOR_SETTINGS_KEYS,
   updateOperatorQueuedMessageAction,
+  type OperatorAgentActionOptions,
   type OperatorApiKeyActionOptions,
   type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
@@ -171,6 +174,128 @@ describe("operator action API helpers", () => {
       content: "Done",
       messageCount: 2,
     })
+  })
+
+  it("runs agent route actions through a shared service adapter", async () => {
+    const calls: string[] = []
+    const options: OperatorAgentActionOptions = {
+      diagnostics: {
+        logInfo: (_source, message) => { calls.push(`info:${message}`) },
+        logError: (_source, message) => { calls.push(`error:${message}`) },
+        getErrorMessage: (error) => error instanceof Error ? error.message : String(error),
+      },
+      service: {
+        stopAgentSessionById: async (sessionId) => {
+          calls.push(`stop:${sessionId}`)
+          return { sessionId, conversationId: "conv-1" }
+        },
+      },
+    }
+
+    const runAgent = async (request: { prompt: string; conversationId?: string; profileId?: string }) => {
+      calls.push(`run:${request.prompt}:${request.conversationId}:${request.profileId}`)
+      return {
+        conversationId: request.conversationId ?? "conv-new",
+        content: "Done",
+        conversationHistory: [
+          { role: "user" as const, content: request.prompt },
+          { role: "assistant" as const, content: "Done" },
+        ],
+      }
+    }
+
+    expect(await runOperatorAgentAction({
+      prompt: "  Do it  ",
+      conversationId: "conv-1",
+      profileId: "profile-1",
+    }, runAgent, options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "run-agent",
+        conversationId: "conv-1",
+        content: "Done",
+        messageCount: 2,
+      },
+      auditContext: {
+        action: "run-agent",
+        success: true,
+        details: {
+          promptLength: 5,
+          conversationId: "conv-1",
+        },
+      },
+    })
+    expect(await runOperatorAgentAction({ prompt: " " }, runAgent, options)).toEqual({
+      statusCode: 400,
+      body: { error: "Missing prompt" },
+    })
+
+    const failingRunAgent = async () => { throw new Error("runner denied") }
+    expect(await runOperatorAgentAction({ prompt: "fail" }, failingRunAgent, options)).toEqual({
+      statusCode: 500,
+      body: { error: "Agent execution failed: runner denied" },
+      auditContext: {
+        action: "run-agent",
+        success: false,
+        failureReason: "run-agent-error",
+      },
+    })
+    expect(await stopOperatorAgentSessionAction(" session-1 ", options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "agent-session-stop",
+        details: {
+          sessionId: "session-1",
+          conversationId: "conv-1",
+        },
+      },
+      auditContext: {
+        action: "agent-session-stop",
+        success: true,
+      },
+    })
+    expect(await stopOperatorAgentSessionAction(" ", options)).toMatchObject({
+      statusCode: 400,
+      body: {
+        success: false,
+        action: "agent-session-stop",
+        error: "Missing session ID",
+      },
+      auditContext: {
+        action: "agent-session-stop",
+        success: false,
+        failureReason: "Missing session ID",
+      },
+    })
+
+    const failingStopOptions: OperatorAgentActionOptions = {
+      ...options,
+      service: {
+        stopAgentSessionById: async () => { throw new Error("missing session") },
+      },
+    }
+    expect(await stopOperatorAgentSessionAction("session-404", failingStopOptions)).toMatchObject({
+      statusCode: 500,
+      body: {
+        success: false,
+        action: "agent-session-stop",
+        error: "Failed to stop agent session: missing session",
+      },
+      auditContext: {
+        action: "agent-session-stop",
+        success: false,
+        failureReason: "Failed to stop agent session: missing session",
+      },
+    })
+    expect(calls).toEqual(expect.arrayContaining([
+      "info:Operator run-agent: 5 chars (conversation conv-1)",
+      "run:Do it:conv-1:profile-1",
+      "error:Operator run-agent failed: runner denied",
+      "stop:session-1",
+      "error:Failed to stop agent session session-404: missing session",
+    ]))
   })
 
   it("parses queued message update bodies", () => {

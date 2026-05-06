@@ -29,7 +29,10 @@ import type {
   OperatorWhatsAppIntegrationSummary,
 } from "./api-types"
 import { sanitizeConfigStringList } from "./config-list-input"
-import type { AgentRunResult } from "./agent-run-utils"
+import type {
+  AgentRunExecutor,
+  AgentRunResult,
+} from "./agent-run-utils"
 import {
   buildOperatorMessageQueuesResponse,
   type MessageQueue,
@@ -256,6 +259,30 @@ export interface OperatorIntegrationActionService {
 export interface OperatorIntegrationActionOptions {
   diagnostics: OperatorIntegrationActionDiagnostics
   service: OperatorIntegrationActionService
+}
+
+export type OperatorAgentActionResult = {
+  statusCode: number
+  body: unknown
+  auditContext?: OperatorActionAuditContext
+}
+
+export interface OperatorAgentActionDiagnostics {
+  logInfo(source: string, message: string): void
+  logError(source: string, message: string, error: unknown): void
+  getErrorMessage(error: unknown): string
+}
+
+export interface OperatorAgentActionService {
+  stopAgentSessionById(sessionId: string): Promise<{
+    sessionId: string
+    conversationId?: string
+  }>
+}
+
+export interface OperatorAgentActionOptions {
+  diagnostics: OperatorAgentActionDiagnostics
+  service: OperatorAgentActionService
 }
 
 export type RunAgentResultLike = AgentRunResult
@@ -1607,6 +1634,87 @@ export function parseOperatorQueuedMessageUpdateRequestBody(body: unknown): Oper
 export function normalizeOperatorPathParam(value: string | undefined): string | undefined {
   const trimmed = value?.trim()
   return trimmed || undefined
+}
+
+function operatorAgentActionResult(
+  statusCode: number,
+  body: unknown,
+  auditContext?: OperatorActionAuditContext,
+): OperatorAgentActionResult {
+  return {
+    statusCode,
+    body,
+    ...(auditContext ? { auditContext } : {}),
+  }
+}
+
+export async function runOperatorAgentAction(
+  body: unknown,
+  runAgent: AgentRunExecutor,
+  options: OperatorAgentActionOptions,
+): Promise<OperatorAgentActionResult> {
+  try {
+    const parsedRequest = parseOperatorRunAgentRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return operatorAgentActionResult(parsedRequest.statusCode, { error: parsedRequest.error })
+    }
+    const { prompt, conversationId, profileId } = parsedRequest.request
+
+    options.diagnostics.logInfo(
+      "operator-agent-actions",
+      `Operator run-agent: ${prompt.length} chars${conversationId ? ` (conversation ${conversationId})` : ""}`,
+    )
+
+    const agentResult = await runAgent({
+      prompt,
+      conversationId,
+      profileId,
+    })
+
+    return operatorAgentActionResult(
+      200,
+      buildOperatorRunAgentResponse(agentResult),
+      {
+        action: "run-agent",
+        success: true,
+        details: { promptLength: prompt.length, conversationId },
+      },
+    )
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    options.diagnostics.logError("operator-agent-actions", `Operator run-agent failed: ${errorMessage}`, caughtError)
+    return operatorAgentActionResult(
+      500,
+      { error: `Agent execution failed: ${errorMessage}` },
+      {
+        action: "run-agent",
+        success: false,
+        failureReason: "run-agent-error",
+      },
+    )
+  }
+}
+
+export async function stopOperatorAgentSessionAction(
+  sessionIdParam: string | undefined,
+  options: OperatorAgentActionOptions,
+): Promise<OperatorAgentActionResult> {
+  const sessionId = normalizeOperatorPathParam(sessionIdParam)
+  if (!sessionId) {
+    const response = buildOperatorActionErrorResponse("agent-session-stop", "Missing session ID")
+    return operatorAgentActionResult(400, response, buildOperatorActionAuditContext(response))
+  }
+
+  try {
+    const stopResult = await options.service.stopAgentSessionById(sessionId)
+    const response = buildOperatorAgentSessionStopResponse(stopResult.sessionId, stopResult.conversationId)
+    return operatorAgentActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    const response = buildOperatorActionErrorResponse("agent-session-stop", `Failed to stop agent session: ${errorMessage}`)
+    options.diagnostics.logError("operator-agent-actions", `Failed to stop agent session ${sessionId}: ${errorMessage}`, caughtError)
+    return operatorAgentActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
 }
 
 function operatorObservabilityActionResult(
