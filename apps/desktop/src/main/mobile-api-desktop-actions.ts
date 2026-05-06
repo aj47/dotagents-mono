@@ -4,6 +4,11 @@ import {
   type AgentSessionCandidateActionOptions,
 } from "@dotagents/shared/agent-session-candidates"
 import {
+  getModelsAction,
+  getProviderModelsAction,
+  type ModelActionOptions,
+} from "@dotagents/shared/chat-utils"
+import {
   exportBundle,
   getBundleExportableItems,
   importBundle,
@@ -46,10 +51,6 @@ import {
   toggleMcpServer,
   upsertMcpServerConfig,
 } from "./mcp-server-actions"
-import {
-  getModels,
-  getProviderModels,
-} from "./model-actions"
 import { recordOperatorAuditEvent } from "./operator-audit-actions"
 import {
   exportProfile,
@@ -94,7 +95,17 @@ import {
 } from "./skill-actions"
 import { synthesizeSpeech } from "./tts-actions"
 import { agentSessionTracker } from "./agent-session-tracker"
+import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
+
+const modelActionOptions: ModelActionOptions = {
+  getConfig: () => configStore.get(),
+  fetchAvailableModels: async (providerId) => {
+    const { fetchAvailableModels } = await import("./models-service")
+    return fetchAvailableModels(providerId)
+  },
+  diagnostics: diagnosticsService,
+}
 
 const agentSessionCandidateActionOptions: AgentSessionCandidateActionOptions = {
   service: {
@@ -106,6 +117,14 @@ const agentSessionCandidateActionOptions: AgentSessionCandidateActionOptions = {
 
 function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
+}
+
+function getModels() {
+  return getModelsAction(modelActionOptions)
+}
+
+async function getProviderModels(providerId: string | undefined) {
+  return getProviderModelsAction(providerId, modelActionOptions)
 }
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {

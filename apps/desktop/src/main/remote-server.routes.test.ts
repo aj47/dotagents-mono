@@ -341,12 +341,6 @@ function getSkillActionsSource(): string {
   return readFileSync(skillActionsPath, "utf8")
 }
 
-function getModelActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const modelActionsPath = path.join(testDir, "model-actions.ts")
-  return readFileSync(modelActionsPath, "utf8")
-}
-
 function getMcpServerActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const mcpServerActionsPath = path.join(testDir, "mcp-server-actions.ts")
@@ -759,7 +753,6 @@ describe("remote-server route registration", () => {
       getEmergencyStopActionsSource(),
       getKnowledgeNoteActionsSource(),
       getMcpServerActionsSource(),
-      getModelActionsSource(),
       getProfileActionsSource(),
       getPushActionsSource(),
       getRepeatTaskActionsSource(),
@@ -1132,10 +1125,10 @@ describe("remote-server route registration", () => {
     expect(sharedProfileApiSource).not.toContain('from "./agent-profile-service"')
   })
 
-  it("delegates model, MCP server, TTS, and push routes to action modules", () => {
+  it("delegates model, MCP server, TTS, and push routes to shared action handlers", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
-    const modelActionsSource = getModelActionsSource()
+    const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const mcpServerActionsSource = getMcpServerActionsSource()
     const sharedMcpApiSource = getSharedMcpApiSource()
     const sharedChatUtilsSource = getSharedChatUtilsSource()
@@ -1171,8 +1164,9 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.unregisterPushToken(req.body)")
     expect(mobileApiRoutesSource).toContain("actions.getPushStatus()")
     expect(mobileApiRoutesSource).toContain("actions.clearPushBadge(req.body)")
-    expect(modelActionsSource).toContain("getModelsAction(modelActionOptions)")
-    expect(modelActionsSource).toContain("getProviderModelsAction(providerId, modelActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getModelsAction(modelActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getProviderModelsAction(providerId, modelActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("fetchAvailableModels: async (providerId) =>")
     expect(sharedChatUtilsSource).toContain("export interface ModelActionOptions")
     expect(sharedChatUtilsSource).toContain("export function getModelsAction")
     expect(sharedChatUtilsSource).toContain("export async function getProviderModelsAction")
