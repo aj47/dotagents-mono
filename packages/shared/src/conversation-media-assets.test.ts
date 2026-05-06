@@ -9,6 +9,7 @@ import {
   escapeMarkdownAltText,
   extractConversationImageMarkdownReferences,
   extractDataImageMarkdownReferences,
+  extractMarkdownImageReferences,
   getConversationImageExtensionForMimeType,
   getConversationImageMimeTypeFromFileName,
   getConversationVideoByteRange,
@@ -19,10 +20,12 @@ import {
   getRenderableVideoMimeTypeFromFileName,
   getUtf8ByteLength,
   getVideoAssetLabel,
+  hasMarkdownMediaImageReference,
   isAllowedRespondToUserImageUrl,
   isAllowedRespondToUserVideoUrl,
   isAllowedMarkdownImageUrl,
   isAllowedMarkdownLinkUrl,
+  isMarkdownMediaImageUrl,
   isSafeConversationVideoAssetFileName,
   isSafeConversationImageAssetFileName,
   isConversationImageAssetUrl,
@@ -37,6 +40,8 @@ import {
   parseDataImageUrl,
   parseConversationImageAssetUrl,
   parseConversationVideoAssetUrl,
+  replaceMarkdownImageReferences,
+  stripMarkdownImageReferences,
   transformMarkdownUrl,
   type RespondToUserAssetHandlers,
   validateRespondToUserImageFile,
@@ -280,6 +285,50 @@ describe('conversation video asset utilities', () => {
         index: content.indexOf('![multiline]'),
       },
     ]);
+  });
+
+  it('extracts and rewrites generic markdown image references', () => {
+    const content = [
+      'Before ![inline](data:image/png;base64,AAAA)',
+      '![remote](https://example.com/image.png)',
+      '![local](file://private/image.png) after',
+    ].join(' ');
+
+    expect(extractMarkdownImageReferences(content)).toEqual([
+      {
+        fullMatch: '![inline](data:image/png;base64,AAAA)',
+        altText: 'inline',
+        url: 'data:image/png;base64,AAAA',
+        index: content.indexOf('![inline]'),
+      },
+      {
+        fullMatch: '![remote](https://example.com/image.png)',
+        altText: 'remote',
+        url: 'https://example.com/image.png',
+        index: content.indexOf('![remote]'),
+      },
+      {
+        fullMatch: '![local](file://private/image.png)',
+        altText: 'local',
+        url: 'file://private/image.png',
+        index: content.indexOf('![local]'),
+      },
+    ]);
+
+    expect(replaceMarkdownImageReferences(content, (reference) => `[${reference.altText || 'image'}]`))
+      .toBe('Before [inline] [remote] [local] after');
+    expect(stripMarkdownImageReferences(content, { mediaOnly: true }))
+      .toBe('Before   ![local](file://private/image.png) after');
+    expect(stripMarkdownImageReferences(content)).toBe('Before    after');
+  });
+
+  it('detects markdown media image urls', () => {
+    expect(isMarkdownMediaImageUrl('data:image/png;base64,AAAA')).toBe(true);
+    expect(isMarkdownMediaImageUrl('https://example.com/image.png')).toBe(true);
+    expect(isMarkdownMediaImageUrl('assets://conversation-image/conv_1/image.png')).toBe(true);
+    expect(isMarkdownMediaImageUrl('file://private/image.png')).toBe(false);
+    expect(hasMarkdownMediaImageReference('See ![pic](assets://conversation-image/conv_1/image.png)')).toBe(true);
+    expect(hasMarkdownMediaImageReference('See ![pic](file://private/image.png)')).toBe(false);
   });
 
   it('parses respond_to_user top-level args once for callers that need media counts', () => {

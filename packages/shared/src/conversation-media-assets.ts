@@ -58,6 +58,8 @@ const DATA_IMAGE_MARKDOWN_REFERENCE_REGEX =
   /!\[([^\]]*)\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+)\)/gi;
 const CONVERSATION_IMAGE_MARKDOWN_REFERENCE_REGEX =
   /!\[([^\]]*)\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi;
+const MARKDOWN_IMAGE_REFERENCE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/gi;
+const MARKDOWN_MEDIA_IMAGE_URL_REGEX = /^(?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)/i;
 
 export const MAX_RESPOND_TO_USER_IMAGES = 4;
 export const MAX_RESPOND_TO_USER_VIDEOS = 2;
@@ -93,6 +95,10 @@ export interface ConversationImageMarkdownInput {
   url: string;
   altText?: string | null;
   fallbackAltText?: string | null;
+}
+
+export interface StripMarkdownImageReferencesOptions {
+  mediaOnly?: boolean;
 }
 
 export type ConversationVideoByteRange =
@@ -255,6 +261,53 @@ export function extractDataImageMarkdownReferences(content: string): Conversatio
     url: match[2] ?? '',
     index: match.index ?? 0,
   }));
+}
+
+export function extractMarkdownImageReferences(content: string): ConversationImageMarkdownReference[] {
+  return Array.from(content.matchAll(MARKDOWN_IMAGE_REFERENCE_REGEX), (match) => ({
+    fullMatch: match[0],
+    altText: match[1] ?? '',
+    url: match[2] ?? '',
+    index: match.index ?? 0,
+  }));
+}
+
+export function isMarkdownMediaImageUrl(rawUrl: string): boolean {
+  return MARKDOWN_MEDIA_IMAGE_URL_REGEX.test(rawUrl.trim());
+}
+
+export function replaceMarkdownImageReferences(
+  content: string,
+  replacer: (reference: ConversationImageMarkdownReference) => string,
+): string {
+  const references = extractMarkdownImageReferences(content);
+  if (references.length === 0) return content;
+
+  let nextContent = '';
+  let lastIndex = 0;
+  for (const reference of references) {
+    nextContent += content.slice(lastIndex, reference.index);
+    nextContent += replacer(reference);
+    lastIndex = reference.index + reference.fullMatch.length;
+  }
+
+  return nextContent + content.slice(lastIndex);
+}
+
+export function stripMarkdownImageReferences(
+  content: string,
+  options: StripMarkdownImageReferencesOptions = {},
+): string {
+  return replaceMarkdownImageReferences(content, (reference) => {
+    if (options.mediaOnly && !isMarkdownMediaImageUrl(reference.url)) {
+      return reference.fullMatch;
+    }
+    return '';
+  });
+}
+
+export function hasMarkdownMediaImageReference(content: string): boolean {
+  return extractMarkdownImageReferences(content).some((reference) => isMarkdownMediaImageUrl(reference.url));
 }
 
 export function isRenderableVideoUrl(rawUrl?: string): boolean {

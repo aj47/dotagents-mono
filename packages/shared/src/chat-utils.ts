@@ -9,6 +9,7 @@ import type { AgentProgressUpdate, AgentUserResponseEvent } from './agent-progre
 import type { ModelInfo, ModelsResponse, OpenAICompatibleModelSummary, OpenAICompatibleModelsResponse } from './api-types';
 import { CHAT_PROVIDER_IDS, isChatProviderId, type CHAT_PROVIDER_ID } from './providers';
 import { resolveActiveModelId, type ActiveModelConfigLike } from './model-presets';
+import { stripMarkdownImageReferences } from './conversation-media-assets';
 import type { ConversationHistoryMessage, ToolCall, ToolResult } from './types';
 
 export type ChatRequestMessageLike = {
@@ -207,7 +208,6 @@ export type RespondToUserConversationHistoryLike = Array<{
 }>;
 
 const COLLAPSE_THRESHOLD = 200;
-const MARKDOWN_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/gi;
 const TOOL_PAYLOAD_PREFIX_REGEX = /^(?:using tool:|tool result:)/i;
 const TOOL_RESULT_BRACKET_REGEX = /^\[[\w_.-]+\]\s*[{\[#]/;
 const INLINE_TOOL_BRACKET_REGEX = /\[[\w_.-]+\]\s*(?:\{[\s\S]*?\}|\[[\s\S]*?\])/g;
@@ -227,7 +227,9 @@ export function shouldCollapseMessage(
   toolResults?: ToolResult[]
 ): boolean {
   const hasExtras = (toolCalls?.length ?? 0) > 0 || (toolResults?.length ?? 0) > 0;
-  const contentLength = content?.replace(MARKDOWN_IMAGE_PAYLOAD_REGEX, '').length ?? 0;
+  const contentLength = content
+    ? stripMarkdownImageReferences(content, { mediaOnly: true }).length
+    : 0;
   return contentLength > COLLAPSE_THRESHOLD || hasExtras;
 }
 
