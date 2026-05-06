@@ -13,6 +13,7 @@ import {
   buildRepeatTaskStatusesResponse,
   buildRepeatTasksResponse,
   buildRepeatTaskToggleResponse,
+  buildRepeatTaskScheduleFromDraft,
   computeNextScheduledRun,
   dedupeRepeatTaskEntriesByTitle,
   deleteRepeatTaskAction,
@@ -217,6 +218,43 @@ describe("repeat task schedule helpers", () => {
     expect(getLoopScheduleMode(interval)).toBe("interval")
     expect(getLoopScheduleTimes(interval)).toEqual(["09:00"])
     expect(getLoopScheduleDaysOfWeek(interval)).toEqual([1, 2, 3, 4, 5])
+  })
+
+  it("builds repeat task schedules from editable drafts", () => {
+    expect(buildRepeatTaskScheduleFromDraft({
+      scheduleMode: "interval",
+      scheduleTimes: [],
+      scheduleDaysOfWeek: [],
+    })).toEqual({ ok: true, schedule: null, runContinuously: false })
+    expect(buildRepeatTaskScheduleFromDraft({
+      scheduleMode: "continuous",
+      scheduleTimes: ["09:00"],
+      scheduleDaysOfWeek: [1],
+    })).toEqual({ ok: true, schedule: null, runContinuously: true })
+    expect(buildRepeatTaskScheduleFromDraft({
+      scheduleMode: "daily",
+      scheduleTimes: [" 17:00 ", "bad", "09:00", "09:00"],
+      scheduleDaysOfWeek: [],
+    })).toEqual({ ok: true, schedule: { type: "daily", times: ["09:00", "17:00"] }, runContinuously: false })
+    expect(buildRepeatTaskScheduleFromDraft({
+      scheduleMode: "weekly",
+      scheduleTimes: ["09:00"],
+      scheduleDaysOfWeek: [5, 1, 1, 8],
+    })).toEqual({
+      ok: true,
+      schedule: { type: "weekly", times: ["09:00"], daysOfWeek: [1, 5] },
+      runContinuously: false,
+    })
+    expect(buildRepeatTaskScheduleFromDraft({
+      scheduleMode: "daily",
+      scheduleTimes: ["9:00"],
+      scheduleDaysOfWeek: [],
+    })).toEqual({ ok: false, error: "missing-schedule-times" })
+    expect(buildRepeatTaskScheduleFromDraft({
+      scheduleMode: "weekly",
+      scheduleTimes: ["09:00"],
+      scheduleDaysOfWeek: [],
+    })).toEqual({ ok: false, error: "missing-weekly-days" })
   })
 
   it("parses remote repeat task schedule input", () => {

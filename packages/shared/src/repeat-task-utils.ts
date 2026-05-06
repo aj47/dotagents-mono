@@ -29,6 +29,18 @@ export type RepeatTaskScheduleParseResult =
   | { ok: true; schedule?: RepeatTaskSchedule | null }
   | { ok: false; error: string }
 
+export type RepeatTaskScheduleDraft = {
+  scheduleMode: RepeatTaskScheduleMode
+  scheduleTimes: string[]
+  scheduleDaysOfWeek: number[]
+}
+
+export type RepeatTaskScheduleDraftError = "missing-schedule-times" | "missing-weekly-days"
+
+export type RepeatTaskScheduleDraftResult =
+  | { ok: true; schedule: RepeatTaskSchedule | null; runContinuously: boolean }
+  | { ok: false; error: RepeatTaskScheduleDraftError }
+
 export type RepeatTaskRequestParseResult<T> =
   | { ok: true; request: T }
   | { ok: false; statusCode: 400; error: string }
@@ -365,6 +377,45 @@ export function sanitizeScheduleTimes(times: string[]): string[] {
     if (TIME_RE.test(trimmed) && !out.includes(trimmed)) out.push(trimmed)
   }
   return out.sort()
+}
+
+export function buildRepeatTaskScheduleFromDraft(
+  draft: RepeatTaskScheduleDraft,
+): RepeatTaskScheduleDraftResult {
+  if (draft.scheduleMode === "interval" || draft.scheduleMode === "continuous") {
+    return {
+      ok: true,
+      schedule: null,
+      runContinuously: draft.scheduleMode === "continuous",
+    }
+  }
+
+  const times = sanitizeScheduleTimes(draft.scheduleTimes)
+  if (times.length === 0) {
+    return { ok: false, error: "missing-schedule-times" }
+  }
+
+  if (draft.scheduleMode === "weekly") {
+    const daysOfWeek = Array.from(new Set(
+      draft.scheduleDaysOfWeek.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6),
+    )).sort((a, b) => a - b)
+
+    if (daysOfWeek.length === 0) {
+      return { ok: false, error: "missing-weekly-days" }
+    }
+
+    return {
+      ok: true,
+      schedule: { type: "weekly", times, daysOfWeek },
+      runContinuously: false,
+    }
+  }
+
+  return {
+    ok: true,
+    schedule: { type: "daily", times },
+    runContinuously: false,
+  }
 }
 
 export function parseRepeatTaskScheduleInput(raw: unknown): RepeatTaskScheduleParseResult {

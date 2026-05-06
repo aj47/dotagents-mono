@@ -39,10 +39,14 @@ test('exposes desktop repeat task execution options on mobile', () => {
   assert.match(screenSource, /continueInSession:\s*formData\.continueInSession/);
   assert.match(screenSource, /lastSessionId:\s*formData\.continueInSession \? \(lastSessionId \|\| null\) : null/);
   assert.match(screenSource, /maxIterations:\s*parsedMaxIterations \?\? null/);
+  assert.match(screenSource, /buildRepeatTaskScheduleFromDraft/);
+  assert.match(screenSource, /runContinuously:\s*scheduleResult\.runContinuously/);
+  assert.match(screenSource, /schedule:\s*scheduleResult\.schedule/);
   assert.match(screenSource, /Run on startup/);
   assert.match(screenSource, /Speak on trigger/);
   assert.match(screenSource, /Continue in same session/);
   assert.match(screenSource, /Max iterations \(optional\)/);
+  assert.doesNotMatch(screenSource, /sanitizeScheduleTimes/);
 });
 
 test('uses desktop session candidates for the continue-in-session picker', () => {

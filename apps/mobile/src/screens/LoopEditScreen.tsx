@@ -20,7 +20,6 @@ import {
   ExtendedSettingsApiClient,
   Loop,
   LoopCreateRequest,
-  LoopSchedule,
   LoopUpdateRequest,
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
@@ -32,6 +31,7 @@ import {
   type AgentSessionCandidateOption,
 } from '@dotagents/shared/agent-session-candidates';
 import {
+  buildRepeatTaskScheduleFromDraft,
   DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
   DEFAULT_REPEAT_TASK_WEEKDAYS,
   REPEAT_TASK_DAY_LABELS,
@@ -39,10 +39,8 @@ import {
   getLoopScheduleMode,
   getLoopScheduleTimes,
   parseLoopIntervalDraft,
-  sanitizeScheduleTimes,
+  type RepeatTaskScheduleMode,
 } from '@dotagents/shared/repeat-task-utils';
-
-type ScheduleMode = 'continuous' | 'interval' | 'daily' | 'weekly';
 
 type LoopFormData = {
   name: string;
@@ -55,7 +53,7 @@ type LoopFormData = {
   continueInSession: boolean;
   lastSessionId: string;
   maxIterations: string;
-  scheduleMode: ScheduleMode;
+  scheduleMode: RepeatTaskScheduleMode;
   scheduleTimes: string[];
   scheduleDaysOfWeek: number[];
 };
@@ -79,7 +77,7 @@ const defaultFormData: LoopFormData = {
 };
 
 function loopToFormData(loop: Loop): LoopFormData {
-  const scheduleMode: ScheduleMode = getLoopScheduleMode(loop);
+  const scheduleMode = getLoopScheduleMode(loop);
   const scheduleTimes = getLoopScheduleTimes(loop);
   const scheduleDaysOfWeek = getLoopScheduleDaysOfWeek(loop);
   return {
@@ -269,22 +267,17 @@ export default function LoopEditScreen({ navigation, route }: any) {
       return;
     }
 
-    let schedule: LoopSchedule | null = null;
-    if (formData.scheduleMode !== 'interval' && formData.scheduleMode !== 'continuous') {
-      const times = sanitizeScheduleTimes(formData.scheduleTimes);
-      if (times.length === 0) {
-        setError('Add at least one time in HH:MM format');
-        return;
-      }
-      if (formData.scheduleMode === 'weekly') {
-        if (formData.scheduleDaysOfWeek.length === 0) {
-          setError('Select at least one day of the week');
-          return;
-        }
-        schedule = { type: 'weekly', times, daysOfWeek: [...formData.scheduleDaysOfWeek].sort() };
-      } else {
-        schedule = { type: 'daily', times };
-      }
+    const scheduleResult = buildRepeatTaskScheduleFromDraft({
+      scheduleMode: formData.scheduleMode,
+      scheduleTimes: formData.scheduleTimes,
+      scheduleDaysOfWeek: formData.scheduleDaysOfWeek,
+    });
+    if (scheduleResult.ok === false) {
+      const message = scheduleResult.error === 'missing-schedule-times'
+        ? 'Add at least one time in HH:MM format'
+        : 'Select at least one day of the week';
+      setError(message);
+      return;
     }
 
     setIsSaving(true);
@@ -303,8 +296,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
           continueInSession: formData.continueInSession,
           lastSessionId: formData.continueInSession ? (lastSessionId || null) : null,
           maxIterations: parsedMaxIterations ?? null,
-          runContinuously: formData.scheduleMode === 'continuous',
-          schedule,
+          runContinuously: scheduleResult.runContinuously,
+          schedule: scheduleResult.schedule,
         };
         await settingsClient.updateLoop(effectiveLoopId, updatePayload);
       } else {
@@ -319,8 +312,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
           continueInSession: formData.continueInSession,
           ...(formData.continueInSession && lastSessionId ? { lastSessionId } : {}),
           ...(parsedMaxIterations ? { maxIterations: parsedMaxIterations } : {}),
-          runContinuously: formData.scheduleMode === 'continuous',
-          schedule,
+          runContinuously: scheduleResult.runContinuously,
+          schedule: scheduleResult.schedule,
         };
         await settingsClient.createLoop(createPayload);
       }

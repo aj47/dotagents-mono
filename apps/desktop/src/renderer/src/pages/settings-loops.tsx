@@ -18,7 +18,7 @@ import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-reac
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { LoopConfig, LoopSchedule } from "@shared/types"
+import { LoopConfig } from "@shared/types"
 import { toast } from "sonner"
 import {
   buildAgentSessionCandidateOptions,
@@ -27,6 +27,7 @@ import {
 } from "@dotagents/shared/agent-session-candidates"
 import type { AgentSessionCandidatesResponse } from "@dotagents/shared/api-types"
 import {
+  buildRepeatTaskScheduleFromDraft,
   DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
   DEFAULT_REPEAT_TASK_WEEKDAYS,
   REPEAT_TASK_DAY_LABELS,
@@ -36,10 +37,8 @@ import {
   getLoopScheduleMode,
   getLoopScheduleTimes,
   parseLoopIntervalDraft,
-  sanitizeScheduleTimes,
+  type RepeatTaskScheduleMode,
 } from "@dotagents/shared/repeat-task-utils"
-
-type ScheduleMode = "continuous" | "interval" | "daily" | "weekly"
 
 interface EditingLoop {
   id?: string
@@ -51,7 +50,7 @@ interface EditingLoop {
   speakOnTrigger: boolean
   continueInSession: boolean
   lastSessionId?: string
-  scheduleMode: ScheduleMode
+  scheduleMode: RepeatTaskScheduleMode
   scheduleTimes: string[]       // HH:MM entries (used by daily + weekly)
   scheduleDaysOfWeek: number[]  // 0-6 Sun..Sat (used by weekly)
 }
@@ -186,7 +185,7 @@ export function SettingsLoops() {
 
   const handleEdit = (loop: LoopConfig) => {
     setIsCreating(false)
-    const scheduleMode: ScheduleMode = getLoopScheduleMode(loop)
+    const scheduleMode = getLoopScheduleMode(loop)
     const scheduleTimes = getLoopScheduleTimes(loop)
     const scheduleDaysOfWeek = getLoopScheduleDaysOfWeek(loop)
     setEditing({
@@ -229,22 +228,17 @@ export function SettingsLoops() {
       return
     }
 
-    let schedule: LoopSchedule | undefined
-    if (editing.scheduleMode !== "interval" && editing.scheduleMode !== "continuous") {
-      const times = sanitizeScheduleTimes(editing.scheduleTimes)
-      if (times.length === 0) {
-        toast.error("Add at least one time (HH:MM)")
-        return
-      }
-      if (editing.scheduleMode === "weekly") {
-        if (editing.scheduleDaysOfWeek.length === 0) {
-          toast.error("Select at least one day of the week")
-          return
-        }
-        schedule = { type: "weekly", times, daysOfWeek: [...editing.scheduleDaysOfWeek].sort() }
-      } else {
-        schedule = { type: "daily", times }
-      }
+    const scheduleResult = buildRepeatTaskScheduleFromDraft({
+      scheduleMode: editing.scheduleMode,
+      scheduleTimes: editing.scheduleTimes,
+      scheduleDaysOfWeek: editing.scheduleDaysOfWeek,
+    })
+    if (scheduleResult.ok === false) {
+      const message = scheduleResult.error === "missing-schedule-times"
+        ? "Add at least one time (HH:MM)"
+        : "Select at least one day of the week"
+      toast.error(message)
+      return
     }
 
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
@@ -261,11 +255,11 @@ export function SettingsLoops() {
       runOnStartup: editing.runOnStartup,
       speakOnTrigger: editing.speakOnTrigger,
       continueInSession: editing.continueInSession,
-      runContinuously: editing.scheduleMode === "continuous",
+      runContinuously: scheduleResult.runContinuously,
       ...(editing.continueInSession && editing.lastSessionId
         ? { lastSessionId: editing.lastSessionId }
         : {}),
-      ...(schedule ? { schedule } : {}),
+      ...(scheduleResult.schedule ? { schedule: scheduleResult.schedule } : {}),
     }
 
     try {
