@@ -36,6 +36,7 @@ import type { AgentConversationState } from "@dotagents/shared/conversation-stat
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
 import {
   getConversationImageMimeTypeFromFileName,
+  parseDataImageUrl,
   parseConversationImageAssetUrl,
 } from "@dotagents/shared/conversation-media-assets"
 import {
@@ -678,12 +679,6 @@ type MarkdownImageForModel = { image: string | URL; mediaType?: string }
 
 const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi
 
-function parseDataImageUrl(imageUrl: string): MarkdownImageForModel | null {
-  const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(imageUrl)
-  if (!match) return null
-  return { image: match[2], mediaType: match[1] }
-}
-
 const MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES = 8 * 1024 * 1024
 
 function resolveAssetsImageUrlForModel(imageUrl: string): MarkdownImageForModel | null {
@@ -710,7 +705,12 @@ function resolveAssetsImageUrlForModel(imageUrl: string): MarkdownImageForModel 
 }
 
 function resolveMarkdownImageForModel(imageUrl: string): MarkdownImageForModel | null {
-  if (imageUrl.startsWith("data:image/")) return parseDataImageUrl(imageUrl)
+  if (imageUrl.startsWith("data:image/")) {
+    const dataImage = parseDataImageUrl(imageUrl)
+    return dataImage
+      ? { image: dataImage.base64, mediaType: dataImage.mimeType }
+      : null
+  }
   if (imageUrl.startsWith("assets://")) return resolveAssetsImageUrlForModel(imageUrl)
   return null
 }

@@ -30,6 +30,7 @@ import {
   MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES,
   MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES,
   MAX_RESPOND_TO_USER_VIDEO_FILE_BYTES,
+  parseDataImageUrl,
   parseConversationImageAssetUrl,
   parseConversationVideoAssetUrl,
   transformMarkdownUrl,
@@ -176,6 +177,15 @@ describe('conversation video asset utilities', () => {
   });
 
   it('measures respond_to_user payload sizes and escapes labels', () => {
+    expect(parseDataImageUrl('data:image/PNG;base64,AAAA')).toEqual({
+      mimeType: 'image/png',
+      base64: 'AAAA',
+    });
+    expect(parseDataImageUrl(' data:image/jpeg;base64,AA==\n ')).toEqual({
+      mimeType: 'image/jpeg',
+      base64: 'AA==',
+    });
+    expect(parseDataImageUrl('https://example.com/image.png')).toBeNull();
     expect(getDecodedBase64ByteLength('AAAA')).toBe(3);
     expect(getDecodedBase64ByteLength('AA==')).toBe(1);
     expect(getDataImageBytesFromUrl('data:image/png;base64,AAAA')).toBe(3);

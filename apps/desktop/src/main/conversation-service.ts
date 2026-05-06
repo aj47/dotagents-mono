@@ -23,6 +23,7 @@ import {
   getConversationImageMimeTypeFromFileName,
   getConversationVideoExtensionForMimeType,
   getRenderableVideoMimeTypeFromFileName,
+  parseDataImageUrl,
 } from "@dotagents/shared/conversation-media-assets"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared/message-display-utils"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
@@ -58,7 +59,6 @@ const MAX_CONVERSATION_HISTORY_PREVIEW_CHARS = 200
 const COMPACTION_EXTRACTED_FACT_LIMIT = 8
 const createInlineDataImageMarkdownRegex = () =>
   /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
-const DATA_IMAGE_URL_REGEX = /^data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)$/i
 
 export class ConversationService {
   private static instance: ConversationService | null = null
@@ -143,14 +143,13 @@ export class ConversationService {
   }
 
   async storeDataImageUrlAsConversationAsset(conversationId: string, dataUrl: string): Promise<string> {
-    const match = dataUrl.match(DATA_IMAGE_URL_REGEX)
-    if (!match) {
+    const parsedDataImage = parseDataImageUrl(dataUrl)
+    if (!parsedDataImage) {
       throw new Error("Invalid data:image URL")
     }
 
-    const [, subtype, rawBase64] = match
-    const buffer = Buffer.from(rawBase64.replace(/\s+/g, ""), "base64")
-    return this.storeConversationImageBuffer(conversationId, buffer, `image/${subtype.toLowerCase()}`)
+    const buffer = Buffer.from(parsedDataImage.base64.replace(/\s+/g, ""), "base64")
+    return this.storeConversationImageBuffer(conversationId, buffer, parsedDataImage.mimeType)
   }
 
   private async computeFileSha256(filePath: string): Promise<string> {
