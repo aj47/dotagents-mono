@@ -10,7 +10,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 import { SessionConnectionManager, SessionConnectionManagerConfig } from '../lib/sessionConnectionManager';
 import { OpenAIConfig, OnConnectionStatusChange } from '../lib/openaiClient';
-import { RecoveryState } from '../lib/connectionRecovery';
+import type { RecoveryState } from '@dotagents/shared/connection-recovery';
 
 export interface ConnectionManagerContextValue {
   manager: SessionConnectionManager;
@@ -125,4 +125,3 @@ export function useConnectionManagerProvider(clientConfig: OpenAIConfig): Connec
 
   return contextValue;
 }
-

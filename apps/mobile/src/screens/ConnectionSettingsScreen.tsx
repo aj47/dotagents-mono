@@ -6,7 +6,7 @@ import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { parseDotAgentsConfigDeepLink } from '@dotagents/shared/remote-pairing';
-import { checkServerConnection } from '../lib/connectionRecovery';
+import { checkServerConnection } from '@dotagents/shared/connection-recovery';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import {
   createButtonAccessibilityLabel,

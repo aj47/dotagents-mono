@@ -12,7 +12,7 @@
  */
 
 import { OpenAIClient, OpenAIConfig, OnConnectionStatusChange } from './openaiClient';
-import { RecoveryState } from './connectionRecovery';
+import type { RecoveryState } from '@dotagents/shared/connection-recovery';
 
 export interface SessionConnection {
   sessionId: string;
@@ -337,4 +337,3 @@ export class SessionConnectionManager {
     return false;
   }
 }
-

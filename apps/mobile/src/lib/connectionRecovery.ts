@@ -1,32 +1,11 @@
 /**
  * Connection recovery for React Native mobile app
  *
- * Types and pure functions are re-exported from @dotagents/shared.
+ * Shared recovery types and pure functions live in @dotagents/shared.
  * Only ConnectionRecoveryManager is defined here because it uses React Native AppState.
  */
 
 import { AppState, AppStateStatus } from 'react-native';
-
-// Re-export types and pure functions from shared package
-export {
-  calculateBackoff,
-  isRetryableError,
-  delay,
-  formatConnectionStatus,
-  checkServerConnection,
-  DEFAULT_RECOVERY_CONFIG,
-} from '@dotagents/shared/connection-recovery';
-
-export type {
-  ConnectionStatus,
-  ConnectionRecoveryConfig,
-  RecoveryState,
-  StreamingCheckpoint,
-  OnStatusChange,
-  ConnectionCheckResult,
-} from '@dotagents/shared/connection-recovery';
-
-// Import types needed for the class implementation
 import type {
   ConnectionStatus,
   ConnectionRecoveryConfig,

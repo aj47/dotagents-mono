@@ -13,20 +13,20 @@ import {
   buildChatCompletionRequestBody,
   parseChatCompletionSseEvent,
 } from '@dotagents/shared/chat-utils';
-import { normalizeApiBaseUrl } from '@dotagents/shared/connection-recovery';
-import { REMOTE_SERVER_API_BUILDERS, REMOTE_SERVER_API_PATHS } from '@dotagents/shared/remote-server-api';
-import { Platform } from 'react-native';
-import EventSource from 'react-native-sse';
 import {
-  ConnectionRecoveryManager,
   ConnectionStatus,
   RecoveryState,
   StreamingCheckpoint,
   isRetryableError,
   delay,
   DEFAULT_RECOVERY_CONFIG,
+  normalizeApiBaseUrl,
   type ConnectionRecoveryConfig,
-} from './connectionRecovery';
+} from '@dotagents/shared/connection-recovery';
+import { REMOTE_SERVER_API_BUILDERS, REMOTE_SERVER_API_PATHS } from '@dotagents/shared/remote-server-api';
+import { Platform } from 'react-native';
+import EventSource from 'react-native-sse';
+import { ConnectionRecoveryManager } from './connectionRecovery';
 
 export type OpenAIConfig = {
   baseUrl: string;    // OpenAI-compatible API base URL e.g., https://api.openai.com/v1

@@ -8,7 +8,7 @@ import {
   clearTunnelMetadata,
 } from './tunnelPersistence';
 import { OpenAIClient, OpenAIConfig } from './openaiClient';
-import { RecoveryState, ConnectionStatus } from './connectionRecovery';
+import type { ConnectionStatus, RecoveryState } from '@dotagents/shared/connection-recovery';
 
 /**
  * Connection state for UI display
@@ -423,4 +423,3 @@ export class TunnelConnectionManager {
     this.onStateChange = null;
   }
 }
-

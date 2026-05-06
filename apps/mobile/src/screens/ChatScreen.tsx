@@ -44,7 +44,7 @@ import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress';
 import type { ChatMessage } from '../lib/openaiClient';
 import { ExtendedSettingsApiClient, type Settings } from '../lib/settingsApi';
-import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery';
+import { formatConnectionStatus, type RecoveryState } from '@dotagents/shared/connection-recovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import {
