@@ -36,4 +36,11 @@ describe("app layout session retention", () => {
     expect(appLayoutSource).toContain("DEFAULT_DISCORD_ENABLED")
     expect(appLayoutSource).toContain("configQuery.data?.discordEnabled ?? DEFAULT_DISCORD_ENABLED")
   })
+
+  it("uses shared sidebar defaults for optional integrations", () => {
+    expect(appLayoutSource).toContain("DEFAULT_WHATSAPP_ENABLED")
+    expect(appLayoutSource).toContain("configQuery.data?.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED")
+    expect(appLayoutSource).toContain("DEFAULT_TTS_ENABLED")
+    expect(appLayoutSource).toContain("configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED")
+  })
 })

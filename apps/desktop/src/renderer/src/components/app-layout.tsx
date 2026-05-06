@@ -18,6 +18,8 @@ import {
 } from "@renderer/lib/query-client"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { DEFAULT_DISCORD_ENABLED } from "@dotagents/shared/discord-config"
+import { DEFAULT_WHATSAPP_ENABLED } from "@dotagents/shared/whatsapp-config"
+import { DEFAULT_TTS_ENABLED } from "@dotagents/shared/text-to-speech-settings"
 import { applySelectedAgentToNextSession as applySelectedAgentForNextSession } from "@renderer/lib/apply-selected-agent"
 import { hasUnreadAgentResponse } from "@renderer/lib/sidebar-sessions"
 import { useAgentStore } from "@renderer/stores"
@@ -107,9 +109,9 @@ export const Component = () => {
     return unlisten
   }, [isCollapsed, refetchSessionData])
 
-  const whatsappEnabled = configQuery.data?.whatsappEnabled ?? false
+  const whatsappEnabled = configQuery.data?.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED
   const discordEnabled = configQuery.data?.discordEnabled ?? DEFAULT_DISCORD_ENABLED
-  const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? true
+  const isGlobalTTSEnabled = configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED
   const trackedActiveSessions = sessionData?.activeSessions ?? []
   const collapsedActiveSessions = useMemo(() => {
     const mergedSessions = new Map(
@@ -261,7 +263,7 @@ export const Component = () => {
     async (e: React.MouseEvent) => {
       e.stopPropagation()
 
-      const nextEnabled = !(configQuery.data?.ttsEnabled ?? true)
+      const nextEnabled = !(configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED)
       if (!nextEnabled) {
         ttsManager.stopAll("collapsed-sidebar-global-tts-disabled")
         try {
