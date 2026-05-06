@@ -225,6 +225,84 @@ export type McpToolSummaryLike = {
   serverEnabled: boolean
 }
 
+export interface ElicitationFormField {
+  type: "string" | "number" | "boolean" | "enum"
+  title?: string
+  description?: string
+  default?: string | number | boolean
+  minLength?: number
+  maxLength?: number
+  format?: "email" | "uri" | "date" | "date-time"
+  minimum?: number
+  maximum?: number
+  enum?: string[]
+  enumNames?: string[]
+}
+
+export interface ElicitationFormSchema {
+  type: "object"
+  properties: Record<string, ElicitationFormField>
+  required?: string[]
+}
+
+export interface ElicitationFormRequest {
+  mode: "form"
+  serverName: string
+  message: string
+  requestedSchema: ElicitationFormSchema
+  requestId: string
+}
+
+export interface ElicitationUrlRequest {
+  mode: "url"
+  serverName: string
+  message: string
+  url: string
+  elicitationId: string
+  requestId: string
+}
+
+export type ElicitationRequest = ElicitationFormRequest | ElicitationUrlRequest
+
+export interface ElicitationResult {
+  action: "accept" | "decline" | "cancel"
+  content?: Record<string, string | number | boolean | string[]>
+}
+
+export interface SamplingMessageContent {
+  type: "text" | "image" | "audio"
+  text?: string
+  data?: string
+  mimeType?: string
+}
+
+export interface SamplingMessage {
+  role: "user" | "assistant"
+  content: SamplingMessageContent | SamplingMessageContent[]
+}
+
+export interface SamplingRequest {
+  serverName: string
+  requestId: string
+  messages: SamplingMessage[]
+  systemPrompt?: string
+  maxTokens: number
+  temperature?: number
+  modelPreferences?: {
+    hints?: Array<{ name?: string }>
+    costPriority?: number
+    speedPriority?: number
+    intelligencePriority?: number
+  }
+}
+
+export interface SamplingResult {
+  approved: boolean
+  model?: string
+  content?: SamplingMessageContent
+  stopReason?: string
+}
+
 export const MCP_MAX_ITERATIONS_MIN = 1
 export const MCP_MAX_ITERATIONS_MAX = 100
 export const MCP_MAX_ITERATIONS_DEFAULT = 10

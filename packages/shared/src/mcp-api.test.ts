@@ -35,6 +35,9 @@ import {
   testOperatorMcpServerAction,
   restartOperatorMcpServerAction,
   toggleMcpServerAction,
+  type ElicitationRequest,
+  type SamplingRequest,
+  type SamplingResult,
   type OperatorMcpLifecycleActionOptions,
   type OperatorMcpMutationActionOptions,
   type OperatorMcpTestActionOptions,
@@ -48,6 +51,47 @@ describe("MCP API helpers", () => {
     expect(INJECTED_RUNTIME_TOOL_TRANSPORT_NAME).toBe("dotagents-injected-runtime-tools")
     expect(INTERNAL_COMPLETION_NUDGE_TEXT).toContain("respond_to_user")
     expect(INTERNAL_COMPLETION_NUDGE_TEXT).toContain("mark_work_complete")
+  })
+
+  it("exposes shared MCP elicitation and sampling protocol contracts", () => {
+    const elicitation: ElicitationRequest = {
+      mode: "form",
+      serverName: "calendar",
+      message: "Pick a date",
+      requestId: "elicitation-1",
+      requestedSchema: {
+        type: "object",
+        properties: {
+          date: { type: "string", format: "date" },
+        },
+        required: ["date"],
+      },
+    }
+    const sampling: SamplingRequest = {
+      serverName: "assistant",
+      requestId: "sampling-1",
+      messages: [
+        {
+          role: "user",
+          content: { type: "text", text: "Summarize this." },
+        },
+      ],
+      maxTokens: 128,
+      modelPreferences: {
+        hints: [{ name: "gpt-5.4-mini" }],
+        intelligencePriority: 0.7,
+      },
+    }
+    const samplingResult: SamplingResult = {
+      approved: true,
+      model: "gpt-5.4-mini",
+      content: { type: "text", text: "Summary" },
+      stopReason: "endTurn",
+    }
+
+    expect(elicitation.requestedSchema.properties.date.format).toBe("date")
+    expect(sampling.messages[0].content).toEqual({ type: "text", text: "Summarize this." })
+    expect(samplingResult.content?.text).toBe("Summary")
   })
 
   it("normalizes MCP max iteration values with one shared desktop/mobile/server contract", () => {

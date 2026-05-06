@@ -30,6 +30,7 @@ export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, 
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
 export type { Conversation, ConversationBranchSource, ConversationCompactionFact, ConversationCompactionMetadata, ConversationHistoryItem, ConversationMessage, LoadedConversation } from '@dotagents/shared/conversation-domain'
 export type { DetailedToolInfo, MCPConfig, MCPServerConfig, MCPTransportType, OAuthClientMetadata, OAuthConfig, OAuthServerMetadata, OAuthTokens, ServerLogEntry } from '@dotagents/shared/mcp-utils'
+export type { ElicitationFormField, ElicitationFormRequest, ElicitationFormSchema, ElicitationRequest, ElicitationResult, ElicitationUrlRequest, SamplingMessage, SamplingMessageContent, SamplingRequest, SamplingResult } from '@dotagents/shared/mcp-api'
 export type { AgentConversationState } from '@dotagents/shared/conversation-state'
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared/agent-progress'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '@dotagents/shared/knowledge-note-domain'
@@ -882,88 +883,4 @@ export interface PushNotificationToken {
   registeredAt: number
   deviceId?: string
   badgeCount?: number // Tracks unread notification count for this device
-}
-
-
-// MCP Elicitation Types (Protocol 2025-11-25)
-export interface ElicitationFormField {
-  type: "string" | "number" | "boolean" | "enum"
-  title?: string
-  description?: string
-  default?: string | number | boolean
-  // String-specific
-  minLength?: number
-  maxLength?: number
-  format?: "email" | "uri" | "date" | "date-time"
-  // Number-specific
-  minimum?: number
-  maximum?: number
-  // Enum-specific
-  enum?: string[]
-  enumNames?: string[]
-}
-
-export interface ElicitationFormSchema {
-  type: "object"
-  properties: Record<string, ElicitationFormField>
-  required?: string[]
-}
-
-export interface ElicitationFormRequest {
-  mode: "form"
-  serverName: string
-  message: string
-  requestedSchema: ElicitationFormSchema
-  requestId: string
-}
-
-export interface ElicitationUrlRequest {
-  mode: "url"
-  serverName: string
-  message: string
-  url: string
-  elicitationId: string
-  requestId: string
-}
-
-export type ElicitationRequest = ElicitationFormRequest | ElicitationUrlRequest
-
-export interface ElicitationResult {
-  action: "accept" | "decline" | "cancel"
-  content?: Record<string, string | number | boolean | string[]>
-}
-
-// MCP Sampling Types (Protocol 2025-11-25)
-export interface SamplingMessageContent {
-  type: "text" | "image" | "audio"
-  text?: string
-  data?: string
-  mimeType?: string
-}
-
-export interface SamplingMessage {
-  role: "user" | "assistant"
-  content: SamplingMessageContent | SamplingMessageContent[]
-}
-
-export interface SamplingRequest {
-  serverName: string
-  requestId: string
-  messages: SamplingMessage[]
-  systemPrompt?: string
-  maxTokens: number
-  temperature?: number
-  modelPreferences?: {
-    hints?: Array<{ name?: string }>
-    costPriority?: number
-    speedPriority?: number
-    intelligencePriority?: number
-  }
-}
-
-export interface SamplingResult {
-  approved: boolean
-  model?: string
-  content?: SamplingMessageContent
-  stopReason?: string
 }
