@@ -6,7 +6,7 @@ import {
   normalizeLinuxArchitecture,
   parseLinuxArtifactName,
   selectLinuxArtifact,
-} from "./linux-artifacts"
+} from "@dotagents/shared/linux-artifacts"
 
 describe("linux-artifacts", () => {
   it("normalizes Linux architecture aliases", () => {
