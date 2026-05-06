@@ -117,7 +117,6 @@ export type {
   ModelPresetsResponse,
   ModelPresetUpdateRequest,
 } from '@dotagents/shared/api-types';
-export { DOTAGENTS_DEVICE_ID_HEADER } from '@dotagents/shared/settings-api-client';
 
 // Re-export agent profile types with backward-compatible names.
 // The shared package uses Api* prefix to avoid conflicts with desktop's AgentProfile.
@@ -126,9 +125,6 @@ export type {
   ApiAgentProfileFull as AgentProfileFull,
   ApiAgentProfilesResponse as AgentProfilesResponse,
 } from '@dotagents/shared/api-types';
-
-// ModelPreset - re-exported from shared package (single source of truth)
-export type { ModelPreset } from '@dotagents/shared/providers';
 
 import {
   DOTAGENTS_DEVICE_ID_HEADER,
