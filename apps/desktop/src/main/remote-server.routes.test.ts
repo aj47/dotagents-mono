@@ -347,12 +347,6 @@ function getMcpServerActionsSource(): string {
   return readFileSync(mcpServerActionsPath, "utf8")
 }
 
-function getPushActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const pushActionsPath = path.join(testDir, "push-actions.ts")
-  return readFileSync(pushActionsPath, "utf8")
-}
-
 function getPushNotificationServiceSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const pushNotificationServicePath = path.join(testDir, "push-notification-service.ts")
@@ -741,7 +735,6 @@ describe("remote-server route registration", () => {
       getKnowledgeNoteActionsSource(),
       getMcpServerActionsSource(),
       getProfileActionsSource(),
-      getPushActionsSource(),
       getRepeatTaskActionsSource(),
       getSettingsActionsSource(),
       getSkillActionsSource(),
@@ -1120,7 +1113,6 @@ describe("remote-server route registration", () => {
     const sharedMcpApiSource = getSharedMcpApiSource()
     const sharedChatUtilsSource = getSharedChatUtilsSource()
     const sharedTtsApiSource = getSharedTtsApiSource()
-    const pushActionsSource = getPushActionsSource()
     const pushNotificationServiceSource = getPushNotificationServiceSource()
     const sharedPushNotificationsSource = getSharedPushNotificationsSource()
 
@@ -1194,10 +1186,12 @@ describe("remote-server route registration", () => {
     expect(sharedTtsApiSource).toContain("options.encodeAudioBody(result.audio)")
     expect(sharedTtsApiSource).not.toContain("tts-service")
     expect(sharedTtsApiSource).not.toContain("configStore")
-    expect(pushActionsSource).toContain("registerPushTokenAction(body, pushActionOptions)")
-    expect(pushActionsSource).toContain("unregisterPushTokenAction(body, pushActionOptions)")
-    expect(pushActionsSource).toContain("getPushStatusAction(pushActionOptions)")
-    expect(pushActionsSource).toContain("clearPushBadgeAction(body, pushActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("registerPushTokenAction(body, pushActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("unregisterPushTokenAction(body, pushActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getPushStatusAction(pushActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("clearPushBadgeAction(body, pushActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("savePushNotificationTokens: (tokens: PushTokenRecord[]) =>")
+    expect(mobileApiDesktopActionsSource).toContain("clearBadgeCount")
     expect(sharedPushNotificationsSource).toContain("export interface PushActionTokenStore")
     expect(sharedPushNotificationsSource).toContain("export function registerPushTokenAction")
     expect(sharedPushNotificationsSource).toContain("export function unregisterPushTokenAction")

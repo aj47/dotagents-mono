@@ -16,6 +16,13 @@ import {
   triggerEmergencyStopAction,
   type EmergencyStopActionOptions,
 } from "@dotagents/shared/settings-api-client"
+import {
+  clearPushBadgeAction,
+  getPushStatusAction,
+  registerPushTokenAction,
+  unregisterPushTokenAction,
+  type PushTokenRecord,
+} from "@dotagents/shared/push-notifications"
 import type { Config } from "../shared/types"
 import {
   exportBundle,
@@ -68,12 +75,6 @@ import {
   setCurrentProfile,
 } from "./profile-actions"
 import {
-  clearPushBadge,
-  getPushStatus,
-  registerPushToken,
-  unregisterPushToken,
-} from "./push-actions"
-import {
   createRepeatTask,
   deleteRepeatTask,
   exportRepeatTaskToMarkdown,
@@ -105,6 +106,7 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
 import { emergencyStopAll } from "./emergency-stop"
+import { clearBadgeCount } from "./push-notification-service"
 import { generateTTS } from "./tts-service"
 
 const modelActionOptions: ModelActionOptions = {
@@ -137,6 +139,20 @@ const emergencyStopActionOptions: EmergencyStopActionOptions = {
   logger: console,
 }
 
+const pushActionOptions = {
+  tokenStore: {
+    getPushNotificationTokens: () => configStore.get().pushNotificationTokens ?? [],
+    savePushNotificationTokens: (tokens: PushTokenRecord[]) => {
+      const cfg = configStore.get()
+      configStore.save({ ...cfg, pushNotificationTokens: tokens })
+    },
+  },
+  diagnostics: diagnosticsService,
+  badgeService: {
+    clearBadgeCount,
+  },
+}
+
 function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
@@ -155,6 +171,22 @@ async function synthesizeSpeech(body: unknown) {
 
 async function triggerEmergencyStop() {
   return triggerEmergencyStopAction(emergencyStopActionOptions)
+}
+
+function registerPushToken(body: unknown) {
+  return registerPushTokenAction(body, pushActionOptions)
+}
+
+function unregisterPushToken(body: unknown) {
+  return unregisterPushTokenAction(body, pushActionOptions)
+}
+
+function getPushStatus() {
+  return getPushStatusAction(pushActionOptions)
+}
+
+function clearPushBadge(body: unknown) {
+  return clearPushBadgeAction(body, pushActionOptions)
 }
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {
