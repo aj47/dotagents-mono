@@ -23,6 +23,7 @@ import {
   type AgentEditConnectionType,
   applyConnectionTypeChange,
   buildAgentConnectionCommandPreview,
+  getAgentConnectionFormValidationError,
   normalizeAgentConnectionArgs,
   normalizeAgentEditConnectionType,
   sanitizeAgentProfileConnection,
@@ -306,12 +307,9 @@ export function SettingsAgents() {
 
   const handleSave = async () => {
     if (!editing) return
-    if (editing.connectionType === 'acpx' && !editing.connectionCommand?.trim()) {
-      toast.error('Add a command for acpx agents before saving.')
-      return
-    }
-    if (editing.connectionType === "remote" && !editing.connectionBaseUrl?.trim()) {
-      toast.error("Add a base URL before saving a remote agent.")
+    const connectionError = getAgentConnectionFormValidationError(editing)
+    if (connectionError) {
+      toast.error(connectionError)
       return
     }
     const connection = sanitizeAgentProfileConnection({

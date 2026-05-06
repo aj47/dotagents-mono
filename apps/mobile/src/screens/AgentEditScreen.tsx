@@ -18,6 +18,7 @@ import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '.
 import {
   applyConnectionTypeChange,
   buildAgentConnectionRequestFields,
+  getAgentConnectionFormValidationError,
   normalizeAgentConnectionArgs,
   normalizeAgentEditConnectionType,
   type AgentConnectionFormFields,
@@ -342,6 +343,11 @@ export default function AgentEditScreen({ navigation, route }: any) {
     if (!settingsClient) return;
     if (!formData.displayName.trim()) {
       Alert.alert('Error', 'Display name is required');
+      return;
+    }
+    const connectionError = getAgentConnectionFormValidationError(formData);
+    if (connectionError) {
+      Alert.alert('Error', connectionError);
       return;
     }
 

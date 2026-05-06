@@ -70,6 +70,9 @@ test('uses shared enabled-count helpers in the mobile agent editor', () => {
 
 test('uses shared connection type normalization in the mobile agent editor', () => {
   assert.match(screenSource, /normalizeAgentEditConnectionType/);
+  assert.match(screenSource, /getAgentConnectionFormValidationError/);
   assert.doesNotMatch(screenSource, /const normalizeConnectionType/);
   assert.doesNotMatch(screenSource, /value === 'acp'/);
+  assert.doesNotMatch(screenSource, /formData\.connectionType === 'acpx' && !formData\.connectionCommand/);
+  assert.doesNotMatch(screenSource, /formData\.connectionType === 'remote' && !formData\.connectionBaseUrl/);
 });

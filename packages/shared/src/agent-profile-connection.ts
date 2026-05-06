@@ -32,6 +32,7 @@ export interface AgentConnectionFormFields {
 
 export interface AgentConnectionEditableFields {
   connectionType: AgentEditConnectionType
+  connectionCommand?: string
   connectionBaseUrl?: string
 }
 
@@ -70,6 +71,20 @@ export function buildAgentConnectionCommandPreview(
   args?: string | string[],
 ): string {
   return [normalizeText(command), ...normalizeAgentConnectionArgs(args)].filter(Boolean).join(" ")
+}
+
+export function getAgentConnectionFormValidationError(
+  formData: AgentConnectionEditableFields,
+): string | undefined {
+  if (formData.connectionType === "acpx" && !normalizeText(formData.connectionCommand)) {
+    return "Add a command for acpx agents before saving."
+  }
+
+  if (formData.connectionType === "remote" && !normalizeText(formData.connectionBaseUrl)) {
+    return "Add a base URL before saving a remote agent."
+  }
+
+  return undefined
 }
 
 function isLocalConnectionType(value: string | undefined): value is "acpx" | "acp" | "stdio" {

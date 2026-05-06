@@ -4,6 +4,7 @@ import {
   applyConnectionTypeChange,
   buildAgentConnectionCommandPreview,
   buildAgentConnectionRequestFields,
+  getAgentConnectionFormValidationError,
   normalizeAgentEditConnectionType,
   normalizeAgentConnectionArgs,
   sanitizeAgentProfileConnection,
@@ -131,6 +132,22 @@ describe("agent connection request helpers", () => {
     expect(normalizeAgentConnectionArgs([" --acp ", "", "profile with spaces"])).toEqual(["--acp", "profile with spaces"])
     expect(normalizeAgentConnectionArgs("   ")).toEqual([])
     expect(buildAgentConnectionCommandPreview(" npx ", " -y @example/agent ")).toBe("npx -y @example/agent")
+  })
+
+  it("validates visible connection fields before profile saves", () => {
+    expect(getAgentConnectionFormValidationError({
+      connectionType: "acpx",
+      connectionCommand: "   ",
+    })).toBe("Add a command for acpx agents before saving.")
+
+    expect(getAgentConnectionFormValidationError({
+      connectionType: "remote",
+      connectionBaseUrl: "   ",
+    })).toBe("Add a base URL before saving a remote agent.")
+
+    expect(getAgentConnectionFormValidationError({
+      connectionType: "internal",
+    })).toBeUndefined()
   })
 
   it("omits hidden Base URL fields from acpx saves while preserving visible local launch fields", () => {
