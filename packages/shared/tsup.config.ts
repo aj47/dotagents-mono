@@ -21,6 +21,7 @@ export default defineConfig({
     'conversation-media-assets': 'src/conversation-media-assets.ts',
     'agent-progress': 'src/agent-progress.ts',
     'agent-user-response-store': 'src/agent-user-response-store.ts',
+    'delegation-tool-display': 'src/delegation-tool-display.ts',
     'message-queue-utils': 'src/message-queue-utils.ts',
     'message-queue-store': 'src/message-queue-store.ts',
     'mobile-app-config': 'src/mobile-app-config.ts',

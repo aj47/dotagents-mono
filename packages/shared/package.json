@@ -96,6 +96,11 @@
       "import": "./dist/agent-user-response-store.mjs",
       "require": "./dist/agent-user-response-store.js"
     },
+    "./delegation-tool-display": {
+      "types": "./dist/delegation-tool-display.d.ts",
+      "import": "./dist/delegation-tool-display.mjs",
+      "require": "./dist/delegation-tool-display.js"
+    },
     "./message-display-utils": {
       "types": "./dist/message-display-utils.d.ts",
       "import": "./dist/message-display-utils.mjs",
