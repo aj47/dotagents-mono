@@ -36,6 +36,11 @@
       "import": "./dist/providers.mjs",
       "require": "./dist/providers.js"
     },
+    "./provider-tool-utils": {
+      "types": "./dist/provider-tool-utils.d.ts",
+      "import": "./dist/provider-tool-utils.mjs",
+      "require": "./dist/provider-tool-utils.js"
+    },
     "./languages": {
       "types": "./dist/languages.d.ts",
       "import": "./dist/languages.mjs",

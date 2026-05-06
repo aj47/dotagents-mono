@@ -17,6 +17,11 @@ import { randomUUID } from "crypto"
 import fs from "fs"
 import type { AgentRetryProgressCallback } from "@dotagents/shared/agent-progress"
 import {
+  normalizeProviderToolInputSchema,
+  restoreProviderToolName,
+  sanitizeProviderToolName,
+} from "@dotagents/shared/provider-tool-utils"
+import {
   createLanguageModel,
   getCurrentProviderId,
   getCurrentModelName,
@@ -139,113 +144,6 @@ function logCacheMetrics(
 }
 
 /**
- * Sanitize tool name for provider compatibility.
- * Providers require tool names matching pattern: ^[a-zA-Z0-9_-]{1,128}$
- * MCP tool names often include server prefixes like "server:tool_name" and may
- * contain spaces or other special characters.
- * We replace ':' with '__COLON__' and other invalid characters with '__'
- * to ensure compatibility while maintaining reversibility through the nameMap.
- *
- * @param name - Original tool name
- * @param suffix - Optional disambiguation suffix for collision handling
- */
-function sanitizeToolName(name: string, suffix?: string): string {
-  // First replace colons with __COLON__ to preserve server prefix distinction
-  let sanitized = name.replace(/:/g, "__COLON__")
-  // Replace any remaining characters that don't match [a-zA-Z0-9_-] with underscore
-  sanitized = sanitized.replace(/[^a-zA-Z0-9_-]/g, "_")
-
-  // If we have a suffix, ensure it survives truncation by reserving space for it
-  // The suffix is added after truncation to prevent it from being cut off
-  if (suffix) {
-    const suffixStr = `_${suffix}`
-    const maxBaseLength = 128 - suffixStr.length
-    if (sanitized.length > maxBaseLength) {
-      sanitized = sanitized.substring(0, maxBaseLength)
-    }
-    sanitized = `${sanitized}${suffixStr}`
-  } else {
-    // No suffix - simple truncation
-    if (sanitized.length > 128) {
-      sanitized = sanitized.substring(0, 128)
-    }
-  }
-
-  return sanitized
-}
-
-/**
- * Restore original tool name from sanitized version using the provided map.
- * Falls back to simple replacement if no map is provided (for JSON response parsing).
- *
- * Note: Some LLM proxies (e.g., certain OpenAI-compatible gateways) may prepend
- * "proxy_" to tool names in responses. We strip this prefix only when we have
- * a toolNameMap to verify the mapping, to avoid conflicts with legitimate tools
- * whose names actually start with "proxy_".
- */
-function restoreToolName(sanitizedName: string, toolNameMap?: Map<string, string>): string {
-  // First, try exact match with the sanitized name (handles legitimate "proxy_" prefixed tools)
-  if (toolNameMap && toolNameMap.has(sanitizedName)) {
-    return toolNameMap.get(sanitizedName)!
-  }
-
-  // If no exact match, we have a map, and name starts with "proxy_", try stripping the prefix
-  // This handles LLM proxies that prepend "proxy_" to tool names in responses
-  // We only do this when toolNameMap is provided so we can verify the stripped name exists
-  if (toolNameMap && sanitizedName.startsWith("proxy_")) {
-    const cleanedName = sanitizedName.slice(6) // Remove "proxy_" prefix (6 chars)
-    if (toolNameMap.has(cleanedName)) {
-      return toolNameMap.get(cleanedName)!
-    }
-  }
-
-  // Fallback: reverse the sanitization for JSON responses where we don't have the map
-  // We don't strip "proxy_" here since we can't verify if it's a legitimate tool name
-  return sanitizedName.replace(/__COLON__/g, ":")
-}
-
-/**
- * Normalize tool JSON schema for OpenAI-compatible function calling.
- *
- * Some providers reject top-level composition keywords (`anyOf`/`oneOf`/`allOf`/`not`/`enum`)
- * even when the schema is otherwise valid JSON Schema. We keep runtime validation in the
- * tool implementation and send a provider-safe shape here to avoid hard 400 failures.
- */
-function normalizeToolInputSchema(inputSchema: unknown): Record<string, unknown> {
-  const fallback: Record<string, unknown> = { type: "object", properties: {}, required: [] }
-
-  if (!inputSchema || typeof inputSchema !== "object" || Array.isArray(inputSchema)) {
-    return fallback
-  }
-
-  const schema = { ...(inputSchema as Record<string, unknown>) }
-  const schemaType = schema.type
-
-  // OpenAI function tools expect top-level object schemas.
-  if (schemaType !== undefined && schemaType !== "object") {
-    return fallback
-  }
-  schema.type = "object"
-
-  if (!schema.properties || typeof schema.properties !== "object" || Array.isArray(schema.properties)) {
-    schema.properties = {}
-  }
-
-  if (!Array.isArray(schema.required)) {
-    schema.required = []
-  }
-
-  // Remove top-level combinators that OpenAI-compatible gateways may reject.
-  delete schema.anyOf
-  delete schema.oneOf
-  delete schema.allOf
-  delete schema.not
-  delete schema.enum
-
-  return schema
-}
-
-/**
  * Result of converting MCP tools to AI SDK format
  */
 interface ConvertedTools {
@@ -268,7 +166,7 @@ function convertMCPToolsToAISDKTools(mcpTools: MCPTool[]): ConvertedTools {
   for (const mcpTool of mcpTools) {
     // Sanitize tool name to avoid provider compatibility issues
     // (OpenAI/Groq reject tool names containing ':')
-    let sanitizedName = sanitizeToolName(mcpTool.name)
+    let sanitizedName = sanitizeProviderToolName(mcpTool.name)
 
     // Handle collision: if this sanitized name already exists with a different original name,
     // add a deterministic disambiguation suffix to make it unique
@@ -281,7 +179,7 @@ function convertMCPToolsToAISDKTools(mcpTools: MCPTool[]): ConvertedTools {
       collisionCount.set(sanitizedName, count)
 
       // Generate a unique name with numeric suffix
-      sanitizedName = sanitizeToolName(mcpTool.name, String(count))
+      sanitizedName = sanitizeProviderToolName(mcpTool.name, { suffix: String(count) })
       logLLM(`   Disambiguated to: "${sanitizedName}"`)
     }
 
@@ -291,7 +189,7 @@ function convertMCPToolsToAISDKTools(mcpTools: MCPTool[]): ConvertedTools {
     // Create AI SDK tool with JSON schema (not Zod)
     tools[sanitizedName] = aiTool({
       description: mcpTool.description || `Tool: ${mcpTool.name}`,
-      inputSchema: jsonSchema(normalizeToolInputSchema(mcpTool.inputSchema)),
+      inputSchema: jsonSchema(normalizeProviderToolInputSchema(mcpTool.inputSchema)),
       // No execute function - we handle execution separately via MCP
     })
   }
@@ -869,7 +767,7 @@ export async function makeLLMCallWithFetch(
           // Convert AI SDK tool calls to our MCPToolCall format
           // Restore original tool names using the nameMap for accurate lookup
           const toolCalls = result.toolCalls.map(tc => ({
-            name: restoreToolName(tc.toolName, convertedTools?.nameMap),
+            name: restoreProviderToolName(tc.toolName, convertedTools?.nameMap),
             arguments: tc.input,
           }))
 
@@ -929,7 +827,7 @@ export async function makeLLMCallWithFetch(
               .filter(tc => tc && typeof tc.name === "string" && tc.name.length > 0)
               .map(tc => ({
                 ...tc,
-                name: restoreToolName(tc.name, convertedTools?.nameMap),
+                name: restoreProviderToolName(tc.name, convertedTools?.nameMap),
               }))
           }
           // End Langfuse generation with JSON response
@@ -1144,7 +1042,7 @@ export async function makeLLMCallWithStreamingAndTools(
             onChunk(event.text, accumulated)
           } else if (event.type === "tool-call") {
             collectedToolCalls.push({
-              name: restoreToolName(event.toolName, convertedTools?.nameMap),
+              name: restoreProviderToolName(event.toolName, convertedTools?.nameMap),
               arguments: event.input as Record<string, unknown>,
             })
           } else if (event.type === "finish") {

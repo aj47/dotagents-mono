@@ -8,6 +8,11 @@ import {
   getConversationImageMimeTypeFromFileName,
   parseConversationImageAssetUrl,
 } from "@dotagents/shared/conversation-media-assets"
+import {
+  normalizeProviderToolInputSchema,
+  restoreProviderToolName,
+  sanitizeProviderToolName,
+} from "@dotagents/shared/provider-tool-utils"
 import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
 import { oauthStorage } from "./oauth-storage"
@@ -23,6 +28,7 @@ const CHATGPT_CODEX_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 const CHATGPT_CODEX_SCOPE = "openid profile email offline_access"
 const CHATGPT_CODEX_REDIRECT_URI = "http://localhost:1455/auth/callback"
 const CHATGPT_CODEX_STORAGE_KEY = `${DEFAULT_CHATGPT_WEB_BASE_URL}/backend-api/codex/responses`
+const CHATGPT_WEB_TOOL_NAME_MAX_LENGTH = 64
 
 type ChatGptWebModelContext = "mcp" | "transcript"
 type CodexReasoningEffort = "minimal" | "low" | "medium" | "high"
@@ -517,71 +523,6 @@ function getConfiguredChatGptWebModel(modelContext: ChatGptWebModelContext): str
   return config.transcriptPostProcessingChatgptWebModel || DEFAULT_CHATGPT_WEB_MODEL
 }
 
-function normalizeToolInputSchema(inputSchema: unknown): Record<string, unknown> {
-  const fallback: Record<string, unknown> = { type: "object", properties: {}, required: [] }
-
-  if (!inputSchema || typeof inputSchema !== "object" || Array.isArray(inputSchema)) {
-    return fallback
-  }
-
-  const schema = { ...(inputSchema as Record<string, unknown>) }
-  const schemaType = schema.type
-
-  if (schemaType !== undefined && schemaType !== "object") {
-    return fallback
-  }
-  schema.type = "object"
-
-  if (!schema.properties || typeof schema.properties !== "object" || Array.isArray(schema.properties)) {
-    schema.properties = {}
-  }
-
-  if (!Array.isArray(schema.required)) {
-    schema.required = []
-  }
-
-  delete schema.anyOf
-  delete schema.oneOf
-  delete schema.allOf
-  delete schema.not
-  delete schema.enum
-
-  return schema
-}
-
-function sanitizeToolName(name: string, suffix?: string): string {
-  let sanitized = name.replace(/:/g, "__COLON__")
-  sanitized = sanitized.replace(/[^a-zA-Z0-9_-]/g, "_")
-
-  if (suffix) {
-    const suffixStr = `_${suffix}`
-    const maxBaseLength = 64 - suffixStr.length
-    if (sanitized.length > maxBaseLength) {
-      sanitized = sanitized.substring(0, maxBaseLength)
-    }
-    sanitized = `${sanitized}${suffixStr}`
-  } else if (sanitized.length > 64) {
-    sanitized = sanitized.substring(0, 64)
-  }
-
-  return sanitized
-}
-
-function restoreToolName(sanitizedName: string, toolNameMap: Map<string, string>): string {
-  if (toolNameMap.has(sanitizedName)) {
-    return toolNameMap.get(sanitizedName)!
-  }
-
-  if (sanitizedName.startsWith("proxy_")) {
-    const cleaned = sanitizedName.slice(6)
-    if (toolNameMap.has(cleaned)) {
-      return toolNameMap.get(cleaned)!
-    }
-  }
-
-  return sanitizedName.replace(/__COLON__/g, ":")
-}
-
 function buildCodexInstructions(messages: ChatGptWebMessage[]): string {
   const instructions = messages
     .filter((message) => message.role === "system")
@@ -661,12 +602,17 @@ function buildCodexTools(tools: ChatGptWebTool[] | undefined): PreparedCodexTool
   const collisionCount = new Map<string, number>()
 
   const preparedTools = tools.map((tool) => {
-    let sanitizedName = sanitizeToolName(tool.name)
+    let sanitizedName = sanitizeProviderToolName(tool.name, {
+      maxLength: CHATGPT_WEB_TOOL_NAME_MAX_LENGTH,
+    })
 
     if (nameMap.has(sanitizedName) && nameMap.get(sanitizedName) !== tool.name) {
       const count = (collisionCount.get(sanitizedName) || 0) + 1
       collisionCount.set(sanitizedName, count)
-      sanitizedName = sanitizeToolName(tool.name, String(count))
+      sanitizedName = sanitizeProviderToolName(tool.name, {
+        suffix: String(count),
+        maxLength: CHATGPT_WEB_TOOL_NAME_MAX_LENGTH,
+      })
     }
 
     nameMap.set(sanitizedName, tool.name)
@@ -675,7 +621,7 @@ function buildCodexTools(tools: ChatGptWebTool[] | undefined): PreparedCodexTool
       type: "function",
       name: sanitizedName,
       description: tool.description || `Tool: ${tool.name}`,
-      parameters: normalizeToolInputSchema(tool.inputSchema),
+      parameters: normalizeProviderToolInputSchema(tool.inputSchema),
       strict: false,
     }
   })
@@ -913,7 +859,7 @@ export async function makeChatGptWebResponse(
 
           if (name) {
             completedToolCalls.set(itemId || `${name}-${completedToolCalls.size}`, {
-              name: preparedTools ? restoreToolName(name, preparedTools.nameMap) : name,
+              name: preparedTools ? restoreProviderToolName(name, preparedTools.nameMap) : name,
               arguments: parseJsonObject(argumentsText),
             })
           }

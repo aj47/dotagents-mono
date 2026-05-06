@@ -8,6 +8,7 @@ export default defineConfig({
     'tts-preprocessing': 'src/tts-preprocessing.ts',
     'chat-utils': 'src/chat-utils.ts',
     providers: 'src/providers.ts',
+    'provider-tool-utils': 'src/provider-tool-utils.ts',
     languages: 'src/languages.ts',
     session: 'src/session.ts',
     'turn-duration': 'src/turn-duration.ts',

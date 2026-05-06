@@ -9,6 +9,7 @@ export * from './types';
 export * from './tts-preprocessing';
 export * from './chat-utils';
 export * from './providers';
+export * from './provider-tool-utils';
 export * from './languages';
 export * from './session';
 export * from './turn-duration';
