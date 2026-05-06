@@ -10,6 +10,7 @@ export default defineConfig({
     providers: 'src/providers.ts',
     languages: 'src/languages.ts',
     session: 'src/session.ts',
+    'turn-duration': 'src/turn-duration.ts',
     'shell-parse': 'src/shell-parse.ts',
     'connection-recovery': 'src/connection-recovery.ts',
     'api-types': 'src/api-types.ts',

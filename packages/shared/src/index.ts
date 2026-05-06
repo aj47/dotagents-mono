@@ -11,6 +11,7 @@ export * from './chat-utils';
 export * from './providers';
 export * from './languages';
 export * from './session';
+export * from './turn-duration';
 export * from './shell-parse';
 export * from './connection-recovery';
 export * from './api-types';

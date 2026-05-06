@@ -46,6 +46,11 @@
       "import": "./dist/session.mjs",
       "require": "./dist/session.js"
     },
+    "./turn-duration": {
+      "types": "./dist/turn-duration.d.ts",
+      "import": "./dist/turn-duration.mjs",
+      "require": "./dist/turn-duration.js"
+    },
     "./shell-parse": {
       "types": "./dist/shell-parse.d.ts",
       "import": "./dist/shell-parse.mjs",
