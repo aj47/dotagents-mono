@@ -3,7 +3,7 @@ import { configStore } from "./config"
 import { emergencyStopAll } from "./emergency-stop"
 import { logApp } from "./debug"
 import { agentProfileService } from "./agent-profile-service"
-import { runAgent } from "./remote-agent-runner"
+import { runAgent } from "./agent-run-actions"
 import {
   DEFAULT_DISCORD_ENABLED,
   DEFAULT_DISCORD_DM_ENABLED,

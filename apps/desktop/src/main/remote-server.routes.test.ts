@@ -150,12 +150,6 @@ function getSharedMessageQueueStoreSource(): string {
   return readFileSync(sharedMessageQueueStorePath, "utf8")
 }
 
-function getRemoteAgentRunnerSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const remoteAgentRunnerPath = path.join(testDir, "remote-agent-runner.ts")
-  return readFileSync(remoteAgentRunnerPath, "utf8")
-}
-
 function getChatCompletionActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const chatCompletionActionsPath = path.join(testDir, "chat-completion-actions.ts")
@@ -826,7 +820,6 @@ describe("remote-server route registration", () => {
     const agentRunActionsSource = getAgentRunActionsSource()
     const sharedAgentRunUtilsSource = getSharedAgentRunUtilsSource()
     const sharedChatUtilsSource = getSharedChatUtilsSource()
-    const remoteAgentRunnerSource = getRemoteAgentRunnerSource()
     const agentLoopRunnerSource = getAgentLoopRunnerSource()
     const chatCompletionActionsSource = getChatCompletionActionsSource()
 
@@ -852,7 +845,7 @@ describe("remote-server route registration", () => {
     expect(chatCompletionActionsSource).toContain("const result = await runAgent({ prompt, conversationId, profileId, onProgress })")
     expect(chatCompletionActionsSource).toContain("const result = await runAgent({ prompt, conversationId, profileId })")
     expect(source).toContain("export { runAgent }")
-    expect(remoteAgentRunnerSource).toContain("return runRemoteAgent(options, notifyConversationHistoryChanged)")
+    expect(agentRunActionsSource).toContain("return runRemoteAgent(options, notifyConversationHistoryChanged)")
     expect(agentRunActionsSource).toContain("processWithAgentMode(")
     expect(agentRunActionsSource).toContain("runOptions,")
     expect(agentLoopRunnerSource).toContain("resolveAgentModeMaxIterations(config")

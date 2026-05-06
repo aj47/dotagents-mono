@@ -40,7 +40,7 @@ describe("discord dependency helpers", () => {
   })
 
   it("does not import remote server lifecycle just to run an agent reply", () => {
-    expect(discordServiceSource).toContain('import { runAgent } from "./remote-agent-runner"')
+    expect(discordServiceSource).toContain('import { runAgent } from "./agent-run-actions"')
     expect(discordServiceSource).not.toContain('import { runAgent } from "./remote-server"')
   })
 

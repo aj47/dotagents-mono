@@ -12,6 +12,7 @@ import { conversationService } from "./conversation-service"
 import { diagnosticsService } from "./diagnostics"
 import { processWithAgentMode } from "./agent-loop-runner"
 import { state } from "./state"
+import { notifyConversationHistoryChanged } from "./conversation-history-notifier"
 
 export type RunAgentOptions = AgentRunOptions
 export type RunAgentResult = AgentRunResult
@@ -54,4 +55,8 @@ export async function runRemoteAgent(
   }
 
   return runRemoteAgentAction(options, actionOptions)
+}
+
+export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult> {
+  return runRemoteAgent(options, notifyConversationHistoryChanged)
 }

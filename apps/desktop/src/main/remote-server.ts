@@ -3,7 +3,7 @@ import { configStore } from "./config"
 import { DISCORD_SECRET_MASK } from "@dotagents/shared/discord-config"
 import { diagnosticsService } from "./diagnostics"
 import { notifyConversationHistoryChanged } from "./conversation-history-notifier"
-import { runAgent } from "./remote-agent-runner"
+import { runAgent } from "./agent-run-actions"
 import {
   createRemoteServerController,
 } from "./remote-server-controller"
