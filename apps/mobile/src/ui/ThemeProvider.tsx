@@ -2,10 +2,14 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 import { Appearance, ColorSchemeName, useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightTheme, darkTheme, Theme } from './theme';
+import {
+  MOBILE_THEME_PREFERENCE_STORAGE_KEY,
+  isThemePreference,
+  resolveThemePreference,
+  type ThemePreferenceValue,
+} from '@dotagents/shared/theme-preference';
 
-export type ThemeMode = 'light' | 'dark' | 'system';
-
-const THEME_STORAGE_KEY = 'dotagents-theme-preference';
+export type ThemeMode = ThemePreferenceValue;
 
 interface ThemeContextType {
   /** Current theme object with colors, spacing, etc. */
@@ -38,10 +42,10 @@ export function ThemeProvider({ children, initialMode = 'system' }: ThemeProvide
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(THEME_STORAGE_KEY)
+    AsyncStorage.getItem(MOBILE_THEME_PREFERENCE_STORAGE_KEY)
       .then((stored) => {
-        if (stored && ['light', 'dark', 'system'].includes(stored)) {
-          setThemeModeState(stored as ThemeMode);
+        if (isThemePreference(stored)) {
+          setThemeModeState(stored);
         }
       })
       .catch(() => {})
@@ -51,16 +55,16 @@ export function ThemeProvider({ children, initialMode = 'system' }: ThemeProvide
   }, []);
 
   // Resolve the actual color scheme based on themeMode and system preference
-  const resolvedColorScheme: 'light' | 'dark' = 
-    themeMode === 'system' 
-      ? (systemColorScheme === 'dark' ? 'dark' : 'light')
-      : themeMode;
+  const resolvedColorScheme: 'light' | 'dark' = resolveThemePreference(
+    themeMode,
+    systemColorScheme === 'dark',
+  );
 
   const currentTheme = resolvedColorScheme === 'dark' ? darkTheme : lightTheme;
 
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode);
-    AsyncStorage.setItem(THEME_STORAGE_KEY, mode).catch(() => {});
+    AsyncStorage.setItem(MOBILE_THEME_PREFERENCE_STORAGE_KEY, mode).catch(() => {});
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -110,4 +114,3 @@ export function useThemeDetection() {
   const { isDark } = useTheme();
   return { isDark };
 }
-

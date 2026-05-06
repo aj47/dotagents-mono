@@ -36,6 +36,11 @@ import {
   getEffectiveShortcut,
   formatKeyComboForDisplay,
 } from "@dotagents/shared/key-utils"
+import {
+  THEME_PREFERENCE_CHANGED_EVENT,
+  isThemePreference,
+  saveThemePreference,
+} from "@dotagents/shared/theme-preference"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 import { useAudioDevices } from "@renderer/hooks/use-audio-devices"
 import { hasResolvedAudioInputDeviceLabel } from "@renderer/hooks/audio-input-device-utils"
@@ -319,11 +324,12 @@ export function Component() {
 
   // Sync theme preference from config to localStorage when config loads
   useEffect(() => {
-    if ((configQuery.data as any)?.themePreference) {
-      localStorage.setItem("theme-preference", (configQuery.data as any).themePreference)
+    const themePreference = (configQuery.data as any)?.themePreference
+    if (isThemePreference(themePreference)) {
+      saveThemePreference(themePreference)
       window.dispatchEvent(
-        new CustomEvent("theme-preference-changed", {
-          detail: (configQuery.data as any).themePreference,
+        new CustomEvent(THEME_PREFERENCE_CHANGED_EVENT, {
+          detail: themePreference,
         }),
       )
     }
@@ -571,10 +577,10 @@ export function Component() {
                   themePreference: value,
                 })
                 // Update localStorage immediately to sync with ThemeProvider
-                localStorage.setItem("theme-preference", value)
+                saveThemePreference(value)
                 // Apply theme immediately
                 window.dispatchEvent(
-                  new CustomEvent("theme-preference-changed", {
+                  new CustomEvent(THEME_PREFERENCE_CHANGED_EVENT, {
                     detail: value,
                   }),
                 )

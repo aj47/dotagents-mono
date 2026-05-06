@@ -1,7 +1,15 @@
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import {
+  THEME_PREFERENCE_CHANGED_EVENT,
+  isThemePreference,
+  loadThemePreference,
+  resolveThemePreference,
+  saveThemePreference,
+  type ThemePreferenceValue,
+} from "@dotagents/shared/theme-preference"
 
-export type ThemeMode = "light" | "dark" | "system"
+export type ThemeMode = ThemePreferenceValue
 
 interface ThemeContextType {
   theme: "light" | "dark"
@@ -19,15 +27,7 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
-    try {
-      const stored = localStorage.getItem("theme-preference")
-      if (stored && ["light", "dark", "system"].includes(stored)) {
-        return stored as ThemeMode
-      }
-    } catch (e) {}
-    return "system"
-  })
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => loadThemePreference())
 
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (themeMode === "light") return "light"
@@ -36,9 +36,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   })
 
   const resolveTheme = (mode: ThemeMode): "light" | "dark" => {
-    if (mode === "light") return "light"
-    if (mode === "dark") return "dark"
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+    return resolveThemePreference(mode, window.matchMedia("(prefers-color-scheme: dark)").matches)
   }
 
   // Update theme when themeMode changes
@@ -53,12 +51,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       root.classList.remove("dark")
     }
 
-    try {
-      localStorage.setItem("theme-preference", themeMode)
-    } catch (e) {}
+    saveThemePreference(themeMode)
 
     window.dispatchEvent(
-      new CustomEvent("theme-preference-changed", {
+      new CustomEvent(THEME_PREFERENCE_CHANGED_EVENT, {
         detail: themeMode,
       })
     )
@@ -91,21 +87,21 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   useEffect(() => {
     const handleThemeChange = (e: CustomEvent) => {
-      const newMode = e.detail as ThemeMode
-      if (["light", "dark", "system"].includes(newMode)) {
+      const newMode = e.detail
+      if (isThemePreference(newMode)) {
         setThemeModeState(newMode)
       }
     }
 
-    window.addEventListener("theme-preference-changed", handleThemeChange as EventListener)
-    return () => window.removeEventListener("theme-preference-changed", handleThemeChange as EventListener)
+    window.addEventListener(THEME_PREFERENCE_CHANGED_EVENT, handleThemeChange as EventListener)
+    return () => window.removeEventListener(THEME_PREFERENCE_CHANGED_EVENT, handleThemeChange as EventListener)
   }, [])
 
   // Listen for theme changes broadcast from other windows via IPC
   useEffect(() => {
     const unlisten = rendererHandlers.themeChanged.listen((newMode: string) => {
-      if (["light", "dark", "system"].includes(newMode) && newMode !== themeMode) {
-        setThemeModeState(newMode as ThemeMode)
+      if (isThemePreference(newMode) && newMode !== themeMode) {
+        setThemeModeState(newMode)
       }
     })
     return unlisten

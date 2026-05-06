@@ -206,6 +206,11 @@
       "import": "./dist/selected-agent-persistence.mjs",
       "require": "./dist/selected-agent-persistence.js"
     },
+    "./theme-preference": {
+      "types": "./dist/theme-preference.d.ts",
+      "import": "./dist/theme-preference.mjs",
+      "require": "./dist/theme-preference.js"
+    },
     "./tool-activity-grouping": {
       "types": "./dist/tool-activity-grouping.d.ts",
       "import": "./dist/tool-activity-grouping.mjs",
