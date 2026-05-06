@@ -2,6 +2,7 @@ import {
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   deleteMcpServerConfigAction,
   getMcpServersAction,
+  importMcpServerConfigsAction,
   toggleMcpServerAction,
   upsertMcpServerConfigAction,
 } from "@dotagents/shared/mcp-api"
@@ -61,6 +62,10 @@ export function getMcpServers(): McpServerActionResult {
 
 export function toggleMcpServer(serverName: string | undefined, body: unknown): McpServerActionResult {
   return toggleMcpServerAction(serverName, body, mcpServerActionOptions)
+}
+
+export function importMcpServerConfigs(body: unknown): McpServerActionResult {
+  return importMcpServerConfigsAction(body, mcpServerConfigActionOptions)
 }
 
 export function upsertMcpServerConfig(serverName: string | undefined, body: unknown): McpServerActionResult {

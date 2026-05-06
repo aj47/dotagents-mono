@@ -26,6 +26,7 @@ import {
 import {
   deleteMcpServerConfig,
   getMcpServers,
+  importMcpServerConfigs,
   toggleMcpServer,
   upsertMcpServerConfig,
 } from "./mcp-server-actions"
@@ -80,6 +81,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   importProfile,
   getMcpServers,
   toggleMcpServer,
+  importMcpServerConfigs,
   upsertMcpServerConfig,
   deleteMcpServerConfig,
   getSettings,

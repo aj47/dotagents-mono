@@ -7,8 +7,13 @@ import {
   getModelPresetActivationUpdates,
   upsertModelPresetOverride,
 } from './model-presets';
-import { MCP_MAX_ITERATIONS_DEFAULT, normalizeMcpMaxIterationsValue, type McpServerConfigMutationResponse } from './mcp-api';
-import type { MCPServerConfig } from './mcp-utils';
+import {
+  MCP_MAX_ITERATIONS_DEFAULT,
+  normalizeMcpMaxIterationsValue,
+  type McpServerConfigImportResponse,
+  type McpServerConfigMutationResponse,
+} from './mcp-api';
+import type { MCPConfig, MCPServerConfig } from './mcp-utils';
 import { sanitizeConfigStringList } from './config-list-input';
 import {
   REMOTE_SERVER_API_BUILDERS,
@@ -994,6 +999,13 @@ export class SettingsApiClient {
     return this.request(API_BUILDERS.mcpServerToggle(serverName), {
       method: 'POST',
       body: JSON.stringify({ enabled }),
+    });
+  }
+
+  async importMCPServerConfigs(config: MCPConfig): Promise<McpServerConfigImportResponse> {
+    return this.request<McpServerConfigImportResponse>(API_PATHS.mcpConfigImport, {
+      method: 'POST',
+      body: JSON.stringify({ config }),
     });
   }
 

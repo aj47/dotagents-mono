@@ -8,6 +8,7 @@ import {
   MCP_MAX_ITERATIONS_MIN,
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   RUNTIME_TOOLS_SERVER_NAME,
+  buildMcpServerConfigImportResponse,
   buildMcpServerConfigMutationResponse,
   buildInjectedMcpToolCallErrorResponse,
   buildInjectedMcpToolCallResponse,
@@ -29,8 +30,10 @@ import {
   normalizeMcpMaxIterationsValue,
   parseInjectedMcpToolCallRequestBody,
   parseMcpMaxIterationsDraft,
+  parseMcpServerConfigImportRequestBody,
   parseMcpServerToggleRequestBody,
   parseMcpServerConfigUpsertRequestBody,
+  importMcpServerConfigsAction,
   setOperatorMcpToolEnabledAction,
   startOperatorMcpServerAction,
   stopOperatorMcpServerAction,
@@ -180,6 +183,30 @@ describe("MCP API helpers", () => {
       statusCode: 400,
       error: "Missing or invalid MCP server config",
     })
+
+    expect(parseMcpServerConfigImportRequestBody({
+      config: {
+        mcpServers: {
+          github: { command: "github-mcp" },
+          docs: { url: "wss://example.com/mcp" },
+        },
+      },
+    })).toEqual({
+      ok: true,
+      request: {
+        config: {
+          mcpServers: {
+            github: { transport: "stdio", command: "github-mcp" },
+            docs: { transport: "websocket", url: "wss://example.com/mcp" },
+          },
+        },
+      },
+    })
+    expect(parseMcpServerConfigImportRequestBody({ config: { mcpServers: { bad: { transport: "stdio" } } } })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "Missing or invalid MCP server config for 'bad'",
+    })
   })
 
   it("builds MCP server toggle responses", () => {
@@ -192,6 +219,11 @@ describe("MCP API helpers", () => {
       success: true,
       server: "filesystem",
       action: "upserted",
+    })
+    expect(buildMcpServerConfigImportResponse(2, ["reserved"])).toEqual({
+      success: true,
+      importedCount: 2,
+      skippedReservedServerNames: ["reserved"],
     })
   })
 
@@ -278,7 +310,7 @@ describe("MCP API helpers", () => {
           mcpConfig = nextConfig
         },
         onMcpConfigSaved: (context: {
-          action: "upserted" | "deleted"
+          action: "upserted" | "deleted" | "imported"
           serverName: string
           previousMcpConfig: MCPConfig
           nextMcpConfig: MCPConfig
@@ -329,6 +361,18 @@ describe("MCP API helpers", () => {
       statusCode: 404,
       body: { error: "Server 'missing' not found" },
     })
+    expect(importMcpServerConfigsAction({
+      config: {
+        mcpServers: {
+          github: { command: "github-mcp" },
+          "dotagents-runtime-tools": { command: "reserved" },
+        },
+      },
+    }, configOptions)).toEqual({
+      statusCode: 200,
+      body: buildMcpServerConfigImportResponse(1, ["dotagents-runtime-tools"]),
+    })
+    expect(mcpConfig.mcpServers.github).toEqual({ transport: "stdio", command: "github-mcp" })
     expect(toggles).toEqual([
       { serverName: "filesystem", enabled: false },
       { serverName: "missing", enabled: true },
@@ -348,6 +392,12 @@ describe("MCP API helpers", () => {
         serverName: "github",
         previousServers: ["filesystem", "github"],
         nextServers: ["filesystem"],
+      },
+      {
+        action: "imported",
+        serverName: "",
+        previousServers: ["filesystem"],
+        nextServers: ["filesystem", "github"],
       },
     ])
   })

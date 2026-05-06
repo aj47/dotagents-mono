@@ -93,6 +93,12 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // POST /v1/mcp/config/import - Import MCP server configs
+  fastify.post(API_ROUTES.mcpConfigImport, async (req, reply) => {
+    const result = actions.importMcpServerConfigs(req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // PUT /v1/mcp/config/servers/:name - Add or update MCP server config
   fastify.put(API_ROUTES.mcpConfigServer, async (req, reply) => {
     const params = req.params as { name?: string }

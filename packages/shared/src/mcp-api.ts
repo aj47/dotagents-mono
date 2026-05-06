@@ -15,6 +15,7 @@ import type {
 import {
   inferTransportType,
   isReservedMcpServerName,
+  mergeImportedMcpServers,
   removeMcpServerConfig,
   upsertMcpServerConfig,
   type MCPConfig,
@@ -42,8 +43,18 @@ export type McpServerConfigMutationResponse = {
   action: "upserted" | "deleted"
 }
 
+export type McpServerConfigImportResponse = {
+  success: true
+  importedCount: number
+  skippedReservedServerNames: string[]
+}
+
 export type McpServerConfigUpsertRequest = {
   config: MCPServerConfig
+}
+
+export type McpServerConfigImportRequest = {
+  config: MCPConfig
 }
 
 export type InjectedMcpToolCallRequest = {
@@ -125,7 +136,7 @@ export interface McpServerConfigActionService {
   getMcpConfig(): MCPConfig
   saveMcpConfig(mcpConfig: MCPConfig): void
   onMcpConfigSaved?(context: {
-    action: McpServerConfigMutationResponse["action"]
+    action: "upserted" | "deleted" | "imported"
     serverName: string
     previousMcpConfig: MCPConfig
     nextMcpConfig: MCPConfig
@@ -500,6 +511,38 @@ export function parseMcpServerConfigUpsertRequestBody(body: unknown): McpRequest
   return { ok: true, request: { config } }
 }
 
+export function parseMcpServerConfigImportRequestBody(body: unknown): McpRequestParseResult<McpServerConfigImportRequest> {
+  const requestBody = getRequestRecord(body)
+  const rawConfig = requestBody.config === undefined ? requestBody : requestBody.config
+  const configRecord = getRequestRecord(rawConfig)
+  const rawServers = configRecord.mcpServers
+
+  if (!rawServers || typeof rawServers !== "object" || Array.isArray(rawServers)) {
+    return { ok: false, statusCode: 400, error: "Missing or invalid MCP server config" }
+  }
+
+  const mcpServers: MCPConfig["mcpServers"] = {}
+  for (const [serverName, serverConfig] of Object.entries(rawServers as Record<string, unknown>)) {
+    const normalizedServerName = serverName.trim()
+    if (!normalizedServerName) {
+      return { ok: false, statusCode: 400, error: "Missing MCP server name" }
+    }
+
+    const normalizedConfig = normalizeMcpServerConfigRequest(serverConfig)
+    if (!normalizedConfig) {
+      return { ok: false, statusCode: 400, error: `Missing or invalid MCP server config for '${normalizedServerName}'` }
+    }
+
+    mcpServers[normalizedServerName] = normalizedConfig
+  }
+
+  if (Object.keys(mcpServers).length === 0) {
+    return { ok: false, statusCode: 400, error: "Missing MCP servers to import" }
+  }
+
+  return { ok: true, request: { config: { mcpServers } } }
+}
+
 export function buildMcpServerToggleResponse(server: string, enabled: boolean): McpServerToggleResponse {
   return {
     success: true,
@@ -516,6 +559,17 @@ export function buildMcpServerConfigMutationResponse(
     success: true,
     server,
     action,
+  }
+}
+
+export function buildMcpServerConfigImportResponse(
+  importedCount: number,
+  skippedReservedServerNames: string[],
+): McpServerConfigImportResponse {
+  return {
+    success: true,
+    importedCount,
+    skippedReservedServerNames,
   }
 }
 
@@ -715,6 +769,46 @@ export function deleteMcpServerConfigAction(
   } catch (caughtError) {
     options.diagnostics.logError("mcp-server-actions", "Failed to delete MCP server config", caughtError)
     return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to delete MCP server config"))
+  }
+}
+
+export function importMcpServerConfigsAction(
+  body: unknown,
+  options: McpServerConfigActionOptions,
+): McpServerActionResult {
+  try {
+    const parsedRequest = parseMcpServerConfigImportRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return mcpServerActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const currentMcpConfig = options.service.getMcpConfig()
+    const importResult = mergeImportedMcpServers(currentMcpConfig, parsedRequest.request.config, {
+      reservedServerNames: options.reservedServerNames || [],
+    })
+
+    if (importResult.importedCount > 0) {
+      options.service.saveMcpConfig(importResult.config)
+      options.service.onMcpConfigSaved?.({
+        action: "imported",
+        serverName: "",
+        previousMcpConfig: currentMcpConfig,
+        nextMcpConfig: importResult.config,
+      })
+    }
+
+    options.diagnostics.logInfo?.(
+      "mcp-server-actions",
+      `Imported ${importResult.importedCount} MCP server config(s)`,
+    )
+
+    return mcpServerActionOk(buildMcpServerConfigImportResponse(
+      importResult.importedCount,
+      importResult.skippedReservedServerNames,
+    ))
+  } catch (caughtError) {
+    options.diagnostics.logError("mcp-server-actions", "Failed to import MCP server configs", caughtError)
+    return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to import MCP server configs"))
   }
 }
 
