@@ -3,6 +3,7 @@ import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, Touchable
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AppConfig,
+  DEFAULT_APP_CONFIG,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   saveConfig,
   useConfigContext,
@@ -553,6 +554,10 @@ export default function SettingsScreen({ navigation }: any) {
     setHasPendingLocalSave(false);
     setSaveStatusMessage('Saved');
   }, [setConfig]);
+
+  const draftHandsFreeForegroundOnly = draft.handsFreeForegroundOnly ?? DEFAULT_APP_CONFIG.handsFreeForegroundOnly ?? true;
+  const draftTtsEnabled = draft.ttsEnabled ?? DEFAULT_APP_CONFIG.ttsEnabled ?? true;
+  const draftMessageQueueEnabled = draft.messageQueueEnabled ?? DEFAULT_APP_CONFIG.messageQueueEnabled ?? true;
 
   const handleHandsFreeDebounceInputChange = useCallback((value: string) => {
     const sanitized = value.replace(/[^0-9]/g, '');
@@ -2737,11 +2742,11 @@ export default function SettingsScreen({ navigation }: any) {
             <Text style={[styles.helperText, { marginTop: 2 }]}>Keep this on for the mobile MVP safety boundary.</Text>
           </View>
           <Switch
-            value={draft.handsFreeForegroundOnly !== false}
+            value={draftHandsFreeForegroundOnly}
             onValueChange={(v) => updateLocalConfig({ handsFreeForegroundOnly: v })}
             accessibilityLabel={createSwitchAccessibilityLabel('Foreground Only')}
             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-            thumbColor={draft.handsFreeForegroundOnly !== false ? theme.colors.primaryForeground : theme.colors.background}
+            thumbColor={draftHandsFreeForegroundOnly ? theme.colors.primaryForeground : theme.colors.background}
           />
         </View>
 
@@ -2755,16 +2760,16 @@ export default function SettingsScreen({ navigation }: any) {
         <View style={styles.row}>
           <Text style={styles.label}>Text-to-Speech</Text>
           <Switch
-            value={draft.ttsEnabled !== false}
+            value={draftTtsEnabled}
             onValueChange={(v) => updateLocalConfig({ ttsEnabled: v })}
             accessibilityLabel={createSwitchAccessibilityLabel('Text-to-Speech')}
             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-            thumbColor={draft.ttsEnabled !== false ? theme.colors.primaryForeground : theme.colors.background}
+            thumbColor={draftTtsEnabled ? theme.colors.primaryForeground : theme.colors.background}
           />
         </View>
 
         {/* TTS Voice Settings - shown when TTS is enabled */}
-        {draft.ttsEnabled !== false && (
+        {draftTtsEnabled && (
           <>
             <TTSSettings
               voiceId={draft.ttsVoiceId}
@@ -2789,11 +2794,11 @@ export default function SettingsScreen({ navigation }: any) {
         <View style={styles.row}>
           <Text style={styles.label}>Message Queuing</Text>
           <Switch
-            value={draft.messageQueueEnabled !== false}
+            value={draftMessageQueueEnabled}
             onValueChange={(v) => updateLocalConfig({ messageQueueEnabled: v })}
             accessibilityLabel={createSwitchAccessibilityLabel('Message Queuing')}
             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-            thumbColor={draft.messageQueueEnabled !== false ? theme.colors.primaryForeground : theme.colors.background}
+            thumbColor={draftMessageQueueEnabled ? theme.colors.primaryForeground : theme.colors.background}
           />
         </View>
         <Text style={styles.helperText}>

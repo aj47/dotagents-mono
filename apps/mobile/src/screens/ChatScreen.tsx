@@ -25,7 +25,10 @@ const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+	DEFAULT_APP_CONFIG,
 	DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+	DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+	DEFAULT_HANDS_FREE_WAKE_PHRASE,
 	useConfigContext,
 	saveConfig,
 } from '../store/config';
@@ -329,19 +332,20 @@ export default function ChatScreen({ route, navigation }: any) {
   const [newPromptContent, setNewPromptContent] = useState('');
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
   const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
-  const handsFreeWakePhrase = config.handsFreeWakePhrase || 'hey dot agents';
-  const handsFreeSleepPhrase = config.handsFreeSleepPhrase || 'go to sleep';
+  const handsFreeWakePhrase = config.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE;
+  const handsFreeSleepPhrase = config.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE;
   const handsFreeDebugEnabled = config.handsFreeDebug === true;
-  const handsFreeForegroundOnly = config.handsFreeForegroundOnly !== false;
-  const messageQueueEnabled = config.messageQueueEnabled !== false; // default true
+  const handsFreeForegroundOnly = config.handsFreeForegroundOnly ?? DEFAULT_APP_CONFIG.handsFreeForegroundOnly ?? true;
+  const messageQueueEnabled = config.messageQueueEnabled ?? DEFAULT_APP_CONFIG.messageQueueEnabled ?? true;
+  const ttsEnabledSetting = config.ttsEnabled ?? DEFAULT_APP_CONFIG.ttsEnabled ?? true;
   const handsFreeRef = useRef<boolean>(handsFree);
   useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
   const handsFreePhaseRef = useRef<HandsFreePhase>('sleeping');
   // Track ttsEnabled in a ref so speech callbacks resolved before a mute-toggle
   // (e.g. in-flight send() progress callbacks) still see the latest setting and
   // bail before queueing or playing audio.
-  const ttsEnabledRef = useRef<boolean>(config.ttsEnabled !== false);
-  useEffect(() => { ttsEnabledRef.current = config.ttsEnabled !== false; }, [config.ttsEnabled]);
+  const ttsEnabledRef = useRef<boolean>(ttsEnabledSetting);
+  useEffect(() => { ttsEnabledRef.current = ttsEnabledSetting; }, [ttsEnabledSetting]);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   const isAppActive = appState === 'active';
   const handsFreeRuntimeActive = handsFree && isFocused && isAppActive;
@@ -364,7 +368,7 @@ export default function ChatScreen({ route, navigation }: any) {
   };
 
   // TTS toggle
-  const ttsEnabled = config.ttsEnabled !== false; // default true
+  const ttsEnabled = ttsEnabledSetting;
   const toggleTts = async () => {
     const next = !ttsEnabled;
     // Stop any currently playing TTS when disabling. The speaker icon doubles
@@ -2092,7 +2096,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	            mergeResponseEvents([fallbackEvent]);
 	          }
 	          lastUserResponse = responseText;
-	          if (responseText && responseText !== midTurnLegacyResponseText && config.ttsEnabled !== false) {
+	          if (responseText && responseText !== midTurnLegacyResponseText && ttsEnabledRef.current) {
 	            midTurnLegacyResponseText = responseText;
 		            speakAssistantResponse(responseText, 'mid-turn progress');
 	          }
@@ -2342,7 +2346,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	      const alreadySpokenMidTurn = !!(finalResponseEvent
 	        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
 	        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
-	      if (!alreadySpokenMidTurn && !sessionChanged && ttsText && config.ttsEnabled !== false) {
+	      if (!alreadySpokenMidTurn && !sessionChanged && ttsText && ttsEnabledRef.current) {
 	        if (handsFree) {
 	          handsFreeController.onRequestCompleted();
 	        }
@@ -2552,7 +2556,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	            mergeResponseEvents([fallbackEvent]);
 	          }
 	          lastUserResponse = responseText;
-	          if (responseText && responseText !== midTurnLegacyResponseText && config.ttsEnabled !== false) {
+	          if (responseText && responseText !== midTurnLegacyResponseText && ttsEnabledRef.current) {
 	            midTurnLegacyResponseText = responseText;
 		            speakAssistantResponse(responseText, 'queued mid-turn progress');
 	          }
@@ -2670,7 +2674,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	      const alreadySpokenMidTurn = !!(finalResponseEvent
 	        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
 	        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
-      if (!alreadySpokenMidTurn && ttsText && config.ttsEnabled !== false) {
+      if (!alreadySpokenMidTurn && ttsText && ttsEnabledRef.current) {
 	        if (handsFree) {
 	          handsFreeController.onRequestCompleted();
 	        }
@@ -3194,7 +3198,7 @@ export default function ChatScreen({ route, navigation }: any) {
             const canSpeakVisibleContent =
               m.role === 'assistant' &&
               visibleMessageContent.trim().length > 0 &&
-              config.ttsEnabled !== false &&
+              ttsEnabled &&
               (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
 
             const toolCalls = m.toolCalls ?? [];

@@ -70,8 +70,8 @@ export function normalizeMobileStoredConfig(cfg: MobileAppConfig): MobileAppConf
     handsFreeMessageDebounceMs: normalizeHandsFreeMessageDebounceMs(cfg.handsFreeMessageDebounceMs),
     handsFreeWakePhrase: cfg.handsFreeWakePhrase?.trim() || DEFAULT_HANDS_FREE_WAKE_PHRASE,
     handsFreeSleepPhrase: cfg.handsFreeSleepPhrase?.trim() || DEFAULT_HANDS_FREE_SLEEP_PHRASE,
-    handsFreeDebug: cfg.handsFreeDebug ?? false,
-    handsFreeForegroundOnly: cfg.handsFreeForegroundOnly ?? true,
+    handsFreeDebug: cfg.handsFreeDebug ?? DEFAULT_MOBILE_APP_CONFIG.handsFreeDebug,
+    handsFreeForegroundOnly: cfg.handsFreeForegroundOnly ?? DEFAULT_MOBILE_APP_CONFIG.handsFreeForegroundOnly,
     edgeTtsVoice: migrateDeprecatedEdgeTtsVoice(cfg.edgeTtsVoice),
     ttsProvider,
   };

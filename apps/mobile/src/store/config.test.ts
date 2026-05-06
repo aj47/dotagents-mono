@@ -28,8 +28,8 @@ describe('normalizeStoredConfig', () => {
     expect(normalized.handsFreeMessageDebounceMs).toBe(DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS);
     expect(normalized.handsFreeWakePhrase).toBe(DEFAULT_HANDS_FREE_WAKE_PHRASE);
     expect(normalized.handsFreeSleepPhrase).toBe(DEFAULT_HANDS_FREE_SLEEP_PHRASE);
-    expect(normalized.handsFreeDebug).toBe(false);
-    expect(normalized.handsFreeForegroundOnly).toBe(true);
+    expect(normalized.handsFreeDebug).toBe(DEFAULT_APP_CONFIG.handsFreeDebug);
+    expect(normalized.handsFreeForegroundOnly).toBe(DEFAULT_APP_CONFIG.handsFreeForegroundOnly);
     expect(normalized.baseUrl).toBe('https://api.openai.com/v1');
   });
 
