@@ -51,6 +51,10 @@ import {
   formatOperatorYesNo as formatYesNo,
   getOperatorTunnelStateLabel as getTunnelStateLabel,
 } from '@dotagents/shared/operator-display-utils';
+import {
+  buildOperatorRemoteAccessDrafts as buildDrafts,
+  type OperatorRemoteAccessDrafts as RemoteAccessDrafts,
+} from '@dotagents/shared/operator-remote-access-drafts';
 
 const RECENT_ERROR_COUNT = 8;
 const RECENT_LOG_COUNT = 10;
@@ -59,38 +63,6 @@ const DISCORD_LOG_PREVIEW_COUNT = 6;
 const MCP_LOG_PREVIEW_COUNT = 20;
 const ACTION_REFRESH_DELAY_MS = 1200;
 const AUTO_REFRESH_INTERVAL_MS = 30_000;
-
-type RemoteAccessDrafts = {
-  remoteServerPort: string;
-  remoteServerCorsOrigins: string;
-  remoteServerOperatorAllowDeviceIds: string;
-  cloudflareTunnelId: string;
-  cloudflareTunnelName: string;
-  cloudflareTunnelHostname: string;
-  cloudflareTunnelCredentialsPath: string;
-  whatsappOperatorAllowFrom: string;
-  discordOperatorAllowUserIds: string;
-  discordOperatorAllowGuildIds: string;
-  discordOperatorAllowChannelIds: string;
-  discordOperatorAllowRoleIds: string;
-};
-
-function buildDrafts(settings: Settings | null): RemoteAccessDrafts {
-  return {
-    remoteServerPort: String(settings?.remoteServerPort ?? 3210),
-    remoteServerCorsOrigins: formatConfigListInput(settings?.remoteServerCorsOrigins ?? ['*']),
-    remoteServerOperatorAllowDeviceIds: formatConfigListInput(settings?.remoteServerOperatorAllowDeviceIds),
-    cloudflareTunnelId: settings?.cloudflareTunnelId ?? '',
-    cloudflareTunnelName: settings?.cloudflareTunnelName ?? '',
-    cloudflareTunnelHostname: settings?.cloudflareTunnelHostname ?? '',
-    cloudflareTunnelCredentialsPath: settings?.cloudflareTunnelCredentialsPath ?? '',
-    whatsappOperatorAllowFrom: formatConfigListInput(settings?.whatsappOperatorAllowFrom),
-    discordOperatorAllowUserIds: formatConfigListInput(settings?.discordOperatorAllowUserIds),
-    discordOperatorAllowGuildIds: formatConfigListInput(settings?.discordOperatorAllowGuildIds),
-    discordOperatorAllowChannelIds: formatConfigListInput(settings?.discordOperatorAllowChannelIds),
-    discordOperatorAllowRoleIds: formatConfigListInput(settings?.discordOperatorAllowRoleIds),
-  };
-}
 
 export default function OperationsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();

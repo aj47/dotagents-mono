@@ -85,6 +85,7 @@ export default defineConfig({
     'operator-actions': 'src/operator-actions.ts',
     'operator-audit-store': 'src/operator-audit-store.ts',
     'operator-display-utils': 'src/operator-display-utils.ts',
+    'operator-remote-access-drafts': 'src/operator-remote-access-drafts.ts',
     'mcp-api': 'src/mcp-api.ts',
     'mcp-utils': 'src/mcp-utils.ts',
     'oauth-examples': 'src/oauth-examples.ts',

@@ -7,6 +7,10 @@ const operationsSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'screens', 'OperationsScreen.tsx'),
   'utf8'
 );
+const remoteAccessDraftsSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'operator-remote-access-drafts.ts'),
+  'utf8'
+);
 
 test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Remote access settings/);
@@ -14,7 +18,8 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Bind Address/);
   assert.match(operationsSource, /Log Level/);
   assert.match(operationsSource, /CORS Origins/);
-  assert.match(operationsSource, /remoteServerCorsOrigins: formatConfigListInput\(settings\?\.remoteServerCorsOrigins \?\? \['\*'\]\)/);
+  assert.match(operationsSource, /buildOperatorRemoteAccessDrafts as buildDrafts/);
+  assert.match(remoteAccessDraftsSource, /remoteServerCorsOrigins: formatConfigListInput\(settings\?\.remoteServerCorsOrigins \?\? \["\*"\]\)/);
   assert.match(operationsSource, /remoteServerLogLevel: value/);
   assert.match(operationsSource, /remoteServerCorsOrigins: origins\.length > 0 \? origins : \['\*'\]/);
   assert.match(operationsSource, /Auto-Show Panel/);
@@ -25,7 +30,7 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Tunnel Mode/);
   assert.match(operationsSource, /Auto-Start Tunnel/);
   assert.match(operationsSource, /Tunnel Name/);
-  assert.match(operationsSource, /cloudflareTunnelName: settings\?\.cloudflareTunnelName \?\? ''/);
+  assert.match(remoteAccessDraftsSource, /cloudflareTunnelName: settings\?\.cloudflareTunnelName \?\? ""/);
   assert.match(operationsSource, /cloudflareTunnelName: drafts\.cloudflareTunnelName\.trim\(\)/);
   assert.match(operationsSource, /Credentials Path/);
   assert.match(operationsSource, /Channel operator allowlists/);
@@ -33,7 +38,7 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Discord Operator Guild IDs/);
   assert.match(operationsSource, /Discord Operator Channel IDs/);
   assert.match(operationsSource, /Discord Operator Role IDs/);
-  assert.match(operationsSource, /discordOperatorAllowRoleIds: formatConfigListInput\(settings\?\.discordOperatorAllowRoleIds\)/);
+  assert.match(remoteAccessDraftsSource, /discordOperatorAllowRoleIds: formatConfigListInput\(settings\?\.discordOperatorAllowRoleIds\)/);
   assert.match(operationsSource, /discordOperatorAllowRoleIds: parseConfigListInput\(drafts\.discordOperatorAllowRoleIds, \{ unique: true \}\)/);
   assert.match(operationsSource, /WhatsApp Operator Allowlist/);
   assert.match(operationsSource, /getDeviceIdentity/);

@@ -421,6 +421,11 @@
       "import": "./dist/operator-display-utils.mjs",
       "require": "./dist/operator-display-utils.js"
     },
+    "./operator-remote-access-drafts": {
+      "types": "./dist/operator-remote-access-drafts.d.ts",
+      "import": "./dist/operator-remote-access-drafts.mjs",
+      "require": "./dist/operator-remote-access-drafts.js"
+    },
     "./mcp-api": {
       "types": "./dist/mcp-api.d.ts",
       "import": "./dist/mcp-api.mjs",
