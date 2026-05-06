@@ -8,8 +8,6 @@ import { File, Paths } from 'expo-file-system';
 import { getAudioFileExtensionFromMimeType } from '@dotagents/shared/tts-api';
 import { createExtendedSettingsApiClient } from './settingsApi';
 
-export { resolveEdgeTtsVoice } from '@dotagents/shared/providers';
-
 // Remote TTS client. Audio synthesis happens on the paired desktop's
 // remote-server (POST /v1/tts/speak); this module only handles the HTTP
 // round-trip and playback. Web browsers can't set the Origin/User-Agent
