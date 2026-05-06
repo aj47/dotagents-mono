@@ -1,4 +1,4 @@
-export type AgentProfileToolConfigLike = {
+export type ProfileMcpServerConfig = {
   disabledServers?: string[]
   disabledTools?: string[]
   allServersDisabledByDefault?: boolean
@@ -6,14 +6,46 @@ export type AgentProfileToolConfigLike = {
   enabledRuntimeTools?: string[]
 }
 
-export type AgentProfileMcpServerConfigLike = AgentProfileToolConfigLike
+export type AgentProfileToolConfigLike = ProfileMcpServerConfig
 
-export type AgentProfileSessionSnapshotModelConfigLike = Record<string, unknown>
+export type AgentProfileMcpServerConfigLike = ProfileMcpServerConfig
 
-export type AgentProfileSessionSnapshotSkillsConfigLike = {
+export type ProfileModelConfig = {
+  agentProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
+  agentOpenaiModel?: string
+  agentGroqModel?: string
+  agentGeminiModel?: string
+  agentChatgptWebModel?: string
+  /** @deprecated Use agentProviderId instead. */
+  mcpToolsProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
+  /** @deprecated Use agentOpenaiModel instead. */
+  mcpToolsOpenaiModel?: string
+  /** @deprecated Use agentGroqModel instead. */
+  mcpToolsGroqModel?: string
+  /** @deprecated Use agentGeminiModel instead. */
+  mcpToolsGeminiModel?: string
+  /** @deprecated Use agentChatgptWebModel instead. */
+  mcpToolsChatgptWebModel?: string
+  currentModelPresetId?: string
+  sttProviderId?: "openai" | "groq" | "parakeet"
+  openaiSttModel?: string
+  groqSttModel?: string
+  transcriptPostProcessingProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
+  transcriptPostProcessingOpenaiModel?: string
+  transcriptPostProcessingGroqModel?: string
+  transcriptPostProcessingGeminiModel?: string
+  transcriptPostProcessingChatgptWebModel?: string
+  ttsProviderId?: "openai" | "groq" | "gemini" | "edge" | "kitten" | "supertonic"
+}
+
+export type AgentProfileSessionSnapshotModelConfigLike = ProfileModelConfig
+
+export type ProfileSkillsConfig = {
   enabledSkillIds?: string[]
   allSkillsDisabledByDefault?: boolean
 }
+
+export type AgentProfileSessionSnapshotSkillsConfigLike = ProfileSkillsConfig
 
 export type AgentProfileSessionSnapshotProfileLike = {
   id: string
@@ -37,6 +69,8 @@ export type AgentProfileSessionSnapshotLike = {
   agentProperties?: Record<string, string>
   skillsConfig?: AgentProfileSessionSnapshotSkillsConfigLike
 }
+
+export type SessionProfileSnapshot = AgentProfileSessionSnapshotLike
 
 export function toolConfigToMcpServerConfig(
   toolConfig?: AgentProfileToolConfigLike,

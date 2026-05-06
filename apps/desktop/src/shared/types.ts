@@ -12,6 +12,11 @@ import type {
   LoopConfig as SharedLoopConfig,
 } from '@dotagents/shared/types'
 import type {
+  ProfileMcpServerConfig as SharedProfileMcpServerConfig,
+  ProfileModelConfig as SharedProfileModelConfig,
+  ProfileSkillsConfig as SharedProfileSkillsConfig,
+} from '@dotagents/shared/agent-profile-session-snapshot'
+import type {
   AgentConversationState,
 } from '@dotagents/shared/conversation-state'
 import {
@@ -22,6 +27,7 @@ import {
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
+export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
 export type { AgentConversationState } from '@dotagents/shared/conversation-state'
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared/agent-progress'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '@dotagents/core'
@@ -321,63 +327,6 @@ export interface ConversationHistoryItem {
   preview: string
 }
 
-export type ProfileMcpServerConfig = {
-  disabledServers?: string[]
-  disabledTools?: string[]
-  // When true, newly-added MCP servers (added after profile creation) are also disabled by default
-  // This ensures strict opt-in behavior for profiles created with "all MCPs disabled"
-  allServersDisabledByDefault?: boolean
-  // When allServersDisabledByDefault is true, this list contains servers that are explicitly ENABLED
-  // (i.e., servers the user has opted-in to use for this profile)
-  enabledServers?: string[]
-  // When set, only these runtime tools are enabled (whitelist approach for agents)
-  // If undefined, all runtime tools are available (default behavior)
-  enabledRuntimeTools?: string[]
-}
-
-export type ProfileModelConfig = {
-  // Agent model settings
-  agentProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
-  agentOpenaiModel?: string
-  agentGroqModel?: string
-  agentGeminiModel?: string
-  agentChatgptWebModel?: string
-  /** @deprecated Use agentProviderId instead. */
-  mcpToolsProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
-  /** @deprecated Use agentOpenaiModel instead. */
-  mcpToolsOpenaiModel?: string
-  /** @deprecated Use agentGroqModel instead. */
-  mcpToolsGroqModel?: string
-  /** @deprecated Use agentGeminiModel instead. */
-  mcpToolsGeminiModel?: string
-  /** @deprecated Use agentChatgptWebModel instead. */
-  mcpToolsChatgptWebModel?: string
-  currentModelPresetId?: string
-  // STT Provider settings
-  sttProviderId?: "openai" | "groq" | "parakeet"
-  openaiSttModel?: string
-  groqSttModel?: string
-  // Transcript Post-Processing settings
-  transcriptPostProcessingProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
-  transcriptPostProcessingOpenaiModel?: string
-  transcriptPostProcessingGroqModel?: string
-  transcriptPostProcessingGeminiModel?: string
-  transcriptPostProcessingChatgptWebModel?: string
-  // TTS Provider settings
-  ttsProviderId?: "openai" | "groq" | "gemini" | "edge" | "kitten" | "supertonic"
-}
-
-// Per-agent skills configuration.
-// Missing config or allSkillsDisabledByDefault=false means all skills are enabled.
-// When allSkillsDisabledByDefault=true, only enabledSkillIds are enabled.
-export type ProfileSkillsConfig = {
-  // List of skill IDs that are enabled for this agent
-  enabledSkillIds?: string[]
-  // When true, newly-added skills are also disabled by default for this agent
-  // This ensures strict opt-in behavior
-  allSkillsDisabledByDefault?: boolean
-}
-
 // Profile Management Types
 export type Profile = {
   id: string
@@ -386,33 +335,15 @@ export type Profile = {
   createdAt: number
   updatedAt: number
   isDefault?: boolean
-  mcpServerConfig?: ProfileMcpServerConfig
-  modelConfig?: ProfileModelConfig
-  skillsConfig?: ProfileSkillsConfig
+  mcpServerConfig?: SharedProfileMcpServerConfig
+  modelConfig?: SharedProfileModelConfig
+  skillsConfig?: SharedProfileSkillsConfig
   systemPrompt?: string
 }
 
 export type ProfilesData = {
   profiles: Profile[]
   currentProfileId?: string
-}
-
-/**
- * Snapshot of profile settings captured at session creation time.
- * This ensures session isolation - changes to the global profile don't affect running sessions.
- */
-export type SessionProfileSnapshot = {
-  profileId: string
-  profileName: string
-  guidelines: string
-  systemPrompt?: string
-  mcpServerConfig?: ProfileMcpServerConfig
-  modelConfig?: ProfileModelConfig
-  /** Skills instructions to inject into the system prompt (from agent's enabled skills) */
-  skillsInstructions?: string
-  /** Dynamic agent properties exposed in system prompt (from agent's properties) */
-  agentProperties?: Record<string, string>
-  skillsConfig?: ProfileSkillsConfig
 }
 
 // ============================================================================
@@ -526,7 +457,7 @@ export type Persona = {
    * Only used when connection.type is "internal".
    * When using an external ACP agent, model is configured in agent settings.
    */
-  profileModelConfig?: ProfileModelConfig
+  profileModelConfig?: SharedProfileModelConfig
   /** Skills configuration */
   skillsConfig: PersonaSkillsConfig
   /** Connection configuration for the underlying agent */
@@ -641,7 +572,7 @@ export type AgentProfile = {
 
   // Model Configuration (only for internal execution)
   /** Model configuration - uses ProfileModelConfig format */
-  modelConfig?: ProfileModelConfig
+  modelConfig?: SharedProfileModelConfig
 
   // Tool Access
   /** Tool and MCP server access configuration */
@@ -649,7 +580,7 @@ export type AgentProfile = {
 
   // Skills
   /** Skills configuration */
-  skillsConfig?: ProfileSkillsConfig
+  skillsConfig?: SharedProfileSkillsConfig
 
   // Connection - how to run this agent
   /** Connection configuration for the underlying agent */

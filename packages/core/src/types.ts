@@ -7,6 +7,11 @@
  */
 
 import type { AgentProfileRole as SharedAgentProfileRole } from '@dotagents/shared/types'
+import type {
+  ProfileMcpServerConfig as SharedProfileMcpServerConfig,
+  ProfileModelConfig as SharedProfileModelConfig,
+  ProfileSkillsConfig as SharedProfileSkillsConfig,
+} from '@dotagents/shared/agent-profile-session-snapshot'
 
 // Re-export shared types
 export type { ModelPreset } from '@dotagents/shared/providers'
@@ -49,53 +54,16 @@ export type {
   PreferredAgentProfileRole,
 } from '@dotagents/shared/types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
+export type {
+  ProfileMcpServerConfig,
+  ProfileModelConfig,
+  ProfileSkillsConfig,
+  SessionProfileSnapshot,
+} from '@dotagents/shared/agent-profile-session-snapshot'
 
 // ============================================================================
 // Profile & Agent Types
 // ============================================================================
-
-export type ProfileMcpServerConfig = {
-  disabledServers?: string[]
-  disabledTools?: string[]
-  allServersDisabledByDefault?: boolean
-  enabledServers?: string[]
-  enabledRuntimeTools?: string[]
-}
-
-export type ProfileModelConfig = {
-  agentProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
-  agentOpenaiModel?: string
-  agentGroqModel?: string
-  agentGeminiModel?: string
-  agentChatgptWebModel?: string
-  /** @deprecated Use agentProviderId instead. */
-  mcpToolsProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
-  /** @deprecated Use agentOpenaiModel instead. */
-  mcpToolsOpenaiModel?: string
-  /** @deprecated Use agentGroqModel instead. */
-  mcpToolsGroqModel?: string
-  /** @deprecated Use agentGeminiModel instead. */
-  mcpToolsGeminiModel?: string
-  /** @deprecated Use agentChatgptWebModel instead. */
-  mcpToolsChatgptWebModel?: string
-  currentModelPresetId?: string
-  sttProviderId?: "openai" | "groq" | "parakeet"
-  openaiSttModel?: string
-  groqSttModel?: string
-  transcriptPostProcessingProviderId?: "openai" | "groq" | "gemini" | "chatgpt-web"
-  transcriptPostProcessingOpenaiModel?: string
-  transcriptPostProcessingGroqModel?: string
-  transcriptPostProcessingGeminiModel?: string
-  transcriptPostProcessingChatgptWebModel?: string
-  ttsProviderId?: "openai" | "groq" | "gemini" | "edge" | "kitten" | "supertonic"
-}
-
-export type ProfileSkillsConfig = {
-  // Missing config or allSkillsDisabledByDefault=false means all skills are enabled.
-  // When allSkillsDisabledByDefault=true, only enabledSkillIds are enabled.
-  enabledSkillIds?: string[]
-  allSkillsDisabledByDefault?: boolean
-}
 
 export type Profile = {
   id: string
@@ -104,27 +72,15 @@ export type Profile = {
   createdAt: number
   updatedAt: number
   isDefault?: boolean
-  mcpServerConfig?: ProfileMcpServerConfig
-  modelConfig?: ProfileModelConfig
-  skillsConfig?: ProfileSkillsConfig
+  mcpServerConfig?: SharedProfileMcpServerConfig
+  modelConfig?: SharedProfileModelConfig
+  skillsConfig?: SharedProfileSkillsConfig
   systemPrompt?: string
 }
 
 export type ProfilesData = {
   profiles: Profile[]
   currentProfileId?: string
-}
-
-export type SessionProfileSnapshot = {
-  profileId: string
-  profileName: string
-  guidelines: string
-  systemPrompt?: string
-  mcpServerConfig?: ProfileMcpServerConfig
-  modelConfig?: ProfileModelConfig
-  skillsInstructions?: string
-  agentProperties?: Record<string, string>
-  skillsConfig?: ProfileSkillsConfig
 }
 
 export type AgentProfileConnectionType = "internal" | "acpx" | "acp" | "stdio" | "remote"
@@ -156,9 +112,9 @@ export type AgentProfile = {
   systemPrompt?: string
   guidelines?: string
   properties?: Record<string, string>
-  modelConfig?: ProfileModelConfig
+  modelConfig?: SharedProfileModelConfig
   toolConfig?: AgentProfileToolConfig
-  skillsConfig?: ProfileSkillsConfig
+  skillsConfig?: SharedProfileSkillsConfig
   connection: AgentProfileConnection
   isStateful?: boolean
   conversationId?: string
