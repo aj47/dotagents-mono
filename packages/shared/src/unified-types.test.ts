@@ -17,6 +17,7 @@ import type {
   PredefinedPrompt,
   PredefinedPromptsConfig,
   SpeechToTextConfig,
+  TranscriptPostProcessingConfig,
   EmergencyStopResponse,
   OperatorDiscordLogsResponse,
   OperatorTunnelSetupSummary,
@@ -399,6 +400,21 @@ describe('settings API request/response contracts', () => {
 
     assertType<SpeechToTextConfig>(config)
     expect(config.sttProviderId).toBe('groq')
+  })
+
+  it('accepts transcript post-processing config shared by desktop and mobile settings', () => {
+    const config: TranscriptPostProcessingConfig = {
+      transcriptPostProcessingEnabled: true,
+      transcriptPostProcessingProviderId: 'gemini',
+      transcriptPostProcessingOpenaiModel: 'gpt-4.1-mini',
+      transcriptPostProcessingGroqModel: 'llama-3.1-8b-instant',
+      transcriptPostProcessingGeminiModel: 'gemini-2.5-flash',
+      transcriptPostProcessingChatgptWebModel: 'gpt-5.1-codex',
+      transcriptPostProcessingPrompt: 'Clean up punctuation only.',
+    }
+
+    assertType<TranscriptPostProcessingConfig>(config)
+    expect(config.transcriptPostProcessingProviderId).toBe('gemini')
   })
 
   it('accepts repeat task create/update payloads with nullable schedules', () => {

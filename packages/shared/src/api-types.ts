@@ -5,7 +5,7 @@
 
 import type { QueuedMessage, ToolCall, ToolResult, LoopSchedule } from './types';
 import type { SessionHistoryConfig } from './session';
-import type { ModelPreset, STT_PROVIDER_ID } from './providers';
+import type { CHAT_PROVIDER_ID, ModelPreset, STT_PROVIDER_ID } from './providers';
 import type { MainAgentConfig } from './main-agent-selection';
 import type {
   KnowledgeNote,
@@ -613,7 +613,17 @@ export interface SpeechToTextConfig {
   parakeetNumThreads?: number;
 }
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig {
+export interface TranscriptPostProcessingConfig {
+  transcriptPostProcessingEnabled?: boolean;
+  transcriptPostProcessingProviderId?: CHAT_PROVIDER_ID;
+  transcriptPostProcessingOpenaiModel?: string;
+  transcriptPostProcessingGroqModel?: string;
+  transcriptPostProcessingGeminiModel?: string;
+  transcriptPostProcessingChatgptWebModel?: string;
+  transcriptPostProcessingPrompt?: string;
+}
+
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -633,15 +643,6 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, St
   groqBaseUrl?: string;
   geminiApiKey?: string;
   geminiBaseUrl?: string;
-
-  // Transcript Post-Processing
-  transcriptPostProcessingEnabled?: boolean;
-  transcriptPostProcessingProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
-  transcriptPostProcessingOpenaiModel?: string;
-  transcriptPostProcessingGroqModel?: string;
-  transcriptPostProcessingGeminiModel?: string;
-  transcriptPostProcessingChatgptWebModel?: string;
-  transcriptPostProcessingPrompt?: string;
 
   // Text-to-Speech Configuration
   ttsEnabled?: boolean;
@@ -698,7 +699,7 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, St
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig {
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -717,15 +718,6 @@ export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConf
   groqBaseUrl?: string;
   geminiApiKey?: string;
   geminiBaseUrl?: string;
-
-  // Transcript Post-Processing
-  transcriptPostProcessingEnabled?: boolean;
-  transcriptPostProcessingProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
-  transcriptPostProcessingOpenaiModel?: string;
-  transcriptPostProcessingGroqModel?: string;
-  transcriptPostProcessingGeminiModel?: string;
-  transcriptPostProcessingChatgptWebModel?: string;
-  transcriptPostProcessingPrompt?: string;
 
   // Text-to-Speech Configuration
   ttsEnabled?: boolean;
