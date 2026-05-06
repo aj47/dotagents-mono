@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS,
   buildAgentProfileAgentModelUpdate,
   countEnabledAgentProfileMcpServers,
   countEnabledAgentProfileMcpTools,
@@ -11,6 +12,8 @@ import {
   formatAgentProfileSkillsConfigForRequest,
   getAgentProfileAgentModelField,
   getAgentProfileAgentModelProvider,
+  getAgentProfileAgentModelProviderFromOptionValue,
+  getAgentProfileAgentModelProviderOptionValue,
   getAgentProfileAgentModelValue,
   getAgentProfileMcpConfigAfterServerToggle,
   getAgentProfileMcpConfigAfterSetAllServersEnabled,
@@ -209,6 +212,13 @@ describe("agent profile config updates", () => {
   })
 
   it("resolves per-agent model providers, fields, values, and update payloads", () => {
+    expect(AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS.map(option => option.value)).toEqual([
+      "global",
+      "openai",
+      "groq",
+      "gemini",
+      "chatgpt-web",
+    ])
     expect(getAgentProfileAgentModelProvider({
       mcpToolsProviderId: "gemini",
     })).toBe("gemini")
@@ -216,6 +226,11 @@ describe("agent profile config updates", () => {
       agentProviderId: "openai",
       mcpToolsProviderId: "gemini",
     })).toBe("openai")
+    expect(getAgentProfileAgentModelProviderOptionValue(undefined)).toBe("global")
+    expect(getAgentProfileAgentModelProviderOptionValue("groq")).toBe("groq")
+    expect(getAgentProfileAgentModelProviderFromOptionValue("global")).toBeUndefined()
+    expect(getAgentProfileAgentModelProviderFromOptionValue("gemini")).toBe("gemini")
+    expect(getAgentProfileAgentModelProviderFromOptionValue("unknown")).toBeUndefined()
     expect(getAgentProfileAgentModelField("groq")).toBe("agentGroqModel")
     expect(getAgentProfileAgentModelValue({
       agentProviderId: "gemini",

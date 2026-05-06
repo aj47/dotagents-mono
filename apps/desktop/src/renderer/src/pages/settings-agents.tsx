@@ -35,6 +35,7 @@ import {
   normalizeAgentProfileProperties,
 } from "@dotagents/shared/agent-profile-mutations"
 import {
+  AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS,
   buildAgentProfileAgentModelUpdate,
   hasAllAgentProfileMcpServersEnabled,
   hasAllAgentProfileRuntimeToolsEnabled,
@@ -45,6 +46,8 @@ import {
   formatAgentProfileMcpConfigForRequest,
   formatAgentProfileModelConfigForRequest,
   formatAgentProfileSkillsConfigForRequest,
+  getAgentProfileAgentModelProviderFromOptionValue,
+  getAgentProfileAgentModelProviderOptionValue,
   getAgentProfileModelConfigAfterProviderSelect,
   getAgentProfileAgentModelProvider,
   getAgentProfileAgentModelValue,
@@ -63,7 +66,6 @@ import {
   normalizeAgentProfileModelConfigForEdit,
   normalizeAgentProfileSkillsConfigForEdit,
   toggleAgentProfileSkillConfig,
-  type AgentProfileAgentModelProvider,
 } from "@dotagents/shared/agent-profile-config-updates"
 
 // Curated palette of vivid colors to pick from deterministically
@@ -877,19 +879,19 @@ export function SettingsAgents() {
                 <div className="space-y-2">
                   <Label>LLM Provider</Label>
                   <Select
-                    value={selectedAgentModelProvider ?? "__global__"}
+                    value={getAgentProfileAgentModelProviderOptionValue(selectedAgentModelProvider)}
                     onValueChange={v => {
-                      const provider = v === "__global__" ? undefined : v as AgentProfileAgentModelProvider
+                      const provider = getAgentProfileAgentModelProviderFromOptionValue(v)
                       setEditing({ ...editing, modelConfig: getAgentProfileModelConfigAfterProviderSelect(editing.modelConfig, provider) })
                     }}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__global__">Use global default</SelectItem>
-                      <SelectItem value="openai">OpenAI</SelectItem>
-                      <SelectItem value="groq">Groq</SelectItem>
-                      <SelectItem value="gemini">Gemini</SelectItem>
-                      <SelectItem value="chatgpt-web">ChatGPT Web</SelectItem>
+                      {AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.value === "global" ? "Use global default" : option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

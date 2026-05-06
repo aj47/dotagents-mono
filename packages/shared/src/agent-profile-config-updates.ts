@@ -15,11 +15,24 @@ export type AgentProfileMcpConfigUpdateLike = AgentProfileMcpServerValidationCon
 export type AgentProfileModelConfigUpdateLike = AgentProfileModelConfigLike
 export type AgentProfileSkillsConfigUpdateLike = AgentProfileSkillsConfigLike
 export type AgentProfileAgentModelProvider = NonNullable<AgentProfileModelConfigUpdateLike["agentProviderId"]>
+export type AgentProfileAgentModelProviderOptionValue = "global" | AgentProfileAgentModelProvider
+export interface AgentProfileAgentModelProviderOption {
+  label: string
+  value: AgentProfileAgentModelProviderOptionValue
+}
 export type AgentProfileAgentModelField =
   | "agentOpenaiModel"
   | "agentGroqModel"
   | "agentGeminiModel"
   | "agentChatgptWebModel"
+
+export const AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS = [
+  { label: "Global", value: "global" },
+  { label: "OpenAI", value: "openai" },
+  { label: "Groq", value: "groq" },
+  { label: "Gemini", value: "gemini" },
+  { label: "ChatGPT Web", value: "chatgpt-web" },
+] as const satisfies readonly AgentProfileAgentModelProviderOption[]
 
 const DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES = ["mark_work_complete"]
 const STT_PROVIDER_IDS = STT_PROVIDERS.map((provider) => provider.value)
@@ -394,6 +407,22 @@ export function getAgentProfileAgentModelProvider(
   modelConfig: AgentProfileModelConfigUpdateLike | undefined,
 ): AgentProfileAgentModelProvider | undefined {
   return modelConfig?.agentProviderId ?? modelConfig?.mcpToolsProviderId
+}
+
+export function getAgentProfileAgentModelProviderOptionValue(
+  provider: AgentProfileAgentModelProvider | null | undefined,
+): AgentProfileAgentModelProviderOptionValue {
+  return provider ?? "global"
+}
+
+export function getAgentProfileAgentModelProviderFromOptionValue(
+  value: string,
+): AgentProfileAgentModelProvider | undefined {
+  return value === "global"
+    ? undefined
+    : isChatProviderId(value)
+      ? value
+      : undefined
 }
 
 export function getAgentProfileModelConfigAfterProviderSelect(

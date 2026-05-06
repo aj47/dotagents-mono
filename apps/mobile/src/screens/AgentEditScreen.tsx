@@ -45,6 +45,7 @@ import {
   normalizeAgentProfileProperties,
 } from '@dotagents/shared/agent-profile-mutations';
 import {
+  AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS,
   buildAgentProfileAgentModelUpdate,
   countEnabledAgentProfileMcpServers,
   countEnabledAgentProfileMcpTools,
@@ -53,6 +54,8 @@ import {
   formatAgentProfileMcpConfigForRequest,
   formatAgentProfileModelConfigForRequest,
   formatAgentProfileSkillsConfigForRequest,
+  getAgentProfileAgentModelProviderFromOptionValue,
+  getAgentProfileAgentModelProviderOptionValue,
   getAgentProfileAgentModelProvider,
   getAgentProfileAgentModelValue,
   getAgentProfileMcpConfigAfterServerToggle,
@@ -71,21 +74,14 @@ import {
   normalizeAgentProfileModelConfigForEdit,
   normalizeAgentProfileSkillsConfigForEdit,
   toggleAgentProfileSkillConfig,
+  type AgentProfileAgentModelProvider,
+  type AgentProfileAgentModelProviderOptionValue,
   type AgentProfileMcpConfigUpdateLike,
   type AgentProfileModelConfigUpdateLike,
   type AgentProfileSkillsConfigUpdateLike,
 } from '@dotagents/shared/agent-profile-config-updates';
-import { type CHAT_PROVIDER_ID } from '@dotagents/shared/providers';
 
-const AGENT_MODEL_PROVIDERS = [
-  { label: 'Global', value: 'global' },
-  { label: 'OpenAI', value: 'openai' },
-  { label: 'Groq', value: 'groq' },
-  { label: 'Gemini', value: 'gemini' },
-  { label: 'ChatGPT Web', value: 'chatgpt-web' },
-] as const;
-
-type AgentModelProvider = CHAT_PROVIDER_ID;
+type AgentModelProvider = AgentProfileAgentModelProvider;
 
 const ESSENTIAL_RUNTIME_TOOL_NAME = 'mark_work_complete';
 const RUNTIME_TOOLS = buildRuntimeToolDefinitions(acpRouterToolDefinitions);
@@ -468,12 +464,12 @@ export default function AgentEditScreen({ navigation, route }: any) {
     }));
   }, []);
 
-  const setAgentModelProvider = useCallback((provider: AgentModelProvider | 'global') => {
+  const setAgentModelProvider = useCallback((providerValue: AgentProfileAgentModelProviderOptionValue) => {
     setFormData(prev => ({
       ...prev,
       modelConfig: getAgentProfileModelConfigAfterProviderSelect(
         prev.modelConfig,
-        provider === 'global' ? undefined : provider,
+        getAgentProfileAgentModelProviderFromOptionValue(providerValue),
       ),
     }));
   }, []);
@@ -880,8 +876,8 @@ export default function AgentEditScreen({ navigation, route }: any) {
             </View>
           </View>
           <View style={styles.providerChipGrid}>
-            {AGENT_MODEL_PROVIDERS.map(provider => {
-              const selected = (selectedModelProvider ?? 'global') === provider.value;
+            {AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS.map(provider => {
+              const selected = getAgentProfileAgentModelProviderOptionValue(selectedModelProvider) === provider.value;
               return (
                 <TouchableOpacity
                   key={provider.value}
