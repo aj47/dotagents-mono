@@ -1,3 +1,5 @@
+import { DEFAULT_AGENT_PROFILE_ENABLED } from './agent-profile-mutations';
+
 export type AgentProfilePresetKey = 'auggie' | 'claude-code' | 'codex' | 'opencode';
 
 export type AgentProfilePresetDefinition = {
@@ -38,7 +40,7 @@ export const AGENT_PROFILE_PRESETS: Record<AgentProfilePresetKey, AgentProfilePr
     connectionType: 'acpx',
     connectionCommand: 'auggie',
     connectionArgs: '--acp',
-    enabled: true,
+    enabled: DEFAULT_AGENT_PROFILE_ENABLED,
     docsUrl: 'https://www.augmentcode.com/',
     cwdHint: 'Point the working directory at the repo you want Auggie to operate in.',
     verifyArgs: ['--help'],
@@ -49,7 +51,7 @@ export const AGENT_PROFILE_PRESETS: Record<AgentProfilePresetKey, AgentProfilePr
     connectionType: 'acpx',
     connectionCommand: 'claude-code-acp',
     connectionArgs: '',
-    enabled: true,
+    enabled: DEFAULT_AGENT_PROFILE_ENABLED,
     docsUrl: 'https://github.com/zed-industries/claude-code-acp',
     installCommand: 'npm install -g @zed-industries/claude-code-acp',
     authHint: 'Sign in to Claude Code in your terminal before verifying if this is your first run.',
@@ -62,7 +64,7 @@ export const AGENT_PROFILE_PRESETS: Record<AgentProfilePresetKey, AgentProfilePr
     connectionType: 'acpx',
     connectionCommand: 'codex-acp',
     connectionArgs: '',
-    enabled: true,
+    enabled: DEFAULT_AGENT_PROFILE_ENABLED,
     docsUrl: 'https://github.com/zed-industries/codex-acp',
     installCommand: 'npm install -g @zed-industries/codex-acp',
     authHint: 'Run codex login first, or set CODEX_API_KEY / OPENAI_API_KEY before verifying.',
@@ -75,7 +77,7 @@ export const AGENT_PROFILE_PRESETS: Record<AgentProfilePresetKey, AgentProfilePr
     connectionType: 'acpx',
     connectionCommand: 'opencode',
     connectionArgs: 'acp',
-    enabled: true,
+    enabled: DEFAULT_AGENT_PROFILE_ENABLED,
     docsUrl: 'https://opencode.ai/docs/acp/',
     installCommand: 'npm install -g opencode-ai',
     authHint: 'OpenCode stores provider auth after you run opencode and complete /connect in the TUI.',

@@ -1,4 +1,4 @@
-import { createAgentProfileRecord } from "./agent-profile-mutations"
+import { createAgentProfileRecord, DEFAULT_AGENT_PROFILE_ENABLED } from "./agent-profile-mutations"
 import {
   type AgentProfileMcpServerConfigLike,
   type AgentProfileSessionSnapshotModelConfigLike,
@@ -51,7 +51,7 @@ export const DEFAULT_MAIN_AGENT_PROFILE_TEMPLATE = {
   connection: { type: "internal" },
   isStateful: false,
   role: "delegation-target",
-  enabled: true,
+  enabled: DEFAULT_AGENT_PROFILE_ENABLED,
   isBuiltIn: true,
   isUserProfile: false,
   isAgentTarget: true,
@@ -85,7 +85,7 @@ export function buildInternalDelegationAgentProfileCreateInput(
     systemPrompt,
     connection: { type: "internal" },
     role: "delegation-target",
-    enabled: true,
+    enabled: DEFAULT_AGENT_PROFILE_ENABLED,
     isUserProfile: false,
     isAgentTarget: true,
     toolConfig: {

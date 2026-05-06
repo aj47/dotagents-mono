@@ -6,6 +6,7 @@ import {
   createDefaultAgentProfiles,
   DEFAULT_MAIN_AGENT_PROFILE_TEMPLATE,
 } from "./agent-profile-factories"
+import { DEFAULT_AGENT_PROFILE_ENABLED } from "./agent-profile-mutations"
 
 describe("agent profile factories", () => {
   it("creates default built-in profiles with injected ids and timestamps", () => {
@@ -32,7 +33,7 @@ describe("agent profile factories", () => {
       systemPrompt: "Be precise.",
       connection: { type: "internal" },
       role: "delegation-target",
-      enabled: true,
+      enabled: DEFAULT_AGENT_PROFILE_ENABLED,
       isUserProfile: false,
       isAgentTarget: true,
       toolConfig: {

@@ -5,6 +5,7 @@ import {
   detectAgentProfilePresetKey,
   getAgentProfilePresetFormFields,
 } from './agent-profile-presets';
+import { DEFAULT_AGENT_PROFILE_ENABLED } from './agent-profile-mutations';
 
 describe('agent profile presets', () => {
   it('defines the external agent commands shared by desktop and mobile', () => {
@@ -13,7 +14,7 @@ describe('agent profile presets', () => {
       connectionType: 'acpx',
       connectionCommand: 'auggie',
       connectionArgs: '--acp',
-      enabled: true,
+      enabled: DEFAULT_AGENT_PROFILE_ENABLED,
     });
     expect(AGENT_PROFILE_PRESETS.codex).toMatchObject({
       connectionCommand: 'codex-acp',
@@ -58,7 +59,7 @@ describe('agent profile presets', () => {
       connectionArgs: '',
       connectionBaseUrl: '',
       connectionCwd: '',
-      enabled: true,
+      enabled: DEFAULT_AGENT_PROFILE_ENABLED,
     });
   });
 
