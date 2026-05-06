@@ -2,7 +2,7 @@ import { app, safeStorage } from "electron"
 import path from "path"
 import fs from "fs"
 import crypto from "crypto"
-import { OAuthConfig, OAuthTokens } from "@shared/types"
+import type { OAuthConfig, OAuthTokens } from "@dotagents/shared/mcp-utils"
 import { dataFolder } from "./config"
 
 const OAUTH_STORAGE_FILE = path.join(dataFolder, "oauth-storage.json")

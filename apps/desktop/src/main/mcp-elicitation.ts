@@ -1,6 +1,6 @@
 import { BrowserWindow, shell } from "electron"
 import { diagnosticsService } from "./diagnostics"
-import type { ElicitationRequest, ElicitationResult, ElicitationFormRequest, ElicitationUrlRequest } from "../shared/types"
+import type { ElicitationRequest, ElicitationResult, ElicitationFormRequest, ElicitationUrlRequest } from "@dotagents/shared/mcp-api"
 
 interface PendingElicitation {
   request: ElicitationRequest
@@ -139,4 +139,3 @@ export function cancelAllElicitations(serverName?: string): void {
     }
   }
 }
-

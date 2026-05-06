@@ -2,7 +2,7 @@ import fs from "fs"
 import path from "path"
 import { configStore } from "./config"
 import { mcpService } from "./mcp-service"
-import { MCPServerConfig } from "../shared/types"
+import type { MCPServerConfig } from "@dotagents/shared/mcp-utils"
 
 export interface DiagnosticInfo {
   timestamp: number

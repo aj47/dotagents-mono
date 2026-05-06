@@ -1,6 +1,6 @@
 import { shell } from "electron"
 import crypto from "crypto"
-import { OAuthConfig, OAuthTokens, OAuthServerMetadata, OAuthClientMetadata } from "@shared/types"
+import type { OAuthClientMetadata, OAuthConfig, OAuthServerMetadata, OAuthTokens } from "@dotagents/shared/mcp-utils"
 
 export interface OAuthAuthorizationRequest {
   authorizationUrl: string

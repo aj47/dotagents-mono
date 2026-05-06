@@ -1,5 +1,5 @@
 import { app } from "electron"
-import type { DesktopShellConfig } from "../shared/types"
+import type { DesktopShellConfig } from "@dotagents/shared/api-types"
 
 export function applyDesktopShellSettings(prev: DesktopShellConfig, next: DesktopShellConfig): void {
   try {

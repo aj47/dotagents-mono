@@ -13,7 +13,7 @@ import {
 } from "@dotagents/shared/chat-utils"
 import type { AgentRunExecutor } from "@dotagents/shared/agent-run-utils"
 import { resolveActiveModelId } from "@dotagents/shared/model-presets"
-import type { AgentProgressUpdate } from "../shared/types"
+import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import { configStore, recordingsFolder } from "./config"
 import { getConversationIdValidationError } from "./conversation-id"
 import { diagnosticsService } from "./diagnostics"

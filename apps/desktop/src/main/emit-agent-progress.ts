@@ -1,7 +1,7 @@
 import { getRendererHandlers } from "@egoist/tipc/main"
 import { WINDOWS, showPanelWindow, resizePanelForAgentMode } from "./window"
 import { RendererHandlers } from "./renderer-handlers"
-import { AgentProgressUpdate } from "../shared/types"
+import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import { isPanelAutoShowSuppressed, agentSessionStateManager } from "./state"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"

@@ -28,7 +28,7 @@ import {
   type OperatorActionAuditContext,
 } from "@dotagents/shared/operator-actions"
 import type { OperatorRouteActionResult } from "@dotagents/shared/remote-server-route-contracts"
-import type { MCPServerConfig } from "../shared/types"
+import type { MCPServerConfig } from "@dotagents/shared/mcp-utils"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
 import { getErrorMessage } from "./error-utils"

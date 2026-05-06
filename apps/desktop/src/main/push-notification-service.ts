@@ -11,7 +11,7 @@ import {
   type PushNotificationPayload,
   summarizeExpoPushTickets,
 } from "@dotagents/shared/push-notifications"
-import { PushNotificationToken } from "../shared/types"
+import type { PushNotificationToken } from "@dotagents/shared/push-notifications"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
 

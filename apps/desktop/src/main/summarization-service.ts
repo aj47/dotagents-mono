@@ -2,7 +2,7 @@
  * Step summarization has been removed.
  */
 
-import type { AgentStepSummary } from "../shared/types"
+import type { AgentStepSummary } from "@dotagents/shared/agent-progress"
 
 export interface SummarizationInput {
   sessionId: string

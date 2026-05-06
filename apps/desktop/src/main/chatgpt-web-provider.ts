@@ -2,7 +2,7 @@ import { randomUUID } from "crypto"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import type { OAuthTokens } from "@shared/types"
+import type { OAuthTokens } from "@dotagents/shared/mcp-utils"
 import {
   extractConversationImageMarkdownReferences,
   getConversationImageMimeTypeFromFileName,

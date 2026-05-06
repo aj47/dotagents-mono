@@ -1,5 +1,7 @@
 import { UpdateDownloadedEvent } from "electron-updater"
-import { AgentProgressUpdate, ElicitationRequest, SamplingRequest, QueuedMessage } from "../shared/types"
+import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
+import type { ElicitationRequest, SamplingRequest } from "@dotagents/shared/mcp-api"
+import type { QueuedMessage } from "@dotagents/shared/message-queue-utils"
 import type { AgentSession } from "./agent-session-tracker"
 
 export type RendererHandlers = {
