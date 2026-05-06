@@ -34,7 +34,7 @@ import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/
 import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToDirPath } from "./agents-files/skills"
 import { loadAgentsKnowledgeNotesLayer, writeKnowledgeNoteFile } from "./agents-files/knowledge-notes"
 import { loadTasksLayer, writeTaskFile, taskIdToFilePath } from "./agents-files/tasks"
-import { safeReadJsonFileSync, safeWriteJsonFileSync } from "./agents-files/safe-file"
+import { safeReadJsonFileSync, safeWriteJsonFileSync } from "@dotagents/core"
 import { logApp } from "./debug"
 
 // ============================================================================

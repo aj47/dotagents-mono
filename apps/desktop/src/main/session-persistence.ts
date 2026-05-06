@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync } from "fs"
 import { dirname } from "path"
-import { safeWriteJsonFileSync } from "./agents-files/safe-file"
+import { safeWriteJsonFileSync } from "@dotagents/core"
 import { logApp } from "./debug"
 
 export function loadPersistedJson<T>(filePath: string, label: string): T | undefined {

@@ -21,7 +21,7 @@ import {
   loadAgentsKnowledgeNotesLayer,
   writeKnowledgeNoteFile,
 } from "./agents-files/knowledge-notes"
-import { readTextFileIfExistsSync, safeWriteFileSync } from "./agents-files/safe-file"
+import { readTextFileIfExistsSync, safeWriteFileSync } from "@dotagents/core"
 import {
   buildKnowledgeNoteSearchIndex,
   createReadableKnowledgeNoteId,

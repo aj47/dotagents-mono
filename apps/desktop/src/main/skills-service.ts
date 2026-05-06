@@ -35,7 +35,7 @@ import {
   skillIdToFilePath,
   writeAgentsSkillFile,
 } from "./agents-files/skills"
-import { readTextFileIfExistsSync, safeWriteFileSync } from "./agents-files/safe-file"
+import { readTextFileIfExistsSync, safeWriteFileSync } from "@dotagents/core"
 
 type SkillOrigin = {
   layer: "global" | "workspace"
