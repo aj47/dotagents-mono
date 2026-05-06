@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  BUNDLE_COMPONENT_OPTIONS,
+  BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS,
+  DEFAULT_BUNDLE_COMPONENT_SELECTION,
+  EMPTY_BUNDLE_ITEM_SELECTION,
   buildBundleExportResponse,
   buildBundleExportableItemsResponse,
   buildBundleImportPreviewResponse,
+  createBundleItemSelection,
   exportBundleAction,
+  getBundleDependencyWarnings,
   getBundleExportableItemsAction,
+  hasSelectedBundleComponent,
   importBundleAction,
   parseExportBundleRequestBody,
   parseImportBundleRequestBody,
@@ -179,6 +186,54 @@ describe("bundle API helpers", () => {
       success: true,
       preview: importPreview,
     })
+  })
+
+  it("builds shared bundle selection defaults and dependency warnings", () => {
+    expect(DEFAULT_BUNDLE_COMPONENT_SELECTION).toEqual({
+      agentProfiles: true,
+      mcpServers: true,
+      skills: true,
+      repeatTasks: true,
+      knowledgeNotes: true,
+    })
+    expect(EMPTY_BUNDLE_ITEM_SELECTION).toEqual({
+      agentProfileIds: [],
+      mcpServerNames: [],
+      skillIds: [],
+      repeatTaskIds: [],
+      knowledgeNoteIds: [],
+    })
+    expect(BUNDLE_COMPONENT_OPTIONS.map((option) => option.key)).toEqual([
+      "agentProfiles",
+      "mcpServers",
+      "skills",
+      "repeatTasks",
+      "knowledgeNotes",
+    ])
+    expect(BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS.map((option) => option.value)).toEqual([
+      "skip",
+      "rename",
+      "overwrite",
+    ])
+    expect(createBundleItemSelection(exportableItems)).toEqual({
+      agentProfileIds: ["agent-1"],
+      mcpServerNames: [],
+      skillIds: ["skill-1"],
+      repeatTaskIds: [],
+      knowledgeNoteIds: [],
+    })
+    expect(hasSelectedBundleComponent({ skills: false, agentProfiles: false })).toBe(false)
+    expect(hasSelectedBundleComponent({ skills: true, agentProfiles: false })).toBe(true)
+
+    expect(getBundleDependencyWarnings(exportableItems, DEFAULT_BUNDLE_COMPONENT_SELECTION, {
+      agentProfileIds: ["agent-1"],
+      mcpServerNames: [],
+      skillIds: [],
+      repeatTaskIds: [],
+      knowledgeNoteIds: [],
+    })).toEqual([
+      'agent references skill "Skill", but it is not included.',
+    ])
   })
 
   it("runs bundle actions through service adapters", async () => {

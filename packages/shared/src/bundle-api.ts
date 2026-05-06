@@ -181,6 +181,98 @@ export type ExportableBundleItems = {
   knowledgeNotes: ExportableBundleKnowledgeNote[]
 }
 
+export type RequiredBundleComponentSelection = Required<BundleComponentSelection>
+
+export type DetailedBundleItemSelection = Required<BundleItemSelectionOptions>
+
+export type BundleComponentOption = {
+  key: keyof RequiredBundleComponentSelection
+  label: string
+}
+
+export type BundleImportConflictStrategyOption = {
+  value: BundleImportConflictStrategy
+  label: string
+}
+
+export const DEFAULT_BUNDLE_COMPONENT_SELECTION: RequiredBundleComponentSelection = {
+  agentProfiles: true,
+  mcpServers: true,
+  skills: true,
+  repeatTasks: true,
+  knowledgeNotes: true,
+}
+
+export const EMPTY_BUNDLE_ITEM_SELECTION: DetailedBundleItemSelection = {
+  agentProfileIds: [],
+  mcpServerNames: [],
+  skillIds: [],
+  repeatTaskIds: [],
+  knowledgeNoteIds: [],
+}
+
+export const BUNDLE_COMPONENT_OPTIONS: readonly BundleComponentOption[] = [
+  { key: "agentProfiles", label: "Agents" },
+  { key: "mcpServers", label: "MCP servers" },
+  { key: "skills", label: "Skills" },
+  { key: "repeatTasks", label: "Tasks" },
+  { key: "knowledgeNotes", label: "Knowledge" },
+]
+
+export const BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS: readonly BundleImportConflictStrategyOption[] = [
+  { value: "skip", label: "Skip" },
+  { value: "rename", label: "Rename" },
+  { value: "overwrite", label: "Overwrite" },
+]
+
+export function createBundleItemSelection(items: ExportableBundleItems): DetailedBundleItemSelection {
+  return {
+    agentProfileIds: items.agentProfiles.map((item) => item.id),
+    mcpServerNames: items.mcpServers.map((item) => item.name),
+    skillIds: items.skills.map((item) => item.id),
+    repeatTaskIds: items.repeatTasks.map((item) => item.id),
+    knowledgeNoteIds: items.knowledgeNotes.map((item) => item.id),
+  }
+}
+
+export function hasSelectedBundleComponent(components: BundleComponentSelection): boolean {
+  return Object.values(components).some(Boolean)
+}
+
+export function getBundleDependencyWarnings(
+  items: ExportableBundleItems | undefined,
+  components: BundleComponentSelection,
+  selection: BundleItemSelectionOptions,
+): string[] {
+  if (!items || !components.agentProfiles) return []
+
+  const selectedAgentIds = new Set(selection.agentProfileIds ?? [])
+  const selectedSkillIds = components.skills ? new Set(selection.skillIds ?? []) : new Set<string>()
+  const selectedMcpServerNames = components.mcpServers ? new Set(selection.mcpServerNames ?? []) : new Set<string>()
+  const skillNameById = new Map(items.skills.map((skill) => [skill.id, skill.name]))
+
+  return items.agentProfiles.flatMap((agent) => {
+    if (!selectedAgentIds.has(agent.id)) return []
+
+    const agentLabel = agent.displayName || agent.name
+    const warnings: string[] = []
+
+    for (const serverName of agent.referencedMcpServerNames) {
+      if (!selectedMcpServerNames.has(serverName)) {
+        warnings.push(`${agentLabel} references MCP server "${serverName}", but it is not included.`)
+      }
+    }
+
+    for (const skillId of agent.referencedSkillIds) {
+      if (!selectedSkillIds.has(skillId)) {
+        warnings.push(`${agentLabel} references skill "${skillNameById.get(skillId) || skillId}", but it is not included.`)
+      }
+    }
+
+    return warnings
+  })
+}
+
 export type BundleExportableItemsResponse = {
   success: true
   items: ExportableBundleItems

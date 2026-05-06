@@ -50,8 +50,8 @@ describe("bundle-selection helpers", () => {
     })
 
     expect(warnings).toEqual([
-      "Agent One references MCP server “github”, but it is not included.",
-      "Agent One references skill “Skill One”, but it is not included.",
+      'Agent One references MCP server "github", but it is not included.',
+      'Agent One references skill "Skill One", but it is not included.',
     ])
   })
 })

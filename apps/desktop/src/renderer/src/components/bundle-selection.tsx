@@ -3,127 +3,27 @@ import { Button } from "@renderer/components/ui/button"
 import { Label } from "@renderer/components/ui/label"
 import { Switch } from "@renderer/components/ui/switch"
 import { cn } from "~/lib/utils"
+import {
+  DEFAULT_BUNDLE_COMPONENT_SELECTION as DEFAULT_EXPORT_COMPONENTS,
+  EMPTY_BUNDLE_ITEM_SELECTION as EMPTY_BUNDLE_SELECTION,
+  createBundleItemSelection as createDetailedBundleSelection,
+  getBundleDependencyWarnings,
+  type DetailedBundleItemSelection as BundleDetailedSelectionState,
+  type ExportableBundleItems as BundleExportableItems,
+  type RequiredBundleComponentSelection as BundleComponentSelectionState,
+} from "@dotagents/shared/bundle-api"
 
-export interface BundleComponentSelectionState {
-  agentProfiles: boolean
-  mcpServers: boolean
-  skills: boolean
-  repeatTasks: boolean
-  knowledgeNotes: boolean
+export {
+  DEFAULT_EXPORT_COMPONENTS,
+  EMPTY_BUNDLE_SELECTION,
+  createDetailedBundleSelection,
+  getBundleDependencyWarnings,
 }
 
-export interface BundleDetailedSelectionState {
-  agentProfileIds: string[]
-  mcpServerNames: string[]
-  skillIds: string[]
-  repeatTaskIds: string[]
-  knowledgeNoteIds: string[]
-}
-
-export interface BundleExportableAgentProfile {
-  id: string
-  name: string
-  displayName?: string
-  enabled: boolean
-  role?: string
-  referencedMcpServerNames: string[]
-  referencedSkillIds: string[]
-}
-
-export interface BundleExportableMCPServer {
-  name: string
-  transport?: string
-  enabled?: boolean
-}
-
-export interface BundleExportableSkill {
-  id: string
-  name: string
-  description?: string
-}
-
-export interface BundleExportableRepeatTask {
-  id: string
-  name: string
-  intervalMinutes: number
-  enabled: boolean
-}
-
-export interface BundleExportableKnowledgeNote {
-  id: string
-  title: string
-  context: "auto" | "search-only"
-  summary?: string
-}
-
-export interface BundleExportableItems {
-  agentProfiles: BundleExportableAgentProfile[]
-  mcpServers: BundleExportableMCPServer[]
-  skills: BundleExportableSkill[]
-  repeatTasks: BundleExportableRepeatTask[]
-  knowledgeNotes: BundleExportableKnowledgeNote[]
-}
-
-export const DEFAULT_EXPORT_COMPONENTS: BundleComponentSelectionState = {
-  agentProfiles: true,
-  mcpServers: true,
-  skills: true,
-  repeatTasks: true,
-  knowledgeNotes: true,
-}
-
-export const EMPTY_BUNDLE_SELECTION: BundleDetailedSelectionState = {
-  agentProfileIds: [],
-  mcpServerNames: [],
-  skillIds: [],
-  repeatTaskIds: [],
-  knowledgeNoteIds: [],
-}
-
-export function createDetailedBundleSelection(items: BundleExportableItems): BundleDetailedSelectionState {
-  return {
-    agentProfileIds: items.agentProfiles.map((item) => item.id),
-    mcpServerNames: items.mcpServers.map((item) => item.name),
-    skillIds: items.skills.map((item) => item.id),
-    repeatTaskIds: items.repeatTasks.map((item) => item.id),
-    knowledgeNoteIds: items.knowledgeNotes.map((item) => item.id),
-  }
-}
-
-export function getBundleDependencyWarnings(
-  items: BundleExportableItems | undefined,
-  components: BundleComponentSelectionState,
-  selection: BundleDetailedSelectionState
-): string[] {
-  if (!items || !components.agentProfiles) return []
-
-  const selectedAgentIds = new Set(selection.agentProfileIds)
-  const selectedSkillIds = components.skills ? new Set(selection.skillIds) : new Set<string>()
-  const selectedMcpServerNames = components.mcpServers ? new Set(selection.mcpServerNames) : new Set<string>()
-  const skillNameById = new Map(items.skills.map((skill) => [skill.id, skill.name]))
-
-  return items.agentProfiles.flatMap((agent) => {
-    if (!selectedAgentIds.has(agent.id)) return []
-
-    const agentLabel = agent.displayName || agent.name
-    const warnings: string[] = []
-
-    for (const serverName of agent.referencedMcpServerNames) {
-      if (!selectedMcpServerNames.has(serverName)) {
-        warnings.push(`${agentLabel} references MCP server “${serverName}”, but it is not included.`)
-      }
-    }
-
-    for (const skillId of agent.referencedSkillIds) {
-      if (!selectedSkillIds.has(skillId)) {
-        warnings.push(
-          `${agentLabel} references skill “${skillNameById.get(skillId) || skillId}”, but it is not included.`
-        )
-      }
-    }
-
-    return warnings
-  })
+export type {
+  BundleComponentSelectionState,
+  BundleDetailedSelectionState,
+  BundleExportableItems,
 }
 
 interface BundleDetailedSelectionCardProps {

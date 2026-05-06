@@ -51,7 +51,16 @@ import { describeLoopCadence } from '@dotagents/shared/repeat-task-utils';
 import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
 import { getDefaultSttModel, KNOWN_STT_MODEL_IDS } from '@dotagents/shared/stt-models';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
-import type { BundleComponentSelection, BundleImportConflictStrategy, BundleImportPreview } from '@dotagents/shared/bundle-api';
+import {
+  BUNDLE_COMPONENT_OPTIONS,
+  BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS,
+  DEFAULT_BUNDLE_COMPONENT_SELECTION,
+  hasSelectedBundleComponent,
+  type BundleComponentOption,
+  type BundleImportConflictStrategy,
+  type BundleImportPreview,
+  type RequiredBundleComponentSelection,
+} from '@dotagents/shared/bundle-api';
 import {
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   formatMcpMaxIterationsValidationMessage,
@@ -90,8 +99,8 @@ type DiscordListSettingKey =
 
 type ModelPresetEditorMode = 'create' | 'edit';
 type McpServerEditorMode = 'create' | 'replace';
-type BundleImportComponentsState = Required<BundleComponentSelection>;
-type BundleImportComponentKey = keyof BundleImportComponentsState;
+type BundleImportComponentsState = RequiredBundleComponentSelection;
+type BundleImportComponentKey = BundleComponentOption['key'];
 
 type ModelPresetDraft = {
   id?: string;
@@ -127,28 +136,6 @@ const EMPTY_MCP_SERVER_DRAFT: McpServerDraft = {
   timeout: '',
   disabled: false,
 };
-
-const DEFAULT_BUNDLE_IMPORT_COMPONENTS: BundleImportComponentsState = {
-  agentProfiles: true,
-  mcpServers: true,
-  skills: true,
-  repeatTasks: true,
-  knowledgeNotes: true,
-};
-
-const BUNDLE_IMPORT_COMPONENT_OPTIONS: Array<{ key: BundleImportComponentKey; label: string }> = [
-  { key: 'agentProfiles', label: 'Agents' },
-  { key: 'mcpServers', label: 'MCP servers' },
-  { key: 'skills', label: 'Skills' },
-  { key: 'repeatTasks', label: 'Tasks' },
-  { key: 'knowledgeNotes', label: 'Knowledge' },
-];
-
-const BUNDLE_IMPORT_CONFLICT_STRATEGIES: Array<{ value: BundleImportConflictStrategy; label: string }> = [
-  { value: 'skip', label: 'Skip' },
-  { value: 'rename', label: 'Rename' },
-  { value: 'overwrite', label: 'Overwrite' },
-];
 
 type LoopRuntimeAction = {
   loopId: string;
@@ -482,7 +469,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [bundleImportJsonText, setBundleImportJsonText] = useState('');
   const [bundleImportPreview, setBundleImportPreview] = useState<BundleImportPreview | null>(null);
   const [bundleImportConflictStrategy, setBundleImportConflictStrategy] = useState<BundleImportConflictStrategy>('skip');
-  const [bundleImportComponents, setBundleImportComponents] = useState<BundleImportComponentsState>(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
+  const [bundleImportComponents, setBundleImportComponents] = useState<BundleImportComponentsState>(DEFAULT_BUNDLE_COMPONENT_SELECTION);
 
   // Model picker state
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
@@ -1081,7 +1068,7 @@ export default function SettingsScreen({ navigation }: any) {
     setBundleImportJsonText('');
     setBundleImportPreview(null);
     setBundleImportConflictStrategy('skip');
-    setBundleImportComponents(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
+    setBundleImportComponents(DEFAULT_BUNDLE_COMPONENT_SELECTION);
   }, [isImportingBundle, isPreviewingBundleImport]);
 
   const handleBundleImportJsonChange = useCallback((value: string) => {
@@ -1131,7 +1118,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   const handleBundleImport = useCallback(async () => {
     if (!settingsClient || !bundleImportJsonText.trim()) return;
-    if (!Object.values(bundleImportComponents).some(Boolean)) {
+    if (!hasSelectedBundleComponent(bundleImportComponents)) {
       setRemoteError('Select at least one bundle component to import');
       Alert.alert('Import Failed', 'Select at least one bundle component to import');
       return;
@@ -1162,7 +1149,7 @@ export default function SettingsScreen({ navigation }: any) {
       setBundleImportJsonText('');
       setBundleImportPreview(null);
       setBundleImportConflictStrategy('skip');
-      setBundleImportComponents(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
+      setBundleImportComponents(DEFAULT_BUNDLE_COMPONENT_SELECTION);
       setSaveStatusMessage(`Imported ${importedCount} bundle item${importedCount === 1 ? '' : 's'}`);
       await refreshAfterBundleImport();
       Alert.alert('Import Complete', `Imported ${importedCount} item${importedCount === 1 ? '' : 's'} from the bundle.`);
@@ -5443,7 +5430,7 @@ export default function SettingsScreen({ navigation }: any) {
 
               <Text style={styles.label}>Handle conflicts</Text>
               <View style={styles.providerSelector}>
-                {BUNDLE_IMPORT_CONFLICT_STRATEGIES.map((strategy) => (
+                {BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS.map((strategy) => (
                   <Pressable
                     key={strategy.value}
                     style={[
@@ -5464,7 +5451,7 @@ export default function SettingsScreen({ navigation }: any) {
               </View>
 
               <Text style={styles.label}>Components</Text>
-              {BUNDLE_IMPORT_COMPONENT_OPTIONS.map((component) => {
+              {BUNDLE_COMPONENT_OPTIONS.map((component) => {
                 const count = bundleImportPreview?.bundle.manifest.components[component.key] ?? 0;
                 const conflicts = bundleImportPreview?.conflicts[component.key].length ?? 0;
                 return (
