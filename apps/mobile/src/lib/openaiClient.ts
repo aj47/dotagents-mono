@@ -56,7 +56,6 @@ export type ChatResponse = ChatApiResponse;
 export type { ToolCall, ToolResult, ConversationHistoryMessage } from '@dotagents/shared/types';
 export type { AgentProgressUpdate, AgentProgressStep, OnProgressCallback } from '@dotagents/shared/agent-progress';
 export type { StreamingCheckpoint } from './connectionRecovery';
-export { sanitizeMessagesForRequest } from '@dotagents/shared/chat-utils';
 
 
 export class OpenAIClient {

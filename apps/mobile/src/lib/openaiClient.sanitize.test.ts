@@ -41,7 +41,8 @@ vi.mock('react-native-sse', () => ({
   },
 }));
 
-import { OpenAIClient, sanitizeMessagesForRequest, type ChatMessage } from './openaiClient';
+import { sanitizeMessagesForRequest } from '@dotagents/shared/chat-utils';
+import { OpenAIClient, type ChatMessage } from './openaiClient';
 
 afterEach(() => {
   vi.unstubAllGlobals();
