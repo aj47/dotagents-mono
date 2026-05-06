@@ -19,6 +19,10 @@ export const AGENT_PROFILE_ROLES = [
 
 export type AgentProfileRole = typeof AGENT_PROFILE_ROLES[number];
 
+export function isAgentProfileRole(role: unknown): role is AgentProfileRole {
+  return typeof role === 'string' && AGENT_PROFILE_ROLES.includes(role as AgentProfileRole);
+}
+
 export function normalizeAgentProfileRole(
   role: AgentProfileRole | string | undefined,
 ): PreferredAgentProfileRole | undefined {

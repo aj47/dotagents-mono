@@ -6,6 +6,7 @@ import {
   buildAgentConnectionCommandPreview,
   buildAgentConnectionRequestFields,
   getAgentConnectionFormValidationError,
+  isAgentProfileConnectionTypeValue,
   normalizeAgentConnectionFormFieldsForEdit,
   normalizeAgentEditConnectionType,
   normalizeAgentConnectionArgs,
@@ -91,6 +92,14 @@ describe("sanitizeAgentProfileConnection", () => {
 })
 
 describe("agent connection request helpers", () => {
+  it("checks persisted profile connection type values", () => {
+    expect(isAgentProfileConnectionTypeValue("internal")).toBe(true)
+    expect(isAgentProfileConnectionTypeValue("acpx")).toBe(true)
+    expect(isAgentProfileConnectionTypeValue("remote")).toBe(true)
+    expect(isAgentProfileConnectionTypeValue("unknown")).toBe(false)
+    expect(isAgentProfileConnectionTypeValue(undefined)).toBe(false)
+  })
+
   it("exposes shared editable connection type labels for desktop and mobile editors", () => {
     expect(AGENT_EDIT_CONNECTION_TYPE_OPTIONS).toEqual([
       {

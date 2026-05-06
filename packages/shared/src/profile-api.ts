@@ -11,6 +11,7 @@ import type {
   ProfilesResponse,
 } from "./api-types"
 import {
+  isAgentProfileConnectionTypeValue,
   sanitizeAgentProfileConnection,
   VALID_AGENT_PROFILE_CONNECTION_TYPES,
 } from "./agent-profile-connection"
@@ -19,6 +20,7 @@ import type {
   AgentProfileConnectionInput,
   AgentProfileConnectionTypeValue,
 } from "./agent-profile-connection"
+import { normalizeAgentProfileRole } from "./agent-profile-role"
 
 export type SetCurrentProfileRequest = {
   profileId: string
@@ -182,9 +184,7 @@ function getProfileName(profile: ProfileLike, nameSource: ProfileNameSource): st
 }
 
 export function normalizeApiAgentProfileRole(role: string | undefined): ApiAgentProfileRole | undefined {
-  if (role === "chat-agent" || role === "delegation-target" || role === "external-agent") return role
-  if (role === "user-profile") return "chat-agent"
-  return undefined
+  return normalizeAgentProfileRole(role)
 }
 
 function getAgentProfileRole(profile: Pick<AgentProfileApiLike, "role" | "isUserProfile" | "isAgentTarget">): ApiAgentProfileRole {
@@ -204,10 +204,6 @@ export function filterAgentProfilesByRole<T extends Pick<AgentProfileApiLike, "r
 
 function getConnectionTypeError(): string {
   return `connectionType must be one of: ${VALID_AGENT_PROFILE_CONNECTION_TYPES.join(", ")}`
-}
-
-function isAgentProfileConnectionType(value: unknown): value is AgentProfileConnectionTypeValue {
-  return VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(value as AgentProfileConnectionTypeValue)
 }
 
 function hasConnectionFields(requestBody: Record<string, unknown>): boolean {
@@ -612,7 +608,7 @@ export function parseAgentProfileCreateRequestBody(
   }
 
   const rawConnectionType = requestBody.connectionType ?? "internal"
-  if (!isAgentProfileConnectionType(rawConnectionType)) {
+  if (!isAgentProfileConnectionTypeValue(rawConnectionType)) {
     return { ok: false, statusCode: 400, error: getConnectionTypeError() }
   }
 
@@ -682,7 +678,7 @@ export function parseAgentProfileUpdateRequestBody(
 
   if (hasConnectionFields(requestBody)) {
     const rawConnectionType = requestBody.connectionType ?? context.connection.type
-    if (!isAgentProfileConnectionType(rawConnectionType)) {
+    if (!isAgentProfileConnectionTypeValue(rawConnectionType)) {
       return { ok: false, statusCode: 400, error: getConnectionTypeError() }
     }
 

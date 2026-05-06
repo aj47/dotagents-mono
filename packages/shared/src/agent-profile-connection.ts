@@ -3,6 +3,10 @@ export const VALID_AGENT_PROFILE_CONNECTION_TYPES = ["internal", "acpx", "acp", 
 export type AgentProfileConnectionTypeValue = typeof VALID_AGENT_PROFILE_CONNECTION_TYPES[number]
 export type AgentEditConnectionType = "internal" | "acpx" | "remote"
 
+export function isAgentProfileConnectionTypeValue(value: unknown): value is AgentProfileConnectionTypeValue {
+  return typeof value === "string" && VALID_AGENT_PROFILE_CONNECTION_TYPES.includes(value as AgentProfileConnectionTypeValue)
+}
+
 export interface AgentEditConnectionTypeOption {
   label: string
   selectLabel: string

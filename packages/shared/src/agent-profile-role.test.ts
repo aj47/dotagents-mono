@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeAgentProfileRole } from './agent-profile-role';
+import { isAgentProfileRole, normalizeAgentProfileRole } from './agent-profile-role';
 
 describe('normalizeAgentProfileRole', () => {
+  it('checks persisted profile roles', () => {
+    expect(isAgentProfileRole('chat-agent')).toBe(true);
+    expect(isAgentProfileRole('delegation-target')).toBe(true);
+    expect(isAgentProfileRole('external-agent')).toBe(true);
+    expect(isAgentProfileRole('user-profile')).toBe(true);
+    expect(isAgentProfileRole('unknown')).toBe(false);
+    expect(isAgentProfileRole(undefined)).toBe(false);
+  });
+
   it.each([
     ['chat-agent', 'chat-agent'],
     ['delegation-target', 'delegation-target'],

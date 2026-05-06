@@ -27,6 +27,8 @@ import {
   type HubPublishPayload,
 } from "@dotagents/shared/hub"
 import { DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION } from "@dotagents/shared/bundle-api"
+import { isAgentProfileConnectionTypeValue } from "@dotagents/shared/agent-profile-connection"
+import { isAgentProfileRole } from "@dotagents/shared/agent-profile-role"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToDirPath } from "./agents-files/skills"
@@ -316,9 +318,6 @@ const MCP_SERVER_CONFIG_KEYS = [
   "timeout",
   "disabled",
 ] as const
-const AGENT_PROFILE_CONNECTION_TYPES = ['internal', 'acpx', 'acp', 'stdio', 'remote'] as const
-const AGENT_PROFILE_ROLES = ["chat-agent", "user-profile", "delegation-target", "external-agent"] as const
-
 function isReservedTopLevelMcpKey(key: string): boolean {
   if (key === "mcpConfig" || key === "mcpServers") return true
   return (TOP_LEVEL_MCP_CONFIG_KEYS as readonly string[]).includes(key)
@@ -1090,14 +1089,6 @@ function isBundlePublicMetadata(value: unknown): value is BundlePublicMetadata {
   return value.compatibility === undefined || isBundlePublicMetadataCompatibility(value.compatibility)
 }
 
-function isAgentProfileConnectionType(value: unknown): value is AgentProfileConnectionType {
-  return typeof value === "string" && (AGENT_PROFILE_CONNECTION_TYPES as readonly string[]).includes(value)
-}
-
-function isAgentProfileRole(value: unknown): value is AgentProfileRole {
-  return typeof value === "string" && (AGENT_PROFILE_ROLES as readonly string[]).includes(value)
-}
-
 function isBundleAgentProfile(value: unknown): value is BundleAgentProfile {
   if (!isRecordObject(value)) return false
   if (!isNonEmptyString(value.id)) return false
@@ -1109,7 +1100,7 @@ function isBundleAgentProfile(value: unknown): value is BundleAgentProfile {
   if (!isOptionalString(value.systemPrompt)) return false
   if (!isOptionalString(value.guidelines)) return false
   if (!isRecordObject(value.connection)) return false
-  if (!isAgentProfileConnectionType(value.connection.type)) return false
+  if (!isAgentProfileConnectionTypeValue(value.connection.type)) return false
   if (!isOptionalString(value.connection.command)) return false
   if (value.connection.args !== undefined && !isStringArray(value.connection.args)) return false
   if (!isOptionalString(value.connection.cwd)) return false
