@@ -13,6 +13,7 @@ import {
   getAgentProfileMcpConfigAfterToolToggle,
   getAgentProfileRuntimeToolsConfigAfterSetAllEnabled,
   getAgentProfileRuntimeToolsConfigAfterToggle,
+  getAgentProfileSkillsConfigAfterSetAllEnabled,
   getAgentProfileSkillsConfigAfterEnable,
   getEnabledAgentProfileSkillIds,
   hasAllAgentProfileSkillsEnabledByDefault,
@@ -280,6 +281,17 @@ describe("agent profile config updates", () => {
     expect(toggleAgentProfileSkillConfig(optInConfig, "writing", ["research", "writing"])).toEqual({
       enabledSkillIds: [],
       allSkillsDisabledByDefault: false,
+    })
+  })
+
+  it("sets all profile skills enabled or disabled with one shared config transition", () => {
+    expect(getAgentProfileSkillsConfigAfterSetAllEnabled(true)).toEqual({
+      enabledSkillIds: [],
+      allSkillsDisabledByDefault: false,
+    })
+    expect(getAgentProfileSkillsConfigAfterSetAllEnabled(false)).toEqual({
+      enabledSkillIds: [],
+      allSkillsDisabledByDefault: true,
     })
   })
 

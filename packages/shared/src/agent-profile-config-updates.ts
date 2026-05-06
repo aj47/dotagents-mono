@@ -435,6 +435,15 @@ export function toggleAgentProfileSkillConfig(
   }
 }
 
+export function getAgentProfileSkillsConfigAfterSetAllEnabled(
+  enabled: boolean,
+): AgentProfileSkillsConfigUpdateLike {
+  return {
+    enabledSkillIds: [],
+    allSkillsDisabledByDefault: !enabled,
+  }
+}
+
 export function getAgentProfileSkillsConfigAfterEnable(
   skillsConfig: AgentProfileSkillsConfigUpdateLike | undefined,
   skillId: string,

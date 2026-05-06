@@ -35,6 +35,7 @@ import {
   getAgentProfileMcpConfigAfterToolToggle,
   getAgentProfileRuntimeToolsConfigAfterSetAllEnabled,
   getAgentProfileRuntimeToolsConfigAfterToggle,
+  getAgentProfileSkillsConfigAfterSetAllEnabled,
   isAgentProfileMcpServerEnabled,
   isAgentProfileMcpToolEnabled,
   isAgentProfileRuntimeToolEnabled,
@@ -392,11 +393,11 @@ export function SettingsAgents() {
   // Bulk toggle helpers
   const enableAllSkills = () => {
     if (!editing) return
-    setEditing({ ...editing, skillsConfig: { enabledSkillIds: [], allSkillsDisabledByDefault: false } })
+    setEditing({ ...editing, skillsConfig: getAgentProfileSkillsConfigAfterSetAllEnabled(true) })
   }
   const disableAllSkills = () => {
     if (!editing) return
-    setEditing({ ...editing, skillsConfig: { enabledSkillIds: [], allSkillsDisabledByDefault: true } })
+    setEditing({ ...editing, skillsConfig: getAgentProfileSkillsConfigAfterSetAllEnabled(false) })
   }
   const allSkillsEnabled = !editing?.skillsConfig?.allSkillsDisabledByDefault || (editing?.skillsConfig?.enabledSkillIds?.length === skills.length)
   const allSkillsDisabled = !!editing?.skillsConfig?.allSkillsDisabledByDefault && (editing?.skillsConfig?.enabledSkillIds?.length ?? 0) === 0

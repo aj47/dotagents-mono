@@ -47,3 +47,8 @@ test('uses shared profile config edit helpers in the mobile agent editor', () =>
   assert.doesNotMatch(screenSource, /const formatToolConfigForRequest/);
   assert.doesNotMatch(screenSource, /const formatSkillsConfigForRequest/);
 });
+
+test('uses shared bulk skill config helpers in the mobile agent editor', () => {
+  assert.match(screenSource, /getAgentProfileSkillsConfigAfterSetAllEnabled\(enabled\)/);
+  assert.doesNotMatch(screenSource, /allSkillsDisabledByDefault: !enabled/);
+});

@@ -43,6 +43,7 @@ import {
   getAgentProfileMcpConfigAfterToolToggle,
   getAgentProfileRuntimeToolsConfigAfterSetAllEnabled,
   getAgentProfileRuntimeToolsConfigAfterToggle,
+  getAgentProfileSkillsConfigAfterSetAllEnabled,
   isAgentProfileMcpServerEnabled,
   isAgentProfileMcpToolEnabled,
   isAgentProfileRuntimeToolEnabled,
@@ -604,10 +605,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const setAllSkillsEnabled = useCallback((enabled: boolean) => {
     setFormData(prev => ({
       ...prev,
-      skillsConfig: {
-        enabledSkillIds: [],
-        allSkillsDisabledByDefault: !enabled,
-      },
+      skillsConfig: getAgentProfileSkillsConfigAfterSetAllEnabled(enabled),
     }));
   }, []);
 
