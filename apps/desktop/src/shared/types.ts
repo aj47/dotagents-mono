@@ -8,6 +8,7 @@ import type {
 import type {
   LoopConfig as SharedLoopConfig,
 } from '@dotagents/shared/types'
+import type { SessionHistoryConfig } from '@dotagents/shared/session'
 import type { AgentProfile as SharedAgentProfile } from '@dotagents/shared/agent-profile-domain'
 import type {
   AgentConversationState,
@@ -33,6 +34,7 @@ import {
 } from '@dotagents/shared/agent-profile-legacy-converters'
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, RecordingHistoryItem, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
+export type { SessionHistoryConfig } from '@dotagents/shared/session'
 export type { PredefinedPrompt } from '@dotagents/shared/api-types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
@@ -134,7 +136,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & ObservabilityConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & ObservabilityConfig & SessionHistoryConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -343,10 +345,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   conversationsEnabled?: boolean
   maxConversationsToKeep?: number
   autoSaveConversations?: boolean
-
-  // Session History Configuration
-  pinnedSessionIds?: string[]
-  archivedSessionIds?: string[]
 
   // Provider Section Collapse Configuration
   providerSectionCollapsedOpenai?: boolean

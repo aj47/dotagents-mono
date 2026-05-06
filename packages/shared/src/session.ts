@@ -46,6 +46,11 @@ export interface Session {
   };
 }
 
+export interface SessionHistoryConfig {
+  pinnedSessionIds?: string[];
+  archivedSessionIds?: string[];
+}
+
 export interface SessionListItem {
   id: string;
   title: string;

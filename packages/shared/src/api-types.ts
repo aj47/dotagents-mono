@@ -4,6 +4,7 @@
  */
 
 import type { QueuedMessage, ToolCall, ToolResult, LoopSchedule } from './types';
+import type { SessionHistoryConfig } from './session';
 import type { ModelPreset } from './providers';
 import type {
   KnowledgeNote,
@@ -581,7 +582,7 @@ export interface PredefinedPromptSummary {
 
 export type PredefinedPrompt = PredefinedPromptSummary;
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig {
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -695,15 +696,11 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, Ob
   // Streamer Mode
   streamerModeEnabled?: boolean;
 
-  // Session History (pinned/archived conversation IDs)
-  pinnedSessionIds?: string[];
-  archivedSessionIds?: string[];
-
   // acpx-capable agent profile summaries (read-only, from GET only)
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig {
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -814,10 +811,6 @@ export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConf
 
   // Streamer Mode
   streamerModeEnabled?: boolean;
-
-  // Session History (pinned/archived conversation IDs)
-  pinnedSessionIds?: string[];
-  archivedSessionIds?: string[];
 
   // Predefined Prompts
   predefinedPrompts?: PredefinedPromptSummary[];

@@ -17,7 +17,23 @@ import {
   buildConversationPreview,
   isStubSession,
 } from './session'
-import type { Session } from './session'
+import type { Session, SessionHistoryConfig } from './session'
+
+function assertType<T>(_value: T): void {
+  // Compile-time assertion only.
+}
+
+describe('session history config contracts', () => {
+  it('exposes the persisted pinned and archived session IDs contract', () => {
+    const config: SessionHistoryConfig = {
+      pinnedSessionIds: ['conv-1'],
+      archivedSessionIds: ['conv-2'],
+    }
+
+    assertType<SessionHistoryConfig>(config)
+    expect(config.pinnedSessionIds).toEqual(['conv-1'])
+  })
+})
 
 // ── generateSessionId ────────────────────────────────────────────────────────
 
