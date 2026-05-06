@@ -31,6 +31,7 @@ import {
   DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
   DEFAULT_REPEAT_TASK_WEEKDAYS,
   REPEAT_TASK_DAY_LABELS,
+  createRepeatTaskIdFromName,
   describeLoopCadence,
   formatRepeatTaskRuntimeTimestampOrFallback,
   formatLoopIntervalDraft,
@@ -243,9 +244,8 @@ export function SettingsLoops() {
       return
     }
 
-    const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
     const loopData: LoopConfig = {
-      id: editing.id || slugify(editing.name),
+      id: editing.id || createRepeatTaskIdFromName(editing.name, () => crypto.randomUUID()),
       name: editing.name.trim(),
       prompt: editing.prompt.trim(),
       intervalMinutes: intervalResolution.intervalMinutes,

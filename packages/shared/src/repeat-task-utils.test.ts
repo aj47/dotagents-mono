@@ -16,6 +16,7 @@ import {
   buildRepeatTaskToggleResponse,
   buildRepeatTaskScheduleFromDraft,
   computeNextScheduledRun,
+  createRepeatTaskIdFromName,
   dedupeRepeatTaskEntriesByTitle,
   deleteRepeatTaskAction,
   describeLoopCadence,
@@ -54,6 +55,7 @@ import {
   startRepeatTaskAction,
   stopRepeatTaskAction,
   resolveRepeatTaskIntervalMinutesDraft,
+  slugifyRepeatTaskName,
   TASK_SESSION_TITLE_PREFIX,
   toggleRepeatTaskAction,
   updateRepeatTaskAction,
@@ -66,6 +68,13 @@ describe("repeat task schedule helpers", () => {
     expect(hasRepeatTaskTitlePrefix("[Repeat] Daily standup")).toBe(true)
     expect(hasRepeatTaskTitlePrefix("Daily standup")).toBe(false)
     expect(hasRepeatTaskTitlePrefix(undefined)).toBe(false)
+  })
+
+  it("creates repeat task ids from task names with fallback id generation", () => {
+    expect(slugifyRepeatTaskName("  Daily Summary!  ")).toBe("daily-summary")
+    expect(slugifyRepeatTaskName("Noon / Evening Review", 8)).toBe("noon-eve")
+    expect(createRepeatTaskIdFromName("Daily Summary", () => "fallback")).toBe("daily-summary")
+    expect(createRepeatTaskIdFromName("!!!", () => "fallback")).toBe("fallback")
   })
 
   it("detects repeat-task sessions from title prefixes, title hints, or backend flags", () => {

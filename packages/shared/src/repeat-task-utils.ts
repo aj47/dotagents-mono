@@ -177,6 +177,8 @@ export type RepeatTaskIntervalDraftResolution = {
   isValid: boolean
 }
 
+export type RepeatTaskIdGenerator = () => string
+
 export type RepeatTaskNextDelayResult = {
   delayMs: number
   nextRunAt?: number
@@ -230,6 +232,19 @@ export const TASK_SESSION_TITLE_PREFIX = "[Repeat] "
 
 export function formatRepeatTaskTitle(taskName: string): string {
   return `${TASK_SESSION_TITLE_PREFIX}${taskName}`
+}
+
+export function slugifyRepeatTaskName(name: string, maxLength = 64): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, maxLength)
+}
+
+export function createRepeatTaskIdFromName(name: string, createFallbackId: RepeatTaskIdGenerator): string {
+  return slugifyRepeatTaskName(name) || createFallbackId()
 }
 
 export function hasRepeatTaskTitlePrefix(title: string | undefined | null): boolean {

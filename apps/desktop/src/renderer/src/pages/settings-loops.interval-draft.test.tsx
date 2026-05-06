@@ -238,6 +238,7 @@ describe("desktop repeat-task interval editing", () => {
 
     expect(saveLoop).toHaveBeenCalledWith({
       loop: expect.objectContaining({
+        id: "daily-summary",
         name: "Daily Summary",
         prompt: "Summarize recent activity",
         intervalMinutes: 60,
