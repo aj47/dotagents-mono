@@ -22,6 +22,26 @@ export type MobileApiActionResult = {
   auditContext?: RemoteServerRouteAuditContext;
 };
 
+export function buildMobileApiActionResult(
+  body: unknown,
+  statusCode = 200,
+  headers?: Record<string, string>,
+): MobileApiActionResult {
+  return {
+    statusCode,
+    body,
+    ...(headers ? { headers } : {}),
+  };
+}
+
+export function buildMobileApiActionError(
+  statusCode: number,
+  message: string,
+  headers?: Record<string, string>,
+): MobileApiActionResult {
+  return buildMobileApiActionResult({ error: message }, statusCode, headers);
+}
+
 export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   handleChatCompletionRequest: (
     body: unknown,
