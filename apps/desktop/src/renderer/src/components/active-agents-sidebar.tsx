@@ -250,6 +250,14 @@ export function ActiveAgentsSidebar({
   const location = useLocation()
   const queryClient = useQueryClient()
 
+  const isSessionsRoute =
+    location.pathname === "/" ||
+    (!location.pathname.startsWith("/settings") &&
+      !location.pathname.startsWith("/onboarding") &&
+      !location.pathname.startsWith("/setup") &&
+      !location.pathname.startsWith("/panel") &&
+      !location.pathname.startsWith("/knowledge"))
+
   const { data, refetch } = useQuery<SidebarSessionsResponse>({
     queryKey: ["agentSessions"],
     queryFn: async () => {
@@ -526,7 +534,17 @@ export function ActiveAgentsSidebar({
       sidebarSessions,
       repeatTaskTitleHints,
     )
-    const dedupedTaskEntries = dedupeTaskEntriesByTitle(taskEntries)
+    // Re-derive nesting after dedup: when two task entries share a
+    // conversationId (e.g. an active running session + its saved-conversation
+    // counterpart), nestSubagentSessionEntries flags the active one as a
+    // subagent of the saved one. dedupeTaskEntriesByTitle then drops the
+    // parent and keeps the active child, leaving the survivor flagged as a
+    // nested subagent with no parent in view. Recomputing nesting on the
+    // deduped set promotes orphaned children back to top level while still
+    // preserving real parent/child relationships across surviving entries.
+    const dedupedTaskEntries = nestSubagentSessionEntries(
+      dedupeTaskEntriesByTitle(taskEntries),
+    )
     const { pinnedTaskEntries, unpinnedTaskEntries } =
       partitionPinnedAndUnpinnedTaskEntries(dedupedTaskEntries, pinnedSessionIds)
     return {
@@ -575,11 +593,32 @@ export function ActiveAgentsSidebar({
   // Tasks list uses a flat slice so "Show less" can shrink the list past
   // active rows. paginateSidebarEntries pins active rows in place, which
   // would prevent the visible count from ever dropping below the running
-  // task count.
-  const paginatedTaskSidebarSessions = useMemo(
-    () => taskSidebarSessions.slice(0, Math.max(visibleTaskConversationCount, 0)),
-    [taskSidebarSessions, visibleTaskConversationCount],
-  )
+  // task count. Always keep the currently-viewed task entry in the slice so
+  // the row the user is on never disappears when shrinking the list.
+  const paginatedTaskSidebarSessions = useMemo(() => {
+    const limit = Math.max(visibleTaskConversationCount, 0)
+    const sliced = taskSidebarSessions.slice(0, limit)
+    if (limit === 0) return sliced
+    const isViewed = (entry: typeof taskSidebarSessions[number]) =>
+      isSidebarSessionCurrentlyViewed(entry.session, {
+        isPast: entry.isSavedConversation,
+        focusedSessionId,
+        expandedSessionId,
+        viewedConversationId: isSessionsRoute ? viewedConversationId : null,
+      })
+    if (!sliced.some(isViewed)) {
+      const focused = taskSidebarSessions.find(isViewed)
+      if (focused) sliced.push(focused)
+    }
+    return sliced
+  }, [
+    taskSidebarSessions,
+    visibleTaskConversationCount,
+    focusedSessionId,
+    expandedSessionId,
+    viewedConversationId,
+    isSessionsRoute,
+  ])
   const hasMoreTaskSessions =
     taskSidebarSessions.length > paginatedTaskSidebarSessions.length
   const activeTaskSidebarSessions = useMemo(
@@ -665,14 +704,6 @@ export function ActiveAgentsSidebar({
     setViewedConversationId(conversationId)
     navigate(`/${conversationId}`)
   }, [navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
-
-  const isSessionsRoute =
-    location.pathname === "/" ||
-    (!location.pathname.startsWith("/settings") &&
-      !location.pathname.startsWith("/onboarding") &&
-      !location.pathname.startsWith("/setup") &&
-      !location.pathname.startsWith("/panel") &&
-      !location.pathname.startsWith("/knowledge"))
 
   // Keyboard shortcuts: Cmd/Ctrl+1..9 to jump to the Nth sidebar session
   useEffect(() => {
