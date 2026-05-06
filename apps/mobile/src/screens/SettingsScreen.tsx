@@ -82,6 +82,7 @@ import {
 import {
   formatLocalSpeechModelProgress as formatLocalModelProgress,
   getTextToSpeechModelValue as getRemoteTtsModelValue,
+  getTextToSpeechSpeedSetting as getRemoteTtsSpeedSetting,
   getTextToSpeechSpeedValue as getRemoteTtsSpeedValue,
   getTextToSpeechVoiceValue as getRemoteTtsVoiceValue,
   normalizeTextToSpeechVoiceUpdateValue as normalizeTtsVoiceUpdateValue,
@@ -366,6 +367,8 @@ export default function SettingsScreen({ navigation }: any) {
     () => getAcpxMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
   );
+  const remoteTtsProviderId = remoteSettings?.ttsProviderId || 'openai';
+  const remoteTtsSpeedSetting = getRemoteTtsSpeedSetting(remoteTtsProviderId);
 
   // Profile import/export state
   const [isExportingProfile, setIsExportingProfile] = useState(false);
@@ -3427,13 +3430,13 @@ export default function SettingsScreen({ navigation }: any) {
                             key={provider.value}
                             style={[
                               styles.providerOption,
-                              remoteSettings.ttsProviderId === provider.value && styles.providerOptionActive,
+                              remoteTtsProviderId === provider.value && styles.providerOptionActive,
                             ]}
                             onPress={() => handleRemoteSettingUpdate('ttsProviderId', provider.value)}
                           >
                             <Text style={[
                               styles.providerOptionText,
-                              remoteSettings.ttsProviderId === provider.value && styles.providerOptionTextActive,
+                              remoteTtsProviderId === provider.value && styles.providerOptionTextActive,
                             ]}>
                               {provider.label}
                             </Text>
@@ -3443,7 +3446,7 @@ export default function SettingsScreen({ navigation }: any) {
                     </ScrollView>
 
                     {/* Per-provider Voice/Model Settings */}
-                    {getTtsModelsForProvider(remoteSettings.ttsProviderId || 'openai').length > 0 && (
+                    {getTtsModelsForProvider(remoteTtsProviderId).length > 0 && (
                       <>
                         <Text style={[styles.label, { marginTop: spacing.sm }]}>Model</Text>
                         <TouchableOpacity
@@ -3453,7 +3456,7 @@ export default function SettingsScreen({ navigation }: any) {
                           <View style={styles.modelSelectorContent}>
                             <Text style={styles.modelSelectorText}>
                               {(() => {
-                                const models = getTtsModelsForProvider(remoteSettings.ttsProviderId || 'openai');
+                                const models = getTtsModelsForProvider(remoteTtsProviderId);
                                 const modelValue = getRemoteTtsModelValue(remoteSettings);
                                 const model = models.find(m => m.value === modelValue);
                                 return model?.label || modelValue || 'Select model';
@@ -3466,8 +3469,8 @@ export default function SettingsScreen({ navigation }: any) {
                     )}
 
                     {getTtsVoicesForProvider(
-                      remoteSettings.ttsProviderId || 'openai',
-                      remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined,
+                      remoteTtsProviderId,
+                      remoteTtsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined,
                     ).length > 0 && (
                       <>
                         <Text style={[styles.label, { marginTop: spacing.sm }]}>Voice</Text>
@@ -3478,8 +3481,8 @@ export default function SettingsScreen({ navigation }: any) {
                           <View style={styles.modelSelectorContent}>
                             <Text style={styles.modelSelectorText}>
                               {(() => {
-                                const ttsModel = remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
-                                const voices = getTtsVoicesForProvider(remoteSettings.ttsProviderId || 'openai', ttsModel);
+                                const ttsModel = remoteTtsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
+                                const voices = getTtsVoicesForProvider(remoteTtsProviderId, ttsModel);
                                 const voiceValue = getRemoteTtsVoiceValue(remoteSettings);
                                 const voice = voices.find(v => String(v.value) === String(voiceValue));
                                 return voice?.label || String(voiceValue ?? '') || 'Select voice';
@@ -3492,7 +3495,7 @@ export default function SettingsScreen({ navigation }: any) {
                     )}
 
                     {(() => {
-                      const localProviderId = getLocalTtsSpeechModelProviderId(remoteSettings?.ttsProviderId);
+                      const localProviderId = getLocalTtsSpeechModelProviderId(remoteTtsProviderId);
                       if (!localProviderId) return null;
 
                       const status = localSpeechModelStatuses[localProviderId];
@@ -3560,52 +3563,8 @@ export default function SettingsScreen({ navigation }: any) {
                       );
                     })()}
 
-                    {remoteSettings.ttsProviderId === 'openai' && (
-                      <View style={{ marginTop: spacing.sm }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text style={styles.label}>Speed</Text>
-                          <Text style={[styles.helperText, { marginTop: 0 }]}>
-                            {(remoteSettings.openaiTtsSpeed ?? 1.0).toFixed(1)}x
-                          </Text>
-                        </View>
-                        <Slider
-                          style={{ width: '100%', height: 40 }}
-                          minimumValue={0.25}
-                          maximumValue={4.0}
-                          step={0.25}
-                          value={remoteSettings.openaiTtsSpeed ?? 1.0}
-                          onSlidingComplete={(v) => handleRemoteSettingUpdate('openaiTtsSpeed', v)}
-                          minimumTrackTintColor={theme.colors.primary}
-                          maximumTrackTintColor={theme.colors.muted}
-                          thumbTintColor={theme.colors.primary}
-                        />
-                      </View>
-                    )}
-
-                    {remoteSettings.ttsProviderId === 'edge' && (
-                      <View style={{ marginTop: spacing.sm }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text style={styles.label}>Speed</Text>
-                          <Text style={[styles.helperText, { marginTop: 0 }]}>
-                            {(remoteSettings.edgeTtsRate ?? 1.0).toFixed(1)}x
-                          </Text>
-                        </View>
-                        <Slider
-                          style={{ width: '100%', height: 40 }}
-                          minimumValue={0.5}
-                          maximumValue={2.0}
-                          step={0.1}
-                          value={remoteSettings.edgeTtsRate ?? 1.0}
-                          onSlidingComplete={(v) => handleRemoteSettingUpdate('edgeTtsRate', v)}
-                          minimumTrackTintColor={theme.colors.primary}
-                          maximumTrackTintColor={theme.colors.muted}
-                          thumbTintColor={theme.colors.primary}
-                        />
-                      </View>
-                    )}
-
-                    {remoteSettings.ttsProviderId === 'supertonic' && (
-                      <>
+                    {remoteTtsProviderId === 'supertonic' && (
+                      <View>
                         <Text style={[styles.label, { marginTop: spacing.sm }]}>Language</Text>
                         <View style={styles.providerSelector}>
                           {SUPERTONIC_TTS_LANGUAGES.map((language) => (
@@ -3626,47 +3585,51 @@ export default function SettingsScreen({ navigation }: any) {
                             </Pressable>
                           ))}
                         </View>
+                      </View>
+                    )}
 
-                        <View style={{ marginTop: spacing.sm }}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={styles.label}>Speed</Text>
-                            <Text style={[styles.helperText, { marginTop: 0 }]}>
-                              {(remoteSettings.supertonicSpeed ?? 1.05).toFixed(2)}x
-                            </Text>
-                          </View>
-                          <Slider
-                            style={{ width: '100%', height: 40 }}
-                            minimumValue={0.5}
-                            maximumValue={2.0}
-                            step={0.05}
-                            value={remoteSettings.supertonicSpeed ?? 1.05}
-                            onSlidingComplete={(v) => handleRemoteSettingUpdate('supertonicSpeed', v)}
-                            minimumTrackTintColor={theme.colors.primary}
-                            maximumTrackTintColor={theme.colors.muted}
-                            thumbTintColor={theme.colors.primary}
-                          />
+                    {remoteTtsSpeedSetting && (
+                      <View style={{ marginTop: spacing.sm }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={styles.label}>Speed</Text>
+                          <Text style={[styles.helperText, { marginTop: 0 }]}>
+                            {(remoteSettings[remoteTtsSpeedSetting.key] ?? remoteTtsSpeedSetting.defaultValue).toFixed(remoteTtsSpeedSetting.fractionDigits)}x
+                          </Text>
                         </View>
+                        <Slider
+                          style={{ width: '100%', height: 40 }}
+                          minimumValue={remoteTtsSpeedSetting.minimumValue}
+                          maximumValue={remoteTtsSpeedSetting.maximumValue}
+                          step={remoteTtsSpeedSetting.step}
+                          value={remoteSettings[remoteTtsSpeedSetting.key] ?? remoteTtsSpeedSetting.defaultValue}
+                          onSlidingComplete={(v) => handleRemoteSettingUpdate(remoteTtsSpeedSetting.key, v)}
+                          minimumTrackTintColor={theme.colors.primary}
+                          maximumTrackTintColor={theme.colors.muted}
+                          thumbTintColor={theme.colors.primary}
+                        />
+                      </View>
+                    )}
 
-                        <View style={{ marginTop: spacing.sm }}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={styles.label}>Quality Steps</Text>
-                            <Text style={[styles.helperText, { marginTop: 0 }]}>
-                              {Math.round(remoteSettings.supertonicSteps ?? 5)}
-                            </Text>
-                          </View>
-                          <Slider
-                            style={{ width: '100%', height: 40 }}
-                            minimumValue={2}
-                            maximumValue={10}
-                            step={1}
-                            value={remoteSettings.supertonicSteps ?? 5}
-                            onSlidingComplete={(v) => handleRemoteSettingUpdate('supertonicSteps', Math.round(v))}
-                            minimumTrackTintColor={theme.colors.primary}
-                            maximumTrackTintColor={theme.colors.muted}
-                            thumbTintColor={theme.colors.primary}
-                          />
+                    {remoteTtsProviderId === 'supertonic' && (
+                      <View style={{ marginTop: spacing.sm }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={styles.label}>Quality Steps</Text>
+                          <Text style={[styles.helperText, { marginTop: 0 }]}>
+                            {Math.round(remoteSettings.supertonicSteps ?? 5)}
+                          </Text>
                         </View>
-                      </>
+                        <Slider
+                          style={{ width: '100%', height: 40 }}
+                          minimumValue={2}
+                          maximumValue={10}
+                          step={1}
+                          value={remoteSettings.supertonicSteps ?? 5}
+                          onSlidingComplete={(v) => handleRemoteSettingUpdate('supertonicSteps', Math.round(v))}
+                          minimumTrackTintColor={theme.colors.primary}
+                          maximumTrackTintColor={theme.colors.muted}
+                          thumbTintColor={theme.colors.primary}
+                        />
+                      </View>
                     )}
 
                     <View style={[styles.row, { marginTop: spacing.md }]}>
@@ -5712,7 +5675,7 @@ export default function SettingsScreen({ navigation }: any) {
             </View>
 
             <ScrollView style={styles.modelList}>
-              {getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai').map((model) => {
+              {getTtsModelsForProvider(remoteTtsProviderId).map((model) => {
                 const currentValue = getRemoteTtsModelValue(remoteSettings);
                 const isSelected = currentValue === model.value;
                 return (
@@ -5723,7 +5686,7 @@ export default function SettingsScreen({ navigation }: any) {
                       isSelected && styles.modelItemActive,
                     ]}
                     onPress={() => {
-                      const key = getTtsModelSettingKey(remoteSettings?.ttsProviderId);
+                      const key = getTtsModelSettingKey(remoteTtsProviderId);
                       if (key) {
                         handleRemoteSettingUpdate(key, model.value);
                       }
@@ -5749,7 +5712,7 @@ export default function SettingsScreen({ navigation }: any) {
 
             <View style={styles.modelPickerFooter}>
               <Text style={styles.modelPickerFooterText}>
-                {getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai').length} model{getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai').length !== 1 ? 's' : ''} available
+                {getTtsModelsForProvider(remoteTtsProviderId).length} model{getTtsModelsForProvider(remoteTtsProviderId).length !== 1 ? 's' : ''} available
               </Text>
             </View>
           </View>
@@ -5779,8 +5742,8 @@ export default function SettingsScreen({ navigation }: any) {
 
             <ScrollView style={styles.modelList}>
               {(() => {
-                const ttsModel = remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
-                const voices = getTtsVoicesForProvider(remoteSettings?.ttsProviderId || 'openai', ttsModel);
+                const ttsModel = remoteTtsProviderId === 'groq' ? remoteSettings?.groqTtsModel : undefined;
+                const voices = getTtsVoicesForProvider(remoteTtsProviderId, ttsModel);
                 return voices.map((voice) => {
                   const currentValue = getRemoteTtsVoiceValue(remoteSettings);
                   const isSelected = String(currentValue) === String(voice.value);
@@ -5792,7 +5755,7 @@ export default function SettingsScreen({ navigation }: any) {
                         isSelected && styles.modelItemActive,
                       ]}
                       onPress={() => {
-                        const key = getTtsVoiceSettingKey(remoteSettings?.ttsProviderId);
+                        const key = getTtsVoiceSettingKey(remoteTtsProviderId);
                         if (key) {
                           handleRemoteSettingUpdate(key, normalizeTtsVoiceUpdateValue(key, voice.value));
                         }
@@ -5819,8 +5782,8 @@ export default function SettingsScreen({ navigation }: any) {
             <View style={styles.modelPickerFooter}>
               <Text style={styles.modelPickerFooterText}>
                 {(() => {
-                  const ttsModel = remoteSettings?.ttsProviderId === 'groq' ? remoteSettings?.groqTtsModel : undefined;
-                  const count = getTtsVoicesForProvider(remoteSettings?.ttsProviderId || 'openai', ttsModel).length;
+                  const ttsModel = remoteTtsProviderId === 'groq' ? remoteSettings?.groqTtsModel : undefined;
+                  const count = getTtsVoicesForProvider(remoteTtsProviderId, ttsModel).length;
                   return `${count} voice${count !== 1 ? 's' : ''} available`;
                 })()}
               </Text>

@@ -4,6 +4,7 @@ import {
   formatLocalSpeechModelProgress,
   getTextToSpeechModelValue,
   getTextToSpeechPlaybackRate,
+  getTextToSpeechSpeedSetting,
   getTextToSpeechSpeedValue,
   getTextToSpeechVoiceValue,
   normalizeTextToSpeechVoiceUpdateValue,
@@ -43,13 +44,43 @@ describe("text to speech settings helpers", () => {
   })
 
   it("selects provider-specific speed values", () => {
+    expect(getTextToSpeechSpeedValue({ openaiTtsSpeed: 1.2 })).toBe(1.2)
     expect(getTextToSpeechSpeedValue({ ttsProviderId: "openai", openaiTtsSpeed: 1.2 })).toBe(1.2)
     expect(getTextToSpeechSpeedValue({ ttsProviderId: "edge", edgeTtsRate: 0.9 })).toBe(0.9)
     expect(getTextToSpeechSpeedValue({ ttsProviderId: "supertonic", supertonicSpeed: 1.05 })).toBe(1.05)
     expect(getTextToSpeechSpeedValue({ ttsProviderId: "groq" })).toBeUndefined()
   })
 
+  it("describes provider-specific speed controls", () => {
+    expect(getTextToSpeechSpeedSetting()).toMatchObject({
+      key: "openaiTtsSpeed",
+      minimumValue: 0.25,
+      maximumValue: 4.0,
+      step: 0.25,
+      defaultValue: 1.0,
+      fractionDigits: 1,
+    })
+    expect(getTextToSpeechSpeedSetting("edge")).toMatchObject({
+      key: "edgeTtsRate",
+      minimumValue: 0.5,
+      maximumValue: 2.0,
+      step: 0.1,
+      defaultValue: 1.0,
+      fractionDigits: 1,
+    })
+    expect(getTextToSpeechSpeedSetting("supertonic")).toMatchObject({
+      key: "supertonicSpeed",
+      minimumValue: 0.5,
+      maximumValue: 2.0,
+      step: 0.05,
+      defaultValue: 1.05,
+      fractionDigits: 2,
+    })
+    expect(getTextToSpeechSpeedSetting("groq")).toBeUndefined()
+  })
+
   it("resolves playback rates with provider defaults", () => {
+    expect(getTextToSpeechPlaybackRate({ openaiTtsSpeed: 1.2 })).toBe(1.2)
     expect(getTextToSpeechPlaybackRate({ ttsProviderId: "openai", openaiTtsSpeed: 1.2 })).toBe(1.2)
     expect(getTextToSpeechPlaybackRate({ ttsProviderId: "edge" })).toBe(1.0)
     expect(getTextToSpeechPlaybackRate({ ttsProviderId: "supertonic" })).toBe(1.05)

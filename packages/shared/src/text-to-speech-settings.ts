@@ -5,6 +5,48 @@ import {
   type TtsVoiceSettingKey,
 } from "./providers"
 
+export type TextToSpeechSpeedSettingKey = "openaiTtsSpeed" | "edgeTtsRate" | "supertonicSpeed"
+
+export type TextToSpeechSpeedSetting = {
+  key: TextToSpeechSpeedSettingKey
+  minimumValue: number
+  maximumValue: number
+  step: number
+  defaultValue: number
+  fractionDigits: number
+}
+
+const TEXT_TO_SPEECH_SPEED_SETTINGS: Record<string, TextToSpeechSpeedSetting> = {
+  openai: {
+    key: "openaiTtsSpeed",
+    minimumValue: 0.25,
+    maximumValue: 4.0,
+    step: 0.25,
+    defaultValue: 1.0,
+    fractionDigits: 1,
+  },
+  edge: {
+    key: "edgeTtsRate",
+    minimumValue: 0.5,
+    maximumValue: 2.0,
+    step: 0.1,
+    defaultValue: 1.0,
+    fractionDigits: 1,
+  },
+  supertonic: {
+    key: "supertonicSpeed",
+    minimumValue: 0.5,
+    maximumValue: 2.0,
+    step: 0.05,
+    defaultValue: 1.05,
+    fractionDigits: 2,
+  },
+}
+
+export function getTextToSpeechSpeedSetting(providerId?: string | null): TextToSpeechSpeedSetting | undefined {
+  return TEXT_TO_SPEECH_SPEED_SETTINGS[providerId || "openai"]
+}
+
 export function getTextToSpeechModelValue(settings?: TextToSpeechConfig | null): string | undefined {
   if (!settings) return undefined
   const key = getTtsModelSettingKey(settings.ttsProviderId || "openai")
@@ -26,16 +68,15 @@ export function normalizeTextToSpeechVoiceUpdateValue(
 
 export function getTextToSpeechSpeedValue(settings?: TextToSpeechConfig | null): number | undefined {
   if (!settings) return undefined
-  if (settings.ttsProviderId === "openai") return settings.openaiTtsSpeed
-  if (settings.ttsProviderId === "edge") return settings.edgeTtsRate
-  if (settings.ttsProviderId === "supertonic") return settings.supertonicSpeed
-  return undefined
+  const speedSetting = getTextToSpeechSpeedSetting(settings.ttsProviderId)
+  return speedSetting ? settings[speedSetting.key] : undefined
 }
 
 export function getTextToSpeechPlaybackRate(settings?: TextToSpeechConfig | null): number {
+  const speedSetting = getTextToSpeechSpeedSetting(settings?.ttsProviderId)
   const speed = getTextToSpeechSpeedValue(settings)
   if (speed !== undefined) return speed
-  return settings?.ttsProviderId === "supertonic" ? 1.05 : 1.0
+  return speedSetting?.defaultValue ?? 1.0
 }
 
 export function formatLocalSpeechModelProgress(status?: LocalSpeechModelStatus): string {
