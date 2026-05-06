@@ -7,9 +7,12 @@ import {
 } from "@dotagents/shared/mcp-api"
 import type { MCPConfig } from "@dotagents/shared/mcp-utils"
 import type { MobileApiActionResult } from "@dotagents/shared/remote-server-route-contracts"
+import { getAgentsLayerPaths } from "./agents-files/modular-config"
+import { cleanupInvalidMcpServerReferencesInLayers } from "./agent-profile-mcp-cleanup"
+import { agentProfileService } from "./agent-profile-service"
+import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { diagnosticsService } from "./diagnostics"
 import { mcpService } from "./mcp-service"
-import { configStore } from "./config"
 
 export type McpServerActionResult = MobileApiActionResult
 
@@ -18,12 +21,34 @@ const mcpServerActionOptions = {
   diagnostics: diagnosticsService,
 }
 
+function cleanupInvalidAgentProfileMcpReferences(mcpConfig: MCPConfig): void {
+  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+  const layers = workspaceAgentsFolder
+    ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
+    : [getAgentsLayerPaths(globalAgentsFolder)]
+  const validServerNames = Object.keys(mcpConfig.mcpServers || {})
+  const cleanupResult = cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)
+
+  if (cleanupResult.updatedProfileIds.length > 0) {
+    agentProfileService.reload()
+    diagnosticsService.logInfo(
+      "mcp-server-actions",
+      `Cleaned ${cleanupResult.removedReferenceCount} stale MCP server reference(s) from ${cleanupResult.updatedProfileIds.length} agent profile(s)`,
+    )
+  }
+}
+
 const mcpServerConfigActionOptions = {
   service: {
     getMcpConfig: () => configStore.get().mcpConfig || { mcpServers: {} },
     saveMcpConfig: (mcpConfig: MCPConfig) => {
       const config = configStore.get()
       configStore.save({ ...config, mcpConfig })
+    },
+    onMcpConfigSaved: ({ action, nextMcpConfig }) => {
+      if (action === "deleted") {
+        cleanupInvalidAgentProfileMcpReferences(nextMcpConfig)
+      }
     },
   },
   diagnostics: diagnosticsService,

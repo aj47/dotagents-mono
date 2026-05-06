@@ -124,6 +124,12 @@ export interface McpServerActionService {
 export interface McpServerConfigActionService {
   getMcpConfig(): MCPConfig
   saveMcpConfig(mcpConfig: MCPConfig): void
+  onMcpConfigSaved?(context: {
+    action: McpServerConfigMutationResponse["action"]
+    serverName: string
+    previousMcpConfig: MCPConfig
+    nextMcpConfig: MCPConfig
+  }): void
 }
 
 export interface McpServerActionDiagnostics {
@@ -649,12 +655,19 @@ export function upsertMcpServerConfigAction(
       return mcpServerActionError(parsedRequest.statusCode, parsedRequest.error)
     }
 
+    const currentMcpConfig = options.service.getMcpConfig()
     const nextMcpConfig = upsertMcpServerConfig(
-      options.service.getMcpConfig(),
+      currentMcpConfig,
       normalizedServerName,
       parsedRequest.request.config,
     )
     options.service.saveMcpConfig(nextMcpConfig)
+    options.service.onMcpConfigSaved?.({
+      action: "upserted",
+      serverName: normalizedServerName,
+      previousMcpConfig: currentMcpConfig,
+      nextMcpConfig,
+    })
     options.diagnostics.logInfo?.(
       "mcp-server-actions",
       `Upserted MCP server config ${normalizedServerName}`,
@@ -687,6 +700,12 @@ export function deleteMcpServerConfigAction(
 
     const nextMcpConfig = removeMcpServerConfig(currentMcpConfig, normalizedServerName)
     options.service.saveMcpConfig(nextMcpConfig)
+    options.service.onMcpConfigSaved?.({
+      action: "deleted",
+      serverName: normalizedServerName,
+      previousMcpConfig: currentMcpConfig,
+      nextMcpConfig,
+    })
     options.diagnostics.logInfo?.(
       "mcp-server-actions",
       `Deleted MCP server config ${normalizedServerName}`,

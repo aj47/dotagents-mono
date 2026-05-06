@@ -247,6 +247,12 @@ describe("MCP API helpers", () => {
     }
     const toggles: Array<{ serverName: string; enabled: boolean }> = []
     const logs: string[] = []
+    const savedEvents: Array<{
+      action: string
+      serverName: string
+      previousServers: string[]
+      nextServers: string[]
+    }> = []
     let mcpConfig: MCPConfig = {
       mcpServers: {
         filesystem: { command: "filesystem-mcp" },
@@ -270,6 +276,20 @@ describe("MCP API helpers", () => {
         getMcpConfig: () => mcpConfig,
         saveMcpConfig: (nextConfig: typeof mcpConfig) => {
           mcpConfig = nextConfig
+        },
+        onMcpConfigSaved: (context: {
+          action: "upserted" | "deleted"
+          serverName: string
+          previousMcpConfig: MCPConfig
+          nextMcpConfig: MCPConfig
+        }) => {
+          const { action, serverName, previousMcpConfig, nextMcpConfig } = context
+          savedEvents.push({
+            action,
+            serverName,
+            previousServers: Object.keys(previousMcpConfig.mcpServers).sort(),
+            nextServers: Object.keys(nextMcpConfig.mcpServers).sort(),
+          })
         },
       },
       diagnostics: options.diagnostics,
@@ -316,6 +336,20 @@ describe("MCP API helpers", () => {
     expect(logs).toContain("Toggled MCP server filesystem to disabled")
     expect(logs).toContain("Upserted MCP server config github")
     expect(logs).toContain("Deleted MCP server config github")
+    expect(savedEvents).toEqual([
+      {
+        action: "upserted",
+        serverName: "github",
+        previousServers: ["filesystem"],
+        nextServers: ["filesystem", "github"],
+      },
+      {
+        action: "deleted",
+        serverName: "github",
+        previousServers: ["filesystem", "github"],
+        nextServers: ["filesystem"],
+      },
+    ])
   })
 
   it("builds compact operator MCP status responses", () => {
