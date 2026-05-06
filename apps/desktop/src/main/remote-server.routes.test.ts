@@ -227,12 +227,6 @@ function getSharedModelPresetsSource(): string {
   return readFileSync(sharedModelPresetsPath, "utf8")
 }
 
-function getOperatorTunnelActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const operatorTunnelActionsPath = path.join(testDir, "operator-tunnel-actions.ts")
-  return readFileSync(operatorTunnelActionsPath, "utf8")
-}
-
 function getOperatorIntegrationActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const operatorIntegrationActionsPath = path.join(testDir, "operator-integration-actions.ts")
@@ -679,7 +673,6 @@ describe("remote-server route registration", () => {
       getOperatorMessageQueueActionsSource(),
       getOperatorModelPresetActionsSource(),
       getOperatorObservabilityActionsSource(),
-      getOperatorTunnelActionsSource(),
     ]
 
     for (const source of operatorActionSources) {
@@ -1286,7 +1279,6 @@ describe("remote-server route registration", () => {
       '// Operator/Admin Endpoints',
       "  // GET /v1/operator/mcp - Operator-level MCP summary",
     )
-    const operatorTunnelActionsSource = getOperatorTunnelActionsSource()
     const operatorIntegrationActionsSource = getOperatorIntegrationActionsSource()
     const operatorIntegrationSummarySource = getOperatorIntegrationSummarySource()
     const operatorObservabilityActionsSource = getOperatorObservabilityActionsSource()
@@ -1367,16 +1359,18 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.getOperatorTunnelSetup()")
     expect(operatorRoutesSource).toContain("actions.startOperatorTunnel(getRemoteServerStatus().running)")
     expect(operatorRoutesSource).toContain("actions.stopOperatorTunnel()")
-    expect(operatorTunnelActionsSource).toContain("getOperatorTunnelAction(tunnelActionOptions)")
-    expect(operatorTunnelActionsSource).toContain("getOperatorTunnelSetupAction(tunnelActionOptions)")
-    expect(operatorTunnelActionsSource).toContain("startOperatorTunnelAction(remoteServerRunning, tunnelActionOptions)")
-    expect(operatorTunnelActionsSource).toContain("stopOperatorTunnelAction(tunnelActionOptions)")
-    expect(operatorTunnelActionsSource).toContain("service: {")
-    expect(operatorTunnelActionsSource).toContain("checkCloudflaredInstalled")
-    expect(operatorTunnelActionsSource).toContain("listCloudflareTunnels")
-    expect(operatorTunnelActionsSource).toContain("startNamedCloudflareTunnel")
-    expect(operatorTunnelActionsSource).toContain("startCloudflareTunnel")
-    expect(operatorTunnelActionsSource).toContain("stopCloudflareTunnel")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorTunnelAction(tunnelActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorTunnelSetupAction(tunnelActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "startOperatorTunnelAction(remoteServerRunning, tunnelActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain("stopOperatorTunnelAction(tunnelActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("service: {")
+    expect(operatorRouteDesktopActionsSource).toContain("checkCloudflaredInstalled")
+    expect(operatorRouteDesktopActionsSource).toContain("listCloudflareTunnels")
+    expect(operatorRouteDesktopActionsSource).toContain("startNamedCloudflareTunnel")
+    expect(operatorRouteDesktopActionsSource).toContain("startCloudflareTunnel")
+    expect(operatorRouteDesktopActionsSource).toContain("stopCloudflareTunnel")
     expect(sharedOperatorActionsSource).toContain("export async function getOperatorTunnelSetupAction(")
     expect(sharedOperatorActionsSource).toContain("export async function startOperatorTunnelAction(")
     expect(sharedOperatorActionsSource).toContain("getConfiguredCloudflareTunnelStartPlan(cfg)")

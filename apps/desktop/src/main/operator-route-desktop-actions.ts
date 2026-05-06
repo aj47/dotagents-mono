@@ -26,12 +26,6 @@ import {
   updateOperatorModelPreset,
 } from "./operator-model-preset-actions"
 import {
-  getOperatorTunnel,
-  getOperatorTunnelSetup,
-  startOperatorTunnel,
-  stopOperatorTunnel,
-} from "./operator-tunnel-actions"
-import {
   clearOperatorDiscordLogs,
   connectOperatorDiscord,
   connectOperatorWhatsApp,
@@ -67,15 +61,31 @@ import {
 import {
   checkOperatorUpdaterAction,
   downloadLatestOperatorUpdateAssetAction,
+  getOperatorTunnelAction,
+  getOperatorTunnelSetupAction,
   getOperatorUpdaterAction,
   openOperatorReleasesPageAction,
   openOperatorUpdateAssetAction,
   revealOperatorUpdateAssetAction,
   restartOperatorAppAction as restartOperatorApp,
   restartOperatorRemoteServerAction as restartOperatorRemoteServer,
+  startOperatorTunnelAction,
+  stopOperatorTunnelAction,
+  type OperatorTunnelActionOptions,
   type OperatorUpdaterActionOptions,
 } from "@dotagents/shared/operator-actions"
 import { rotateOperatorRemoteServerApiKey } from "./operator-api-key-actions"
+import {
+  checkCloudflaredInstalled,
+  checkCloudflaredLoggedIn,
+  getCloudflareTunnelStatus,
+  listCloudflareTunnels,
+  startCloudflareTunnel,
+  startNamedCloudflareTunnel,
+  stopCloudflareTunnel,
+} from "./cloudflare-tunnel"
+import { configStore } from "./config"
+import { diagnosticsService } from "./diagnostics"
 import {
   MANUAL_RELEASES_URL,
   checkForUpdatesAndDownload,
@@ -86,6 +96,22 @@ import {
   revealDownloadedReleaseAsset,
 } from "./updater"
 
+const tunnelActionOptions: OperatorTunnelActionOptions = {
+  config: {
+    get: () => configStore.get(),
+  },
+  diagnostics: diagnosticsService,
+  service: {
+    getStatus: getCloudflareTunnelStatus,
+    checkCloudflaredInstalled,
+    checkCloudflaredLoggedIn,
+    listCloudflareTunnels,
+    startQuickTunnel: startCloudflareTunnel,
+    startNamedTunnel: startNamedCloudflareTunnel,
+    stopTunnel: stopCloudflareTunnel,
+  },
+}
+
 const updaterActionOptions: OperatorUpdaterActionOptions = {
   service: {
     getUpdateInfo,
@@ -95,6 +121,22 @@ const updaterActionOptions: OperatorUpdaterActionOptions = {
     openDownloadedReleaseAsset,
     openManualReleasesPage,
   },
+}
+
+function getOperatorTunnel() {
+  return getOperatorTunnelAction(tunnelActionOptions)
+}
+
+async function getOperatorTunnelSetup() {
+  return getOperatorTunnelSetupAction(tunnelActionOptions)
+}
+
+async function startOperatorTunnel(remoteServerRunning: boolean) {
+  return startOperatorTunnelAction(remoteServerRunning, tunnelActionOptions)
+}
+
+async function stopOperatorTunnel() {
+  return stopOperatorTunnelAction(tunnelActionOptions)
 }
 
 function getOperatorUpdater(currentVersion: string) {
