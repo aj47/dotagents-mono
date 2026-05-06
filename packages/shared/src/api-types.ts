@@ -583,7 +583,11 @@ export interface PredefinedPromptSummary {
 
 export type PredefinedPrompt = PredefinedPromptSummary;
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig {
+export interface PredefinedPromptsConfig {
+  predefinedPrompts?: PredefinedPromptSummary[];
+}
+
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -597,7 +601,6 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, Ob
   mcpToolsChatgptWebModel?: string;
   currentModelPresetId?: string;
   availablePresets?: ModelPresetSummary[];
-  predefinedPrompts?: PredefinedPromptSummary[];
   openaiApiKey?: string;
   openaiBaseUrl?: string;
   groqApiKey?: string;
@@ -699,7 +702,7 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, Ob
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig {
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -809,8 +812,6 @@ export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConf
   // Streamer Mode
   streamerModeEnabled?: boolean;
 
-  // Predefined Prompts
-  predefinedPrompts?: PredefinedPromptSummary[];
 }
 
 // Conversation Sync Types

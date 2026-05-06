@@ -13,6 +13,7 @@ import type {
   ModelsDevData,
   ModelsDevModel,
   PredefinedPrompt,
+  PredefinedPromptsConfig,
   EmergencyStopResponse,
   OperatorDiscordLogsResponse,
   OperatorTunnelSetupSummary,
@@ -336,6 +337,21 @@ describe('settings API request/response contracts', () => {
 
     assertType<PredefinedPrompt>(prompt)
     expect(prompt.name).toBe('Standup')
+  })
+
+  it('accepts predefined prompt config shared by desktop and mobile settings', () => {
+    const config: PredefinedPromptsConfig = {
+      predefinedPrompts: [{
+        id: 'prompt-1',
+        name: 'Standup',
+        content: 'Summarize the last session.',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }],
+    }
+
+    assertType<PredefinedPromptsConfig>(config)
+    expect(config.predefinedPrompts?.[0]?.name).toBe('Standup')
   })
 
   it('accepts repeat task create/update payloads with nullable schedules', () => {

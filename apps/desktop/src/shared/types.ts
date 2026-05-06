@@ -15,7 +15,7 @@ import type {
 } from '@dotagents/shared/conversation-state'
 import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
 import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
-import type { PredefinedPrompt as SharedPredefinedPrompt } from '@dotagents/shared/api-types'
+import type { PredefinedPromptsConfig } from '@dotagents/shared/api-types'
 import type { MainAgentConfig } from '@dotagents/shared/main-agent-selection'
 import type { CloudflareTunnelConfig, RemoteServerConfig } from '@dotagents/shared/remote-pairing'
 import type { ObservabilityConfig } from '@dotagents/shared/observability-config'
@@ -36,7 +36,7 @@ import {
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, RecordingHistoryItem, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
 export type { SessionHistoryConfig } from '@dotagents/shared/session'
-export type { PredefinedPrompt } from '@dotagents/shared/api-types'
+export type { PredefinedPrompt, PredefinedPromptsConfig } from '@dotagents/shared/api-types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
@@ -138,7 +138,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -418,9 +418,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
 
   // Message Queue Configuration - when enabled, users can queue messages while agent is processing
   mcpMessageQueueEnabled?: boolean
-
-  // Predefined Prompts - frequently used prompts that can be quickly accessed
-  predefinedPrompts?: SharedPredefinedPrompt[]
 
   // Stream Status Watcher Configuration
   streamStatusWatcherEnabled?: boolean
