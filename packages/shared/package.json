@@ -26,6 +26,11 @@
       "import": "./dist/tts-preprocessing.mjs",
       "require": "./dist/tts-preprocessing.js"
     },
+    "./tts-tracking": {
+      "types": "./dist/tts-tracking.d.ts",
+      "import": "./dist/tts-tracking.mjs",
+      "require": "./dist/tts-tracking.js"
+    },
     "./voice-text-utils": {
       "types": "./dist/voice-text-utils.d.ts",
       "import": "./dist/voice-text-utils.mjs",

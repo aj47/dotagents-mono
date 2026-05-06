@@ -8,37 +8,41 @@
  * session-scoped event IDs or fallback content keys.
  */
 
-const sessionsWithTTSPlayed = new Set<string>()
+import {
+  buildContentTTSKey,
+  buildResponseEventTTSKey,
+  clearSessionTTSTracking as clearSessionTTSTrackingForState,
+  consumeSessionForcedAutoPlay as consumeSessionForcedAutoPlayForState,
+  createTTSTrackingState,
+  hasTTSPlayed as hasTTSPlayedInState,
+  markSessionForcedAutoPlay as markSessionForcedAutoPlayForState,
+  markTTSPlayed as markTTSPlayedInState,
+  removeTTSKey as removeTTSKeyFromState,
+} from "@dotagents/shared/tts-tracking"
+
+export { buildContentTTSKey, buildResponseEventTTSKey }
+
+const ttsTrackingState = createTTSTrackingState()
 
 /**
  * Check if TTS has already been played for a specific session + content combination.
  */
 export function hasTTSPlayed(ttsKey: string): boolean {
-  return sessionsWithTTSPlayed.has(ttsKey)
+  return hasTTSPlayedInState(ttsTrackingState, ttsKey)
 }
 
 /**
  * Mark TTS as played for a specific session + content combination.
  */
 export function markTTSPlayed(ttsKey: string): void {
-  sessionsWithTTSPlayed.add(ttsKey)
-}
-
-export function buildResponseEventTTSKey(sessionId: string | undefined, eventId: string, phase: "mid-turn" | "final" = "mid-turn"): string | null {
-  if (!sessionId) return null
-  return `${sessionId}:${phase}:event:${eventId}`
-}
-
-export function buildContentTTSKey(sessionId: string | undefined, content: string, phase: "mid-turn" | "final" = "final"): string | null {
-  if (!sessionId) return null
-  return `${sessionId}:${phase}:content:${content}`
+  markTTSPlayedInState(ttsTrackingState, ttsKey)
 }
 
 /**
  * Remove a TTS key from tracking (e.g., on failure or unmount during generation).
  */
 export function removeTTSKey(ttsKey: string): void {
-  sessionsWithTTSPlayed.delete(ttsKey)
+  removeTTSKeyFromState(ttsTrackingState, ttsKey)
 }
 
 /**
@@ -46,12 +50,7 @@ export function removeTTSKey(ttsKey: string): void {
  * to allow TTS to play again if the session is somehow restored.
  */
 export function clearSessionTTSTracking(sessionId: string): void {
-  // Remove all entries that start with this sessionId
-  for (const key of sessionsWithTTSPlayed) {
-    if (key.startsWith(`${sessionId}:`)) {
-      sessionsWithTTSPlayed.delete(key)
-    }
-  }
+  clearSessionTTSTrackingForState(ttsTrackingState, sessionId)
 }
 
 /**
@@ -60,13 +59,10 @@ export function clearSessionTTSTracking(sessionId: string): void {
  * loop completes and the panel reveals the session). The flag is consumed by the
  * first auto-play attempt for that session.
  */
-const sessionsWithForcedAutoPlay = new Set<string>()
-
 export function markSessionForcedAutoPlay(sessionId: string): void {
-  sessionsWithForcedAutoPlay.add(sessionId)
+  markSessionForcedAutoPlayForState(ttsTrackingState, sessionId)
 }
 
 export function consumeSessionForcedAutoPlay(sessionId: string): boolean {
-  return sessionsWithForcedAutoPlay.delete(sessionId)
+  return consumeSessionForcedAutoPlayForState(ttsTrackingState, sessionId)
 }
-
