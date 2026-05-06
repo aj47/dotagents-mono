@@ -71,6 +71,11 @@ import {
   DEFAULT_TTS_REMOVE_URLS,
   DEFAULT_TTS_USE_LLM_PREPROCESSING,
 } from './text-to-speech-settings';
+import {
+  DEFAULT_AUTO_SAVE_CONVERSATIONS,
+  DEFAULT_CONVERSATIONS_ENABLED,
+  DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
+} from './api-types';
 
 function jsonResponse(body: unknown, status: number = 200) {
   return new Response(JSON.stringify(body), {
@@ -483,6 +488,9 @@ describe('SettingsApiClient', () => {
     expect(defaultResponse.ttsProviderId).toBe(DEFAULT_TTS_PROVIDER_ID);
     expect(defaultResponse.transcriptPostProcessingProviderId).toBe(DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID);
     expect(defaultResponse.textInputEnabled).toBe(DEFAULT_TEXT_INPUT_ENABLED);
+    expect(defaultResponse.conversationsEnabled).toBe(DEFAULT_CONVERSATIONS_ENABLED);
+    expect(defaultResponse.maxConversationsToKeep).toBe(DEFAULT_MAX_CONVERSATIONS_TO_KEEP);
+    expect(defaultResponse.autoSaveConversations).toBe(DEFAULT_AUTO_SAVE_CONVERSATIONS);
     expect(defaultResponse.mcpAutoPasteEnabled).toBe(DEFAULT_MCP_AUTO_PASTE_ENABLED);
     expect(defaultResponse.mcpAutoPasteDelay).toBe(DEFAULT_MCP_AUTO_PASTE_DELAY);
     expect(defaultResponse.streamerModeEnabled).toBe(DEFAULT_STREAMER_MODE_ENABLED);

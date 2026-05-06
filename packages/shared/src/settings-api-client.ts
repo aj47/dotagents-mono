@@ -130,6 +130,11 @@ import {
   isTextToSpeechSpeedUpdateValue,
   isTextToSpeechVoiceUpdateValue,
 } from './text-to-speech-settings';
+import {
+  DEFAULT_AUTO_SAVE_CONVERSATIONS,
+  DEFAULT_CONVERSATIONS_ENABLED,
+  DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
+} from './api-types';
 import type {
   AgentModelSelectionConfig,
   ChatProviderCredentialsConfig,
@@ -405,9 +410,9 @@ export function buildSettingsResponse(
     panelTextInputSize: cfg.panelTextInputSize,
     panelProgressSize: cfg.panelProgressSize,
     textInputEnabled: cfg.textInputEnabled ?? DEFAULT_TEXT_INPUT_ENABLED,
-    conversationsEnabled: cfg.conversationsEnabled ?? true,
-    maxConversationsToKeep: cfg.maxConversationsToKeep ?? 100,
-    autoSaveConversations: cfg.autoSaveConversations ?? true,
+    conversationsEnabled: cfg.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED,
+    maxConversationsToKeep: cfg.maxConversationsToKeep ?? DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
+    autoSaveConversations: cfg.autoSaveConversations ?? DEFAULT_AUTO_SAVE_CONVERSATIONS,
     transcriptPostProcessingEnabled: cfg.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
     mcpRequireApprovalBeforeToolCall: cfg.mcpRequireApprovalBeforeToolCall ?? DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL,
     ttsEnabled: cfg.ttsEnabled ?? DEFAULT_TTS_ENABLED,

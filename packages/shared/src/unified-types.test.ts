@@ -4,6 +4,11 @@ import type { StreamerModeConfig } from './remote-pairing'
 import type { QueuedMessage, MessageQueue, RecordingHistoryItem } from './types'
 import type { DiscordIntegrationSettingsConfig } from './discord-config'
 import type { WhatsAppIntegrationConfig } from './whatsapp-config'
+import {
+  DEFAULT_AUTO_SAVE_CONVERSATIONS,
+  DEFAULT_CONVERSATIONS_ENABLED,
+  DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
+} from './api-types'
 import type {
   KnowledgeNoteCreateRequest,
   KnowledgeNoteResponse,
@@ -539,6 +544,11 @@ describe('settings API request/response contracts', () => {
   })
 
   it('accepts conversation storage settings through the shared settings API', () => {
+    const defaultConfig: Required<ConversationStorageConfig> = {
+      conversationsEnabled: DEFAULT_CONVERSATIONS_ENABLED,
+      maxConversationsToKeep: DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
+      autoSaveConversations: DEFAULT_AUTO_SAVE_CONVERSATIONS,
+    }
     const config: ConversationStorageConfig = {
       conversationsEnabled: true,
       maxConversationsToKeep: 250,
@@ -550,6 +560,9 @@ describe('settings API request/response contracts', () => {
 
     assertType<ConversationStorageConfig>(config)
     assertType<SettingsUpdate>(update)
+    expect(defaultConfig.conversationsEnabled).toBe(true)
+    expect(defaultConfig.maxConversationsToKeep).toBe(100)
+    expect(defaultConfig.autoSaveConversations).toBe(true)
     expect(update.maxConversationsToKeep).toBe(250)
   })
 

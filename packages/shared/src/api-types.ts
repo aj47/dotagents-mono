@@ -789,6 +789,10 @@ export interface DesktopTextInputConfig {
   textInputEnabled?: boolean;
 }
 
+export const DEFAULT_CONVERSATIONS_ENABLED = true;
+export const DEFAULT_MAX_CONVERSATIONS_TO_KEEP = 100;
+export const DEFAULT_AUTO_SAVE_CONVERSATIONS = true;
+
 export interface ConversationStorageConfig {
   conversationsEnabled?: boolean;
   maxConversationsToKeep?: number;
