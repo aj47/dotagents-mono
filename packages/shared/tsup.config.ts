@@ -14,6 +14,7 @@ export default defineConfig({
     'shell-parse': 'src/shell-parse.ts',
     'connection-recovery': 'src/connection-recovery.ts',
     'api-types': 'src/api-types.ts',
+    'bundle-api': 'src/bundle-api.ts',
     hub: 'src/hub.ts',
     'conversation-state': 'src/conversation-state.ts',
     'session-presentation': 'src/session-presentation.ts',

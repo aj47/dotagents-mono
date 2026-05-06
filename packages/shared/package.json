@@ -66,6 +66,11 @@
       "import": "./dist/api-types.mjs",
       "require": "./dist/api-types.js"
     },
+    "./bundle-api": {
+      "types": "./dist/bundle-api.d.ts",
+      "import": "./dist/bundle-api.mjs",
+      "require": "./dist/bundle-api.js"
+    },
     "./hub": {
       "types": "./dist/hub.d.ts",
       "import": "./dist/hub.mjs",

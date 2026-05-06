@@ -138,6 +138,12 @@ function getSharedProfileApiSource(): string {
   return readFileSync(sharedProfileApiPath, "utf8")
 }
 
+function getSharedBundleApiSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedBundleApiPath = path.join(testDir, "../../../../packages/shared/src/bundle-api.ts")
+  return readFileSync(sharedBundleApiPath, "utf8")
+}
+
 function getSharedMessageQueueStoreSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedMessageQueueStorePath = path.join(testDir, "../../../../packages/shared/src/message-queue-store.ts")
@@ -309,6 +315,12 @@ function getProfileActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const profileActionsPath = path.join(testDir, "profile-actions.ts")
   return readFileSync(profileActionsPath, "utf8")
+}
+
+function getBundleActionsSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const bundleActionsPath = path.join(testDir, "bundle-actions.ts")
+  return readFileSync(bundleActionsPath, "utf8")
 }
 
 function getAgentProfileActionsSource(): string {
@@ -1003,6 +1015,31 @@ describe("remote-server route registration", () => {
     expect(sharedProfileApiSource).not.toContain('from "./mcp-service"')
     expect(profileActionsSource).toContain("toolConfigToMcpServerConfig(profile.toolConfig)")
     expect(profileActionsSource).toContain("mcpService.applyProfileMcpConfig(")
+  })
+
+  it("delegates bundle export routes to shared bundle actions", () => {
+    const source = getRemoteServerSource()
+    const mobileApiRoutesSource = getMobileApiRoutesSource()
+    const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
+    const bundleActionsSource = getBundleActionsSource()
+    const sharedBundleApiSource = getSharedBundleApiSource()
+
+    expectRegisteredApiRoute(source, "GET", "bundleExportableItems")
+    expectRegisteredApiRoute(source, "POST", "bundleExport")
+    expect(mobileApiRoutesSource).toContain("actions.getBundleExportableItems()")
+    expect(mobileApiRoutesSource).toContain("actions.exportBundle(req.body)")
+    expect(mobileApiDesktopActionsSource).toContain("getBundleExportableItems")
+    expect(mobileApiDesktopActionsSource).toContain("exportBundle")
+    expect(bundleActionsSource).toContain("getBundleExportableItemsAction(bundleActionOptions)")
+    expect(bundleActionsSource).toContain("exportBundleAction(body, bundleActionOptions)")
+    expect(bundleActionsSource).toContain("getBundleExportableItemsFromLayers(getBundleLayerDirs())")
+    expect(bundleActionsSource).toContain("exportBundleFromLayers(getBundleLayerDirs(), request)")
+    expect(sharedBundleApiSource).toContain("export function getBundleExportableItemsAction")
+    expect(sharedBundleApiSource).toContain("export async function exportBundleAction")
+    expect(sharedBundleApiSource).toContain("parseExportBundleRequestBody(body)")
+    expect(sharedBundleApiSource).toContain("buildBundleExportResponse(await options.service.exportBundle(parsed.request))")
+    expect(sharedBundleApiSource).not.toContain("bundle-service")
+    expect(sharedBundleApiSource).not.toContain("dialog")
   })
 
   it("delegates agent profile route behavior to agent profile actions", () => {

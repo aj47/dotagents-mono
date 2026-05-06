@@ -35,6 +35,8 @@ describe('remote server API contract', () => {
     expect(getRemoteServerApiRoutePath(REMOTE_SERVER_API_PATHS.settings)).toBe('/v1/settings');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.settings).toBe('/v1/settings');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.conversation).toBe('/v1/conversations/:id');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.bundleExportableItems).toBe('/v1/bundles/exportable-items');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.bundleExport).toBe('/v1/bundles/export');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.mcpConfigImport).toBe('/v1/mcp/config/import');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.mcpConfigExport).toBe('/v1/mcp/config/export');
     expect(getRemoteServerApiRoutePath('/v1/settings')).toBe('/v1/settings');

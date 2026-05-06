@@ -1,4 +1,8 @@
 import type { MobileApiRouteActions } from "./mobile-api-routes"
+import {
+  exportBundle,
+  getBundleExportableItems,
+} from "./bundle-actions"
 import { handleChatCompletionRequest } from "./chat-completion-actions"
 import {
   createAgentProfile,
@@ -80,6 +84,8 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   setCurrentProfile,
   exportProfile,
   importProfile,
+  getBundleExportableItems,
+  exportBundle,
   getMcpServers,
   toggleMcpServer,
   exportMcpServerConfigs,

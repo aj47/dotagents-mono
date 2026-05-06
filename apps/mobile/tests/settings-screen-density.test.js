@@ -88,3 +88,11 @@ test('lets mobile export MCP server configs through the shared client', () => {
   assert.match(settingsSource, /createButtonAccessibilityLabel\('Export MCP server JSON'\)/);
   assert.match(settingsSource, /MCP config exports can include tokens, headers, and environment variables/);
 });
+
+test('lets mobile export DotAgents bundles through the shared client', () => {
+  assert.match(settingsSource, /handleBundleExport/);
+  assert.match(settingsSource, /settingsClient\.exportBundle\(\{ name: 'DotAgents Bundle' \}\)/);
+  assert.match(settingsSource, /Share\.share\(\{[\s\S]*?message: result\.bundleJson/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Export DotAgents bundle JSON'\)/);
+  assert.match(settingsSource, /Bundles can include agents, MCP servers, skills, tasks, and knowledge notes/);
+});

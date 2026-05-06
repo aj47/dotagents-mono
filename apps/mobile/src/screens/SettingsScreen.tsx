@@ -356,6 +356,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [isImportingProfile, setIsImportingProfile] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
+  const [isExportingBundle, setIsExportingBundle] = useState(false);
 
   // Model picker state
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
@@ -393,6 +394,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     providerSelection: false, // Provider selection section
     profileModel: true,  // Keep profile/model expanded by default since it was already visible
+    bundles: false,
     mcpServers: true,    // Keep MCP servers expanded by default since it was already visible
     streamerMode: false,
     speechToText: false,
@@ -850,6 +852,58 @@ export default function SettingsScreen({ navigation }: any) {
     } finally {
       setIsImportingProfile(false);
     }
+  };
+
+  const shareBundleExport = async () => {
+    if (!settingsClient) return;
+
+    setIsExportingBundle(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportBundle({ name: 'DotAgents Bundle' });
+      const itemCount =
+        result.bundle.agentProfiles.length
+        + result.bundle.mcpServers.length
+        + result.bundle.skills.length
+        + result.bundle.repeatTasks.length
+        + result.bundle.knowledgeNotes.length;
+      await Share.share({
+        message: result.bundleJson,
+        title: `${result.bundle.manifest.name}.dotagents`,
+      });
+      setSaveStatusMessage(`Exported bundle with ${itemCount} item${itemCount === 1 ? '' : 's'}`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export bundle:', error);
+      setRemoteError(error.message || 'Failed to export bundle');
+      Alert.alert('Export Failed', error.message || 'Failed to export bundle');
+    } finally {
+      setIsExportingBundle(false);
+    }
+  };
+
+  const handleBundleExport = () => {
+    if (!settingsClient) return;
+
+    const message = 'Bundles can include agents, MCP servers, skills, tasks, and knowledge notes. Share only with places you trust.';
+
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (!confirmFn || !confirmFn(`Export DotAgents Bundle\n\n${message}`)) {
+        return;
+      }
+      void shareBundleExport();
+      return;
+    }
+
+    Alert.alert('Export DotAgents Bundle', message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Export',
+        onPress: () => {
+          void shareBundleExport();
+        },
+      },
+    ]);
   };
 
   // Handle MCP server toggle
@@ -2690,6 +2744,25 @@ export default function SettingsScreen({ navigation }: any) {
                     />
                   </>
                 )}
+              </CollapsibleSection>
+            )}
+
+            {/* 4b. Bundles */}
+            {isDotAgentsServer && (
+              <CollapsibleSection id="bundles" title="Bundles">
+                <View style={styles.profileActions}>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, isExportingBundle && styles.profileActionButtonDisabled]}
+                    onPress={handleBundleExport}
+                    disabled={isExportingBundle}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Export DotAgents bundle JSON')}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isExportingBundle ? 'Exporting...' : 'Export Bundle'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </CollapsibleSection>
             )}
 

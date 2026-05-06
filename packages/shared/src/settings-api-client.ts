@@ -14,6 +14,11 @@ import {
   type McpServerConfigImportResponse,
   type McpServerConfigMutationResponse,
 } from './mcp-api';
+import type {
+  BundleExportResponse,
+  BundleExportableItemsResponse,
+  ExportBundleRequest,
+} from './bundle-api';
 import type { MCPConfig, MCPServerConfig } from './mcp-utils';
 import { sanitizeConfigStringList } from './config-list-input';
 import {
@@ -988,6 +993,18 @@ export class SettingsApiClient {
     return this.request(API_PATHS.profileImport, {
       method: 'POST',
       body: JSON.stringify({ profileJson }),
+    });
+  }
+
+  // Bundle Management
+  async getBundleExportableItems(): Promise<BundleExportableItemsResponse> {
+    return this.request<BundleExportableItemsResponse>(API_PATHS.bundleExportableItems);
+  }
+
+  async exportBundle(request: ExportBundleRequest = {}): Promise<BundleExportResponse> {
+    return this.request<BundleExportResponse>(API_PATHS.bundleExport, {
+      method: 'POST',
+      body: JSON.stringify(request),
     });
   }
 

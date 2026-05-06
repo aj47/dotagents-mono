@@ -15,6 +15,7 @@ export * from './turn-duration';
 export * from './shell-parse';
 export * from './connection-recovery';
 export * from './api-types';
+export * from './bundle-api';
 export * from './hub';
 export * from './conversation-state';
 export * from './session-presentation';

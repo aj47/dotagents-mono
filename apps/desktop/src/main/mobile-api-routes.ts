@@ -80,6 +80,18 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // GET /v1/bundles/exportable-items - List bundle-exportable desktop items
+  fastify.get(API_ROUTES.bundleExportableItems, async (_req, reply) => {
+    const result = actions.getBundleExportableItems()
+    return reply.code(result.statusCode).send(result.body)
+  })
+
+  // POST /v1/bundles/export - Export a DotAgents bundle as JSON
+  fastify.post(API_ROUTES.bundleExport, async (req, reply) => {
+    const result = await actions.exportBundle(req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // GET /v1/mcp/servers - List MCP servers with status
   fastify.get(API_ROUTES.mcpServers, async (_req, reply) => {
     const result = actions.getMcpServers()
