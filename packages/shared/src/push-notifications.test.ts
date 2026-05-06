@@ -12,6 +12,7 @@ import {
   parsePushTokenRegistrationBody,
   registerPushTokenAction,
   removePushTokenRegistration,
+  summarizeExpoPushTickets,
   unregisterPushTokenAction,
   upsertPushTokenRegistration,
   type PushTokenRecord,
@@ -182,6 +183,24 @@ describe('push notification API helpers', () => {
           priority: 'normal',
         },
       ],
+    });
+  });
+
+  it('summarizes Expo push tickets and invalid device tokens', () => {
+    expect(summarizeExpoPushTickets([
+      { status: 'ok', id: 'ticket-1' },
+      { status: 'error', message: 'Bad token', details: { error: 'DeviceNotRegistered' } },
+      { status: 'error', details: { error: 'MessageTooBig' } },
+      { status: 'error' },
+    ], [
+      { token: 't1' },
+      { token: 't2' },
+      { token: 't3' },
+    ])).toEqual({
+      sent: 1,
+      failed: 3,
+      errors: ['Bad token', 'MessageTooBig', 'Unknown error'],
+      invalidTokens: ['t2'],
     });
   });
 

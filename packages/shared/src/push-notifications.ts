@@ -43,6 +43,15 @@ export interface ExpoPushMessage {
   priority?: 'default' | 'high' | 'normal';
 }
 
+export interface ExpoPushTicket {
+  status: 'ok' | 'error';
+  id?: string;
+  message?: string;
+  details?: {
+    error?: string;
+  };
+}
+
 export type PushNotificationDeliveryToken = {
   token: string;
   badgeCount?: number;
@@ -51,6 +60,13 @@ export type PushNotificationDeliveryToken = {
 export type PushNotificationDispatchPlan<TToken extends PushNotificationDeliveryToken> = {
   updatedTokens: Array<TToken & { badgeCount: number }>;
   messages: ExpoPushMessage[];
+};
+
+export type ExpoPushTicketSummary = {
+  sent: number;
+  failed: number;
+  errors: string[];
+  invalidTokens: string[];
 };
 
 export interface BuildMessagePushNotificationPayloadOptions {
@@ -234,6 +250,37 @@ export function buildPushNotificationDispatchPlan<TToken extends PushNotificatio
       channelId: payload.channelId ?? 'default',
       priority: payload.priority ?? 'high',
     })),
+  };
+}
+
+export function summarizeExpoPushTickets<TToken extends PushNotificationDeliveryToken>(
+  tickets: ExpoPushTicket[],
+  tokens: TToken[],
+): ExpoPushTicketSummary {
+  let sent = 0;
+  let failed = 0;
+  const errors: string[] = [];
+  const invalidTokens: string[] = [];
+
+  tickets.forEach((ticket, index) => {
+    if (ticket.status === 'ok') {
+      sent++;
+      return;
+    }
+
+    failed++;
+    errors.push(ticket.message || ticket.details?.error || 'Unknown error');
+
+    if (ticket.details?.error === 'DeviceNotRegistered' && tokens[index]) {
+      invalidTokens.push(tokens[index].token);
+    }
+  });
+
+  return {
+    sent,
+    failed,
+    errors,
+    invalidTokens,
   };
 }
 
