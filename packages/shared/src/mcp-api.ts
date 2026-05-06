@@ -140,6 +140,39 @@ export interface OperatorMcpTestActionOptions<TServerConfig = unknown, TAuditCon
   audit?: OperatorMcpTestActionAudit<TAuditContext>
 }
 
+export type McpLifecycleActionResultLike = {
+  success: boolean
+  error?: string
+}
+
+export type OperatorMcpLifecycleActionResult<TAuditContext = unknown> = OperatorMcpMutationActionResult<TAuditContext>
+
+export interface OperatorMcpLifecycleActionService {
+  getServerStatus(): McpServerStatusMapLike
+  setServerRuntimeEnabled(serverName: string, enabled: boolean): boolean
+  restartServer(serverName: string): Promise<McpLifecycleActionResultLike>
+  stopServer(serverName: string): Promise<McpLifecycleActionResultLike>
+}
+
+export interface OperatorMcpLifecycleActionDiagnostics extends OperatorMcpReadActionDiagnostics {
+  logInfo(source: string, message: string): void
+}
+
+export interface OperatorMcpLifecycleActionAudit<TAuditContext> {
+  buildStartAuditContext(serverName: string): TAuditContext
+  buildStartFailureAuditContext(failureReason: string): TAuditContext
+  buildStopAuditContext(serverName: string): TAuditContext
+  buildStopFailureAuditContext(failureReason: string): TAuditContext
+  buildRestartAuditContext(serverName: string): TAuditContext
+  buildRestartFailureAuditContext(failureReason: string): TAuditContext
+}
+
+export interface OperatorMcpLifecycleActionOptions<TAuditContext = unknown> {
+  service: OperatorMcpLifecycleActionService
+  diagnostics: OperatorMcpLifecycleActionDiagnostics
+  audit?: OperatorMcpLifecycleActionAudit<TAuditContext>
+}
+
 export type McpServerLogEntryLike = {
   timestamp: number
   message: string
@@ -175,6 +208,16 @@ export const INTERNAL_COMPLETION_NUDGE_TEXT =
 
 function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {}
+}
+
+function parseOperatorMcpServerActionRequestBody(body: unknown): McpRequestParseResult<{ server: string }> {
+  const requestBody = getRequestRecord(body)
+  const server = typeof requestBody.server === "string" ? requestBody.server.trim() : ""
+  if (!server) {
+    return { ok: false, statusCode: 400, error: "Missing server name" }
+  }
+
+  return { ok: true, request: { server } }
 }
 
 export function parseMcpMaxIterationsDraft(value: string): number | null {
@@ -408,6 +451,18 @@ function buildOperatorMcpTestResponse(
   }
 }
 
+function buildOperatorMcpStartResponse(server: string): { success: true; action: "mcp-start"; server: string; message: string } {
+  return { success: true, action: "mcp-start", server, message: `Started ${server}` }
+}
+
+function buildOperatorMcpStopResponse(server: string): { success: true; action: "mcp-stop"; server: string; message: string } {
+  return { success: true, action: "mcp-stop", server, message: `Stopped ${server}` }
+}
+
+function buildOperatorMcpRestartResponse(server: string): { success: true; action: "mcp-restart"; server: string } {
+  return { success: true, action: "mcp-restart", server }
+}
+
 export function getOperatorMcpServerLogsAction(
   serverName: string | undefined,
   count: string | number | undefined,
@@ -467,6 +522,165 @@ export async function testOperatorMcpServerAction<TServerConfig = unknown, TAudi
       500,
       `Failed to test MCP server: ${errorMessage}`,
       options.audit?.buildTestFailureAuditContext("mcp-test-error"),
+    )
+  }
+}
+
+export async function startOperatorMcpServerAction<TAuditContext = unknown>(
+  body: unknown,
+  options: OperatorMcpLifecycleActionOptions<TAuditContext>,
+): Promise<OperatorMcpLifecycleActionResult<TAuditContext>> {
+  try {
+    const parsedRequest = parseOperatorMcpServerActionRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return operatorMcpActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const serverName = parsedRequest.request.server
+    const status = options.service.getServerStatus()[serverName]
+    if (!status) {
+      return operatorMcpActionError(
+        404,
+        `Server ${serverName} not found in configuration`,
+        options.audit?.buildStartFailureAuditContext("server-not-found"),
+      )
+    }
+    if (status.configDisabled) {
+      return operatorMcpActionError(
+        400,
+        `Server ${serverName} is disabled in configuration`,
+        options.audit?.buildStartFailureAuditContext("server-config-disabled"),
+      )
+    }
+
+    if (!options.service.setServerRuntimeEnabled(serverName, true)) {
+      return operatorMcpActionError(
+        404,
+        `Server ${serverName} not found in configuration`,
+        options.audit?.buildStartFailureAuditContext("server-not-found"),
+      )
+    }
+
+    options.diagnostics.logInfo("operator-mcp-actions", `Operator MCP start: ${serverName}`)
+    const result = await options.service.restartServer(serverName)
+    if (!result.success) {
+      const failureReason = result.error || "Start failed"
+      return operatorMcpActionError(
+        400,
+        failureReason,
+        options.audit?.buildStartFailureAuditContext(failureReason),
+      )
+    }
+
+    return operatorMcpActionOk(
+      buildOperatorMcpStartResponse(serverName),
+      options.audit?.buildStartAuditContext(serverName),
+    )
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    options.diagnostics.logError("operator-mcp-actions", `Operator MCP start failed: ${errorMessage}`, caughtError)
+    return operatorMcpActionError(
+      500,
+      `MCP start failed: ${errorMessage}`,
+      options.audit?.buildStartFailureAuditContext("mcp-start-error"),
+    )
+  }
+}
+
+export async function stopOperatorMcpServerAction<TAuditContext = unknown>(
+  body: unknown,
+  options: OperatorMcpLifecycleActionOptions<TAuditContext>,
+): Promise<OperatorMcpLifecycleActionResult<TAuditContext>> {
+  try {
+    const parsedRequest = parseOperatorMcpServerActionRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return operatorMcpActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const serverName = parsedRequest.request.server
+    const status = options.service.getServerStatus()[serverName]
+    if (!status) {
+      return operatorMcpActionError(
+        404,
+        `Server ${serverName} not found in configuration`,
+        options.audit?.buildStopFailureAuditContext("server-not-found"),
+      )
+    }
+    if (status.configDisabled) {
+      return operatorMcpActionError(
+        400,
+        `Server ${serverName} is disabled in configuration`,
+        options.audit?.buildStopFailureAuditContext("server-config-disabled"),
+      )
+    }
+
+    if (!options.service.setServerRuntimeEnabled(serverName, false)) {
+      return operatorMcpActionError(
+        404,
+        `Server ${serverName} not found in configuration`,
+        options.audit?.buildStopFailureAuditContext("server-not-found"),
+      )
+    }
+
+    options.diagnostics.logInfo("operator-mcp-actions", `Operator MCP stop: ${serverName}`)
+    const result = await options.service.stopServer(serverName)
+    if (!result.success) {
+      const failureReason = result.error || "Stop failed"
+      return operatorMcpActionError(
+        400,
+        failureReason,
+        options.audit?.buildStopFailureAuditContext(failureReason),
+      )
+    }
+
+    return operatorMcpActionOk(
+      buildOperatorMcpStopResponse(serverName),
+      options.audit?.buildStopAuditContext(serverName),
+    )
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    options.diagnostics.logError("operator-mcp-actions", `Operator MCP stop failed: ${errorMessage}`, caughtError)
+    return operatorMcpActionError(
+      500,
+      `MCP stop failed: ${errorMessage}`,
+      options.audit?.buildStopFailureAuditContext("mcp-stop-error"),
+    )
+  }
+}
+
+export async function restartOperatorMcpServerAction<TAuditContext = unknown>(
+  body: unknown,
+  options: OperatorMcpLifecycleActionOptions<TAuditContext>,
+): Promise<OperatorMcpLifecycleActionResult<TAuditContext>> {
+  try {
+    const parsedRequest = parseOperatorMcpServerActionRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return operatorMcpActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const serverName = parsedRequest.request.server
+    options.diagnostics.logInfo("operator-mcp-actions", `Operator MCP restart: ${serverName}`)
+    const result = await options.service.restartServer(serverName)
+    if (!result.success) {
+      const failureReason = result.error || "Restart failed"
+      return operatorMcpActionError(
+        400,
+        failureReason,
+        options.audit?.buildRestartFailureAuditContext(failureReason),
+      )
+    }
+
+    return operatorMcpActionOk(
+      buildOperatorMcpRestartResponse(serverName),
+      options.audit?.buildRestartAuditContext(serverName),
+    )
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    options.diagnostics.logError("operator-mcp-actions", `Operator MCP restart failed: ${errorMessage}`, caughtError)
+    return operatorMcpActionError(
+      500,
+      `MCP restart failed: ${errorMessage}`,
+      options.audit?.buildRestartFailureAuditContext("mcp-restart-error"),
     )
   }
 }

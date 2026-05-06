@@ -28,8 +28,12 @@ import {
   parseMcpMaxIterationsDraft,
   parseMcpServerToggleRequestBody,
   setOperatorMcpToolEnabledAction,
+  startOperatorMcpServerAction,
+  stopOperatorMcpServerAction,
   testOperatorMcpServerAction,
+  restartOperatorMcpServerAction,
   toggleMcpServerAction,
+  type OperatorMcpLifecycleActionOptions,
   type OperatorMcpMutationActionOptions,
   type OperatorMcpTestActionOptions,
   type McpServerStatusMapLike,
@@ -578,6 +582,202 @@ describe("MCP API helpers", () => {
     })
     expect(testedServers).toEqual(["filesystem", "failing"])
     expect(logs).toContain("Failed to test MCP server throw: test denied")
+  })
+
+  it("runs operator MCP lifecycle routes through shared service adapters", async () => {
+    const status: McpServerStatusMapLike = {
+      filesystem: {
+        connected: true,
+        toolCount: 2,
+        runtimeEnabled: true,
+        configDisabled: false,
+      },
+      disabled: {
+        connected: false,
+        toolCount: 0,
+        configDisabled: true,
+      },
+      "runtime-missing": {
+        connected: false,
+        toolCount: 0,
+      },
+      "start-fails": {
+        connected: false,
+        toolCount: 0,
+      },
+      "stop-fails": {
+        connected: true,
+        toolCount: 0,
+      },
+      "throw-restart": {
+        connected: false,
+        toolCount: 0,
+      },
+      "throw-stop": {
+        connected: true,
+        toolCount: 0,
+      },
+    }
+    const runtimeToggles: Array<{ serverName: string; enabled: boolean }> = []
+    const lifecycleCalls: string[] = []
+    const logs: string[] = []
+    type LifecycleAuditContext = {
+      action: string
+      success: boolean
+      serverName?: string
+      failureReason?: string
+    }
+    const options: OperatorMcpLifecycleActionOptions<LifecycleAuditContext> = {
+      service: {
+        getServerStatus: () => status,
+        setServerRuntimeEnabled: (serverName: string, enabled: boolean) => {
+          runtimeToggles.push({ serverName, enabled })
+          return serverName !== "runtime-missing"
+        },
+        restartServer: async (serverName: string) => {
+          lifecycleCalls.push(`restart:${serverName}`)
+          if (serverName === "throw-restart") throw new Error("restart denied")
+          if (serverName === "start-fails") return { success: false, error: "start refused" }
+          if (serverName === "restart-fails") return { success: false }
+          return { success: true }
+        },
+        stopServer: async (serverName: string) => {
+          lifecycleCalls.push(`stop:${serverName}`)
+          if (serverName === "throw-stop") throw new Error("stop denied")
+          if (serverName === "stop-fails") return { success: false, error: "stop refused" }
+          return { success: true }
+        },
+      },
+      diagnostics: {
+        logError: (_source: string, message: string) => { logs.push(message) },
+        logInfo: (_source: string, message: string) => { logs.push(message) },
+        getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error),
+      },
+      audit: {
+        buildStartAuditContext: (serverName: string) => ({ action: "mcp-start", success: true, serverName }),
+        buildStartFailureAuditContext: (failureReason: string) => ({ action: "mcp-start", success: false, failureReason }),
+        buildStopAuditContext: (serverName: string) => ({ action: "mcp-stop", success: true, serverName }),
+        buildStopFailureAuditContext: (failureReason: string) => ({ action: "mcp-stop", success: false, failureReason }),
+        buildRestartAuditContext: (serverName: string) => ({ action: "mcp-restart", success: true, serverName }),
+        buildRestartFailureAuditContext: (failureReason: string) => ({ action: "mcp-restart", success: false, failureReason }),
+      },
+    }
+
+    await expect(startOperatorMcpServerAction({}, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "Missing server name" },
+    })
+    await expect(startOperatorMcpServerAction({ server: "missing" }, options)).resolves.toEqual({
+      statusCode: 404,
+      body: { error: "Server missing not found in configuration" },
+      auditContext: { action: "mcp-start", success: false, failureReason: "server-not-found" },
+    })
+    await expect(startOperatorMcpServerAction({ server: "disabled" }, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "Server disabled is disabled in configuration" },
+      auditContext: { action: "mcp-start", success: false, failureReason: "server-config-disabled" },
+    })
+    await expect(startOperatorMcpServerAction({ server: "runtime-missing" }, options)).resolves.toEqual({
+      statusCode: 404,
+      body: { error: "Server runtime-missing not found in configuration" },
+      auditContext: { action: "mcp-start", success: false, failureReason: "server-not-found" },
+    })
+    await expect(startOperatorMcpServerAction({ server: "start-fails" }, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "start refused" },
+      auditContext: { action: "mcp-start", success: false, failureReason: "start refused" },
+    })
+    await expect(startOperatorMcpServerAction({ server: "filesystem" }, options)).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "mcp-start",
+        server: "filesystem",
+        message: "Started filesystem",
+      },
+      auditContext: { action: "mcp-start", success: true, serverName: "filesystem" },
+    })
+    await expect(startOperatorMcpServerAction({ server: "throw-restart" }, options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "MCP start failed: restart denied" },
+      auditContext: { action: "mcp-start", success: false, failureReason: "mcp-start-error" },
+    })
+
+    await expect(stopOperatorMcpServerAction({}, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "Missing server name" },
+    })
+    await expect(stopOperatorMcpServerAction({ server: "stop-fails" }, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "stop refused" },
+      auditContext: { action: "mcp-stop", success: false, failureReason: "stop refused" },
+    })
+    await expect(stopOperatorMcpServerAction({ server: "filesystem" }, options)).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "mcp-stop",
+        server: "filesystem",
+        message: "Stopped filesystem",
+      },
+      auditContext: { action: "mcp-stop", success: true, serverName: "filesystem" },
+    })
+    await expect(stopOperatorMcpServerAction({ server: "throw-stop" }, options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "MCP stop failed: stop denied" },
+      auditContext: { action: "mcp-stop", success: false, failureReason: "mcp-stop-error" },
+    })
+
+    await expect(restartOperatorMcpServerAction({}, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "Missing server name" },
+    })
+    await expect(restartOperatorMcpServerAction({ server: "restart-fails" }, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "Restart failed" },
+      auditContext: { action: "mcp-restart", success: false, failureReason: "Restart failed" },
+    })
+    await expect(restartOperatorMcpServerAction({ server: "filesystem" }, options)).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "mcp-restart",
+        server: "filesystem",
+      },
+      auditContext: { action: "mcp-restart", success: true, serverName: "filesystem" },
+    })
+    await expect(restartOperatorMcpServerAction({ server: "throw-restart" }, options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "MCP restart failed: restart denied" },
+      auditContext: { action: "mcp-restart", success: false, failureReason: "mcp-restart-error" },
+    })
+
+    expect(runtimeToggles).toEqual([
+      { serverName: "runtime-missing", enabled: true },
+      { serverName: "start-fails", enabled: true },
+      { serverName: "filesystem", enabled: true },
+      { serverName: "throw-restart", enabled: true },
+      { serverName: "stop-fails", enabled: false },
+      { serverName: "filesystem", enabled: false },
+      { serverName: "throw-stop", enabled: false },
+    ])
+    expect(lifecycleCalls).toEqual([
+      "restart:start-fails",
+      "restart:filesystem",
+      "restart:throw-restart",
+      "stop:stop-fails",
+      "stop:filesystem",
+      "stop:throw-stop",
+      "restart:restart-fails",
+      "restart:filesystem",
+      "restart:throw-restart",
+    ])
+    expect(logs).toContain("Operator MCP start: filesystem")
+    expect(logs).toContain("Operator MCP stop: filesystem")
+    expect(logs).toContain("Operator MCP restart: filesystem")
+    expect(logs).toContain("Operator MCP start failed: restart denied")
+    expect(logs).toContain("Operator MCP stop failed: stop denied")
+    expect(logs).toContain("Operator MCP restart failed: restart denied")
   })
 
   it("parses injected MCP tool call requests", () => {
