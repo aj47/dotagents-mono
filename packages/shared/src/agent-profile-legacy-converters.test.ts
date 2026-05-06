@@ -4,9 +4,80 @@ import {
   legacyAcpAgentConfigToAgentProfileAtTime,
   legacyPersonaToAgentProfile,
   legacyProfileToAgentProfile,
+  type LegacyAcpAgentConfig,
+  type LegacyPersonaRecord,
+  type LegacyPersonasData,
+  type LegacyProfilesData,
 } from "./agent-profile-legacy-converters"
 
+function assertType<T>(_value: T): void {
+  // Compile-time assertion only.
+}
+
 describe("agent profile legacy converters", () => {
+  it("exposes legacy storage contracts used by desktop migrations", () => {
+    const profiles: LegacyProfilesData = {
+      currentProfileId: "profile-1",
+      profiles: [
+        {
+          id: "profile-1",
+          name: "Default",
+          guidelines: "Use concise responses.",
+          createdAt: 10,
+          updatedAt: 20,
+          modelConfig: {
+            agentProviderId: "openai",
+          },
+        },
+      ],
+    }
+
+    const persona: LegacyPersonaRecord = {
+      id: "agent-1",
+      name: "research",
+      displayName: "Research",
+      description: "Researches topics",
+      systemPrompt: "Research carefully.",
+      guidelines: "Cite sources.",
+      mcpServerConfig: {
+        enabledServers: ["browser"],
+      },
+      modelConfig: {
+        providerId: "openai",
+        model: "gpt-4o",
+      },
+      skillsConfig: {
+        enabledSkillIds: ["citations"],
+      },
+      connection: {
+        type: "acp-agent",
+        acpAgentName: "research-backend",
+      },
+      isStateful: false,
+      enabled: true,
+      createdAt: 30,
+      updatedAt: 40,
+    }
+
+    const personas: LegacyPersonasData = {
+      personas: [persona],
+    }
+
+    const acpAgent: LegacyAcpAgentConfig = {
+      name: "claude",
+      displayName: "Claude",
+      connection: {
+        type: "acp",
+        command: "claude",
+      },
+    }
+
+    assertType<LegacyProfilesData>(profiles)
+    assertType<LegacyPersonasData>(personas)
+    assertType<LegacyAcpAgentConfig>(acpAgent)
+    expect(personas.personas[0].connection.acpAgentName).toBe("research-backend")
+  })
+
   it("converts a legacy chat profile into an agent profile", () => {
     expect(legacyProfileToAgentProfile({
       id: "profile-1",

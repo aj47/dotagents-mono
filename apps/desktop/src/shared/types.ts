@@ -10,16 +10,18 @@ import type {
 } from '@dotagents/shared/types'
 import type { AgentProfile as SharedAgentProfile } from '@dotagents/shared/agent-profile-domain'
 import type {
-  ProfileMcpServerConfig as SharedProfileMcpServerConfig,
-  ProfileModelConfig as SharedProfileModelConfig,
-  ProfileSkillsConfig as SharedProfileSkillsConfig,
-} from '@dotagents/shared/agent-profile-session-snapshot'
-import type {
   AgentConversationState,
 } from '@dotagents/shared/conversation-state'
 import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
 import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
 import type { PredefinedPrompt as SharedPredefinedPrompt } from '@dotagents/shared/api-types'
+import type {
+  LegacyAcpAgentConfig,
+  LegacyPersonaRecord,
+  LegacyPersonasData,
+  LegacyProfileRecord,
+  LegacyProfilesData,
+} from '@dotagents/shared/agent-profile-legacy-converters'
 import {
   legacyAcpAgentConfigToAgentProfile as sharedLegacyAcpAgentConfigToAgentProfile,
   legacyPersonaToAgentProfile as sharedLegacyPersonaToAgentProfile,
@@ -40,6 +42,7 @@ export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from
 export type { KnowledgeNoteDateFilter, KnowledgeNoteGroupSummary, KnowledgeNoteSeriesSummary, KnowledgeNoteSort, KnowledgeNotesOverview } from '@dotagents/shared/knowledge-note-grouping'
 export type { PushNotificationToken } from '@dotagents/shared/push-notifications'
 export type { EnhancedModelInfo, ModelInfo, ModelsDevCost, ModelsDevData, ModelsDevLimit, ModelsDevModalities, ModelsDevModel, ModelsDevProvider } from '@dotagents/shared/api-types'
+export type { LegacyAcpAgentConfig, LegacyPersonaRecord, LegacyPersonasData, LegacyProfileRecord, LegacyProfilesData } from '@dotagents/shared/agent-profile-legacy-converters'
 
 export type RecordingHistoryItem = {
   id: string
@@ -56,161 +59,25 @@ export type RecordingHistoryItem = {
 export type { QueuedMessage, MessageQueue } from '@dotagents/shared/message-queue-utils'
 
 // Profile Management Types
-export type Profile = {
-  id: string
-  name: string
-  guidelines: string
-  createdAt: number
-  updatedAt: number
-  isDefault?: boolean
-  mcpServerConfig?: SharedProfileMcpServerConfig
-  modelConfig?: SharedProfileModelConfig
-  skillsConfig?: SharedProfileSkillsConfig
-  systemPrompt?: string
-}
+export type Profile = LegacyProfileRecord
 
-export type ProfilesData = {
-  profiles: Profile[]
-  currentProfileId?: string
-}
+export type ProfilesData = LegacyProfilesData
 
 // ============================================================================
 // Agent Management Types (legacy Persona types kept for backward compatibility)
 // ============================================================================
 
 /**
- * MCP server and tool access configuration for an agent.
- * Controls which MCP servers and tools the agent can access.
- */
-type PersonaMcpServerConfig = {
-  /** MCP servers enabled for this agent */
-  enabledServers: string[]
-  /** Specific tools disabled within enabled servers */
-  disabledTools?: string[]
-  /** Runtime tools enabled for this agent */
-  enabledRuntimeTools?: string[]
-}
-
-/**
- * Model configuration for an agent.
- * When using the built-in internal agent, this defines which LLM to use.
- * When using an external ACP agent, model config is handled by that agent.
- *
- * @deprecated Use ProfileModelConfig instead for full preset support.
- * Kept for backward compatibility with existing agent data.
- */
-type PersonaModelConfig = {
-  /** LLM provider for this agent */
-  providerId: "openai" | "groq" | "gemini" | "chatgpt-web"
-  /** Model name/identifier */
-  model: string
-  /** Optional temperature override (0-2) */
-  temperature?: number
-  /** Optional max tokens override */
-  maxTokens?: number
-}
-
-/**
- * Skills configuration for an agent.
- * Defines which skills are enabled for this agent.
- */
-type PersonaSkillsConfig = {
-  /** Skill IDs enabled for this agent */
-  enabledSkillIds: string[]
-}
-
-/**
- * Connection configuration for an agent.
- * Defines how to connect to the agent's underlying implementation.
- *
- * Two main modes:
- * 1. Built-in agent (type: "internal") - Uses DotAgents' internal agent with agent's model config
- * 2. External ACP agent (type: "acp-agent") - Delegates to a configured ACP agent by name
- */
-type PersonaConnectionConfig = {
-  /**
-   * Connection type:
-   * - "internal": Uses built-in DotAgents agent (model config from agent)
-   * - "acp-agent": Uses an external ACP agent (model config from agent settings)
-   * - "stdio": Direct stdio process (legacy, for advanced use)
-   * - "remote": Remote HTTP endpoint (legacy, for advanced use)
-   */
-  type: "internal" | "acp-agent" | "stdio" | "remote"
-  /** For acp-agent: Name of the ACP agent to use */
-  acpAgentName?: string
-  /** For stdio: command to run */
-  command?: string
-  /** For stdio: command arguments */
-  args?: string[]
-  /** For stdio: environment variables */
-  env?: Record<string, string>
-  /** For stdio: working directory */
-  cwd?: string
-  /** For remote: base URL of the agent server */
-  baseUrl?: string
-}
-
-/**
  * Legacy Persona definition (kept for backward compatibility / migration).
  * An agent represents a specialized AI assistant with specific capabilities,
  * system prompts, and tool access configurations.
  */
-export type Persona = {
-  /** Unique identifier for the agent */
-  id: string
-  /** Internal name (used for referencing) */
-  name: string
-  /** Human-readable display name */
-  displayName: string
-  /** Description of what this agent does */
-  description: string
-  /** System prompt that defines the agent's behavior */
-  systemPrompt: string
-  /** Additional guidelines for the agent */
-  guidelines: string
-  /**
-   * Dynamic properties for this agent.
-   * Exposed in the system prompt as "Property Name: Value" format.
-   */
-  properties?: Record<string, string>
-  /** MCP server and tool access configuration */
-  mcpServerConfig: PersonaMcpServerConfig
-  /**
-   * @deprecated Use profileModelConfig instead for full preset support.
-   * Kept for backward compatibility.
-   */
-  modelConfig?: PersonaModelConfig
-  /**
-   * Model configuration using the same format as profiles.
-   * Only used when connection.type is "internal".
-   * When using an external ACP agent, model is configured in agent settings.
-   */
-  profileModelConfig?: SharedProfileModelConfig
-  /** Skills configuration */
-  skillsConfig: PersonaSkillsConfig
-  /** Connection configuration for the underlying agent */
-  connection: PersonaConnectionConfig
-  /** Whether this agent maintains conversation state */
-  isStateful: boolean
-  /** Current conversation ID for stateful agents */
-  conversationId?: string
-  /** Whether this agent is enabled */
-  enabled: boolean
-  /** Whether this is a built-in agent (cannot be deleted) */
-  isBuiltIn?: boolean
-  /** Creation timestamp */
-  createdAt: number
-  /** Last update timestamp */
-  updatedAt: number
-}
+export type Persona = LegacyPersonaRecord
 
 /**
  * Storage format for agents data (legacy format).
  */
-export type PersonasData = {
-  /** List of all agents */
-  personas: Persona[]
-}
+export type PersonasData = LegacyPersonasData
 
 // ============================================================================
 // Unified Agent Profile Type
@@ -262,40 +129,9 @@ export function acpAgentConfigToAgentProfile(config: ACPAgentConfig): SharedAgen
 // ModelPreset — re-exported from shared package (superset of all platform definitions)
 export type { ModelPreset } from '@dotagents/shared/providers'
 
-// Legacy ACP Agent Configuration Types (read-only migration input)
-type ACPConnectionType = "stdio" | "remote" | "internal" | "acp"
-
 // ACPConfigOptionValue and ACPConfigOption — re-exported from @dotagents/shared (see above)
 
-export interface ACPAgentConfig {
-  // Unique identifier for the agent
-  name: string
-  // Human-readable display name
-  displayName: string
-  // Description of what the agent does
-  description?: string
-  // Whether to auto-spawn this agent on app startup
-  autoSpawn?: boolean
-  // Whether this agent is enabled
-  enabled?: boolean
-  // Whether this is a built-in internal agent (cannot be deleted)
-  isInternal?: boolean
-  // Connection configuration
-  connection: {
-    // Legacy connection type retained for one-way migration into acpx-backed profiles.
-    type: ACPConnectionType
-    // For stdio/acp: command to run (e.g., "auggie", "claude-code-acp")
-    command?: string
-    // For stdio/acp: command arguments (e.g., ["--acp"])
-    args?: string[]
-    // For stdio/acp: environment variables
-    env?: Record<string, string>
-    // For stdio/acp: working directory to spawn the agent in
-    cwd?: string
-    // For remote: base URL of the ACP server
-    baseUrl?: string
-  }
-}
+export type ACPAgentConfig = LegacyAcpAgentConfig
 
 export type Config = {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"

@@ -27,8 +27,16 @@ export type LegacyPersonaSkillsConfigLike = {
   enabledSkillIds: string[]
 }
 
+export type LegacyPersonaModelConfigLike = {
+  providerId: "openai" | "groq" | "gemini" | "chatgpt-web"
+  model: string
+  temperature?: number
+  maxTokens?: number
+}
+
 export type LegacyPersonaConnectionLike = {
   type: "internal" | "acp-agent" | "stdio" | "remote"
+  acpAgentName?: string
   command?: string
   args?: string[]
   env?: Record<string, string>
@@ -45,6 +53,7 @@ export type LegacyPersonaRecordLike = {
   guidelines: string
   properties?: Record<string, string>
   mcpServerConfig: LegacyPersonaMcpServerConfigLike
+  modelConfig?: LegacyPersonaModelConfigLike
   profileModelConfig?: AgentProfileSessionSnapshotModelConfigLike
   skillsConfig: LegacyPersonaSkillsConfigLike
   connection: LegacyPersonaConnectionLike
@@ -72,6 +81,21 @@ export type LegacyAcpAgentConfigRecordLike = {
     baseUrl?: string
   }
 }
+
+export type LegacyProfileRecord = LegacyProfileRecordLike
+
+export type LegacyProfilesData = {
+  profiles: LegacyProfileRecord[]
+  currentProfileId?: string
+}
+
+export type LegacyPersonaRecord = LegacyPersonaRecordLike
+
+export type LegacyPersonasData = {
+  personas: LegacyPersonaRecord[]
+}
+
+export type LegacyAcpAgentConfig = LegacyAcpAgentConfigRecordLike
 
 export type ConvertedAgentProfileConnectionType = "internal" | "acpx" | "remote"
 
