@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { extractSubAgentToolDisplayContent, stringifySubAgentToolResultContent } from "./delegation-tool-display"
+import { extractSubAgentToolDisplayContent, stringifySubAgentToolResultContent } from "@dotagents/shared/delegation-tool-display"
 
 describe("delegation-tool-display", () => {
   it("flattens text content blocks into readable tool output", () => {
