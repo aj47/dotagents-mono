@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
+  DEFAULT_MAIN_AGENT_MODE,
+  MAIN_AGENT_MODE_OPTIONS,
   getAcpxMainAgentOptions,
   getSelectableMainAcpAgents,
+  isMainAgentModeUpdateValue,
   resolveMainAcpAgentSelection,
   resolvePreferredTopLevelAcpAgentSelection,
 } from "./main-agent-selection"
@@ -21,6 +24,15 @@ describe("main agent config contracts", () => {
 
     assertType<MainAgentConfig>(config)
     expect(config.mainAgentMode).toBe("acpx")
+  })
+
+  it("describes main agent mode defaults and update values", () => {
+    expect(DEFAULT_MAIN_AGENT_MODE).toBe("api")
+    expect(MAIN_AGENT_MODE_OPTIONS).toEqual(["api", "acpx"])
+    expect(isMainAgentModeUpdateValue("api")).toBe(true)
+    expect(isMainAgentModeUpdateValue("acpx")).toBe(true)
+    expect(isMainAgentModeUpdateValue("acp")).toBe(false)
+    expect(isMainAgentModeUpdateValue(undefined)).toBe(false)
   })
 })
 

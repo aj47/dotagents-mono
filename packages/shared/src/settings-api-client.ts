@@ -8,6 +8,10 @@ import {
   upsertModelPresetOverride,
 } from './model-presets';
 import {
+  DEFAULT_MAIN_AGENT_MODE,
+  isMainAgentModeUpdateValue,
+} from './main-agent-selection';
+import {
   MCP_MAX_ITERATIONS_DEFAULT,
   normalizeMcpMaxIterationsValue,
   type McpServerConfigExportResponse,
@@ -364,7 +368,7 @@ export function buildSettingsResponse(
     ttsConvertMarkdown: cfg.ttsConvertMarkdown ?? true,
     ttsUseLLMPreprocessing: cfg.ttsUseLLMPreprocessing ?? false,
     ttsLLMPreprocessingProviderId: cfg.ttsLLMPreprocessingProviderId,
-    mainAgentMode: cfg.mainAgentMode ?? 'api',
+    mainAgentMode: cfg.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE,
     mcpMessageQueueEnabled: cfg.mcpMessageQueueEnabled ?? true,
     mcpVerifyCompletionEnabled: cfg.mcpVerifyCompletionEnabled ?? true,
     mcpFinalSummaryEnabled: cfg.mcpFinalSummaryEnabled ?? false,
@@ -830,7 +834,7 @@ export function buildSettingsUpdatePatch(
     }
   }
 
-  if (typeof requestBody.mainAgentMode === 'string' && ['api', 'acpx'].includes(requestBody.mainAgentMode)) updates.mainAgentMode = requestBody.mainAgentMode;
+  if (isMainAgentModeUpdateValue(requestBody.mainAgentMode)) updates.mainAgentMode = requestBody.mainAgentMode;
   if (typeof requestBody.mcpMessageQueueEnabled === 'boolean') updates.mcpMessageQueueEnabled = requestBody.mcpMessageQueueEnabled;
   if (typeof requestBody.mcpVerifyCompletionEnabled === 'boolean') updates.mcpVerifyCompletionEnabled = requestBody.mcpVerifyCompletionEnabled;
   if (typeof requestBody.mcpFinalSummaryEnabled === 'boolean') updates.mcpFinalSummaryEnabled = requestBody.mcpFinalSummaryEnabled;

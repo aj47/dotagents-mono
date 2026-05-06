@@ -13,6 +13,11 @@ import {
   MCP_MAX_ITERATIONS_MIN,
   parseMcpMaxIterationsDraft,
 } from "@dotagents/shared/mcp-api"
+import {
+  DEFAULT_MAIN_AGENT_MODE,
+  MAIN_AGENT_MODE_OPTIONS,
+  type MainAgentMode,
+} from "@dotagents/shared/main-agent-selection"
 import type { STT_PROVIDER_ID } from "@dotagents/shared/providers"
 import { SUPPORTED_LANGUAGES } from "@dotagents/shared/languages"
 import { Textarea } from "@renderer/components/ui/textarea"
@@ -392,17 +397,20 @@ export function Component() {
           {/* Main Agent Mode Selection */}
           <Control label={<ControlLabel label="Main Agent Mode" tooltip="Choose how the main agent processes your requests. API mode uses external LLM APIs (OpenAI, Groq, Gemini). acpx mode routes prompts to a configured acpx agent profile like Codex or Claude." />} className="px-3">
             <Select
-              value={configQuery.data?.mainAgentMode || "api"}
-              onValueChange={(value: "api" | "acpx") => {
-                saveConfig({ mainAgentMode: value })
+              value={configQuery.data?.mainAgentMode || DEFAULT_MAIN_AGENT_MODE}
+              onValueChange={(value) => {
+                saveConfig({ mainAgentMode: value as MainAgentMode })
               }}
             >
               <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="api">API (OpenAI, Groq, Gemini)</SelectItem>
-                <SelectItem value="acpx">acpx Agent</SelectItem>
+                {MAIN_AGENT_MODE_OPTIONS.map((mode) => (
+                  <SelectItem key={mode} value={mode}>
+                    {mode === DEFAULT_MAIN_AGENT_MODE ? "API (OpenAI, Groq, Gemini)" : "acpx Agent"}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Control>

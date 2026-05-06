@@ -60,6 +60,11 @@ import {
   PARAKEET_NUM_THREAD_OPTIONS,
   getDefaultSttModel,
 } from '@dotagents/shared/stt-models';
+import {
+  DEFAULT_MAIN_AGENT_MODE,
+  MAIN_AGENT_MODE_OPTIONS,
+  type MainAgentMode,
+} from '@dotagents/shared/main-agent-selection';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
 import {
   BUNDLE_COMPONENT_OPTIONS,
@@ -3718,18 +3723,18 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="agentSettings" title="Agent Settings">
                 <Text style={styles.label}>Main Agent Mode</Text>
                 <View style={styles.providerSelector}>
-                  {(['api', 'acpx'] as const).map((mode) => (
+                  {MAIN_AGENT_MODE_OPTIONS.map((mode) => (
                     <Pressable
                       key={mode}
                       style={[
                         styles.providerOption,
-                        remoteSettings.mainAgentMode === mode && styles.providerOptionActive,
+                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === mode && styles.providerOptionActive,
                       ]}
-                      onPress={() => handleRemoteSettingUpdate('mainAgentMode', mode)}
+                      onPress={() => handleRemoteSettingUpdate('mainAgentMode', mode as MainAgentMode)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        remoteSettings.mainAgentMode === mode && styles.providerOptionTextActive,
+                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === mode && styles.providerOptionTextActive,
                       ]}>
                         {mode.toUpperCase()}
                       </Text>
@@ -3741,7 +3746,7 @@ export default function SettingsScreen({ navigation }: any) {
                 </Text>
 
                 {/* acpx-specific settings - only show when acpx mode selected */}
-                {remoteSettings.mainAgentMode === 'acpx' && (
+                {(remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === 'acpx' && (
                   <>
                     <Text style={styles.label}>acpx Agent</Text>
                     {availableAcpMainAgents.length > 0 ? (

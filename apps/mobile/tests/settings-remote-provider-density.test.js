@@ -165,6 +165,18 @@ test('lets mobile configure cloud desktop STT model details', () => {
   assert.match(speechToTextSection, /handleRemoteSettingUpdate\('groqSttPrompt', v\)/);
 });
 
+test('uses shared main agent mode options in mobile desktop settings', () => {
+  const agentSettingsSection = extractBetween(
+    '<CollapsibleSection id="agentSettings" title="Agent Settings">',
+    '<CollapsibleSection id="skills" title="Skills">'
+  );
+
+  assert.match(settingsSource, /MAIN_AGENT_MODE_OPTIONS/);
+  assert.match(settingsSource, /DEFAULT_MAIN_AGENT_MODE/);
+  assert.match(agentSettingsSection, /handleRemoteSettingUpdate\('mainAgentMode', mode as MainAgentMode\)/);
+  assert.match(agentSettingsSection, /\(remoteSettings\.mainAgentMode \?\? DEFAULT_MAIN_AGENT_MODE\) === 'acpx'/);
+});
+
 test('lets mobile configure desktop local trace logging', () => {
   const langfuseSection = extractBetween(
     '<CollapsibleSection id="langfuse" title="Langfuse">',

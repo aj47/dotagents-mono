@@ -4,8 +4,10 @@ export type MainAcpAgentOption = {
 }
 
 export type MainAgentOption = MainAcpAgentOption
-export type MainAgentMode = "api" | "acpx"
+export const MAIN_AGENT_MODE_OPTIONS = ["api", "acpx"] as const
+export type MainAgentMode = (typeof MAIN_AGENT_MODE_OPTIONS)[number]
 export type LegacyMainAgentMode = MainAgentMode | "acp"
+export const DEFAULT_MAIN_AGENT_MODE: MainAgentMode = "api"
 
 export interface MainAgentConfig {
   mainAgentMode?: MainAgentMode
@@ -59,6 +61,10 @@ function toLookupKey(value: string | undefined): string {
 
 function isEnabled(candidate: { enabled?: boolean }): boolean {
   return candidate.enabled !== false
+}
+
+export function isMainAgentModeUpdateValue(value: unknown): value is MainAgentMode {
+  return typeof value === "string" && MAIN_AGENT_MODE_OPTIONS.includes(value as MainAgentMode)
 }
 
 export function isMainAcpProfileCandidate(profile: MainAcpProfileCandidate): boolean {
