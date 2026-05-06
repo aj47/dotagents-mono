@@ -40,10 +40,16 @@ vi.mock("./state", () => ({
 vi.mock("./conversation-service", () => ({
   conversationService: { getMostRecentConversation: vi.fn() },
 }))
-vi.mock("../shared/key-utils", () => ({
-  getEffectiveShortcut: vi.fn(() => undefined),
-  matchesKeyCombo: vi.fn(() => false),
-}))
+vi.mock("@dotagents/shared/key-utils", async () => {
+  const actual = await vi.importActual<typeof import("@dotagents/shared/key-utils")>(
+    "@dotagents/shared/key-utils",
+  )
+  return {
+    ...actual,
+    getEffectiveShortcut: vi.fn(() => undefined),
+    matchesKeyCombo: vi.fn(() => false),
+  }
+})
 vi.mock("./debug", () => ({ isDebugKeybinds: vi.fn(() => false), logKeybinds: vi.fn() }))
 
 class FakeChildProcess extends EventEmitter {

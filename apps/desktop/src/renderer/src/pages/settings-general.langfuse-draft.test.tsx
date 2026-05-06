@@ -218,8 +218,12 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
       return parsedValue
     },
   }))
-  vi.doMock("@shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))
-  vi.doMock("../shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))
+  vi.doMock("@dotagents/shared/key-utils", () => ({
+    DEFAULT_TEXT_INPUT_ENABLED: true,
+    DEFAULT_TEXT_INPUT_SHORTCUT: "ctrl-t",
+    getEffectiveShortcut: () => "",
+    formatKeyComboForDisplay: () => "",
+  }))
   vi.doMock("@renderer/hooks/use-audio-devices", () => ({
     useAudioDevices: () => ({ inputDevices: [], outputDevices: [], error: null, refresh: vi.fn() }),
   }))

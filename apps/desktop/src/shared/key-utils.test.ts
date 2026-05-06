@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   formatKeyComboForDisplay,
   matchesKeyCombo,
-} from "./key-utils"
+} from "@dotagents/shared/key-utils"
 
 describe("matchesKeyCombo", () => {
   it("matches normalized aliases for event keys and stored shortcuts", () => {
