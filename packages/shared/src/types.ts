@@ -147,3 +147,18 @@ export interface LoopConfig {
   /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
   schedule?: LoopSchedule;
 }
+
+export interface AgentSkill {
+  id: string;
+  name: string;
+  description: string;
+  instructions: string;
+  createdAt: number;
+  updatedAt: number;
+  source?: 'local' | 'imported';
+  filePath?: string;
+}
+
+export interface AgentSkillsData {
+  skills: AgentSkill[];
+}

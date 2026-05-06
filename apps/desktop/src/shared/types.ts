@@ -19,7 +19,7 @@ import {
   legacyProfileToAgentProfile as sharedLegacyProfileToAgentProfile,
 } from '@dotagents/shared/agent-profile-legacy-converters'
 
-export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule } from '@dotagents/shared/types'
+export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData } from '@dotagents/shared/types'
 export type { AgentConversationState } from '@dotagents/shared/conversation-state'
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared/agent-progress'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '@dotagents/core'
@@ -950,24 +950,6 @@ export interface ACPAgentConfig {
     // For remote: base URL of the ACP server
     baseUrl?: string
   }
-}
-
-// Agent Skills Types
-// Skills are instruction files that can be loaded dynamically to improve AI performance on specialized tasks
-// Based on Anthropic's Agent Skills specification (formerly Claude Skills)
-export interface AgentSkill {
-  id: string
-  name: string
-  description: string
-  instructions: string // The markdown content with instructions
-  createdAt: number
-  updatedAt: number
-  source?: "local" | "imported" // Where the skill came from
-  filePath?: string // Path to the SKILL.md file if loaded from disk
-}
-
-export interface AgentSkillsData {
-  skills: AgentSkill[]
 }
 
 export type Config = {

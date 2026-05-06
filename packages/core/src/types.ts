@@ -38,23 +38,7 @@ export interface KnowledgeNote {
   entryType?: KnowledgeNoteEntryType
 }
 
-// ============================================================================
-// Agent Skill
-// ============================================================================
-export interface AgentSkill {
-  id: string
-  name: string
-  description: string
-  instructions: string
-  createdAt: number
-  updatedAt: number
-  source?: "local" | "imported"
-  filePath?: string
-}
-
-export interface AgentSkillsData {
-  skills: AgentSkill[]
-}
+export type { AgentSkill, AgentSkillsData } from '@dotagents/shared/types'
 
 export type { LoopConfig, LoopSchedule } from '@dotagents/shared/types'
 
