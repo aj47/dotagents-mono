@@ -93,3 +93,29 @@ export function normalizeError(error: unknown, fallback = "Unknown error"): Erro
 
   return new Error(message)
 }
+
+export function cleanErrorMessage(errorText: string): string {
+  const lines = errorText.split("\n")
+  const cleanedLines: string[] = []
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index]
+    const trimmed = line.trim()
+    if (trimmed.startsWith("at ")) continue
+    if (/^\s*at\s+.*\.(js|ts|mjs):\d+/.test(line)) continue
+    if (cleanedLines.length > 0 && trimmed === "") {
+      const previousLine = lines[index - 1]?.trim()
+      if (previousLine?.startsWith("at ")) continue
+    }
+    cleanedLines.push(line)
+  }
+
+  let cleaned = cleanedLines.join("\n").trim()
+  cleaned = cleaned.replace(/(\w+Error):\s*\1:/g, "$1:")
+
+  if (cleaned.length > 500) {
+    cleaned = `${cleaned.substring(0, 500)}...`
+  }
+
+  return cleaned
+}

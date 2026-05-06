@@ -91,6 +91,7 @@ import {
   normalizeAgentConversationState,
   type AgentConversationState,
 } from "@dotagents/shared/conversation-state"
+import { cleanErrorMessage } from "@dotagents/shared/error-utils"
 
 const AGENT_PROGRESS_CONVERSATION_HISTORY_WINDOW_SIZE = 120
 const INTERNAL_COMPLETION_SUMMARY_REGEX = /^(?:internal\b|completion metadata\b|internal completion\b|internal stop\b)/i
@@ -103,41 +104,6 @@ const HISTORICAL_CONTEXT_GUARD_PROMPT =
 function isDeliverableCompletionSummary(summary: string): boolean {
   const trimmed = summary.trim()
   return isDeliverableResponseContent(trimmed) && !INTERNAL_COMPLETION_SUMMARY_REGEX.test(trimmed)
-}
-
-/**
- * Clean error message by removing stack traces and noise
- */
-function cleanErrorMessage(errorText: string): string {
-  // Remove stack traces (lines starting with "at " after an error)
-  const lines = errorText.split('\n')
-  const cleanedLines: string[] = []
-
-  for (const line of lines) {
-    const trimmed = line.trim()
-    // Skip stack trace lines
-    if (trimmed.startsWith('at ')) continue
-    // Skip file path lines
-    if (trimmed.match(/^\s*at\s+.*\.(js|ts|mjs):\d+/)) continue
-    // Skip empty lines in stack traces
-    if (cleanedLines.length > 0 && trimmed === '' && lines.indexOf(line) > 0) {
-      const prevLine = lines[lines.indexOf(line) - 1]?.trim()
-      if (prevLine?.startsWith('at ')) continue
-    }
-    cleanedLines.push(line)
-  }
-
-  let cleaned = cleanedLines.join('\n').trim()
-
-  // Remove duplicate error class names (e.g., "CodeExecutionTimeoutError: Code execution timed out")
-  cleaned = cleaned.replace(/(\w+Error):\s*\1:/g, '$1:')
-
-  // Truncate if still too long
-  if (cleaned.length > 500) {
-    cleaned = cleaned.substring(0, 500) + '...'
-  }
-
-  return cleaned
 }
 
 function getExpectedStopReason(error: unknown, sessionId?: string): string | null {

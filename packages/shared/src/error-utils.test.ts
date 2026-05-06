@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getErrorMessage, normalizeError } from './error-utils'
+import { cleanErrorMessage, getErrorMessage, normalizeError } from './error-utils'
 
 describe('error-utils', () => {
   it('returns fallback for nullish thrown values', () => {
@@ -85,5 +85,23 @@ describe('error-utils', () => {
     expect(normalized).not.toBe(original)
     expect(normalized.message).toBe('Fallback message')
     expect((normalized as Error & { cause?: unknown }).cause).toBe(original)
+  })
+
+  it('cleans stack traces from user-facing error messages', () => {
+    expect(cleanErrorMessage([
+      'CodeExecutionTimeoutError: Code execution timed out',
+      '    at run (/tmp/tool.ts:12:3)',
+      '    at processTicksAndRejections (node:internal/process/task_queues:95:5)',
+      '',
+      'Additional context',
+    ].join('\n'))).toBe('CodeExecutionTimeoutError: Code execution timed out\nAdditional context')
+  })
+
+  it('collapses duplicated error class prefixes and truncates long messages', () => {
+    expect(cleanErrorMessage('ProviderError: ProviderError: unavailable')).toBe('ProviderError: unavailable')
+
+    const cleaned = cleanErrorMessage('x'.repeat(600))
+    expect(cleaned).toHaveLength(503)
+    expect(cleaned.endsWith('...')).toBe(true)
   })
 })
