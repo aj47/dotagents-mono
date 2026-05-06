@@ -18,7 +18,11 @@ import {
   detectAgentProfilePresetKey,
   type AgentProfilePresetKey,
 } from "@dotagents/shared/agent-profile-presets"
-import { sanitizeAgentProfileConnection } from "@dotagents/shared/agent-profile-connection"
+import {
+  type AgentEditConnectionType,
+  normalizeAgentEditConnectionType,
+  sanitizeAgentProfileConnection,
+} from "@dotagents/shared/agent-profile-connection"
 import {
   formatAgentProfilePropertiesForRequest,
   normalizeAgentProfileProperties,
@@ -73,11 +77,11 @@ import { BundlePublishDialog } from "@renderer/components/bundle-publish-dialog"
 import { invalidateAgentProfileQueries } from "@renderer/lib/invalidate-agent-profile-queries"
 import { SandboxSlotSwitcher } from "@renderer/components/sandbox-slot-switcher"
 import {
-  AgentProfile, AgentProfileConnectionType,
+  AgentProfile,
   ProfileModelConfig, AgentProfileToolConfig, ProfileSkillsConfig, AgentSkill, DetailedToolInfo,
 } from "../../../shared/types"
 
-type ConnectionType = AgentProfileConnectionType
+type ConnectionType = AgentEditConnectionType
 
 interface EditingAgent {
   id?: string
@@ -275,10 +279,11 @@ export function SettingsAgents() {
   const handleEdit = (agent: AgentProfile) => {
     setIsCreating(false)
     const connectionArgs = agent.connection.args?.join(" ")
+    const connectionType = normalizeAgentEditConnectionType(agent.connection.type)
     setEditing({
       id: agent.id, displayName: agent.displayName,
       description: agent.description ?? "", systemPrompt: agent.systemPrompt ?? "",
-      guidelines: agent.guidelines ?? "", connectionType: agent.connection.type,
+      guidelines: agent.guidelines ?? "", connectionType,
       connectionCommand: agent.connection.command,
       connectionArgs,
       connectionBaseUrl: agent.connection.baseUrl,
@@ -290,7 +295,7 @@ export function SettingsAgents() {
       properties: normalizeAgentProfileProperties(agent.properties),
       avatarDataUrl: agent.avatarDataUrl ?? null,
       presetKey: detectAgentProfilePresetKey({
-        connectionType: agent.connection.type,
+        connectionType,
         connectionCommand: agent.connection.command,
         connectionArgs,
       }),

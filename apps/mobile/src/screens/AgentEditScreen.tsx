@@ -15,7 +15,13 @@ import {
   type VerifyExternalAgentCommandResponse,
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
-import { applyConnectionTypeChange, buildAgentConnectionRequestFields, type AgentConnectionFormFields, type ConnectionType } from './agent-edit-connection-utils';
+import {
+  applyConnectionTypeChange,
+  buildAgentConnectionRequestFields,
+  normalizeAgentEditConnectionType,
+  type AgentConnectionFormFields,
+  type ConnectionType,
+} from './agent-edit-connection-utils';
 import { useConfigContext } from '../store/config';
 import {
   acpRouterToolDefinitions,
@@ -130,12 +136,6 @@ const getApproxBase64Bytes = (base64: string): number => {
   return Math.max(0, Math.floor((normalized.length * 3) / 4) - padding);
 };
 
-const normalizeConnectionType = (value?: string): ConnectionType => {
-  if (value === 'acp') return 'acpx';
-  if (value === 'acpx' || value === 'remote' || value === 'internal') return value;
-  return 'internal';
-};
-
 const isMcpServerEnabledByConfig = (serverName: string, toolConfig?: AgentProfileMcpConfigUpdateLike): boolean => {
   return isAgentProfileMcpServerEnabled(toolConfig, serverName);
 };
@@ -228,7 +228,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             avatarDataUrl: profile.avatarDataUrl ?? null,
             systemPrompt: profile.systemPrompt || '',
             guidelines: profile.guidelines || '',
-            connectionType: normalizeConnectionType(profile.connection?.type || profile.connectionType),
+            connectionType: normalizeAgentEditConnectionType(profile.connection?.type || profile.connectionType),
             connectionCommand: profile.connection?.command || '',
             connectionArgs: profile.connection?.args?.join(' ') || '',
             connectionBaseUrl: profile.connection?.baseUrl || '',

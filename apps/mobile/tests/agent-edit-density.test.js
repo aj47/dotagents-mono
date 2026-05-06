@@ -63,3 +63,9 @@ test('uses shared enabled-count helpers in the mobile agent editor', () => {
   assert.doesNotMatch(screenSource, /const countEnabledRuntimeTools/);
   assert.doesNotMatch(screenSource, /const countEnabledSkills/);
 });
+
+test('uses shared connection type normalization in the mobile agent editor', () => {
+  assert.match(screenSource, /normalizeAgentEditConnectionType/);
+  assert.doesNotMatch(screenSource, /const normalizeConnectionType/);
+  assert.doesNotMatch(screenSource, /value === 'acp'/);
+});

@@ -60,6 +60,14 @@ function isLocalConnectionType(value: string | undefined): value is "acpx" | "ac
   return value === "acpx" || value === "acp" || value === "stdio"
 }
 
+export function normalizeAgentEditConnectionType(
+  value: string | null | undefined,
+): AgentEditConnectionType {
+  if (value === "remote" || value === "internal" || value === "acpx") return value
+  if (isLocalConnectionType(value ?? undefined)) return "acpx"
+  return "internal"
+}
+
 export function sanitizeAgentProfileConnection(
   input: AgentProfileConnectionInput,
   existingConnection?: AgentProfileConnectionDraft,

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   applyConnectionTypeChange,
   buildAgentConnectionRequestFields,
+  normalizeAgentEditConnectionType,
   sanitizeAgentProfileConnection,
 } from "./agent-profile-connection"
 
@@ -85,6 +86,16 @@ describe("sanitizeAgentProfileConnection", () => {
 })
 
 describe("agent connection request helpers", () => {
+  it("normalizes persisted profile connection types for edit forms", () => {
+    expect(normalizeAgentEditConnectionType("internal")).toBe("internal")
+    expect(normalizeAgentEditConnectionType("remote")).toBe("remote")
+    expect(normalizeAgentEditConnectionType("acpx")).toBe("acpx")
+    expect(normalizeAgentEditConnectionType("acp")).toBe("acpx")
+    expect(normalizeAgentEditConnectionType("stdio")).toBe("acpx")
+    expect(normalizeAgentEditConnectionType("unknown")).toBe("internal")
+    expect(normalizeAgentEditConnectionType(undefined)).toBe("internal")
+  })
+
   it("clears hidden remote URL state when switching away from remote", () => {
     const nextFormData = applyConnectionTypeChange({
       connectionType: "remote",
