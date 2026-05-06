@@ -73,8 +73,10 @@ test('uses shared enabled-count helpers in the mobile agent editor', () => {
 });
 
 test('uses shared connection type normalization in the mobile agent editor', () => {
+  assert.match(screenSource, /from '@dotagents\/shared\/agent-profile-connection'/);
   assert.match(screenSource, /normalizeAgentConnectionFormFieldsForEdit/);
   assert.match(screenSource, /getAgentConnectionFormValidationError/);
+  assert.doesNotMatch(screenSource, /from '\.\/agent-edit-connection-utils'/);
   assert.doesNotMatch(screenSource, /const normalizeConnectionType/);
   assert.doesNotMatch(screenSource, /profile\.connection\?\.args\?\.join\(' '\)/);
   assert.doesNotMatch(screenSource, /value === 'acp'/);

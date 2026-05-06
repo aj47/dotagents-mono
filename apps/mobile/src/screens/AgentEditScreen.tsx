@@ -23,8 +23,8 @@ import {
   normalizeAgentConnectionFormFieldsForEdit,
   normalizeAgentConnectionArgs,
   type AgentConnectionFormFields,
-  type ConnectionType,
-} from './agent-edit-connection-utils';
+  type AgentEditConnectionType as ConnectionType,
+} from '@dotagents/shared/agent-profile-connection';
 import { useConfigContext } from '../store/config';
 import {
   acpRouterToolDefinitions,
