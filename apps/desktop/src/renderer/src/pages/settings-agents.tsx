@@ -18,6 +18,18 @@ import {
   detectAgentProfilePresetKey,
   type AgentProfilePresetKey,
 } from "@dotagents/shared/agent-profile-presets"
+import {
+  getAgentProfileMcpConfigAfterServerToggle,
+  getAgentProfileMcpConfigAfterSetAllServersEnabled,
+  getAgentProfileMcpConfigAfterToolToggle,
+  getAgentProfileRuntimeToolsConfigAfterSetAllEnabled,
+  getAgentProfileRuntimeToolsConfigAfterToggle,
+  isAgentProfileMcpServerEnabled,
+  isAgentProfileMcpToolEnabled,
+  isAgentProfileRuntimeToolEnabled,
+  isAgentProfileSkillEnabled,
+  toggleAgentProfileSkillConfig,
+} from "@dotagents/shared/agent-profile-config-updates"
 
 // Curated palette of vivid colors to pick from deterministically
 const AVATAR_PALETTE = [
@@ -314,88 +326,49 @@ export function SettingsAgents() {
 
   // Tool config helpers
   const isServerEnabled = (serverName: string): boolean => {
-    if (!editing?.toolConfig) return true
-    if (editing.toolConfig.allServersDisabledByDefault) {
-      return (editing.toolConfig.enabledServers || []).includes(serverName)
-    }
-    return !(editing.toolConfig.disabledServers || []).includes(serverName)
+    return isAgentProfileMcpServerEnabled(editing?.toolConfig, serverName)
   }
 
   const isToolDisabled = (toolName: string): boolean => {
-    return (editing?.toolConfig?.disabledTools || []).includes(toolName)
+    return !isAgentProfileMcpToolEnabled(editing?.toolConfig, toolName)
   }
 
   const isRuntimeToolEnabled = (toolName: string): boolean => {
-    const list = editing?.toolConfig?.enabledRuntimeTools
-    if (!list || list.length === 0) return true
-    return list.includes(toolName)
+    return isAgentProfileRuntimeToolEnabled(editing?.toolConfig, toolName)
   }
 
   const isSkillEnabled = (skillId: string): boolean => {
-    // When skillsConfig is undefined or allSkillsDisabledByDefault is false, all skills are enabled
-    if (!editing?.skillsConfig || !editing.skillsConfig.allSkillsDisabledByDefault) return true
-    return (editing.skillsConfig.enabledSkillIds || []).includes(skillId)
+    return isAgentProfileSkillEnabled(editing?.skillsConfig, skillId)
   }
 
   const toggleServer = (serverName: string) => {
     if (!editing) return
-    const tc = { ...(editing.toolConfig || {}) } as AgentProfileToolConfig
-    if (tc.allServersDisabledByDefault) {
-      const enabled = [...(tc.enabledServers || [])]
-      const idx = enabled.indexOf(serverName)
-      if (idx >= 0) enabled.splice(idx, 1); else enabled.push(serverName)
-      setEditing({ ...editing, toolConfig: { ...tc, enabledServers: enabled } })
-    } else {
-      const disabled = [...(tc.disabledServers || [])]
-      const idx = disabled.indexOf(serverName)
-      if (idx >= 0) disabled.splice(idx, 1); else disabled.push(serverName)
-      setEditing({ ...editing, toolConfig: { ...tc, disabledServers: disabled } })
-    }
+    setEditing({ ...editing, toolConfig: getAgentProfileMcpConfigAfterServerToggle(editing.toolConfig, serverName) })
   }
 
   const toggleTool = (toolName: string) => {
     if (!editing) return
-    const tc = { ...(editing.toolConfig || {}) } as AgentProfileToolConfig
-    const disabled = [...(tc.disabledTools || [])]
-    const idx = disabled.indexOf(toolName)
-    if (idx >= 0) disabled.splice(idx, 1); else disabled.push(toolName)
-    setEditing({ ...editing, toolConfig: { ...tc, disabledTools: disabled } })
+    setEditing({ ...editing, toolConfig: getAgentProfileMcpConfigAfterToolToggle(editing.toolConfig, toolName) })
   }
 
   const toggleRuntimeTool = (toolName: string) => {
     if (!editing) return
-    const tc = { ...(editing.toolConfig || {}) } as AgentProfileToolConfig
-    let currentList = [...(tc.enabledRuntimeTools || [])]
-    if (currentList.length === 0) {
-      currentList = runtimeTools.map(t => t.name).filter(n => n !== toolName)
-    } else {
-      const idx = currentList.indexOf(toolName)
-      if (idx >= 0) currentList.splice(idx, 1)
-      else {
-        currentList.push(toolName)
-        if (currentList.length === runtimeTools.length) currentList = []
-      }
-    }
-    setEditing({ ...editing, toolConfig: { ...tc, enabledRuntimeTools: currentList.length > 0 ? currentList : undefined } })
+    setEditing({
+      ...editing,
+      toolConfig: getAgentProfileRuntimeToolsConfigAfterToggle(
+        editing.toolConfig,
+        toolName,
+        runtimeTools.map(t => t.name),
+      ),
+    })
   }
 
   const toggleSkill = (skillId: string) => {
     if (!editing) return
-    // Transitioning from "all enabled by default" to explicit opt-in mode
-    if (!editing.skillsConfig || !editing.skillsConfig.allSkillsDisabledByDefault) {
-      const allExcept = skills.map(s => s.id).filter(id => id !== skillId)
-      setEditing({ ...editing, skillsConfig: { enabledSkillIds: allExcept, allSkillsDisabledByDefault: true } })
-      return
-    }
-    const ids = [...(editing.skillsConfig.enabledSkillIds || [])]
-    const idx = ids.indexOf(skillId)
-    if (idx >= 0) ids.splice(idx, 1); else ids.push(skillId)
-    // If all skills are re-enabled, reset to default state
-    if (ids.length === skills.length) {
-      setEditing({ ...editing, skillsConfig: { enabledSkillIds: [], allSkillsDisabledByDefault: false } })
-    } else {
-      setEditing({ ...editing, skillsConfig: { ...editing.skillsConfig, enabledSkillIds: ids } })
-    }
+    setEditing({
+      ...editing,
+      skillsConfig: toggleAgentProfileSkillConfig(editing.skillsConfig, skillId, skills.map(s => s.id)),
+    })
   }
 
   // Bulk toggle helpers
@@ -412,23 +385,22 @@ export function SettingsAgents() {
 
   const enableAllServers = () => {
     if (!editing) return
-    setEditing({ ...editing, toolConfig: { ...(editing.toolConfig || {}), allServersDisabledByDefault: false, enabledServers: undefined, disabledServers: [] } })
+    setEditing({ ...editing, toolConfig: getAgentProfileMcpConfigAfterSetAllServersEnabled(editing.toolConfig, true) })
   }
   const disableAllServers = () => {
     if (!editing) return
-    setEditing({ ...editing, toolConfig: { ...(editing.toolConfig || {}), allServersDisabledByDefault: true, enabledServers: [], disabledServers: undefined } })
+    setEditing({ ...editing, toolConfig: getAgentProfileMcpConfigAfterSetAllServersEnabled(editing.toolConfig, false) })
   }
   const allServersEnabled = serverNames.length > 0 && serverNames.every(n => isServerEnabled(n))
   const allServersDisabled = serverNames.length > 0 && serverNames.every(n => !isServerEnabled(n))
 
   const enableAllRuntimeTools = () => {
     if (!editing) return
-    setEditing({ ...editing, toolConfig: { ...(editing.toolConfig || {}), enabledRuntimeTools: undefined } })
+    setEditing({ ...editing, toolConfig: getAgentProfileRuntimeToolsConfigAfterSetAllEnabled(editing.toolConfig, true) })
   }
   const disableAllRuntimeTools = () => {
     if (!editing) return
-    // Keep only essential tools enabled
-    setEditing({ ...editing, toolConfig: { ...(editing.toolConfig || {}), enabledRuntimeTools: ["mark_work_complete"] } })
+    setEditing({ ...editing, toolConfig: getAgentProfileRuntimeToolsConfigAfterSetAllEnabled(editing.toolConfig, false) })
   }
   const allRuntimeEnabled = !editing?.toolConfig?.enabledRuntimeTools || editing.toolConfig.enabledRuntimeTools.length === 0
   const allRuntimeDisabled = (editing?.toolConfig?.enabledRuntimeTools?.length ?? 0) > 0 && editing?.toolConfig?.enabledRuntimeTools?.every(n => n === "mark_work_complete")

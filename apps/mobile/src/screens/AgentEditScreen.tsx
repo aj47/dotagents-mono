@@ -27,6 +27,18 @@ import {
   detectAgentProfilePresetKey,
   type AgentProfilePresetKey,
 } from '@dotagents/shared/agent-profile-presets';
+import {
+  getAgentProfileMcpConfigAfterServerToggle,
+  getAgentProfileMcpConfigAfterSetAllServersEnabled,
+  getAgentProfileMcpConfigAfterToolToggle,
+  getAgentProfileRuntimeToolsConfigAfterSetAllEnabled,
+  getAgentProfileRuntimeToolsConfigAfterToggle,
+  isAgentProfileMcpServerEnabled,
+  isAgentProfileMcpToolEnabled,
+  isAgentProfileRuntimeToolEnabled,
+  isAgentProfileSkillEnabled,
+  toggleAgentProfileSkillConfig,
+} from '@dotagents/shared/agent-profile-config-updates';
 
 const CONNECTION_TYPES = [
   {
@@ -180,24 +192,19 @@ const normalizeAgentToolConfig = (value?: Record<string, unknown>): AgentToolCon
 };
 
 const isMcpServerEnabledByConfig = (serverName: string, toolConfig?: AgentToolConfig): boolean => {
-  if (toolConfig?.allServersDisabledByDefault) return (toolConfig.enabledServers ?? []).includes(serverName);
-  return !(toolConfig?.disabledServers ?? []).includes(serverName);
+  return isAgentProfileMcpServerEnabled(toolConfig, serverName);
 };
 
 const isMcpToolEnabledByConfig = (toolName: string, toolConfig?: AgentToolConfig): boolean => {
-  return !(toolConfig?.disabledTools ?? []).includes(toolName);
+  return isAgentProfileMcpToolEnabled(toolConfig, toolName);
 };
 
 const isRuntimeToolEnabledByConfig = (toolName: string, toolConfig?: AgentToolConfig): boolean => {
-  if (toolName === ESSENTIAL_RUNTIME_TOOL_NAME) return true;
-  const enabledRuntimeTools = toolConfig?.enabledRuntimeTools;
-  if (!enabledRuntimeTools || enabledRuntimeTools.length === 0) return true;
-  return enabledRuntimeTools.includes(toolName);
+  return isAgentProfileRuntimeToolEnabled(toolConfig, toolName, [ESSENTIAL_RUNTIME_TOOL_NAME]);
 };
 
 const isSkillEnabledByConfig = (skillId: string, skillsConfig?: AgentSkillsConfig): boolean => {
-  if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true;
-  return (skillsConfig.enabledSkillIds ?? []).includes(skillId);
+  return isAgentProfileSkillEnabled(skillsConfig, skillId);
 };
 
 const countEnabledMcpServers = (servers: MCPServer[], toolConfig?: AgentToolConfig): number => {
@@ -658,34 +665,21 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const setAllRuntimeToolsEnabled = useCallback((enabled: boolean) => {
     setFormData(prev => ({
       ...prev,
-      toolConfig: {
-        ...prev.toolConfig,
-        enabledRuntimeTools: enabled ? undefined : [ESSENTIAL_RUNTIME_TOOL_NAME],
-      },
+      toolConfig: getAgentProfileRuntimeToolsConfigAfterSetAllEnabled(prev.toolConfig, enabled, [ESSENTIAL_RUNTIME_TOOL_NAME]),
     }));
   }, []);
 
   const toggleRuntimeTool = useCallback((toolName: string) => {
     if (toolName === ESSENTIAL_RUNTIME_TOOL_NAME) return;
     setFormData(prev => {
-      const currentConfig = prev.toolConfig ?? {};
-      let enabledRuntimeTools = [...(currentConfig.enabledRuntimeTools ?? [])];
-
-      if (enabledRuntimeTools.length === 0) {
-        enabledRuntimeTools = runtimeTools.map(tool => tool.name).filter(name => name !== toolName);
-      } else if (enabledRuntimeTools.includes(toolName)) {
-        enabledRuntimeTools = enabledRuntimeTools.filter(name => name !== toolName);
-      } else {
-        enabledRuntimeTools = [...enabledRuntimeTools, toolName];
-        if (enabledRuntimeTools.length === runtimeTools.length) enabledRuntimeTools = [];
-      }
-
       return {
         ...prev,
-        toolConfig: {
-          ...currentConfig,
-          enabledRuntimeTools: enabledRuntimeTools.length > 0 ? enabledRuntimeTools : undefined,
-        },
+        toolConfig: getAgentProfileRuntimeToolsConfigAfterToggle(
+          prev.toolConfig,
+          toolName,
+          runtimeTools.map(tool => tool.name),
+          [ESSENTIAL_RUNTIME_TOOL_NAME],
+        ),
       };
     });
   }, [runtimeTools]);
@@ -693,66 +687,24 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const setAllMcpServersEnabled = useCallback((enabled: boolean) => {
     setFormData(prev => ({
       ...prev,
-      toolConfig: {
-        ...prev.toolConfig,
-        disabledServers: enabled ? [] : undefined,
-        enabledServers: enabled ? undefined : [],
-        allServersDisabledByDefault: !enabled,
-      },
+      toolConfig: getAgentProfileMcpConfigAfterSetAllServersEnabled(prev.toolConfig, enabled),
     }));
   }, []);
 
   const toggleMcpTool = useCallback((toolName: string) => {
     setFormData(prev => {
-      const currentConfig = prev.toolConfig ?? {};
-      const currentDisabledTools = currentConfig.disabledTools ?? [];
-      const disabledTools = currentDisabledTools.includes(toolName)
-        ? currentDisabledTools.filter(name => name !== toolName)
-        : [...currentDisabledTools, toolName];
-
       return {
         ...prev,
-        toolConfig: {
-          ...currentConfig,
-          disabledTools: disabledTools.length > 0 ? disabledTools : undefined,
-        },
+        toolConfig: getAgentProfileMcpConfigAfterToolToggle(prev.toolConfig, toolName),
       };
     });
   }, []);
 
   const toggleMcpServer = useCallback((serverName: string) => {
     setFormData(prev => {
-      const currentConfig = prev.toolConfig ?? {};
-      if (currentConfig.allServersDisabledByDefault) {
-        const currentEnabledServers = currentConfig.enabledServers ?? [];
-        const enabledServers = currentEnabledServers.includes(serverName)
-          ? currentEnabledServers.filter(name => name !== serverName)
-          : [...currentEnabledServers, serverName];
-
-        return {
-          ...prev,
-          toolConfig: {
-            ...currentConfig,
-            enabledServers,
-            disabledServers: undefined,
-            allServersDisabledByDefault: true,
-          },
-        };
-      }
-
-      const currentDisabledServers = currentConfig.disabledServers ?? [];
-      const disabledServers = currentDisabledServers.includes(serverName)
-        ? currentDisabledServers.filter(name => name !== serverName)
-        : [...currentDisabledServers, serverName];
-
       return {
         ...prev,
-        toolConfig: {
-          ...currentConfig,
-          disabledServers,
-          enabledServers: undefined,
-          allServersDisabledByDefault: false,
-        },
+        toolConfig: getAgentProfileMcpConfigAfterServerToggle(prev.toolConfig, serverName),
       };
     });
   }, []);
@@ -770,27 +722,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const toggleSkill = useCallback((skillId: string) => {
     setFormData(prev => {
       const allSkillIds = displaySkills.map(skill => skill.id);
-      if (!prev.skillsConfig || !prev.skillsConfig.allSkillsDisabledByDefault) {
-        return {
-          ...prev,
-          skillsConfig: {
-            enabledSkillIds: allSkillIds.filter(id => id !== skillId),
-            allSkillsDisabledByDefault: true,
-          },
-        };
-      }
-
-      const currentIds = prev.skillsConfig.enabledSkillIds ?? [];
-      const enabledSkillIds = currentIds.includes(skillId)
-        ? currentIds.filter(id => id !== skillId)
-        : [...currentIds, skillId];
-
       return {
         ...prev,
-        skillsConfig: {
-          enabledSkillIds,
-          allSkillsDisabledByDefault: true,
-        },
+        skillsConfig: toggleAgentProfileSkillConfig(prev.skillsConfig, skillId, allSkillIds),
       };
     });
   }, [displaySkills]);

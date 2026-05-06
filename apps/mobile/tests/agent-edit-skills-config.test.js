@@ -26,7 +26,7 @@ test('keeps agent skill controls compact and accessible on mobile', () => {
   assert.match(screenSource, /createButtonAccessibilityLabel\('Enable all agent skills'\)/);
   assert.match(screenSource, /createButtonAccessibilityLabel\('Disable all agent skills'\)/);
   assert.match(screenSource, /createButtonAccessibilityLabel\(`\$\{enabled \? 'Disable' : 'Enable'\} \$\{skill\.name\} for this agent`\)/);
-  assert.match(screenSource, /enabledSkillIds: allSkillIds\.filter\(id => id !== skillId\)/);
+  assert.match(screenSource, /toggleAgentProfileSkillConfig\(prev\.skillsConfig, skillId, allSkillIds\)/);
   assert.match(screenSource, /minSize:\s*44/);
 });
 
@@ -43,16 +43,16 @@ test('keeps mobile MCP server controls bulk-editable and accessible', () => {
   assert.match(screenSource, /createButtonAccessibilityLabel\('Enable all agent MCP servers'\)/);
   assert.match(screenSource, /createButtonAccessibilityLabel\('Disable all agent MCP servers'\)/);
   assert.match(screenSource, /createButtonAccessibilityLabel\(`\$\{enabled \? 'Disable' : 'Enable'\} \$\{server\.name\} MCP server for this agent`\)/);
-  assert.match(screenSource, /disabledServers,\s*enabledServers: undefined,\s*allServersDisabledByDefault: false/s);
-  assert.match(screenSource, /enabledServers,\s*disabledServers: undefined,\s*allServersDisabledByDefault: true/s);
+  assert.match(screenSource, /getAgentProfileMcpConfigAfterSetAllServersEnabled\(prev\.toolConfig, enabled\)/);
+  assert.match(screenSource, /getAgentProfileMcpConfigAfterServerToggle\(prev\.toolConfig, serverName\)/);
 });
 
 test('lets mobile edit per-agent runtime tool allowlists through shared runtime definitions', () => {
   assert.match(screenSource, /buildRuntimeToolDefinitions\(acpRouterToolDefinitions\)/);
   assert.match(screenSource, /ESSENTIAL_RUNTIME_TOOL_NAME = 'mark_work_complete'/);
   assert.match(screenSource, /countEnabledRuntimeTools\(runtimeTools, formData\.toolConfig\)/);
-  assert.match(screenSource, /enabledRuntimeTools: enabledRuntimeTools\.length > 0 \? enabledRuntimeTools : undefined/);
-  assert.match(screenSource, /enabledRuntimeTools: enabled \? undefined : \[ESSENTIAL_RUNTIME_TOOL_NAME\]/);
+  assert.match(screenSource, /getAgentProfileRuntimeToolsConfigAfterToggle\(/);
+  assert.match(screenSource, /getAgentProfileRuntimeToolsConfigAfterSetAllEnabled\(prev\.toolConfig, enabled, \[ESSENTIAL_RUNTIME_TOOL_NAME\]\)/);
 });
 
 test('keeps runtime tool controls accessible and preserves the essential tool', () => {
