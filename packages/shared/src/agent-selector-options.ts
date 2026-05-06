@@ -36,6 +36,17 @@ export function getEnabledAgentProfiles<T extends { enabled?: boolean }>(profile
   return profiles.filter((profile) => profile.enabled !== false)
 }
 
+export function sortAgentProfilesWithDefaultFirst<T extends { isDefault?: boolean }>(profiles: T[] = []): T[] {
+  return profiles
+    .map((profile, index) => ({ profile, index }))
+    .sort((a, b) => {
+      const defaultDelta = Number(Boolean(b.profile.isDefault)) - Number(Boolean(a.profile.isDefault))
+      if (defaultDelta !== 0) return defaultDelta
+      return a.index - b.index
+    })
+    .map(({ profile }) => profile)
+}
+
 export function getDefaultAgentProfile<T extends AgentSelectorProfileCandidate>(
   profiles: T[] = [],
 ): T | undefined {

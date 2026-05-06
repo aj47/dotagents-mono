@@ -5,6 +5,7 @@ import {
   getDefaultAgentProfile,
   getDisplayAgentProfile,
   getEnabledAgentProfiles,
+  sortAgentProfilesWithDefaultFirst,
   toSelectableAgentProfile,
 } from "./agent-selector-options"
 
@@ -35,6 +36,20 @@ describe("agent selector option helpers", () => {
       { id: "first", name: "first" },
       { id: "second", name: "second" },
     ])?.id).toBe("first")
+  })
+
+  it("sorts the default profile first while preserving the other profile order", () => {
+    const profiles = [
+      { id: "alpha" },
+      { id: "default", isDefault: true },
+      { id: "beta" },
+    ]
+
+    expect(sortAgentProfilesWithDefaultFirst(profiles).map((profile) => profile.id)).toEqual([
+      "default",
+      "alpha",
+      "beta",
+    ])
   })
 
   it("uses the selected profile for display when it is available", () => {
