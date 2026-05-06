@@ -1,4 +1,5 @@
 import type { MobileApiRouteActions } from "./mobile-api-routes"
+import type { LoopConfig } from "@dotagents/core"
 import {
   getAgentSessionCandidatesAction,
   type AgentSessionCandidateActionOptions,
@@ -53,6 +54,21 @@ import {
   type ExternalAgentCommandVerificationActionOptions,
   type ProfileActionOptions,
 } from "@dotagents/shared/profile-api"
+import {
+  createRepeatTaskAction,
+  deleteRepeatTaskAction,
+  exportRepeatTaskToMarkdownAction,
+  getRepeatTaskStatusesAction,
+  getRepeatTasksAction,
+  importRepeatTaskFromMarkdownAction,
+  runRepeatTaskAction,
+  startRepeatTaskAction,
+  stopRepeatTaskAction,
+  toggleRepeatTaskAction,
+  updateRepeatTaskAction,
+  type RepeatTaskActionOptions,
+  type RepeatTaskLoopService,
+} from "@dotagents/shared/repeat-task-utils"
 import type { Config } from "../shared/types"
 import {
   exportBundle,
@@ -77,19 +93,6 @@ import {
   upsertMcpServerConfig,
 } from "./mcp-server-actions"
 import { recordOperatorAuditEvent } from "./operator-audit-actions"
-import {
-  createRepeatTask,
-  deleteRepeatTask,
-  exportRepeatTaskToMarkdown,
-  getRepeatTaskStatuses,
-  getRepeatTasks,
-  importRepeatTaskFromMarkdown,
-  runRepeatTask,
-  startRepeatTask,
-  stopRepeatTask,
-  toggleRepeatTask,
-  updateRepeatTask,
-} from "./repeat-task-actions"
 import {
   getSettings,
   updateSettings,
@@ -225,6 +228,28 @@ const knowledgeNoteActionOptions: KnowledgeNoteActionOptions = {
   diagnostics: diagnosticsService,
 }
 
+function getLoopProfileName(profileId?: string): string | undefined {
+  return profileId ? agentProfileService.getById(profileId)?.displayName : undefined
+}
+
+async function loadLoopService(): Promise<RepeatTaskLoopService<LoopConfig> | null> {
+  try {
+    const { loopService } = await import("./loop-service")
+    return loopService
+  } catch {
+    return null
+  }
+}
+
+const repeatTaskActionOptions: RepeatTaskActionOptions<LoopConfig, ReturnType<typeof configStore.get>> = {
+  loadLoopService,
+  getConfig: () => configStore.get(),
+  saveConfig: (config) => configStore.save(config),
+  createId: () => `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+  getProfileName: getLoopProfileName,
+  diagnostics: diagnosticsService,
+}
+
 function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
@@ -343,6 +368,50 @@ async function createKnowledgeNote(body: unknown) {
 
 async function updateKnowledgeNote(id: string | undefined, body: unknown) {
   return updateKnowledgeNoteAction(id, body, knowledgeNoteActionOptions)
+}
+
+async function getRepeatTasks() {
+  return getRepeatTasksAction(repeatTaskActionOptions)
+}
+
+async function getRepeatTaskStatuses() {
+  return getRepeatTaskStatusesAction(repeatTaskActionOptions)
+}
+
+async function toggleRepeatTask(id: string | undefined) {
+  return toggleRepeatTaskAction(id, repeatTaskActionOptions)
+}
+
+async function runRepeatTask(id: string | undefined) {
+  return runRepeatTaskAction(id, repeatTaskActionOptions)
+}
+
+async function startRepeatTask(id: string | undefined) {
+  return startRepeatTaskAction(id, repeatTaskActionOptions)
+}
+
+async function stopRepeatTask(id: string | undefined) {
+  return stopRepeatTaskAction(id, repeatTaskActionOptions)
+}
+
+async function createRepeatTask(body: unknown) {
+  return createRepeatTaskAction(body, repeatTaskActionOptions)
+}
+
+async function importRepeatTaskFromMarkdown(body: unknown) {
+  return importRepeatTaskFromMarkdownAction(body, repeatTaskActionOptions)
+}
+
+async function exportRepeatTaskToMarkdown(id: string | undefined) {
+  return exportRepeatTaskToMarkdownAction(id, repeatTaskActionOptions)
+}
+
+async function updateRepeatTask(id: string | undefined, body: unknown) {
+  return updateRepeatTaskAction(id, body, repeatTaskActionOptions)
+}
+
+async function deleteRepeatTask(id: string | undefined) {
+  return deleteRepeatTaskAction(id, repeatTaskActionOptions)
 }
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {

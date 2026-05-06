@@ -305,12 +305,6 @@ function getSharedKnowledgeNoteFormSource(): string {
   return readFileSync(sharedKnowledgeNoteFormPath, "utf8")
 }
 
-function getRepeatTaskActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const repeatTaskActionsPath = path.join(testDir, "repeat-task-actions.ts")
-  return readFileSync(repeatTaskActionsPath, "utf8")
-}
-
 function getSharedRepeatTaskUtilsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedRepeatTaskUtilsPath = path.join(testDir, "../../../../packages/shared/src/repeat-task-utils.ts")
@@ -714,7 +708,6 @@ describe("remote-server route registration", () => {
     const mobileActionSources = [
       getConversationActionsSource(),
       getMcpServerActionsSource(),
-      getRepeatTaskActionsSource(),
       getSettingsActionsSource(),
       getSkillActionsSource(),
     ]
@@ -1866,7 +1859,7 @@ describe("remote-server route registration", () => {
   it("delegates repeat task route behavior to repeat task actions", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
-    const repeatTaskActionsSource = getRepeatTaskActionsSource()
+    const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedRepeatTaskUtilsSource = getSharedRepeatTaskUtilsSource()
 
     expectRegisteredApiRoute(source, "GET", "loops")
@@ -1891,18 +1884,18 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.createRepeatTask(req.body)")
     expect(mobileApiRoutesSource).toContain("actions.updateRepeatTask(params.id, req.body)")
     expect(mobileApiRoutesSource).toContain("actions.deleteRepeatTask(params.id)")
-    expect(repeatTaskActionsSource).toContain("await import(\"./loop-service\")")
-    expect(repeatTaskActionsSource).toContain("getRepeatTasksAction(repeatTaskActionOptions)")
-    expect(repeatTaskActionsSource).toContain("getRepeatTaskStatusesAction(repeatTaskActionOptions)")
-    expect(repeatTaskActionsSource).toContain("importRepeatTaskFromMarkdownAction(body, repeatTaskActionOptions)")
-    expect(repeatTaskActionsSource).toContain("startRepeatTaskAction(id, repeatTaskActionOptions)")
-    expect(repeatTaskActionsSource).toContain("stopRepeatTaskAction(id, repeatTaskActionOptions)")
-    expect(repeatTaskActionsSource).toContain("toggleRepeatTaskAction(id, repeatTaskActionOptions)")
-    expect(repeatTaskActionsSource).toContain("runRepeatTaskAction(id, repeatTaskActionOptions)")
-    expect(repeatTaskActionsSource).toContain("exportRepeatTaskToMarkdownAction(id, repeatTaskActionOptions)")
-    expect(repeatTaskActionsSource).toContain("createRepeatTaskAction(body, repeatTaskActionOptions)")
-    expect(repeatTaskActionsSource).toContain("updateRepeatTaskAction(id, body, repeatTaskActionOptions)")
-    expect(repeatTaskActionsSource).toContain("deleteRepeatTaskAction(id, repeatTaskActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("await import(\"./loop-service\")")
+    expect(mobileApiDesktopActionsSource).toContain("getRepeatTasksAction(repeatTaskActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getRepeatTaskStatusesAction(repeatTaskActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("importRepeatTaskFromMarkdownAction(body, repeatTaskActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("startRepeatTaskAction(id, repeatTaskActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("stopRepeatTaskAction(id, repeatTaskActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("toggleRepeatTaskAction(id, repeatTaskActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("runRepeatTaskAction(id, repeatTaskActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("exportRepeatTaskToMarkdownAction(id, repeatTaskActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("createRepeatTaskAction(body, repeatTaskActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("updateRepeatTaskAction(id, body, repeatTaskActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("deleteRepeatTaskAction(id, repeatTaskActionOptions)")
     expect(sharedRepeatTaskUtilsSource).toContain("export interface RepeatTaskActionOptions")
     expect(sharedRepeatTaskUtilsSource).toContain("export async function getRepeatTasksAction")
     expect(sharedRepeatTaskUtilsSource).toContain("export async function getRepeatTaskStatusesAction")
