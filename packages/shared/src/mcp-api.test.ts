@@ -8,6 +8,7 @@ import {
   MCP_MAX_ITERATIONS_MIN,
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   RUNTIME_TOOLS_SERVER_NAME,
+  buildSamplingChatMessages,
   buildMcpServerConfigExportResponse,
   buildMcpServerConfigImportResponse,
   buildMcpServerConfigMutationResponse,
@@ -41,6 +42,7 @@ import {
   stopOperatorMcpServerAction,
   testOperatorMcpServerAction,
   restartOperatorMcpServerAction,
+  stripSamplingToolMarkerTokens,
   toggleMcpServerAction,
   upsertMcpServerConfigAction,
   deleteMcpServerConfigAction,
@@ -102,6 +104,37 @@ describe("MCP API helpers", () => {
     expect(elicitation.requestedSchema.properties.date.format).toBe("date")
     expect(sampling.messages[0].content).toEqual({ type: "text", text: "Summarize this." })
     expect(samplingResult.content?.text).toBe("Summary")
+  })
+
+  it("formats MCP sampling requests into shared chat messages", () => {
+    const messages = buildSamplingChatMessages({
+      systemPrompt: "Stay concise.",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Summarize this." },
+            { type: "image", mimeType: "image/png", data: "base64" },
+          ],
+        },
+        {
+          role: "assistant",
+          content: { type: "audio", mimeType: "audio/wav", data: "base64" },
+        },
+      ],
+    })
+
+    expect(messages).toEqual([
+      { role: "user", content: "[System]: Stay concise." },
+      { role: "user", content: "Summarize this.\n[image]" },
+      { role: "assistant", content: "[audio]" },
+    ])
+  })
+
+  it("strips sampling response tool markers only when marker tokens are present", () => {
+    expect(stripSamplingToolMarkerTokens("  ordinary response  ")).toBe("  ordinary response  ")
+    expect(stripSamplingToolMarkerTokens("Here <|tool_call_begin|>search<|tool_call_end|> done")).toBe("Here search done")
+    expect(stripSamplingToolMarkerTokens("<|tool_calls_section_begin|>hidden<|tool_calls_section_end|>")).toBe("hidden")
   })
 
   it("normalizes MCP max iteration values with one shared desktop/mobile/server contract", () => {

@@ -1,7 +1,12 @@
 import { BrowserWindow } from "electron"
 import { diagnosticsService } from "./diagnostics"
 import { configStore } from "./config"
-import type { SamplingRequest, SamplingResult, SamplingMessage, SamplingMessageContent } from "../shared/types"
+import {
+  buildSamplingChatMessages,
+  stripSamplingToolMarkerTokens,
+  type SamplingRequest,
+  type SamplingResult,
+} from "@dotagents/shared/mcp-api"
 
 interface PendingSampling {
   request: SamplingRequest
@@ -71,19 +76,7 @@ export async function executeSampling(
     const { makeLLMCallWithFetch } = await import("./llm-fetch")
     const config = configStore.get()
 
-    // Convert MCP sampling messages to our format
-    const messages = request.messages.map(msg => ({
-      role: msg.role as "user" | "assistant",
-      content: formatMessageContent(msg.content),
-    }))
-
-    // Add system prompt as first message if provided
-    if (request.systemPrompt) {
-      messages.unshift({
-        role: "user" as const,
-        content: `[System]: ${request.systemPrompt}`,
-      })
-    }
+    const messages = buildSamplingChatMessages(request)
 
     // Determine which provider to use
     // Use modelPreferences hints if provided, otherwise use configured defaults
@@ -111,9 +104,7 @@ export async function executeSampling(
     // Sampling responses go back to MCP servers and should never contain them.
     // Only strip and trim when markers are actually present to preserve exact
     // whitespace/formatting for MCP servers that depend on it.
-    const rawContent = result.content || ""
-    const hasToolMarkers = /<\|[^|]*\|>/.test(rawContent)
-    const cleanContent = hasToolMarkers ? rawContent.replace(/<\|[^|]*\|>/g, "").trim() : rawContent
+    const cleanContent = stripSamplingToolMarkerTokens(result.content)
 
     return {
       approved: true,
@@ -172,20 +163,6 @@ export async function resolveSampling(
   }
 
   return true
-}
-
-/**
- * Format message content to string
- */
-function formatMessageContent(
-  content: SamplingMessageContent | SamplingMessageContent[]
-): string {
-  if (Array.isArray(content)) {
-    return content
-      .map(c => (c.type === "text" ? c.text : `[${c.type}]`))
-      .join("\n")
-  }
-  return content.type === "text" ? content.text || "" : `[${content.type}]`
 }
 
 /**

@@ -355,6 +355,50 @@ export interface SamplingResult {
   stopReason?: string
 }
 
+export type SamplingChatMessage = {
+  role: "user" | "assistant"
+  content: string
+}
+
+const SAMPLING_TOOL_MARKER_DETECT_PATTERN = /<\|[^|]*\|>/
+const SAMPLING_TOOL_MARKER_PATTERN = /<\|[^|]*\|>/g
+
+export function formatSamplingMessageContent(
+  content: SamplingMessageContent | SamplingMessageContent[]
+): string {
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => (item.type === "text" ? item.text : `[${item.type}]`))
+      .join("\n")
+  }
+  return content.type === "text" ? content.text || "" : `[${content.type}]`
+}
+
+export function buildSamplingChatMessages(
+  request: Pick<SamplingRequest, "messages" | "systemPrompt">
+): SamplingChatMessage[] {
+  const messages = request.messages.map((message) => ({
+    role: message.role,
+    content: formatSamplingMessageContent(message.content),
+  }))
+
+  if (request.systemPrompt) {
+    messages.unshift({
+      role: "user" as const,
+      content: `[System]: ${request.systemPrompt}`,
+    })
+  }
+
+  return messages
+}
+
+export function stripSamplingToolMarkerTokens(content: string | undefined | null): string {
+  const rawContent = content || ""
+  return SAMPLING_TOOL_MARKER_DETECT_PATTERN.test(rawContent)
+    ? rawContent.replace(SAMPLING_TOOL_MARKER_PATTERN, "").trim()
+    : rawContent
+}
+
 export const MCP_MAX_ITERATIONS_MIN = 1
 export const MCP_MAX_ITERATIONS_MAX = 100
 export const MCP_MAX_ITERATIONS_DEFAULT = 10
