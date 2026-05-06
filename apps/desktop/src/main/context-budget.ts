@@ -6,6 +6,7 @@ import { constructMinimalSystemPrompt } from "./system-prompts"
 import { agentSessionStateManager } from "./state"
 import { summarizationService } from "./summarization-service"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared/message-display-utils"
+import { normalizeModelIdentifierForMatching } from "@dotagents/shared/providers"
 import {
   collectRecentRealUserRequestIndices,
   hasMappedToolResultPrefix,
@@ -159,7 +160,7 @@ const MODEL_REGISTRY: Record<string, ModelSpec> = {
   "gpt-3.5-turbo": { contextWindow: 16_384, maxOutputTokens: 4_096 },
   "gpt-3.5": { contextWindow: 16_384, maxOutputTokens: 4_096 },
   // o-series reasoning models
-  // Note: Include "o-1" and "o-3" patterns because normalizeModelName() inserts
+  // Note: Include "o-1" and "o-3" patterns because normalizeModelIdentifierForMatching() inserts
   // hyphens between letters and digits (e.g., "o1" -> "o-1")
   "o3-mini": { contextWindow: 200_000, maxOutputTokens: 100_000 },
   "o-3-mini": { contextWindow: 200_000, maxOutputTokens: 100_000 },
@@ -282,54 +283,6 @@ const MODEL_REGISTRY: Record<string, ModelSpec> = {
 }
 
 /**
- * Normalize a model name for fuzzy matching.
- * Handles variations like:
- * - claude-haiku-4-5-20251001 -> claude-haiku-4-5
- * - claude-haiku-4.5-20251001 -> claude-haiku-4.5
- * - anthropic/claude-3.5-sonnet -> claude-3.5-sonnet
- * - accounts/fireworks/models/llama-v3p1-70b -> llama-v3p1-70b
- * - gpt4 -> gpt-4 (inserts hyphen between letters and digits)
- * - gpt4o -> gpt-4o
- */
-function normalizeModelName(model: string): string {
-  let normalized = model.toLowerCase()
-
-  // Remove provider prefixes (e.g., "anthropic/", "openai/", "accounts/fireworks/models/")
-  // Try patterns from most specific to least specific, stop after first match
-  const prefixPatterns = [
-    /^accounts\/[^/]+\/models\//, // Fireworks: accounts/fireworks/models/...
-    /^[a-z0-9]+\/[a-z0-9-]+\//, // Two-level: provider/subtype/ (e.g., openrouter/anthropic/)
-    /^[a-z0-9-]+\//, // Simple prefix: anthropic/, openai/, etc.
-  ]
-  for (const pattern of prefixPatterns) {
-    if (pattern.test(normalized)) {
-      normalized = normalized.replace(pattern, "")
-      break // Stop after first match to avoid double-stripping
-    }
-  }
-
-  // Remove date suffixes (e.g., "-20251001", "-2024-06-20")
-  normalized = normalized.replace(/-\d{8}$/, "") // YYYYMMDD
-  normalized = normalized.replace(/-\d{4}-\d{2}-\d{2}$/, "") // YYYY-MM-DD
-  normalized = normalized.replace(/-\d{6}$/, "") // YYMMDD
-
-  // Remove version suffixes like ":latest", ":free", ":exacto"
-  normalized = normalized.replace(/:[a-z]+$/, "")
-
-  // Normalize version separators (v3p1 -> 3.1, v3-1 -> 3.1)
-  normalized = normalized.replace(/v(\d+)p(\d+)/g, "$1.$2")
-  normalized = normalized.replace(/v(\d+)-(\d+)/g, "$1.$2")
-  normalized = normalized.replace(/v(\d+)/g, "$1")
-
-  // Insert hyphen between letters and digits where missing (gpt4 -> gpt-4, gpt35 -> gpt-3.5)
-  // This handles common variations like "gpt4", "gpt4o", "gpt35" which should match "gpt-4", etc.
-  // Pattern: letter followed by digit (without hyphen between them)
-  normalized = normalized.replace(/([a-z])(\d)/g, "$1-$2")
-
-  return normalized
-}
-
-/**
  * Calculate a match score between a normalized model name and a registry pattern.
  * Higher score = better match.
  * Returns 0 if no match.
@@ -358,7 +311,7 @@ function calculateMatchScore(normalizedModel: string, pattern: string): number {
  * Returns the best matching spec or undefined if no match.
  */
 function lookupModelSpec(model: string): ModelSpec | undefined {
-  const normalized = normalizeModelName(model)
+  const normalized = normalizeModelIdentifierForMatching(model)
 
   let bestMatch: { pattern: string; spec: ModelSpec; score: number } | undefined
 

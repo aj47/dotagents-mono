@@ -34,6 +34,7 @@ import {
   isTranscriptionOnlyChatModel,
   migrateDeprecatedEdgeTtsVoice,
   normalizeChatProviderId,
+  normalizeModelIdentifierForMatching,
   resolveChatModelForTextUsage,
   resolveMcpSamplingModelSelection,
   resolvePromptCachingConfig,
@@ -98,6 +99,14 @@ describe('CHAT_PROVIDERS', () => {
     expect(resolveChatModelForTextUsage('chatgpt-web', 'gpt-5.3-codex', 'mcp')).toEqual({
       model: 'gpt-5.3-codex',
     })
+  })
+
+  it('normalizes provider model identifiers for shared fuzzy matching', () => {
+    expect(normalizeModelIdentifierForMatching('anthropic/claude-haiku-4.5-20251001')).toBe('claude-haiku-4.5')
+    expect(normalizeModelIdentifierForMatching('openrouter/anthropic/claude-3.5-sonnet')).toBe('claude-3.5-sonnet')
+    expect(normalizeModelIdentifierForMatching('accounts/fireworks/models/llama-v3p1-70b')).toBe('llama-3.1-70b')
+    expect(normalizeModelIdentifierForMatching('openai/gpt4o-2024-05-13')).toBe('gpt-4o')
+    expect(normalizeModelIdentifierForMatching('qwen3:free')).toBe('qwen-3')
   })
 
   it('resolves shared prompt caching strategies by provider, model, and base URL', () => {

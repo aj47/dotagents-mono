@@ -15,6 +15,7 @@ import type {
   ModelsDevModel,
   ModelsDevProvider,
 } from "@dotagents/shared/api-types"
+import { normalizeModelIdentifierForMatching } from "@dotagents/shared/providers"
 
 /** Cache file structure */
 interface ModelsDevCache {
@@ -125,53 +126,6 @@ function isCacheValid(timestamp: number): boolean {
 const FUZZY_MATCH_MIN_SCORE = 50
 
 /**
- * Normalize a model name for fuzzy matching.
- * Handles provider prefixes, date suffixes, version variations.
- *
- * Examples:
- * - anthropic/claude-sonnet-4-20251001 -> claude-sonnet-4
- * - openai/gpt-4o-2024-05-13 -> gpt-4o
- * - gpt4o -> gpt-4o
- */
-function normalizeModelName(model: string): string {
-  let normalized = model.toLowerCase()
-
-  // Remove provider prefixes (e.g., "anthropic/", "openai/", "accounts/fireworks/models/")
-  // Try patterns from most specific to least specific, stop after first match
-  const prefixPatterns = [
-    /^accounts\/[^/]+\/models\//, // Fireworks: accounts/fireworks/models/...
-    /^[a-z0-9]+\/[a-z0-9-]+\//, // Two-level: provider/subtype/ (e.g., openrouter/anthropic/)
-    /^[a-z0-9-]+\//, // Simple prefix: anthropic/, openai/, etc.
-  ]
-  for (const pattern of prefixPatterns) {
-    if (pattern.test(normalized)) {
-      normalized = normalized.replace(pattern, "")
-      break // Stop after first match to avoid double-stripping
-    }
-  }
-
-  // Remove date suffixes (e.g., "-20251001", "-2024-06-20")
-  normalized = normalized.replace(/-\d{8}$/, "") // YYYYMMDD
-  normalized = normalized.replace(/-\d{4}-\d{2}-\d{2}$/, "") // YYYY-MM-DD
-  normalized = normalized.replace(/-\d{6}$/, "") // YYMMDD
-
-  // Remove version suffixes like ":latest", ":free", ":exacto"
-  normalized = normalized.replace(/:[a-z]+$/, "")
-
-  // Normalize version separators (v3p1 -> 3.1, v3-1 -> 3.1)
-  normalized = normalized.replace(/v(\d+)p(\d+)/g, "$1.$2")
-  normalized = normalized.replace(/v(\d+)-(\d+)/g, "$1.$2")
-  normalized = normalized.replace(/v(\d+)/g, "$1")
-
-  // Insert hyphen between letters and digits where missing (gpt4 -> gpt-4, gpt35 -> gpt-3.5)
-  // This handles common variations like "gpt4", "gpt4o", "gpt35" which should match "gpt-4", etc.
-  // Pattern: letter followed by digit (without hyphen between them)
-  normalized = normalized.replace(/([a-z])(\d)/g, "$1-$2")
-
-  return normalized
-}
-
-/**
  * Calculate a match score between a normalized model name and a candidate model ID.
  * Higher score = better match.
  * Returns 0 if no match.
@@ -221,7 +175,7 @@ export function findBestModelMatch(
     return undefined
   }
 
-  const normalizedQuery = normalizeModelName(modelId)
+  const normalizedQuery = normalizeModelIdentifierForMatching(modelId)
   let bestMatch: ModelMatchResult | undefined
 
   // Helper to search within a specific provider
@@ -244,7 +198,7 @@ export function findBestModelMatch(
       }
 
       // Calculate fuzzy match score
-      const normalizedCandidate = normalizeModelName(candidateId)
+      const normalizedCandidate = normalizeModelIdentifierForMatching(candidateId)
       const score = calculateMatchScore(normalizedQuery, normalizedCandidate)
 
       if (score >= FUZZY_MATCH_MIN_SCORE && (!bestMatch || score > bestMatch.score)) {

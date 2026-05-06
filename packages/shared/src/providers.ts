@@ -108,6 +108,37 @@ export function normalizeChatProviderId(providerId: string): CHAT_PROVIDER_ID {
   throw new Error(`Unknown provider: ${providerId}`);
 }
 
+/**
+ * Normalize a model identifier for fuzzy matching across provider-specific
+ * prefixes, date suffixes, version aliases, and compact model IDs.
+ */
+export function normalizeModelIdentifierForMatching(model: string): string {
+  let normalized = model.toLowerCase();
+
+  const prefixPatterns = [
+    /^accounts\/[^/]+\/models\//,
+    /^[a-z0-9]+\/[a-z0-9-]+\//,
+    /^[a-z0-9-]+\//,
+  ];
+  for (const pattern of prefixPatterns) {
+    if (pattern.test(normalized)) {
+      normalized = normalized.replace(pattern, "");
+      break;
+    }
+  }
+
+  normalized = normalized.replace(/-\d{8}$/, "");
+  normalized = normalized.replace(/-\d{4}-\d{2}-\d{2}$/, "");
+  normalized = normalized.replace(/-\d{6}$/, "");
+  normalized = normalized.replace(/:[a-z]+$/, "");
+  normalized = normalized.replace(/v(\d+)p(\d+)/g, "$1.$2");
+  normalized = normalized.replace(/v(\d+)-(\d+)/g, "$1.$2");
+  normalized = normalized.replace(/v(\d+)/g, "$1");
+  normalized = normalized.replace(/([a-z])(\d)/g, "$1-$2");
+
+  return normalized;
+}
+
 export function isTranscriptionOnlyChatModel(providerId: CHAT_PROVIDER_ID, model: string): boolean {
   const patterns = TRANSCRIPTION_ONLY_MODEL_PATTERNS[providerId];
   if (!patterns) {
