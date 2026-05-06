@@ -377,6 +377,12 @@ function getConversationActionsSource(): string {
   return readFileSync(conversationActionsPath, "utf8")
 }
 
+function getConversationImageAssetsSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const conversationImageAssetsPath = path.join(testDir, "conversation-image-assets.ts")
+  return readFileSync(conversationImageAssetsPath, "utf8")
+}
+
 function getSharedConversationSyncSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedConversationSyncPath = path.join(testDir, "../../../../packages/shared/src/conversation-sync.ts")
@@ -1115,6 +1121,7 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const conversationActionsSource = getConversationActionsSource()
+    const conversationImageAssetsSource = getConversationImageAssetsSource()
     const sharedRemoteServerRouteContractsSource = getSharedRemoteServerRouteContractsSource()
     const sharedConversationSyncSource = getSharedConversationSyncSource()
     const sharedConversationMediaAssetsSource = getSharedConversationMediaAssetsSource()
@@ -1156,6 +1163,13 @@ describe("remote-server route registration", () => {
     expect(sharedRemoteServerRouteContractsSource).toContain("return buildMobileApiActionResult({ error: message }, statusCode, headers)")
     expect(sharedConversationMediaAssetsSource).toContain("export function buildConversationVideoAssetStreamPlan(")
     expect(sharedConversationMediaAssetsSource).toContain("getConversationVideoByteRange(rangeHeader, totalSize)")
+    expect(sharedConversationMediaAssetsSource).toContain("export const CONVERSATION_IMAGE_ASSET_HOST = 'conversation-image'")
+    expect(sharedConversationMediaAssetsSource).toContain("export const CONVERSATION_IMAGE_ASSETS_DIR_NAME = '_images'")
+    expect(sharedConversationMediaAssetsSource).toContain("export function buildConversationImageAssetUrl(")
+    expect(sharedConversationMediaAssetsSource).toContain("export function isSafeConversationImageAssetFileName(")
+    expect(conversationImageAssetsSource).toContain('from "@dotagents/shared/conversation-media-assets"')
+    expect(conversationImageAssetsSource).toContain("isSafeConversationImageAssetFileName(fileName)")
+    expect(conversationImageAssetsSource).not.toContain("SAFE_IMAGE_ASSET_FILE_REGEX")
     expect(conversationActionsSource).toContain("fs.createReadStream(assetPath")
   })
 

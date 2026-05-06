@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildConversationVideoAssetStreamPlan,
   buildConversationVideoAssetUrl,
+  buildConversationImageAssetUrl,
   buildConversationVideoAssetHttpUrl,
   escapeMarkdownAltText,
   getConversationImageMimeTypeFromFileName,
@@ -15,6 +16,7 @@ import {
   isAllowedRespondToUserImageUrl,
   isAllowedRespondToUserVideoUrl,
   isSafeConversationVideoAssetFileName,
+  isSafeConversationImageAssetFileName,
   isConversationVideoAssetUrl,
   isRenderableVideoUrl,
   parseRespondToUserArgs,
@@ -77,6 +79,17 @@ describe('conversation video asset utilities', () => {
     expect(isSafeConversationVideoAssetFileName('../abcdef1234567890.webm')).toBe(false);
     expect(isSafeConversationVideoAssetFileName('not-a-hash.webm')).toBe(false);
     expect(isSafeConversationVideoAssetFileName('abcdef1234567890.png')).toBe(false);
+  });
+
+  it('builds image asset urls and validates persisted image asset filenames', () => {
+    expect(buildConversationImageAssetUrl('conv 1', 'abcdef1234567890.png'))
+      .toBe('assets://conversation-image/conv%201/abcdef1234567890.png');
+    expect(isSafeConversationImageAssetFileName('abcdef1234567890.png')).toBe(true);
+    expect(isSafeConversationImageAssetFileName('abcdef1234567890.jpeg')).toBe(true);
+    expect(isSafeConversationImageAssetFileName('abcdef1234567890.avif')).toBe(true);
+    expect(isSafeConversationImageAssetFileName('../abcdef1234567890.png')).toBe(false);
+    expect(isSafeConversationImageAssetFileName('not-a-hash.png')).toBe(false);
+    expect(isSafeConversationImageAssetFileName('abcdef1234567890.svg')).toBe(false);
   });
 
   it('resolves video MIME types from filenames', () => {

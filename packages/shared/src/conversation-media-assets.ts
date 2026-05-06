@@ -2,10 +2,13 @@ import { REMOTE_SERVER_API_BUILDERS } from './remote-server-api';
 
 export const CONVERSATION_VIDEO_ASSET_HOST = 'conversation-video';
 export const CONVERSATION_VIDEO_ASSETS_DIR_NAME = '_videos';
+export const CONVERSATION_IMAGE_ASSET_HOST = 'conversation-image';
+export const CONVERSATION_IMAGE_ASSETS_DIR_NAME = '_images';
 
 const CONVERSATION_VIDEO_ASSET_URL_REGEX = /^assets:\/\/conversation-video\/([^/]+)\/([^/?#]+)(?:[?#].*)?$/i;
 const VIDEO_EXTENSION_REGEX = /\.(?:mp4|m4v|webm|mov|ogv)(?:[?#].*)?$/i;
 const SAFE_VIDEO_ASSET_FILE_REGEX = /^[a-f0-9]{16,64}\.(?:mp4|m4v|webm|mov|ogv)$/u;
+const SAFE_IMAGE_ASSET_FILE_REGEX = /^[a-f0-9]{16,64}\.(?:png|apng|gif|jpe?g|webp|bmp|avif)$/u;
 
 const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
   '.mp4': 'video/mp4',
@@ -535,8 +538,16 @@ export function buildConversationVideoAssetUrl(conversationId: string, fileName:
   return `assets://${CONVERSATION_VIDEO_ASSET_HOST}/${encodeURIComponent(conversationId)}/${encodeURIComponent(fileName)}`;
 }
 
+export function buildConversationImageAssetUrl(conversationId: string, fileName: string): string {
+  return `assets://${CONVERSATION_IMAGE_ASSET_HOST}/${encodeURIComponent(conversationId)}/${encodeURIComponent(fileName)}`;
+}
+
 export function isSafeConversationVideoAssetFileName(fileName: string): boolean {
   return SAFE_VIDEO_ASSET_FILE_REGEX.test(fileName);
+}
+
+export function isSafeConversationImageAssetFileName(fileName: string): boolean {
+  return SAFE_IMAGE_ASSET_FILE_REGEX.test(fileName);
 }
 
 export function getConversationVideoMimeTypeFromFileName(fileName: string): string {
