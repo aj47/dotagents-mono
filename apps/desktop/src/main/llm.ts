@@ -6,12 +6,12 @@ import {
   MCPToolResult,
 } from "./mcp-service"
 import type { SessionProfileSnapshot } from "@dotagents/core"
-import type { AgentProgressStep, AgentProgressUpdate } from "../shared/types"
+import type { AgentProgressStep, AgentProgressUpdate, AgentStepSummary } from "@dotagents/shared/agent-progress"
 import {
   resolveAgentProgressConversationState,
   type AgentRetryProgressCallback,
 } from "@dotagents/shared/agent-progress"
-import type { ConversationCompactionMetadata } from "../shared/types"
+import type { ConversationCompactionMetadata } from "@dotagents/shared/conversation-domain"
 import { diagnosticsService } from "./diagnostics"
 
 import { makeLLMCallWithFetch, makeTextCompletionWithFetch, verifyCompletionWithFetch, makeLLMCallWithStreamingAndTools, StreamingCallback } from "./llm-fetch"
@@ -636,7 +636,7 @@ export async function processTranscriptWithAgentMode(
   }
 
   // Track step summaries for dual-model mode
-  const stepSummaries: import("../shared/types").AgentStepSummary[] = []
+  const stepSummaries: AgentStepSummary[] = []
 
   // Create Langfuse trace for this agent session if enabled
   // - traceId: unique ID for this trace (our agent session ID)

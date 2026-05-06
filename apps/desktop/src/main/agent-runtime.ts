@@ -7,10 +7,8 @@ import {
 } from "./mcp-service"
 import { agentSessionStateManager } from "./state"
 import type { SessionProfileSnapshot } from "@dotagents/core"
-import type {
-  AgentProgressUpdate,
-  ConversationCompactionMetadata,
-} from "../shared/types"
+import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
+import type { ConversationCompactionMetadata } from "@dotagents/shared/conversation-domain"
 
 type ToolProgressCallback = (message: string) => void
 
