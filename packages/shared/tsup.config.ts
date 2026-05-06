@@ -8,6 +8,7 @@ export default defineConfig({
     'tts-preprocessing': 'src/tts-preprocessing.ts',
     'tts-tracking': 'src/tts-tracking.ts',
     'voice-text-utils': 'src/voice-text-utils.ts',
+    'voice-phrase-matcher': 'src/voice-phrase-matcher.ts',
     'chat-utils': 'src/chat-utils.ts',
     providers: 'src/providers.ts',
     'provider-tool-utils': 'src/provider-tool-utils.ts',

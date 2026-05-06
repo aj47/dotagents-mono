@@ -36,6 +36,11 @@
       "import": "./dist/voice-text-utils.mjs",
       "require": "./dist/voice-text-utils.js"
     },
+    "./voice-phrase-matcher": {
+      "types": "./dist/voice-phrase-matcher.d.ts",
+      "import": "./dist/voice-phrase-matcher.mjs",
+      "require": "./dist/voice-phrase-matcher.js"
+    },
     "./chat-utils": {
       "types": "./dist/chat-utils.d.ts",
       "import": "./dist/chat-utils.mjs",
