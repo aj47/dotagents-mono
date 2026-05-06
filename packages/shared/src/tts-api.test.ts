@@ -6,6 +6,7 @@ import {
   generateOpenAITTS,
   generateTTS,
   float32ToWav,
+  getAudioFileExtensionFromMimeType,
   getOpenAITTSMimeType,
   getTtsSpeakFailureStatusCode,
   parseTtsSpeakRequestBody,
@@ -216,6 +217,15 @@ describe('shared TTS provider generation', () => {
     expect(getOpenAITTSMimeType('flac')).toBe('audio/flac');
     expect(getOpenAITTSMimeType('pcm')).toBe('audio/L16');
     expect(getOpenAITTSMimeType('wav')).toBe('audio/wav');
+  });
+
+  it('maps audio MIME types to cache file extensions', () => {
+    expect(getAudioFileExtensionFromMimeType('audio/mpeg')).toBe('mp3');
+    expect(getAudioFileExtensionFromMimeType('audio/mp3; charset=binary')).toBe('mp3');
+    expect(getAudioFileExtensionFromMimeType('audio/x-wav')).toBe('wav');
+    expect(getAudioFileExtensionFromMimeType('audio/opus')).toBe('ogg');
+    expect(getAudioFileExtensionFromMimeType('audio/flac')).toBe('flac');
+    expect(getAudioFileExtensionFromMimeType('application/octet-stream')).toBe('bin');
   });
 
   it('generates OpenAI TTS through an injectable fetch implementation', async () => {

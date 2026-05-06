@@ -5,6 +5,7 @@ import {
   setAudioModeAsync,
 } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
+import { getAudioFileExtensionFromMimeType } from '@dotagents/shared/tts-api';
 import { createExtendedSettingsApiClient } from './settingsApi';
 
 export { resolveEdgeTtsVoice } from '@dotagents/shared/providers';
@@ -151,7 +152,7 @@ function startNativePlayback(
   mimeType: string,
   options: RemoteSpeakOptions,
 ): boolean {
-  const ext = mimeTypeToExtension(mimeType);
+  const ext = getAudioFileExtensionFromMimeType(mimeType);
   const filename = `remote-tts-${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
   const file = new File(Paths.cache, filename);
   try {
@@ -230,14 +231,4 @@ export function stopRemoteTts(): void {
   try { playback.player.pause(); } catch {}
   try { playback.player.remove(); } catch {}
   try { playback.file.delete(); } catch {}
-}
-
-function mimeTypeToExtension(mimeType: string): string {
-  const normalized = mimeType.toLowerCase().split(';')[0].trim();
-  if (normalized === 'audio/mpeg' || normalized === 'audio/mp3') return 'mp3';
-  if (normalized === 'audio/wav' || normalized === 'audio/x-wav' || normalized === 'audio/wave') return 'wav';
-  if (normalized === 'audio/aac') return 'aac';
-  if (normalized === 'audio/opus' || normalized === 'audio/ogg') return 'ogg';
-  if (normalized === 'audio/flac') return 'flac';
-  return 'bin';
 }

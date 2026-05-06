@@ -247,6 +247,16 @@ export function getOpenAITTSMimeType(responseFormat: OpenAITtsResponseFormat): s
   }
 }
 
+export function getAudioFileExtensionFromMimeType(mimeType: string): string {
+  const normalized = mimeType.toLowerCase().split(';')[0].trim();
+  if (normalized === 'audio/mpeg' || normalized === 'audio/mp3') return 'mp3';
+  if (normalized === 'audio/wav' || normalized === 'audio/x-wav' || normalized === 'audio/wave') return 'wav';
+  if (normalized === 'audio/aac') return 'aac';
+  if (normalized === 'audio/opus' || normalized === 'audio/ogg') return 'ogg';
+  if (normalized === 'audio/flac') return 'flac';
+  return 'bin';
+}
+
 export async function generateTTS<TConfig extends GenerateTtsConfigLike>(
   input: GenerateTtsInput,
   config: TConfig,
