@@ -177,6 +177,31 @@ test('uses shared main agent mode options in mobile desktop settings', () => {
   assert.match(agentSettingsSection, /\(remoteSettings\.mainAgentMode \?\? DEFAULT_MAIN_AGENT_MODE\) === 'acpx'/);
 });
 
+test('uses shared MCP defaults in mobile desktop settings', () => {
+  const agentSettingsSection = extractBetween(
+    '<CollapsibleSection id="agentSettings" title="Agent Settings">',
+    '<CollapsibleSection id="skills" title="Skills">'
+  );
+  const toolExecutionSection = extractBetween(
+    '<CollapsibleSection id="toolExecution" title="Tool Execution">',
+    '<CollapsibleSection id="mcpServers" title="MCP Servers">'
+  );
+
+  assert.match(settingsSource, /DEFAULT_MCP_MESSAGE_QUEUE_ENABLED/);
+  assert.match(settingsSource, /DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL/);
+  assert.match(settingsSource, /DEFAULT_MCP_VERIFY_COMPLETION_ENABLED/);
+  assert.match(settingsSource, /DEFAULT_MCP_FINAL_SUMMARY_ENABLED/);
+  assert.match(settingsSource, /DEFAULT_MCP_UNLIMITED_ITERATIONS/);
+  assert.match(settingsSource, /DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED/);
+  assert.match(settingsSource, /DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED/);
+  assert.match(settingsSource, /DEFAULT_MCP_PARALLEL_TOOL_EXECUTION/);
+  assert.match(agentSettingsSection, /remoteSettings\.mcpMessageQueueEnabled \?\? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED/);
+  assert.match(agentSettingsSection, /remoteSettings\.mcpUnlimitedIterations \?\? DEFAULT_MCP_UNLIMITED_ITERATIONS/);
+  assert.match(toolExecutionSection, /remoteSettings\.mcpContextReductionEnabled \?\? DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED/);
+  assert.match(toolExecutionSection, /remoteSettings\.mcpToolResponseProcessingEnabled \?\? DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED/);
+  assert.match(toolExecutionSection, /remoteSettings\.mcpParallelToolExecution \?\? DEFAULT_MCP_PARALLEL_TOOL_EXECUTION/);
+});
+
 test('lets mobile configure desktop local trace logging', () => {
   const langfuseSection = extractBetween(
     '<CollapsibleSection id="langfuse" title="Langfuse">',

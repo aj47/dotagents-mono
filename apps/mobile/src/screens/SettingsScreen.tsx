@@ -78,6 +78,14 @@ import {
   type RequiredBundleComponentSelection,
 } from '@dotagents/shared/bundle-api';
 import {
+  DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED,
+  DEFAULT_MCP_FINAL_SUMMARY_ENABLED,
+  DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
+  DEFAULT_MCP_PARALLEL_TOOL_EXECUTION,
+  DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL,
+  DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED,
+  DEFAULT_MCP_UNLIMITED_ITERATIONS,
+  DEFAULT_MCP_VERIFY_COMPLETION_ENABLED,
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   formatMcpMaxIterationsValidationMessage,
   MCP_MAX_ITERATIONS_DEFAULT,
@@ -3787,20 +3795,20 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Message Queue</Text>
                   <Switch
-                    value={remoteSettings.mcpMessageQueueEnabled ?? true}
+                    value={remoteSettings.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('mcpMessageQueueEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpMessageQueueEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Require Tool Approval</Text>
                   <Switch
-                    value={remoteSettings.mcpRequireApprovalBeforeToolCall ?? false}
+                    value={remoteSettings.mcpRequireApprovalBeforeToolCall ?? DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL}
                     onValueChange={(v) => handleRemoteSettingToggle('mcpRequireApprovalBeforeToolCall', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpRequireApprovalBeforeToolCall ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.mcpRequireApprovalBeforeToolCall ?? DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
                 <Text style={styles.helperText}>
@@ -3810,20 +3818,20 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Verify Completion</Text>
                   <Switch
-                    value={remoteSettings.mcpVerifyCompletionEnabled ?? true}
+                    value={remoteSettings.mcpVerifyCompletionEnabled ?? DEFAULT_MCP_VERIFY_COMPLETION_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('mcpVerifyCompletionEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpVerifyCompletionEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.mcpVerifyCompletionEnabled ?? DEFAULT_MCP_VERIFY_COMPLETION_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Final Summary</Text>
                   <Switch
-                    value={remoteSettings.mcpFinalSummaryEnabled ?? false}
+                    value={remoteSettings.mcpFinalSummaryEnabled ?? DEFAULT_MCP_FINAL_SUMMARY_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('mcpFinalSummaryEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpFinalSummaryEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.mcpFinalSummaryEnabled ?? DEFAULT_MCP_FINAL_SUMMARY_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
                 <Text style={styles.helperText}>
@@ -3852,10 +3860,10 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Unlimited Iterations</Text>
                   <Switch
-                    value={remoteSettings.mcpUnlimitedIterations ?? true}
+                    value={remoteSettings.mcpUnlimitedIterations ?? DEFAULT_MCP_UNLIMITED_ITERATIONS}
                     onValueChange={(v) => handleRemoteSettingToggle('mcpUnlimitedIterations', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpUnlimitedIterations ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.mcpUnlimitedIterations ?? DEFAULT_MCP_UNLIMITED_ITERATIONS) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
               </CollapsibleSection>
@@ -3867,10 +3875,10 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Context Reduction</Text>
                   <Switch
-                    value={remoteSettings.mcpContextReductionEnabled ?? false}
+                    value={remoteSettings.mcpContextReductionEnabled ?? DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('mcpContextReductionEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpContextReductionEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.mcpContextReductionEnabled ?? DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
                 <Text style={styles.helperText}>
@@ -3880,20 +3888,20 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Tool Response Processing</Text>
                   <Switch
-                    value={remoteSettings.mcpToolResponseProcessingEnabled ?? false}
+                    value={remoteSettings.mcpToolResponseProcessingEnabled ?? DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('mcpToolResponseProcessingEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpToolResponseProcessingEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.mcpToolResponseProcessingEnabled ?? DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Parallel Tool Execution</Text>
                   <Switch
-                    value={remoteSettings.mcpParallelToolExecution ?? false}
+                    value={remoteSettings.mcpParallelToolExecution ?? DEFAULT_MCP_PARALLEL_TOOL_EXECUTION}
                     onValueChange={(v) => handleRemoteSettingToggle('mcpParallelToolExecution', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.mcpParallelToolExecution ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.mcpParallelToolExecution ?? DEFAULT_MCP_PARALLEL_TOOL_EXECUTION) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
                 <Text style={styles.helperText}>

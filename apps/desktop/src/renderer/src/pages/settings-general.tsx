@@ -8,6 +8,11 @@ import {
 } from "@renderer/components/ui/select"
 import { Switch } from "@renderer/components/ui/switch"
 import {
+  DEFAULT_MCP_FINAL_SUMMARY_ENABLED,
+  DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
+  DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL,
+  DEFAULT_MCP_UNLIMITED_ITERATIONS,
+  DEFAULT_MCP_VERIFY_COMPLETION_ENABLED,
   MCP_MAX_ITERATIONS_DEFAULT,
   MCP_MAX_ITERATIONS_MAX,
   MCP_MAX_ITERATIONS_MIN,
@@ -450,39 +455,39 @@ export function Component() {
 
           <Control label={<ControlLabel label="Message Queuing" tooltip="Allow queueing messages while the agent is processing. Messages will be processed in order after the current task completes." />} className="px-3">
             <Switch
-              checked={configQuery.data?.mcpMessageQueueEnabled ?? true}
+              checked={configQuery.data?.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED}
               onCheckedChange={(value) => saveConfig({ mcpMessageQueueEnabled: value })}
             />
           </Control>
           <Control label={<ControlLabel label="Require Tool Approval" tooltip="Adds a confirmation dialog before any tool executes. Recommended for safety." />} className="px-3">
             <Switch
-              checked={configQuery.data?.mcpRequireApprovalBeforeToolCall ?? false}
+              checked={configQuery.data?.mcpRequireApprovalBeforeToolCall ?? DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL}
               onCheckedChange={(value) => saveConfig({ mcpRequireApprovalBeforeToolCall: value })}
             />
           </Control>
 
           <Control label={<ControlLabel label="Verify Task Completion" tooltip="When enabled, the agent will verify whether the user's task has been completed before finishing. Disable for faster responses without verification." />} className="px-3">
             <Switch
-              checked={configQuery.data?.mcpVerifyCompletionEnabled ?? true}
+              checked={configQuery.data?.mcpVerifyCompletionEnabled ?? DEFAULT_MCP_VERIFY_COMPLETION_ENABLED}
               onCheckedChange={(value) => saveConfig({ mcpVerifyCompletionEnabled: value })}
             />
           </Control>
 
           <Control label={<ControlLabel label="Final Summary" tooltip="When enabled, the agent will generate a concise final summary after completing a task. Disable for faster responses without the summary step." />} className="px-3">
             <Switch
-              checked={configQuery.data?.mcpFinalSummaryEnabled ?? false}
+              checked={configQuery.data?.mcpFinalSummaryEnabled ?? DEFAULT_MCP_FINAL_SUMMARY_ENABLED}
               onCheckedChange={(value) => saveConfig({ mcpFinalSummaryEnabled: value })}
             />
           </Control>
 
           <Control label={<ControlLabel label="Unlimited Iterations" tooltip="Allow the agent to run indefinitely without an iteration limit. Use with caution as it may run for a long time." />} className="px-3">
             <Switch
-              checked={configQuery.data?.mcpUnlimitedIterations ?? true}
+              checked={configQuery.data?.mcpUnlimitedIterations ?? DEFAULT_MCP_UNLIMITED_ITERATIONS}
               onCheckedChange={(checked) => saveConfig({ mcpUnlimitedIterations: checked })}
             />
           </Control>
 
-          {!(configQuery.data?.mcpUnlimitedIterations ?? true) && (
+          {!(configQuery.data?.mcpUnlimitedIterations ?? DEFAULT_MCP_UNLIMITED_ITERATIONS) && (
             <Control label={<ControlLabel label="Max Iterations" tooltip="Maximum number of iterations the agent can perform before stopping. Higher values allow more complex tasks but may take longer." />} className="px-3">
               <Input
                 type="number"

@@ -404,6 +404,14 @@ export function stripSamplingToolMarkerTokens(content: string | undefined | null
 export const MCP_MAX_ITERATIONS_MIN = 1
 export const MCP_MAX_ITERATIONS_MAX = 100
 export const MCP_MAX_ITERATIONS_DEFAULT = 10
+export const DEFAULT_MCP_MESSAGE_QUEUE_ENABLED = true
+export const DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL = false
+export const DEFAULT_MCP_VERIFY_COMPLETION_ENABLED = true
+export const DEFAULT_MCP_FINAL_SUMMARY_ENABLED = false
+export const DEFAULT_MCP_UNLIMITED_ITERATIONS = true
+export const DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED = true
+export const DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED = true
+export const DEFAULT_MCP_PARALLEL_TOOL_EXECUTION = true
 
 // Name advertised for DotAgents runtime tools when they are grouped as an MCP source.
 export const RUNTIME_TOOLS_SERVER_NAME = "dotagents-runtime-tools"
