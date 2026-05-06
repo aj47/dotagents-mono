@@ -151,6 +151,11 @@
       "import": "./dist/message-display-utils.mjs",
       "require": "./dist/message-display-utils.js"
     },
+    "./markdown-render-parts": {
+      "types": "./dist/markdown-render-parts.d.ts",
+      "import": "./dist/markdown-render-parts.mjs",
+      "require": "./dist/markdown-render-parts.js"
+    },
     "./conversation-media-assets": {
       "types": "./dist/conversation-media-assets.d.ts",
       "import": "./dist/conversation-media-assets.mjs",

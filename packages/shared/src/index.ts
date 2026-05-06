@@ -55,6 +55,7 @@ export * from './agent-avatar-colors';
 export * from './delegation-tool-display';
 export * from './message-display-utils';
 export * from './conversation-media-assets';
+export * from './markdown-render-parts';
 export * from './message-queue-utils';
 export * from './message-queue-store';
 export * from './mobile-app-config';

@@ -35,6 +35,7 @@ export default defineConfig({
     'message-queue-store': 'src/message-queue-store.ts',
     'mobile-app-config': 'src/mobile-app-config.ts',
     'message-display-utils': 'src/message-display-utils.ts',
+    'markdown-render-parts': 'src/markdown-render-parts.ts',
     'stt-models': 'src/stt-models.ts',
     'api-key-error-utils': 'src/api-key-error-utils.ts',
     'error-utils': 'src/error-utils.ts',
