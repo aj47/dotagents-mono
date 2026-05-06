@@ -60,6 +60,7 @@ export * from './mcp-utils';
 export * from './oauth-examples';
 export * from './discord-utils';
 export * from './discord-config';
+export * from './linux-artifacts';
 export * from './agent-run-utils';
 export * from './conversation-history-utils';
 export * from './conversation-context-builder';

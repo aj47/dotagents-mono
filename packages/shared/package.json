@@ -291,6 +291,11 @@
       "import": "./dist/discord-config.mjs",
       "require": "./dist/discord-config.js"
     },
+    "./linux-artifacts": {
+      "types": "./dist/linux-artifacts.d.ts",
+      "import": "./dist/linux-artifacts.mjs",
+      "require": "./dist/linux-artifacts.js"
+    },
     "./agent-run-utils": {
       "types": "./dist/agent-run-utils.d.ts",
       "import": "./dist/agent-run-utils.mjs",

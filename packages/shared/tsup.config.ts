@@ -59,6 +59,7 @@ export default defineConfig({
     'oauth-examples': 'src/oauth-examples.ts',
     'discord-utils': 'src/discord-utils.ts',
     'discord-config': 'src/discord-config.ts',
+    'linux-artifacts': 'src/linux-artifacts.ts',
     'agent-run-utils': 'src/agent-run-utils.ts',
     'conversation-history-utils': 'src/conversation-history-utils.ts',
     'conversation-context-builder': 'src/conversation-context-builder.ts',
