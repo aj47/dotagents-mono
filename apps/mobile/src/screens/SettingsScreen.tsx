@@ -23,7 +23,6 @@ import {
   createSwitchAccessibilityLabel,
 } from '../lib/accessibility';
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteDateFilter, KnowledgeNoteSort, AgentProfile, Loop, LocalSpeechModelProviderId, LocalSpeechModelStatus, ModelPresetSummary } from '../lib/settingsApi';
-import { getAcpxMainAgentOptions } from '../lib/mainAgentOptions';
 import { speakRemoteTts } from '../lib/remoteTts';
 import { TTSSettings } from '../ui/TTSSettings';
 import { MicrophoneSelector } from '../ui/MicrophoneSelector';
@@ -32,6 +31,7 @@ import {
   buildKnowledgeNoteSections,
 } from '@dotagents/shared/knowledge-note-grouping';
 import { sortAgentProfilesWithDefaultFirst } from '@dotagents/shared/agent-selector-options';
+import { getAcpxMainAgentOptions } from '@dotagents/shared/main-agent-selection';
 import {
   filterModelOptionsByQuery,
   getAgentModelPlaceholder,

@@ -7,7 +7,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { ExtendedSettingsApiClient, Profile } from '../lib/settingsApi';
-import { getAcpxMainAgentOptions, toMainAgentProfile } from '../lib/mainAgentOptions';
+import { getAcpxMainAgentOptions, toMainAgentProfile } from '@dotagents/shared/main-agent-selection';
 
 export interface ProfileContextValue {
   /** Current profile from the server */
@@ -120,4 +120,3 @@ export function useProfileProvider(baseUrl: string, apiKey: string): ProfileCont
     setCurrentProfile,
   };
 }
-
