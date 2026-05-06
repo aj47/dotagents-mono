@@ -57,7 +57,7 @@ import {
   MCP_MAX_ITERATIONS_DEFAULT,
   parseMcpMaxIterationsDraft,
 } from '@dotagents/shared/mcp-api';
-import { isReservedMcpServerName } from '@dotagents/shared/mcp-utils';
+import { isReservedMcpServerName, type MCPServerConfig, type MCPTransportType } from '@dotagents/shared/mcp-utils';
 
 const getRemoteTtsModelValue = (settings?: Settings | null): string | undefined => {
   if (!settings) return undefined;
@@ -97,6 +97,30 @@ type ModelPresetDraft = {
   transcriptProcessingModel: string;
   isBuiltIn: boolean;
   hasApiKey: boolean;
+};
+
+type McpServerDraft = {
+  name: string;
+  transport: MCPTransportType;
+  command: string;
+  args: string;
+  url: string;
+  env: string;
+  headers: string;
+  timeout: string;
+  disabled: boolean;
+};
+
+const EMPTY_MCP_SERVER_DRAFT: McpServerDraft = {
+  name: '',
+  transport: 'stdio',
+  command: '',
+  args: '',
+  url: '',
+  env: '',
+  headers: '',
+  timeout: '',
+  disabled: false,
 };
 
 const PROVIDER_CREDENTIAL_SECTIONS: Array<{
@@ -188,6 +212,24 @@ const EMPTY_MODEL_PRESET_DRAFT: ModelPresetDraft = {
   isBuiltIn: false,
   hasApiKey: false,
 };
+
+function parseMcpKeyValueDraft(text: string, label: string): { value?: Record<string, string>; error?: string } {
+  const value: Record<string, string> = {};
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const separatorIndex = trimmed.indexOf('=');
+    if (separatorIndex <= 0) {
+      return { error: `${label} entries must use KEY=value` };
+    }
+    const key = trimmed.slice(0, separatorIndex).trim();
+    if (!key) {
+      return { error: `${label} entries must include a key` };
+    }
+    value[key] = trimmed.slice(separatorIndex + 1).trim();
+  }
+  return { value };
+}
 
 function buildRemoteSettingsInputDrafts(settings: Settings): Record<string, string> {
   return {
@@ -326,6 +368,11 @@ export default function SettingsScreen({ navigation }: any) {
   const [presetEditorMode, setPresetEditorMode] = useState<ModelPresetEditorMode>('create');
   const [presetDraft, setPresetDraft] = useState<ModelPresetDraft>(EMPTY_MODEL_PRESET_DRAFT);
   const [isSavingPreset, setIsSavingPreset] = useState(false);
+
+  // MCP server editor state
+  const [showMcpServerEditor, setShowMcpServerEditor] = useState(false);
+  const [mcpServerDraft, setMcpServerDraft] = useState<McpServerDraft>(EMPTY_MCP_SERVER_DRAFT);
+  const [isSavingMcpServer, setIsSavingMcpServer] = useState(false);
 
   // TTS voice/model picker state
   const [showTtsVoicePicker, setShowTtsVoicePicker] = useState(false);
@@ -993,6 +1040,125 @@ export default function SettingsScreen({ navigation }: any) {
       }
     );
   }, [confirmDestructiveAction, fetchRemoteSettings, settingsClient]);
+
+  const openMcpServerEditor = useCallback(() => {
+    setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
+    setShowMcpServerEditor(true);
+  }, []);
+
+  const closeMcpServerEditor = useCallback(() => {
+    if (isSavingMcpServer) return;
+    setShowMcpServerEditor(false);
+    setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
+  }, [isSavingMcpServer]);
+
+  const handleMcpServerDraftChange = useCallback(<K extends keyof McpServerDraft>(
+    key: K,
+    value: McpServerDraft[K],
+  ) => {
+    setMcpServerDraft(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const buildMcpServerConfigFromDraft = (): { name: string; config: MCPServerConfig } | null => {
+    const name = mcpServerDraft.name.trim();
+    if (!name) {
+      setRemoteError('MCP server name is required');
+      return null;
+    }
+    if (isReservedMcpServerName(name, RESERVED_RUNTIME_TOOL_SERVER_NAMES)) {
+      setRemoteError(`MCP server name "${name}" is reserved`);
+      return null;
+    }
+    if (mcpServers.some(server => server.name === name)) {
+      setRemoteError(`MCP server "${name}" already exists`);
+      return null;
+    }
+
+    const config: MCPServerConfig = {
+      transport: mcpServerDraft.transport,
+    };
+
+    if (mcpServerDraft.transport === 'stdio') {
+      const command = mcpServerDraft.command.trim();
+      if (!command) {
+        setRemoteError('Command is required for stdio MCP servers');
+        return null;
+      }
+      config.command = command;
+      const args = mcpServerDraft.args
+        .split('\n')
+        .map((arg) => arg.trim())
+        .filter(Boolean);
+      if (args.length > 0) config.args = args;
+
+      const envResult = parseMcpKeyValueDraft(mcpServerDraft.env, 'Environment');
+      if (envResult.error) {
+        setRemoteError(envResult.error);
+        return null;
+      }
+      if (envResult.value && Object.keys(envResult.value).length > 0) {
+        config.env = envResult.value;
+      }
+    } else {
+      const url = mcpServerDraft.url.trim();
+      if (!url) {
+        setRemoteError('URL is required for remote MCP servers');
+        return null;
+      }
+      try {
+        new URL(url);
+      } catch {
+        setRemoteError('MCP server URL is invalid');
+        return null;
+      }
+      config.url = url;
+
+      const headersResult = parseMcpKeyValueDraft(mcpServerDraft.headers, 'Header');
+      if (headersResult.error) {
+        setRemoteError(headersResult.error);
+        return null;
+      }
+      if (headersResult.value && Object.keys(headersResult.value).length > 0) {
+        config.headers = headersResult.value;
+      }
+    }
+
+    const timeout = mcpServerDraft.timeout.trim();
+    if (timeout) {
+      const parsedTimeout = Number(timeout);
+      if (!Number.isFinite(parsedTimeout) || parsedTimeout <= 0) {
+        setRemoteError('Timeout must be a positive number');
+        return null;
+      }
+      config.timeout = Math.floor(parsedTimeout);
+    }
+    if (mcpServerDraft.disabled) config.disabled = true;
+
+    return { name, config };
+  };
+
+  const handleMcpServerEditorSave = async () => {
+    if (!settingsClient) return;
+
+    const draftConfig = buildMcpServerConfigFromDraft();
+    if (!draftConfig) return;
+
+    setIsSavingMcpServer(true);
+    setRemoteError(null);
+    try {
+      await settingsClient.upsertMCPServerConfig(draftConfig.name, draftConfig.config);
+      const serversRes = await settingsClient.getMCPServers();
+      setMcpServers(serversRes.servers);
+      setShowMcpServerEditor(false);
+      setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
+      setSaveStatusMessage('Saved');
+    } catch (error: any) {
+      console.error('[Settings] Failed to save MCP server:', error);
+      setRemoteError(error.message || 'Failed to save MCP server');
+    } finally {
+      setIsSavingMcpServer(false);
+    }
+  };
 
   // Handle knowledge note delete
   const handleKnowledgeNoteDelete = async (noteId: string) => {
@@ -3114,9 +3280,11 @@ export default function SettingsScreen({ navigation }: any) {
             )}
 
             {/* 4h. MCP Servers */}
-            {mcpServers.length > 0 && (
+            {isDotAgentsServer && (
               <CollapsibleSection id="mcpServers" title="MCP Servers">
-                {mcpServers.map((server) => {
+                {mcpServers.length === 0 ? (
+                  <Text style={styles.helperText}>No MCP servers configured</Text>
+                ) : mcpServers.map((server) => {
                   const canDeleteServer = !isReservedMcpServerName(server.name, RESERVED_RUNTIME_TOOL_SERVER_NAMES);
 
                   return (
@@ -3158,6 +3326,14 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   );
                 })}
+                <TouchableOpacity
+                  style={styles.createAgentButton}
+                  onPress={openMcpServerEditor}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Create MCP server')}
+                >
+                  <Text style={styles.createAgentButtonText}>+ Create MCP Server</Text>
+                </TouchableOpacity>
               </CollapsibleSection>
             )}
 
@@ -4009,6 +4185,187 @@ export default function SettingsScreen({ navigation }: any) {
               >
                 <Text style={styles.importModalImportText}>
                   {isSavingPreset ? 'Saving...' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MCP Server Editor Modal */}
+      <Modal
+        visible={showMcpServerEditor}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeMcpServerEditor}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={[styles.importModalContainer, styles.presetEditorContainer]}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>New MCP Server</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeMcpServerEditor}
+                accessibilityRole="button"
+                accessibilityLabel="Close MCP server editor"
+                disabled={isSavingMcpServer}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.presetEditorBody} keyboardShouldPersistTaps="handled">
+              <Text style={styles.label}>Name</Text>
+              <TextInput
+                style={styles.input}
+                value={mcpServerDraft.name}
+                onChangeText={(v) => handleMcpServerDraftChange('name', v)}
+                placeholder="filesystem"
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSavingMcpServer}
+              />
+
+              <Text style={styles.label}>Transport</Text>
+              <View style={styles.providerSelector}>
+                {(['stdio', 'streamableHttp', 'websocket'] as MCPTransportType[]).map((transport) => (
+                  <Pressable
+                    key={transport}
+                    style={[
+                      styles.providerOption,
+                      mcpServerDraft.transport === transport && styles.providerOptionActive,
+                    ]}
+                    onPress={() => handleMcpServerDraftChange('transport', transport)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Use ${transport} MCP transport`}
+                    disabled={isSavingMcpServer}
+                  >
+                    <Text style={[
+                      styles.providerOptionText,
+                      mcpServerDraft.transport === transport && styles.providerOptionTextActive,
+                    ]}>
+                      {transport === 'streamableHttp' ? 'HTTP' : transport}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {mcpServerDraft.transport === 'stdio' ? (
+                <>
+                  <Text style={styles.label}>Command</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={mcpServerDraft.command}
+                    onChangeText={(v) => handleMcpServerDraftChange('command', v)}
+                    placeholder="npx"
+                    placeholderTextColor={theme.colors.mutedForeground}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isSavingMcpServer}
+                  />
+
+                  <Text style={styles.label}>Arguments</Text>
+                  <TextInput
+                    style={[styles.input, { minHeight: 88 }]}
+                    value={mcpServerDraft.args}
+                    onChangeText={(v) => handleMcpServerDraftChange('args', v)}
+                    placeholder={"-y\n@modelcontextprotocol/server-filesystem"}
+                    placeholderTextColor={theme.colors.mutedForeground}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isSavingMcpServer}
+                  />
+
+                  <Text style={styles.label}>Environment</Text>
+                  <TextInput
+                    style={[styles.input, { minHeight: 88 }]}
+                    value={mcpServerDraft.env}
+                    onChangeText={(v) => handleMcpServerDraftChange('env', v)}
+                    placeholder="API_KEY=value"
+                    placeholderTextColor={theme.colors.mutedForeground}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isSavingMcpServer}
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={styles.label}>URL</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={mcpServerDraft.url}
+                    onChangeText={(v) => handleMcpServerDraftChange('url', v)}
+                    placeholder={mcpServerDraft.transport === 'websocket' ? 'wss://example.com/mcp' : 'https://example.com/mcp'}
+                    placeholderTextColor={theme.colors.mutedForeground}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isSavingMcpServer}
+                  />
+
+                  <Text style={styles.label}>Headers</Text>
+                  <TextInput
+                    style={[styles.input, { minHeight: 88 }]}
+                    value={mcpServerDraft.headers}
+                    onChangeText={(v) => handleMcpServerDraftChange('headers', v)}
+                    placeholder="Authorization=Bearer token"
+                    placeholderTextColor={theme.colors.mutedForeground}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isSavingMcpServer}
+                  />
+                </>
+              )}
+
+              <Text style={styles.label}>Timeout</Text>
+              <TextInput
+                style={styles.input}
+                value={mcpServerDraft.timeout}
+                onChangeText={(v) => handleMcpServerDraftChange('timeout', v)}
+                placeholder="30"
+                placeholderTextColor={theme.colors.mutedForeground}
+                keyboardType="number-pad"
+                editable={!isSavingMcpServer}
+              />
+
+              <View style={styles.row}>
+                <Text style={styles.label}>Disabled</Text>
+                <Switch
+                  value={mcpServerDraft.disabled}
+                  onValueChange={(v) => handleMcpServerDraftChange('disabled', v)}
+                  trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                  thumbColor={mcpServerDraft.disabled ? theme.colors.primaryForeground : theme.colors.background}
+                  disabled={isSavingMcpServer}
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeMcpServerEditor}
+                disabled={isSavingMcpServer}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.importModalImportButton, isSavingMcpServer && styles.importModalImportButtonDisabled]}
+                onPress={handleMcpServerEditorSave}
+                disabled={isSavingMcpServer}
+                accessibilityRole="button"
+                accessibilityLabel="Save MCP server"
+              >
+                <Text style={styles.importModalImportText}>
+                  {isSavingMcpServer ? 'Saving...' : 'Save'}
                 </Text>
               </TouchableOpacity>
             </View>

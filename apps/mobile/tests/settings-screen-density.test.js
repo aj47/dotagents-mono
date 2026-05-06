@@ -54,3 +54,12 @@ test('lets mobile delete non-reserved desktop MCP server configs', () => {
   assert.match(settingsSource, /isReservedMcpServerName\(server\.name, RESERVED_RUNTIME_TOOL_SERVER_NAMES\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Delete MCP server \$\{server\.name\}`\)/);
 });
+
+test('lets mobile create desktop MCP server configs through the shared client', () => {
+  assert.match(settingsSource, /showMcpServerEditor/);
+  assert.match(settingsSource, /Create MCP Server/);
+  assert.match(settingsSource, /settingsClient\.upsertMCPServerConfig\(draftConfig\.name, draftConfig\.config\)/);
+  assert.match(settingsSource, /parseMcpKeyValueDraft\(mcpServerDraft\.env, 'Environment'\)/);
+  assert.match(settingsSource, /parseMcpKeyValueDraft\(mcpServerDraft\.headers, 'Header'\)/);
+  assert.match(settingsSource, /setMcpServerDraft\(EMPTY_MCP_SERVER_DRAFT\)/);
+});
