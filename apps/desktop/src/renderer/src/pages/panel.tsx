@@ -19,6 +19,7 @@ import { applySelectedAgentToNextSession } from "@renderer/lib/apply-selected-ag
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { logUI } from "@renderer/lib/debug"
 import { formatKeyComboForDisplay } from "@dotagents/shared/key-utils"
+import { DEFAULT_PANEL_DRAG_ENABLED } from "@dotagents/shared/api-types"
 import { DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED } from "@dotagents/shared/stt-models"
 import { Send, Bot } from "lucide-react"
 import { useSelectedAgentId } from "@renderer/components/agent-selector"
@@ -302,7 +303,7 @@ export function Component() {
   const anyVisibleSessions = visibleSessionCount > 0 || (focusedSessionId && agentProgressById?.has(focusedSessionId))
 
   const configQuery = useConfigQuery()
-  const isDragEnabled = (configQuery.data as any)?.panelDragEnabled ?? true
+  const isDragEnabled = (configQuery.data as any)?.panelDragEnabled ?? DEFAULT_PANEL_DRAG_ENABLED
   // Disable transcription preview for Parakeet since live chunk PCM conversion is expensive.
   const isPreviewEnabled =
     (configQuery.data?.transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED) &&

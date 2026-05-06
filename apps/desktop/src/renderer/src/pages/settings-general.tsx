@@ -44,6 +44,15 @@ import {
   DEFAULT_TTS_REMOVE_URLS,
   DEFAULT_TTS_USE_LLM_PREPROCESSING,
 } from "@dotagents/shared/text-to-speech-settings"
+import {
+  DEFAULT_FLOATING_PANEL_AUTO_SHOW,
+  DEFAULT_HIDE_DOCK_ICON,
+  DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED,
+  DEFAULT_LAUNCH_AT_LOGIN,
+  DEFAULT_PANEL_DRAG_ENABLED,
+  DEFAULT_PANEL_POSITION,
+  type PanelPosition,
+} from "@dotagents/shared/api-types"
 import { SUPPORTED_LANGUAGES } from "@dotagents/shared/languages"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Input } from "@renderer/components/ui/input"
@@ -573,7 +582,7 @@ export function Component() {
           {process.env.IS_MAC && (
             <Control label="Hide Dock Icon" className="px-3">
               <Switch
-                defaultChecked={configQuery.data.hideDockIcon}
+                defaultChecked={configQuery.data.hideDockIcon ?? DEFAULT_HIDE_DOCK_ICON}
                 onCheckedChange={(value) => {
                   saveConfig({
                     hideDockIcon: value,
@@ -584,7 +593,7 @@ export function Component() {
           )}
           <Control label="Launch at Login" className="px-3">
             <Switch
-              defaultChecked={configQuery.data.launchAtLogin ?? false}
+              defaultChecked={configQuery.data.launchAtLogin ?? DEFAULT_LAUNCH_AT_LOGIN}
               onCheckedChange={(value) => {
                 saveConfig({
                   launchAtLogin: value,
@@ -1268,17 +1277,8 @@ export function Component() {
         <ControlGroup collapsible defaultCollapsed title="Panel Position" forceOpen={isSearching}>
           <Control label={<ControlLabel label="Default Position" tooltip="Choose where the floating panel appears on your screen. Custom position: Panel can be dragged to any location and will remember its position." />} className="px-3">
             <Select
-              value={configQuery.data?.panelPosition || "top-right"}
-              onValueChange={(
-                value:
-                  | "top-left"
-                  | "top-center"
-                  | "top-right"
-                  | "bottom-left"
-                  | "bottom-center"
-                  | "bottom-right"
-                  | "custom",
-              ) => {
+              value={configQuery.data?.panelPosition ?? DEFAULT_PANEL_POSITION}
+              onValueChange={(value: PanelPosition) => {
                 saveConfig({
                   panelPosition: value,
                 })
@@ -1303,7 +1303,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Enable Dragging" tooltip="Enable dragging to move the panel by holding the top bar." />} className="px-3">
             <Switch
-              defaultChecked={configQuery.data?.panelDragEnabled ?? true}
+              defaultChecked={configQuery.data?.panelDragEnabled ?? DEFAULT_PANEL_DRAG_ENABLED}
               onCheckedChange={(value) => {
                 saveConfig({
                   panelDragEnabled: value,
@@ -1316,7 +1316,7 @@ export function Component() {
             <div className="space-y-2">
               <div className="flex justify-start sm:justify-end">
                 <Switch
-                  checked={configQuery.data?.floatingPanelAutoShow !== false}
+                  checked={configQuery.data?.floatingPanelAutoShow ?? DEFAULT_FLOATING_PANEL_AUTO_SHOW}
                   onCheckedChange={(value) => {
                     saveConfig({
                       floatingPanelAutoShow: value,
@@ -1334,7 +1334,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Hide Panel When Main App Focused" tooltip="When enabled, the floating panel automatically hides when the main DotAgents window is focused. The panel reappears when the main window loses focus." />} className="px-3">
             <Switch
-              checked={configQuery.data?.hidePanelWhenMainFocused !== false}
+              checked={configQuery.data?.hidePanelWhenMainFocused ?? DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED}
               onCheckedChange={(value) => {
                 saveConfig({
                   hidePanelWhenMainFocused: value,
