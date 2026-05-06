@@ -4455,7 +4455,7 @@ export const router = {
 
       const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
       const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-      const { loadTasksLayer, taskIdToFilePath, writeTaskFile } = await import("./agents-files/tasks")
+      const { loadTasksLayer, taskIdToFilePath, writeTaskFile } = await import("@dotagents/core")
 
       const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
       const workspaceDir = resolveWorkspaceAgentsFolder()

@@ -14,18 +14,19 @@ import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
-import type { LoopConfig, SessionProfileSnapshot } from "@dotagents/core"
-import { formatRepeatTaskTitle } from "@dotagents/shared/repeat-task-utils"
-import type { RendererHandlers } from "./renderer-handlers"
-import { WINDOWS } from "./window"
-import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import {
   getTasksDir,
   loadTasksLayer,
   writeTaskFile,
   writeAllTaskFiles,
   deleteTaskFiles,
-} from "./agents-files/tasks"
+  type LoopConfig,
+  type SessionProfileSnapshot,
+} from "@dotagents/core"
+import { formatRepeatTaskTitle } from "@dotagents/shared/repeat-task-utils"
+import type { RendererHandlers } from "./renderer-handlers"
+import { WINDOWS } from "./window"
+import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import {
   describeRepeatTaskScheduleForLog,
   getNextRepeatTaskDelayMs,

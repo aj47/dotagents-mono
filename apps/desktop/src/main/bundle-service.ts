@@ -9,14 +9,17 @@
 import fs from "fs"
 import path from "path"
 import { dialog, BrowserWindow, type OpenDialogOptions, type SaveDialogOptions } from "electron"
-import type {
-  AgentProfile,
-  AgentProfileConnection,
-  AgentSkill,
-  KnowledgeNote,
-  LoopConfig,
-  AgentProfileConnectionType,
-  AgentProfileRole,
+import {
+  loadTasksLayer,
+  writeTaskFile,
+  taskIdToFilePath,
+  type AgentProfile,
+  type AgentProfileConnection,
+  type AgentSkill,
+  type KnowledgeNote,
+  type LoopConfig,
+  type AgentProfileConnectionType,
+  type AgentProfileRole,
 } from "@dotagents/core"
 import {
   buildHubBundleArtifactUrl,
@@ -33,7 +36,6 @@ import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modul
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToDirPath } from "./agents-files/skills"
 import { loadAgentsKnowledgeNotesLayer, writeKnowledgeNoteFile } from "./agents-files/knowledge-notes"
-import { loadTasksLayer, writeTaskFile, taskIdToFilePath } from "./agents-files/tasks"
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "@dotagents/core"
 import { logApp } from "./debug"
 

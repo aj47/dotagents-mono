@@ -65,7 +65,7 @@ vi.mock("./agents-files/modular-config", () => ({
   getAgentsLayerPaths: vi.fn((root: string) => ({ root })),
 }))
 
-vi.mock("./agents-files/tasks", () => ({
+vi.mock("@dotagents/core", () => ({
   getTasksDir: vi.fn((layer: { root: string }) => `${layer.root}/tasks`),
   loadTasksLayer: vi.fn(() => ({ tasks: [], originById: new Map() })),
   writeTaskFile: vi.fn(),
