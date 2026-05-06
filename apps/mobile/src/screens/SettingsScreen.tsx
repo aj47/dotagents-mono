@@ -369,6 +369,10 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingKnowledgeNotes, setIsLoadingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const [isImportingLoopMarkdown, setIsImportingLoopMarkdown] = useState(false);
+  const [isExportingLoopMarkdownId, setIsExportingLoopMarkdownId] = useState<string | null>(null);
+  const [showLoopImportModal, setShowLoopImportModal] = useState(false);
+  const [loopImportMarkdownText, setLoopImportMarkdownText] = useState('');
   const displaySkills = useMemo(() => [...skills].sort((a, b) => {
     const enabledDiff = Number(b.enabledForProfile) - Number(a.enabledForProfile);
     if (enabledDiff !== 0) return enabledDiff;
@@ -1629,6 +1633,54 @@ export default function SettingsScreen({ navigation }: any) {
       loop,
     });
   }, [navigation]);
+
+  const closeLoopImportModal = useCallback(() => {
+    if (isImportingLoopMarkdown) return;
+    setShowLoopImportModal(false);
+    setLoopImportMarkdownText('');
+  }, [isImportingLoopMarkdown]);
+
+  const handleLoopMarkdownImport = useCallback(async () => {
+    if (!settingsClient || !loopImportMarkdownText.trim()) return;
+
+    setIsImportingLoopMarkdown(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importLoopFromMarkdown(loopImportMarkdownText.trim());
+      setShowLoopImportModal(false);
+      setLoopImportMarkdownText('');
+      setSaveStatusMessage(`Imported loop "${result.loop.name}"`);
+      await fetchLoops();
+      Alert.alert('Import Complete', `Imported "${result.loop.name}".`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to import loop Markdown:', error);
+      setRemoteError(error.message || 'Failed to import loop');
+      Alert.alert('Import Failed', error.message || 'Failed to import loop');
+    } finally {
+      setIsImportingLoopMarkdown(false);
+    }
+  }, [fetchLoops, loopImportMarkdownText, settingsClient]);
+
+  const handleLoopMarkdownExport = useCallback(async (loop: Loop) => {
+    if (!settingsClient) return;
+
+    setIsExportingLoopMarkdownId(loop.id);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportLoopToMarkdown(loop.id);
+      await Share.share({
+        message: result.markdown,
+        title: `${loop.name}.md`,
+      });
+      setSaveStatusMessage(`Exported loop "${loop.name}"`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export loop Markdown:', error);
+      setRemoteError(error.message || 'Failed to export loop');
+      Alert.alert('Export Failed', error.message || 'Failed to export loop');
+    } finally {
+      setIsExportingLoopMarkdownId(null);
+    }
+  }, [settingsClient]);
 
   const handleLoopDelete = useCallback((loop: Loop) => {
     if (!settingsClient) return;
@@ -4328,6 +4380,17 @@ export default function SettingsScreen({ navigation }: any) {
                           <Text style={styles.loopActionButtonText}>Run now</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
+                          style={[styles.loopActionButton, isExportingLoopMarkdownId === loop.id && styles.agentActionButtonDisabled]}
+                          onPress={() => handleLoopMarkdownExport(loop)}
+                          disabled={isExportingLoopMarkdownId === loop.id}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Export ${loop.name} loop as Markdown`)}
+                        >
+                          <Text style={styles.loopActionButtonText}>
+                            {isExportingLoopMarkdownId === loop.id ? 'Exporting...' : 'Export'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
                           style={[styles.loopActionButton, styles.loopActionButtonDanger]}
                           onPress={() => handleLoopDelete(loop)}
                           accessibilityRole="button"
@@ -4340,12 +4403,22 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
-                <TouchableOpacity
-                  style={styles.createAgentButton}
-                  onPress={() => handleLoopEdit()}
-                >
-                  <Text style={styles.createAgentButtonText}>+ Create New Loop</Text>
-                </TouchableOpacity>
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => handleLoopEdit()}
+                  >
+                    <Text style={styles.createAgentButtonText}>+ Create New Loop</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => setShowLoopImportModal(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import loop Markdown')}
+                  >
+                    <Text style={styles.createAgentButtonText}>Import Loop</Text>
+                  </TouchableOpacity>
+                </View>
                 <Text style={styles.helperText}>
                   Tap a loop to edit, or run/toggle/delete from the actions
                 </Text>
@@ -5032,6 +5105,70 @@ export default function SettingsScreen({ navigation }: any) {
               >
                 <Text style={styles.importModalImportText}>
                   {isImportingSkillMarkdown ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Loop Markdown Import Modal */}
+      <Modal
+        visible={showLoopImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeLoopImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import Loop</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeLoopImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close loop import modal"
+                disabled={isImportingLoopMarkdown}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.importJsonInput}
+              value={loopImportMarkdownText}
+              onChangeText={setLoopImportMarkdownText}
+              placeholder={'---\nkind: task\nname: morning-check\nintervalMinutes: 60\nenabled: true\n---\nSummarize overnight work.'}
+              placeholderTextColor={theme.colors.mutedForeground}
+              multiline
+              numberOfLines={8}
+              textAlignVertical="top"
+              autoCorrect={false}
+              autoCapitalize="none"
+              spellCheck={false}
+              editable={!isImportingLoopMarkdown}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeLoopImportModal}
+                disabled={isImportingLoopMarkdown}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!loopImportMarkdownText.trim() || isImportingLoopMarkdown) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={handleLoopMarkdownImport}
+                disabled={!loopImportMarkdownText.trim() || isImportingLoopMarkdown}
+                accessibilityRole="button"
+                accessibilityLabel="Import loop Markdown"
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingLoopMarkdown ? 'Importing...' : 'Import'}
                 </Text>
               </TouchableOpacity>
             </View>

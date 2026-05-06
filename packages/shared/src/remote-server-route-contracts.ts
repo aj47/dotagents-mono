@@ -122,6 +122,8 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   getRepeatTasks: () => RemoteServerMaybePromise<MobileApiActionResult>;
   toggleRepeatTask: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   runRepeatTask: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
+  importRepeatTaskFromMarkdown: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
+  exportRepeatTaskToMarkdown: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   createKnowledgeNote: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
   updateKnowledgeNote: (
     id: string | undefined,

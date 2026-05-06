@@ -1095,9 +1095,19 @@ export interface LoopUpdateRequest {
   schedule?: LoopSchedule | null;
 }
 
+export interface LoopImportMarkdownRequest {
+  content: string;
+}
+
 export interface LoopMutationResponse {
   success: true;
   loop: Loop;
+}
+
+export interface LoopExportMarkdownResponse {
+  success: true;
+  loopId: string;
+  markdown: string;
 }
 
 export interface LoopDeleteResponse {

@@ -117,3 +117,13 @@ test('lets mobile import and export skill Markdown through the shared client', (
   assert.match(settingsSource, /createButtonAccessibilityLabel\('Import skill Markdown'\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Export skill \$\{skill\.name\} as Markdown`\)/);
 });
+
+test('lets mobile import and export loop Markdown through the shared client', () => {
+  assert.match(settingsSource, /showLoopImportModal/);
+  assert.match(settingsSource, /Import Loop/);
+  assert.match(settingsSource, /settingsClient\.importLoopFromMarkdown\(loopImportMarkdownText\.trim\(\)\)/);
+  assert.match(settingsSource, /settingsClient\.exportLoopToMarkdown\(loop\.id\)/);
+  assert.match(settingsSource, /Share\.share\(\{[\s\S]*?message: result\.markdown/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Import loop Markdown'\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\(`Export \$\{loop\.name\} loop as Markdown`\)/);
+});

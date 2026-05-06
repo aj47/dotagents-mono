@@ -60,6 +60,8 @@ import type {
   Loop,
   LoopCreateRequest,
   LoopDeleteResponse,
+  LoopExportMarkdownResponse,
+  LoopImportMarkdownRequest,
   LoopMutationResponse,
   LoopRunResponse,
   LoopToggleResponse,
@@ -1581,6 +1583,18 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async importLoopFromMarkdown(content: string): Promise<LoopMutationResponse> {
+    const data: LoopImportMarkdownRequest = { content };
+    return this.request<LoopMutationResponse>(API_PATHS.loopImportMarkdown, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async exportLoopToMarkdown(id: string): Promise<LoopExportMarkdownResponse> {
+    return this.request<LoopExportMarkdownResponse>(API_BUILDERS.loopExportMarkdown(id));
   }
 
   async updateLoop(id: string, data: LoopUpdateRequest): Promise<LoopMutationResponse> {

@@ -58,7 +58,9 @@ import {
 import {
   createRepeatTask,
   deleteRepeatTask,
+  exportRepeatTaskToMarkdown,
   getRepeatTasks,
+  importRepeatTaskFromMarkdown,
   runRepeatTask,
   toggleRepeatTask,
   updateRepeatTask,
@@ -132,6 +134,8 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   getRepeatTasks,
   toggleRepeatTask,
   runRepeatTask,
+  importRepeatTaskFromMarkdown,
+  exportRepeatTaskToMarkdown,
   createKnowledgeNote,
   updateKnowledgeNote,
   createRepeatTask,

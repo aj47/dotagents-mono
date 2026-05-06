@@ -8,6 +8,7 @@ import {
   buildRepeatTaskResponse,
   buildRepeatTaskFromCreateRequest,
   buildRepeatTaskRunResponse,
+  buildRepeatTaskExportMarkdownResponse,
   buildRepeatTasksResponse,
   buildRepeatTaskToggleResponse,
   computeNextScheduledRun,
@@ -25,10 +26,13 @@ import {
   getLoopScheduleMode,
   getLoopScheduleTimes,
   getRepeatTasksAction,
+  importRepeatTaskFromMarkdownAction,
+  exportRepeatTaskToMarkdownAction,
   isContinuousRepeatTask,
   mergeRepeatTaskLayers,
   parseLoopIntervalDraft,
   parseRepeatTaskCreateRequestBody,
+  parseRepeatTaskImportMarkdownRequestBody,
   parseRepeatTaskScheduleInput,
   parseRepeatTaskUpdateRequestBody,
   formatRepeatTaskForApi,
@@ -454,6 +458,15 @@ describe("repeat task schedule helpers", () => {
       statusCode: 400,
       error: "runContinuously must be a boolean when provided",
     })
+    expect(parseRepeatTaskImportMarkdownRequestBody({ content: "   " })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "Repeat task Markdown content is required",
+    })
+    expect(parseRepeatTaskImportMarkdownRequestBody({ content: "  ---\nkind: task\n---\nRun" })).toEqual({
+      ok: true,
+      request: { content: "  ---\nkind: task\n---\nRun" },
+    })
   })
 
   it("formats repeat tasks for the remote API", () => {
@@ -511,6 +524,11 @@ describe("repeat task schedule helpers", () => {
     expect(buildRepeatTaskRunResponse("loop_1")).toEqual({
       success: true,
       id: "loop_1",
+    })
+    expect(buildRepeatTaskExportMarkdownResponse("loop_1", "---\nkind: task\n---\nRun")).toEqual({
+      success: true,
+      loopId: "loop_1",
+      markdown: "---\nkind: task\n---\nRun",
     })
     expect(buildRepeatTaskDeleteResponse("loop_1")).toEqual({
       success: true,
@@ -658,6 +676,20 @@ describe("repeat task schedule helpers", () => {
       statusCode: 200,
       body: { loop: { id: "loop_new", name: "New task", prompt: "Do it", enabled: true } },
     })
+    await expect(importRepeatTaskFromMarkdownAction({
+      content: "---\nkind: task\nid: loop_imported\nname: Imported task\nintervalMinutes: 30\nenabled: true\n---\nImported prompt",
+    }, options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: { success: true, loop: { id: "loop_imported", name: "Imported task", prompt: "Imported prompt", enabled: true } },
+    })
+    await expect(exportRepeatTaskToMarkdownAction("loop_1", options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        loopId: "loop_1",
+        markdown: expect.stringContaining("name: Morning check"),
+      },
+    })
     await expect(updateRepeatTaskAction("loop_1", { name: "Updated", enabled: true }, options)).resolves.toMatchObject({
       statusCode: 200,
       body: { success: true, loop: { id: "loop_1", name: "Updated", enabled: true } },
@@ -666,8 +698,8 @@ describe("repeat task schedule helpers", () => {
       statusCode: 200,
       body: buildRepeatTaskDeleteResponse("loop_new"),
     })
-    expect(started).toEqual(["loop_new", "loop_1"])
-    expect(stopped).toEqual(["loop_1", "loop_1"])
+    expect(started).toEqual(["loop_new", "loop_imported", "loop_1"])
+    expect(stopped).toEqual(["loop_1", "loop_imported", "loop_1"])
     expect(triggered).toEqual(["loop_1"])
   })
 
@@ -708,6 +740,16 @@ describe("repeat task schedule helpers", () => {
     await expect(createRepeatTaskAction({ name: "New task", prompt: "Do it" }, options)).resolves.toMatchObject({
       statusCode: 200,
       body: { loop: { id: "loop_new", name: "New task" } },
+    })
+    await expect(importRepeatTaskFromMarkdownAction({
+      content: "---\nkind: task\nid: loop_imported\nname: Imported\n---\nImported prompt",
+    }, options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: { success: true, loop: { id: "loop_imported", name: "Imported" } },
+    })
+    await expect(exportRepeatTaskToMarkdownAction("loop_imported", options)).resolves.toMatchObject({
+      statusCode: 200,
+      body: { success: true, loopId: "loop_imported", markdown: expect.stringContaining("Imported prompt") },
     })
     await expect(updateRepeatTaskAction("loop_new", { prompt: "Updated prompt" }, options)).resolves.toMatchObject({
       statusCode: 200,

@@ -2,7 +2,9 @@ import type { LoopConfig } from "@dotagents/core"
 import {
   createRepeatTaskAction,
   deleteRepeatTaskAction,
+  exportRepeatTaskToMarkdownAction,
   getRepeatTasksAction,
+  importRepeatTaskFromMarkdownAction,
   runRepeatTaskAction,
   toggleRepeatTaskAction,
   updateRepeatTaskAction,
@@ -52,6 +54,14 @@ export async function runRepeatTask(id: string | undefined): Promise<RepeatTaskA
 
 export async function createRepeatTask(body: unknown): Promise<RepeatTaskActionResult> {
   return createRepeatTaskAction(body, repeatTaskActionOptions)
+}
+
+export async function importRepeatTaskFromMarkdown(body: unknown): Promise<RepeatTaskActionResult> {
+  return importRepeatTaskFromMarkdownAction(body, repeatTaskActionOptions)
+}
+
+export async function exportRepeatTaskToMarkdown(id: string | undefined): Promise<RepeatTaskActionResult> {
+  return exportRepeatTaskToMarkdownAction(id, repeatTaskActionOptions)
 }
 
 export async function updateRepeatTask(id: string | undefined, body: unknown): Promise<RepeatTaskActionResult> {

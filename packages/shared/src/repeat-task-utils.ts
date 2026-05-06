@@ -1,11 +1,14 @@
 import type {
   Loop,
   LoopDeleteResponse,
+  LoopExportMarkdownResponse,
+  LoopImportMarkdownRequest,
   LoopMutationResponse,
   LoopRunResponse,
   LoopsResponse,
   LoopToggleResponse,
 } from "./api-types"
+import { parseTaskMarkdown, stringifyTaskMarkdown } from "./repeat-task-markdown"
 
 export type RepeatTaskScheduleMode = "continuous" | "interval" | "daily" | "weekly"
 
@@ -56,6 +59,8 @@ export type RepeatTaskUpdateRequest = {
   maxIterations?: number | null
   schedule?: RepeatTaskSchedule | null
 }
+
+export type RepeatTaskImportMarkdownRequest = LoopImportMarkdownRequest
 
 export type RepeatTaskRecord = {
   id: string
@@ -320,6 +325,10 @@ function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {}
 }
 
+function getOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined
+}
+
 function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 1
 }
@@ -520,6 +529,18 @@ export function parseRepeatTaskUpdateRequestBody(
   return { ok: true, request }
 }
 
+export function parseRepeatTaskImportMarkdownRequestBody(
+  body: unknown,
+): RepeatTaskRequestParseResult<RepeatTaskImportMarkdownRequest> {
+  const record = getRequestRecord(body)
+  const content = getOptionalString(record.content)
+  if (!content || !content.trim()) {
+    return { ok: false, statusCode: 400, error: "Repeat task Markdown content is required" }
+  }
+
+  return { ok: true, request: { content } }
+}
+
 export function buildRepeatTaskFromCreateRequest(
   id: string,
   request: RepeatTaskCreateRequest,
@@ -647,6 +668,10 @@ export function buildRepeatTaskToggleResponse(id: string, enabled: boolean): Loo
 
 export function buildRepeatTaskRunResponse(id: string): LoopRunResponse {
   return { success: true, id }
+}
+
+export function buildRepeatTaskExportMarkdownResponse(loopId: string, markdown: string): LoopExportMarkdownResponse {
+  return { success: true, loopId, markdown }
 }
 
 export function buildRepeatTaskDeleteResponse(id: string): LoopDeleteResponse {
@@ -812,6 +837,77 @@ export async function createRepeatTaskAction<
   } catch (caughtError) {
     options.diagnostics.logError("repeat-task-actions", "Failed to create repeat task", caughtError)
     return repeatTaskActionError(500, getUnknownErrorMessage(caughtError, "Failed to create repeat task"))
+  }
+}
+
+export async function importRepeatTaskFromMarkdownAction<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(body: unknown, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+  try {
+    const parsedRequest = parseRepeatTaskImportMarkdownRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return repeatTaskActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const parsedTask = parseTaskMarkdown(parsedRequest.request.content, { fallbackId: options.createId() })
+    if (!parsedTask) {
+      return repeatTaskActionError(400, "Invalid repeat task Markdown")
+    }
+
+    const importedTask = parsedTask as TLoop
+    const loopService = await options.loadLoopService()
+    if (loopService) {
+      const saved = loopService.saveLoop(importedTask)
+      if (!saved) {
+        return repeatTaskActionError(500, "Failed to persist repeat task")
+      }
+
+      loopService.stopLoop(importedTask.id)
+      if (importedTask.enabled) {
+        loopService.startLoop(importedTask.id)
+      }
+    } else {
+      const cfg = options.getConfig()
+      const loops = cfg.loops || []
+      const existingIndex = loops.findIndex(loop => loop.id === importedTask.id)
+      const nextLoops = existingIndex >= 0
+        ? loops.map((loop, index) => index === existingIndex ? importedTask : loop)
+        : [...loops, importedTask]
+      options.saveConfig({ ...cfg, loops: nextLoops } as TConfig)
+    }
+
+    const savedLoop = loopService?.getLoop(importedTask.id) ?? importedTask
+    return repeatTaskActionOk(buildRepeatTaskMutationResponse(savedLoop, {
+      profileName: options.getProfileName?.(savedLoop.profileId),
+      status: loopService?.getLoopStatus(savedLoop.id),
+    }))
+  } catch (caughtError) {
+    options.diagnostics.logError("repeat-task-actions", "Failed to import repeat task from Markdown", caughtError)
+    return repeatTaskActionError(400, getUnknownErrorMessage(caughtError, "Failed to import repeat task"))
+  }
+}
+
+export async function exportRepeatTaskToMarkdownAction<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+  try {
+    const taskId = id ?? ""
+    if (!taskId) {
+      return repeatTaskActionError(400, "Repeat task id is required")
+    }
+
+    const loopService = await options.loadLoopService()
+    const loop = loopService?.getLoop(taskId) ?? (options.getConfig().loops || []).find(task => task.id === taskId)
+    if (!loop) {
+      return repeatTaskActionError(404, "Repeat task not found")
+    }
+
+    return repeatTaskActionOk(buildRepeatTaskExportMarkdownResponse(taskId, stringifyTaskMarkdown(loop)))
+  } catch (caughtError) {
+    options.diagnostics.logError("repeat-task-actions", "Failed to export repeat task to Markdown", caughtError)
+    return repeatTaskActionError(500, getUnknownErrorMessage(caughtError, "Failed to export repeat task"))
   }
 }
 

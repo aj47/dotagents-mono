@@ -41,6 +41,8 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_ROUTE_PATHS.bundleImport).toBe('/v1/bundles/import');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.skillImportMarkdown).toBe('/v1/skills/import/markdown');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.skillExportMarkdown).toBe('/v1/skills/:id/export/markdown');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.loopImportMarkdown).toBe('/v1/loops/import/markdown');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.loopExportMarkdown).toBe('/v1/loops/:id/export/markdown');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.mcpConfigImport).toBe('/v1/mcp/config/import');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.mcpConfigExport).toBe('/v1/mcp/config/export');
     expect(getRemoteServerApiRoutePath('/v1/settings')).toBe('/v1/settings');
@@ -76,6 +78,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_BUILDERS.operatorMcpServerLogsClear('filesystem/local')).toBe('/operator/mcp/filesystem%2Flocal/logs/clear');
     expect(REMOTE_SERVER_API_BUILDERS.skill('skill/name')).toBe('/skills/skill%2Fname');
     expect(REMOTE_SERVER_API_BUILDERS.skillExportMarkdown('skill/name')).toBe('/skills/skill%2Fname/export/markdown');
+    expect(REMOTE_SERVER_API_BUILDERS.loopExportMarkdown('loop/name')).toBe('/loops/loop%2Fname/export/markdown');
     expect(buildRemoteServerApiQueryPath(REMOTE_SERVER_API_PATHS.operatorErrors, {
       count: 3,
       empty: undefined,

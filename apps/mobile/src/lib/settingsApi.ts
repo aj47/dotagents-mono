@@ -47,6 +47,8 @@ export type {
   Loop,
   LoopCreateRequest,
   LoopDeleteResponse,
+  LoopExportMarkdownResponse,
+  LoopImportMarkdownRequest,
   LoopMutationResponse,
   LoopRunResponse,
   LoopsResponse,

@@ -368,6 +368,12 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // POST /v1/loops/import/markdown - Import a repeat task from task.md content
+  fastify.post(API_ROUTES.loopImportMarkdown, async (req, reply) => {
+    const result = await actions.importRepeatTaskFromMarkdown(req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // POST /v1/loops/:id/toggle - Toggle repeat task enabled state
   fastify.post(API_ROUTES.loopToggle, async (req, reply) => {
     const params = req.params as { id?: string }
@@ -379,6 +385,13 @@ export function registerMobileApiRoutes(
   fastify.post(API_ROUTES.loopRun, async (req, reply) => {
     const params = req.params as { id?: string }
     const result = await actions.runRepeatTask(params.id)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
+  // GET /v1/loops/:id/export/markdown - Export one repeat task as task.md content
+  fastify.get(API_ROUTES.loopExportMarkdown, async (req, reply) => {
+    const params = req.params as { id?: string }
+    const result = await actions.exportRepeatTaskToMarkdown(params.id)
     return reply.code(result.statusCode).send(result.body)
   })
 
