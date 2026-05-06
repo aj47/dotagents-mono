@@ -35,7 +35,7 @@ import {
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
-} from "@renderer/lib/sidebar-sessions"
+} from "@dotagents/shared/sidebar-sessions"
 import {
   ACTIVE_AGENTS_SIDEBAR_EXPANDED_STORAGE_KEY,
   SIDEBAR_TASKS_SECTION_EXPANDED_STORAGE_KEY,

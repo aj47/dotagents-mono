@@ -19,7 +19,7 @@ import { useSavedConversationsQuery } from "@renderer/lib/queries"
 import { getAgentShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@dotagents/shared/key-utils"
 import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
-import { orderActiveSessionsByPinnedFirst } from "@renderer/lib/sidebar-sessions"
+import { orderActiveSessionsByPinnedFirst } from "@dotagents/shared/sidebar-sessions"
 import {
   getLoadedConversationHistoryStartIndex,
   hasConversationHistoryForDisplay,

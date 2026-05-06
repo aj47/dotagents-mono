@@ -10,7 +10,7 @@ import { getSidebarStatusPresentation } from "@renderer/lib/session-presentation
 import {
   getLatestUserFacingResponse,
   getSidebarActivityPresentation,
-} from "@renderer/lib/sidebar-sessions"
+} from "@dotagents/shared/sidebar-sessions"
 import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 import {
   useSavedConversationsQuery,

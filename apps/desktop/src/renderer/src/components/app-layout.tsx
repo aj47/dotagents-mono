@@ -21,7 +21,7 @@ import { DEFAULT_DISCORD_ENABLED } from "@dotagents/shared/discord-config"
 import { DEFAULT_WHATSAPP_ENABLED } from "@dotagents/shared/whatsapp-config"
 import { DEFAULT_TTS_ENABLED } from "@dotagents/shared/text-to-speech-settings"
 import { applySelectedAgentToNextSession as applySelectedAgentForNextSession } from "@renderer/lib/apply-selected-agent"
-import { hasUnreadAgentResponse } from "@renderer/lib/sidebar-sessions"
+import { hasUnreadAgentResponse } from "@dotagents/shared/sidebar-sessions"
 import { useAgentStore } from "@renderer/stores"
 import {
   Clock,

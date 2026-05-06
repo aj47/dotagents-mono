@@ -18,7 +18,7 @@ import {
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
-} from "./sidebar-sessions"
+} from "@dotagents/shared/sidebar-sessions"
 
 const activeSession = (id: string, conversationId?: string) => ({
   id,

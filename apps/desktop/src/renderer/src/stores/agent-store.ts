@@ -5,7 +5,7 @@ import {
   sanitizeAgentProgressUpdateForDisplay,
 } from '@dotagents/shared/message-display-utils'
 import { logUI } from '@renderer/lib/debug'
-import { getLatestAgentResponseTimestamp } from '@renderer/lib/sidebar-sessions'
+import { getLatestAgentResponseTimestamp } from '@dotagents/shared/sidebar-sessions'
 
 const getProgressActivityTimestamp = (progress: AgentProgressUpdate): number => {
   const historyTs =
