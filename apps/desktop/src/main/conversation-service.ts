@@ -18,7 +18,11 @@ import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "./conversation-context-builder"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
 import { filterVisibleChatMessages } from "@dotagents/shared/chat-utils"
-import { buildConversationPreview } from "@dotagents/shared/session"
+import {
+  buildConversationPreview,
+  generateConversationTitleFromMessage,
+  normalizeConversationTitleText,
+} from "@dotagents/shared/session"
 import {
   extractDataImageMarkdownReferences,
   getConversationImageExtensionForMimeType,
@@ -270,34 +274,6 @@ export class ConversationService {
     return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
-  private generateConversationTitle(firstMessage: string): string {
-    let cleanedMessage = sanitizeMessageContentForDisplay(firstMessage)
-      .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
-      .trim()
-    const source = cleanedMessage || firstMessage.replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1").trim() || "Image"
-    // Generate a title from the first message (first 50 characters)
-    const title = source.slice(0, 50)
-    return title.length < source.length ? `${title}...` : title
-  }
-
-  private normalizeConversationTitle(title: string, maxWords?: number): string {
-    const cleaned = sanitizeMessageContentForDisplay(title)
-      .replace(/\s+/g, " ")
-      .replace(/^["'“”‘’\s]+|["'“”‘’\s]+$/g, "")
-      .trim()
-
-    if (!cleaned) {
-      return ""
-    }
-
-    const wordLimited = maxWords
-      ? cleaned.split(" ").filter(Boolean).slice(0, maxWords).join(" ")
-      : cleaned
-
-    const normalized = wordLimited.slice(0, MAX_SESSION_TITLE_CHARS).trim()
-    return normalized
-  }
-
   private getAutoTitleSeed(conversation: Conversation): {
     fallbackTitle: string
     firstUserMessage: string
@@ -311,9 +287,9 @@ export class ConversationService {
       return null
     }
 
-    const fallbackTitle = this.generateConversationTitle(firstUserMessage)
-    const currentTitle = this.normalizeConversationTitle(conversation.title)
-    if (currentTitle !== this.normalizeConversationTitle(fallbackTitle)) {
+    const fallbackTitle = generateConversationTitleFromMessage(firstUserMessage)
+    const currentTitle = normalizeConversationTitleText(conversation.title, { maxChars: MAX_SESSION_TITLE_CHARS })
+    if (currentTitle !== normalizeConversationTitleText(fallbackTitle, { maxChars: MAX_SESSION_TITLE_CHARS })) {
       return null
     }
 
@@ -342,7 +318,10 @@ export class ConversationService {
 
     try {
       const completion = await makeTextCompletionWithFetch(prompt, undefined, sessionId)
-      return this.normalizeConversationTitle(completion, MAX_AGENT_SESSION_TITLE_WORDS) || null
+      return normalizeConversationTitleText(completion, {
+        maxChars: MAX_SESSION_TITLE_CHARS,
+        maxWords: MAX_AGENT_SESSION_TITLE_WORDS,
+      }) || null
     } catch (error) {
       logApp("[ConversationService] Failed to auto-generate session title:", error)
       return null
@@ -1207,7 +1186,7 @@ export class ConversationService {
 
     const conversation: Conversation = {
       id: validatedId,
-      title: this.generateConversationTitle(storedFirstMessage),
+      title: generateConversationTitleFromMessage(storedFirstMessage),
       createdAt: now,
       updatedAt: now,
       messages: [message],
@@ -1287,7 +1266,7 @@ export class ConversationService {
   }
 
   async renameConversationTitle(conversationId: string, title: string): Promise<Conversation | null> {
-    const normalizedTitle = this.normalizeConversationTitle(title)
+    const normalizedTitle = normalizeConversationTitleText(title, { maxChars: MAX_SESSION_TITLE_CHARS })
     if (!normalizedTitle) {
       return null
     }
@@ -1298,7 +1277,7 @@ export class ConversationService {
         return null
       }
 
-      if (this.normalizeConversationTitle(conversation.title) === normalizedTitle) {
+      if (normalizeConversationTitleText(conversation.title, { maxChars: MAX_SESSION_TITLE_CHARS }) === normalizedTitle) {
         return conversation
       }
 
@@ -1379,7 +1358,10 @@ export class ConversationService {
       sessionId,
     )
 
-    if (!generatedTitle || generatedTitle === this.normalizeConversationTitle(seed.fallbackTitle)) {
+    if (
+      !generatedTitle ||
+      generatedTitle === normalizeConversationTitleText(seed.fallbackTitle, { maxChars: MAX_SESSION_TITLE_CHARS })
+    ) {
       return null
     }
 

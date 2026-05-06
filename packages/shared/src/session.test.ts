@@ -3,6 +3,8 @@ import {
   generateSessionId,
   generateMessageId,
   generateSessionTitle,
+  generateConversationTitleFromMessage,
+  normalizeConversationTitleText,
   sortSessionsByPinnedFirst,
   sanitizeSessionText,
   sessionToListItem,
@@ -70,6 +72,45 @@ describe('generateSessionTitle', () => {
     const title = generateSessionTitle(msg)
     expect(title).toContain('[Image]')
     expect(title).not.toContain('data:image')
+  })
+})
+
+// ── generateConversationTitleFromMessage ─────────────────────────────────────
+
+describe('generateConversationTitleFromMessage', () => {
+  it('uses markdown image alt text for title generation', () => {
+    expect(generateConversationTitleFromMessage('![Screen selection](assets://conversation-image/conv_1/image.png)'))
+      .toBe('Screen selection')
+  })
+
+  it('falls back to Image for image-only messages without alt text', () => {
+    expect(generateConversationTitleFromMessage('![](assets://conversation-image/conv_1/image.png)')).toBe('Image')
+  })
+
+  it('normalizes display image placeholders for direct data image titles', () => {
+    expect(generateConversationTitleFromMessage('![](data:image/png;base64,abc)')).toBe('Image')
+    expect(generateConversationTitleFromMessage('![diagram](data:image/png;base64,abc)')).toBe('Image: diagram')
+  })
+
+  it('truncates generated conversation titles with an ellipsis', () => {
+    expect(generateConversationTitleFromMessage('a'.repeat(60), { maxChars: 50 })).toBe(`${'a'.repeat(50)}...`)
+  })
+})
+
+// ── normalizeConversationTitleText ───────────────────────────────────────────
+
+describe('normalizeConversationTitleText', () => {
+  it('trims whitespace and surrounding quotes', () => {
+    expect(normalizeConversationTitleText('  "Build mobile parity"  ')).toBe('Build mobile parity')
+  })
+
+  it('applies word and character limits', () => {
+    expect(normalizeConversationTitleText('one two three four five', { maxWords: 3 })).toBe('one two three')
+    expect(normalizeConversationTitleText('abcdefghijklmnopqrstuvwxyz', { maxChars: 10 })).toBe('abcdefghij')
+  })
+
+  it('sanitizes inline image payloads in titles', () => {
+    expect(normalizeConversationTitleText('![diagram](data:image/png;base64,abc)')).toBe('[Image: diagram]')
   })
 })
 

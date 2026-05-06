@@ -4,7 +4,11 @@
 
 import type { ToolCall, ToolResult } from './types';
 import { filterVisibleChatMessages } from './chat-utils';
-import { sanitizeMessageMediaContentForPreview } from './message-display-utils';
+import {
+  sanitizeMessageContentForDisplay,
+  sanitizeMessageMediaContentForPreview,
+} from './message-display-utils';
+import { replaceMarkdownImageReferences } from './conversation-media-assets';
 
 export function sanitizeSessionText(content: string): string {
   return sanitizeMessageMediaContentForPreview(content);
@@ -65,6 +69,16 @@ export interface BuildConversationPreviewOptions {
   maxPreviewChars?: number;
 }
 
+export interface GenerateConversationTitleOptions {
+  maxChars?: number;
+  fallbackTitle?: string;
+}
+
+export interface NormalizeConversationTitleOptions {
+  maxChars?: number;
+  maxWords?: number;
+}
+
 export function sortSessionsByPinnedFirst<T extends Pick<Session, 'updatedAt' | 'isPinned'>>(sessions: T[]): T[] {
   return [...sessions].sort((a, b) => {
     const pinOrder = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
@@ -103,6 +117,55 @@ export function generateSessionTitle(firstMessage: string): string {
     return trimmed;
   }
   return trimmed.substring(0, maxLength - 3) + '...';
+}
+
+function replaceMarkdownImagesWithAltText(content: string): string {
+  return replaceMarkdownImageReferences(content, (reference) => reference.altText);
+}
+
+function normalizeGeneratedImageTitlePlaceholder(title: string): string {
+  return title
+    .replace(/^\[Image\]$/i, 'Image')
+    .replace(/^\[Image:\s*([^\]]+)\]$/i, 'Image: $1')
+    .trim();
+}
+
+export function generateConversationTitleFromMessage(
+  firstMessage: string,
+  options: GenerateConversationTitleOptions = {},
+): string {
+  const maxChars = options.maxChars ?? 50;
+  const fallbackTitle = options.fallbackTitle ?? 'Image';
+  const cleanedMessage = normalizeGeneratedImageTitlePlaceholder(
+    replaceMarkdownImagesWithAltText(sanitizeMessageContentForDisplay(firstMessage)).trim(),
+  );
+  const fallbackMessage = normalizeGeneratedImageTitlePlaceholder(
+    replaceMarkdownImagesWithAltText(firstMessage).trim(),
+  );
+  const source = cleanedMessage || fallbackMessage || fallbackTitle;
+  const title = source.slice(0, maxChars);
+  return title.length < source.length ? `${title}...` : title;
+}
+
+export function normalizeConversationTitleText(
+  title: string,
+  options: NormalizeConversationTitleOptions = {},
+): string {
+  const maxChars = options.maxChars ?? 80;
+  const cleaned = sanitizeMessageContentForDisplay(title)
+    .replace(/\s+/g, ' ')
+    .replace(/^["'“”‘’\s]+|["'“”‘’\s]+$/g, '')
+    .trim();
+
+  if (!cleaned) {
+    return '';
+  }
+
+  const wordLimited = options.maxWords
+    ? cleaned.split(' ').filter(Boolean).slice(0, options.maxWords).join(' ')
+    : cleaned;
+
+  return wordLimited.slice(0, maxChars).trim();
 }
 
 /**
