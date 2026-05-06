@@ -7,45 +7,17 @@
 import { createOpenAI } from "@ai-sdk/openai"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import type { LanguageModel } from "ai"
+import {
+  DEFAULT_CHAT_MODELS,
+  normalizeChatProviderId,
+  resolveChatModelForTextUsage,
+  type CHAT_PROVIDER_ID,
+  type ChatModelContext,
+} from "@dotagents/shared/providers"
 import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
 
-export type ProviderType = "openai" | "groq" | "gemini" | "chatgpt-web"
-
-const DEFAULT_CHAT_MODELS = {
-  openai: {
-    mcp: "gpt-4.1-mini",
-    transcript: "gpt-4.1-mini",
-  },
-  groq: {
-    mcp: "openai/gpt-oss-120b",
-    transcript: "openai/gpt-oss-120b",
-  },
-  gemini: {
-    mcp: "gemini-2.5-flash",
-    transcript: "gemini-2.5-flash",
-  },
-  "chatgpt-web": {
-    mcp: "gpt-5.4-mini",
-    transcript: "gpt-5.4-mini",
-  },
-} as const
-
-const TRANSCRIPTION_ONLY_MODEL_PATTERNS = {
-  openai: ["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"],
-  groq: ["whisper-large-v3", "whisper-large-v3-turbo", "distil-whisper-large-v3-en"],
-} as const
-
-/**
- * Model families that only exist inside the ChatGPT-Web transport. Routing these
- * through the direct OpenAI REST endpoint always fails and burns retry budget.
- * See issue #310.
- */
-const CHATGPT_WEB_ONLY_MODEL_PATTERNS = [
-  "codex-spark",
-  "gpt-5.3-codex",
-  "gpt-5.2-codex",
-] as const
+export type ProviderType = CHAT_PROVIDER_ID
 
 interface ProviderConfig {
   apiKey: string
@@ -59,67 +31,42 @@ export interface PromptCachingConfig {
 }
 
 function normalizeProviderType(providerId: string): ProviderType {
-  const normalized = providerId.trim().toLowerCase()
-  if (normalized === "openai" || normalized === "groq" || normalized === "gemini" || normalized === "chatgpt-web") {
-    return normalized
-  }
-  throw new Error(`Unknown provider: ${providerId}`)
-}
-
-function isTranscriptionOnlyModel(providerId: ProviderType, model: string): boolean {
-  const patterns = TRANSCRIPTION_ONLY_MODEL_PATTERNS[providerId as keyof typeof TRANSCRIPTION_ONLY_MODEL_PATTERNS]
-  if (!patterns) {
-    return false
-  }
-
-  const normalizedModel = model.trim().toLowerCase()
-  return patterns.some(pattern => normalizedModel.includes(pattern))
-}
-
-function isChatGptWebOnlyModel(model: string): boolean {
-  const normalized = model.trim().toLowerCase()
-  return CHATGPT_WEB_ONLY_MODEL_PATTERNS.some(pattern => normalized.includes(pattern))
+  return normalizeChatProviderId(providerId)
 }
 
 function sanitizeChatModelSelection(
   providerId: ProviderType,
   model: string,
-  modelContext: "mcp" | "transcript",
+  modelContext: ChatModelContext,
 ): string {
-  if (isTranscriptionOnlyModel(providerId, model)) {
-    const fallbackModel = DEFAULT_CHAT_MODELS[providerId][modelContext]
-
+  const resolution = resolveChatModelForTextUsage(providerId, model, modelContext)
+  if (resolution.reason === "transcription-only") {
     if (isDebugLLM()) {
       logLLM("Replacing STT-only model configured for chat/text usage", {
         providerId,
         modelContext,
         invalidModel: model,
-        fallbackModel,
+        fallbackModel: resolution.fallbackModel,
       })
     }
 
-    return fallbackModel
+    return resolution.model
   }
 
-  // A ChatGPT-Web-only model cannot be served by any non-chatgpt-web transport.
-  // Fall back to the provider's default chat model so we never emit a guaranteed
-  // failing HTTP call through the AI SDK (see issue #310).
-  if (providerId !== "chatgpt-web" && isChatGptWebOnlyModel(model)) {
-    const fallbackModel = DEFAULT_CHAT_MODELS[providerId][modelContext]
-
+  if (resolution.reason === "chatgpt-web-only") {
     if (isDebugLLM()) {
       logLLM("Replacing ChatGPT-Web-only model configured for non-chatgpt-web provider", {
         providerId,
         modelContext,
         invalidModel: model,
-        fallbackModel,
+        fallbackModel: resolution.fallbackModel,
       })
     }
 
-    return fallbackModel
+    return resolution.model
   }
 
-  return model
+  return resolution.model
 }
 
 /**
@@ -127,7 +74,7 @@ function sanitizeChatModelSelection(
  */
 function getProviderConfig(
   providerId: ProviderType,
-  modelContext: "mcp" | "transcript" = "mcp"
+  modelContext: ChatModelContext = "mcp"
 ): ProviderConfig {
   const config = configStore.get()
   const normalizedProviderId = normalizeProviderType(providerId)
@@ -189,7 +136,7 @@ function getProviderConfig(
  */
 export function createLanguageModel(
   providerId?: ProviderType,
-  modelContext: "mcp" | "transcript" = "mcp"
+  modelContext: ChatModelContext = "mcp"
 ): LanguageModel {
   const config = configStore.get()
   const effectiveProviderId = normalizeProviderType(
@@ -260,7 +207,7 @@ export function getTranscriptProviderId(): ProviderType {
  */
 export function getCurrentModelName(
   providerId?: ProviderType,
-  modelContext: "mcp" | "transcript" = "mcp"
+  modelContext: ChatModelContext = "mcp"
 ): string {
   const config = configStore.get()
   const effectiveProviderId = normalizeProviderType(
@@ -290,7 +237,7 @@ function isAnthropicProxy(baseURL: string): boolean {
 
 export function getPromptCachingConfig(
   providerId?: ProviderType,
-  modelContext: "mcp" | "transcript" = "mcp",
+  modelContext: ChatModelContext = "mcp",
 ): PromptCachingConfig | undefined {
   const config = configStore.get()
   const effectiveProviderId = normalizeProviderType(
@@ -376,7 +323,7 @@ export type OpenAiReasoningEffort = "none" | "minimal" | "low" | "medium" | "hig
  */
 export function getReasoningEffortProviderOptions(
   providerId?: ProviderType,
-  modelContext: "mcp" | "transcript" = "mcp",
+  modelContext: ChatModelContext = "mcp",
 ): Record<string, any> | undefined {
   const config = configStore.get()
   const effectiveProviderId = normalizeProviderType(

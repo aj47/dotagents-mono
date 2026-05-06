@@ -3,6 +3,7 @@ import {
   STT_PROVIDERS,
   CHAT_PROVIDERS,
   CHAT_PROVIDER_IDS,
+  DEFAULT_CHAT_MODELS,
   TTS_PROVIDERS,
   OPENAI_TTS_VOICES,
   OPENAI_TTS_MODELS,
@@ -26,8 +27,12 @@ import {
   getTranscriptPostProcessingModelSettingKey,
   getBuiltInModelPresets,
   getCurrentPresetName,
+  isChatGptWebOnlyModel,
   isChatProviderId,
+  isTranscriptionOnlyChatModel,
   migrateDeprecatedEdgeTtsVoice,
+  normalizeChatProviderId,
+  resolveChatModelForTextUsage,
   resolveEdgeTtsVoice,
 } from './providers'
 import type { ModelPreset } from './providers'
@@ -65,6 +70,30 @@ describe('CHAT_PROVIDERS', () => {
     expect(isChatProviderId('chatgpt-web')).toBe(true)
     expect(isChatProviderId('edge')).toBe(false)
     expect(isChatProviderId(undefined)).toBe(false)
+    expect(normalizeChatProviderId(' OpenAI ')).toBe('openai')
+    expect(() => normalizeChatProviderId('edge')).toThrow('Unknown provider: edge')
+  })
+
+  it('keeps shared chat model defaults and text-usage sanitization rules', () => {
+    expect(DEFAULT_CHAT_MODELS.openai.mcp).toBe('gpt-4.1-mini')
+    expect(isTranscriptionOnlyChatModel('openai', 'gpt-4o-transcribe')).toBe(true)
+    expect(isTranscriptionOnlyChatModel('groq', 'distil-whisper-large-v3-en')).toBe(true)
+    expect(isTranscriptionOnlyChatModel('gemini', 'gemini-2.5-flash')).toBe(false)
+    expect(isChatGptWebOnlyModel('gpt-5.3-codex-spark')).toBe(true)
+    expect(isChatGptWebOnlyModel('gpt-4.1-mini')).toBe(false)
+    expect(resolveChatModelForTextUsage('openai', 'gpt-4o-mini-transcribe', 'transcript')).toEqual({
+      model: 'gpt-4.1-mini',
+      reason: 'transcription-only',
+      fallbackModel: 'gpt-4.1-mini',
+    })
+    expect(resolveChatModelForTextUsage('groq', 'gpt-5.3-codex', 'mcp')).toEqual({
+      model: 'openai/gpt-oss-120b',
+      reason: 'chatgpt-web-only',
+      fallbackModel: 'openai/gpt-oss-120b',
+    })
+    expect(resolveChatModelForTextUsage('chatgpt-web', 'gpt-5.3-codex', 'mcp')).toEqual({
+      model: 'gpt-5.3-codex',
+    })
   })
 })
 

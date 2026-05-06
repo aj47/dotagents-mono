@@ -35,9 +35,87 @@ export const CHAT_PROVIDERS = [
 
 export type CHAT_PROVIDER_ID = (typeof CHAT_PROVIDERS)[number]["value"];
 export const CHAT_PROVIDER_IDS: readonly CHAT_PROVIDER_ID[] = CHAT_PROVIDERS.map(provider => provider.value);
+export type ChatModelContext = "mcp" | "transcript";
+export type ChatModelSelectionResolutionReason = "transcription-only" | "chatgpt-web-only";
+export type ChatModelSelectionResolution = {
+  model: string;
+  reason?: ChatModelSelectionResolutionReason;
+  fallbackModel?: string;
+};
+
+export const DEFAULT_CHAT_MODELS: Record<CHAT_PROVIDER_ID, Record<ChatModelContext, string>> = {
+  openai: {
+    mcp: "gpt-4.1-mini",
+    transcript: "gpt-4.1-mini",
+  },
+  groq: {
+    mcp: "openai/gpt-oss-120b",
+    transcript: "openai/gpt-oss-120b",
+  },
+  gemini: {
+    mcp: "gemini-2.5-flash",
+    transcript: "gemini-2.5-flash",
+  },
+  "chatgpt-web": {
+    mcp: "gpt-5.4-mini",
+    transcript: "gpt-5.4-mini",
+  },
+};
+
+const TRANSCRIPTION_ONLY_MODEL_PATTERNS: Partial<Record<CHAT_PROVIDER_ID, readonly string[]>> = {
+  openai: ["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"],
+  groq: ["whisper-large-v3", "whisper-large-v3-turbo", "distil-whisper-large-v3-en"],
+};
+
+const CHATGPT_WEB_ONLY_MODEL_PATTERNS = [
+  "codex-spark",
+  "gpt-5.3-codex",
+  "gpt-5.2-codex",
+] as const;
 
 export function isChatProviderId(value: unknown): value is CHAT_PROVIDER_ID {
   return typeof value === "string" && CHAT_PROVIDER_IDS.includes(value as CHAT_PROVIDER_ID);
+}
+
+export function normalizeChatProviderId(providerId: string): CHAT_PROVIDER_ID {
+  const normalized = providerId.trim().toLowerCase();
+  if (isChatProviderId(normalized)) {
+    return normalized;
+  }
+  throw new Error(`Unknown provider: ${providerId}`);
+}
+
+export function isTranscriptionOnlyChatModel(providerId: CHAT_PROVIDER_ID, model: string): boolean {
+  const patterns = TRANSCRIPTION_ONLY_MODEL_PATTERNS[providerId];
+  if (!patterns) {
+    return false;
+  }
+
+  const normalizedModel = model.trim().toLowerCase();
+  return patterns.some(pattern => normalizedModel.includes(pattern));
+}
+
+export function isChatGptWebOnlyModel(model: string): boolean {
+  const normalizedModel = model.trim().toLowerCase();
+  return CHATGPT_WEB_ONLY_MODEL_PATTERNS.some(pattern => normalizedModel.includes(pattern));
+}
+
+export function resolveChatModelForTextUsage(
+  providerId: CHAT_PROVIDER_ID,
+  model: string,
+  modelContext: ChatModelContext,
+): ChatModelSelectionResolution {
+  if (isTranscriptionOnlyChatModel(providerId, model)) {
+    const fallbackModel = DEFAULT_CHAT_MODELS[providerId][modelContext];
+    return { model: fallbackModel, reason: "transcription-only", fallbackModel };
+  }
+
+  if (providerId !== "chatgpt-web" && isChatGptWebOnlyModel(model)) {
+    const fallbackModel = DEFAULT_CHAT_MODELS[providerId][modelContext];
+    return { model: fallbackModel, reason: "chatgpt-web-only", fallbackModel };
+  }
+
+  return { model };
 }
 
 export const DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT = [
