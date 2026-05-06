@@ -56,6 +56,7 @@ import {
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
   DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
+  DEFAULT_REMOTE_SERVER_PORT,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
@@ -617,7 +618,7 @@ export default function OperationsScreen({ navigation }: any) {
       Alert.alert('Invalid Port', 'Enter a whole number between 1 and 65535.');
       setDrafts((current) => ({
         ...current,
-        remoteServerPort: String(settings?.remoteServerPort ?? 3210),
+        remoteServerPort: String(settings?.remoteServerPort ?? DEFAULT_REMOTE_SERVER_PORT),
       }));
       return;
     }
@@ -1474,7 +1475,7 @@ export default function OperationsScreen({ navigation }: any) {
                 onEndEditing={handleRemoteServerPortSave}
                 editable={!controlsDisabled}
                 keyboardType="number-pad"
-                placeholder="3210"
+                placeholder={String(DEFAULT_REMOTE_SERVER_PORT)}
                 placeholderTextColor={theme.colors.mutedForeground}
                 accessibilityLabel={createTextInputAccessibilityLabel('Remote server port')}
               />

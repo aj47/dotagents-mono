@@ -30,6 +30,7 @@ import {
 import { requestElicitation, handleElicitationComplete, cancelAllElicitations } from "./mcp-elicitation"
 import { requestSampling, cancelAllSamplingRequests } from "./mcp-sampling"
 import { inferTransportType, normalizeMcpConfig } from "@dotagents/shared/mcp-utils"
+import { DEFAULT_REMOTE_SERVER_PORT } from "@dotagents/shared/remote-pairing"
 import { spawn } from "child_process"
 import { promisify } from "util"
 import { access, constants, readFileSync, existsSync, mkdirSync } from "fs"
@@ -3052,7 +3053,7 @@ export class MCPService {
       // Inject auto-reply settings - only if remote server is enabled
       if (config.whatsappAutoReply && config.remoteServerEnabled && config.remoteServerApiKey) {
         environment.WHATSAPP_AUTO_REPLY = "true"
-        const port = config.remoteServerPort || 3210
+        const port = config.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
         environment.WHATSAPP_CALLBACK_URL = `http://localhost:${port}/v1/chat/completions`
         environment.WHATSAPP_CALLBACK_API_KEY = config.remoteServerApiKey
       }

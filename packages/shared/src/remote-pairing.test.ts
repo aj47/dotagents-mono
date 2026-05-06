@@ -14,6 +14,7 @@ import {
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
   DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
+  DEFAULT_REMOTE_SERVER_PORT,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   DEFAULT_REMOTE_SERVER_SECRET_MASK,
   ensureRemoteServerV1BaseUrl,
@@ -85,6 +86,7 @@ describe('remote server config contracts', () => {
   it('describes remote server option defaults and validators', () => {
     expect(DEFAULT_REMOTE_SERVER_BIND_ADDRESS).toBe('127.0.0.1');
     expect(REMOTE_SERVER_BIND_ADDRESS_OPTIONS).toEqual(['127.0.0.1', '0.0.0.0']);
+    expect(DEFAULT_REMOTE_SERVER_PORT).toBe(3210);
     expect(DEFAULT_REMOTE_SERVER_LOG_LEVEL).toBe('info');
     expect(REMOTE_SERVER_LOG_LEVEL_OPTIONS).toEqual(['error', 'info', 'debug']);
     expect(DEFAULT_REMOTE_SERVER_CORS_ORIGINS).toEqual(['*']);

@@ -19,6 +19,7 @@ import {
   buildRemoteServerCorsOptions,
   buildRemoteServerStatusSnapshot,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_PORT,
   ensureRemoteServerV1BaseUrl,
   getRemoteServerPairingApiKey as getRemoteServerPairingApiKeyFromConfig,
   getRemoteServerStartupPlan,
@@ -311,7 +312,7 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
   function getRemoteServerStatus() {
     const cfg = configStore.get()
     const bind = cfg.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS
-    const port = cfg.remoteServerPort || 3210
+    const port = cfg.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
     const running = !!server
     return buildRemoteServerStatusSnapshot({
       running,
@@ -347,7 +348,7 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
       serverUrl = ensureRemoteServerV1BaseUrl(urlOverride)
     } else {
       const bind = cfg.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS
-      const port = cfg.remoteServerPort || 3210
+      const port = cfg.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
       const connectableBaseUrl = adapters.getConnectableBaseUrlForMobilePairing(bind, port)
       if (!connectableBaseUrl) {
         console.log("[Remote Server] Cannot print QR code: unable to resolve a LAN-reachable URL for the current bind address")

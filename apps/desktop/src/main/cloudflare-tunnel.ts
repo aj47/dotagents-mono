@@ -4,6 +4,7 @@ import { diagnosticsService } from "./diagnostics"
 import { access, constants } from "fs/promises"
 import path from "path"
 import os from "os"
+import { DEFAULT_REMOTE_SERVER_PORT } from "@dotagents/shared/remote-pairing"
 
 // Helper to log to both diagnostics service and console for easier debugging
 function debugLog(message: string): void {
@@ -157,7 +158,7 @@ export async function startCloudflareTunnel(): Promise<{
   }
 
   const cfg = configStore.get()
-  const port = cfg.remoteServerPort || 3210
+  const port = cfg.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
 
   // Try to find cloudflared binary path
   const cloudflaredPath = await findCloudflaredPath()
@@ -416,7 +417,7 @@ export async function startNamedCloudflareTunnel(options: {
 
   const { tunnelId, hostname, credentialsPath } = options
   const cfg = configStore.get()
-  const port = cfg.remoteServerPort || 3210
+  const port = cfg.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
 
   // Try to find cloudflared binary path
   const cloudflaredPath = await findCloudflaredPath()
@@ -648,4 +649,3 @@ export async function checkCloudflaredLoggedIn(): Promise<boolean> {
     return false
   }
 }
-

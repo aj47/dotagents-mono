@@ -24,6 +24,7 @@ import {
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_PORT,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   isLoopbackRemoteHost,
   isUnconnectableRemoteHostForMobilePairing,
@@ -247,9 +248,9 @@ export function RemoteServerSettingsGroups({
                   type="number"
                   min={1}
                   max={65535}
-                  value={cfg.remoteServerPort ?? 3210}
+                  value={cfg.remoteServerPort ?? DEFAULT_REMOTE_SERVER_PORT}
                   onChange={(e) =>
-                    saveConfig({ remoteServerPort: parseInt(e.currentTarget.value || "3210", 10) })
+                    saveConfig({ remoteServerPort: parseInt(e.currentTarget.value || String(DEFAULT_REMOTE_SERVER_PORT), 10) })
                   }
                   className="w-36"
                 />

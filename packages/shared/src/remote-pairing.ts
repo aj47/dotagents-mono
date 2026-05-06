@@ -18,6 +18,7 @@ export type RemoteServerLogLevel = (typeof REMOTE_SERVER_LOG_LEVEL_OPTIONS)[numb
 export type CloudflareTunnelMode = (typeof CLOUDFLARE_TUNNEL_MODE_OPTIONS)[number];
 
 export const DEFAULT_REMOTE_SERVER_BIND_ADDRESS: RemoteServerBindAddress = '127.0.0.1';
+export const DEFAULT_REMOTE_SERVER_PORT = 3210;
 export const DEFAULT_REMOTE_SERVER_LOG_LEVEL: RemoteServerLogLevel = 'info';
 export const DEFAULT_CLOUDFLARE_TUNNEL_MODE: CloudflareTunnelMode = 'quick';
 
@@ -322,8 +323,8 @@ export function resolveConnectableRemoteServerPairingBaseUrl(
 export function buildRemoteServerStatusSnapshot(
   options: RemoteServerStatusSnapshotOptions,
 ): RemoteServerStatusSnapshot {
-  const bind = options.bind || '127.0.0.1';
-  const port = options.port || 3210;
+  const bind = options.bind || DEFAULT_REMOTE_SERVER_BIND_ADDRESS;
+  const port = options.port || DEFAULT_REMOTE_SERVER_PORT;
   const url = options.running ? buildRemoteServerBaseUrl(bind, port) : undefined;
   const connectableUrl = options.running
     ? resolveConnectableRemoteServerPairingBaseUrl(bind, port, options.addresses).baseUrl
@@ -403,7 +404,7 @@ export function getRemoteServerStartupPlan(
   return {
     shouldStart: true,
     bind: options.bindAddressOverride || config.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
-    port: config.remoteServerPort || 3210,
+    port: config.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT,
     logLevel: config.remoteServerLogLevel || DEFAULT_REMOTE_SERVER_LOG_LEVEL,
     corsOrigins: config.remoteServerCorsOrigins || getDefaultRemoteServerCorsOrigins(),
     resolvedApiKey,
@@ -551,7 +552,7 @@ export function getRemoteServerLifecycleAction(
   }
 
   const runtimeChanged =
-    (prev.remoteServerPort ?? 3210) !== (next.remoteServerPort ?? 3210)
+    (prev.remoteServerPort ?? DEFAULT_REMOTE_SERVER_PORT) !== (next.remoteServerPort ?? DEFAULT_REMOTE_SERVER_PORT)
     || (prev.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS) !== (next.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS)
     || (prev.remoteServerApiKey ?? '') !== (next.remoteServerApiKey ?? '')
     || (prev.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL) !== (next.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL)

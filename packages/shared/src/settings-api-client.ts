@@ -51,6 +51,7 @@ import {
 import {
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_PORT,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   getDefaultRemoteServerCorsOrigins,
   getRemoteServerLifecycleAction,
@@ -391,7 +392,7 @@ export function buildSettingsResponse(
     mcpRuntimeDisabledServers: sanitizeConfigStringList(cfg.mcpRuntimeDisabledServers),
     mcpDisabledTools: sanitizeConfigStringList(cfg.mcpDisabledTools),
     remoteServerEnabled: cfg.remoteServerEnabled ?? false,
-    remoteServerPort: cfg.remoteServerPort ?? 3210,
+    remoteServerPort: cfg.remoteServerPort ?? DEFAULT_REMOTE_SERVER_PORT,
     remoteServerBindAddress: cfg.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
     remoteServerApiKey: options.remoteServerApiKey,
     remoteServerLogLevel: cfg.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL,

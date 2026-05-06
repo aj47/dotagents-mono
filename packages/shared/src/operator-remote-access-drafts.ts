@@ -1,6 +1,9 @@
 import type { Settings } from "./api-types"
 import { formatConfigListInput } from "./config-list-input"
-import { DEFAULT_REMOTE_SERVER_CORS_ORIGINS } from "./remote-pairing"
+import {
+  DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
+  DEFAULT_REMOTE_SERVER_PORT,
+} from "./remote-pairing"
 
 export type OperatorRemoteAccessDrafts = {
   remoteServerPort: string
@@ -19,7 +22,7 @@ export type OperatorRemoteAccessDrafts = {
 
 export function buildOperatorRemoteAccessDrafts(settings: Settings | null): OperatorRemoteAccessDrafts {
   return {
-    remoteServerPort: String(settings?.remoteServerPort ?? 3210),
+    remoteServerPort: String(settings?.remoteServerPort ?? DEFAULT_REMOTE_SERVER_PORT),
     remoteServerCorsOrigins: formatConfigListInput(settings?.remoteServerCorsOrigins ?? DEFAULT_REMOTE_SERVER_CORS_ORIGINS),
     remoteServerOperatorAllowDeviceIds: formatConfigListInput(settings?.remoteServerOperatorAllowDeviceIds),
     cloudflareTunnelId: settings?.cloudflareTunnelId ?? "",

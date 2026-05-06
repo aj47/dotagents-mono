@@ -25,6 +25,7 @@ import {
   getDiscordDependencyStatus,
   isDiscordDependencyMissingError,
 } from "./discord-dependency"
+import { DEFAULT_REMOTE_SERVER_PORT } from "@dotagents/shared/remote-pairing"
 
 type DiscordLogLevel = "info" | "warn" | "error"
 
@@ -729,7 +730,7 @@ async function executeDiscordOperatorCommand(command: ParsedOperatorCommand): Pr
 
   const cfg = configStore.get()
   const apiKey = cfg.remoteServerApiKey?.trim()
-  const port = cfg.remoteServerPort || 3210
+  const port = cfg.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
 
   if (!apiKey) {
     return "Operator API is unavailable because the remote server API key is not configured in desktop settings."
