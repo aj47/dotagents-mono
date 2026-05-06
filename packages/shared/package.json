@@ -276,6 +276,11 @@
       "import": "./dist/mcp-utils.mjs",
       "require": "./dist/mcp-utils.js"
     },
+    "./oauth-examples": {
+      "types": "./dist/oauth-examples.d.ts",
+      "import": "./dist/oauth-examples.mjs",
+      "require": "./dist/oauth-examples.js"
+    },
     "./discord-utils": {
       "types": "./dist/discord-utils.d.ts",
       "import": "./dist/discord-utils.mjs",

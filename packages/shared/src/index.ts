@@ -57,6 +57,7 @@ export * from './operator-actions';
 export * from './operator-audit-store';
 export * from './mcp-api';
 export * from './mcp-utils';
+export * from './oauth-examples';
 export * from './discord-utils';
 export * from './discord-config';
 export * from './agent-run-utils';
