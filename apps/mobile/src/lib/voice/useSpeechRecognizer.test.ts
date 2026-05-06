@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { mergeVoiceText } from './mergeVoiceText';
+import { mergeVoiceText } from '@dotagents/shared/voice-text-utils';
 
 type EffectRecord = {
   callback?: () => void | (() => void);

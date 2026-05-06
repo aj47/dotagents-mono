@@ -8,7 +8,7 @@ import {
 import { EventEmitter } from 'expo-modules-core';
 import { DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS } from '../../store/config';
 import type { VoiceDebugLog } from './voiceDebug';
-import { mergeVoiceText, normalizeVoiceText } from './mergeVoiceText';
+import { mergeVoiceText, normalizeVoiceText } from '@dotagents/shared/voice-text-utils';
 
 export type VoiceFinalizationMode = 'edit' | 'send' | 'handsfree';
 

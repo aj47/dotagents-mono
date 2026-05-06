@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchSleepPhrase, matchWakePhrase, normalizeVoicePhrase } from './phraseMatcher';
+import { matchSleepPhrase, matchWakePhrase, normalizeVoicePhrase } from '@dotagents/shared/voice-phrase-matcher';
 
 describe('normalizeVoicePhrase', () => {
   it('normalizes punctuation, apostrophes, and spacing', () => {
