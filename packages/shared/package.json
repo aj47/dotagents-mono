@@ -266,6 +266,11 @@
       "import": "./dist/tool-execution-display.mjs",
       "require": "./dist/tool-execution-display.js"
     },
+    "./agent-generation-options": {
+      "types": "./dist/agent-generation-options.d.ts",
+      "import": "./dist/agent-generation-options.mjs",
+      "require": "./dist/agent-generation-options.js"
+    },
     "./main-agent-selection": {
       "types": "./dist/main-agent-selection.d.ts",
       "import": "./dist/main-agent-selection.mjs",

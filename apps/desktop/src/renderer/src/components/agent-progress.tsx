@@ -55,6 +55,14 @@ import {
   DEFAULT_MODEL_PRESET_ID,
   type CHAT_PROVIDER_ID,
 } from "@dotagents/shared/providers"
+import {
+  CODEX_TEXT_VERBOSITY_OPTIONS,
+  DEFAULT_CODEX_TEXT_VERBOSITY,
+  getOpenAiReasoningEffortDefault,
+  OPENAI_REASONING_EFFORT_OPTIONS,
+  type CodexTextVerbosity,
+  type OpenAiReasoningEffort,
+} from "@dotagents/shared/agent-generation-options"
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
@@ -261,24 +269,6 @@ const SessionModelPicker: React.FC<{
   )
 }
 
-type ReasoningEffort = NonNullable<Config["openaiReasoningEffort"]>
-type CodexVerbosity = NonNullable<Config["codexTextVerbosity"]>
-
-const REASONING_EFFORT_OPTIONS: Array<{ value: ReasoningEffort; label: string }> = [
-  { value: "none", label: "None" },
-  { value: "minimal", label: "Minimal" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "xhigh", label: "Extra high" },
-]
-
-const VERBOSITY_OPTIONS: Array<{ value: CodexVerbosity; label: string }> = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-]
-
 const providerSupportsThinking = (providerId: CHAT_PROVIDER_ID): boolean =>
   providerId === "openai" || providerId === "chatgpt-web"
 
@@ -290,14 +280,14 @@ const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = fals
   const config = configQuery.data
   const providerId = getAgentProviderId(config)
 
-  const currentValue: ReasoningEffort = (config?.openaiReasoningEffort as ReasoningEffort | undefined) ||
-    (providerId === "chatgpt-web" ? "low" : "medium")
+  const currentValue: OpenAiReasoningEffort = (config?.openaiReasoningEffort as OpenAiReasoningEffort | undefined) ||
+    getOpenAiReasoningEffortDefault(providerId)
 
   const handleChange = useCallback(async (value: string) => {
     if (!config || value === currentValue) return
     try {
       await tipcClient.saveConfig({
-        config: { ...config, openaiReasoningEffort: value as ReasoningEffort },
+        config: { ...config, openaiReasoningEffort: value as OpenAiReasoningEffort },
       })
       await queryClient.invalidateQueries({ queryKey: ["config"] })
       toast.success("Thinking level updated")
@@ -309,7 +299,7 @@ const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = fals
 
   if (!providerSupportsThinking(providerId)) return null
 
-  const currentLabel = REASONING_EFFORT_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
+  const currentLabel = OPENAI_REASONING_EFFORT_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
 
   return (
     <Select value={currentValue} onValueChange={handleChange} disabled={!config}>
@@ -330,7 +320,7 @@ const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = fals
         </SelectValue>
       </SelectTrigger>
       <SelectContent className="min-w-[160px]" onClick={(event) => event.stopPropagation()}>
-        {REASONING_EFFORT_OPTIONS.map((option) => (
+        {OPENAI_REASONING_EFFORT_OPTIONS.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             {option.label}
           </SelectItem>
@@ -345,13 +335,13 @@ const SessionVerbosityPicker: React.FC<{ compact?: boolean }> = ({ compact = fal
   const config = configQuery.data
   const providerId = getAgentProviderId(config)
 
-  const currentValue: CodexVerbosity = (config?.codexTextVerbosity as CodexVerbosity | undefined) || "medium"
+  const currentValue: CodexTextVerbosity = (config?.codexTextVerbosity as CodexTextVerbosity | undefined) || DEFAULT_CODEX_TEXT_VERBOSITY
 
   const handleChange = useCallback(async (value: string) => {
     if (!config || value === currentValue) return
     try {
       await tipcClient.saveConfig({
-        config: { ...config, codexTextVerbosity: value as CodexVerbosity },
+        config: { ...config, codexTextVerbosity: value as CodexTextVerbosity },
       })
       await queryClient.invalidateQueries({ queryKey: ["config"] })
       toast.success("Verbosity updated")
@@ -363,7 +353,7 @@ const SessionVerbosityPicker: React.FC<{ compact?: boolean }> = ({ compact = fal
 
   if (!providerSupportsVerbosity(providerId)) return null
 
-  const currentLabel = VERBOSITY_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
+  const currentLabel = CODEX_TEXT_VERBOSITY_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
 
   return (
     <Select value={currentValue} onValueChange={handleChange} disabled={!config}>
@@ -384,7 +374,7 @@ const SessionVerbosityPicker: React.FC<{ compact?: boolean }> = ({ compact = fal
         </SelectValue>
       </SelectTrigger>
       <SelectContent className="min-w-[160px]" onClick={(event) => event.stopPropagation()}>
-        {VERBOSITY_OPTIONS.map((option) => (
+        {CODEX_TEXT_VERBOSITY_OPTIONS.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             {option.label}
           </SelectItem>

@@ -48,6 +48,14 @@ import {
   getTextToSpeechSpeedSetting,
   getTextToSpeechVoiceDefault,
 } from "@dotagents/shared/text-to-speech-settings"
+import {
+  CODEX_TEXT_VERBOSITY_OPTIONS,
+  DEFAULT_CODEX_REASONING_EFFORT,
+  DEFAULT_CODEX_TEXT_VERBOSITY,
+  OPENAI_REASONING_EFFORT_OPTIONS,
+  type CodexTextVerbosity,
+  type OpenAiReasoningEffort,
+} from "@dotagents/shared/agent-generation-options"
 import { Mic, FileText, Volume2, Bot } from "lucide-react"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
@@ -228,10 +236,10 @@ export function Component() {
                 label={<ControlLabel label="Thinking level" tooltip="Reasoning effort sent to Codex reasoning models. Defaults to Low when unset. 'None' lets the provider answer with no extra reasoning." />}
               >
                 <Select
-                  value={config.openaiReasoningEffort || "low"}
+                  value={config.openaiReasoningEffort || DEFAULT_CODEX_REASONING_EFFORT}
                   onValueChange={(value) =>
                     saveConfig({
-                      openaiReasoningEffort: value as Config["openaiReasoningEffort"],
+                      openaiReasoningEffort: value as OpenAiReasoningEffort,
                     })
                   }
                 >
@@ -239,12 +247,11 @@ export function Component() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="minimal">Minimal</SelectItem>
-                    <SelectItem value="low">Low (default)</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="xhigh">Extra high</SelectItem>
+                    {OPENAI_REASONING_EFFORT_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.value === DEFAULT_CODEX_REASONING_EFFORT ? `${option.label} (default)` : option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </Control>
@@ -252,10 +259,10 @@ export function Component() {
                 label={<ControlLabel label="Verbosity" tooltip="Output verbosity passed as text.verbosity in the Codex responses payload." />}
               >
                 <Select
-                  value={config.codexTextVerbosity || "medium"}
+                  value={config.codexTextVerbosity || DEFAULT_CODEX_TEXT_VERBOSITY}
                   onValueChange={(value) =>
                     saveConfig({
-                      codexTextVerbosity: value as Config["codexTextVerbosity"],
+                      codexTextVerbosity: value as CodexTextVerbosity,
                     })
                   }
                 >
@@ -263,9 +270,11 @@ export function Component() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium (default)</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
+                    {CODEX_TEXT_VERBOSITY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.value === DEFAULT_CODEX_TEXT_VERBOSITY ? `${option.label} (default)` : option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </Control>

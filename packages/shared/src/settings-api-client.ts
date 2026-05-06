@@ -16,6 +16,10 @@ import {
   isThemePreference,
 } from './theme-preference';
 import {
+  isCodexTextVerbosityUpdateValue,
+  isOpenAiReasoningEffortUpdateValue,
+} from './agent-generation-options';
+import {
   MCP_MAX_ITERATIONS_DEFAULT,
   normalizeMcpMaxIterationsValue,
   type McpServerConfigExportResponse,
@@ -768,10 +772,10 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.chatgptWebSessionToken === 'string') updates.chatgptWebSessionToken = requestBody.chatgptWebSessionToken;
   if (typeof requestBody.chatgptWebAccountId === 'string') updates.chatgptWebAccountId = requestBody.chatgptWebAccountId;
   if (typeof requestBody.chatgptWebBaseUrl === 'string') updates.chatgptWebBaseUrl = requestBody.chatgptWebBaseUrl;
-  if (typeof requestBody.openaiReasoningEffort === 'string' && ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'].includes(requestBody.openaiReasoningEffort)) {
+  if (isOpenAiReasoningEffortUpdateValue(requestBody.openaiReasoningEffort)) {
     updates.openaiReasoningEffort = requestBody.openaiReasoningEffort;
   }
-  if (typeof requestBody.codexTextVerbosity === 'string' && ['low', 'medium', 'high'].includes(requestBody.codexTextVerbosity)) {
+  if (isCodexTextVerbosityUpdateValue(requestBody.codexTextVerbosity)) {
     updates.codexTextVerbosity = requestBody.codexTextVerbosity;
   }
   if (isThemePreference(requestBody.themePreference)) {

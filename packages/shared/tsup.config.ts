@@ -54,6 +54,7 @@ export default defineConfig({
     'split-pane-selection': 'src/split-pane-selection.ts',
     'tool-activity-grouping': 'src/tool-activity-grouping.ts',
     'tool-execution-display': 'src/tool-execution-display.ts',
+    'agent-generation-options': 'src/agent-generation-options.ts',
     'main-agent-selection': 'src/main-agent-selection.ts',
     'agent-profile-presets': 'src/agent-profile-presets.ts',
     'agent-profile-role': 'src/agent-profile-role.ts',
