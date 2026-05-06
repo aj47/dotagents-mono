@@ -24,8 +24,8 @@ import {
   applyConnectionTypeChange,
   buildAgentConnectionCommandPreview,
   getAgentConnectionFormValidationError,
+  normalizeAgentConnectionFormFieldsForEdit,
   normalizeAgentConnectionArgs,
-  normalizeAgentEditConnectionType,
   sanitizeAgentProfileConnection,
 } from "@dotagents/shared/agent-profile-connection"
 import {
@@ -281,27 +281,18 @@ export function SettingsAgents() {
 
   const handleEdit = (agent: AgentProfile) => {
     setIsCreating(false)
-    const connectionArgs = agent.connection.args?.join(" ")
-    const connectionType = normalizeAgentEditConnectionType(agent.connection.type)
+    const connectionFields = normalizeAgentConnectionFormFieldsForEdit(agent.connection)
     setEditing({
       id: agent.id, displayName: agent.displayName,
       description: agent.description ?? "", systemPrompt: agent.systemPrompt ?? "",
-      guidelines: agent.guidelines ?? "", connectionType,
-      connectionCommand: agent.connection.command,
-      connectionArgs,
-      connectionBaseUrl: agent.connection.baseUrl,
-      connectionCwd: agent.connection.cwd,
+      guidelines: agent.guidelines ?? "", ...connectionFields,
       enabled: agent.enabled, autoSpawn: agent.autoSpawn,
       modelConfig: normalizeAgentProfileModelConfigForEdit(agent.modelConfig),
       toolConfig: normalizeAgentProfileMcpConfigForEdit(agent.toolConfig),
       skillsConfig: normalizeAgentProfileSkillsConfigForEdit(agent.skillsConfig),
       properties: normalizeAgentProfileProperties(agent.properties),
       avatarDataUrl: agent.avatarDataUrl ?? null,
-      presetKey: detectAgentProfilePresetKey({
-        connectionType,
-        connectionCommand: agent.connection.command,
-        connectionArgs,
-      }),
+      presetKey: detectAgentProfilePresetKey(connectionFields),
     })
   }
 

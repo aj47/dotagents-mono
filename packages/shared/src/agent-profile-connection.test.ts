@@ -5,6 +5,7 @@ import {
   buildAgentConnectionCommandPreview,
   buildAgentConnectionRequestFields,
   getAgentConnectionFormValidationError,
+  normalizeAgentConnectionFormFieldsForEdit,
   normalizeAgentEditConnectionType,
   normalizeAgentConnectionArgs,
   sanitizeAgentProfileConnection,
@@ -148,6 +149,32 @@ describe("agent connection request helpers", () => {
     expect(getAgentConnectionFormValidationError({
       connectionType: "internal",
     })).toBeUndefined()
+  })
+
+  it("normalizes persisted connection records into editable form fields", () => {
+    expect(normalizeAgentConnectionFormFieldsForEdit({
+      type: "stdio",
+      agent: "default",
+      command: " codex-acp ",
+      args: [" --stdio ", ""],
+      baseUrl: "https://hidden.example/v1",
+      cwd: "/workspace/project",
+    })).toEqual({
+      connectionType: "acpx",
+      connectionAgent: "default",
+      connectionCommand: " codex-acp ",
+      connectionArgs: "--stdio",
+      connectionBaseUrl: "https://hidden.example/v1",
+      connectionCwd: "/workspace/project",
+    })
+
+    expect(normalizeAgentConnectionFormFieldsForEdit(undefined, "remote")).toMatchObject({
+      connectionType: "remote",
+      connectionCommand: "",
+      connectionArgs: "",
+      connectionBaseUrl: "",
+      connectionCwd: "",
+    })
   })
 
   it("omits hidden Base URL fields from acpx saves while preserving visible local launch fields", () => {

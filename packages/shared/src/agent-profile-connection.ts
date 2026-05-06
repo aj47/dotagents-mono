@@ -87,6 +87,20 @@ export function getAgentConnectionFormValidationError(
   return undefined
 }
 
+export function normalizeAgentConnectionFormFieldsForEdit(
+  connection: Partial<AgentProfileConnectionDraft> | null | undefined,
+  fallbackConnectionType?: string | null,
+): AgentConnectionFormFields {
+  return {
+    connectionType: normalizeAgentEditConnectionType(connection?.type ?? fallbackConnectionType),
+    ...(connection?.agent ? { connectionAgent: connection.agent } : {}),
+    connectionCommand: connection?.command ?? "",
+    connectionArgs: normalizeAgentConnectionArgs(connection?.args).join(" "),
+    connectionBaseUrl: connection?.baseUrl ?? "",
+    connectionCwd: connection?.cwd ?? "",
+  }
+}
+
 function isLocalConnectionType(value: string | undefined): value is "acpx" | "acp" | "stdio" {
   return value === "acpx" || value === "acp" || value === "stdio"
 }
