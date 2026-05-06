@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  BUNDLE_COMPONENT_KEYS,
   BUNDLE_COMPONENT_OPTIONS,
   BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS,
   DEFAULT_BUNDLE_COMPONENT_SELECTION,
@@ -10,14 +11,18 @@ import {
   buildBundleImportPreviewResponse,
   createBundleItemSelection,
   exportBundleAction,
+  getAvailableBundleComponentSelection,
   getBundleDependencyWarnings,
   getBundleExportableItemsAction,
+  getBundleImportChangedItemCount,
+  hasBundleImportConflicts,
   hasSelectedBundleComponent,
   importBundleAction,
   parseExportBundleRequestBody,
   parseImportBundleRequestBody,
   parsePreviewBundleImportRequestBody,
   previewBundleImportAction,
+  resolveBundleComponentSelection,
   type DotAgentsBundle,
   type ExportableBundleItems,
 } from "./bundle-api"
@@ -203,6 +208,13 @@ describe("bundle API helpers", () => {
       repeatTaskIds: [],
       knowledgeNoteIds: [],
     })
+    expect(BUNDLE_COMPONENT_KEYS).toEqual([
+      "agentProfiles",
+      "mcpServers",
+      "skills",
+      "repeatTasks",
+      "knowledgeNotes",
+    ])
     expect(BUNDLE_COMPONENT_OPTIONS.map((option) => option.key)).toEqual([
       "agentProfiles",
       "mcpServers",
@@ -215,6 +227,28 @@ describe("bundle API helpers", () => {
       "rename",
       "overwrite",
     ])
+    expect(BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS.map((option) => option.importLabel)).toEqual([
+      "Skip existing items",
+      "Rename imported items",
+      "Overwrite existing items",
+    ])
+    expect(resolveBundleComponentSelection({ agentProfiles: false, skills: true })).toEqual({
+      agentProfiles: false,
+      mcpServers: true,
+      skills: true,
+      repeatTasks: true,
+      knowledgeNotes: true,
+    })
+    expect(getAvailableBundleComponentSelection(
+      { agentProfiles: true, skills: true, mcpServers: true },
+      { skills: true, mcpServers: false, agentProfiles: false },
+    )).toEqual({
+      agentProfiles: false,
+      mcpServers: false,
+      skills: true,
+      repeatTasks: true,
+      knowledgeNotes: true,
+    })
     expect(createBundleItemSelection(exportableItems)).toEqual({
       agentProfileIds: ["agent-1"],
       mcpServerNames: [],
@@ -234,6 +268,14 @@ describe("bundle API helpers", () => {
     })).toEqual([
       'agent references skill "Skill", but it is not included.',
     ])
+    expect(hasBundleImportConflicts(importPreview.conflicts, DEFAULT_BUNDLE_COMPONENT_SELECTION)).toBe(true)
+    expect(hasBundleImportConflicts(importPreview.conflicts, { agentProfiles: false })).toBe(false)
+    expect(getBundleImportChangedItemCount({
+      ...importResult,
+      skills: [{ id: "skill-1", name: "Skill", action: "skipped" }],
+      repeatTasks: [{ id: "task-1", name: "Task", action: "renamed" }],
+      knowledgeNotes: [{ id: "note-1", name: "Note", action: "overwritten" }],
+    })).toBe(3)
   })
 
   it("runs bundle actions through service adapters", async () => {

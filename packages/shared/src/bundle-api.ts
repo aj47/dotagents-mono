@@ -185,14 +185,17 @@ export type RequiredBundleComponentSelection = Required<BundleComponentSelection
 
 export type DetailedBundleItemSelection = Required<BundleItemSelectionOptions>
 
+export type BundleComponentKey = keyof RequiredBundleComponentSelection
+
 export type BundleComponentOption = {
-  key: keyof RequiredBundleComponentSelection
+  key: BundleComponentKey
   label: string
 }
 
 export type BundleImportConflictStrategyOption = {
   value: BundleImportConflictStrategy
   label: string
+  importLabel: string
 }
 
 export const DEFAULT_BUNDLE_COMPONENT_SELECTION: RequiredBundleComponentSelection = {
@@ -211,6 +214,14 @@ export const EMPTY_BUNDLE_ITEM_SELECTION: DetailedBundleItemSelection = {
   knowledgeNoteIds: [],
 }
 
+export const BUNDLE_COMPONENT_KEYS: readonly BundleComponentKey[] = [
+  "agentProfiles",
+  "mcpServers",
+  "skills",
+  "repeatTasks",
+  "knowledgeNotes",
+]
+
 export const BUNDLE_COMPONENT_OPTIONS: readonly BundleComponentOption[] = [
   { key: "agentProfiles", label: "Agents" },
   { key: "mcpServers", label: "MCP servers" },
@@ -220,10 +231,28 @@ export const BUNDLE_COMPONENT_OPTIONS: readonly BundleComponentOption[] = [
 ]
 
 export const BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS: readonly BundleImportConflictStrategyOption[] = [
-  { value: "skip", label: "Skip" },
-  { value: "rename", label: "Rename" },
-  { value: "overwrite", label: "Overwrite" },
+  { value: "skip", label: "Skip", importLabel: "Skip existing items" },
+  { value: "rename", label: "Rename", importLabel: "Rename imported items" },
+  { value: "overwrite", label: "Overwrite", importLabel: "Overwrite existing items" },
 ]
+
+export function resolveBundleComponentSelection(components?: BundleComponentSelection): RequiredBundleComponentSelection {
+  return { ...DEFAULT_BUNDLE_COMPONENT_SELECTION, ...components }
+}
+
+export function getAvailableBundleComponentSelection(
+  components: BundleComponentSelection,
+  availableComponents?: BundleComponentSelection,
+): RequiredBundleComponentSelection {
+  const resolved = resolveBundleComponentSelection(components)
+  const availableSelection = { ...DEFAULT_BUNDLE_COMPONENT_SELECTION }
+
+  for (const key of BUNDLE_COMPONENT_KEYS) {
+    availableSelection[key] = (availableComponents?.[key] ?? true) ? resolved[key] : false
+  }
+
+  return availableSelection
+}
 
 export function createBundleItemSelection(items: ExportableBundleItems): DetailedBundleItemSelection {
   return {
@@ -236,7 +265,7 @@ export function createBundleItemSelection(items: ExportableBundleItems): Detaile
 }
 
 export function hasSelectedBundleComponent(components: BundleComponentSelection): boolean {
-  return Object.values(components).some(Boolean)
+  return BUNDLE_COMPONENT_KEYS.some((key) => components[key] === true)
 }
 
 export function getBundleDependencyWarnings(
@@ -326,6 +355,21 @@ export type BundleImportResult = {
   errors: string[]
 }
 
+export function hasBundleImportConflicts(
+  conflicts: BundleImportPreviewConflicts | undefined,
+  components: BundleComponentSelection,
+): boolean {
+  if (!conflicts) return false
+  const resolved = resolveBundleComponentSelection(components)
+  return BUNDLE_COMPONENT_KEYS.some((key) => resolved[key] && conflicts[key].length > 0)
+}
+
+export function getBundleImportChangedItemCount(result: BundleImportResult): number {
+  return BUNDLE_COMPONENT_KEYS
+    .map((key) => result[key].filter((item) => item.action !== "skipped").length)
+    .reduce((total, count) => total + count, 0)
+}
+
 export type BundleActionResult = {
   statusCode: number
   body: unknown
@@ -410,7 +454,7 @@ function parseComponents(value: unknown): BundleRequestParseResult<BundleCompone
   }
 
   const components: BundleComponentSelection = {}
-  for (const key of ["agentProfiles", "mcpServers", "skills", "repeatTasks", "knowledgeNotes"] as const) {
+  for (const key of BUNDLE_COMPONENT_KEYS) {
     const componentValue = input[key]
     if (componentValue !== undefined) {
       if (typeof componentValue !== "boolean") {

@@ -15,59 +15,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, AlertTriangle, Package, Bot, Server, Sparkles, Clock, Brain } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
+import {
+  BUNDLE_COMPONENT_OPTIONS,
+  BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS,
+  getAvailableBundleComponentSelection,
+  getBundleImportChangedItemCount,
+  hasBundleImportConflicts,
+  resolveBundleComponentSelection,
+  type BundleComponentKey,
+  type BundleComponentSelection,
+  type BundleImportConflictStrategy,
+  type BundleImportPreviewConflicts,
+  type BundleImportResult,
+  type DotAgentsBundle,
+  type RequiredBundleComponentSelection,
+} from "@dotagents/shared/bundle-api"
 
-type ConflictStrategy = "skip" | "overwrite" | "rename"
-type BundleComponentKey = "agentProfiles" | "mcpServers" | "skills" | "repeatTasks" | "knowledgeNotes"
-type BundleComponentsState = Record<BundleComponentKey, boolean>
-
-const DEFAULT_COMPONENTS: BundleComponentsState = {
-  agentProfiles: true,
-  mcpServers: true,
-  skills: true,
-  repeatTasks: true,
-  knowledgeNotes: true,
-}
-
-const COMPONENT_KEYS: BundleComponentKey[] = ["agentProfiles", "mcpServers", "skills", "repeatTasks", "knowledgeNotes"]
-
-function resolveComponents(initialComponents?: Partial<BundleComponentsState>): BundleComponentsState {
-  return { ...DEFAULT_COMPONENTS, ...initialComponents }
-}
-
-interface BundleManifest {
-  version: number
-  name: string
-  description?: string
-  createdAt: string
-  exportedFrom: string
-  components: {
-    agentProfiles: number
-    mcpServers: number
-    skills: number
-    repeatTasks: number
-    knowledgeNotes: number
-  }
-}
-
-interface PreviewConflict {
-  id: string
-  name: string
-  existingName?: string
-}
+type BundleComponentsState = RequiredBundleComponentSelection
 
 interface BundlePreview {
   success: boolean
   filePath?: string
-  bundle?: {
-    manifest: BundleManifest
-  }
-  conflicts?: {
-    agentProfiles: PreviewConflict[]
-    mcpServers: PreviewConflict[]
-    skills: PreviewConflict[]
-    repeatTasks: PreviewConflict[]
-    knowledgeNotes: PreviewConflict[]
-  }
+  bundle?: DotAgentsBundle | null
+  conflicts?: BundleImportPreviewConflicts
   error?: string
 }
 
@@ -76,14 +46,25 @@ interface BundleImportDialogProps {
   onOpenChange: (open: boolean) => void
   onImportComplete: () => void
   initialFilePath?: string
-  initialComponents?: Partial<BundleComponentsState>
-  availableComponents?: Partial<Record<BundleComponentKey, boolean>>
+  initialComponents?: BundleComponentSelection
+  availableComponents?: BundleComponentSelection
   title?: string
   description?: string
 }
 
 export async function previewProvidedBundleFile(filePath: string): Promise<BundlePreview> {
   return (await tipcClient.previewBundleWithConflicts({ filePath })) as BundlePreview
+}
+
+const COMPONENT_ROW_DETAILS: Record<BundleComponentKey, {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+}> = {
+  agentProfiles: { icon: Bot, label: "Agent Profiles" },
+  mcpServers: { icon: Server, label: "MCP Servers" },
+  skills: { icon: Sparkles, label: "Skills" },
+  repeatTasks: { icon: Clock, label: "Repeat Tasks" },
+  knowledgeNotes: { icon: Brain, label: "Knowledge notes" },
 }
 
 export function BundleImportDialog({
@@ -99,18 +80,14 @@ export function BundleImportDialog({
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [preview, setPreview] = useState<BundlePreview | null>(null)
-  const [conflictStrategy, setConflictStrategy] = useState<ConflictStrategy>("skip")
-  const [components, setComponents] = useState<BundleComponentsState>(() => resolveComponents(initialComponents))
+  const [conflictStrategy, setConflictStrategy] = useState<BundleImportConflictStrategy>("skip")
+  const [components, setComponents] = useState<BundleComponentsState>(() => resolveBundleComponentSelection(initialComponents))
   const isOpenRef = useRef(open)
   const previewRequestIdRef = useRef(0)
   isOpenRef.current = open
 
   const isComponentAvailable = (key: BundleComponentKey) => availableComponents?.[key] ?? true
-
-  const normalizedComponents = COMPONENT_KEYS.reduce((acc, key) => {
-    acc[key] = isComponentAvailable(key) ? components[key] : false
-    return acc
-  }, {} as BundleComponentsState)
+  const normalizedComponents = getAvailableBundleComponentSelection(components, availableComponents)
 
   useEffect(() => {
     isOpenRef.current = open
@@ -118,7 +95,7 @@ export function BundleImportDialog({
       previewRequestIdRef.current += 1
       setPreview(null)
       setConflictStrategy("skip")
-      setComponents(resolveComponents(initialComponents))
+      setComponents(resolveBundleComponentSelection(initialComponents))
     }
   }, [initialComponents, open])
 
@@ -189,15 +166,9 @@ export function BundleImportDialog({
         filePath: preview.filePath,
         conflictStrategy,
         components: normalizedComponents,
-      })
+      }) as BundleImportResult
       if (result.success) {
-        const imported = [
-          result.agentProfiles.filter(r => r.action !== "skipped").length,
-          result.mcpServers.filter(r => r.action !== "skipped").length,
-          result.skills.filter(r => r.action !== "skipped").length,
-          result.repeatTasks.filter(r => r.action !== "skipped").length,
-          result.knowledgeNotes.filter(r => r.action !== "skipped").length,
-        ].reduce((a, b) => a + b, 0)
+        const imported = getBundleImportChangedItemCount(result)
         toast.success(`Successfully imported ${imported} item(s)`)
         onImportComplete()
         handleClose()
@@ -218,17 +189,15 @@ export function BundleImportDialog({
     setLoading(false)
     setPreview(null)
     setConflictStrategy("skip")
-    setComponents(resolveComponents(initialComponents))
+    setComponents(resolveBundleComponentSelection(initialComponents))
     onOpenChange(false)
   }
 
   const manifest = preview?.bundle?.manifest
   const conflicts = preview?.conflicts
-  const hasConflicts = conflicts
-    ? COMPONENT_KEYS.some(key => normalizedComponents[key] && conflicts[key].length > 0)
-    : false
+  const hasConflicts = hasBundleImportConflicts(conflicts, normalizedComponents)
 
-  const toggleComponent = (key: keyof typeof components) => {
+  const toggleComponent = (key: BundleComponentKey) => {
     setComponents(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
@@ -274,56 +243,21 @@ export function BundleImportDialog({
             <div className="space-y-2">
               <Label>Components to import</Label>
               <div className="space-y-2 rounded-lg border p-3">
-                {isComponentAvailable("agentProfiles") && (
-                  <ComponentRow
-                    icon={Bot}
-                    label="Agent Profiles"
-                    count={manifest.components.agentProfiles}
-                    conflicts={conflicts?.agentProfiles.length ?? 0}
-                    checked={components.agentProfiles}
-                    onToggle={() => toggleComponent("agentProfiles")}
-                  />
-                )}
-                {isComponentAvailable("mcpServers") && (
-                  <ComponentRow
-                    icon={Server}
-                    label="MCP Servers"
-                    count={manifest.components.mcpServers}
-                    conflicts={conflicts?.mcpServers.length ?? 0}
-                    checked={components.mcpServers}
-                    onToggle={() => toggleComponent("mcpServers")}
-                  />
-                )}
-                {isComponentAvailable("skills") && (
-                  <ComponentRow
-                    icon={Sparkles}
-                    label="Skills"
-                    count={manifest.components.skills}
-                    conflicts={conflicts?.skills.length ?? 0}
-                    checked={components.skills}
-                    onToggle={() => toggleComponent("skills")}
-                  />
-                )}
-                {isComponentAvailable("repeatTasks") && (
-                  <ComponentRow
-                    icon={Clock}
-                    label="Repeat Tasks"
-                    count={manifest.components.repeatTasks}
-                    conflicts={conflicts?.repeatTasks.length ?? 0}
-                    checked={components.repeatTasks}
-                    onToggle={() => toggleComponent("repeatTasks")}
-                  />
-                )}
-                {isComponentAvailable("knowledgeNotes") && (
-                  <ComponentRow
-                    icon={Brain}
-                    label="Knowledge notes"
-                    count={manifest.components.knowledgeNotes}
-                    conflicts={conflicts?.knowledgeNotes.length ?? 0}
-                    checked={components.knowledgeNotes}
-                    onToggle={() => toggleComponent("knowledgeNotes")}
-                  />
-                )}
+                {BUNDLE_COMPONENT_OPTIONS.map((component) => {
+                  if (!isComponentAvailable(component.key)) return null
+                  const details = COMPONENT_ROW_DETAILS[component.key]
+                  return (
+                    <ComponentRow
+                      key={component.key}
+                      icon={details.icon}
+                      label={details.label}
+                      count={manifest.components[component.key]}
+                      conflicts={conflicts?.[component.key].length ?? 0}
+                      checked={components[component.key]}
+                      onToggle={() => toggleComponent(component.key)}
+                    />
+                  )
+                })}
               </div>
             </div>
 
@@ -334,14 +268,14 @@ export function BundleImportDialog({
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
                   <Label>Handle conflicts</Label>
                 </div>
-                <Select value={conflictStrategy} onValueChange={(v) => setConflictStrategy(v as ConflictStrategy)}>
+                <Select value={conflictStrategy} onValueChange={(v) => setConflictStrategy(v as BundleImportConflictStrategy)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="skip">Skip existing items</SelectItem>
-                    <SelectItem value="overwrite">Overwrite existing items</SelectItem>
-                    <SelectItem value="rename">Rename imported items</SelectItem>
+                    {BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS.map((strategy) => (
+                      <SelectItem key={strategy.value} value={strategy.value}>{strategy.importLabel}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">

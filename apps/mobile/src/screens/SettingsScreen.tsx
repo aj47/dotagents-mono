@@ -55,6 +55,7 @@ import {
   BUNDLE_COMPONENT_OPTIONS,
   BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS,
   DEFAULT_BUNDLE_COMPONENT_SELECTION,
+  getBundleImportChangedItemCount,
   hasSelectedBundleComponent,
   type BundleComponentOption,
   type BundleImportConflictStrategy,
@@ -1137,13 +1138,7 @@ export default function SettingsScreen({ navigation }: any) {
         throw new Error(result.errors.join(', ') || 'Import failed');
       }
 
-      const importedCount = [
-        ...result.agentProfiles,
-        ...result.mcpServers,
-        ...result.skills,
-        ...result.repeatTasks,
-        ...result.knowledgeNotes,
-      ].filter(item => item.action !== 'skipped').length;
+      const importedCount = getBundleImportChangedItemCount(result);
 
       setShowBundleImportModal(false);
       setBundleImportJsonText('');

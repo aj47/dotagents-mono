@@ -105,6 +105,7 @@ test('lets mobile preview and import pasted DotAgents bundles through the shared
   assert.match(settingsSource, /BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS/);
   assert.match(settingsSource, /BUNDLE_COMPONENT_OPTIONS/);
   assert.match(settingsSource, /hasSelectedBundleComponent\(bundleImportComponents\)/);
+  assert.match(settingsSource, /getBundleImportChangedItemCount\(result\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\('Import DotAgents bundle JSON'\)/);
   assert.match(settingsSource, /Preview DotAgents bundle JSON/);
 });
