@@ -296,6 +296,11 @@
       "import": "./dist/linux-artifacts.mjs",
       "require": "./dist/linux-artifacts.js"
     },
+    "./key-utils": {
+      "types": "./dist/key-utils.d.ts",
+      "import": "./dist/key-utils.mjs",
+      "require": "./dist/key-utils.js"
+    },
     "./agent-run-utils": {
       "types": "./dist/agent-run-utils.d.ts",
       "import": "./dist/agent-run-utils.mjs",
