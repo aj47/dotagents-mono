@@ -26,7 +26,8 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('className="flex items-center justify-between gap-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-x-2"')
     expect(agentProgressSource).toContain('<SessionModelPicker modelInfo={modelInfo} compact />')
-    expect(agentProgressSource).toContain('{(profileName || modelInfo || !isComplete) && (')
+    expect(agentProgressSource).toContain('<SessionThinkingPicker compact />')
+    expect(agentProgressSource).toContain('<SessionVerbosityPicker compact />')
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap">Step')
   })
 
@@ -196,7 +197,9 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('buildAgentModelConfigUpdates(config, providerId, modelId)')
     expect(agentProgressSource).toContain('Model/provider controls stay available even before live session metadata arrives')
     expect(agentProgressSource).toContain('<SessionModelPicker modelInfo={modelInfo} />')
-    expect(agentProgressSource).toContain('{(profileName || modelInfo || contextInfo || !isComplete) && (')
+    // Tile footer renders unconditionally so the model/thinking/verbosity controls
+    // stay reachable for inactive (completed) sessions too.
+    expect(agentProgressSource).toContain('always render so model picker, thinking,')
   })
 
   it("keeps inline tool approval cards readable in narrow tiles and under zoom", () => {

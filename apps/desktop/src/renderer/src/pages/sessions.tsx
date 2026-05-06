@@ -137,8 +137,22 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   const [activeHistoryMessageLimit, setActiveHistoryMessageLimit] = useState(PENDING_RESUME_HISTORY_MESSAGE_LIMIT)
   const queryClient = useQueryClient()
   const baseConversationHistoryCount = baseProgress?.conversationHistory?.length ?? 0
-  const shouldHydrateFromConversation =
+  const needsHydrationFromConversation =
     !!conversationIdForHydration && !hasConversationHistoryForDisplay(baseProgress)
+  // Hydration is sticky per conversationId: once we've loaded the full saved
+  // conversation, keep using the hydrate cache slot so a follow-up that yields
+  // a short runtime window doesn't drop the displayed history back to thinking-only.
+  const [hasHydratedConversationId, setHasHydratedConversationId] = useState<string | null>(
+    needsHydrationFromConversation ? conversationIdForHydration : null,
+  )
+  useEffect(() => {
+    if (needsHydrationFromConversation && hasHydratedConversationId !== conversationIdForHydration) {
+      setHasHydratedConversationId(conversationIdForHydration)
+    }
+  }, [needsHydrationFromConversation, conversationIdForHydration, hasHydratedConversationId])
+  const shouldHydrateFromConversation =
+    needsHydrationFromConversation ||
+    (!!conversationIdForHydration && hasHydratedConversationId === conversationIdForHydration)
   const savedConversationQueryKey = [
     "conversation",
     conversationIdForHydration,
@@ -146,14 +160,14 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   ] as const
   const cachedSavedConversation = queryClient.getQueryData<LoadedConversation>(savedConversationQueryKey)
   const progressForExpandedHistoryDecision = useMemo(
-    () => baseProgress && cachedSavedConversation && !shouldHydrateFromConversation
+    () => baseProgress && cachedSavedConversation
       ? mergeLoadedConversationIntoProgress(
           baseProgress,
           cachedSavedConversation,
           { replaceExistingHistory: true },
         )
       : baseProgress,
-    [baseProgress, cachedSavedConversation, shouldHydrateFromConversation],
+    [baseProgress, cachedSavedConversation],
   )
   const displayedConversationHistoryCount = progressForExpandedHistoryDecision?.conversationHistory?.length ?? 0
   const displayedConversationHistoryTotalCount = Math.max(
@@ -195,10 +209,14 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
           baseProgress,
           savedConversationQuery.data,
           {
+            // In sticky-hydrate mode the loaded conversation may be fuller than the
+            // runtime window (e.g. follow-up just kicked off and progress only
+            // contains the new turn). Always merge so the displayed history covers
+            // both the saved transcript and the new runtime messages.
             replaceExistingHistory:
-              !shouldHydrateFromConversation &&
               !!savedConversationQuery.data &&
-              activeHistoryMessageLimit > baseConversationHistoryCount,
+              (shouldHydrateFromConversation ||
+                activeHistoryMessageLimit > baseConversationHistoryCount),
           },
         )
       : null,

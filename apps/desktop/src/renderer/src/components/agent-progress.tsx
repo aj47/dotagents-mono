@@ -4955,68 +4955,63 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </div>
             )}
 
-            {/* Footer with status/model controls — keep controls visible during live runs even before session metadata arrives */}
-            {(profileName || modelInfo || contextInfo || !isComplete) && (
-              <div
-                className={cn(
-                  "border-t bg-muted/20 text-muted-foreground flex-shrink-0",
-                  "px-3 py-1.5 text-xs",
-                )}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 flex-1 items-center gap-x-2">
-                    {profileName && (
-                      <span className="text-[10px] text-primary/70 truncate max-w-[60px]">
-                        {profileName}
-                      </span>
-                    )}
-                    {(profileName || modelInfo || !isComplete) && (
-                      <>
-                        {profileName && <span className="text-muted-foreground/50">•</span>}
-                        <SessionModelPicker modelInfo={modelInfo} compact />
-                        <SessionThinkingPicker compact />
-                        <SessionVerbosityPicker compact />
-                      </>
-                    )}
-                    {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
-                      <div className="flex shrink-0 items-center gap-1">
-                        <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={cn(
-                              "h-full transition-all duration-300 ease-out rounded-full",
-                              contextInfo.estTokens / contextInfo.maxTokens > 0.9
-                                ? "bg-red-500"
-                                : contextInfo.estTokens / contextInfo.maxTokens > 0.7
-                                ? "bg-amber-500"
-                                : "bg-emerald-500"
-                            )}
-                            style={{
-                              width: `${Math.min(100, (contextInfo.estTokens / contextInfo.maxTokens) * 100)}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  {turnDurations.totalMs > 0 && (
-                    <span
-                      className={cn(
-                        "shrink-0 inline-flex items-center gap-0.5 whitespace-nowrap tabular-nums",
-                        turnDurations.hasLive && "animate-pulse text-amber-600 dark:text-amber-400",
-                      )}
-                      title={turnDurations.hasLive ? "Total agent time (running)" : "Total agent time"}
-                    >
-                      <Clock className="h-2.5 w-2.5" aria-hidden="true" />
-                      {formatTurnDuration(turnDurations.totalMs)}
+            {/* Footer with status/model controls — always render so model picker, thinking,
+                and verbosity stay reachable on inactive sessions too. */}
+            <div
+              className={cn(
+                "border-t bg-muted/20 text-muted-foreground flex-shrink-0",
+                "px-3 py-1.5 text-xs",
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-x-2">
+                  {profileName && (
+                    <span className="text-[10px] text-primary/70 truncate max-w-[60px]">
+                      {profileName}
                     </span>
                   )}
-                  {!isComplete && (
-                    <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
+                  {profileName && <span className="text-muted-foreground/50">•</span>}
+                  <SessionModelPicker modelInfo={modelInfo} compact />
+                  <SessionThinkingPicker compact />
+                  <SessionVerbosityPicker compact />
+                  {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full transition-all duration-300 ease-out rounded-full",
+                            contextInfo.estTokens / contextInfo.maxTokens > 0.9
+                              ? "bg-red-500"
+                              : contextInfo.estTokens / contextInfo.maxTokens > 0.7
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          )}
+                          style={{
+                            width: `${Math.min(100, (contextInfo.estTokens / contextInfo.maxTokens) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
+                {turnDurations.totalMs > 0 && (
+                  <span
+                    className={cn(
+                      "shrink-0 inline-flex items-center gap-0.5 whitespace-nowrap tabular-nums",
+                      turnDurations.hasLive && "animate-pulse text-amber-600 dark:text-amber-400",
+                    )}
+                    title={turnDurations.hasLive ? "Total agent time (running)" : "Total agent time"}
+                  >
+                    <Clock className="h-2.5 w-2.5" aria-hidden="true" />
+                    {formatTurnDuration(turnDurations.totalMs)}
+                  </span>
+                )}
+                {!isComplete && (
+                  <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
+                )}
               </div>
-            )}
+            </div>
           </>
         )}
 
