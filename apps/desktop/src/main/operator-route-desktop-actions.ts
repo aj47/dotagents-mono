@@ -73,9 +73,9 @@ import {
   setOperatorAuditContext,
 } from "./operator-audit-actions"
 import {
-  restartOperatorApp,
-  restartOperatorRemoteServer,
-} from "./operator-restart-actions"
+  restartOperatorAppAction as restartOperatorApp,
+  restartOperatorRemoteServerAction as restartOperatorRemoteServer,
+} from "@dotagents/shared/operator-actions"
 import { rotateOperatorRemoteServerApiKey } from "./operator-api-key-actions"
 
 export const operatorRouteDesktopActions: OperatorRouteActions = {

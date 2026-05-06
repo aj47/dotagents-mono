@@ -305,12 +305,6 @@ function getOperatorApiKeyActionsSource(): string {
   return readFileSync(operatorApiKeyActionsPath, "utf8")
 }
 
-function getOperatorRestartActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const operatorRestartActionsPath = path.join(testDir, "operator-restart-actions.ts")
-  return readFileSync(operatorRestartActionsPath, "utf8")
-}
-
 function getProfileActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const profileActionsPath = path.join(testDir, "profile-actions.ts")
@@ -802,7 +796,6 @@ describe("remote-server route registration", () => {
       getOperatorMessageQueueActionsSource(),
       getOperatorModelPresetActionsSource(),
       getOperatorObservabilityActionsSource(),
-      getOperatorRestartActionsSource(),
       getOperatorTunnelActionsSource(),
       getOperatorUpdaterActionsSource(),
     ]
@@ -960,8 +953,8 @@ describe("remote-server route registration", () => {
     expect(settingsGetSection).toContain("reply.code(result.statusCode).send(result.body)")
     expect(settingsActionsSource).toContain("getSettingsAction(providerSecretMask, settingsActionOptions)")
     expect(settingsActionsSource).toContain("getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey)")
-    expect(settingsActionsSource).toContain("getMaskedDiscordBotToken")
-    expect(settingsActionsSource).toContain("getDiscordDefaultProfileId: (config) => getDiscordResolvedDefaultProfileId(config).profileId ?? \"\"")
+    expect(settingsActionsSource).toContain("getMaskedDiscordBotToken: (config) => getMaskedDiscordBotToken(config, process.env)")
+    expect(settingsActionsSource).toContain("getDiscordDefaultProfileId: (config) => getDiscordResolvedDefaultProfileId(config, process.env).profileId ?? \"\"")
     expect(settingsActionsSource).toContain("getAcpxAgents: () => getEnabledAcpxAgentProfiles(agentProfileService.getAll())")
     expect(settingsActionsSource).not.toContain("p.connection.type === 'acpx'")
     expect(sharedSettingsApiClientSource).toContain("export interface SettingsActionOptions")
@@ -1401,7 +1394,7 @@ describe("remote-server route registration", () => {
     const sharedOperatorAuditStoreSource = getSharedOperatorAuditStoreSource()
     const sharedOperatorActionsSource = getSharedOperatorActionsSource()
     const operatorApiKeyActionsSource = getOperatorApiKeyActionsSource()
-    const operatorRestartActionsSource = getOperatorRestartActionsSource()
+    const operatorRouteDesktopActionsSource = getOperatorRouteDesktopActionsSource()
 
     expect(operatorRoutesSource).toContain("actions.getOperatorStatus(getRemoteServerStatus())")
     expect(operatorRoutesSource).toContain("actions.getOperatorHealth()")
@@ -1548,8 +1541,8 @@ describe("remote-server route registration", () => {
     expect(operatorSection).toContain("actions.restartOperatorApp(getAppVersion())")
     expect(operatorSection).toContain("scheduleRemoteServerRestartFromOperator()")
     expect(operatorSection).toContain("scheduleAppRestartFromOperator()")
-    expect(operatorRestartActionsSource).toContain("restartOperatorRemoteServerAction(isRunning)")
-    expect(operatorRestartActionsSource).toContain("restartOperatorAppAction(appVersion)")
+    expect(operatorRouteDesktopActionsSource).toContain("restartOperatorRemoteServerAction as restartOperatorRemoteServer")
+    expect(operatorRouteDesktopActionsSource).toContain("restartOperatorAppAction as restartOperatorApp")
     expect(sharedOperatorActionsSource).toContain("export function restartOperatorRemoteServerAction(")
     expect(sharedOperatorActionsSource).toContain("buildOperatorRestartRemoteServerActionResponse(isRunning)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorRestartAppActionResponse(appVersion)")
