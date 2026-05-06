@@ -65,7 +65,7 @@ import {
   appendAgentStopNote,
   resolveExpectedAgentStopReason,
   resolveAgentIterationLimits,
-} from "./agent-run-utils"
+} from "@dotagents/shared/agent-run-utils"
 import {
   EMPTY_RESPONSE_FINAL_CONTENT,
   EMPTY_RESPONSE_RETRY_PROMPT,

@@ -11,7 +11,7 @@ import type {
 import { acpBackgroundNotifier } from './acp-background-notifier';
 import { configStore } from '../config';
 import { acpService, ACPContentBlock, ACPToolCallUpdate } from '../acp-service';
-import { buildProfileContext, getPreferredDelegationOutput } from '../agent-run-utils';
+import { buildProfileContext, getPreferredDelegationOutput } from '@dotagents/shared/agent-run-utils';
 import { emitAgentProgress } from '../emit-agent-progress';
 import { agentSessionStateManager } from '../state';
 import type { ACPDelegationProgress, ACPSubAgentMessage } from '@dotagents/shared/agent-progress';

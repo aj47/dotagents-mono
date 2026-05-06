@@ -14,7 +14,7 @@ import {
   getPreferredDelegationOutput,
   resolveExpectedAgentStopReason,
   resolveAgentIterationLimits,
-} from "./agent-run-utils"
+} from "@dotagents/shared/agent-run-utils"
 
 describe("resolveAgentIterationLimits", () => {
   it("keeps infinite loop iterations but caps the guardrail budget", () => {

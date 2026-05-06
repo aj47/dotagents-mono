@@ -24,7 +24,7 @@ import {
   getExplicitAgentStopReason,
   getPreferredDelegationOutput,
   resolveAgentModeMaxIterations,
-} from '../agent-run-utils';
+} from '@dotagents/shared/agent-run-utils';
 import { configStore } from '../config';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
 import { stringifySubAgentToolResultContent } from '@dotagents/shared/delegation-tool-display'

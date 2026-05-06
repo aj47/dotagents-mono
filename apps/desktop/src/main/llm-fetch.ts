@@ -38,7 +38,7 @@ import { isDebugLLM, logLLM } from "./debug"
 import { getErrorMessage, normalizeError } from "@dotagents/shared/error-utils"
 import { normalizeVerificationResultForCompletion } from "@dotagents/shared/llm-continuation-guards"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
-import { calculateLlmRetryBackoffDelay } from "./agent-run-utils"
+import { calculateLlmRetryBackoffDelay } from "@dotagents/shared/agent-run-utils"
 import type { AgentConversationState } from "@dotagents/shared/conversation-state"
 import {
   isEmptyResponseError,

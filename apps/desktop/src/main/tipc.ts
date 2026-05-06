@@ -122,7 +122,7 @@ import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
 import { hasRepeatTaskTitlePrefix } from "@dotagents/shared/repeat-task-utils"
 import { stopAgentSessionById } from "./agent-session-actions"
-import { describeAgentSessionId } from "./agent-run-utils"
+import { describeAgentSessionId } from "@dotagents/shared/agent-run-utils"
 
 export { runAgentLoopSession } from "./agent-loop-runner"
 

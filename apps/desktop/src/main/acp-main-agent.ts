@@ -34,7 +34,7 @@ import type { AgentConversationState } from "@dotagents/shared/conversation-stat
 import type { AgentUserResponseEvent } from "@dotagents/shared/agent-progress"
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
-import { buildProfileContext } from "./agent-run-utils"
+import { buildProfileContext } from "@dotagents/shared/agent-run-utils"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 

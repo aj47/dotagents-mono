@@ -3,7 +3,7 @@ import { getAppSessionForAcpSession } from "./acp-session-state"
 import {
   buildAgentStoppedProgressUpdate,
   describeAgentSessionId,
-} from "./agent-run-utils"
+} from "@dotagents/shared/agent-run-utils"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { messageQueueService } from "./message-queue-service"

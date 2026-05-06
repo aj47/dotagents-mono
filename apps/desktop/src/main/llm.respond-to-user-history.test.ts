@@ -56,7 +56,7 @@ vi.mock("./acp-session-state", () => ({ getAcpSessionTitleOverride: mocks.getAcp
 vi.mock("./langfuse-service", () => ({ isLangfuseEnabled: vi.fn(() => false), createAgentTrace: vi.fn(), endAgentTrace: vi.fn(), flushLangfuse: vi.fn(async () => undefined) }))
 vi.mock("./summarization-service", () => ({ isSummarizationEnabled: vi.fn(() => false), shouldSummarizeStep: vi.fn(() => false), summarizeAgentStep: vi.fn(), summarizationService: { getSummaries: vi.fn(() => []), getLatestSummary: vi.fn(() => undefined), addSummary: vi.fn() } }))
 vi.mock("./knowledge-notes-service", () => ({ knowledgeNotesService: { createNoteFromSummary: vi.fn(), saveNote: vi.fn() } }))
-vi.mock("./agent-run-utils", () => ({
+vi.mock("@dotagents/shared/agent-run-utils", () => ({
   appendAgentStopNote: vi.fn(),
   resolveAgentIterationLimits: vi.fn((maxIterations: number) => ({
     loopMaxIterations: maxIterations,
