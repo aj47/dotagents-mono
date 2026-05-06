@@ -379,6 +379,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [showMcpImportModal, setShowMcpImportModal] = useState(false);
   const [mcpImportJsonText, setMcpImportJsonText] = useState('');
   const [isImportingMcpServers, setIsImportingMcpServers] = useState(false);
+  const [isExportingMcpServers, setIsExportingMcpServers] = useState(false);
 
   // TTS voice/model picker state
   const [showTtsVoicePicker, setShowTtsVoicePicker] = useState(false);
@@ -1231,6 +1232,53 @@ export default function SettingsScreen({ navigation }: any) {
     } finally {
       setIsImportingMcpServers(false);
     }
+  };
+
+  const shareMcpServerExport = async () => {
+    if (!settingsClient) return;
+
+    setIsExportingMcpServers(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportMCPServerConfigs();
+      const serverNames = Object.keys(result.config.mcpServers || {});
+      await Share.share({
+        message: JSON.stringify(result.config, null, 2),
+        title: 'Export MCP Servers',
+      });
+      setSaveStatusMessage(`Exported ${serverNames.length} MCP server${serverNames.length === 1 ? '' : 's'}`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export MCP servers:', error);
+      setRemoteError(error.message || 'Failed to export MCP servers');
+      Alert.alert('Export Failed', error.message || 'Failed to export MCP servers');
+    } finally {
+      setIsExportingMcpServers(false);
+    }
+  };
+
+  const handleMcpServerExport = () => {
+    if (!settingsClient) return;
+
+    const message = 'MCP config exports can include tokens, headers, and environment variables. Share only with places you trust.';
+
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (!confirmFn || !confirmFn(`Export MCP Servers\n\n${message}`)) {
+        return;
+      }
+      void shareMcpServerExport();
+      return;
+    }
+
+    Alert.alert('Export MCP Servers', message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Export',
+        onPress: () => {
+          void shareMcpServerExport();
+        },
+      },
+    ]);
   };
 
   // Handle knowledge note delete
@@ -3420,6 +3468,17 @@ export default function SettingsScreen({ navigation }: any) {
                   >
                     <Text style={styles.profileActionButtonText}>
                       {isImportingMcpServers ? 'Importing...' : 'Import JSON'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, isExportingMcpServers && styles.profileActionButtonDisabled]}
+                    onPress={handleMcpServerExport}
+                    disabled={isExportingMcpServers}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Export MCP server JSON')}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isExportingMcpServers ? 'Exporting...' : 'Export JSON'}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity

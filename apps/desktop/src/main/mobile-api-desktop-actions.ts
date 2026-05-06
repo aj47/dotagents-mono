@@ -25,6 +25,7 @@ import {
 } from "./knowledge-note-actions"
 import {
   deleteMcpServerConfig,
+  exportMcpServerConfigs,
   getMcpServers,
   importMcpServerConfigs,
   toggleMcpServer,
@@ -81,6 +82,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   importProfile,
   getMcpServers,
   toggleMcpServer,
+  exportMcpServerConfigs,
   importMcpServerConfigs,
   upsertMcpServerConfig,
   deleteMcpServerConfig,

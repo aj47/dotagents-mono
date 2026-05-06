@@ -863,6 +863,7 @@ describe('SettingsApiClient', () => {
       { route: { method: 'PUT', path: REMOTE_SERVER_API_PATHS.mcpConfigServer }, expectedPath: REMOTE_SERVER_API_BUILDERS.mcpConfigServer(serverName), run: () => client.upsertMCPServerConfig(serverName, { command: 'filesystem-mcp' }) },
       { route: { method: 'DELETE', path: REMOTE_SERVER_API_PATHS.mcpConfigServer }, expectedPath: REMOTE_SERVER_API_BUILDERS.mcpConfigServer(serverName), run: () => client.deleteMCPServerConfig(serverName) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.mcpConfigImport }, expectedPath: REMOTE_SERVER_API_PATHS.mcpConfigImport, run: () => client.importMCPServerConfigs({ mcpServers: { github: { command: 'github-mcp' } } }) },
+      { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.mcpConfigExport }, expectedPath: REMOTE_SERVER_API_PATHS.mcpConfigExport, run: () => client.exportMCPServerConfigs() },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.settings }, expectedPath: REMOTE_SERVER_API_PATHS.settings, run: () => client.getSettings() },
       { route: { method: 'PATCH', path: REMOTE_SERVER_API_PATHS.settings }, expectedPath: REMOTE_SERVER_API_PATHS.settings, run: () => client.updateSettings({ mcpMaxIterations: 20 }) },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.models }, expectedPath: REMOTE_SERVER_API_PATHS.models, run: () => client.getOpenAICompatibleModels() },

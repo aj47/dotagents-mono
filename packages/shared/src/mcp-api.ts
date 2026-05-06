@@ -49,6 +49,11 @@ export type McpServerConfigImportResponse = {
   skippedReservedServerNames: string[]
 }
 
+export type McpServerConfigExportResponse = {
+  success: true
+  config: MCPConfig
+}
+
 export type McpServerConfigUpsertRequest = {
   config: MCPServerConfig
 }
@@ -573,6 +578,13 @@ export function buildMcpServerConfigImportResponse(
   }
 }
 
+export function buildMcpServerConfigExportResponse(config: MCPConfig): McpServerConfigExportResponse {
+  return {
+    success: true,
+    config,
+  }
+}
+
 export function buildMcpServersResponse(
   serverStatus: McpServerStatusMapLike,
 ): MCPServersResponse {
@@ -809,6 +821,17 @@ export function importMcpServerConfigsAction(
   } catch (caughtError) {
     options.diagnostics.logError("mcp-server-actions", "Failed to import MCP server configs", caughtError)
     return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to import MCP server configs"))
+  }
+}
+
+export function exportMcpServerConfigsAction(
+  options: McpServerConfigActionOptions,
+): McpServerActionResult {
+  try {
+    return mcpServerActionOk(buildMcpServerConfigExportResponse(options.service.getMcpConfig()))
+  } catch (caughtError) {
+    options.diagnostics.logError("mcp-server-actions", "Failed to export MCP server configs", caughtError)
+    return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to export MCP server configs"))
   }
 }
 

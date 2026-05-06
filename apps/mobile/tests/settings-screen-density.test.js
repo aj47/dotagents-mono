@@ -80,3 +80,11 @@ test('lets mobile import pasted MCP server configs through the shared client', (
   assert.match(settingsSource, /createButtonAccessibilityLabel\('Import MCP server JSON'\)/);
   assert.match(settingsSource, /setMcpImportJsonText\(''\)/);
 });
+
+test('lets mobile export MCP server configs through the shared client', () => {
+  assert.match(settingsSource, /handleMcpServerExport/);
+  assert.match(settingsSource, /settingsClient\.exportMCPServerConfigs\(\)/);
+  assert.match(settingsSource, /Share\.share\(\{[\s\S]*?JSON\.stringify\(result\.config, null, 2\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Export MCP server JSON'\)/);
+  assert.match(settingsSource, /MCP config exports can include tokens, headers, and environment variables/);
+});

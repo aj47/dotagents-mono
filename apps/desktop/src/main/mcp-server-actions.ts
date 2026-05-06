@@ -1,6 +1,7 @@
 import {
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   deleteMcpServerConfigAction,
+  exportMcpServerConfigsAction,
   getMcpServersAction,
   importMcpServerConfigsAction,
   toggleMcpServerAction,
@@ -66,6 +67,10 @@ export function toggleMcpServer(serverName: string | undefined, body: unknown): 
 
 export function importMcpServerConfigs(body: unknown): McpServerActionResult {
   return importMcpServerConfigsAction(body, mcpServerConfigActionOptions)
+}
+
+export function exportMcpServerConfigs(): McpServerActionResult {
+  return exportMcpServerConfigsAction(mcpServerConfigActionOptions)
 }
 
 export function upsertMcpServerConfig(serverName: string | undefined, body: unknown): McpServerActionResult {

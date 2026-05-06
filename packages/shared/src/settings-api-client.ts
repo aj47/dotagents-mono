@@ -10,6 +10,7 @@ import {
 import {
   MCP_MAX_ITERATIONS_DEFAULT,
   normalizeMcpMaxIterationsValue,
+  type McpServerConfigExportResponse,
   type McpServerConfigImportResponse,
   type McpServerConfigMutationResponse,
 } from './mcp-api';
@@ -1007,6 +1008,10 @@ export class SettingsApiClient {
       method: 'POST',
       body: JSON.stringify({ config }),
     });
+  }
+
+  async exportMCPServerConfigs(): Promise<McpServerConfigExportResponse> {
+    return this.request<McpServerConfigExportResponse>(API_PATHS.mcpConfigExport);
   }
 
   async upsertMCPServerConfig(serverName: string, config: MCPServerConfig): Promise<McpServerConfigMutationResponse> {

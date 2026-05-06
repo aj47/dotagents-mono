@@ -8,6 +8,7 @@ import {
   MCP_MAX_ITERATIONS_MIN,
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   RUNTIME_TOOLS_SERVER_NAME,
+  buildMcpServerConfigExportResponse,
   buildMcpServerConfigImportResponse,
   buildMcpServerConfigMutationResponse,
   buildInjectedMcpToolCallErrorResponse,
@@ -33,6 +34,7 @@ import {
   parseMcpServerConfigImportRequestBody,
   parseMcpServerToggleRequestBody,
   parseMcpServerConfigUpsertRequestBody,
+  exportMcpServerConfigsAction,
   importMcpServerConfigsAction,
   setOperatorMcpToolEnabledAction,
   startOperatorMcpServerAction,
@@ -225,6 +227,18 @@ describe("MCP API helpers", () => {
       importedCount: 2,
       skippedReservedServerNames: ["reserved"],
     })
+    expect(buildMcpServerConfigExportResponse({
+      mcpServers: {
+        filesystem: { command: "filesystem-mcp" },
+      },
+    })).toEqual({
+      success: true,
+      config: {
+        mcpServers: {
+          filesystem: { command: "filesystem-mcp" },
+        },
+      },
+    })
   })
 
   it("builds MCP server status responses", () => {
@@ -373,6 +387,10 @@ describe("MCP API helpers", () => {
       body: buildMcpServerConfigImportResponse(1, ["dotagents-runtime-tools"]),
     })
     expect(mcpConfig.mcpServers.github).toEqual({ transport: "stdio", command: "github-mcp" })
+    expect(exportMcpServerConfigsAction(configOptions)).toEqual({
+      statusCode: 200,
+      body: buildMcpServerConfigExportResponse(mcpConfig),
+    })
     expect(toggles).toEqual([
       { serverName: "filesystem", enabled: false },
       { serverName: "missing", enabled: true },
