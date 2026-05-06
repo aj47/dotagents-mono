@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { inferTransportType, normalizeMcpConfig } from "./mcp-utils"
-import { MCPConfig } from "./types"
+import {
+  inferTransportType,
+  normalizeMcpConfig,
+  type MCPConfig,
+} from "@dotagents/shared/mcp-utils"
 
 describe("normalizeMcpConfig", () => {
   it("infers streamableHttp when url is present and transport is missing", () => {
