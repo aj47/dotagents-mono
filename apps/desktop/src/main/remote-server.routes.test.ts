@@ -192,12 +192,6 @@ function getInjectedMcpRoutesSource(): string {
   return readFileSync(injectedMcpRoutesPath, "utf8")
 }
 
-function getInjectedMcpDesktopActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const injectedMcpDesktopActionsPath = path.join(testDir, "injected-mcp-desktop-actions.ts")
-  return readFileSync(injectedMcpDesktopActionsPath, "utf8")
-}
-
 function getRemoteServerRouteRegistrationSource(): string {
   return [
     getRemoteServerSource(),
@@ -638,7 +632,6 @@ describe("remote-server route registration", () => {
     const operatorRoutesSource = getOperatorRoutesSource()
     const operatorRouteDesktopActionsSource = getOperatorRouteDesktopActionsSource()
     const injectedMcpRoutesSource = getInjectedMcpRoutesSource()
-    const injectedMcpDesktopActionsSource = getInjectedMcpDesktopActionsSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedRouteContractsSource = getSharedRemoteServerRouteContractsSource()
@@ -715,10 +708,10 @@ describe("remote-server route registration", () => {
     )
     expect(injectedMcpRoutesSource).not.toContain("export interface InjectedMcpRouteActions")
     expect(injectedMcpRoutesSource).not.toContain("export interface RegisterInjectedMcpRoutesOptions")
-    expect(injectedMcpDesktopActionsSource).toContain("export const injectedMcpDesktopActions")
-    expect(injectedMcpDesktopActionsSource).toContain("handleInjectedMcpProtocolRequest")
-    expect(injectedMcpDesktopActionsSource).toContain("listInjectedMcpTools")
-    expect(injectedMcpDesktopActionsSource).toContain("callInjectedMcpTool")
+    expect(routeBundleSource).toContain("const injectedMcpDesktopActions")
+    expect(routeBundleSource).toContain("handleInjectedMcpProtocolRequest")
+    expect(routeBundleSource).toContain("listInjectedMcpTools")
+    expect(routeBundleSource).toContain("callInjectedMcpTool")
     expect(mobileApiRoutesSource).not.toContain('from "./model-actions"')
     expect(mobileApiRoutesSource).not.toContain('from "./conversation-actions"')
     expect(mobileApiRoutesSource).not.toContain('from "./settings-actions"')
