@@ -312,6 +312,8 @@ export function buildSettingsResponse(
     mcpContextReductionEnabled: cfg.mcpContextReductionEnabled ?? true,
     mcpToolResponseProcessingEnabled: cfg.mcpToolResponseProcessingEnabled ?? true,
     mcpParallelToolExecution: cfg.mcpParallelToolExecution ?? true,
+    mcpAutoPasteEnabled: cfg.mcpAutoPasteEnabled ?? false,
+    mcpAutoPasteDelay: cfg.mcpAutoPasteDelay ?? 1000,
     remoteServerEnabled: cfg.remoteServerEnabled ?? false,
     remoteServerPort: cfg.remoteServerPort ?? 3210,
     remoteServerBindAddress: cfg.remoteServerBindAddress ?? '127.0.0.1',
@@ -774,6 +776,13 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.mcpContextReductionEnabled === 'boolean') updates.mcpContextReductionEnabled = requestBody.mcpContextReductionEnabled;
   if (typeof requestBody.mcpToolResponseProcessingEnabled === 'boolean') updates.mcpToolResponseProcessingEnabled = requestBody.mcpToolResponseProcessingEnabled;
   if (typeof requestBody.mcpParallelToolExecution === 'boolean') updates.mcpParallelToolExecution = requestBody.mcpParallelToolExecution;
+  if (typeof requestBody.mcpAutoPasteEnabled === 'boolean') updates.mcpAutoPasteEnabled = requestBody.mcpAutoPasteEnabled;
+  if (typeof requestBody.mcpAutoPasteDelay === 'number' && Number.isFinite(requestBody.mcpAutoPasteDelay)) {
+    const mcpAutoPasteDelay = Math.round(requestBody.mcpAutoPasteDelay);
+    if (mcpAutoPasteDelay >= 0 && mcpAutoPasteDelay <= 60000) {
+      updates.mcpAutoPasteDelay = mcpAutoPasteDelay;
+    }
+  }
 
   if (typeof requestBody.remoteServerEnabled === 'boolean') updates.remoteServerEnabled = requestBody.remoteServerEnabled;
   if (typeof requestBody.remoteServerPort === 'number' && Number.isInteger(requestBody.remoteServerPort) && requestBody.remoteServerPort >= 1 && requestBody.remoteServerPort <= 65535) {

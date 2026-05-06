@@ -124,6 +124,8 @@ describe('SettingsApiClient', () => {
         remoteServerCorsOrigins: [' https://app.example ', '', 3],
         discordBotToken: '••••••••',
         discordAllowUserIds: [' user-1 ', 'user-1', ' '],
+        mcpAutoPasteEnabled: true,
+        mcpAutoPasteDelay: 1250.6,
       },
       {},
       {
@@ -164,6 +166,8 @@ describe('SettingsApiClient', () => {
       openaiTtsResponseFormat: 'opus',
       remoteServerCorsOrigins: ['https://app.example'],
       discordAllowUserIds: ['user-1'],
+      mcpAutoPasteEnabled: true,
+      mcpAutoPasteDelay: 1251,
     });
     expect(updates).not.toHaveProperty('openaiApiKey');
     expect(updates).not.toHaveProperty('remoteServerApiKey');
@@ -236,6 +240,8 @@ describe('SettingsApiClient', () => {
         pinnedSessionIds: ['conv-1', 42 as any],
         archivedSessionIds: [false as any, 'conv-2'],
         langfuseSecretKey: 'lf-secret',
+        mcpAutoPasteEnabled: true,
+        mcpAutoPasteDelay: 1500,
       },
       {
         providerSecretMask: 'MASKED',
@@ -282,6 +288,8 @@ describe('SettingsApiClient', () => {
       langfuseSecretKey: 'MASKED',
       edgeTtsVoice: 'en-US-AriaNeural',
       acpxAgents: [{ name: 'agent', displayName: 'Agent' }],
+      mcpAutoPasteEnabled: true,
+      mcpAutoPasteDelay: 1500,
       pinnedSessionIds: ['conv-1'],
       archivedSessionIds: ['conv-2'],
       predefinedPrompts: [{

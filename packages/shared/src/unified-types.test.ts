@@ -18,6 +18,7 @@ import type {
   AgentExecutionConfig,
   AgentGenerationOptionsConfig,
   AgentModelSelectionConfig,
+  AgentResultDeliveryConfig,
   AudioDeviceConfig,
   AudioInputDeviceConfig,
   ChatGptWebAuthConfig,
@@ -445,6 +446,20 @@ describe('settings API request/response contracts', () => {
     assertType<AgentGenerationOptionsConfig>(config)
     assertType<SettingsUpdate>(update)
     expect(update.openaiReasoningEffort).toBe('xhigh')
+  })
+
+  it('accepts agent result delivery settings through the shared settings API', () => {
+    const config: AgentResultDeliveryConfig = {
+      mcpAutoPasteEnabled: true,
+      mcpAutoPasteDelay: 1250,
+    }
+    const update: SettingsUpdate = {
+      ...config,
+    }
+
+    assertType<AgentResultDeliveryConfig>(config)
+    assertType<SettingsUpdate>(update)
+    expect(update.mcpAutoPasteDelay).toBe(1250)
   })
 
   it('accepts desktop display settings through the shared settings API', () => {
