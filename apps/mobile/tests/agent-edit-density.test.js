@@ -35,8 +35,15 @@ test('uses shared per-agent model field helpers in the mobile agent editor', () 
 });
 
 test('uses shared profile property helpers in the mobile agent editor', () => {
+  assert.match(screenSource, /DEFAULT_AGENT_PROFILE_ENABLED/);
+  assert.match(screenSource, /DEFAULT_AGENT_PROFILE_AUTO_SPAWN/);
+  assert.match(screenSource, /enabled: DEFAULT_AGENT_PROFILE_ENABLED/);
+  assert.match(screenSource, /autoSpawn: DEFAULT_AGENT_PROFILE_AUTO_SPAWN/);
+  assert.match(screenSource, /profile\.autoSpawn \?\? DEFAULT_AGENT_PROFILE_AUTO_SPAWN/);
   assert.match(screenSource, /normalizeAgentProfileProperties/);
   assert.match(screenSource, /formatAgentProfilePropertiesForRequest/);
+  assert.doesNotMatch(screenSource, /autoSpawn: false/);
+  assert.doesNotMatch(screenSource, /profile\.autoSpawn \|\| false/);
   assert.doesNotMatch(screenSource, /const normalizeAgentProperties/);
   assert.doesNotMatch(screenSource, /const formatPropertiesForRequest/);
 });

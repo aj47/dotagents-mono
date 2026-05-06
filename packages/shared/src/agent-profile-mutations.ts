@@ -27,6 +27,8 @@ export type AgentProfileDisplayNameUpdate = {
 
 export type AgentProfileProperties = Record<string, string>
 
+export const DEFAULT_AGENT_PROFILE_ENABLED = true
+export const DEFAULT_AGENT_PROFILE_AUTO_SPAWN = false
 export const MAX_AGENT_PROFILE_AVATAR_FILE_SIZE_BYTES = 2 * 1024 * 1024
 
 export function createAgentProfileRecord<TInput extends AgentProfileCreateInputLike>(

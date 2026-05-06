@@ -31,6 +31,8 @@ import {
   sanitizeAgentProfileConnection,
 } from "@dotagents/shared/agent-profile-connection"
 import {
+  DEFAULT_AGENT_PROFILE_AUTO_SPAWN,
+  DEFAULT_AGENT_PROFILE_ENABLED,
   formatAgentProfilePropertiesForRequest,
   getAgentProfileAvatarFileSizeError,
   normalizeAgentProfileProperties,
@@ -123,7 +125,8 @@ function emptyAgent(): EditingAgent {
   return {
     displayName: "", description: "", systemPrompt: "", guidelines: "",
     ...DEFAULT_AGENT_CONNECTION_FORM_FIELDS,
-    enabled: true,
+    enabled: DEFAULT_AGENT_PROFILE_ENABLED,
+    autoSpawn: DEFAULT_AGENT_PROFILE_AUTO_SPAWN,
     modelConfig: undefined, toolConfig: undefined,
     skillsConfig: undefined, properties: {},
   }
@@ -284,7 +287,7 @@ export function SettingsAgents() {
       id: agent.id, displayName: agent.displayName,
       description: agent.description ?? "", systemPrompt: agent.systemPrompt ?? "",
       guidelines: agent.guidelines ?? "", ...connectionFields,
-      enabled: agent.enabled, autoSpawn: agent.autoSpawn,
+      enabled: agent.enabled, autoSpawn: agent.autoSpawn ?? DEFAULT_AGENT_PROFILE_AUTO_SPAWN,
       modelConfig: normalizeAgentProfileModelConfigForEdit(agent.modelConfig),
       toolConfig: normalizeAgentProfileMcpConfigForEdit(agent.toolConfig),
       skillsConfig: normalizeAgentProfileSkillsConfigForEdit(agent.skillsConfig),
@@ -861,7 +864,7 @@ export function SettingsAgents() {
                 </div>
                 {editing.connectionType === 'acpx' && (
                   <div className="flex items-center space-x-2">
-                    <Switch id="autoSpawn" checked={editing.autoSpawn ?? false} onCheckedChange={v => setEditing({ ...editing, autoSpawn: v })} />
+                    <Switch id="autoSpawn" checked={editing.autoSpawn ?? DEFAULT_AGENT_PROFILE_AUTO_SPAWN} onCheckedChange={v => setEditing({ ...editing, autoSpawn: v })} />
                     <Label htmlFor="autoSpawn">Auto-spawn on startup</Label>
                   </div>
                 )}

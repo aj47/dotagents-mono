@@ -39,6 +39,8 @@ import {
 } from '@dotagents/shared/agent-profile-presets';
 import {
   buildAgentProfileAvatarDataUrl,
+  DEFAULT_AGENT_PROFILE_AUTO_SPAWN,
+  DEFAULT_AGENT_PROFILE_ENABLED,
   formatAgentProfilePropertiesForRequest,
   getAgentProfileAvatarFileSizeError,
   getApproxAgentProfileAvatarBase64Bytes,
@@ -107,8 +109,8 @@ const defaultFormData: AgentFormData = {
   systemPrompt: '',
   guidelines: '',
   ...DEFAULT_AGENT_CONNECTION_FORM_FIELDS,
-  enabled: true,
-  autoSpawn: false,
+  enabled: DEFAULT_AGENT_PROFILE_ENABLED,
+  autoSpawn: DEFAULT_AGENT_PROFILE_AUTO_SPAWN,
   properties: {},
 };
 
@@ -206,7 +208,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             guidelines: profile.guidelines || '',
             ...normalizeAgentConnectionFormFieldsForEdit(profile.connection, profile.connectionType),
             enabled: profile.enabled,
-            autoSpawn: profile.autoSpawn || false,
+            autoSpawn: profile.autoSpawn ?? DEFAULT_AGENT_PROFILE_AUTO_SPAWN,
             properties: normalizeAgentProfileProperties(profile.properties),
             modelConfig: normalizeAgentProfileModelConfigForEdit(profile.modelConfig),
             toolConfig: normalizeAgentProfileMcpConfigForEdit(profile.toolConfig),

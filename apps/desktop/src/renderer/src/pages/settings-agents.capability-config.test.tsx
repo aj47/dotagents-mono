@@ -88,6 +88,12 @@ describe("settings agents capability config", () => {
   })
 
   it("uses shared profile property helpers in the desktop agent editor", () => {
+    expect(settingsAgentsSource).toContain("DEFAULT_AGENT_PROFILE_ENABLED")
+    expect(settingsAgentsSource).toContain("DEFAULT_AGENT_PROFILE_AUTO_SPAWN")
+    expect(settingsAgentsSource).toContain("enabled: DEFAULT_AGENT_PROFILE_ENABLED")
+    expect(settingsAgentsSource).toContain("autoSpawn: DEFAULT_AGENT_PROFILE_AUTO_SPAWN")
+    expect(settingsAgentsSource).toContain("agent.autoSpawn ?? DEFAULT_AGENT_PROFILE_AUTO_SPAWN")
+    expect(settingsAgentsSource).toContain("editing.autoSpawn ?? DEFAULT_AGENT_PROFILE_AUTO_SPAWN")
     expect(settingsAgentsSource).toContain("normalizeAgentProfileProperties")
     expect(settingsAgentsSource).toContain("formatAgentProfilePropertiesForRequest")
     expect(settingsAgentsSource).toContain("getAgentProfileAvatarFileSizeError")

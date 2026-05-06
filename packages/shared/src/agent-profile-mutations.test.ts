@@ -6,6 +6,8 @@ import {
   canDeleteAgentProfile,
   canSetCurrentAgentProfile,
   createAgentProfileRecord,
+  DEFAULT_AGENT_PROFILE_AUTO_SPAWN,
+  DEFAULT_AGENT_PROFILE_ENABLED,
   formatAgentProfilePropertiesForRequest,
   getAgentProfileAvatarFileSizeError,
   getApproxAgentProfileAvatarBase64Bytes,
@@ -15,6 +17,11 @@ import {
 } from "./agent-profile-mutations"
 
 describe("agent profile mutations", () => {
+  it("exposes shared editable agent defaults", () => {
+    expect(DEFAULT_AGENT_PROFILE_ENABLED).toBe(true)
+    expect(DEFAULT_AGENT_PROFILE_AUTO_SPAWN).toBe(false)
+  })
+
   it("creates a profile record with injected id and timestamps", () => {
     expect(createAgentProfileRecord({
       name: "",
