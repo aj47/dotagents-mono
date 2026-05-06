@@ -1,7 +1,7 @@
 import {
-  CHAT_PROVIDER_IDS,
-  STT_PROVIDERS,
-  TTS_PROVIDERS,
+  isChatProviderId,
+  isSttProviderId,
+  isTtsProviderId,
   type CHAT_PROVIDER_ID,
   type STT_PROVIDER_ID,
   type TTS_PROVIDER_ID,
@@ -9,8 +9,6 @@ import {
 import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "./mcp-api"
 
 const MCP_SERVER_TRANSPORTS = ["stdio", "websocket", "streamableHttp"] as const
-const STT_PROVIDER_IDS = STT_PROVIDERS.map((provider) => provider.value)
-const TTS_PROVIDER_IDS = TTS_PROVIDERS.map((provider) => provider.value)
 
 export type AgentProfileMcpServerDefinitionLike = {
   transport?: (typeof MCP_SERVER_TRANSPORTS)[number]
@@ -154,14 +152,14 @@ export function isValidAgentProfileModelConfig(
 
   for (const field of ["agentProviderId", "mcpToolsProviderId", "transcriptPostProcessingProviderId"]) {
     if (config[field] !== undefined) {
-      if (typeof config[field] !== "string" || !CHAT_PROVIDER_IDS.includes(config[field] as CHAT_PROVIDER_ID)) return false
+      if (!isChatProviderId(config[field])) return false
     }
   }
   if (config.sttProviderId !== undefined) {
-    if (typeof config.sttProviderId !== "string" || !STT_PROVIDER_IDS.includes(config.sttProviderId as STT_PROVIDER_ID)) return false
+    if (!isSttProviderId(config.sttProviderId)) return false
   }
   if (config.ttsProviderId !== undefined) {
-    if (typeof config.ttsProviderId !== "string" || !TTS_PROVIDER_IDS.includes(config.ttsProviderId as TTS_PROVIDER_ID)) return false
+    if (!isTtsProviderId(config.ttsProviderId)) return false
   }
 
   for (const field of [

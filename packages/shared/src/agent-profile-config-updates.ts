@@ -1,9 +1,7 @@
 import {
   isChatProviderId,
-  STT_PROVIDERS,
-  TTS_PROVIDERS,
-  type STT_PROVIDER_ID,
-  type TTS_PROVIDER_ID,
+  isSttProviderId,
+  isTtsProviderId,
 } from "./providers"
 import type {
   AgentProfileMcpServerValidationConfigLike,
@@ -35,8 +33,6 @@ export const AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS = [
 ] as const satisfies readonly AgentProfileAgentModelProviderOption[]
 
 export const AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES = ["mark_work_complete"] as const
-const STT_PROVIDER_IDS = STT_PROVIDERS.map((provider) => provider.value)
-const TTS_PROVIDER_IDS = TTS_PROVIDERS.map((provider) => provider.value)
 
 function hasOwnUpdate<T extends object>(
   updates: T,
@@ -53,14 +49,6 @@ function normalizeStringList(value: unknown): string[] | undefined {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined
-}
-
-function isSttProviderId(value: unknown): value is STT_PROVIDER_ID {
-  return typeof value === "string" && STT_PROVIDER_IDS.includes(value as STT_PROVIDER_ID)
-}
-
-function isTtsProviderId(value: unknown): value is TTS_PROVIDER_ID {
-  return typeof value === "string" && TTS_PROVIDER_IDS.includes(value as TTS_PROVIDER_ID)
 }
 
 function omitUndefinedValues<T extends Record<string, unknown>>(value: T): T {

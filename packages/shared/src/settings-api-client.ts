@@ -1,5 +1,5 @@
 import { normalizeApiBaseUrl } from './connection-recovery';
-import { DEFAULT_MODEL_PRESET_ID, isChatProviderId } from './providers';
+import { DEFAULT_MODEL_PRESET_ID, isChatProviderId, isSttProviderId, isTtsProviderId } from './providers';
 import type { CHAT_PROVIDER_ID, ModelPreset } from './providers';
 import {
   buildModelPresetsResponse,
@@ -894,15 +894,15 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.localTraceLoggingEnabled === 'boolean') updates.localTraceLoggingEnabled = requestBody.localTraceLoggingEnabled;
   if (typeof requestBody.localTraceLogPath === 'string') updates.localTraceLogPath = requestBody.localTraceLogPath.trim() || undefined;
 
-  if (typeof requestBody.sttProviderId === 'string' && ['openai', 'groq', 'parakeet'].includes(requestBody.sttProviderId)) updates.sttProviderId = requestBody.sttProviderId;
+  if (isSttProviderId(requestBody.sttProviderId)) updates.sttProviderId = requestBody.sttProviderId;
   if (typeof requestBody.openaiSttModel === 'string') updates.openaiSttModel = requestBody.openaiSttModel;
   if (typeof requestBody.groqSttModel === 'string') updates.groqSttModel = requestBody.groqSttModel;
   if (typeof requestBody.groqSttPrompt === 'string') updates.groqSttPrompt = requestBody.groqSttPrompt || undefined;
   if (typeof requestBody.parakeetNumThreads === 'number' && Number.isInteger(requestBody.parakeetNumThreads) && [1, 2, 4, 8].includes(requestBody.parakeetNumThreads)) {
     updates.parakeetNumThreads = requestBody.parakeetNumThreads;
   }
-  if (typeof requestBody.ttsProviderId === 'string' && ['openai', 'groq', 'gemini', 'edge', 'kitten', 'supertonic'].includes(requestBody.ttsProviderId)) updates.ttsProviderId = requestBody.ttsProviderId;
-  if (typeof requestBody.transcriptPostProcessingProviderId === 'string' && ['openai', 'groq', 'gemini', 'chatgpt-web'].includes(requestBody.transcriptPostProcessingProviderId)) {
+  if (isTtsProviderId(requestBody.ttsProviderId)) updates.ttsProviderId = requestBody.ttsProviderId;
+  if (isChatProviderId(requestBody.transcriptPostProcessingProviderId)) {
     updates.transcriptPostProcessingProviderId = requestBody.transcriptPostProcessingProviderId;
   }
   if (typeof requestBody.transcriptPostProcessingOpenaiModel === 'string') updates.transcriptPostProcessingOpenaiModel = requestBody.transcriptPostProcessingOpenaiModel;

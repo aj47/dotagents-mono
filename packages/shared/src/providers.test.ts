@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
   STT_PROVIDERS,
+  STT_PROVIDER_IDS,
   CHAT_PROVIDERS,
   CHAT_PROVIDER_IDS,
   DEFAULT_CHAT_MODELS,
   TTS_PROVIDERS,
+  TTS_PROVIDER_IDS,
   OPENAI_TTS_VOICES,
   OPENAI_TTS_MODELS,
   GROQ_TTS_VOICES_ENGLISH,
@@ -32,7 +34,9 @@ import {
   isAnthropicProxyBaseUrl,
   isChatGptWebOnlyModel,
   isChatProviderId,
+  isSttProviderId,
   isTranscriptionOnlyChatModel,
+  isTtsProviderId,
   migrateDeprecatedEdgeTtsVoice,
   normalizeChatProviderId,
   normalizeModelIdentifierForMatching,
@@ -58,6 +62,14 @@ describe('STT_PROVIDERS', () => {
       expect(provider.label).toBeTruthy()
       expect(provider.value).toBeTruthy()
     }
+  })
+
+  it('exports shared STT provider ids and validation', () => {
+    expect(STT_PROVIDER_IDS).toEqual(['openai', 'groq', 'parakeet'])
+    expect(isSttProviderId('openai')).toBe(true)
+    expect(isSttProviderId('parakeet')).toBe(true)
+    expect(isSttProviderId('gemini')).toBe(false)
+    expect(isSttProviderId(undefined)).toBe(false)
   })
 })
 
@@ -186,6 +198,14 @@ describe('TTS_PROVIDERS', () => {
     expect(values).toContain('edge')
     expect(values).toContain('kitten')
     expect(values).toContain('supertonic')
+  })
+
+  it('exports shared TTS provider ids and validation', () => {
+    expect(TTS_PROVIDER_IDS).toEqual(['openai', 'groq', 'gemini', 'edge', 'kitten', 'supertonic'])
+    expect(isTtsProviderId('openai')).toBe(true)
+    expect(isTtsProviderId('supertonic')).toBe(true)
+    expect(isTtsProviderId('parakeet')).toBe(false)
+    expect(isTtsProviderId(undefined)).toBe(false)
   })
 })
 

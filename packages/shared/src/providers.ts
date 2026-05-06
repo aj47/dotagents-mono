@@ -25,6 +25,7 @@ export const STT_PROVIDERS = [
 ] as const;
 
 export type STT_PROVIDER_ID = (typeof STT_PROVIDERS)[number]["value"];
+export const STT_PROVIDER_IDS: readonly STT_PROVIDER_ID[] = STT_PROVIDERS.map(provider => provider.value);
 
 export const CHAT_PROVIDERS = [
   { label: "OpenAI", value: "openai" },
@@ -98,6 +99,10 @@ const CHATGPT_WEB_ONLY_MODEL_PATTERNS = [
 
 export function isChatProviderId(value: unknown): value is CHAT_PROVIDER_ID {
   return typeof value === "string" && CHAT_PROVIDER_IDS.includes(value as CHAT_PROVIDER_ID);
+}
+
+export function isSttProviderId(value: unknown): value is STT_PROVIDER_ID {
+  return typeof value === "string" && STT_PROVIDER_IDS.includes(value as STT_PROVIDER_ID);
 }
 
 export function normalizeChatProviderId(providerId: string): CHAT_PROVIDER_ID {
@@ -295,6 +300,12 @@ export const TTS_PROVIDERS = [
 ] as const;
 
 export type TTS_PROVIDER_ID = (typeof TTS_PROVIDERS)[number]["value"];
+export const TTS_PROVIDER_IDS: readonly TTS_PROVIDER_ID[] = TTS_PROVIDERS.map(provider => provider.value);
+
+export function isTtsProviderId(value: unknown): value is TTS_PROVIDER_ID {
+  return typeof value === "string" && TTS_PROVIDER_IDS.includes(value as TTS_PROVIDER_ID);
+}
+
 export type ProviderOption<Value extends string | number = string> = {
   readonly label: string;
   readonly value: Value;
