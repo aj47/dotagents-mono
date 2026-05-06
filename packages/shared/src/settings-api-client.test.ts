@@ -980,6 +980,9 @@ describe('SettingsApiClient', () => {
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.loopExportMarkdown }, expectedPath: REMOTE_SERVER_API_BUILDERS.loopExportMarkdown(loopId), run: () => client.exportLoopToMarkdown(loopId) },
       { route: { method: 'PATCH', path: REMOTE_SERVER_API_PATHS.loop }, expectedPath: REMOTE_SERVER_API_BUILDERS.loop(loopId), run: () => client.updateLoop(loopId, { name: 'Updated' }) },
       { route: { method: 'DELETE', path: REMOTE_SERVER_API_PATHS.loop }, expectedPath: REMOTE_SERVER_API_BUILDERS.loop(loopId), run: () => client.deleteLoop(loopId) },
+      { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.loopStatuses }, expectedPath: REMOTE_SERVER_API_PATHS.loopStatuses, run: () => client.getLoopStatuses() },
+      { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.loopStart }, expectedPath: REMOTE_SERVER_API_BUILDERS.loopStart(loopId), run: () => client.startLoop(loopId) },
+      { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.loopStop }, expectedPath: REMOTE_SERVER_API_BUILDERS.loopStop(loopId), run: () => client.stopLoop(loopId) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.loopToggle }, expectedPath: REMOTE_SERVER_API_BUILDERS.loopToggle(loopId), run: () => client.toggleLoop(loopId) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.loopRun }, expectedPath: REMOTE_SERVER_API_BUILDERS.loopRun(loopId), run: () => client.runLoop(loopId) },
     ];

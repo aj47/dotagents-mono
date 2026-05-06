@@ -4,7 +4,10 @@ import type {
   LoopExportMarkdownResponse,
   LoopImportMarkdownRequest,
   LoopMutationResponse,
+  LoopRuntimeActionResponse,
+  LoopRuntimeStatus,
   LoopRunResponse,
+  LoopStatusesResponse,
   LoopsResponse,
   LoopToggleResponse,
 } from "./api-types"
@@ -88,9 +91,13 @@ export type RepeatTaskLayerRecord = {
 
 export type RepeatTaskStatusLike = {
   id?: string
+  name?: string
+  enabled?: boolean
   lastRunAt?: number
   isRunning?: boolean
   nextRunAt?: number
+  intervalMinutes?: number
+  schedule?: RepeatTaskSchedule
 }
 
 export type RepeatTaskSessionLike = {
@@ -148,8 +155,8 @@ export interface RepeatTaskLoopService<TLoop extends RepeatTaskApiRecord = Repea
   getLoopStatuses(): RepeatTaskStatusLike[]
   getLoop(id: string): TLoop | undefined
   saveLoop(loop: TLoop): boolean
-  startLoop(id: string): void
-  stopLoop(id: string): void
+  startLoop(id: string): boolean | void
+  stopLoop(id: string): boolean | void
   triggerLoop(id: string): RepeatTaskMaybePromise<boolean>
   getLoopStatus(id: string): RepeatTaskStatusLike | undefined
   deleteLoop(id: string): boolean
@@ -648,6 +655,27 @@ export function buildRepeatTasksResponse(
   }
 }
 
+export function formatRepeatTaskStatusForApi(status: RepeatTaskStatusLike): LoopRuntimeStatus {
+  return {
+    id: status.id ?? "",
+    name: status.name,
+    enabled: status.enabled,
+    isRunning: status.isRunning ?? false,
+    lastRunAt: status.lastRunAt,
+    nextRunAt: status.nextRunAt,
+    intervalMinutes: status.intervalMinutes,
+    schedule: status.schedule,
+  }
+}
+
+export function buildRepeatTaskStatusesResponse(statuses: RepeatTaskStatusLike[]): LoopStatusesResponse {
+  return {
+    statuses: statuses
+      .filter((status): status is RepeatTaskStatusLike & { id: string } => typeof status.id === "string")
+      .map(formatRepeatTaskStatusForApi),
+  }
+}
+
 export function buildRepeatTaskResponse(
   loop: RepeatTaskApiRecord,
   options: RepeatTaskApiFormatOptions = {},
@@ -668,6 +696,17 @@ export function buildRepeatTaskToggleResponse(id: string, enabled: boolean): Loo
 
 export function buildRepeatTaskRunResponse(id: string): LoopRunResponse {
   return { success: true, id }
+}
+
+export function buildRepeatTaskRuntimeActionResponse(
+  id: string,
+  status?: RepeatTaskStatusLike,
+): LoopRuntimeActionResponse {
+  return {
+    success: true,
+    id,
+    ...(status ? { status: formatRepeatTaskStatusForApi(status) } : {}),
+  }
 }
 
 export function buildRepeatTaskExportMarkdownResponse(loopId: string, markdown: string): LoopExportMarkdownResponse {
@@ -716,6 +755,21 @@ export async function getRepeatTasksAction<
   } catch (caughtError) {
     options.diagnostics.logError("repeat-task-actions", "Failed to get repeat tasks", caughtError)
     return repeatTaskActionError(500, "Failed to get repeat tasks")
+  }
+}
+
+export async function getRepeatTaskStatusesAction<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+  try {
+    const loopService = await options.loadLoopService()
+    const statuses = loopService?.getLoopStatuses() ?? []
+
+    return repeatTaskActionOk(buildRepeatTaskStatusesResponse(statuses))
+  } catch (caughtError) {
+    options.diagnostics.logError("repeat-task-actions", "Failed to get repeat task statuses", caughtError)
+    return repeatTaskActionError(500, "Failed to get repeat task statuses")
   }
 }
 
@@ -798,6 +852,70 @@ export async function runRepeatTaskAction<
   } catch (caughtError) {
     options.diagnostics.logError("repeat-task-actions", "Failed to run repeat task", caughtError)
     return repeatTaskActionError(500, getUnknownErrorMessage(caughtError, "Failed to run repeat task"))
+  }
+}
+
+export async function startRepeatTaskAction<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+  try {
+    const taskId = id ?? ""
+    if (!taskId) {
+      return repeatTaskActionError(400, "Repeat task id is required")
+    }
+
+    const loopService = await options.loadLoopService()
+    if (!loopService) {
+      return repeatTaskActionError(503, "Repeat task service is unavailable")
+    }
+
+    const loop = loopService.getLoop(taskId)
+    if (!loop) {
+      return repeatTaskActionError(404, "Repeat task not found")
+    }
+
+    if (!loop.enabled) {
+      return repeatTaskActionError(409, "Repeat task is disabled")
+    }
+
+    const started = loopService.startLoop(taskId) !== false
+    if (!started) {
+      return repeatTaskActionError(409, "Repeat task could not be started")
+    }
+
+    return repeatTaskActionOk(buildRepeatTaskRuntimeActionResponse(taskId, loopService.getLoopStatus(taskId)))
+  } catch (caughtError) {
+    options.diagnostics.logError("repeat-task-actions", "Failed to start repeat task", caughtError)
+    return repeatTaskActionError(500, getUnknownErrorMessage(caughtError, "Failed to start repeat task"))
+  }
+}
+
+export async function stopRepeatTaskAction<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+  try {
+    const taskId = id ?? ""
+    if (!taskId) {
+      return repeatTaskActionError(400, "Repeat task id is required")
+    }
+
+    const loopService = await options.loadLoopService()
+    if (!loopService) {
+      return repeatTaskActionError(503, "Repeat task service is unavailable")
+    }
+
+    if (!loopService.getLoop(taskId)) {
+      return repeatTaskActionError(404, "Repeat task not found")
+    }
+
+    loopService.stopLoop(taskId)
+
+    return repeatTaskActionOk(buildRepeatTaskRuntimeActionResponse(taskId, loopService.getLoopStatus(taskId)))
+  } catch (caughtError) {
+    options.diagnostics.logError("repeat-task-actions", "Failed to stop repeat task", caughtError)
+    return repeatTaskActionError(500, getUnknownErrorMessage(caughtError, "Failed to stop repeat task"))
   }
 }
 

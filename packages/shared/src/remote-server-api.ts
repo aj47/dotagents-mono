@@ -101,7 +101,10 @@ export const REMOTE_SERVER_API_PATHS = {
   agentProfileToggle: "/agent-profiles/:id/toggle",
   agentProfile: "/agent-profiles/:id",
   loops: "/loops",
+  loopStatuses: "/loops/statuses",
   loopImportMarkdown: "/loops/import/markdown",
+  loopStart: "/loops/:id/start",
+  loopStop: "/loops/:id/stop",
   loopToggle: "/loops/:id/toggle",
   loopRun: "/loops/:id/run",
   loopExportMarkdown: "/loops/:id/export/markdown",
@@ -216,7 +219,10 @@ export const REMOTE_SERVER_API_ROUTES = [
   { method: "PATCH", path: REMOTE_SERVER_API_PATHS.agentProfile },
   { method: "DELETE", path: REMOTE_SERVER_API_PATHS.agentProfile },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.loops },
+  { method: "GET", path: REMOTE_SERVER_API_PATHS.loopStatuses },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.loopImportMarkdown },
+  { method: "POST", path: REMOTE_SERVER_API_PATHS.loopStart },
+  { method: "POST", path: REMOTE_SERVER_API_PATHS.loopStop },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.loopToggle },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.loopRun },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.loopExportMarkdown },
@@ -414,6 +420,12 @@ export const REMOTE_SERVER_API_BUILDERS = {
   },
   loopExportMarkdown(id: string): string {
     return `/loops/${encodePathParam(id)}/export/markdown`;
+  },
+  loopStart(id: string): string {
+    return `/loops/${encodePathParam(id)}/start`;
+  },
+  loopStop(id: string): string {
+    return `/loops/${encodePathParam(id)}/stop`;
   },
   loopToggle(id: string): string {
     return `/loops/${encodePathParam(id)}/toggle`;

@@ -392,6 +392,12 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // GET /v1/loops/statuses - List repeat task runtime statuses
+  fastify.get(API_ROUTES.loopStatuses, async (_req, reply) => {
+    const result = await actions.getRepeatTaskStatuses()
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // POST /v1/loops/import/markdown - Import a repeat task from task.md content
   fastify.post(API_ROUTES.loopImportMarkdown, async (req, reply) => {
     const result = await actions.importRepeatTaskFromMarkdown(req.body)
@@ -409,6 +415,20 @@ export function registerMobileApiRoutes(
   fastify.post(API_ROUTES.loopRun, async (req, reply) => {
     const params = req.params as { id?: string }
     const result = await actions.runRepeatTask(params.id)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
+  // POST /v1/loops/:id/start - Start scheduling a repeat task
+  fastify.post(API_ROUTES.loopStart, async (req, reply) => {
+    const params = req.params as { id?: string }
+    const result = await actions.startRepeatTask(params.id)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
+  // POST /v1/loops/:id/stop - Stop scheduling a repeat task
+  fastify.post(API_ROUTES.loopStop, async (req, reply) => {
+    const params = req.params as { id?: string }
+    const result = await actions.stopRepeatTask(params.id)
     return reply.code(result.statusCode).send(result.body)
   })
 

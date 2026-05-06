@@ -1106,6 +1106,21 @@ export interface LoopsResponse {
   loops: Loop[];
 }
 
+export interface LoopRuntimeStatus {
+  id: string;
+  name?: string;
+  enabled?: boolean;
+  isRunning: boolean;
+  lastRunAt?: number;
+  nextRunAt?: number;
+  intervalMinutes?: number;
+  schedule?: LoopSchedule;
+}
+
+export interface LoopStatusesResponse {
+  statuses: LoopRuntimeStatus[];
+}
+
 export interface LoopCreateRequest {
   name: string;
   prompt: string;
@@ -1165,4 +1180,10 @@ export interface LoopToggleResponse {
 export interface LoopRunResponse {
   success: true;
   id: string;
+}
+
+export interface LoopRuntimeActionResponse {
+  success: true;
+  id: string;
+  status?: LoopRuntimeStatus;
 }

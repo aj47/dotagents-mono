@@ -124,8 +124,11 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   updateAgentProfile: (id: string | undefined, body: unknown) => MobileApiActionResult;
   deleteAgentProfile: (id?: string) => MobileApiActionResult;
   getRepeatTasks: () => RemoteServerMaybePromise<MobileApiActionResult>;
+  getRepeatTaskStatuses: () => RemoteServerMaybePromise<MobileApiActionResult>;
   toggleRepeatTask: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   runRepeatTask: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
+  startRepeatTask: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
+  stopRepeatTask: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   importRepeatTaskFromMarkdown: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
   exportRepeatTaskToMarkdown: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   createKnowledgeNote: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;

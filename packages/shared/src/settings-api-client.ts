@@ -68,7 +68,9 @@ import type {
   LoopExportMarkdownResponse,
   LoopImportMarkdownRequest,
   LoopMutationResponse,
+  LoopRuntimeActionResponse,
   LoopRunResponse,
+  LoopStatusesResponse,
   LoopToggleResponse,
   LoopsResponse,
   LoopUpdateRequest,
@@ -1618,6 +1620,10 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
     return this.request<LoopsResponse>(API_PATHS.loops);
   }
 
+  async getLoopStatuses(): Promise<LoopStatusesResponse> {
+    return this.request<LoopStatusesResponse>(API_PATHS.loopStatuses);
+  }
+
   async createLoop(data: LoopCreateRequest): Promise<{ loop: Loop }> {
     return this.request<{ loop: Loop }>(API_PATHS.loops, {
       method: 'POST',
@@ -1658,6 +1664,18 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
 
   async runLoop(id: string): Promise<LoopRunResponse> {
     return this.request<LoopRunResponse>(API_BUILDERS.loopRun(id), {
+      method: 'POST',
+    });
+  }
+
+  async startLoop(id: string): Promise<LoopRuntimeActionResponse> {
+    return this.request<LoopRuntimeActionResponse>(API_BUILDERS.loopStart(id), {
+      method: 'POST',
+    });
+  }
+
+  async stopLoop(id: string): Promise<LoopRuntimeActionResponse> {
+    return this.request<LoopRuntimeActionResponse>(API_BUILDERS.loopStop(id), {
       method: 'POST',
     });
   }

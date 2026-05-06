@@ -19,7 +19,7 @@ import {
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
 } from '../lib/accessibility';
-import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteDateFilter, KnowledgeNoteSort, AgentProfile, Loop, LocalSpeechModelProviderId, LocalSpeechModelStatus, ModelPresetSummary } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteDateFilter, KnowledgeNoteSort, AgentProfile, Loop, LoopRuntimeStatus, LocalSpeechModelProviderId, LocalSpeechModelStatus, ModelPresetSummary } from '../lib/settingsApi';
 import { getAcpxMainAgentOptions } from '../lib/mainAgentOptions';
 import { speakRemoteTts } from '../lib/remoteTts';
 import { TTSSettings } from '../ui/TTSSettings';
@@ -149,6 +149,38 @@ const BUNDLE_IMPORT_CONFLICT_STRATEGIES: Array<{ value: BundleImportConflictStra
   { value: 'rename', label: 'Rename' },
   { value: 'overwrite', label: 'Overwrite' },
 ];
+
+type LoopRuntimeAction = {
+  loopId: string;
+  action: 'start' | 'stop';
+};
+
+function formatLoopRuntimeTime(timestamp?: number): string | undefined {
+  if (!timestamp) return undefined;
+  return new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function describeLoopRuntime(loop: Loop): string {
+  if (loop.isRunning) return 'Running now';
+  const nextRunTime = formatLoopRuntimeTime(loop.nextRunAt);
+  if (nextRunTime) return `Next: ${nextRunTime}`;
+  if (!loop.enabled) return 'Disabled';
+  return 'No scheduled run';
+}
+
+function applyLoopRuntimeStatus(loop: Loop, status?: LoopRuntimeStatus): Loop {
+  if (!status) return loop;
+  return {
+    ...loop,
+    name: status.name ?? loop.name,
+    enabled: status.enabled ?? loop.enabled,
+    isRunning: status.isRunning,
+    lastRunAt: status.lastRunAt,
+    nextRunAt: status.nextRunAt,
+    intervalMinutes: status.intervalMinutes ?? loop.intervalMinutes,
+    schedule: status.schedule ?? loop.schedule,
+  };
+}
 
 const KNOWLEDGE_CONTEXT_FILTER_OPTIONS: Array<{ label: string; value: 'all' | KnowledgeNoteContext }> = [
   { label: 'All', value: 'all' },
@@ -404,6 +436,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
   const [isImportingLoopMarkdown, setIsImportingLoopMarkdown] = useState(false);
   const [isExportingLoopMarkdownId, setIsExportingLoopMarkdownId] = useState<string | null>(null);
+  const [loopRuntimeAction, setLoopRuntimeAction] = useState<LoopRuntimeAction | null>(null);
   const [showLoopImportModal, setShowLoopImportModal] = useState(false);
   const [loopImportMarkdownText, setLoopImportMarkdownText] = useState('');
   const displaySkills = useMemo(() => [...skills].sort((a, b) => {
@@ -1895,6 +1928,7 @@ export default function SettingsScreen({ navigation }: any) {
       setLoops(prev =>
         prev.map(l => (l.id === loopId ? { ...l, enabled: res.enabled } : l))
       );
+      void fetchLoops();
     } catch (error: any) {
       console.error('[Settings] Failed to toggle loop:', error);
       Alert.alert('Error', 'Failed to toggle loop');
@@ -1912,6 +1946,50 @@ export default function SettingsScreen({ navigation }: any) {
     } catch (error: any) {
       console.error('[Settings] Failed to run loop:', error);
       Alert.alert('Error', error.message || 'Failed to run loop');
+    }
+  };
+
+  const handleLoopStart = async (loop: Loop) => {
+    if (!settingsClient) return;
+    setLoopRuntimeAction({ loopId: loop.id, action: 'start' });
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.startLoop(loop.id);
+      setLoops(prev =>
+        prev.map(item => (item.id === loop.id ? applyLoopRuntimeStatus(item, result.status) : item))
+      );
+      setSaveStatusMessage(`Started loop "${loop.name}"`);
+      await fetchLoops();
+    } catch (error: any) {
+      console.error('[Settings] Failed to start loop:', error);
+      setRemoteError(error.message || 'Failed to start loop');
+      Alert.alert('Error', error.message || 'Failed to start loop');
+    } finally {
+      setLoopRuntimeAction(prev =>
+        prev?.loopId === loop.id && prev.action === 'start' ? null : prev
+      );
+    }
+  };
+
+  const handleLoopStop = async (loop: Loop) => {
+    if (!settingsClient) return;
+    setLoopRuntimeAction({ loopId: loop.id, action: 'stop' });
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.stopLoop(loop.id);
+      setLoops(prev =>
+        prev.map(item => (item.id === loop.id ? applyLoopRuntimeStatus(item, result.status) : item))
+      );
+      setSaveStatusMessage(`Stopped loop "${loop.name}"`);
+      await fetchLoops();
+    } catch (error: any) {
+      console.error('[Settings] Failed to stop loop:', error);
+      setRemoteError(error.message || 'Failed to stop loop');
+      Alert.alert('Error', error.message || 'Failed to stop loop');
+    } finally {
+      setLoopRuntimeAction(prev =>
+        prev?.loopId === loop.id && prev.action === 'stop' ? null : prev
+      );
     }
   };
 
@@ -4670,68 +4748,108 @@ export default function SettingsScreen({ navigation }: any) {
                 ) : loops.length === 0 ? (
                   <Text style={styles.helperText}>No agent loops configured</Text>
                 ) : (
-                  loops.map((loop) => (
-                    <View key={loop.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
-                      <TouchableOpacity
-                        style={styles.agentInfoPressable}
-                        onPress={() => handleLoopEdit(loop)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={[styles.serverInfo, { flex: 1 }]}>
-                          <View style={styles.serverNameRow}>
-                            <View style={[
-                              styles.statusDot,
-                              loop.isRunning ? styles.statusConnected : styles.statusDisconnected,
-                            ]} />
-                            <Text style={styles.serverName}>{loop.name}</Text>
+                  loops.map((loop) => {
+                    const loopRuntimeLabel = describeLoopRuntime(loop);
+                    const isLoopStarting = loopRuntimeAction?.loopId === loop.id && loopRuntimeAction.action === 'start';
+                    const isLoopStopping = loopRuntimeAction?.loopId === loop.id && loopRuntimeAction.action === 'stop';
+                    const isLoopRuntimeBusy = isLoopStarting || isLoopStopping;
+
+                    return (
+                      <View key={loop.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
+                        <TouchableOpacity
+                          style={styles.agentInfoPressable}
+                          onPress={() => handleLoopEdit(loop)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.serverInfo, { flex: 1 }]}>
+                            <View style={styles.serverNameRow}>
+                              <View style={[
+                                styles.statusDot,
+                                loop.isRunning ? styles.statusConnected : styles.statusDisconnected,
+                              ]} />
+                              <Text style={styles.serverName}>{loop.name}</Text>
+                            </View>
+                            <Text style={styles.serverMeta} numberOfLines={2}>{loop.prompt}</Text>
+                            <Text style={styles.serverMeta} numberOfLines={2}>
+                              {describeLoopCadence(loop)}
+                              {loop.profileName && ` • ${loop.profileName}`}
+                              {loop.lastRunAt && ` • Last: ${new Date(loop.lastRunAt).toLocaleTimeString()}`}
+                            </Text>
+                            <Text style={styles.loopRuntimeMeta} numberOfLines={1}>
+                              {loopRuntimeLabel}
+                            </Text>
                           </View>
-                          <Text style={styles.serverMeta} numberOfLines={2}>{loop.prompt}</Text>
-                          <Text style={styles.serverMeta} numberOfLines={2}>
-                            {describeLoopCadence(loop)}
-                            {loop.profileName && ` • ${loop.profileName}`}
-                            {loop.lastRunAt && ` • Last: ${new Date(loop.lastRunAt).toLocaleTimeString()}`}
-                          </Text>
+                        </TouchableOpacity>
+                        <View style={styles.loopActions}>
+                          <Switch
+                            value={loop.enabled}
+                            onValueChange={() => handleLoopToggle(loop.id)}
+                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                            thumbColor={loop.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                          />
+                          <TouchableOpacity
+                            style={styles.loopActionButton}
+                            onPress={() => handleLoopRun(loop.id)}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Run ${loop.name} loop now`)}
+                            accessibilityHint="Runs this loop immediately without waiting for the next scheduled interval."
+                          >
+                            <Text style={styles.loopActionButtonText}>Run now</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.loopActionButton,
+                              (!loop.enabled || isLoopRuntimeBusy) && styles.agentActionButtonDisabled,
+                            ]}
+                            onPress={() => handleLoopStart(loop)}
+                            disabled={!loop.enabled || isLoopRuntimeBusy}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Start ${loop.name} loop schedule`)}
+                            accessibilityHint="Starts scheduling this enabled loop on the desktop app."
+                          >
+                            <Text style={styles.loopActionButtonText}>
+                              {isLoopStarting ? 'Starting...' : 'Start'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.loopActionButton,
+                              isLoopRuntimeBusy && styles.agentActionButtonDisabled,
+                            ]}
+                            onPress={() => handleLoopStop(loop)}
+                            disabled={isLoopRuntimeBusy}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Stop ${loop.name} loop schedule`)}
+                            accessibilityHint="Stops the scheduled timer for this loop on the desktop app."
+                          >
+                            <Text style={styles.loopActionButtonText}>
+                              {isLoopStopping ? 'Stopping...' : 'Stop'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.loopActionButton, isExportingLoopMarkdownId === loop.id && styles.agentActionButtonDisabled]}
+                            onPress={() => handleLoopMarkdownExport(loop)}
+                            disabled={isExportingLoopMarkdownId === loop.id}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Export ${loop.name} loop as Markdown`)}
+                          >
+                            <Text style={styles.loopActionButtonText}>
+                              {isExportingLoopMarkdownId === loop.id ? 'Exporting...' : 'Export'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.loopActionButton, styles.loopActionButtonDanger]}
+                            onPress={() => handleLoopDelete(loop)}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Delete ${loop.name} loop`)}
+                            accessibilityHint="Opens a confirmation prompt before permanently deleting this loop."
+                          >
+                            <Text style={[styles.loopActionButtonText, styles.loopActionButtonTextDanger]}>Delete</Text>
+                          </TouchableOpacity>
                         </View>
-                      </TouchableOpacity>
-                      <View style={styles.loopActions}>
-                        <Switch
-                          value={loop.enabled}
-                          onValueChange={() => handleLoopToggle(loop.id)}
-                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                          thumbColor={loop.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                        />
-                        <TouchableOpacity
-                          style={styles.loopActionButton}
-                          onPress={() => handleLoopRun(loop.id)}
-                          accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Run ${loop.name} loop now`)}
-                          accessibilityHint="Runs this loop immediately without waiting for the next scheduled interval."
-                        >
-                          <Text style={styles.loopActionButtonText}>Run now</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.loopActionButton, isExportingLoopMarkdownId === loop.id && styles.agentActionButtonDisabled]}
-                          onPress={() => handleLoopMarkdownExport(loop)}
-                          disabled={isExportingLoopMarkdownId === loop.id}
-                          accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Export ${loop.name} loop as Markdown`)}
-                        >
-                          <Text style={styles.loopActionButtonText}>
-                            {isExportingLoopMarkdownId === loop.id ? 'Exporting...' : 'Export'}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.loopActionButton, styles.loopActionButtonDanger]}
-                          onPress={() => handleLoopDelete(loop)}
-                          accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Delete ${loop.name} loop`)}
-                          accessibilityHint="Opens a confirmation prompt before permanently deleting this loop."
-                        >
-                          <Text style={[styles.loopActionButtonText, styles.loopActionButtonTextDanger]}>Delete</Text>
-                        </TouchableOpacity>
                       </View>
-                    </View>
-                  ))
+                    );
+                  })
                 )}
                 <View style={styles.sectionActionRow}>
                   <TouchableOpacity
@@ -6502,6 +6620,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     noteDeleteButtonText: {
       color: theme.colors.destructive,
       fontSize: 12,
+      fontWeight: '500',
+    },
+    loopRuntimeMeta: {
+      fontSize: 12,
+      color: theme.colors.foreground,
+      marginTop: spacing.xs,
+      lineHeight: 16,
       fontWeight: '500',
     },
     loopActions: {

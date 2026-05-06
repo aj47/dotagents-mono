@@ -3,9 +3,12 @@ import {
   createRepeatTaskAction,
   deleteRepeatTaskAction,
   exportRepeatTaskToMarkdownAction,
+  getRepeatTaskStatusesAction,
   getRepeatTasksAction,
   importRepeatTaskFromMarkdownAction,
   runRepeatTaskAction,
+  startRepeatTaskAction,
+  stopRepeatTaskAction,
   toggleRepeatTaskAction,
   updateRepeatTaskAction,
   type RepeatTaskActionOptions,
@@ -44,12 +47,24 @@ export async function getRepeatTasks(): Promise<RepeatTaskActionResult> {
   return getRepeatTasksAction(repeatTaskActionOptions)
 }
 
+export async function getRepeatTaskStatuses(): Promise<RepeatTaskActionResult> {
+  return getRepeatTaskStatusesAction(repeatTaskActionOptions)
+}
+
 export async function toggleRepeatTask(id: string | undefined): Promise<RepeatTaskActionResult> {
   return toggleRepeatTaskAction(id, repeatTaskActionOptions)
 }
 
 export async function runRepeatTask(id: string | undefined): Promise<RepeatTaskActionResult> {
   return runRepeatTaskAction(id, repeatTaskActionOptions)
+}
+
+export async function startRepeatTask(id: string | undefined): Promise<RepeatTaskActionResult> {
+  return startRepeatTaskAction(id, repeatTaskActionOptions)
+}
+
+export async function stopRepeatTask(id: string | undefined): Promise<RepeatTaskActionResult> {
+  return stopRepeatTaskAction(id, repeatTaskActionOptions)
 }
 
 export async function createRepeatTask(body: unknown): Promise<RepeatTaskActionResult> {
