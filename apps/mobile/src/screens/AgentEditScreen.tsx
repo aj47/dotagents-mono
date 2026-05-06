@@ -4,16 +4,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
-import {
-  ExtendedSettingsApiClient,
-  AgentProfileFull,
+import type {
+  ApiAgentProfileFull as AgentProfileFull,
   AgentProfileCreateRequest,
   AgentProfileUpdateRequest,
   MCPServer,
   Skill,
-  type OperatorMCPToolSummary,
-  type VerifyExternalAgentCommandResponse,
-} from '../lib/settingsApi';
+  OperatorMCPToolSummary,
+  VerifyExternalAgentCommandResponse,
+} from '@dotagents/shared/api-types';
+import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '@dotagents/shared/accessibility-utils';
 import {
   AGENT_EDIT_CONNECTION_TYPE_OPTIONS,
