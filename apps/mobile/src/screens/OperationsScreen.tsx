@@ -20,8 +20,7 @@ import {
   createTextInputAccessibilityLabel,
 } from '@dotagents/shared/accessibility-utils';
 import { getDeviceIdentity } from '../lib/deviceIdentity';
-import {
-  ExtendedSettingsApiClient,
+import type {
   OperatorAuditEntry,
   OperatorConversationItem,
   OperatorDiscordIntegrationSummary,
@@ -36,7 +35,8 @@ import {
   OperatorWhatsAppIntegrationSummary,
   Settings,
   SettingsUpdate,
-} from '../lib/settingsApi';
+} from '@dotagents/shared/api-types';
+import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { saveConfig, useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
 import { radius, spacing } from '../ui/theme';
