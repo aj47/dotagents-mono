@@ -5,6 +5,8 @@
 
 import {
   buildMessagePushNotificationPayload,
+  buildPushNotificationDispatchPlan,
+  type ExpoPushMessage,
   type PushNotificationPayload,
 } from "@dotagents/shared/push-notifications"
 import { PushNotificationToken } from "../shared/types"
@@ -12,17 +14,6 @@ import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
-
-interface ExpoPushMessage {
-  to: string
-  title?: string
-  body?: string
-  data?: Record<string, unknown>
-  badge?: number
-  sound?: "default" | null
-  channelId?: string
-  priority?: "default" | "high" | "normal"
-}
 
 interface ExpoPushTicket {
   status: "ok" | "error"
@@ -50,25 +41,12 @@ export async function sendPushNotification(payload: PushNotificationPayload): Pr
     return { success: true, sent: 0, failed: 0, errors: [] }
   }
 
-  // Increment badge count for each token and save updated counts
-  const updatedTokens = tokens.map((token: PushNotificationToken) => ({
-    ...token,
-    badgeCount: (token.badgeCount ?? 0) + 1,
-  }))
+  const dispatchPlan = buildPushNotificationDispatchPlan(tokens, payload)
+  const updatedTokens = dispatchPlan.updatedTokens
 
   // Save updated badge counts
   configStore.save({ ...cfg, pushNotificationTokens: updatedTokens })
-
-  const messages: ExpoPushMessage[] = updatedTokens.map((token: PushNotificationToken) => ({
-    to: token.token,
-    title: payload.title,
-    body: payload.body,
-    data: payload.data,
-    badge: token.badgeCount ?? 1, // Use per-token badge count
-    sound: payload.sound ?? "default",
-    channelId: payload.channelId ?? "default",
-    priority: payload.priority ?? "high",
-  }))
+  const messages: ExpoPushMessage[] = dispatchPlan.messages
 
   try {
     const response = await fetch(EXPO_PUSH_URL, {

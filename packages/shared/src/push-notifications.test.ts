@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildMessagePushNotificationPayload,
   buildPushBadgeClearResponse,
+  buildPushNotificationDispatchPlan,
   buildPushRegistrationResponse,
   buildPushStatusResponse,
   buildPushUnregistrationResponse,
@@ -143,6 +144,45 @@ describe('push notification API helpers', () => {
       conversationTitle: 'Planning',
       messagePreview: 'x'.repeat(105),
     }).body).toBe(`${'x'.repeat(100)}...`);
+  });
+
+  it('builds Expo push dispatch plans with per-token badge increments', () => {
+    expect(buildPushNotificationDispatchPlan([
+      { token: 't1', badgeCount: 4, platform: 'ios' },
+      { token: 't2', platform: 'android' },
+    ], {
+      title: 'DotAgents',
+      body: 'Done',
+      data: { conversationId: 'conv-1' },
+      priority: 'normal',
+    })).toEqual({
+      updatedTokens: [
+        { token: 't1', badgeCount: 5, platform: 'ios' },
+        { token: 't2', badgeCount: 1, platform: 'android' },
+      ],
+      messages: [
+        {
+          to: 't1',
+          title: 'DotAgents',
+          body: 'Done',
+          data: { conversationId: 'conv-1' },
+          badge: 5,
+          sound: 'default',
+          channelId: 'default',
+          priority: 'normal',
+        },
+        {
+          to: 't2',
+          title: 'DotAgents',
+          body: 'Done',
+          data: { conversationId: 'conv-1' },
+          badge: 1,
+          sound: 'default',
+          channelId: 'default',
+          priority: 'normal',
+        },
+      ],
+    });
   });
 
   it('runs push registration actions through shared token store adapters', () => {

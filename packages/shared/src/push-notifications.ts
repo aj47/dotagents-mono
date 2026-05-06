@@ -32,6 +32,27 @@ export interface PushNotificationPayload {
   priority?: 'default' | 'high' | 'normal';
 }
 
+export interface ExpoPushMessage {
+  to: string;
+  title?: string;
+  body?: string;
+  data?: Record<string, unknown>;
+  badge?: number;
+  sound?: 'default' | null;
+  channelId?: string;
+  priority?: 'default' | 'high' | 'normal';
+}
+
+export type PushNotificationDeliveryToken = {
+  token: string;
+  badgeCount?: number;
+};
+
+export type PushNotificationDispatchPlan<TToken extends PushNotificationDeliveryToken> = {
+  updatedTokens: Array<TToken & { badgeCount: number }>;
+  messages: ExpoPushMessage[];
+};
+
 export interface BuildMessagePushNotificationPayloadOptions {
   conversationId: string;
   conversationTitle: string;
@@ -189,6 +210,30 @@ export function buildMessagePushNotificationPayload(
     },
     sound: 'default',
     priority: 'high',
+  };
+}
+
+export function buildPushNotificationDispatchPlan<TToken extends PushNotificationDeliveryToken>(
+  tokens: TToken[],
+  payload: PushNotificationPayload,
+): PushNotificationDispatchPlan<TToken> {
+  const updatedTokens = tokens.map((token) => ({
+    ...token,
+    badgeCount: (token.badgeCount ?? 0) + 1,
+  }));
+
+  return {
+    updatedTokens,
+    messages: updatedTokens.map((token) => ({
+      to: token.token,
+      title: payload.title,
+      body: payload.body,
+      data: payload.data,
+      badge: token.badgeCount,
+      sound: payload.sound ?? 'default',
+      channelId: payload.channelId ?? 'default',
+      priority: payload.priority ?? 'high',
+    })),
   };
 }
 
