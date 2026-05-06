@@ -43,6 +43,7 @@ export default defineConfig({
     'sidebar-persistence': 'src/sidebar-persistence.ts',
     'selected-agent-persistence': 'src/selected-agent-persistence.ts',
     'theme-preference': 'src/theme-preference.ts',
+    'split-pane-selection': 'src/split-pane-selection.ts',
     'tool-activity-grouping': 'src/tool-activity-grouping.ts',
     'main-agent-selection': 'src/main-agent-selection.ts',
     'agent-profile-presets': 'src/agent-profile-presets.ts',

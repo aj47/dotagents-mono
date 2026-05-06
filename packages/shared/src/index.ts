@@ -66,6 +66,7 @@ export * from './resizable-persistence';
 export * from './sidebar-persistence';
 export * from './selected-agent-persistence';
 export * from './theme-preference';
+export * from './split-pane-selection';
 export * from './tool-activity-grouping';
 export * from './main-agent-selection';
 export * from './agent-profile-presets';

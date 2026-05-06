@@ -211,6 +211,11 @@
       "import": "./dist/theme-preference.mjs",
       "require": "./dist/theme-preference.js"
     },
+    "./split-pane-selection": {
+      "types": "./dist/split-pane-selection.d.ts",
+      "import": "./dist/split-pane-selection.mjs",
+      "require": "./dist/split-pane-selection.js"
+    },
     "./tool-activity-grouping": {
       "types": "./dist/tool-activity-grouping.d.ts",
       "import": "./dist/tool-activity-grouping.mjs",
