@@ -40,6 +40,7 @@ export type {
   KnowledgeNoteDeleteResponse,
   KnowledgeNoteMutationResponse,
   KnowledgeNoteResponse,
+  KnowledgeNoteSearchRequest,
   KnowledgeNotesResponse,
   KnowledgeNoteUpdateRequest,
   AgentProfileCreateRequest,

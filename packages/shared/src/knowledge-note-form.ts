@@ -4,9 +4,26 @@ import type {
   KnowledgeNoteDeleteResponse,
   KnowledgeNoteMutationResponse,
   KnowledgeNoteResponse,
+  KnowledgeNoteSearchRequest,
   KnowledgeNotesResponse,
   KnowledgeNoteUpdateRequest,
 } from "./api-types"
+
+type KnowledgeNoteSearchContext = NonNullable<KnowledgeNoteSearchRequest["context"]>
+type KnowledgeNoteSearchDateFilter = NonNullable<KnowledgeNoteSearchRequest["dateFilter"]>
+type KnowledgeNoteSearchSort = NonNullable<KnowledgeNoteSearchRequest["sort"]>
+
+const KNOWLEDGE_NOTE_CONTEXTS = new Set<KnowledgeNoteSearchContext>(["auto", "search-only"])
+const KNOWLEDGE_NOTE_DATE_FILTERS = new Set<KnowledgeNoteSearchDateFilter>(["all", "7d", "30d", "90d", "year"])
+const KNOWLEDGE_NOTE_SORTS = new Set<KnowledgeNoteSearchSort>([
+  "relevance",
+  "updated-desc",
+  "updated-asc",
+  "created-desc",
+  "created-asc",
+  "title-asc",
+  "title-desc",
+])
 
 export type KnowledgeNoteReferenceInputFormat = "comma" | "line"
 
@@ -16,6 +33,10 @@ export type KnowledgeNoteCreateParseResult =
 
 export type KnowledgeNoteUpdateParseResult =
   | { ok: true; request: KnowledgeNoteUpdateRequest }
+  | { ok: false; statusCode: 400; error: string }
+
+export type KnowledgeNoteSearchParseResult =
+  | { ok: true; request: KnowledgeNoteSearchRequest }
   | { ok: false; statusCode: 400; error: string }
 
 export type KnowledgeNoteActionResult = {
@@ -32,6 +53,10 @@ export interface KnowledgeNoteActionDiagnostics {
 export interface KnowledgeNoteActionService {
   getAllNotes(): KnowledgeNoteMaybePromise<KnowledgeNote[]>
   getNote(id: string): KnowledgeNoteMaybePromise<KnowledgeNote | null | undefined>
+  searchNotes(
+    query: string,
+    filter: Omit<KnowledgeNoteSearchRequest, "query">,
+  ): KnowledgeNoteMaybePromise<KnowledgeNote[]>
   deleteNote(id: string): KnowledgeNoteMaybePromise<boolean>
   createNote(request: KnowledgeNoteCreateRequest): KnowledgeNote
   saveNote(note: KnowledgeNote): KnowledgeNoteMaybePromise<boolean>
@@ -160,6 +185,25 @@ export async function getKnowledgeNoteAction(
   } catch (caughtError) {
     options.diagnostics.logError("knowledge-note-actions", "Failed to get knowledge note", caughtError)
     return knowledgeNoteActionError(500, getUnknownErrorMessage(caughtError, "Failed to get knowledge note"))
+  }
+}
+
+export async function searchKnowledgeNotesAction(
+  body: unknown,
+  options: KnowledgeNoteActionOptions,
+): Promise<KnowledgeNoteActionResult> {
+  try {
+    const parsedRequest = parseKnowledgeNoteSearchRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return knowledgeNoteActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const { query, ...filter } = parsedRequest.request
+    const notes = await options.service.searchNotes(query, filter)
+    return knowledgeNoteActionOk(buildKnowledgeNotesResponse(notes))
+  } catch (caughtError) {
+    options.diagnostics.logError("knowledge-note-actions", "Failed to search knowledge notes", caughtError)
+    return knowledgeNoteActionError(500, "Failed to search knowledge notes")
   }
 }
 
@@ -316,6 +360,53 @@ export function parseKnowledgeNoteUpdateRequestBody(body: unknown): KnowledgeNot
       return { ok: false, statusCode: 400, error: "references must be an array of strings when provided" }
     }
     request.references = body.references
+  }
+
+  return { ok: true, request }
+}
+
+export function parseKnowledgeNoteSearchRequestBody(body: unknown): KnowledgeNoteSearchParseResult {
+  if (!isRequestObject(body)) {
+    return { ok: false, statusCode: 400, error: "Request body must be a JSON object" }
+  }
+
+  const query = typeof body.query === "string" ? body.query.trim() : ""
+  if (!query) {
+    return { ok: false, statusCode: 400, error: "query is required and must be a non-empty string" }
+  }
+
+  const request: KnowledgeNoteSearchRequest = { query }
+
+  if (body.context !== undefined) {
+    if (typeof body.context !== "string" || !KNOWLEDGE_NOTE_CONTEXTS.has(body.context as KnowledgeNoteSearchContext)) {
+      return { ok: false, statusCode: 400, error: "context must be one of: auto, search-only" }
+    }
+    request.context = body.context as KnowledgeNoteSearchContext
+  }
+  if (body.dateFilter !== undefined) {
+    if (
+      typeof body.dateFilter !== "string"
+      || !KNOWLEDGE_NOTE_DATE_FILTERS.has(body.dateFilter as KnowledgeNoteSearchDateFilter)
+    ) {
+      return { ok: false, statusCode: 400, error: "dateFilter must be one of: all, 7d, 30d, 90d, year" }
+    }
+    request.dateFilter = body.dateFilter as KnowledgeNoteSearchDateFilter
+  }
+  if (body.sort !== undefined) {
+    if (typeof body.sort !== "string" || !KNOWLEDGE_NOTE_SORTS.has(body.sort as KnowledgeNoteSearchSort)) {
+      return {
+        ok: false,
+        statusCode: 400,
+        error: "sort must be one of: relevance, updated-desc, updated-asc, created-desc, created-asc, title-asc, title-desc",
+      }
+    }
+    request.sort = body.sort as KnowledgeNoteSearchSort
+  }
+  if (body.limit !== undefined) {
+    if (typeof body.limit !== "number" || !Number.isFinite(body.limit) || body.limit < 1) {
+      return { ok: false, statusCode: 400, error: "limit must be a positive number when provided" }
+    }
+    request.limit = Math.min(Math.floor(body.limit), 500)
   }
 
   return { ok: true, request }

@@ -113,6 +113,7 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   toggleProfileSkill: (id?: string) => MobileApiActionResult;
   getKnowledgeNotes: () => RemoteServerMaybePromise<MobileApiActionResult>;
   getKnowledgeNote: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
+  searchKnowledgeNotes: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
   deleteKnowledgeNote: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   getAgentProfiles: (role?: string) => MobileApiActionResult;
   toggleAgentProfile: (id?: string) => MobileApiActionResult;

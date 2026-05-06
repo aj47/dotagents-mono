@@ -1,4 +1,6 @@
-import type { KnowledgeNoteEntryType } from "./api-types"
+import type { KnowledgeNoteEntryType } from "./knowledge-note-domain"
+
+export type { KnowledgeNoteDateFilter, KnowledgeNoteSort } from "./knowledge-note-domain"
 
 export type KnowledgeNoteGroupingInput = {
   id: string
@@ -15,17 +17,6 @@ export type KnowledgeNoteGrouping = {
   series?: string
   entryType?: KnowledgeNoteEntryType
 }
-
-export type KnowledgeNoteSort =
-  | "relevance"
-  | "updated-desc"
-  | "updated-asc"
-  | "created-desc"
-  | "created-asc"
-  | "title-asc"
-  | "title-desc"
-
-export type KnowledgeNoteDateFilter = "all" | "7d" | "30d" | "90d" | "year"
 
 export type KnowledgeNoteSeriesSection<T extends KnowledgeNoteGroupingInput = KnowledgeNoteGroupingInput> = {
   key: string

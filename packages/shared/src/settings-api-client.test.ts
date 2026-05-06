@@ -947,6 +947,7 @@ describe('SettingsApiClient', () => {
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.skillToggleProfile }, expectedPath: REMOTE_SERVER_API_BUILDERS.skillToggleProfile(skillId), run: () => client.toggleSkillForProfile(skillId) },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.knowledgeNotes }, expectedPath: REMOTE_SERVER_API_PATHS.knowledgeNotes, run: () => client.getKnowledgeNotes() },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.knowledgeNote }, expectedPath: REMOTE_SERVER_API_BUILDERS.knowledgeNote(noteId), run: () => client.getKnowledgeNote(noteId) },
+      { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.knowledgeNotesSearch }, expectedPath: REMOTE_SERVER_API_PATHS.knowledgeNotesSearch, run: () => client.searchKnowledgeNotes({ query: 'project', limit: 100 }) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.knowledgeNotes }, expectedPath: REMOTE_SERVER_API_PATHS.knowledgeNotes, run: () => client.createKnowledgeNote({ title: 'Note', body: 'Body' }) },
       { route: { method: 'PATCH', path: REMOTE_SERVER_API_PATHS.knowledgeNote }, expectedPath: REMOTE_SERVER_API_BUILDERS.knowledgeNote(noteId), run: () => client.updateKnowledgeNote(noteId, { title: 'Updated' }) },
       { route: { method: 'DELETE', path: REMOTE_SERVER_API_PATHS.knowledgeNote }, expectedPath: REMOTE_SERVER_API_BUILDERS.knowledgeNote(noteId), run: () => client.deleteKnowledgeNote(noteId) },

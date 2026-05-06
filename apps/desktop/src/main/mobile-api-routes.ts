@@ -313,6 +313,12 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // POST /v1/knowledge/notes/search - Search knowledge notes
+  fastify.post(API_ROUTES.knowledgeNotesSearch, async (req, reply) => {
+    const result = await actions.searchKnowledgeNotes(req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // GET /v1/knowledge/notes/:id - Get one knowledge note
   fastify.get(API_ROUTES.knowledgeNote, async (req, reply) => {
     const params = req.params as { id?: string }

@@ -52,6 +52,7 @@ import type {
   KnowledgeNoteDeleteResponse,
   KnowledgeNoteMutationResponse,
   KnowledgeNoteResponse,
+  KnowledgeNoteSearchRequest,
   KnowledgeNoteUpdateRequest,
   KnowledgeNotesResponse,
   LocalSpeechModelProviderId,
@@ -1526,6 +1527,13 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
 
   async getKnowledgeNote(id: string): Promise<KnowledgeNoteResponse> {
     return this.request<KnowledgeNoteResponse>(API_BUILDERS.knowledgeNote(id));
+  }
+
+  async searchKnowledgeNotes(data: KnowledgeNoteSearchRequest): Promise<KnowledgeNotesResponse> {
+    return this.request<KnowledgeNotesResponse>(API_PATHS.knowledgeNotesSearch, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   async createKnowledgeNote(data: KnowledgeNoteCreateRequest): Promise<KnowledgeNoteResponse> {

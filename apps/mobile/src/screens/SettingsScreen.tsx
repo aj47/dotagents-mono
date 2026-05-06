@@ -359,6 +359,8 @@ export default function SettingsScreen({ navigation }: any) {
   // Skills, Knowledge Notes, Agents, and Loops state
   const [skills, setSkills] = useState<Skill[]>([]);
   const [knowledgeNotes, setKnowledgeNotes] = useState<KnowledgeNote[]>([]);
+  const [knowledgeNoteSearchQuery, setKnowledgeNoteSearchQuery] = useState('');
+  const [knowledgeNoteSearchResults, setKnowledgeNoteSearchResults] = useState<KnowledgeNote[]>([]);
   const [agentProfiles, setAgentProfiles] = useState<AgentProfile[]>([]);
   const [loops, setLoops] = useState<Loop[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
@@ -370,6 +372,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [showSkillGitHubImportModal, setShowSkillGitHubImportModal] = useState(false);
   const [skillGitHubImportText, setSkillGitHubImportText] = useState('');
   const [isLoadingKnowledgeNotes, setIsLoadingKnowledgeNotes] = useState(false);
+  const [isSearchingKnowledgeNotes, setIsSearchingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
   const [isImportingLoopMarkdown, setIsImportingLoopMarkdown] = useState(false);
@@ -381,7 +384,12 @@ export default function SettingsScreen({ navigation }: any) {
     if (enabledDiff !== 0) return enabledDiff;
     return a.name.localeCompare(b.name);
   }), [skills]);
-  const knowledgeNoteSections = useMemo(() => buildKnowledgeNoteSections(knowledgeNotes), [knowledgeNotes]);
+  const trimmedKnowledgeNoteSearchQuery = knowledgeNoteSearchQuery.trim();
+  const displayedKnowledgeNotes = trimmedKnowledgeNoteSearchQuery ? knowledgeNoteSearchResults : knowledgeNotes;
+  const knowledgeNoteSections = useMemo(
+    () => buildKnowledgeNoteSections(displayedKnowledgeNotes),
+    [displayedKnowledgeNotes]
+  );
   const availableAcpMainAgents = useMemo(
     () => getAcpxMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
@@ -666,6 +674,42 @@ export default function SettingsScreen({ navigation }: any) {
       setIsLoadingKnowledgeNotes(false);
     }
   }, [settingsClient]);
+
+  useEffect(() => {
+    if (!settingsClient || !isDotAgentsServer || !trimmedKnowledgeNoteSearchQuery) {
+      setKnowledgeNoteSearchResults([]);
+      setIsSearchingKnowledgeNotes(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsSearchingKnowledgeNotes(true);
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await settingsClient.searchKnowledgeNotes({
+          query: trimmedKnowledgeNoteSearchQuery,
+          limit: 100,
+        });
+        if (!cancelled) {
+          setKnowledgeNoteSearchResults(res.notes);
+        }
+      } catch (error: any) {
+        console.error('[Settings] Failed to search knowledge notes:', error);
+        if (!cancelled) {
+          setKnowledgeNoteSearchResults([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSearchingKnowledgeNotes(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [settingsClient, isDotAgentsServer, trimmedKnowledgeNoteSearchQuery]);
 
   // Fetch agent profiles from desktop
   const fetchAgentProfiles = useCallback(async () => {
@@ -1570,6 +1614,7 @@ export default function SettingsScreen({ navigation }: any) {
       try {
         await settingsClient.deleteKnowledgeNote(noteId);
         setKnowledgeNotes(prev => prev.filter(note => note.id !== noteId));
+        setKnowledgeNoteSearchResults(prev => prev.filter(note => note.id !== noteId));
       } catch (error: any) {
         console.error('[Settings] Failed to delete knowledge note:', error);
         Alert.alert('Error', 'Failed to delete note');
@@ -1582,6 +1627,13 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       await settingsClient.updateKnowledgeNote(note.id, { context: 'auto' });
       setKnowledgeNotes(prev =>
+        prev.map(existing =>
+          existing.id === note.id
+            ? { ...existing, context: 'auto', updatedAt: Date.now() }
+            : existing
+        )
+      );
+      setKnowledgeNoteSearchResults(prev =>
         prev.map(existing =>
           existing.id === note.id
             ? { ...existing, context: 'auto', updatedAt: Date.now() }
@@ -4274,10 +4326,25 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4l. Knowledge Notes */}
             {isDotAgentsServer && (
               <CollapsibleSection id="knowledgeNotes" title="Knowledge Notes">
+                <TextInput
+                  style={[styles.input, styles.knowledgeNoteSearchInput]}
+                  value={knowledgeNoteSearchQuery}
+                  onChangeText={setKnowledgeNoteSearchQuery}
+                  placeholder="Search notes"
+                  placeholderTextColor={theme.colors.mutedForeground}
+                  accessibilityLabel="Search knowledge notes"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="search"
+                />
                 {isLoadingKnowledgeNotes ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : knowledgeNotes.length === 0 ? (
-                  <Text style={styles.helperText}>No notes saved</Text>
+                ) : isSearchingKnowledgeNotes ? (
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : displayedKnowledgeNotes.length === 0 ? (
+                  <Text style={styles.helperText}>
+                    {trimmedKnowledgeNoteSearchQuery ? 'No matching notes' : 'No notes saved'}
+                  </Text>
                 ) : (
                   knowledgeNoteSections.map((section) => (
                     <View key={section.key}>
@@ -5626,6 +5693,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     input: {
       ...theme.input,
+    },
+    knowledgeNoteSearchInput: {
+      marginTop: 0,
+      marginBottom: spacing.sm,
     },
     inputDisabled: {
       opacity: 0.65,

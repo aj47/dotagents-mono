@@ -3,6 +3,7 @@ import {
   deleteKnowledgeNoteAction,
   getKnowledgeNoteAction,
   getKnowledgeNotesAction,
+  searchKnowledgeNotesAction,
   updateKnowledgeNoteAction,
   type KnowledgeNoteActionOptions,
 } from "@dotagents/shared/knowledge-note-form"
@@ -16,6 +17,7 @@ const knowledgeNoteActionOptions: KnowledgeNoteActionOptions = {
   service: {
     getAllNotes: () => knowledgeNotesService.getAllNotes(),
     getNote: (id) => knowledgeNotesService.getNote(id),
+    searchNotes: (query, filter) => knowledgeNotesService.searchNotes(query, filter),
     deleteNote: (id) => knowledgeNotesService.deleteNote(id),
     createNote: (request) => knowledgeNotesService.createNote(request),
     saveNote: (note) => knowledgeNotesService.saveNote(note),
@@ -30,6 +32,10 @@ export async function getKnowledgeNotes(): Promise<KnowledgeNoteActionResult> {
 
 export async function getKnowledgeNote(id: string | undefined): Promise<KnowledgeNoteActionResult> {
   return getKnowledgeNoteAction(id, knowledgeNoteActionOptions)
+}
+
+export async function searchKnowledgeNotes(body: unknown): Promise<KnowledgeNoteActionResult> {
+  return searchKnowledgeNotesAction(body, knowledgeNoteActionOptions)
 }
 
 export async function deleteKnowledgeNote(id: string | undefined): Promise<KnowledgeNoteActionResult> {

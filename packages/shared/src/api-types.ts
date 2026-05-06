@@ -10,7 +10,9 @@ import type { MainAgentConfig } from './main-agent-selection';
 import type {
   KnowledgeNote,
   KnowledgeNoteContext,
+  KnowledgeNoteDateFilter,
   KnowledgeNoteEntryType,
+  KnowledgeNoteSort,
 } from './knowledge-note-domain';
 import type {
   CloudflareTunnelConfig,
@@ -24,7 +26,9 @@ export type { LoopSchedule } from './types';
 export type {
   KnowledgeNote,
   KnowledgeNoteContext,
+  KnowledgeNoteDateFilter,
   KnowledgeNoteEntryType,
+  KnowledgeNoteSort,
 } from './knowledge-note-domain';
 
 export interface Profile {
@@ -965,6 +969,14 @@ export interface KnowledgeNoteUpdateRequest {
   context?: KnowledgeNoteContext;
   tags?: string[];
   references?: string[];
+}
+
+export interface KnowledgeNoteSearchRequest {
+  query: string;
+  context?: KnowledgeNoteContext;
+  dateFilter?: KnowledgeNoteDateFilter;
+  sort?: KnowledgeNoteSort;
+  limit?: number;
 }
 
 // Agent Profiles Types (renamed to Api* to avoid conflict with desktop's AgentProfile)

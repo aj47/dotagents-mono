@@ -42,6 +42,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_ROUTE_PATHS.skillImportMarkdown).toBe('/v1/skills/import/markdown');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.skillImportGitHub).toBe('/v1/skills/import/github');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.skillExportMarkdown).toBe('/v1/skills/:id/export/markdown');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.knowledgeNotesSearch).toBe('/v1/knowledge/notes/search');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.loopImportMarkdown).toBe('/v1/loops/import/markdown');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.loopExportMarkdown).toBe('/v1/loops/:id/export/markdown');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.mcpConfigImport).toBe('/v1/mcp/config/import');

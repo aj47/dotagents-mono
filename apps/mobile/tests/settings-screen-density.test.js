@@ -126,6 +126,14 @@ test('lets mobile import GitHub skills through the shared client', () => {
   assert.match(settingsSource, /accessibilityLabel="Import GitHub skill"/);
 });
 
+test('lets mobile search desktop knowledge notes through the shared client', () => {
+  assert.match(settingsSource, /knowledgeNoteSearchQuery/);
+  assert.match(settingsSource, /settingsClient\.searchKnowledgeNotes\(\{[\s\S]*?query: trimmedKnowledgeNoteSearchQuery,[\s\S]*?limit: 100/);
+  assert.match(settingsSource, /displayedKnowledgeNotes = trimmedKnowledgeNoteSearchQuery \? knowledgeNoteSearchResults : knowledgeNotes/);
+  assert.match(settingsSource, /placeholder="Search notes"/);
+  assert.match(settingsSource, /accessibilityLabel="Search knowledge notes"/);
+});
+
 test('lets mobile import and export loop Markdown through the shared client', () => {
   assert.match(settingsSource, /showLoopImportModal/);
   assert.match(settingsSource, /Import Loop/);

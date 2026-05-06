@@ -27,6 +27,7 @@ import {
   deleteKnowledgeNote,
   getKnowledgeNote,
   getKnowledgeNotes,
+  searchKnowledgeNotes,
   updateKnowledgeNote,
 } from "./knowledge-note-actions"
 import {
@@ -126,6 +127,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   toggleProfileSkill,
   getKnowledgeNotes,
   getKnowledgeNote,
+  searchKnowledgeNotes,
   deleteKnowledgeNote,
   getAgentProfiles,
   toggleAgentProfile,

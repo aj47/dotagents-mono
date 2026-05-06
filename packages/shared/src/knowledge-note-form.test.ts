@@ -14,8 +14,10 @@ import {
   getKnowledgeNotesAction,
   parseKnowledgeNoteCreateRequestBody,
   parseKnowledgeNoteReferencesInput,
+  parseKnowledgeNoteSearchRequestBody,
   parseKnowledgeNoteTagsInput,
   parseKnowledgeNoteUpdateRequestBody,
+  searchKnowledgeNotesAction,
   serializeKnowledgeNoteForApi,
   updateKnowledgeNoteAction,
 } from "./knowledge-note-form"
@@ -99,6 +101,36 @@ describe("knowledge note form helpers", () => {
     })
   })
 
+  it("parses search request bodies for the remote knowledge note API", () => {
+    expect(parseKnowledgeNoteSearchRequestBody({
+      query: " project notes ",
+      context: "auto",
+      dateFilter: "30d",
+      sort: "updated-desc",
+      limit: 25.8,
+    })).toEqual({
+      ok: true,
+      request: {
+        query: "project notes",
+        context: "auto",
+        dateFilter: "30d",
+        sort: "updated-desc",
+        limit: 25,
+      },
+    })
+
+    expect(parseKnowledgeNoteSearchRequestBody({ query: " " })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "query is required and must be a non-empty string",
+    })
+    expect(parseKnowledgeNoteSearchRequestBody({ query: "notes", sort: "newest" })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "sort must be one of: relevance, updated-desc, updated-asc, created-desc, created-asc, title-asc, title-desc",
+    })
+  })
+
   it("serializes knowledge notes to the shared API shape", () => {
     const note: KnowledgeNote = {
       id: "note-1",
@@ -164,6 +196,16 @@ describe("knowledge note form helpers", () => {
     const service = {
       getAllNotes: async () => Array.from(notesById.values()),
       getNote: async (id: string) => notesById.get(id),
+      searchNotes: async (query: string, filter: any) => {
+        expect(query).toBe("body")
+        expect(filter).toEqual({
+          context: "auto",
+          dateFilter: "30d",
+          sort: "updated-desc",
+          limit: 25,
+        })
+        return [note]
+      },
       deleteNote: async (id: string) => notesById.delete(id),
       createNote: (request: any) => {
         expect(request.body).toBe("Created body")
@@ -194,6 +236,16 @@ describe("knowledge note form helpers", () => {
     await expect(getKnowledgeNoteAction("note-1", options)).resolves.toEqual({
       statusCode: 200,
       body: buildKnowledgeNoteResponse(note),
+    })
+    await expect(searchKnowledgeNotesAction({
+      query: " body ",
+      context: "auto",
+      dateFilter: "30d",
+      sort: "updated-desc",
+      limit: 25,
+    }, options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNotesResponse([note]),
     })
     await expect(createKnowledgeNoteAction({ body: " Created body " }, options)).resolves.toEqual({
       statusCode: 201,
@@ -230,6 +282,7 @@ describe("knowledge note form helpers", () => {
       service: {
         getAllNotes: () => [],
         getNote: (id: string) => id === "note-1" ? note : undefined,
+        searchNotes: () => [],
         deleteNote: () => false,
         createNote: () => note,
         saveNote: () => false,
@@ -287,6 +340,9 @@ describe("knowledge note form helpers", () => {
           throw caughtFailure
         },
         getNote: () => undefined,
+        searchNotes: () => {
+          throw new Error("unexpected search")
+        },
         deleteNote: () => false,
         createNote: () => {
           throw new Error("unexpected create")
