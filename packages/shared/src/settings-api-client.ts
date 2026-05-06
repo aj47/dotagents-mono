@@ -314,6 +314,8 @@ export function buildSettingsResponse(
     mcpParallelToolExecution: cfg.mcpParallelToolExecution ?? true,
     mcpAutoPasteEnabled: cfg.mcpAutoPasteEnabled ?? false,
     mcpAutoPasteDelay: cfg.mcpAutoPasteDelay ?? 1000,
+    mcpRuntimeDisabledServers: sanitizeConfigStringList(cfg.mcpRuntimeDisabledServers),
+    mcpDisabledTools: sanitizeConfigStringList(cfg.mcpDisabledTools),
     remoteServerEnabled: cfg.remoteServerEnabled ?? false,
     remoteServerPort: cfg.remoteServerPort ?? 3210,
     remoteServerBindAddress: cfg.remoteServerBindAddress ?? '127.0.0.1',
@@ -783,6 +785,8 @@ export function buildSettingsUpdatePatch(
       updates.mcpAutoPasteDelay = mcpAutoPasteDelay;
     }
   }
+  if (Array.isArray(requestBody.mcpRuntimeDisabledServers)) updates.mcpRuntimeDisabledServers = sanitizeConfigStringList(requestBody.mcpRuntimeDisabledServers);
+  if (Array.isArray(requestBody.mcpDisabledTools)) updates.mcpDisabledTools = sanitizeConfigStringList(requestBody.mcpDisabledTools);
 
   if (typeof requestBody.remoteServerEnabled === 'boolean') updates.remoteServerEnabled = requestBody.remoteServerEnabled;
   if (typeof requestBody.remoteServerPort === 'number' && Number.isInteger(requestBody.remoteServerPort) && requestBody.remoteServerPort >= 1 && requestBody.remoteServerPort <= 65535) {

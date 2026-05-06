@@ -28,6 +28,7 @@ import type {
   DesktopPanelLayoutConfig,
   DesktopShellConfig,
   DesktopTextInputConfig,
+  McpRuntimeConfig,
   PredefinedPrompt,
   PredefinedPromptsConfig,
   SpeechToTextConfig,
@@ -460,6 +461,20 @@ describe('settings API request/response contracts', () => {
     assertType<AgentResultDeliveryConfig>(config)
     assertType<SettingsUpdate>(update)
     expect(update.mcpAutoPasteDelay).toBe(1250)
+  })
+
+  it('accepts MCP runtime state through the shared settings API', () => {
+    const config: McpRuntimeConfig = {
+      mcpRuntimeDisabledServers: ['github'],
+      mcpDisabledTools: ['github:create_issue'],
+    }
+    const update: SettingsUpdate = {
+      ...config,
+    }
+
+    assertType<McpRuntimeConfig>(config)
+    assertType<SettingsUpdate>(update)
+    expect(update.mcpDisabledTools).toEqual(['github:create_issue'])
   })
 
   it('accepts desktop display settings through the shared settings API', () => {

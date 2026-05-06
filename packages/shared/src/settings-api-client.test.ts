@@ -126,6 +126,8 @@ describe('SettingsApiClient', () => {
         discordAllowUserIds: [' user-1 ', 'user-1', ' '],
         mcpAutoPasteEnabled: true,
         mcpAutoPasteDelay: 1250.6,
+        mcpRuntimeDisabledServers: [' github ', '', 'filesystem', 'github'],
+        mcpDisabledTools: ['github:create_issue', ' ', 'github:create_issue', 3],
       },
       {},
       {
@@ -168,6 +170,8 @@ describe('SettingsApiClient', () => {
       discordAllowUserIds: ['user-1'],
       mcpAutoPasteEnabled: true,
       mcpAutoPasteDelay: 1251,
+      mcpRuntimeDisabledServers: ['github', 'filesystem'],
+      mcpDisabledTools: ['github:create_issue'],
     });
     expect(updates).not.toHaveProperty('openaiApiKey');
     expect(updates).not.toHaveProperty('remoteServerApiKey');
@@ -242,6 +246,8 @@ describe('SettingsApiClient', () => {
         langfuseSecretKey: 'lf-secret',
         mcpAutoPasteEnabled: true,
         mcpAutoPasteDelay: 1500,
+        mcpRuntimeDisabledServers: [' github ', '', 'filesystem', 'github'],
+        mcpDisabledTools: ['github:create_issue', '', 'github:create_issue'],
       },
       {
         providerSecretMask: 'MASKED',
@@ -290,6 +296,8 @@ describe('SettingsApiClient', () => {
       acpxAgents: [{ name: 'agent', displayName: 'Agent' }],
       mcpAutoPasteEnabled: true,
       mcpAutoPasteDelay: 1500,
+      mcpRuntimeDisabledServers: ['github', 'filesystem'],
+      mcpDisabledTools: ['github:create_issue'],
       pinnedSessionIds: ['conv-1'],
       archivedSessionIds: ['conv-2'],
       predefinedPrompts: [{
