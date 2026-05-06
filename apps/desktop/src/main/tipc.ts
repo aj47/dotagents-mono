@@ -1983,7 +1983,7 @@ export const router = {
     const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
     const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
     const { getAgentsKnowledgeDir } = await import("./agents-files/knowledge-notes")
-    const { getAgentsSkillsDir } = await import("./agents-files/skills")
+    const { getAgentsSkillsDir } = await import("@dotagents/core")
 
     const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -3799,7 +3799,7 @@ export const router = {
   openSkillsFolder: t.procedure.action(async () => {
     const { globalAgentsFolder } = await import("./config")
     const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-    const { getAgentsSkillsDir } = await import("./agents-files/skills")
+    const { getAgentsSkillsDir } = await import("@dotagents/core")
 
     // Canonical skills location is the global layer.
     const layer = getAgentsLayerPaths(globalAgentsFolder)
@@ -3813,7 +3813,7 @@ export const router = {
   openWorkspaceSkillsFolder: t.procedure.action(async () => {
     const { resolveWorkspaceAgentsFolder } = await import("./config")
     const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
-    const { getAgentsSkillsDir } = await import("./agents-files/skills")
+    const { getAgentsSkillsDir } = await import("@dotagents/core")
 
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
     if (!workspaceAgentsFolder) return { success: false, error: "No workspace .agents folder detected" }

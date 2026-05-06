@@ -2,8 +2,6 @@ import { describe, it, expect } from "vitest"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import type { AgentSkill } from "@dotagents/core"
-import { getAgentsLayerPaths } from "./modular-config"
 import {
   getAgentsSkillsBackupDir,
   getAgentsSkillsDir,
@@ -12,7 +10,9 @@ import {
   skillIdToFilePath,
   stringifySkillMarkdown,
   writeAgentsSkillFile,
-} from "./skills"
+  type AgentSkill,
+} from "@dotagents/core"
+import { getAgentsLayerPaths } from "./modular-config"
 
 function mkTempDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix))
@@ -28,7 +28,7 @@ function setMtimeMs(filePath: string, mtimeMs: number): number {
   return Math.floor(fs.statSync(filePath).mtimeMs)
 }
 
-describe("agents-files/skills", () => {
+describe(".agents skills storage", () => {
   it("stringifies and parses a skill markdown file (roundtrip)", () => {
     const skill: AgentSkill = {
       id: "skill:1",

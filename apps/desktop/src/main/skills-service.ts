@@ -3,8 +3,13 @@ import { app } from "electron"
 import path from "path"
 import fs from "fs"
 import {
+  getAgentsSkillsBackupDir,
+  getAgentsSkillsDir,
+  loadAgentsSkillsLayer,
   parseSkillMarkdown,
+  skillIdToFilePath,
   stringifySkillMarkdown,
+  writeAgentsSkillFile,
   type AgentSkill,
   type AgentSkillsData,
 } from "@dotagents/core"
@@ -28,13 +33,6 @@ import type { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
 import { dataFolder, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
-import {
-  getAgentsSkillsBackupDir,
-  getAgentsSkillsDir,
-  loadAgentsSkillsLayer,
-  skillIdToFilePath,
-  writeAgentsSkillFile,
-} from "./agents-files/skills"
 import { readTextFileIfExistsSync, safeWriteFileSync } from "@dotagents/core"
 
 type SkillOrigin = {
