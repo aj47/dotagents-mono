@@ -22,7 +22,24 @@ import {
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
 } from '@dotagents/shared/accessibility-utils';
-import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteDateFilter, KnowledgeNoteSort, AgentProfile, Loop, LocalSpeechModelProviderId, LocalSpeechModelStatus, ModelPresetSummary } from '../lib/settingsApi';
+import type {
+  ApiAgentProfile as AgentProfile,
+  KnowledgeNote,
+  KnowledgeNoteContext,
+  KnowledgeNoteDateFilter,
+  KnowledgeNoteSort,
+  LocalSpeechModelProviderId,
+  LocalSpeechModelStatus,
+  Loop,
+  MCPServer,
+  ModelInfo,
+  ModelPresetSummary,
+  Profile,
+  Settings,
+  SettingsUpdate,
+  Skill,
+} from '@dotagents/shared/api-types';
+import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { speakRemoteTts } from '../lib/remoteTts';
 import { TTSSettings } from '../ui/TTSSettings';
 import { MicrophoneSelector } from '../ui/MicrophoneSelector';
