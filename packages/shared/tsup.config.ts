@@ -84,6 +84,7 @@ export default defineConfig({
     'system-prompt-utils': 'src/system-prompt-utils.ts',
     'operator-actions': 'src/operator-actions.ts',
     'operator-audit-store': 'src/operator-audit-store.ts',
+    'operator-display-utils': 'src/operator-display-utils.ts',
     'mcp-api': 'src/mcp-api.ts',
     'mcp-utils': 'src/mcp-utils.ts',
     'oauth-examples': 'src/oauth-examples.ts',

@@ -105,6 +105,7 @@ export * from './runtime-tool-utils';
 export * from './system-prompt-utils';
 export * from './operator-actions';
 export * from './operator-audit-store';
+export * from './operator-display-utils';
 export * from './mcp-api';
 export * from './mcp-utils';
 export * from './oauth-examples';

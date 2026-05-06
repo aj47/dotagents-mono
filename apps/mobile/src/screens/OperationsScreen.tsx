@@ -42,6 +42,15 @@ import { useTheme } from '../ui/ThemeProvider';
 import { radius, spacing } from '../ui/theme';
 import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
 import { getErrorMessage } from '@dotagents/shared/error-utils';
+import {
+  formatOperatorAuditDetails as formatAuditDetails,
+  formatOperatorAuditSource as formatAuditSource,
+  formatOperatorDurationSeconds as formatDuration,
+  formatOperatorLogSummary as formatLogSummary,
+  formatOperatorTimestamp as formatTimestamp,
+  formatOperatorYesNo as formatYesNo,
+  getOperatorTunnelStateLabel as getTunnelStateLabel,
+} from '@dotagents/shared/operator-display-utils';
 
 const RECENT_ERROR_COUNT = 8;
 const RECENT_LOG_COUNT = 10;
@@ -65,63 +74,6 @@ type RemoteAccessDrafts = {
   discordOperatorAllowChannelIds: string;
   discordOperatorAllowRoleIds: string;
 };
-
-function formatTimestamp(timestamp?: number): string {
-  if (!timestamp) return '—';
-  return new Date(timestamp).toLocaleString();
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
-}
-
-function formatYesNo(value?: boolean): string {
-  if (value === undefined) return '—';
-  return value ? 'Yes' : 'No';
-}
-
-function getTunnelStateLabel(status?: OperatorRuntimeStatus['tunnel'] | null): string {
-  if (!status) return 'Unknown';
-  if (status.running) return 'Running';
-  if (status.starting) return 'Starting';
-  return 'Stopped';
-}
-
-function formatLogSummary(logs?: { total: number; errorCount?: number; warningCount?: number; infoCount?: number }): string {
-  if (!logs) return '—';
-  const parts = [`${logs.total} total`];
-  if (typeof logs.errorCount === 'number') parts.push(`${logs.errorCount} error`);
-  if (typeof logs.warningCount === 'number') parts.push(`${logs.warningCount} warning`);
-  if (typeof logs.infoCount === 'number') parts.push(`${logs.infoCount} info`);
-  return parts.join(' • ');
-}
-
-function formatAuditSource(entry: OperatorAuditEntry): string | null {
-  const parts = [entry.deviceId, entry.source?.ip, entry.source?.origin].filter(Boolean);
-  return parts.length > 0 ? parts.join(' • ') : null;
-}
-
-function formatAuditDetails(details?: Record<string, unknown>): string | null {
-  if (!details || Object.keys(details).length === 0) return null;
-
-  return Object.entries(details)
-    .map(([key, value]) => {
-      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        return `${key}: ${value}`;
-      }
-
-      try {
-        return `${key}: ${JSON.stringify(value)}`;
-      } catch {
-        return `${key}: [unserializable]`;
-      }
-    })
-    .join(' • ');
-}
 
 function buildDrafts(settings: Settings | null): RemoteAccessDrafts {
   return {

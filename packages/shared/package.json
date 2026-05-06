@@ -416,6 +416,11 @@
       "import": "./dist/operator-audit-store.mjs",
       "require": "./dist/operator-audit-store.js"
     },
+    "./operator-display-utils": {
+      "types": "./dist/operator-display-utils.d.ts",
+      "import": "./dist/operator-display-utils.mjs",
+      "require": "./dist/operator-display-utils.js"
+    },
     "./mcp-api": {
       "types": "./dist/mcp-api.d.ts",
       "import": "./dist/mcp-api.mjs",
