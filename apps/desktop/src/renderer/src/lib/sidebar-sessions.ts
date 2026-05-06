@@ -1,4 +1,9 @@
 import type { AgentProgressUpdate } from "@shared/types"
+import {
+  getAgentDelegationDisplayTitle,
+  getSubagentParentSessionIdMap as getSharedSubagentParentSessionIdMap,
+  getSubagentTitleBySessionIdMap as getSharedSubagentTitleBySessionIdMap,
+} from "@dotagents/shared/agent-progress"
 import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
 import {
   orderSessionsByPinnedConversationFirst,
@@ -156,49 +161,7 @@ export function orderActiveSessionsByPinnedFirst<T extends SessionLike>(
 export function getSubagentParentSessionIdMap(
   progressEntries: Iterable<[string, Pick<AgentProgressUpdate, "steps">]>,
 ): Map<string, string> {
-  const parentSessionIdsByChildId = new Map<string, string>()
-
-  for (const [parentSessionId, progress] of progressEntries) {
-    for (const step of progress.steps ?? []) {
-      const delegation = step.delegation
-      if (!delegation) continue
-
-      for (const normalizedChildSessionId of getPossibleDelegationChildSessionIds(delegation)) {
-        if (
-          normalizedChildSessionId === parentSessionId ||
-          parentSessionIdsByChildId.has(normalizedChildSessionId)
-        ) {
-          continue
-        }
-        parentSessionIdsByChildId.set(normalizedChildSessionId, parentSessionId)
-      }
-    }
-  }
-
-  return parentSessionIdsByChildId
-}
-
-function getPossibleDelegationChildSessionIds(
-  delegation: NonNullable<AgentProgressUpdate["steps"][number]["delegation"]>,
-): string[] {
-  return [
-    delegation.subSessionId,
-    delegation.acpSessionId,
-    delegation.runId,
-  ].flatMap((value) => {
-    const normalized = value?.trim()
-    return normalized ? [normalized] : []
-  })
-}
-
-function getDelegationDisplayTitle(
-  delegation: NonNullable<AgentProgressUpdate["steps"][number]["delegation"]>,
-): string | null {
-  const task = delegation.task?.trim()
-  if (task) return task
-
-  const agentName = delegation.agentName?.trim()
-  return agentName ? `${agentName} subagent` : null
+  return getSharedSubagentParentSessionIdMap(progressEntries)
 }
 
 function isLikelyInternalSubSessionId(sessionId: string): boolean {
@@ -208,31 +171,7 @@ function isLikelyInternalSubSessionId(sessionId: string): boolean {
 export function getSubagentTitleBySessionIdMap(
   progressEntries: Iterable<[string, Pick<AgentProgressUpdate, "steps">]>,
 ): Map<string, string> {
-  const titlesByChildId = new Map<string, string>()
-
-  for (const [parentSessionId, progress] of progressEntries) {
-    for (const step of progress.steps ?? []) {
-      const delegation = step.delegation
-      if (!delegation) continue
-
-      const title = getDelegationDisplayTitle(delegation)
-      if (!title) continue
-
-      for (const childSessionId of getPossibleDelegationChildSessionIds(
-        delegation,
-      )) {
-        if (
-          childSessionId === parentSessionId ||
-          titlesByChildId.has(childSessionId)
-        ) {
-          continue
-        }
-        titlesByChildId.set(childSessionId, title)
-      }
-    }
-  }
-
-  return titlesByChildId
+  return getSharedSubagentTitleBySessionIdMap(progressEntries)
 }
 
 export function getSidebarProgressTitle(
@@ -469,7 +408,7 @@ export function getSidebarActivityPresentation(
     return makeSidebarActivityPresentation(
       "delegation",
       "Subagent",
-      getDelegationDisplayTitle(activeDelegationStep.delegation) ?? getStepDetail(activeDelegationStep),
+      getAgentDelegationDisplayTitle(activeDelegationStep.delegation) ?? getStepDetail(activeDelegationStep),
       true,
     )
   }

@@ -1,4 +1,10 @@
 import { describe, it, expect } from 'vitest'
+import {
+  getAgentDelegationChildSessionIds,
+  getAgentDelegationDisplayTitle,
+  getSubagentParentSessionIdMap,
+  getSubagentTitleBySessionIdMap,
+} from './agent-progress'
 import type {
   AgentProgressUpdate,
   AgentProgressStep,
@@ -242,6 +248,98 @@ describe('ACPDelegationProgress', () => {
     }
     assertType<ACPDelegationProgress>(delegation)
     expect(delegation.status).toBe('completed')
+  })
+})
+
+describe('delegation session helpers', () => {
+  it('normalizes child session IDs from every delegation identifier field', () => {
+    expect(getAgentDelegationChildSessionIds({
+      runId: ' run-1 ',
+      subSessionId: ' sub-1 ',
+      acpSessionId: ' acp-1 ',
+      agentName: 'Coder',
+      task: 'Implement',
+      status: 'running',
+      startTime: 1,
+    })).toEqual(['sub-1', 'acp-1', 'run-1'])
+  })
+
+  it('prefers delegated task text and falls back to agent name for titles', () => {
+    expect(getAgentDelegationDisplayTitle({
+      runId: 'run-1',
+      agentName: 'Coder',
+      task: ' Summarize trace failures ',
+      status: 'completed',
+      startTime: 1,
+    })).toBe('Summarize trace failures')
+
+    expect(getAgentDelegationDisplayTitle({
+      runId: 'run-2',
+      agentName: ' Coder ',
+      task: ' ',
+      status: 'running',
+      startTime: 1,
+    })).toBe('Coder subagent')
+  })
+
+  it('infers child session parents from delegation progress', () => {
+    const parentMap = getSubagentParentSessionIdMap(new Map([
+      [
+        'parent-1',
+        {
+          steps: [
+            {
+              id: 'delegation-subagent-1',
+              type: 'tool_call',
+              title: 'Delegation',
+              status: 'in_progress',
+              timestamp: 1,
+              delegation: {
+                runId: 'subagent-run-1',
+                subSessionId: 'subagent-1',
+                agentName: 'Internal',
+                task: 'Ping',
+                status: 'running',
+                startTime: 1,
+              },
+            },
+          ],
+        },
+      ],
+    ]))
+
+    expect(parentMap.get('subagent-1')).toBe('parent-1')
+    expect(parentMap.get('subagent-run-1')).toBe('parent-1')
+  })
+
+  it('uses delegated task text as the title for subagent session ids', () => {
+    const titles = getSubagentTitleBySessionIdMap(new Map([
+      [
+        'parent-1',
+        {
+          steps: [
+            {
+              id: 'delegation-subagent-1',
+              type: 'tool_call',
+              title: 'Delegation',
+              status: 'completed',
+              timestamp: 1,
+              delegation: {
+                runId: 'subagent-run-1',
+                subSessionId: 'subagent-1',
+                agentName: 'Internal',
+                task: 'Summarize trace failures',
+                status: 'completed',
+                startTime: 1,
+              },
+            },
+          ],
+        },
+      ],
+    ]))
+
+    expect(titles.get('subagent-1')).toBe('Summarize trace failures')
+    expect(titles.get('subagent-run-1')).toBe('Summarize trace failures')
   })
 })
 

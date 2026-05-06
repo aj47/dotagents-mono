@@ -316,3 +316,75 @@ export interface AgentProgressUpdate {
  * Callback type for progress updates.
  */
 export type OnProgressCallback = (update: AgentProgressUpdate) => void
+
+export function getAgentDelegationChildSessionIds(delegation: ACPDelegationProgress): string[] {
+  return [
+    delegation.subSessionId,
+    delegation.acpSessionId,
+    delegation.runId,
+  ].flatMap((value) => {
+    const normalized = value?.trim()
+    return normalized ? [normalized] : []
+  })
+}
+
+export function getAgentDelegationDisplayTitle(delegation: ACPDelegationProgress): string | null {
+  const task = delegation.task?.trim()
+  if (task) return task
+
+  const agentName = delegation.agentName?.trim()
+  return agentName ? `${agentName} subagent` : null
+}
+
+export function getSubagentParentSessionIdMap(
+  progressEntries: Iterable<[string, Pick<AgentProgressUpdate, "steps">]>,
+): Map<string, string> {
+  const parentSessionIdsByChildId = new Map<string, string>()
+
+  for (const [parentSessionId, progress] of progressEntries) {
+    for (const step of progress.steps ?? []) {
+      const delegation = step.delegation
+      if (!delegation) continue
+
+      for (const normalizedChildSessionId of getAgentDelegationChildSessionIds(delegation)) {
+        if (
+          normalizedChildSessionId === parentSessionId ||
+          parentSessionIdsByChildId.has(normalizedChildSessionId)
+        ) {
+          continue
+        }
+        parentSessionIdsByChildId.set(normalizedChildSessionId, parentSessionId)
+      }
+    }
+  }
+
+  return parentSessionIdsByChildId
+}
+
+export function getSubagentTitleBySessionIdMap(
+  progressEntries: Iterable<[string, Pick<AgentProgressUpdate, "steps">]>,
+): Map<string, string> {
+  const titlesByChildId = new Map<string, string>()
+
+  for (const [parentSessionId, progress] of progressEntries) {
+    for (const step of progress.steps ?? []) {
+      const delegation = step.delegation
+      if (!delegation) continue
+
+      const title = getAgentDelegationDisplayTitle(delegation)
+      if (!title) continue
+
+      for (const childSessionId of getAgentDelegationChildSessionIds(delegation)) {
+        if (
+          childSessionId === parentSessionId ||
+          titlesByChildId.has(childSessionId)
+        ) {
+          continue
+        }
+        titlesByChildId.set(childSessionId, title)
+      }
+    }
+  }
+
+  return titlesByChildId
+}
