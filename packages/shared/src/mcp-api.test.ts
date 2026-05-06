@@ -19,6 +19,9 @@ import {
   buildOperatorMcpStatusResponse,
   formatMcpMaxIterationsValidationMessage,
   getMcpServersAction,
+  getOperatorMcpServerLogsAction,
+  getOperatorMcpStatusAction,
+  getOperatorMcpToolsAction,
   normalizeMcpMaxIterationsValue,
   parseInjectedMcpToolCallRequestBody,
   parseMcpMaxIterationsDraft,
@@ -268,6 +271,118 @@ describe("MCP API helpers", () => {
       enabled: false,
       message: "Tool filesystem:read disabled",
     })
+  })
+
+  it("runs operator MCP read routes through shared service adapters", () => {
+    const logs: string[] = []
+    const options = {
+      service: {
+        getServerStatus: () => ({
+          filesystem: {
+            connected: true,
+            toolCount: 2,
+            runtimeEnabled: true,
+            configDisabled: false,
+          },
+        }),
+        getServerLogs: (serverName: string) => {
+          if (serverName === "throw") throw new Error("logs denied")
+          return [
+            { timestamp: 1, message: "first" },
+            { timestamp: 2, message: "second" },
+          ]
+        },
+        getDetailedToolList: () => [
+          {
+            name: "filesystem:read",
+            description: "Read files",
+            sourceKind: "mcp" as const,
+            sourceName: "filesystem",
+            enabled: true,
+            serverEnabled: true,
+          },
+          {
+            name: "runtime:respond",
+            sourceKind: "runtime" as const,
+            sourceName: "runtime",
+            enabled: true,
+            serverEnabled: true,
+          },
+        ],
+      },
+      diagnostics: {
+        logError: (_source: string, message: string) => { logs.push(message) },
+        getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error),
+      },
+    }
+
+    expect(getOperatorMcpStatusAction(options)).toEqual({
+      statusCode: 200,
+      body: {
+        totalServers: 1,
+        connectedServers: 1,
+        totalTools: 2,
+        servers: [{
+          name: "filesystem",
+          connected: true,
+          toolCount: 2,
+          enabled: true,
+          runtimeEnabled: true,
+          configDisabled: false,
+          error: undefined,
+        }],
+      },
+    })
+    expect(getOperatorMcpServerLogsAction("filesystem", "1", options)).toEqual({
+      statusCode: 200,
+      body: {
+        server: "filesystem",
+        count: 1,
+        logs: [{ timestamp: 2, message: "second" }],
+      },
+    })
+    expect(getOperatorMcpServerLogsAction(undefined, undefined, options)).toEqual({
+      statusCode: 400,
+      body: { error: "Missing server name" },
+    })
+    expect(getOperatorMcpServerLogsAction("missing", undefined, options)).toEqual({
+      statusCode: 404,
+      body: { error: "Server missing not found in configuration" },
+    })
+    expect(getOperatorMcpToolsAction("filesystem", options)).toEqual({
+      statusCode: 200,
+      body: {
+        count: 1,
+        server: "filesystem",
+        tools: [{
+          name: "filesystem:read",
+          description: "Read files",
+          sourceKind: "mcp",
+          sourceName: "filesystem",
+          sourceLabel: "filesystem",
+          enabled: true,
+          serverEnabled: true,
+        }],
+      },
+    })
+
+    const failingOptions = {
+      ...options,
+      service: {
+        ...options.service,
+        getServerStatus: () => ({
+          throw: {
+            connected: true,
+            toolCount: 0,
+          },
+        }),
+      },
+    }
+    expect(getOperatorMcpServerLogsAction("throw", undefined, failingOptions)).toEqual({
+      statusCode: 500,
+      body: { error: "Failed to get MCP server logs: logs denied" },
+    })
+    expect(logs).toContain("Failed to get MCP server logs for throw: logs denied")
   })
 
   it("parses injected MCP tool call requests", () => {

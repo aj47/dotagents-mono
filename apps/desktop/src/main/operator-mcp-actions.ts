@@ -1,9 +1,10 @@
 import {
-  buildOperatorMcpServerLogsResponse,
-  buildOperatorMcpStatusResponse,
-  buildOperatorMcpToolsResponse,
   buildOperatorMcpToolToggleResponse,
+  getOperatorMcpServerLogsAction,
+  getOperatorMcpStatusAction,
+  getOperatorMcpToolsAction,
   parseMcpServerToggleRequestBody,
+  type OperatorMcpReadActionOptions,
 } from "@dotagents/shared/mcp-api"
 import {
   buildOperatorActionAuditContext,
@@ -22,7 +23,6 @@ import {
   buildOperatorMcpTestAuditContext,
   buildOperatorMcpTestFailureAuditContext,
   buildOperatorMcpTestResponse,
-  clampOperatorCount,
   parseOperatorMcpRestartRequestBody,
   parseOperatorMcpServerActionRequestBody,
   type OperatorActionAuditContext,
@@ -35,6 +35,18 @@ import { getErrorMessage } from "./error-utils"
 import { mcpService } from "./mcp-service"
 
 export type OperatorMcpActionResult = OperatorRouteActionResult
+
+const operatorMcpReadActionOptions: OperatorMcpReadActionOptions = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+    getErrorMessage,
+  },
+  service: {
+    getServerStatus: () => mcpService.getServerStatus(),
+    getServerLogs: (serverName) => mcpService.getServerLogs(serverName),
+    getDetailedToolList: () => mcpService.getDetailedToolList(),
+  },
+}
 
 function ok(body: unknown, auditContext?: OperatorActionAuditContext): OperatorMcpActionResult {
   return {
@@ -53,38 +65,14 @@ function error(statusCode: number, message: string, auditContext?: OperatorActio
 }
 
 export function getOperatorMcpStatus(): OperatorMcpActionResult {
-  try {
-    return ok(buildOperatorMcpStatusResponse(mcpService.getServerStatus()))
-  } catch (caughtError) {
-    diagnosticsService.logError("operator-mcp-actions", "Failed to build operator MCP status", caughtError)
-    return error(500, "Failed to build operator MCP status")
-  }
+  return getOperatorMcpStatusAction(operatorMcpReadActionOptions)
 }
 
 export function getOperatorMcpServerLogs(
   serverName: string | undefined,
   count: string | number | undefined,
 ): OperatorMcpActionResult {
-  if (!serverName) {
-    return error(400, "Missing server name")
-  }
-
-  try {
-    const status = mcpService.getServerStatus()[serverName]
-    if (!status) {
-      return error(404, `Server ${serverName} not found in configuration`)
-    }
-
-    return ok(buildOperatorMcpServerLogsResponse(
-      serverName,
-      mcpService.getServerLogs(serverName),
-      clampOperatorCount(count, 50, 200),
-    ))
-  } catch (caughtError) {
-    const errorMessage = getErrorMessage(caughtError)
-    diagnosticsService.logError("operator-mcp-actions", `Failed to get MCP server logs for ${serverName}: ${errorMessage}`, caughtError)
-    return error(500, `Failed to get MCP server logs: ${errorMessage}`)
-  }
+  return getOperatorMcpServerLogsAction(serverName, count, operatorMcpReadActionOptions)
 }
 
 export function clearOperatorMcpServerLogs(serverName: string | undefined): OperatorMcpActionResult {
@@ -145,16 +133,7 @@ export async function testOperatorMcpServer(serverName: string | undefined): Pro
 }
 
 export function getOperatorMcpTools(server: unknown): OperatorMcpActionResult {
-  try {
-    return ok(buildOperatorMcpToolsResponse(
-      mcpService.getDetailedToolList(),
-      typeof server === "string" && server.trim() ? server.trim() : undefined,
-    ))
-  } catch (caughtError) {
-    const errorMessage = getErrorMessage(caughtError)
-    diagnosticsService.logError("operator-mcp-actions", `Failed to list MCP tools: ${errorMessage}`, caughtError)
-    return error(500, `Failed to list MCP tools: ${errorMessage}`)
-  }
+  return getOperatorMcpToolsAction(server, operatorMcpReadActionOptions)
 }
 
 export function setOperatorMcpToolEnabled(

@@ -74,6 +74,22 @@ export interface McpServerActionOptions {
   diagnostics: McpServerActionDiagnostics
 }
 
+export interface OperatorMcpReadActionService {
+  getServerStatus(): McpServerStatusMapLike
+  getServerLogs(serverName: string): McpServerLogEntryLike[]
+  getDetailedToolList(): McpToolSummaryLike[]
+}
+
+export interface OperatorMcpReadActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void
+  getErrorMessage(error: unknown): string
+}
+
+export interface OperatorMcpReadActionOptions {
+  service: OperatorMcpReadActionService
+  diagnostics: OperatorMcpReadActionDiagnostics
+}
+
 export type McpServerLogEntryLike = {
   timestamp: number
   message: string
@@ -187,6 +203,20 @@ function getUnknownErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
 }
 
+function clampOperatorMcpCount(value: unknown, fallback: number, max: number): number {
+  const parsed = typeof value === "number"
+    ? value
+    : typeof value === "string"
+      ? Number.parseInt(value, 10)
+      : Number.NaN
+
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+
+  return Math.max(1, Math.min(Math.trunc(parsed), max))
+}
+
 export function getMcpServersAction(options: McpServerActionOptions): McpServerActionResult {
   try {
     return mcpServerActionOk(buildMcpServersResponse(options.service.getServerStatus()))
@@ -250,6 +280,17 @@ export function buildOperatorMcpStatusResponse(
   }
 }
 
+export function getOperatorMcpStatusAction(
+  options: OperatorMcpReadActionOptions,
+): McpServerActionResult {
+  try {
+    return mcpServerActionOk(buildOperatorMcpStatusResponse(options.service.getServerStatus()))
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-mcp-actions", "Failed to build operator MCP status", caughtError)
+    return mcpServerActionError(500, "Failed to build operator MCP status")
+  }
+}
+
 export function buildOperatorMcpServerLogsResponse(
   server: string,
   logs: McpServerLogEntryLike[],
@@ -268,6 +309,33 @@ export function buildOperatorMcpServerLogsResponse(
     server,
     count: responseLogs.length,
     logs: responseLogs,
+  }
+}
+
+export function getOperatorMcpServerLogsAction(
+  serverName: string | undefined,
+  count: string | number | undefined,
+  options: OperatorMcpReadActionOptions,
+): McpServerActionResult {
+  if (!serverName) {
+    return mcpServerActionError(400, "Missing server name")
+  }
+
+  try {
+    const status = options.service.getServerStatus()[serverName]
+    if (!status) {
+      return mcpServerActionError(404, `Server ${serverName} not found in configuration`)
+    }
+
+    return mcpServerActionOk(buildOperatorMcpServerLogsResponse(
+      serverName,
+      options.service.getServerLogs(serverName),
+      clampOperatorMcpCount(count, 50, 200),
+    ))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    options.diagnostics.logError("operator-mcp-actions", `Failed to get MCP server logs for ${serverName}: ${errorMessage}`, caughtError)
+    return mcpServerActionError(500, `Failed to get MCP server logs: ${errorMessage}`)
   }
 }
 
@@ -293,6 +361,22 @@ export function buildOperatorMcpToolsResponse(
     count: responseTools.length,
     ...(server !== undefined ? { server } : {}),
     tools: responseTools,
+  }
+}
+
+export function getOperatorMcpToolsAction(
+  server: unknown,
+  options: OperatorMcpReadActionOptions,
+): McpServerActionResult {
+  try {
+    return mcpServerActionOk(buildOperatorMcpToolsResponse(
+      options.service.getDetailedToolList(),
+      typeof server === "string" && server.trim() ? server.trim() : undefined,
+    ))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    options.diagnostics.logError("operator-mcp-actions", `Failed to list MCP tools: ${errorMessage}`, caughtError)
+    return mcpServerActionError(500, `Failed to list MCP tools: ${errorMessage}`)
   }
 }
 
