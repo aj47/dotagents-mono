@@ -25,7 +25,7 @@ import type {
   ElicitationUrlRequest,
   ElicitationFormSchema,
   ElicitationFormField,
-} from "../../../shared/types"
+} from "@dotagents/shared/mcp-api"
 
 type FormValues = Record<string, string | number | boolean>
 
@@ -212,4 +212,3 @@ function McpElicitationDialog() {
 }
 
 export default McpElicitationDialog
-

@@ -1,5 +1,6 @@
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
-import { Config, MCPConfig } from "@shared/types"
+import type { Config } from "@shared/types"
+import type { MCPConfig } from "@dotagents/shared/mcp-utils"
 import { MCPConfigManager } from "@renderer/components/mcp-config-manager"
 
 /**

@@ -85,10 +85,10 @@ import { BundleExportDialog } from "@renderer/components/bundle-export-dialog"
 import { BundlePublishDialog } from "@renderer/components/bundle-publish-dialog"
 import { invalidateAgentProfileQueries } from "@renderer/lib/invalidate-agent-profile-queries"
 import { SandboxSlotSwitcher } from "@renderer/components/sandbox-slot-switcher"
-import {
-  AgentProfile,
-  ProfileModelConfig, AgentProfileToolConfig, ProfileSkillsConfig, AgentSkill, DetailedToolInfo,
-} from "../../../shared/types"
+import type { AgentProfile, AgentProfileToolConfig } from "@dotagents/shared/agent-profile-domain"
+import type { ProfileModelConfig, ProfileSkillsConfig } from "@dotagents/shared/agent-profile-session-snapshot"
+import type { AgentSkill } from "@dotagents/shared/types"
+import type { DetailedToolInfo } from "@dotagents/shared/mcp-utils"
 
 type ConnectionType = AgentEditConnectionType
 

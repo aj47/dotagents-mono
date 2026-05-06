@@ -19,10 +19,12 @@ import type {
   KnowledgeNote,
   KnowledgeNoteContext,
   KnowledgeNoteDateFilter,
-  KnowledgeNoteGroupSummary,
   KnowledgeNoteSort,
+} from "@dotagents/shared/knowledge-note-domain"
+import type {
+  KnowledgeNoteGroupSummary,
   KnowledgeNotesOverview,
-} from "@shared/types"
+} from "@dotagents/shared/knowledge-note-grouping"
 import { toast } from "sonner"
 import {
   AlertCircle,

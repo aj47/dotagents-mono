@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "./ui/dialog"
 import { Button } from "./ui/button"
-import type { SamplingRequest } from "../../../shared/types"
+import type { SamplingRequest } from "@dotagents/shared/mcp-api"
 
 export default function McpSamplingDialog() {
   const [request, setRequest] = useState<SamplingRequest | null>(null)
@@ -146,4 +146,3 @@ export default function McpSamplingDialog() {
     </Dialog>
   )
 }
-

@@ -66,7 +66,7 @@ import {
   MoreHorizontal,
 } from "lucide-react"
 import { Spinner } from "@renderer/components/ui/spinner"
-import { MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry, DetailedToolInfo } from "@shared/types"
+import type { DetailedToolInfo, MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry } from "@dotagents/shared/mcp-utils"
 import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@dotagents/shared/mcp-api"
 import {
   formatMcpKeyValueDraft,

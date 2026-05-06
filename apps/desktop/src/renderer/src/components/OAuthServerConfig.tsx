@@ -7,7 +7,7 @@ import { Badge } from "@renderer/components/ui/badge"
 import { Switch } from "@renderer/components/ui/switch"
 import { Loader2, CheckCircle, XCircle, AlertCircle, ExternalLink, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
-import { OAuthConfig } from "@shared/types"
+import type { OAuthConfig } from "@dotagents/shared/mcp-utils"
 
 interface OAuthServerConfigProps {
   serverName: string

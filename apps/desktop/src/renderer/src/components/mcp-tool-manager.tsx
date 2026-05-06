@@ -34,7 +34,7 @@ import {
 } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
-import type { DetailedToolInfo } from "@shared/types"
+import type { DetailedToolInfo } from "@dotagents/shared/mcp-utils"
 
 type DetailedTool = DetailedToolInfo
 

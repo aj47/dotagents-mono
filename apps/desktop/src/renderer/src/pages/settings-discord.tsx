@@ -16,7 +16,8 @@ import {
   DEFAULT_DISCORD_REQUIRE_MENTION,
 } from "@dotagents/shared/discord-config"
 import { getEnabledChatAgentProfiles } from "@dotagents/shared/agent-profile-queries"
-import type { AgentProfile, Config } from "@shared/types"
+import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
+import type { Config } from "@shared/types"
 
 interface DiscordStatus {
   available: boolean
