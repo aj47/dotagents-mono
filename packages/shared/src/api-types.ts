@@ -5,7 +5,17 @@
 
 import type { QueuedMessage, ToolCall, ToolResult, LoopSchedule } from './types';
 import type { ModelPreset } from './providers';
+import type {
+  KnowledgeNote,
+  KnowledgeNoteContext,
+  KnowledgeNoteEntryType,
+} from './knowledge-note-domain';
 export type { LoopSchedule } from './types';
+export type {
+  KnowledgeNote,
+  KnowledgeNoteContext,
+  KnowledgeNoteEntryType,
+} from './knowledge-note-domain';
 
 export interface Profile {
   id: string;
@@ -887,25 +897,6 @@ export interface SkillToggleResponse {
   success: true;
   skillId: string;
   enabledForProfile: boolean;
-}
-
-// Knowledge Note Types
-export type KnowledgeNoteContext = 'auto' | 'search-only';
-export type KnowledgeNoteEntryType = 'note' | 'entry' | 'overview';
-
-export interface KnowledgeNote {
-  id: string;
-  title: string;
-  context: KnowledgeNoteContext;
-  body: string;
-  summary?: string;
-  tags: string[];
-  references?: string[];
-  createdAt?: number;
-  updatedAt: number;
-  group?: string;
-  series?: string;
-  entryType?: KnowledgeNoteEntryType;
 }
 
 export interface KnowledgeNotesResponse {

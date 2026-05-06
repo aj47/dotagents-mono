@@ -37,6 +37,7 @@ export default defineConfig({
     'repeat-task-utils': 'src/repeat-task-utils.ts',
     'repeat-task-markdown': 'src/repeat-task-markdown.ts',
     'knowledge-note-grouping': 'src/knowledge-note-grouping.ts',
+    'knowledge-note-domain': 'src/knowledge-note-domain.ts',
     'knowledge-note-form': 'src/knowledge-note-form.ts',
     'settings-api-client': 'src/settings-api-client.ts',
     'conversation-sync': 'src/conversation-sync.ts',

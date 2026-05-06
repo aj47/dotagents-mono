@@ -23,26 +23,11 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Config = Record<string, any>
 
-// ============================================================================
-// Knowledge Note
-// ============================================================================
-export type KnowledgeNoteContext = "auto" | "search-only"
-export type KnowledgeNoteEntryType = "note" | "entry" | "overview"
-
-export interface KnowledgeNote {
-  id: string
-  title: string
-  context: KnowledgeNoteContext
-  updatedAt: number
-  tags: string[]
-  body: string
-  summary?: string
-  createdAt?: number
-  references?: string[]
-  group?: string
-  series?: string
-  entryType?: KnowledgeNoteEntryType
-}
+export type {
+  KnowledgeNote,
+  KnowledgeNoteContext,
+  KnowledgeNoteEntryType,
+} from '@dotagents/shared/knowledge-note-domain'
 
 export type { AgentSkill, AgentSkillsData } from '@dotagents/shared/types'
 

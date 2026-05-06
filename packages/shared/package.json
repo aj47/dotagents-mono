@@ -181,6 +181,11 @@
       "import": "./dist/knowledge-note-grouping.mjs",
       "require": "./dist/knowledge-note-grouping.js"
     },
+    "./knowledge-note-domain": {
+      "types": "./dist/knowledge-note-domain.d.ts",
+      "import": "./dist/knowledge-note-domain.mjs",
+      "require": "./dist/knowledge-note-domain.js"
+    },
     "./knowledge-note-form": {
       "types": "./dist/knowledge-note-form.d.ts",
       "import": "./dist/knowledge-note-form.mjs",
