@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import { safeReadJsonFileSync, safeWriteFileSync, safeWriteJsonFileSync } from "./safe-file"
+import { safeReadJsonFileSync, safeWriteFileSync, safeWriteJsonFileSync } from "@dotagents/core"
 
 describe("safe-file", () => {
   it("writes atomically and creates backups on overwrite", () => {
