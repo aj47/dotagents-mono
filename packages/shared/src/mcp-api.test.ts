@@ -17,12 +17,14 @@ import {
   buildOperatorMcpToolToggleResponse,
   buildMcpServerToggleResponse,
   buildOperatorMcpStatusResponse,
+  callInjectedMcpToolAction,
   clearOperatorMcpServerLogsAction,
   formatMcpMaxIterationsValidationMessage,
   getMcpServersAction,
   getOperatorMcpServerLogsAction,
   getOperatorMcpStatusAction,
   getOperatorMcpToolsAction,
+  listInjectedMcpToolsAction,
   normalizeMcpMaxIterationsValue,
   parseInjectedMcpToolCallRequestBody,
   parseMcpMaxIterationsDraft,
@@ -797,6 +799,118 @@ describe("MCP API helpers", () => {
       statusCode: 400,
       error: "Missing or invalid 'name' parameter",
     })
+  })
+
+  it("runs injected MCP list and call shims through shared service adapters", async () => {
+    const logs: string[] = []
+    const executedCalls: Array<{ name: string; arguments: unknown; appSessionId: string }> = []
+    const context = { appSessionId: "app-1" }
+    const options = {
+      invalidSessionContextError: "Unauthorized: invalid ACP session context",
+      service: {
+        getInjectedRuntimeTools: (token: string | undefined) => token === "valid"
+          ? {
+            requestContext: context,
+            tools: [{
+              name: "runtime.read_file",
+              description: "Read files",
+              inputSchema: { type: "object" },
+            }, {
+              name: "runtime.throw",
+              description: "Throw",
+              inputSchema: { type: "object" },
+            }],
+          }
+          : undefined,
+        executeInjectedRuntimeTool: async (
+          toolCall: { name: string; arguments: unknown },
+          requestContext: typeof context,
+        ) => {
+          if (toolCall.name === "runtime.throw") throw new Error("tool denied")
+          executedCalls.push({
+            name: toolCall.name,
+            arguments: toolCall.arguments,
+            appSessionId: requestContext.appSessionId,
+          })
+          return toolCall.arguments && typeof toolCall.arguments === "object"
+            && (toolCall.arguments as { nullResult?: boolean }).nullResult
+            ? null
+            : { content: [{ type: "text", text: "ok" }], isError: false }
+        },
+      },
+      diagnostics: {
+        logWarning: (_source: string, message: string) => { logs.push(message) },
+        logError: (_source: string, message: string) => { logs.push(message) },
+        getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error),
+      },
+    }
+
+    expect(listInjectedMcpToolsAction(undefined, options)).toEqual({
+      statusCode: 401,
+      body: { error: "Unauthorized: invalid ACP session context" },
+    })
+    expect(listInjectedMcpToolsAction("valid", options)).toEqual({
+      statusCode: 200,
+      body: {
+        tools: [{
+          name: "runtime.read_file",
+          description: "Read files",
+          inputSchema: { type: "object" },
+        }, {
+          name: "runtime.throw",
+          description: "Throw",
+          inputSchema: { type: "object" },
+        }],
+      },
+    })
+    await expect(callInjectedMcpToolAction(undefined, {}, options)).resolves.toEqual({
+      statusCode: 401,
+      body: { error: "Unauthorized: invalid ACP session context" },
+    })
+    await expect(callInjectedMcpToolAction("valid", {}, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "Missing or invalid 'name' parameter" },
+    })
+    await expect(callInjectedMcpToolAction("valid", {
+      name: "runtime.unknown",
+      arguments: {},
+    }, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "Unknown runtime tool: runtime.unknown" },
+    })
+    await expect(callInjectedMcpToolAction("valid", {
+      name: "runtime.read_file",
+      arguments: { path: "README.md" },
+    }, options)).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        content: [{ type: "text", text: "ok" }],
+        isError: false,
+      },
+    })
+    await expect(callInjectedMcpToolAction("valid", {
+      name: "runtime.read_file",
+      arguments: { nullResult: true },
+    }, options)).resolves.toEqual({
+      statusCode: 500,
+      body: { error: "Tool execution returned null" },
+    })
+    await expect(callInjectedMcpToolAction("valid", {
+      name: "runtime.throw",
+      arguments: {},
+    }, options)).resolves.toEqual({
+      statusCode: 500,
+      body: {
+        content: [{ type: "text", text: "tool denied" }],
+        isError: true,
+      },
+    })
+    expect(executedCalls).toEqual([
+      { name: "runtime.read_file", arguments: { path: "README.md" }, appSessionId: "app-1" },
+      { name: "runtime.read_file", arguments: { nullResult: true }, appSessionId: "app-1" },
+    ])
+    expect(logs).toContain("Denied injected MCP tools/list request without valid ACP session context")
+    expect(logs).toContain("Denied injected MCP tools/call request without valid ACP session context")
   })
 
   it("builds injected MCP tool call responses", () => {

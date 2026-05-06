@@ -11,8 +11,10 @@ import {
   buildInjectedMcpToolCallErrorResponse,
   buildInjectedMcpToolCallResponse,
   buildInjectedMcpToolsListResponse,
+  callInjectedMcpToolAction,
   INJECTED_RUNTIME_TOOL_TRANSPORT_NAME,
-  parseInjectedMcpToolCallRequestBody,
+  listInjectedMcpToolsAction,
+  type InjectedMcpActionOptions,
 } from "@dotagents/shared/mcp-api"
 import {
   getAcpSessionForClientSessionToken,
@@ -140,22 +142,31 @@ function createInjectedMcpServer(acpSessionToken: string): MCPServer {
   return server
 }
 
+const injectedMcpActionOptions: InjectedMcpActionOptions<AcpMcpRequestContext> = {
+  invalidSessionContextError: INVALID_ACP_SESSION_CONTEXT_ERROR,
+  diagnostics: {
+    logWarning: (source, message) => diagnosticsService.logWarning(source, message),
+    logError: (source, message, error) => diagnosticsService.logError(source, message, error),
+    getErrorMessage: (error) => error instanceof Error ? error.message : String(error),
+  },
+  service: {
+    getInjectedRuntimeTools: (acpSessionToken) => getInjectedRuntimeToolsForAcpSession(acpSessionToken),
+    executeInjectedRuntimeTool: (toolCall, requestContext) => mcpService.executeToolCall(
+      { name: toolCall.name, arguments: toolCall.arguments } as any,
+      undefined,
+      false,
+      requestContext.appSessionId,
+      requestContext.profileSnapshot.mcpServerConfig,
+    ),
+  },
+}
+
 export async function listInjectedMcpTools(
   acpSessionToken: string | undefined,
   reply: any,
 ) {
-  try {
-    const injectedRuntimeTools = getInjectedRuntimeToolsForAcpSession(acpSessionToken)
-    if (!injectedRuntimeTools) {
-      diagnosticsService.logWarning("remote-server", "Denied injected MCP tools/list request without valid ACP session context")
-      return reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
-    }
-
-    return reply.send(buildInjectedMcpToolsListResponse(injectedRuntimeTools.tools))
-  } catch (caughtError: any) {
-    diagnosticsService.logError("remote-server", "MCP tools/list error", caughtError)
-    return reply.code(500).send({ error: caughtError?.message || "Failed to list tools" })
-  }
+  const result = listInjectedMcpToolsAction(acpSessionToken, injectedMcpActionOptions)
+  return reply.code(result.statusCode).send(result.body)
 }
 
 export async function callInjectedMcpTool(
@@ -163,40 +174,8 @@ export async function callInjectedMcpTool(
   reply: any,
   acpSessionToken: string | undefined,
 ) {
-  try {
-    const injectedRuntimeTools = getInjectedRuntimeToolsForAcpSession(acpSessionToken)
-    if (!injectedRuntimeTools) {
-      diagnosticsService.logWarning("remote-server", "Denied injected MCP tools/call request without valid ACP session context")
-      return reply.code(401).send({ error: INVALID_ACP_SESSION_CONTEXT_ERROR })
-    }
-
-    const parsedRequest = parseInjectedMcpToolCallRequestBody(req.body)
-    if (parsedRequest.ok === false) {
-      return reply.code(parsedRequest.statusCode).send({ error: parsedRequest.error })
-    }
-    const { name, arguments: args } = parsedRequest.request
-
-    if (!injectedRuntimeTools.tools.some((tool) => tool.name === name)) {
-      return reply.code(400).send({ error: `Unknown runtime tool: ${name}` })
-    }
-
-    const result = await mcpService.executeToolCall(
-      { name, arguments: args } as any,
-      undefined,
-      false,
-      injectedRuntimeTools.requestContext.appSessionId,
-      injectedRuntimeTools.requestContext.profileSnapshot.mcpServerConfig,
-    )
-
-    if (!result) {
-      return reply.code(500).send({ error: "Tool execution returned null" })
-    }
-
-    return reply.send(buildInjectedMcpToolCallResponse(result))
-  } catch (caughtError: any) {
-    diagnosticsService.logError("remote-server", "MCP tools/call error", caughtError)
-    return reply.code(500).send(buildInjectedMcpToolCallErrorResponse(caughtError?.message || "Tool execution failed"))
-  }
+  const result = await callInjectedMcpToolAction(acpSessionToken, req.body, injectedMcpActionOptions)
+  return reply.code(result.statusCode).send(result.body)
 }
 
 export async function handleInjectedMcpProtocolRequest(

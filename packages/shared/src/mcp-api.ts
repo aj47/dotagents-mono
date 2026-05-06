@@ -46,6 +46,42 @@ export type InjectedMcpToolsListResponse = {
   tools: unknown[]
 }
 
+export type InjectedMcpRuntimeToolLike = {
+  name: string
+  description: string
+  inputSchema: unknown
+}
+
+export type InjectedMcpRuntimeToolsContext<TRequestContext = unknown> = {
+  requestContext: TRequestContext
+  tools: InjectedMcpRuntimeToolLike[]
+}
+
+export type InjectedMcpActionResult = {
+  statusCode: number
+  body: unknown
+}
+
+export interface InjectedMcpActionService<TRequestContext = unknown> {
+  getInjectedRuntimeTools(acpSessionToken: string | undefined): InjectedMcpRuntimeToolsContext<TRequestContext> | undefined
+  executeInjectedRuntimeTool(
+    toolCall: InjectedMcpToolCallRequest,
+    requestContext: TRequestContext,
+  ): Promise<InjectedMcpToolExecutionResult | null>
+}
+
+export interface InjectedMcpActionDiagnostics {
+  logWarning(source: string, message: string): void
+  logError(source: string, message: string, error: unknown): void
+  getErrorMessage(error: unknown): string
+}
+
+export interface InjectedMcpActionOptions<TRequestContext = unknown> {
+  invalidSessionContextError: string
+  service: InjectedMcpActionService<TRequestContext>
+  diagnostics: InjectedMcpActionDiagnostics
+}
+
 export type McpServerStatusLike = {
   connected: boolean
   toolCount: number
@@ -289,6 +325,13 @@ function mcpServerActionError(statusCode: number, message: string): McpServerAct
   return {
     statusCode,
     body: { error: message },
+  }
+}
+
+function injectedMcpActionResponse(statusCode: number, body: unknown): InjectedMcpActionResult {
+  return {
+    statusCode,
+    body,
   }
 }
 
@@ -821,6 +864,73 @@ export function parseInjectedMcpToolCallRequestBody(body: unknown): McpRequestPa
       name,
       arguments: requestBody.arguments || {},
     },
+  }
+}
+
+export function listInjectedMcpToolsAction<TRequestContext = unknown>(
+  acpSessionToken: string | undefined,
+  options: InjectedMcpActionOptions<TRequestContext>,
+): InjectedMcpActionResult {
+  try {
+    const injectedRuntimeTools = options.service.getInjectedRuntimeTools(acpSessionToken)
+    if (!injectedRuntimeTools) {
+      options.diagnostics.logWarning(
+        "remote-server",
+        "Denied injected MCP tools/list request without valid ACP session context",
+      )
+      return injectedMcpActionResponse(401, { error: options.invalidSessionContextError })
+    }
+
+    return injectedMcpActionResponse(200, buildInjectedMcpToolsListResponse(injectedRuntimeTools.tools))
+  } catch (caughtError) {
+    options.diagnostics.logError("remote-server", "MCP tools/list error", caughtError)
+    return injectedMcpActionResponse(500, {
+      error: options.diagnostics.getErrorMessage(caughtError) || "Failed to list tools",
+    })
+  }
+}
+
+export async function callInjectedMcpToolAction<TRequestContext = unknown>(
+  acpSessionToken: string | undefined,
+  body: unknown,
+  options: InjectedMcpActionOptions<TRequestContext>,
+): Promise<InjectedMcpActionResult> {
+  try {
+    const injectedRuntimeTools = options.service.getInjectedRuntimeTools(acpSessionToken)
+    if (!injectedRuntimeTools) {
+      options.diagnostics.logWarning(
+        "remote-server",
+        "Denied injected MCP tools/call request without valid ACP session context",
+      )
+      return injectedMcpActionResponse(401, { error: options.invalidSessionContextError })
+    }
+
+    const parsedRequest = parseInjectedMcpToolCallRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return injectedMcpActionResponse(parsedRequest.statusCode, { error: parsedRequest.error })
+    }
+    const request = parsedRequest.request
+
+    if (!injectedRuntimeTools.tools.some((tool) => tool.name === request.name)) {
+      return injectedMcpActionResponse(400, { error: `Unknown runtime tool: ${request.name}` })
+    }
+
+    const result = await options.service.executeInjectedRuntimeTool(
+      request,
+      injectedRuntimeTools.requestContext,
+    )
+
+    if (!result) {
+      return injectedMcpActionResponse(500, { error: "Tool execution returned null" })
+    }
+
+    return injectedMcpActionResponse(200, buildInjectedMcpToolCallResponse(result))
+  } catch (caughtError) {
+    options.diagnostics.logError("remote-server", "MCP tools/call error", caughtError)
+    return injectedMcpActionResponse(
+      500,
+      buildInjectedMcpToolCallErrorResponse(options.diagnostics.getErrorMessage(caughtError) || "Tool execution failed"),
+    )
   }
 }
 
