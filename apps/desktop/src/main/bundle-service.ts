@@ -10,10 +10,12 @@ import fs from "fs"
 import path from "path"
 import { dialog, BrowserWindow, type OpenDialogOptions, type SaveDialogOptions } from "electron"
 import {
+  loadAgentProfilesLayer,
   loadAgentsKnowledgeNotesLayer,
   loadAgentsSkillsLayer,
   loadTasksLayer,
   skillIdToDirPath,
+  writeAgentsProfileFiles,
   writeTaskFile,
   writeAgentsSkillFile,
   writeKnowledgeNoteFile,
@@ -38,7 +40,6 @@ import { DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION } from "@dotagents/shared/bu
 import { isAgentProfileConnectionTypeValue } from "@dotagents/shared/agent-profile-connection"
 import { isAgentProfileRole } from "@dotagents/shared/agent-profile-role"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
-import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import { safeReadJsonFileSync, safeWriteJsonFileSync } from "@dotagents/core"
 import { logApp } from "./debug"
 

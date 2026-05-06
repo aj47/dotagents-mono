@@ -2,9 +2,14 @@ import { afterEach, describe, expect, it } from "vitest"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import { writeAgentsSkillFile, type AgentProfile, type AgentSkill } from "@dotagents/core"
+import {
+  loadAgentProfilesLayer,
+  writeAgentsProfileFiles,
+  writeAgentsSkillFile,
+  type AgentProfile,
+  type AgentSkill,
+} from "@dotagents/core"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
-import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import {
   cleanupInvalidSkillReferencesInLayers,
   cleanupInvalidSkillReferencesInProfiles,

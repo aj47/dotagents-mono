@@ -20,11 +20,12 @@ import {
 } from "./bundle-service"
 import type { HubPublishPayload } from "@dotagents/shared/hub"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
-import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import {
+  loadAgentProfilesLayer,
   writeKnowledgeNoteFile,
   loadAgentsSkillsLayer,
   loadTasksLayer,
+  writeAgentsProfileFiles,
   writeAgentsSkillFile,
   writeTaskFile,
   type AgentProfile,

@@ -2,9 +2,8 @@ import { afterEach, describe, expect, it } from "vitest"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import type { AgentProfile } from "@dotagents/core"
+import { loadAgentProfilesLayer, writeAgentsProfileFiles, type AgentProfile } from "@dotagents/core"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
-import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import { cleanupInvalidMcpServerReferencesInLayers } from "./agent-profile-mcp-cleanup"
 
 function createTempDir(): string {

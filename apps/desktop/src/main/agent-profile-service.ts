@@ -86,11 +86,11 @@ import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from ".
 import { getRuntimeToolNames } from "./runtime-tool-definitions"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import {
-  loadAgentProfilesLayer,
-  writeAgentsProfileFiles,
-  writeAllAgentsProfileFiles,
   deleteAgentProfileFiles,
-} from "./agents-files/agent-profiles"
+  loadAgentProfilesLayer,
+  writeAllAgentsProfileFiles,
+  writeAgentsProfileFiles,
+} from "@dotagents/core"
 
 /**
  * Path to the agent profiles storage file.

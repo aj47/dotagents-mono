@@ -2,13 +2,14 @@ import { describe, it, expect } from "vitest"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import type { AgentProfileConnectionType, AgentProfileRole } from "@dotagents/core"
-import { getAgentsLayerPaths, type AgentsLayerPaths } from "./modular-config"
 import {
   AGENTS_PROFILE_CANONICAL_FILENAME,
   getAgentProfilesDir,
   loadAgentProfilesLayer,
-} from "./agent-profiles"
+  type AgentProfileConnectionType,
+  type AgentProfileRole,
+} from "@dotagents/core"
+import { getAgentsLayerPaths, type AgentsLayerPaths } from "./modular-config"
 
 function mkTempLayer(prefix: string): AgentsLayerPaths {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))
