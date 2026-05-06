@@ -50,6 +50,7 @@ export {
 export * from './conversation-progress';
 export * from './agent-progress';
 export * from './agent-user-response-store';
+export * from './agent-avatar-colors';
 export * from './delegation-tool-display';
 export * from './message-display-utils';
 export * from './conversation-media-assets';

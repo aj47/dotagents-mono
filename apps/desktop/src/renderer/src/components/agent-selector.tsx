@@ -22,6 +22,7 @@ import {
   loadSelectedAgentId,
   saveSelectedAgentId as saveSelectedAgentIdToStorage,
 } from "@dotagents/shared/selected-agent-persistence"
+import { getAgentAvatarColors } from "@dotagents/shared/agent-avatar-colors"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -30,19 +31,6 @@ import {
   DropdownMenuSeparator,
 } from "./ui/dropdown-menu"
 import { Facehash } from "facehash"
-
-// Curated palette of vivid colors to pick from deterministically
-const AVATAR_PALETTE = [
-  "#ef4444","#f97316","#eab308","#22c55e","#14b8a6",
-  "#3b82f6","#8b5cf6","#ec4899","#06b6d4","#84cc16",
-  "#f43f5e","#a855f7","#0ea5e9","#10b981","#f59e0b",
-  "#e11d48","#7c3aed","#0891b2","#059669","#d97706",
-]
-function agentColors(seed: string): string[] {
-  let h = 5381
-  for (let i = 0; i < seed.length; i++) h = ((h * 33) ^ seed.charCodeAt(i)) >>> 0
-  return [0, 7, 13].map(offset => AVATAR_PALETTE[(h + offset) % AVATAR_PALETTE.length])
-}
 
 function saveSelectedAgentId(agentId: string | null): void {
   saveSelectedAgentIdToStorage(agentId)
@@ -131,7 +119,7 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
           {displayAgent?.avatarDataUrl ? (
             <img src={displayAgent.avatarDataUrl} alt={displayName} className="h-full w-full object-cover" />
           ) : displayAgent ? (
-            <Facehash name={displayAgent.id} size={28} colors={agentColors(displayAgent.id)} />
+            <Facehash name={displayAgent.id} size={28} colors={getAgentAvatarColors(displayAgent.id)} />
           ) : (
             <Bot className="h-4 w-4 text-muted-foreground" />
           )}
@@ -150,7 +138,7 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
             {defaultAgent?.avatarDataUrl ? (
               <img src={defaultAgent.avatarDataUrl} alt={defaultAgent?.displayName || "Default Agent"} className="h-full w-full object-cover" />
             ) : defaultAgent ? (
-              <Facehash name={defaultAgent.id} size={20} colors={agentColors(defaultAgent.id)} />
+              <Facehash name={defaultAgent.id} size={20} colors={getAgentAvatarColors(defaultAgent.id)} />
             ) : (
               <Bot className="h-4 w-4 text-muted-foreground" />
             )}
@@ -174,7 +162,7 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
               {agent.avatarDataUrl ? (
                 <img src={agent.avatarDataUrl} alt={agent.displayName || agent.name} className="h-full w-full object-cover" />
               ) : (
-                <Facehash name={agent.id} size={20} colors={agentColors(agent.id)} />
+                <Facehash name={agent.id} size={20} colors={getAgentAvatarColors(agent.id)} />
               )}
             </div>
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{agent.displayName || agent.name}</span>

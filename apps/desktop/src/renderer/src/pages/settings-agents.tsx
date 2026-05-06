@@ -71,19 +71,7 @@ import {
   normalizeAgentProfileSkillsConfigForEdit,
   toggleAgentProfileSkillConfig,
 } from "@dotagents/shared/agent-profile-config-updates"
-
-// Curated palette of vivid colors to pick from deterministically
-const AVATAR_PALETTE = [
-  "#ef4444","#f97316","#eab308","#22c55e","#14b8a6",
-  "#3b82f6","#8b5cf6","#ec4899","#06b6d4","#84cc16",
-  "#f43f5e","#a855f7","#0ea5e9","#10b981","#f59e0b",
-  "#e11d48","#7c3aed","#0891b2","#059669","#d97706",
-]
-function agentColors(seed: string): string[] {
-  let h = 5381
-  for (let i = 0; i < seed.length; i++) h = ((h * 33) ^ seed.charCodeAt(i)) >>> 0
-  return [0, 7, 13].map(offset => AVATAR_PALETTE[(h + offset) % AVATAR_PALETTE.length])
-}
+import { getAgentAvatarColors } from "@dotagents/shared/agent-avatar-colors"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { sortAgentsWithDefaultFirst } from "@renderer/lib/agent-order"
 import { ModelSelector } from "@renderer/components/model-selector"
@@ -601,7 +589,7 @@ export function SettingsAgents() {
                 <div className="w-10 h-10 rounded-md shadow-sm flex items-center justify-center overflow-hidden shrink-0 bg-muted">
                   {agent.avatarDataUrl
                     ? <img src={agent.avatarDataUrl} alt={agent.displayName} className="w-full h-full object-cover" />
-                    : <Facehash name={agent.id} size={40} colors={agentColors(agent.id)} />
+                    : <Facehash name={agent.id} size={40} colors={getAgentAvatarColors(agent.id)} />
                   }
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
@@ -682,7 +670,7 @@ export function SettingsAgents() {
                   <div className="w-16 h-16 rounded-xl border-2 border-border overflow-hidden flex items-center justify-center bg-muted/40 flex-shrink-0">
                     {editing.avatarDataUrl
                       ? <img src={editing.avatarDataUrl} alt="avatar" className="w-full h-full object-cover" />
-                      : <Facehash name={editing.id || "new"} size={64} colors={agentColors(editing.id || "new")} />
+                      : <Facehash name={editing.id || "new"} size={64} colors={getAgentAvatarColors(editing.id || "new")} />
                     }
                   </div>
                   <div className="flex flex-col gap-2">
