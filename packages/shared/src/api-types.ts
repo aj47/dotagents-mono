@@ -1017,6 +1017,7 @@ export interface ApiAgentProfile {
   name: string;
   displayName: string;
   description?: string;
+  avatarDataUrl?: string | null;
   guidelines?: string;
   systemPrompt?: string;
   enabled: boolean;
@@ -1034,7 +1035,6 @@ export interface ApiAgentProfile {
 // Full agent profile detail (from GET /v1/agent-profiles/:id)
 export interface ApiAgentProfileFull extends ApiAgentProfile {
   properties?: Record<string, string>;
-  avatarDataUrl?: string;
   isStateful?: boolean;
   conversationId?: string;
   connection?: {
@@ -1082,6 +1082,7 @@ export interface VerifyExternalAgentCommandResponse {
 export interface AgentProfileCreateRequest {
   displayName: string;
   description?: string;
+  avatarDataUrl?: string | null;
   systemPrompt?: string;
   guidelines?: string;
   connectionType?: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote';
@@ -1101,6 +1102,7 @@ export interface AgentProfileCreateRequest {
 export interface AgentProfileUpdateRequest {
   displayName?: string;
   description?: string;
+  avatarDataUrl?: string | null;
   systemPrompt?: string;
   guidelines?: string;
   connectionType?: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote';

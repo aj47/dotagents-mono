@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import {
@@ -56,10 +57,12 @@ type AgentModelProvider = Exclude<(typeof AGENT_MODEL_PROVIDERS)[number]['value'
 
 const ESSENTIAL_RUNTIME_TOOL_NAME = 'mark_work_complete';
 const RUNTIME_TOOLS = buildRuntimeToolDefinitions(acpRouterToolDefinitions);
+const MAX_AGENT_AVATAR_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 
 interface AgentFormData extends AgentConnectionFormFields {
   displayName: string;
   description: string;
+  avatarDataUrl: string | null;
   systemPrompt: string;
   guidelines: string;
   enabled: boolean;
@@ -99,6 +102,7 @@ type AgentSkillsConfig = {
 const defaultFormData: AgentFormData = {
   displayName: '',
   description: '',
+  avatarDataUrl: null,
   systemPrompt: '',
   guidelines: '',
   connectionType: 'internal',
@@ -109,6 +113,12 @@ const defaultFormData: AgentFormData = {
   enabled: true,
   autoSpawn: false,
   properties: {},
+};
+
+const getApproxBase64Bytes = (base64: string): number => {
+  const normalized = base64.replace(/\s+/g, '');
+  const padding = normalized.endsWith('==') ? 2 : normalized.endsWith('=') ? 1 : 0;
+  return Math.max(0, Math.floor((normalized.length * 3) / 4) - padding);
 };
 
 const normalizeConnectionType = (value?: string): ConnectionType => {
@@ -290,6 +300,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const selectedModelProvider = getAgentModelProvider(formData.modelConfig);
   const selectedPresetKey = detectAgentProfilePresetKey(formData);
   const selectedPreset = selectedPresetKey ? AGENT_PROFILE_PRESETS[selectedPresetKey] : undefined;
+  const isBuiltInAgent = originalProfile?.isBuiltIn === true;
 
   const settingsClient = useMemo(() => {
     if (config.baseUrl && config.apiKey) {
@@ -310,6 +321,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           setFormData({
             displayName: profile.displayName || '',
             description: profile.description || '',
+            avatarDataUrl: profile.avatarDataUrl ?? null,
             systemPrompt: profile.systemPrompt || '',
             guidelines: profile.guidelines || '',
             connectionType: normalizeConnectionType(profile.connection?.type || profile.connectionType),
@@ -403,6 +415,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           : {
             displayName: formData.displayName.trim(),
             description: formData.description.trim() || undefined,
+            avatarDataUrl: formData.avatarDataUrl ?? null,
             systemPrompt: formData.systemPrompt.trim() || undefined,
             guidelines: formData.guidelines.trim() || undefined,
             ...connectionFields,
@@ -418,6 +431,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         const createData: AgentProfileCreateRequest = {
           displayName: formData.displayName.trim(),
           description: formData.description.trim() || undefined,
+          avatarDataUrl: formData.avatarDataUrl ?? null,
           systemPrompt: formData.systemPrompt.trim() || undefined,
           guidelines: formData.guidelines.trim() || undefined,
           ...connectionFields,
@@ -442,6 +456,54 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const updateField = useCallback(<K extends keyof AgentFormData>(key: K, value: AgentFormData[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
+
+  const pickAgentAvatar = useCallback(async () => {
+    if (isBuiltInAgent) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.75,
+        base64: true,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        Alert.alert('Photo unavailable', 'Could not read the selected photo.');
+        return;
+      }
+
+      const inferredBytes = getApproxBase64Bytes(asset.base64);
+      const fileSizeBytes = typeof asset.fileSize === 'number' && asset.fileSize > 0
+        ? asset.fileSize
+        : inferredBytes;
+      if (fileSizeBytes > MAX_AGENT_AVATAR_FILE_SIZE_BYTES) {
+        Alert.alert('Photo too large', 'Choose a photo under 2 MB.');
+        return;
+      }
+
+      const mimeType = asset.mimeType || 'image/jpeg';
+      setFormData(prev => ({
+        ...prev,
+        avatarDataUrl: `data:${mimeType};base64,${asset.base64}`,
+      }));
+    } catch (err: any) {
+      console.error('[AgentEdit] Failed to pick avatar:', err);
+      Alert.alert('Photo unavailable', err.message || 'Could not select a photo.');
+    }
+  }, [isBuiltInAgent]);
+
+  const removeAgentAvatar = useCallback(() => {
+    if (isBuiltInAgent) return;
+    setFormData(prev => ({
+      ...prev,
+      avatarDataUrl: null,
+    }));
+  }, [isBuiltInAgent]);
 
   const handleConnectionTypeSelect = useCallback((connectionType: ConnectionType) => {
     setFormData(prev => applyConnectionTypeChange(prev, connectionType));
@@ -666,11 +728,10 @@ export default function AgentEditScreen({ navigation, route }: any) {
     });
   }, [displaySkills]);
 
-  const isBuiltInAgent = originalProfile?.isBuiltIn === true;
-
   // Check if connection fields should be shown
   const showCommandFields = formData.connectionType === 'acpx';
   const showRemoteBaseUrlField = formData.connectionType === 'remote';
+  const avatarInitial = (formData.displayName.trim() || 'A').slice(0, 1).toUpperCase();
 
   if (isLoading) {
     return (
@@ -703,6 +764,45 @@ export default function AgentEditScreen({ navigation, route }: any) {
           <Text style={styles.warningText}>Built-in agents have limited editing options</Text>
         </View>
       )}
+
+      <View style={styles.avatarRow}>
+        <View style={styles.avatarPreview}>
+          {formData.avatarDataUrl ? (
+            <Image
+              source={{ uri: formData.avatarDataUrl }}
+              style={styles.avatarImage}
+              accessibilityIgnoresInvertColors
+            />
+          ) : (
+            <Text style={styles.avatarInitial}>{avatarInitial}</Text>
+          )}
+        </View>
+        <View style={styles.avatarControls}>
+          <Text style={styles.avatarLabel}>Photo</Text>
+          <View style={styles.avatarButtonRow}>
+            <TouchableOpacity
+              style={[styles.chipButton, isBuiltInAgent && styles.chipButtonDisabled]}
+              onPress={pickAgentAvatar}
+              disabled={isBuiltInAgent}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: isBuiltInAgent }}
+              accessibilityLabel={createButtonAccessibilityLabel('Choose agent photo')}
+            >
+              <Text style={styles.chipButtonText}>Choose Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.chipButton, (!formData.avatarDataUrl || isBuiltInAgent) && styles.chipButtonDisabled]}
+              onPress={removeAgentAvatar}
+              disabled={!formData.avatarDataUrl || isBuiltInAgent}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !formData.avatarDataUrl || isBuiltInAgent }}
+              accessibilityLabel={createButtonAccessibilityLabel('Remove agent photo')}
+            >
+              <Text style={styles.chipButtonText}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
 
       {!isEditing && (
         <View style={styles.capabilitySection}>
@@ -1265,6 +1365,48 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     warningText: {
       color: '#f59e0b',
       fontSize: 14,
+    },
+    avatarRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      marginTop: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    avatarPreview: {
+      width: 64,
+      height: 64,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.muted,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    avatarImage: {
+      width: '100%',
+      height: '100%',
+    },
+    avatarInitial: {
+      color: theme.colors.foreground,
+      fontSize: 24,
+      fontWeight: '700',
+    },
+    avatarControls: {
+      flex: 1,
+      minWidth: 0,
+      gap: spacing.xs,
+    },
+    avatarLabel: {
+      color: theme.colors.foreground,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    avatarButtonRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
     },
     label: {
       fontSize: 14,

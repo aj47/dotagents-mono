@@ -31,6 +31,7 @@ export type AgentProfileCreateRouteRequest = {
   name: string
   displayName: string
   description?: string
+  avatarDataUrl?: string | null
   systemPrompt?: string
   guidelines?: string
   connection: AgentProfileConnectionDraft
@@ -49,6 +50,7 @@ export type AgentProfileUpdateRouteRequest = {
   name?: string
   displayName?: string
   description?: string
+  avatarDataUrl?: string | null
   systemPrompt?: string
   guidelines?: string
   connection?: AgentProfileConnectionDraft
@@ -230,6 +232,13 @@ function parseOptionalStringArray(value: unknown, field: string): ProfileRequest
   }
 
   return { ok: true, request: strings }
+}
+
+function parseOptionalNullableString(value: unknown, field: string): ProfileRequestParseResult<string | null | undefined> {
+  if (value === undefined) return { ok: true, request: undefined }
+  if (value === null) return { ok: true, request: null }
+  if (typeof value === "string") return { ok: true, request: value }
+  return { ok: false, statusCode: 400, error: `${field} must be a string or null` }
 }
 
 export function parseSetCurrentProfileRequestBody(body: unknown): ProfileRequestParseResult<SetCurrentProfileRequest> {
@@ -584,12 +593,16 @@ export function parseAgentProfileCreateRequestBody(
     return { ok: false, statusCode: 400, error: getConnectionTypeError() }
   }
 
+  const avatarDataUrl = parseOptionalNullableString(requestBody.avatarDataUrl, "avatarDataUrl")
+  if (avatarDataUrl.ok === false) return avatarDataUrl
+
   return {
     ok: true,
     request: {
       name: displayName,
       displayName,
       description: requestBody.description as string | undefined,
+      ...(avatarDataUrl.request !== undefined ? { avatarDataUrl: avatarDataUrl.request } : {}),
       systemPrompt: requestBody.systemPrompt as string | undefined,
       guidelines: requestBody.guidelines as string | undefined,
       connection: sanitizeAgentProfileConnection(buildConnectionInput(requestBody, rawConnectionType)),
@@ -632,6 +645,9 @@ export function parseAgentProfileUpdateRequestBody(
     request.name = requestBody.displayName.trim()
   }
   if (requestBody.description !== undefined) request.description = requestBody.description as string
+  const avatarDataUrl = parseOptionalNullableString(requestBody.avatarDataUrl, "avatarDataUrl")
+  if (avatarDataUrl.ok === false) return avatarDataUrl
+  if (avatarDataUrl.request !== undefined) request.avatarDataUrl = avatarDataUrl.request
   if (requestBody.systemPrompt !== undefined) request.systemPrompt = requestBody.systemPrompt as string
   if (requestBody.guidelines !== undefined) request.guidelines = requestBody.guidelines as string
   if (requestBody.enabled !== undefined) request.enabled = requestBody.enabled as boolean
@@ -692,6 +708,7 @@ export function formatAgentProfileSummaryForApi(profile: AgentProfileApiLike): A
     name: profile.name,
     displayName: profile.displayName,
     description: profile.description,
+    ...(profile.avatarDataUrl !== undefined ? { avatarDataUrl: profile.avatarDataUrl } : {}),
     enabled: profile.enabled,
     isBuiltIn: profile.isBuiltIn,
     isUserProfile: profile.isUserProfile,
@@ -710,7 +727,6 @@ export function formatAgentProfileSummaryForApi(profile: AgentProfileApiLike): A
 export function formatAgentProfileFullForApi(profile: AgentProfileApiLike): ApiAgentProfileFull {
   return {
     ...formatAgentProfileSummaryForApi(profile),
-    avatarDataUrl: profile.avatarDataUrl ?? undefined,
     properties: profile.properties,
     modelConfig: profile.modelConfig,
     toolConfig: profile.toolConfig,

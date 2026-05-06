@@ -70,6 +70,7 @@ describe("profile API helpers", () => {
     const parsed = parseAgentProfileCreateRequestBody({
       displayName: " Research Agent ",
       description: "Finds context",
+      avatarDataUrl: "data:image/png;base64,abc",
       connectionType: "remote",
       connectionBaseUrl: " https://agent.example.com ",
       enabled: false,
@@ -83,6 +84,7 @@ describe("profile API helpers", () => {
         name: "Research Agent",
         displayName: "Research Agent",
         description: "Finds context",
+        avatarDataUrl: "data:image/png;base64,abc",
         connection: { type: "remote", baseUrl: "https://agent.example.com" },
         enabled: false,
         autoSpawn: true,
@@ -133,6 +135,11 @@ describe("profile API helpers", () => {
       statusCode: 400,
       error: "connectionType must be one of: internal, acpx, acp, stdio, remote",
     })
+    expect(parseAgentProfileCreateRequestBody({ displayName: "Agent", avatarDataUrl: 123 })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "avatarDataUrl must be a string or null",
+    })
   })
 
   it("parses non-built-in agent profile updates", () => {
@@ -142,6 +149,7 @@ describe("profile API helpers", () => {
         connectionType: "acpx",
         connectionCommand: " pnpm ",
         connectionArgs: " start agent ",
+        avatarDataUrl: null,
         enabled: true,
       },
       { isBuiltIn: false, connection: { type: "internal" } },
@@ -157,6 +165,7 @@ describe("profile API helpers", () => {
           command: "pnpm",
           args: ["start", "agent"],
         },
+        avatarDataUrl: null,
         enabled: true,
       },
     })
@@ -196,6 +205,14 @@ describe("profile API helpers", () => {
       ok: false,
       statusCode: 400,
       error: "connectionType must be one of: internal, acpx, acp, stdio, remote",
+    })
+    expect(parseAgentProfileUpdateRequestBody(
+      { avatarDataUrl: { data: "nope" } },
+      { isBuiltIn: false, connection: { type: "internal" } },
+    )).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "avatarDataUrl must be a string or null",
     })
   })
 
@@ -435,6 +452,7 @@ describe("profile API helpers", () => {
         name: "research-agent",
         displayName: "Research Agent",
         description: "Finds context",
+        avatarDataUrl: "data:image/png;base64,abc",
         enabled: true,
         isBuiltIn: false,
         isUserProfile: true,

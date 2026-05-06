@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Pressable, ActivityIndicator, RefreshControl, Share, Alert, LayoutAnimation, UIManager, KeyboardAvoidingView } from 'react-native';
+import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Pressable, ActivityIndicator, RefreshControl, Share, Alert, LayoutAnimation, UIManager, KeyboardAvoidingView, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AppConfig,
@@ -4690,21 +4690,36 @@ export default function SettingsScreen({ navigation }: any) {
                         onPress={() => handleAgentProfileEdit(profile.id)}
                         activeOpacity={0.7}
                       >
-                        <View style={styles.serverInfo}>
-                          <View style={styles.serverNameRow}>
-                            <Text style={styles.serverName}>{profile.displayName}</Text>
-                            {profile.isBuiltIn && (
-                              <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
-                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Built-in</Text>
-                              </View>
+                        <View style={styles.agentListContent}>
+                          <View style={styles.agentListAvatar}>
+                            {profile.avatarDataUrl ? (
+                              <Image
+                                source={{ uri: profile.avatarDataUrl }}
+                                style={styles.agentListAvatarImage}
+                                accessibilityIgnoresInvertColors
+                              />
+                            ) : (
+                              <Text style={styles.agentListAvatarInitial}>
+                                {(profile.displayName || profile.name || 'A').slice(0, 1).toUpperCase()}
+                              </Text>
                             )}
                           </View>
-                          <Text style={styles.serverMeta}>
-                            {profile.connectionType} • {profile.role || 'agent'}
-                          </Text>
-                          {profile.description && (
-                            <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
-                          )}
+                          <View style={styles.serverInfo}>
+                            <View style={styles.serverNameRow}>
+                              <Text style={styles.serverName}>{profile.displayName}</Text>
+                              {profile.isBuiltIn && (
+                                <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
+                                  <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Built-in</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.serverMeta}>
+                              {profile.connectionType} • {profile.role || 'agent'}
+                            </Text>
+                            {profile.description && (
+                              <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
+                            )}
+                          </View>
                         </View>
                       </TouchableOpacity>
                       <View style={styles.agentActions}>
@@ -6524,6 +6539,33 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     agentInfoPressable: {
       flex: 1,
       minWidth: 0,
+    },
+    agentListContent: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+      minWidth: 0,
+    },
+    agentListAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.muted,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      flexShrink: 0,
+    },
+    agentListAvatarImage: {
+      width: '100%',
+      height: '100%',
+    },
+    agentListAvatarInitial: {
+      color: theme.colors.foreground,
+      fontSize: 14,
+      fontWeight: '700',
     },
     agentActions: {
       flexDirection: 'row',
