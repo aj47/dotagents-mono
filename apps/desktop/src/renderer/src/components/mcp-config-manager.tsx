@@ -68,6 +68,13 @@ import {
 import { Spinner } from "@renderer/components/ui/spinner"
 import { MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry, DetailedToolInfo } from "@shared/types"
 import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@dotagents/shared/mcp-api"
+import {
+  isReservedMcpServerName,
+  mergeImportedMcpServers,
+  removeMcpServerConfig,
+  renameMcpServerConfig,
+  upsertMcpServerConfig,
+} from "@dotagents/shared/mcp-utils"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
@@ -215,7 +222,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
     }
 
     // Check for reserved server names
-    if (RESERVED_SERVER_NAMES.includes(name.trim().toLowerCase())) {
+    if (isReservedMcpServerName(name, RESERVED_SERVER_NAMES)) {
       toast.error(`Server name "${name.trim()}" is reserved and cannot be used`)
       return
     }
@@ -1016,9 +1023,7 @@ export function MCPConfigManager({
   // Warn about servers with reserved names that are being filtered out
   useEffect(() => {
     const hiddenServers = Object.keys(servers).filter(
-      (name) => RESERVED_SERVER_NAMES.some(
-        (reserved) => name.trim().toLowerCase() === reserved.toLowerCase()
-      )
+      (name) => isReservedMcpServerName(name, RESERVED_SERVER_NAMES)
     )
     for (const serverName of hiddenServers) {
       if (!warnedReservedServersRef.current.has(serverName)) {
@@ -1350,13 +1355,7 @@ export function MCPConfigManager({
   }
 
   const handleAddServer = async (name: string, serverConfig: MCPServerConfig) => {
-    const newConfig = {
-      ...config,
-      mcpServers: {
-        ...servers,
-        [name]: serverConfig,
-      },
-    }
+    const newConfig = upsertMcpServerConfig(config, name, serverConfig)
     onConfigChange(newConfig)
     setShowAddDialog(false)
 
@@ -1394,28 +1393,13 @@ export function MCPConfigManager({
     newName: string,
     serverConfig: MCPServerConfig,
   ) => {
-    const newServers = { ...servers }
-    if (oldName !== newName) {
-      delete newServers[oldName]
-    }
-    newServers[newName] = serverConfig
-
-    const newConfig = {
-      ...config,
-      mcpServers: newServers,
-    }
+    const newConfig = renameMcpServerConfig(config, oldName, newName, serverConfig)
     onConfigChange(newConfig)
     setEditingServer(null)
   }
 
   const handleDeleteServer = (name: string) => {
-    const newServers = { ...servers }
-    delete newServers[name]
-
-    const newConfig = {
-      ...config,
-      mcpServers: newServers,
-    }
+    const newConfig = removeMcpServerConfig(config, name)
     onConfigChange(newConfig)
   }
 
@@ -1423,40 +1407,24 @@ export function MCPConfigManager({
     try {
       const importedConfig = await tipcClient.loadMcpConfigFile({})
       if (importedConfig) {
-        // Filter out reserved server names (case-insensitive to match ServerDialog validation)
-        const filteredServers: Record<string, any> = {}
-        const skippedNames: string[] = []
-        for (const [serverName, serverConfig] of Object.entries(importedConfig.mcpServers)) {
-          const normalizedName = serverName.trim().toLowerCase()
-          if (RESERVED_SERVER_NAMES.some(reserved => reserved.toLowerCase() === normalizedName)) {
-            skippedNames.push(serverName)
-          } else {
-            filteredServers[serverName] = serverConfig
-          }
-        }
+        const importResult = mergeImportedMcpServers(config, importedConfig, {
+          reservedServerNames: RESERVED_SERVER_NAMES,
+        })
 
         // Warn about skipped reserved names
-        for (const skippedName of skippedNames) {
+        for (const skippedName of importResult.skippedReservedServerNames) {
           toast.warning(`Skipped importing reserved server name: ${skippedName}`)
         }
 
-        const importedCount = Object.keys(filteredServers).length
-        if (importedCount === 0 && skippedNames.length > 0) {
+        if (importResult.importedCount === 0 && importResult.skippedReservedServerNames.length > 0) {
           toast.error("No servers to import - all server names were reserved")
           return
         }
 
         // Add imported servers to config (duplicates will be replaced by imported versions)
-        const newConfig = {
-          ...config,
-          mcpServers: {
-            ...config.mcpServers,
-            ...filteredServers,
-          },
-        }
-        onConfigChange(newConfig)
+        onConfigChange(importResult.config)
         setShowAddDialog(false)
-        toast.success(`Successfully imported ${importedCount} server(s)`)
+        toast.success(`Successfully imported ${importResult.importedCount} server(s)`)
       }
     } catch (error) {
       toast.error(`Failed to import config: ${error instanceof Error ? error.message : String(error)}`)
@@ -1494,40 +1462,24 @@ export function MCPConfigManager({
       const importedConfig = await tipcClient.validateMcpConfigText({ text: formattedJson })
 
       if (importedConfig) {
-        // Filter out reserved server names (case-insensitive to match ServerDialog validation)
-        const filteredServers: Record<string, any> = {}
-        const skippedNames: string[] = []
-        for (const [serverName, serverConfig] of Object.entries(importedConfig.mcpServers)) {
-          const normalizedName = serverName.trim().toLowerCase()
-          if (RESERVED_SERVER_NAMES.some(reserved => reserved.toLowerCase() === normalizedName)) {
-            skippedNames.push(serverName)
-          } else {
-            filteredServers[serverName] = serverConfig
-          }
-        }
+        const importResult = mergeImportedMcpServers(config, importedConfig, {
+          reservedServerNames: RESERVED_SERVER_NAMES,
+        })
 
         // Warn about skipped reserved names
-        for (const skippedName of skippedNames) {
+        for (const skippedName of importResult.skippedReservedServerNames) {
           toast.warning(`Skipped importing reserved server name: ${skippedName}`)
         }
 
-        const importedCount = Object.keys(filteredServers).length
-        if (importedCount === 0 && skippedNames.length > 0) {
+        if (importResult.importedCount === 0 && importResult.skippedReservedServerNames.length > 0) {
           toast.error("No servers to import - all server names were reserved")
           return false
         }
 
         // Add imported servers to config (duplicates will be replaced by imported versions)
-        const newConfig = {
-          ...config,
-          mcpServers: {
-            ...config.mcpServers,
-            ...filteredServers,
-          },
-        }
-        onConfigChange(newConfig)
+        onConfigChange(importResult.config)
         setShowAddDialog(false)
-        toast.success(`Successfully imported ${importedCount} server(s)`)
+        toast.success(`Successfully imported ${importResult.importedCount} server(s)`)
         return true
       }
       return false
@@ -1674,9 +1626,7 @@ export function MCPConfigManager({
   // Defined before toggleServerExpansion so it can use allServers for persistence
   const filteredUserServers: Record<string, MCPServerConfig> = Object.fromEntries(
     Object.entries(servers).filter(
-      ([name]) => !RESERVED_SERVER_NAMES.some(
-        (reserved) => name.trim().toLowerCase() === reserved.toLowerCase()
-      )
+      ([name]) => !isReservedMcpServerName(name, RESERVED_SERVER_NAMES)
     )
   ) as Record<string, MCPServerConfig>
   const allServers: Record<string, MCPServerConfig> = filteredUserServers

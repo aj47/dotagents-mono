@@ -124,3 +124,115 @@ export function normalizeMcpConfig<
     changed,
   }
 }
+
+export function normalizeMcpServerNameForComparison(serverName: string): string {
+  return serverName.trim().toLowerCase()
+}
+
+export function isReservedMcpServerName(
+  serverName: string,
+  reservedServerNames: readonly string[],
+): boolean {
+  const normalizedServerName = normalizeMcpServerNameForComparison(serverName)
+  return reservedServerNames.some(
+    (reservedServerName) =>
+      normalizeMcpServerNameForComparison(reservedServerName) === normalizedServerName,
+  )
+}
+
+export function upsertMcpServerConfig<
+  TServerConfig extends MCPServerConfigLike,
+  TConfig extends MCPConfigLike<TServerConfig>,
+>(
+  mcpConfig: TConfig,
+  serverName: string,
+  serverConfig: TServerConfig,
+): TConfig {
+  return {
+    ...mcpConfig,
+    mcpServers: {
+      ...(mcpConfig.mcpServers || {}),
+      [serverName]: serverConfig,
+    },
+  }
+}
+
+export function renameMcpServerConfig<
+  TServerConfig extends MCPServerConfigLike,
+  TConfig extends MCPConfigLike<TServerConfig>,
+>(
+  mcpConfig: TConfig,
+  oldServerName: string,
+  newServerName: string,
+  serverConfig: TServerConfig,
+): TConfig {
+  const mcpServers = { ...(mcpConfig.mcpServers || {}) }
+  if (oldServerName !== newServerName) {
+    delete mcpServers[oldServerName]
+  }
+  mcpServers[newServerName] = serverConfig
+
+  return {
+    ...mcpConfig,
+    mcpServers,
+  }
+}
+
+export function removeMcpServerConfig<
+  TServerConfig extends MCPServerConfigLike,
+  TConfig extends MCPConfigLike<TServerConfig>,
+>(
+  mcpConfig: TConfig,
+  serverName: string,
+): TConfig {
+  const mcpServers = { ...(mcpConfig.mcpServers || {}) }
+  delete mcpServers[serverName]
+
+  return {
+    ...mcpConfig,
+    mcpServers,
+  }
+}
+
+export type MergeImportedMcpServersResult<
+  TServerConfig extends MCPServerConfigLike,
+  TConfig extends MCPConfigLike<TServerConfig>,
+> = {
+  config: TConfig
+  importedCount: number
+  skippedReservedServerNames: string[]
+}
+
+export function mergeImportedMcpServers<
+  TServerConfig extends MCPServerConfigLike,
+  TConfig extends MCPConfigLike<TServerConfig>,
+>(
+  currentConfig: TConfig,
+  importedConfig: MCPConfigLike<TServerConfig>,
+  options: { reservedServerNames?: readonly string[] } = {},
+): MergeImportedMcpServersResult<TServerConfig, TConfig> {
+  const reservedServerNames = options.reservedServerNames || []
+  const importedServers = Object.entries(importedConfig.mcpServers || {})
+  const allowedServers: Record<string, TServerConfig> = {}
+  const skippedReservedServerNames: string[] = []
+
+  for (const [serverName, serverConfig] of importedServers) {
+    if (isReservedMcpServerName(serverName, reservedServerNames)) {
+      skippedReservedServerNames.push(serverName)
+    } else {
+      allowedServers[serverName] = serverConfig
+    }
+  }
+
+  return {
+    config: {
+      ...currentConfig,
+      mcpServers: {
+        ...(currentConfig.mcpServers || {}),
+        ...allowedServers,
+      },
+    },
+    importedCount: Object.keys(allowedServers).length,
+    skippedReservedServerNames,
+  }
+}

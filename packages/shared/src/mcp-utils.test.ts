@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { inferTransportType, normalizeMcpConfig, type MCPConfig, type MCPConfigLike } from './mcp-utils'
+import {
+  inferTransportType,
+  isReservedMcpServerName,
+  mergeImportedMcpServers,
+  normalizeMcpConfig,
+  removeMcpServerConfig,
+  renameMcpServerConfig,
+  upsertMcpServerConfig,
+  type MCPConfig,
+  type MCPConfigLike,
+} from './mcp-utils'
 
 describe('normalizeMcpConfig', () => {
   it('infers streamableHttp when url is present and transport is missing', () => {
@@ -118,5 +128,58 @@ describe('inferTransportType', () => {
 
   it('infers streamableHttp when url starts with https://', () => {
     expect(inferTransportType({ url: 'https://exa.ai/mcp' })).toBe('streamableHttp')
+  })
+})
+
+describe('MCP server config mutations', () => {
+  it('detects reserved server names case-insensitively', () => {
+    expect(isReservedMcpServerName(' DOTAGENTS-RUNTIME-TOOLS ', ['dotagents-runtime-tools'])).toBe(true)
+    expect(isReservedMcpServerName('github', ['dotagents-runtime-tools'])).toBe(false)
+  })
+
+  it('upserts, renames, and removes MCP server configs without mutating input', () => {
+    const input: MCPConfig = {
+      mcpServers: {
+        github: { command: 'github-mcp' },
+      },
+    }
+    const filesystemConfig: MCPConfig['mcpServers'][string] = { command: 'filesystem-mcp' }
+    const disabledFilesystemConfig: MCPConfig['mcpServers'][string] = { command: 'filesystem-mcp', disabled: true }
+
+    const withFilesystem = upsertMcpServerConfig(input, 'filesystem', filesystemConfig)
+    const renamed = renameMcpServerConfig(withFilesystem, 'filesystem', 'local-files', disabledFilesystemConfig)
+    const removed = removeMcpServerConfig(renamed, 'github')
+
+    expect(input.mcpServers).toEqual({ github: { command: 'github-mcp' } })
+    expect(withFilesystem.mcpServers.filesystem.command).toBe('filesystem-mcp')
+    expect(renamed.mcpServers.filesystem).toBeUndefined()
+    expect(renamed.mcpServers['local-files'].disabled).toBe(true)
+    expect(removed.mcpServers.github).toBeUndefined()
+    expect(removed.mcpServers['local-files'].command).toBe('filesystem-mcp')
+  })
+
+  it('merges imported MCP servers and reports skipped reserved names', () => {
+    const current: MCPConfig = {
+      mcpServers: {
+        github: { command: 'old-github' },
+      },
+    }
+    const imported: MCPConfig = {
+      mcpServers: {
+        github: { command: 'new-github' },
+        'DotAgents-Runtime-Tools': { command: 'reserved' },
+        filesystem: { command: 'filesystem-mcp' },
+      },
+    }
+
+    const result = mergeImportedMcpServers(current, imported, {
+      reservedServerNames: ['dotagents-runtime-tools'],
+    })
+
+    expect(result.importedCount).toBe(2)
+    expect(result.skippedReservedServerNames).toEqual(['DotAgents-Runtime-Tools'])
+    expect(result.config.mcpServers.github.command).toBe('new-github')
+    expect(result.config.mcpServers.filesystem.command).toBe('filesystem-mcp')
+    expect(result.config.mcpServers['DotAgents-Runtime-Tools']).toBeUndefined()
   })
 })
