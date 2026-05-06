@@ -16,6 +16,7 @@ import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
 import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
 import type { PredefinedPrompt as SharedPredefinedPrompt } from '@dotagents/shared/api-types'
 import type { CloudflareTunnelConfig, RemoteServerConfig } from '@dotagents/shared/remote-pairing'
+import type { ObservabilityConfig } from '@dotagents/shared/observability-config'
 import type {
   LegacyAcpAgentConfig,
   LegacyPersonaRecord,
@@ -46,6 +47,7 @@ export type { KnowledgeNoteDateFilter, KnowledgeNoteGroupSummary, KnowledgeNoteS
 export type { PushNotificationToken } from '@dotagents/shared/push-notifications'
 export type { EnhancedModelInfo, ModelInfo, ModelsDevCost, ModelsDevData, ModelsDevLimit, ModelsDevModalities, ModelsDevModel, ModelsDevProvider } from '@dotagents/shared/api-types'
 export type { CloudflareTunnelConfig, RemoteServerBindAddress, RemoteServerConfig, RemoteServerLogLevel } from '@dotagents/shared/remote-pairing'
+export type { LangfuseObservabilityConfig, LocalTraceLoggingConfig, ObservabilityConfig } from '@dotagents/shared/observability-config'
 export type { LegacyAcpAgentConfig, LegacyPersonaRecord, LegacyPersonasData, LegacyProfileRecord, LegacyProfilesData } from '@dotagents/shared/agent-profile-legacy-converters'
 export type { DiscordIntegrationConfig } from '@dotagents/shared/discord-config'
 export type { WhatsAppIntegrationConfig } from '@dotagents/shared/whatsapp-config'
@@ -132,7 +134,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & ObservabilityConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -443,20 +445,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   // Push Notification Configuration for Mobile App
   // Stores registered push notification tokens from mobile clients
   pushNotificationTokens?: SharedPushNotificationToken[]
-
-  // Langfuse Observability Configuration
-  // When enabled, traces all LLM calls, agent sessions, and MCP tool calls
-  langfuseEnabled?: boolean
-  langfusePublicKey?: string
-  langfuseSecretKey?: string
-  langfuseBaseUrl?: string // Default: https://cloud.langfuse.com (or custom self-hosted URL)
-
-  // Local Trace Logging — opt-in JSONL logs on disk (independent of Langfuse Cloud)
-  // When enabled, each agent trace/session is appended to its own local JSONL
-  // file. Useful when Langfuse Cloud free-tier limits would block
-  // capture and the user only wants local logs for debugging.
-  localTraceLoggingEnabled?: boolean
-  localTraceLogPath?: string // Default directory: <dataFolder>/traces
 
   // Repeat Tasks Configuration
   loops?: SharedLoopConfig[]  // Scheduled repeat tasks that run at intervals

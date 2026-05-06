@@ -14,6 +14,7 @@ import type {
   CloudflareTunnelConfig,
   RemoteServerConfig,
 } from './remote-pairing';
+import type { ObservabilityConfig } from './observability-config';
 export type { LoopSchedule } from './types';
 export type {
   KnowledgeNote,
@@ -580,7 +581,7 @@ export interface PredefinedPromptSummary {
 
 export type PredefinedPrompt = PredefinedPromptSummary;
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig {
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -688,16 +689,6 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig {
   discordDefaultProfileId?: string;
   discordLogMessages?: boolean;
 
-  // Langfuse Observability
-  langfuseEnabled?: boolean;
-  langfusePublicKey?: string;
-  langfuseSecretKey?: string;
-  langfuseBaseUrl?: string;
-
-  // Local Trace Logging — opt-in per-session JSONL logs on disk (independent of Langfuse Cloud)
-  localTraceLoggingEnabled?: boolean;
-  localTraceLogPath?: string;
-
   // Dual-Model Settings
   dualModelEnabled?: boolean;
 
@@ -712,7 +703,7 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig {
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig {
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, ObservabilityConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -817,16 +808,6 @@ export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConf
   discordOperatorAllowRoleIds?: string[];
   discordDefaultProfileId?: string;
   discordLogMessages?: boolean;
-
-  // Langfuse Observability
-  langfuseEnabled?: boolean;
-  langfusePublicKey?: string;
-  langfuseSecretKey?: string;
-  langfuseBaseUrl?: string;
-
-  // Local Trace Logging — opt-in per-session JSONL logs on disk (independent of Langfuse Cloud)
-  localTraceLoggingEnabled?: boolean;
-  localTraceLogPath?: string;
 
   // Dual-Model Settings
   dualModelEnabled?: boolean;

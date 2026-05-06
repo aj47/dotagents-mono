@@ -321,6 +321,11 @@
       "import": "./dist/whatsapp-config.mjs",
       "require": "./dist/whatsapp-config.js"
     },
+    "./observability-config": {
+      "types": "./dist/observability-config.d.ts",
+      "import": "./dist/observability-config.mjs",
+      "require": "./dist/observability-config.js"
+    },
     "./linux-artifacts": {
       "types": "./dist/linux-artifacts.d.ts",
       "import": "./dist/linux-artifacts.mjs",
