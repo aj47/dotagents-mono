@@ -7,6 +7,16 @@ export type PredefinedPromptDraft = {
 
 export type PredefinedPromptIdGenerator = (now: number) => string
 
+export const PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION = "Use this skill as a reusable prompt."
+
+export function isSlashCommandPromptName(name: string): boolean {
+  return /^\/\S+/.test(name.trim())
+}
+
+export function isSlashCommandPrompt(prompt: Pick<PredefinedPromptSummary, "name">): boolean {
+  return isSlashCommandPromptName(prompt.name)
+}
+
 export function createPredefinedPromptId(now: number, random: () => number = Math.random): string {
   return `prompt-${now}-${random().toString(36).slice(2, 11)}`
 }

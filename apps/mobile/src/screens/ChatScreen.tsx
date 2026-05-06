@@ -88,6 +88,8 @@ import type {
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  isSlashCommandPrompt,
+  PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
 } from '@dotagents/shared/predefined-prompts';
@@ -197,8 +199,6 @@ type QuickStartShortcut = {
   prompt?: PredefinedPromptSummary;
   task?: Loop;
 };
-
-const isSlashCommandPrompt = (prompt: PredefinedPromptSummary) => /^\/[\S]+/.test(prompt.name.trim());
 
 const getSkillPromptContent = (skill: Skill): string => {
   const instructions = skill.instructions?.trim();
@@ -2882,7 +2882,7 @@ export default function ChatScreen({ route, navigation }: any) {
         id: `skill-${skill.id}`,
         title: skill.name,
         content: getSkillPromptContent(skill),
-        description: skill.description || skill.instructions || 'Use this skill as a reusable prompt.',
+        description: skill.description || skill.instructions || PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION,
         source: 'skill' as const,
       }));
 

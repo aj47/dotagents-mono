@@ -8,6 +8,7 @@ const slashCommandMenuSource = readFileSync(
 
 describe("slash command menu repeat-task support", () => {
   it("loads repeat tasks into the shared slash-command list", () => {
+    expect(slashCommandMenuSource).toContain("PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION")
     expect(slashCommandMenuSource).toContain('queryKey: ["loops"]')
     expect(slashCommandMenuSource).toContain('queryFn: () => tipcClient.getLoops() as Promise<LoopConfig[]>')
     expect(slashCommandMenuSource).toContain('type: "loop" as const')

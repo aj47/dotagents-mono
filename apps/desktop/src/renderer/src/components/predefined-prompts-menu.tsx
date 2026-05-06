@@ -26,6 +26,7 @@ import { PredefinedPrompt, LoopConfig } from "../../../shared/types"
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION,
   updatePredefinedPromptList,
 } from "@dotagents/shared/predefined-prompts"
 import { useQuery } from "@tanstack/react-query"
@@ -272,7 +273,7 @@ export function PredefinedPromptsMenu({
                 <div className={entryTextClassName}>
                   <div className="truncate font-medium" title={skill.name}>{skill.name}</div>
                   <p className={secondaryTextClassName}>
-                    {skill.description || "Use this skill as a reusable prompt."}
+                    {skill.description || PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION}
                   </p>
                 </div>
               </DropdownMenuItem>

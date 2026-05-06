@@ -146,7 +146,8 @@ test('loads saved prompts from the settings API for the mobile quick-start launc
   assert.match(screenSource, /settingsClient\.getSettings\(\)/);
   assert.match(screenSource, /settings\.predefinedPrompts \|\| \[\]/);
   assert.match(screenSource, /sortPredefinedPromptsByUpdatedAt\(settings\.predefinedPrompts \|\| \[\]\)/);
-  assert.match(screenSource, /isSlashCommandPrompt/);
+  assert.match(screenSource, /isSlashCommandPrompt\(prompt\)/);
+  assert.doesNotMatch(screenSource, /const isSlashCommandPrompt =/);
 });
 
 test('lets mobile edit and delete desktop saved prompts from quick-start cards', () => {
@@ -155,6 +156,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /openEditPromptModal\(item\.prompt!\)/);
   assert.match(screenSource, /handleDeletePrompt\(item\.prompt!\)/);
   assert.match(screenSource, /createPredefinedPromptRecord\(draft, now\)/);
+  assert.match(screenSource, /PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION/);
   assert.match(screenSource, /settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
   assert.match(screenSource, /updatePredefinedPromptList\(predefinedPrompts, editingPrompt\.id, draft, now\)/);
   assert.match(screenSource, /deletePredefinedPromptFromList\(predefinedPrompts, prompt\.id\)/);

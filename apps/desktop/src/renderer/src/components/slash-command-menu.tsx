@@ -7,6 +7,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 import { LoopConfig } from "@shared/types"
 import { formatLoopInterval } from "@dotagents/shared/repeat-task-utils"
+import { PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION } from "@dotagents/shared/predefined-prompts"
 
 export interface SlashCommandItem {
   id: string
@@ -64,7 +65,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
     const skills = (skillsQuery.data ?? []).map((s) => ({
       id: s.id,
       name: s.name,
-      description: s.description || "Use this skill as a reusable prompt.",
+      description: s.description || PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION,
       content: s.instructions,
       type: "skill" as const,
     }))

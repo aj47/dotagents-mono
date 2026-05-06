@@ -4,12 +4,24 @@ import {
   createPredefinedPromptId,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  isSlashCommandPrompt,
+  isSlashCommandPromptName,
+  PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
   updatePredefinedPromptRecord,
 } from "./predefined-prompts"
 
 describe("predefined prompt helpers", () => {
+  it("classifies slash command prompt names", () => {
+    expect(PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION).toBe("Use this skill as a reusable prompt.")
+    expect(isSlashCommandPromptName("/standup")).toBe(true)
+    expect(isSlashCommandPromptName(" /standup ")).toBe(true)
+    expect(isSlashCommandPromptName("/")).toBe(false)
+    expect(isSlashCommandPromptName("standup")).toBe(false)
+    expect(isSlashCommandPrompt({ name: "/ship" })).toBe(true)
+  })
+
   it("creates stable prompt ids and trimmed records", () => {
     expect(createPredefinedPromptId(123, () => 0.5)).toBe("prompt-123-i")
     expect(createPredefinedPromptRecord(

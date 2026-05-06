@@ -16,7 +16,7 @@ describe("predefined prompts menu layout", () => {
 
   it("shows prompt and skill previews instead of relying on single-line truncation", () => {
     expect(predefinedPromptsMenuSource).toContain('<p className={secondaryTextClassName}>{prompt.content}</p>')
-    expect(predefinedPromptsMenuSource).toContain('{skill.description || "Use this skill as a reusable prompt."}')
+    expect(predefinedPromptsMenuSource).toContain("{skill.description || PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION}")
     expect(predefinedPromptsMenuSource).toContain('className="truncate font-medium" title={prompt.name}')
     expect(predefinedPromptsMenuSource).toContain('className="truncate font-medium" title={skill.name}')
   })
@@ -35,6 +35,7 @@ describe("predefined prompts menu layout", () => {
 
   it("uses shared predefined prompt mutation helpers", () => {
     expect(predefinedPromptsMenuSource).toContain("createPredefinedPromptRecord")
+    expect(predefinedPromptsMenuSource).toContain("PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION")
     expect(predefinedPromptsMenuSource).toContain("updatePredefinedPromptList(prompts, editingPrompt.id, draft, now)")
     expect(predefinedPromptsMenuSource).toContain("deletePredefinedPromptFromList(prompts, prompt.id)")
     expect(predefinedPromptsMenuSource).not.toContain("Math.random().toString(36)")
