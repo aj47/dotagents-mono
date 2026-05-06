@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   formatLocalSpeechModelProgress,
   getTextToSpeechModelValue,
+  getTextToSpeechPlaybackRate,
   getTextToSpeechSpeedValue,
   getTextToSpeechVoiceValue,
   normalizeTextToSpeechVoiceUpdateValue,
@@ -46,6 +47,13 @@ describe("text to speech settings helpers", () => {
     expect(getTextToSpeechSpeedValue({ ttsProviderId: "edge", edgeTtsRate: 0.9 })).toBe(0.9)
     expect(getTextToSpeechSpeedValue({ ttsProviderId: "supertonic", supertonicSpeed: 1.05 })).toBe(1.05)
     expect(getTextToSpeechSpeedValue({ ttsProviderId: "groq" })).toBeUndefined()
+  })
+
+  it("resolves playback rates with provider defaults", () => {
+    expect(getTextToSpeechPlaybackRate({ ttsProviderId: "openai", openaiTtsSpeed: 1.2 })).toBe(1.2)
+    expect(getTextToSpeechPlaybackRate({ ttsProviderId: "edge" })).toBe(1.0)
+    expect(getTextToSpeechPlaybackRate({ ttsProviderId: "supertonic" })).toBe(1.05)
+    expect(getTextToSpeechPlaybackRate(undefined)).toBe(1.0)
   })
 
   it("formats local speech model progress for compact mobile status labels", () => {

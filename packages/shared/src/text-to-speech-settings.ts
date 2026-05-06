@@ -32,6 +32,12 @@ export function getTextToSpeechSpeedValue(settings?: TextToSpeechConfig | null):
   return undefined
 }
 
+export function getTextToSpeechPlaybackRate(settings?: TextToSpeechConfig | null): number {
+  const speed = getTextToSpeechSpeedValue(settings)
+  if (speed !== undefined) return speed
+  return settings?.ttsProviderId === "supertonic" ? 1.05 : 1.0
+}
+
 export function formatLocalSpeechModelProgress(status?: LocalSpeechModelStatus): string {
   if (!status) return "Unknown"
   if (status.downloaded) return "Ready"

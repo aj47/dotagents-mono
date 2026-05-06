@@ -70,9 +70,12 @@ import {
 import { resolveAgentProgressConversationState } from '@dotagents/shared/agent-progress';
 import {
   DEFAULT_EDGE_TTS_VOICE,
-  getTtsModelSettingKey,
-  getTtsVoiceSettingKey,
 } from '@dotagents/shared/providers';
+import {
+  getTextToSpeechModelValue,
+  getTextToSpeechPlaybackRate,
+  getTextToSpeechVoiceValue,
+} from '@dotagents/shared/text-to-speech-settings';
 import {
   groupToolActivity,
   type ToolActivityGroup,
@@ -276,25 +279,6 @@ const applyUserResponseToMessages = (
 };
 
 type RemoteDesktopTtsProvider = 'native' | NonNullable<Settings['ttsProviderId']>;
-
-function getRemoteDesktopTtsVoice(settings: Settings): string | undefined {
-  const key = getTtsVoiceSettingKey(settings.ttsProviderId || 'openai');
-  const value = key ? settings[key] : undefined;
-  return value === undefined ? undefined : String(value);
-}
-
-function getRemoteDesktopTtsModel(settings: Settings): string | undefined {
-  const key = getTtsModelSettingKey(settings.ttsProviderId || 'openai');
-  const value = key ? settings[key] : undefined;
-  return typeof value === 'string' ? value : undefined;
-}
-
-function getRemoteDesktopTtsRate(settings: Settings): number {
-  if (settings.ttsProviderId === 'openai') return settings.openaiTtsSpeed ?? 1.0;
-  if (settings.ttsProviderId === 'edge') return settings.edgeTtsRate ?? 1.0;
-  if (settings.ttsProviderId === 'supertonic') return settings.supertonicSpeed ?? 1.05;
-  return 1.0;
-}
 
 export default function ChatScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -1348,11 +1332,12 @@ export default function ChatScreen({ route, navigation }: any) {
         if (settingsResult.status === 'fulfilled') {
           const settings = settingsResult.value;
           const nextPrompts = sortPredefinedPromptsByUpdatedAt(settings.predefinedPrompts || []);
+          const ttsVoiceValue = getTextToSpeechVoiceValue(settings);
           setPredefinedPrompts(nextPrompts);
           setRemoteTtsProvider(settings.ttsProviderId || 'native');
-          setRemoteTtsVoice(getRemoteDesktopTtsVoice(settings) || DEFAULT_EDGE_TTS_VOICE);
-          setRemoteTtsModel(getRemoteDesktopTtsModel(settings));
-          setRemoteTtsRate(getRemoteDesktopTtsRate(settings));
+          setRemoteTtsVoice(ttsVoiceValue === undefined ? DEFAULT_EDGE_TTS_VOICE : String(ttsVoiceValue));
+          setRemoteTtsModel(getTextToSpeechModelValue(settings));
+          setRemoteTtsRate(getTextToSpeechPlaybackRate(settings));
         } else {
           setPredefinedPrompts([]);
         }

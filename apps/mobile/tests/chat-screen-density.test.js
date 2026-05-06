@@ -116,7 +116,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
 
 test('suppresses duplicate auto TTS starts for the same mobile response text', () => {
   assert.match(screenSource, /const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;/);
-  assert.match(screenSource, /const normalizeAutoTtsTextKey = \(value: string\) => value\.replace\(\/\\s\+\/g, ' '\)\.trim\(\)\.toLowerCase\(\);/);
+  assert.match(screenSource, /normalizeAutoTtsTextKey/);
+  assert.match(screenSource, /from '@dotagents\/shared\/voice-text-utils'/);
   assert.match(screenSource, /const recentAutoSpeechByTextRef = useRef<Map<string, number>>\(new Map\(\)\);/);
   assert.match(screenSource, /now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS/);
 });
@@ -124,8 +125,9 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
 test('routes every desktop TTS provider through the paired remote TTS endpoint', () => {
   assert.match(screenSource, /type RemoteDesktopTtsProvider = 'native' \| NonNullable<Settings\['ttsProviderId'\]>/);
   assert.match(screenSource, /setRemoteTtsProvider\(settings\.ttsProviderId \|\| 'native'\)/);
-  assert.match(screenSource, /getRemoteDesktopTtsVoice\(settings\)/);
-  assert.match(screenSource, /getRemoteDesktopTtsModel\(settings\)/);
+  assert.match(screenSource, /getTextToSpeechVoiceValue\(settings\)/);
+  assert.match(screenSource, /getTextToSpeechModelValue\(settings\)/);
+  assert.match(screenSource, /getTextToSpeechPlaybackRate\(settings\)/);
   assert.match(screenSource, /effectiveTtsProvider !== 'native' && config\.baseUrl && config\.apiKey/);
   assert.match(screenSource, /providerId: effectiveTtsProvider/);
   assert.match(screenSource, /model: effectiveRemoteTtsModel/);
