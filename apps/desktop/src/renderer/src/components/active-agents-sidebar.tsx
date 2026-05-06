@@ -18,7 +18,7 @@ import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
 import { useSavedConversationsQuery } from "@renderer/lib/queries"
-import { formatRepeatTaskTitle } from "@dotagents/shared/repeat-task-utils"
+import { getRepeatTaskTitleHints } from "@dotagents/shared/repeat-task-utils"
 import {
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
@@ -78,46 +78,6 @@ interface SidebarSessionEntry {
   key: string
   isSubagent?: boolean
   nestingDepth?: number
-}
-
-const TASK_NAME_CONNECTOR_WORDS = new Set(["a", "an", "and", "for", "of", "the", "to"])
-
-function toTitleCaseTaskName(value: string, options: { dropConnectorWords?: boolean } = {}): string {
-  return value
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(" ")
-    .filter((word) => !options.dropConnectorWords || !TASK_NAME_CONNECTOR_WORDS.has(word.toLowerCase()))
-    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-    .join(" ")
-}
-
-function getFirstMarkdownHeading(value: string): string | null {
-  const heading = value
-    .split(/\r?\n/u)
-    .map((line) => line.match(/^#\s+(.+)$/u)?.[1]?.trim())
-    .find((line): line is string => !!line)
-  return heading ?? null
-}
-
-function getRepeatTaskTitleHints(task: LoopConfig): string[] {
-  const hints = new Set<string>()
-  const addHint = (value?: string | null) => {
-    const trimmed = value?.trim()
-    if (trimmed) hints.add(trimmed)
-  }
-
-  addHint(task.name)
-  addHint(formatRepeatTaskTitle(task.name))
-  addHint(toTitleCaseTaskName(task.name))
-  addHint(toTitleCaseTaskName(task.name, { dropConnectorWords: true }))
-
-  const firstHeading = getFirstMarkdownHeading(task.prompt)
-  addHint(firstHeading)
-  addHint(firstHeading ? `${firstHeading} Run` : null)
-
-  return Array.from(hints)
 }
 
 function getSessionLastMessageTimestamp(

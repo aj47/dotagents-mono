@@ -29,6 +29,7 @@ import {
   formatLoopInterval,
   formatLoopIntervalDraft,
   getNextRepeatTaskDelayMs,
+  getRepeatTaskTitleHints,
   getRepeatTaskIntervalMs,
   getRepeatTaskRunNowDescription,
   getLoopScheduleDaysOfWeek,
@@ -75,6 +76,29 @@ describe("repeat task schedule helpers", () => {
     expect(slugifyRepeatTaskName("Noon / Evening Review", 8)).toBe("noon-eve")
     expect(createRepeatTaskIdFromName("Daily Summary", () => "fallback")).toBe("daily-summary")
     expect(createRepeatTaskIdFromName("!!!", () => "fallback")).toBe("fallback")
+  })
+
+  it("builds repeat task title hints from names and prompt headings", () => {
+    expect(getRepeatTaskTitleHints({
+      name: "conversation-knowledge_review",
+      prompt: "Intro\n# Daily Knowledge Run\nBody",
+    })).toEqual([
+      "conversation-knowledge_review",
+      "[Repeat] conversation-knowledge_review",
+      "Conversation Knowledge Review",
+      "Daily Knowledge Run",
+      "Daily Knowledge Run Run",
+    ])
+
+    expect(getRepeatTaskTitleHints({
+      name: "summary of the day",
+      prompt: "No heading",
+    })).toEqual([
+      "summary of the day",
+      "[Repeat] summary of the day",
+      "Summary Of The Day",
+      "Summary Day",
+    ])
   })
 
   it("detects repeat-task sessions from title prefixes, title hints, or backend flags", () => {

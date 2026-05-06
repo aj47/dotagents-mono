@@ -6,8 +6,9 @@ const sidebarSource = readFileSync(new URL("./active-agents-sidebar.tsx", import
 describe("active agents sidebar task section", () => {
   it("renders repeat-task sessions in one collapsible Tasks section", () => {
     expect(sidebarSource).toContain('queryKey: ["loops"]')
-    expect(sidebarSource).toContain("function getRepeatTaskTitleHints(task: LoopConfig)")
-    expect(sidebarSource).toContain("formatRepeatTaskTitle(task.name)")
+    expect(sidebarSource).toContain("getRepeatTaskTitleHints")
+    expect(sidebarSource).toContain("@dotagents/shared/repeat-task-utils")
+    expect(sidebarSource).not.toContain("function getRepeatTaskTitleHints")
     expect(sidebarSource).toContain("repeatTaskTitleHints")
     expect(sidebarSource).toContain("const taskSidebarSessions = useMemo(")
     expect(sidebarSource).toContain("...pinnedTaskSidebarSessions")
@@ -39,10 +40,9 @@ describe("active agents sidebar task section", () => {
   })
 
   it("recognizes saved task conversations whose titles are humanized from task slugs or headings", () => {
-    expect(sidebarSource).toContain("toTitleCaseTaskName(task.name, { dropConnectorWords: true })")
-    expect(sidebarSource).toContain("function getFirstMarkdownHeading")
-    expect(sidebarSource).toContain("firstHeading ? `${firstHeading} Run` : null")
     expect(sidebarSource).toContain("flatMap(getRepeatTaskTitleHints)")
+    expect(sidebarSource).not.toContain("function getFirstMarkdownHeading")
+    expect(sidebarSource).not.toContain("TASK_NAME_CONNECTOR_WORDS")
   })
 
   it("forces task rows to remain one line", () => {

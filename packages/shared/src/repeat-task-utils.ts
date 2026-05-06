@@ -148,6 +148,11 @@ export type RepeatTaskSessionDedupeLike = RepeatTaskSessionLike & {
   endTime?: number
 }
 
+export type RepeatTaskTitleHintSource = {
+  name: string
+  prompt?: string | null
+}
+
 export type RepeatTaskTitleHints = ReadonlySet<string>
 
 export type RepeatTaskApiFormatOptions = {
@@ -229,6 +234,7 @@ export const REPEAT_TASK_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri",
 export const DEFAULT_REPEAT_TASK_SCHEDULE_TIMES = ["09:00"] as const
 export const DEFAULT_REPEAT_TASK_WEEKDAYS = [1, 2, 3, 4, 5] as const
 export const TASK_SESSION_TITLE_PREFIX = "[Repeat] "
+const REPEAT_TASK_NAME_CONNECTOR_WORDS = new Set(["a", "an", "and", "for", "of", "the", "to"])
 
 export function formatRepeatTaskTitle(taskName: string): string {
   return `${TASK_SESSION_TITLE_PREFIX}${taskName}`
@@ -245,6 +251,44 @@ export function slugifyRepeatTaskName(name: string, maxLength = 64): string {
 
 export function createRepeatTaskIdFromName(name: string, createFallbackId: RepeatTaskIdGenerator): string {
   return slugifyRepeatTaskName(name) || createFallbackId()
+}
+
+function toTitleCaseRepeatTaskName(value: string, options: { dropConnectorWords?: boolean } = {}): string {
+  return value
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter((word) => !options.dropConnectorWords || !REPEAT_TASK_NAME_CONNECTOR_WORDS.has(word.toLowerCase()))
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(" ")
+}
+
+function getFirstRepeatTaskMarkdownHeading(value: string | null | undefined): string | null {
+  const heading = value
+    ?.split(/\r?\n/u)
+    .map((line) => line.match(/^#\s+(.+)$/u)?.[1]?.trim())
+    .find((line): line is string => !!line)
+  return heading ?? null
+}
+
+export function getRepeatTaskTitleHints(task: RepeatTaskTitleHintSource): string[] {
+  const hints = new Set<string>()
+  const addHint = (value?: string | null) => {
+    const trimmed = value?.trim()
+    if (trimmed) hints.add(trimmed)
+  }
+
+  addHint(task.name)
+  addHint(formatRepeatTaskTitle(task.name))
+  addHint(toTitleCaseRepeatTaskName(task.name))
+  addHint(toTitleCaseRepeatTaskName(task.name, { dropConnectorWords: true }))
+
+  const firstHeading = getFirstRepeatTaskMarkdownHeading(task.prompt)
+  addHint(firstHeading)
+  addHint(firstHeading ? `${firstHeading} Run` : null)
+
+  return Array.from(hints)
 }
 
 export function hasRepeatTaskTitlePrefix(title: string | undefined | null): boolean {
