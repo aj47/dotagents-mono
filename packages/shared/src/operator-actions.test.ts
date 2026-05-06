@@ -76,7 +76,13 @@ import {
   getOperatorAuditDeviceId,
   getOperatorAuditPath,
   getOperatorAuditSource,
+  getOperatorConversationsAction,
+  getOperatorErrorsAction,
+  getOperatorHealthAction,
+  getOperatorLogsAction,
   getOperatorMcpToolResultText,
+  getOperatorRemoteServerAction,
+  getOperatorStatusAction,
   getOperatorTunnelAction,
   getOperatorTunnelSetupAction,
   getOperatorUpdaterAction,
@@ -114,6 +120,7 @@ import {
   updateOperatorQueuedMessageAction,
   type OperatorApiKeyActionOptions,
   type OperatorMessageQueueActionOptions,
+  type OperatorObservabilityActionOptions,
   type OperatorTunnelActionOptions,
   type OperatorUpdaterActionOptions,
   startOperatorTunnelAction,
@@ -1904,6 +1911,223 @@ describe("operator action API helpers", () => {
         maxIterations: 5,
       }],
     })
+  })
+
+  it("runs observability route actions through a shared service adapter", async () => {
+    const now = Date.now()
+    const recentErrors = [
+      { timestamp: now - 10, level: "info" as const, component: "remote", message: "Started" },
+      { timestamp: now - 1_000, level: "error" as const, component: "mcp", message: "Failed" },
+    ]
+    const calls: string[] = []
+    const options: OperatorObservabilityActionOptions = {
+      manualReleasesUrl: "https://example.com/releases",
+      diagnostics: {
+        logError: (_source, message) => { calls.push(`error:${message}`) },
+      },
+      service: {
+        getCurrentVersion: () => "1.2.3",
+        getRecentErrors: (count) => {
+          calls.push(`errors:${count}`)
+          return recentErrors.slice(0, count)
+        },
+        performHealthCheck: async () => {
+          calls.push("health")
+          return {
+            overall: "warning",
+            checks: { remote: { status: "warning", message: "Needs attention" } },
+          }
+        },
+        getTunnelStatus: () => {
+          calls.push("tunnel")
+          return {
+            running: false,
+            starting: false,
+            mode: null,
+          }
+        },
+        getIntegrationsSummary: async () => {
+          calls.push("integrations")
+          return {
+            discord: {
+              available: true,
+              enabled: true,
+              connected: true,
+              connecting: false,
+              logs: { total: 0 },
+            },
+            whatsapp: {
+              enabled: false,
+              available: false,
+              connected: false,
+              serverConfigured: false,
+              serverConnected: false,
+              autoReplyEnabled: false,
+              logMessagesEnabled: false,
+              allowedSenderCount: 0,
+              logs: { total: 0 },
+            },
+            pushNotifications: {
+              enabled: false,
+              tokenCount: 0,
+              platforms: [],
+            },
+          }
+        },
+        getUpdateInfo: () => {
+          calls.push("update")
+          return null
+        },
+        getSystemMetrics: () => {
+          calls.push("system")
+          return {
+            platform: "darwin",
+            arch: "arm64",
+            nodeVersion: "v20.0.0",
+            electronVersion: "30.0.0",
+            appVersion: "1.2.3",
+            osUptimeSeconds: 10.9,
+            processUptimeSeconds: 3.1,
+            memoryUsageBytes: {
+              heapUsed: 1_048_576,
+              heapTotal: 2_097_152,
+              rss: 3_145_728,
+            },
+            cpuCount: 8,
+            totalMemoryBytes: 8_388_608,
+            freeMemoryBytes: 4_194_304,
+            hostname: "workstation",
+          }
+        },
+        getActiveSessions: () => {
+          calls.push("active-sessions")
+          return [{ id: "session-1", conversationTitle: "Research", status: "active", startTime: now }]
+        },
+        getRecentSessions: (count) => {
+          calls.push(`recent-sessions:${count}`)
+          return [{ id: "session-2", status: "completed", startTime: now - 5 }]
+        },
+        getConversationHistory: async () => {
+          calls.push("conversations")
+          return [{
+            id: "conversation-1",
+            title: "Ops",
+            createdAt: 1,
+            updatedAt: 2,
+            messageCount: 3,
+            preview: "Ready",
+          }]
+        },
+      },
+    }
+    const remoteServer = {
+      running: true,
+      bind: "0.0.0.0",
+      port: 3210,
+      url: "http://0.0.0.0:3210",
+    }
+
+    expect(await getOperatorStatusAction(remoteServer, options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        remoteServer: {
+          running: true,
+          bind: "0.0.0.0",
+          port: 3210,
+        },
+        health: {
+          overall: "warning",
+        },
+        updater: {
+          currentVersion: "1.2.3",
+          manualReleasesUrl: "https://example.com/releases",
+        },
+        system: {
+          platform: "darwin",
+          appVersion: "1.2.3",
+          memoryUsage: {
+            heapUsedMB: 1,
+          },
+        },
+        sessions: {
+          activeSessions: 1,
+          recentSessions: 1,
+        },
+        recentErrors: {
+          total: 2,
+          errorsInLastFiveMinutes: 2,
+        },
+      },
+    })
+    expect(await getOperatorHealthAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        checkedAt: expect.any(Number),
+        overall: "warning",
+      },
+    })
+    expect(getOperatorErrorsAction("1", options)).toEqual({
+      statusCode: 200,
+      body: {
+        count: 1,
+        errors: [recentErrors[0]],
+      },
+    })
+    expect(getOperatorLogsAction(undefined, "error", options)).toEqual({
+      statusCode: 200,
+      body: {
+        count: 1,
+        level: "error",
+        logs: [recentErrors[1]],
+      },
+    })
+    expect(await getOperatorConversationsAction("1", options)).toEqual({
+      statusCode: 200,
+      body: {
+        count: 1,
+        conversations: [{
+          id: "conversation-1",
+          title: "Ops",
+          createdAt: 1,
+          updatedAt: 2,
+          messageCount: 3,
+          preview: "Ready",
+        }],
+      },
+    })
+    expect(getOperatorRemoteServerAction(remoteServer)).toMatchObject({
+      statusCode: 200,
+      body: {
+        running: true,
+        port: 3210,
+      },
+    })
+    expect(calls).toEqual(expect.arrayContaining([
+      "errors:100",
+      "health",
+      "tunnel",
+      "integrations",
+      "update",
+      "system",
+      "active-sessions",
+      "recent-sessions:10",
+      "errors:1",
+      "errors:20",
+      "conversations",
+    ]))
+
+    const failingOptions: OperatorObservabilityActionOptions = {
+      ...options,
+      service: {
+        ...options.service,
+        performHealthCheck: async () => { throw new Error("health denied") },
+      },
+    }
+    expect(await getOperatorHealthAction(failingOptions)).toEqual({
+      statusCode: 500,
+      body: { error: "Failed to build operator health snapshot" },
+    })
+    expect(calls).toContain("error:Failed to build operator health snapshot")
   })
 
   it("builds complete operator runtime status snapshots from plain inputs", () => {

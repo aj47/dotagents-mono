@@ -196,6 +196,34 @@ export interface OperatorTunnelActionOptions {
   service: OperatorTunnelActionService
 }
 
+export type OperatorObservabilityActionResult = {
+  statusCode: number
+  body: unknown
+}
+
+export interface OperatorObservabilityActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void
+}
+
+export interface OperatorObservabilityActionService {
+  getCurrentVersion(): string
+  getRecentErrors(count: number): OperatorRecentErrorLike[]
+  performHealthCheck(): Promise<OperatorHealthLike>
+  getTunnelStatus(): OperatorTunnelStatusLike
+  getIntegrationsSummary(): Promise<OperatorIntegrationsSummary>
+  getUpdateInfo(): OperatorUpdateInfoLike
+  getSystemMetrics(): OperatorSystemMetricsLike
+  getActiveSessions(): OperatorSessionSummaryLike[]
+  getRecentSessions(count: number): OperatorSessionSummaryLike[]
+  getConversationHistory(): Promise<OperatorConversationHistoryLike[]>
+}
+
+export interface OperatorObservabilityActionOptions {
+  manualReleasesUrl: string
+  diagnostics: OperatorObservabilityActionDiagnostics
+  service: OperatorObservabilityActionService
+}
+
 export type RunAgentResultLike = AgentRunResult
 
 export type OperatorHealthLike = Pick<OperatorHealthSnapshot, "overall" | "checks">
@@ -1545,6 +1573,114 @@ export function parseOperatorQueuedMessageUpdateRequestBody(body: unknown): Oper
 export function normalizeOperatorPathParam(value: string | undefined): string | undefined {
   const trimmed = value?.trim()
   return trimmed || undefined
+}
+
+function operatorObservabilityActionResult(
+  statusCode: number,
+  body: unknown,
+): OperatorObservabilityActionResult {
+  return {
+    statusCode,
+    body,
+  }
+}
+
+function operatorObservabilityActionError(
+  statusCode: number,
+  message: string,
+): OperatorObservabilityActionResult {
+  return operatorObservabilityActionResult(statusCode, { error: message })
+}
+
+export async function getOperatorStatusAction(
+  remoteServerStatus: OperatorRemoteServerStatusLike,
+  options: OperatorObservabilityActionOptions,
+): Promise<OperatorObservabilityActionResult> {
+  try {
+    const now = Date.now()
+    const recentErrors = options.service.getRecentErrors(100)
+    const health = await options.service.performHealthCheck()
+
+    return operatorObservabilityActionResult(200, buildOperatorRuntimeStatus({
+      timestamp: now,
+      remoteServer: remoteServerStatus,
+      health,
+      tunnel: options.service.getTunnelStatus(),
+      integrations: await options.service.getIntegrationsSummary(),
+      updater: {
+        currentVersion: options.service.getCurrentVersion(),
+        updateInfo: options.service.getUpdateInfo(),
+        manualReleasesUrl: options.manualReleasesUrl,
+      },
+      system: options.service.getSystemMetrics(),
+      activeSessions: options.service.getActiveSessions(),
+      recentSessions: options.service.getRecentSessions(10),
+      recentErrors,
+    }))
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-observability-actions", "Failed to build operator runtime status", caughtError)
+    return operatorObservabilityActionError(500, "Failed to build operator runtime status")
+  }
+}
+
+export async function getOperatorHealthAction(
+  options: OperatorObservabilityActionOptions,
+): Promise<OperatorObservabilityActionResult> {
+  try {
+    const health = await options.service.performHealthCheck()
+    return operatorObservabilityActionResult(200, buildOperatorHealthSnapshot(health))
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-observability-actions", "Failed to build operator health snapshot", caughtError)
+    return operatorObservabilityActionError(500, "Failed to build operator health snapshot")
+  }
+}
+
+export function getOperatorErrorsAction(
+  count: string | number | undefined,
+  options: OperatorObservabilityActionOptions,
+): OperatorObservabilityActionResult {
+  try {
+    const errors = options.service.getRecentErrors(clampOperatorCount(count, 10, 50))
+    return operatorObservabilityActionResult(200, buildOperatorRecentErrorsResponse(errors))
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-observability-actions", "Failed to build operator recent errors", caughtError)
+    return operatorObservabilityActionError(500, "Failed to build operator recent errors")
+  }
+}
+
+export function getOperatorLogsAction(
+  count: string | number | undefined,
+  level: string | undefined,
+  options: OperatorObservabilityActionOptions,
+): OperatorObservabilityActionResult {
+  try {
+    const normalizedCount = clampOperatorCount(count, 20, 100)
+    const normalizedLevel = normalizeOperatorLogLevel(level)
+    const allEntries = options.service.getRecentErrors(normalizedCount)
+    return operatorObservabilityActionResult(200, buildOperatorLogsResponse(allEntries, normalizedLevel))
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-observability-actions", "Failed to build operator logs", caughtError)
+    return operatorObservabilityActionError(500, "Failed to build operator logs")
+  }
+}
+
+export async function getOperatorConversationsAction(
+  count: string | number | undefined,
+  options: OperatorObservabilityActionOptions,
+): Promise<OperatorObservabilityActionResult> {
+  try {
+    const history = await options.service.getConversationHistory()
+    return operatorObservabilityActionResult(200, buildOperatorConversationsResponse(history, count))
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-observability-actions", "Failed to build operator conversations response", caughtError)
+    return operatorObservabilityActionError(500, "Failed to build operator conversations response")
+  }
+}
+
+export function getOperatorRemoteServerAction(
+  remoteServerStatus: OperatorRemoteServerStatusLike,
+): OperatorObservabilityActionResult {
+  return operatorObservabilityActionResult(200, buildOperatorRemoteServerStatus(remoteServerStatus))
 }
 
 function operatorMessageQueueActionResult(
