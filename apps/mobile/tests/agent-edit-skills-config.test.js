@@ -47,6 +47,23 @@ test('keeps mobile MCP server controls bulk-editable and accessible', () => {
   assert.match(screenSource, /enabledServers,\s*disabledServers: undefined,\s*allServersDisabledByDefault: true/s);
 });
 
+test('lets mobile edit per-agent runtime tool allowlists through shared runtime definitions', () => {
+  assert.match(screenSource, /buildRuntimeToolDefinitions\(acpRouterToolDefinitions\)/);
+  assert.match(screenSource, /ESSENTIAL_RUNTIME_TOOL_NAME = 'mark_work_complete'/);
+  assert.match(screenSource, /countEnabledRuntimeTools\(runtimeTools, formData\.toolConfig\)/);
+  assert.match(screenSource, /enabledRuntimeTools: enabledRuntimeTools\.length > 0 \? enabledRuntimeTools : undefined/);
+  assert.match(screenSource, /enabledRuntimeTools: enabled \? undefined : \[ESSENTIAL_RUNTIME_TOOL_NAME\]/);
+});
+
+test('keeps runtime tool controls accessible and preserves the essential tool', () => {
+  assert.match(screenSource, /<Text style=\{styles\.sectionTitle\}>DotAgents Runtime Tools<\/Text>/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\('Enable all agent runtime tools'\)/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\('Disable nonessential agent runtime tools'\)/);
+  assert.match(screenSource, /tool\.name === ESSENTIAL_RUNTIME_TOOL_NAME/);
+  assert.match(screenSource, /disabled=\{isBuiltInAgent \|\| essential\}/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\(`\$\{enabled \? 'Disable' : 'Enable'\} \$\{tool\.name\} runtime tool for this agent`\)/);
+});
+
 test('lets mobile edit per-agent model overrides through the shared profile config', () => {
   assert.match(screenSource, /AgentModelConfig/);
   assert.match(screenSource, /AGENT_MODEL_PROVIDERS/);

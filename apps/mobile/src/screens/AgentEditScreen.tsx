@@ -7,6 +7,11 @@ import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest,
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { applyConnectionTypeChange, buildAgentConnectionRequestFields, type AgentConnectionFormFields, type ConnectionType } from './agent-edit-connection-utils';
 import { useConfigContext } from '../store/config';
+import {
+  acpRouterToolDefinitions,
+  buildRuntimeToolDefinitions,
+  type RuntimeToolDefinition,
+} from '@dotagents/shared/runtime-tool-utils';
 
 const CONNECTION_TYPES = [
   {
@@ -35,6 +40,9 @@ const AGENT_MODEL_PROVIDERS = [
 ] as const;
 
 type AgentModelProvider = Exclude<(typeof AGENT_MODEL_PROVIDERS)[number]['value'], 'global'>;
+
+const ESSENTIAL_RUNTIME_TOOL_NAME = 'mark_work_complete';
+const RUNTIME_TOOLS = buildRuntimeToolDefinitions(acpRouterToolDefinitions);
 
 interface AgentFormData extends AgentConnectionFormFields {
   displayName: string;
@@ -143,6 +151,13 @@ const isMcpServerEnabledByConfig = (serverName: string, toolConfig?: AgentToolCo
   return !(toolConfig?.disabledServers ?? []).includes(serverName);
 };
 
+const isRuntimeToolEnabledByConfig = (toolName: string, toolConfig?: AgentToolConfig): boolean => {
+  if (toolName === ESSENTIAL_RUNTIME_TOOL_NAME) return true;
+  const enabledRuntimeTools = toolConfig?.enabledRuntimeTools;
+  if (!enabledRuntimeTools || enabledRuntimeTools.length === 0) return true;
+  return enabledRuntimeTools.includes(toolName);
+};
+
 const isSkillEnabledByConfig = (skillId: string, skillsConfig?: AgentSkillsConfig): boolean => {
   if (!skillsConfig || !skillsConfig.allSkillsDisabledByDefault) return true;
   return (skillsConfig.enabledSkillIds ?? []).includes(skillId);
@@ -150,6 +165,10 @@ const isSkillEnabledByConfig = (skillId: string, skillsConfig?: AgentSkillsConfi
 
 const countEnabledMcpServers = (servers: MCPServer[], toolConfig?: AgentToolConfig): number => {
   return servers.filter((server) => isMcpServerEnabledByConfig(server.name, toolConfig)).length;
+};
+
+const countEnabledRuntimeTools = (tools: RuntimeToolDefinition[], toolConfig?: AgentToolConfig): number => {
+  return tools.filter((tool) => isRuntimeToolEnabledByConfig(tool.name, toolConfig)).length;
 };
 
 const countEnabledSkills = (skills: Skill[], skillsConfig?: AgentSkillsConfig): number => {
@@ -220,11 +239,16 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const [isMcpServersLoading, setIsMcpServersLoading] = useState(false);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const runtimeTools = useMemo(() => RUNTIME_TOOLS, []);
   const displayMcpServers = useMemo(() => [...mcpServers].sort((a, b) => a.name.localeCompare(b.name)), [mcpServers]);
   const displaySkills = useMemo(() => [...skills].sort((a, b) => a.name.localeCompare(b.name)), [skills]);
   const enabledMcpServerCount = useMemo(
     () => countEnabledMcpServers(displayMcpServers, formData.toolConfig),
     [displayMcpServers, formData.toolConfig],
+  );
+  const enabledRuntimeToolCount = useMemo(
+    () => countEnabledRuntimeTools(runtimeTools, formData.toolConfig),
+    [runtimeTools, formData.toolConfig],
   );
   const enabledSkillCount = useMemo(
     () => countEnabledSkills(displaySkills, formData.skillsConfig),
@@ -404,6 +428,41 @@ export default function AgentEditScreen({ navigation, route }: any) {
       },
     }));
   }, []);
+
+  const setAllRuntimeToolsEnabled = useCallback((enabled: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      toolConfig: {
+        ...prev.toolConfig,
+        enabledRuntimeTools: enabled ? undefined : [ESSENTIAL_RUNTIME_TOOL_NAME],
+      },
+    }));
+  }, []);
+
+  const toggleRuntimeTool = useCallback((toolName: string) => {
+    if (toolName === ESSENTIAL_RUNTIME_TOOL_NAME) return;
+    setFormData(prev => {
+      const currentConfig = prev.toolConfig ?? {};
+      let enabledRuntimeTools = [...(currentConfig.enabledRuntimeTools ?? [])];
+
+      if (enabledRuntimeTools.length === 0) {
+        enabledRuntimeTools = runtimeTools.map(tool => tool.name).filter(name => name !== toolName);
+      } else if (enabledRuntimeTools.includes(toolName)) {
+        enabledRuntimeTools = enabledRuntimeTools.filter(name => name !== toolName);
+      } else {
+        enabledRuntimeTools = [...enabledRuntimeTools, toolName];
+        if (enabledRuntimeTools.length === runtimeTools.length) enabledRuntimeTools = [];
+      }
+
+      return {
+        ...prev,
+        toolConfig: {
+          ...currentConfig,
+          enabledRuntimeTools: enabledRuntimeTools.length > 0 ? enabledRuntimeTools : undefined,
+        },
+      };
+    });
+  }, [runtimeTools]);
 
   const setAllMcpServersEnabled = useCallback((enabled: boolean) => {
     setFormData(prev => ({
@@ -815,6 +874,55 @@ export default function AgentEditScreen({ navigation, route }: any) {
                 onValueChange={() => toggleMcpServer(server.name)}
                 disabled={isBuiltInAgent}
                 accessibilityLabel={createButtonAccessibilityLabel(`${enabled ? 'Disable' : 'Enable'} ${server.name} MCP server for this agent`)}
+                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                thumbColor={enabled ? theme.colors.primaryForeground : theme.colors.background}
+              />
+            </View>
+          );
+        })}
+      </View>
+
+      <View style={styles.capabilitySection}>
+        <View style={styles.capabilityHeader}>
+          <View style={styles.capabilityTitleBlock}>
+            <Text style={styles.sectionTitle}>DotAgents Runtime Tools</Text>
+            <Text style={styles.sectionHelperText}>{enabledRuntimeToolCount} of {runtimeTools.length} enabled</Text>
+          </View>
+          <View style={styles.skillBulkActions}>
+            <TouchableOpacity
+              style={[styles.chipButton, isBuiltInAgent && styles.chipButtonDisabled]}
+              onPress={() => setAllRuntimeToolsEnabled(true)}
+              disabled={isBuiltInAgent}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Enable all agent runtime tools')}
+            >
+              <Text style={styles.chipButtonText}>All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.chipButton, isBuiltInAgent && styles.chipButtonDisabled]}
+              onPress={() => setAllRuntimeToolsEnabled(false)}
+              disabled={isBuiltInAgent}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Disable nonessential agent runtime tools')}
+            >
+              <Text style={styles.chipButtonText}>Essential</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        {runtimeTools.map(tool => {
+          const essential = tool.name === ESSENTIAL_RUNTIME_TOOL_NAME;
+          const enabled = isRuntimeToolEnabledByConfig(tool.name, formData.toolConfig);
+          return (
+            <View key={tool.name} style={styles.skillRow}>
+              <View style={styles.skillInfo}>
+                <Text style={styles.skillName}>{tool.name}{essential ? ' (essential)' : ''}</Text>
+                {tool.description ? <Text style={styles.skillDescription} numberOfLines={2}>{tool.description}</Text> : null}
+              </View>
+              <Switch
+                value={enabled}
+                onValueChange={() => toggleRuntimeTool(tool.name)}
+                disabled={isBuiltInAgent || essential}
+                accessibilityLabel={createButtonAccessibilityLabel(`${enabled ? 'Disable' : 'Enable'} ${tool.name} runtime tool for this agent`)}
                 trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                 thumbColor={enabled ? theme.colors.primaryForeground : theme.colors.background}
               />
