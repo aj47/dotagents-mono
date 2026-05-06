@@ -1,6 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AgentProgressUpdate } from '@shared/types'
+import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress'
 import { useAgentStore } from './agent-store'
+
+const localStorageMock = vi.hoisted(() => {
+  const storage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+    clear: vi.fn(),
+  }
+
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: storage,
+    configurable: true,
+  })
+
+  return storage
+})
 
 const createBaseUpdate = (): AgentProgressUpdate => ({
   sessionId: 'session-1',
@@ -19,12 +35,11 @@ describe('agent-store delegation merge', () => {
   })
 
   beforeEach(() => {
-    vi.stubGlobal('localStorage', {
-      getItem: vi.fn(() => null),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-      clear: vi.fn(),
-    })
+    localStorageMock.getItem.mockReturnValue(null)
+    localStorageMock.setItem.mockClear()
+    localStorageMock.removeItem.mockClear()
+    localStorageMock.clear.mockClear()
+    vi.stubGlobal('localStorage', localStorageMock)
 
     useAgentStore.setState({
       agentProgressById: new Map(),

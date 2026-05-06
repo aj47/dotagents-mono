@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { AgentProgressUpdate, QueuedMessage } from '@shared/types'
+import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress'
+import type { QueuedMessage } from '@dotagents/shared/message-queue-utils'
 import { clearSessionTTSTracking } from '@renderer/lib/tts-tracking'
 import {
   sanitizeAgentProgressUpdateForDisplay,
