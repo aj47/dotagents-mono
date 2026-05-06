@@ -26,7 +26,8 @@ import { PredefinedPrompt, LoopConfig } from "../../../shared/types"
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
-  PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION,
+  getPromptLibrarySkillContent,
+  getPromptLibrarySkillDescription,
   updatePredefinedPromptList,
 } from "@dotagents/shared/predefined-prompts"
 import { useQuery } from "@tanstack/react-query"
@@ -267,13 +268,13 @@ export function PredefinedPromptsMenu({
               <DropdownMenuItem
                 key={skill.id}
                 className={entryClassName}
-                onSelect={() => onSelectPrompt(skill.instructions)}
+                onSelect={() => onSelectPrompt(getPromptLibrarySkillContent(skill))}
               >
                 <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <div className={entryTextClassName}>
                   <div className="truncate font-medium" title={skill.name}>{skill.name}</div>
                   <p className={secondaryTextClassName}>
-                    {skill.description || PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION}
+                    {getPromptLibrarySkillDescription(skill)}
                   </p>
                 </div>
               </DropdownMenuItem>

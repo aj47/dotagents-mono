@@ -156,7 +156,8 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /openEditPromptModal\(item\.prompt!\)/);
   assert.match(screenSource, /handleDeletePrompt\(item\.prompt!\)/);
   assert.match(screenSource, /createPredefinedPromptRecord\(draft, now\)/);
-  assert.match(screenSource, /PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION/);
+  assert.match(screenSource, /getPromptLibrarySkillContent\(skill\)/);
+  assert.match(screenSource, /getPromptLibrarySkillDescription\(skill\)/);
   assert.match(screenSource, /settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
   assert.match(screenSource, /updatePredefinedPromptList\(predefinedPrompts, editingPrompt\.id, draft, now\)/);
   assert.match(screenSource, /deletePredefinedPromptFromList\(predefinedPrompts, prompt\.id\)/);

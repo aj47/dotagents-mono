@@ -88,8 +88,9 @@ import type {
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  getPromptLibrarySkillContent,
+  getPromptLibrarySkillDescription,
   isSlashCommandPrompt,
-  PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
 } from '@dotagents/shared/predefined-prompts';
@@ -198,12 +199,6 @@ type QuickStartShortcut = {
   action?: 'add-prompt';
   prompt?: PredefinedPromptSummary;
   task?: Loop;
-};
-
-const getSkillPromptContent = (skill: Skill): string => {
-  const instructions = skill.instructions?.trim();
-  if (instructions) return instructions;
-  return `Use the "${skill.name}" skill for this request.${skill.description ? `\n\n${skill.description}` : ''}`;
 };
 
 /** Meta-tools whose results are already shown as visible message content or are purely internal */
@@ -2881,8 +2876,8 @@ export default function ChatScreen({ route, navigation }: any) {
       const skillItems = availableSkills.map((skill) => ({
         id: `skill-${skill.id}`,
         title: skill.name,
-        content: getSkillPromptContent(skill),
-        description: skill.description || skill.instructions || PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION,
+        content: getPromptLibrarySkillContent(skill),
+        description: skill.description || skill.instructions || getPromptLibrarySkillDescription(skill),
         source: 'skill' as const,
       }));
 

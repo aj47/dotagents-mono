@@ -9,12 +9,30 @@ export type PredefinedPromptIdGenerator = (now: number) => string
 
 export const PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION = "Use this skill as a reusable prompt."
 
+export type PromptLibrarySkillLike = {
+  name: string
+  description?: string | null
+  instructions?: string | null
+}
+
 export function isSlashCommandPromptName(name: string): boolean {
   return /^\/\S+/.test(name.trim())
 }
 
 export function isSlashCommandPrompt(prompt: Pick<PredefinedPromptSummary, "name">): boolean {
   return isSlashCommandPromptName(prompt.name)
+}
+
+export function getPromptLibrarySkillDescription(skill: PromptLibrarySkillLike): string {
+  return skill.description?.trim() || PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION
+}
+
+export function getPromptLibrarySkillContent(skill: PromptLibrarySkillLike): string {
+  const instructions = skill.instructions?.trim()
+  if (instructions) return instructions
+
+  const description = skill.description?.trim()
+  return `Use the "${skill.name}" skill for this request.${description ? `\n\n${description}` : ""}`
 }
 
 export function createPredefinedPromptId(now: number, random: () => number = Math.random): string {

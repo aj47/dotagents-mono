@@ -4,6 +4,8 @@ import {
   createPredefinedPromptId,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  getPromptLibrarySkillContent,
+  getPromptLibrarySkillDescription,
   isSlashCommandPrompt,
   isSlashCommandPromptName,
   PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION,
@@ -20,6 +22,24 @@ describe("predefined prompt helpers", () => {
     expect(isSlashCommandPromptName("/")).toBe(false)
     expect(isSlashCommandPromptName("standup")).toBe(false)
     expect(isSlashCommandPrompt({ name: "/ship" })).toBe(true)
+  })
+
+  it("builds shared prompt-library skill labels and content", () => {
+    expect(getPromptLibrarySkillDescription({
+      name: "Research",
+      description: "  Find sources  ",
+    })).toBe("Find sources")
+    expect(getPromptLibrarySkillDescription({ name: "Research" })).toBe(PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION)
+    expect(getPromptLibrarySkillContent({
+      name: "Research",
+      instructions: "  Use citations.  ",
+      description: "Find sources",
+    })).toBe("Use citations.")
+    expect(getPromptLibrarySkillContent({
+      name: "Research",
+      description: "Find sources",
+    })).toBe('Use the "Research" skill for this request.\n\nFind sources')
+    expect(getPromptLibrarySkillContent({ name: "Research" })).toBe('Use the "Research" skill for this request.')
   })
 
   it("creates stable prompt ids and trimmed records", () => {
