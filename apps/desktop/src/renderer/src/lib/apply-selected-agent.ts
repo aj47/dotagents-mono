@@ -1,8 +1,6 @@
 import { toast } from "sonner"
 import {
-  getDefaultAgentProfile,
-  getEnabledAgentProfiles,
-  getSelectedAgentProfile,
+  resolveAgentProfileIdForNextSession,
 } from "@dotagents/shared/agent-selector-options"
 
 import type { AgentProfile } from "@shared/types"
@@ -28,27 +26,22 @@ export async function applySelectedAgentToNextSession({
     const agents = agentProfiles && agentProfiles.length > 0
       ? agentProfiles
       : ((await tipcClient.getAgentProfiles()) as AgentProfile[])
-    const enabledAgents = getEnabledAgentProfiles(agents)
+    const selection = resolveAgentProfileIdForNextSession(
+      agents,
+      selectedAgentId,
+    )
 
-    let agentIdToApply: string | null
-    if (selectedAgentId) {
-      const selectedAgent = getSelectedAgentProfile(enabledAgents, selectedAgentId)
-      if (!selectedAgent) {
-        setSelectedAgentId(null)
-        if (!silent) {
-          toast.error("Selected agent is no longer available")
-        }
-        return false
+    if (selection.status === "stale-selection") {
+      setSelectedAgentId(null)
+      if (!silent) {
+        toast.error("Selected agent is no longer available")
       }
-      agentIdToApply = selectedAgent.id
-    } else {
-      const defaultAgent = getDefaultAgentProfile(enabledAgents)
-      agentIdToApply = defaultAgent?.id ?? null
+      return false
     }
 
-    if (!agentIdToApply) return true
+    if (selection.status === "no-agent") return true
 
-    const result = await tipcClient.setCurrentAgentProfile({ id: agentIdToApply })
+    const result = await tipcClient.setCurrentAgentProfile({ id: selection.agentId })
     if (!result?.success) {
       throw new Error("setCurrentAgentProfile returned success=false")
     }

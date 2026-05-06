@@ -33,6 +33,11 @@ export type AgentSelectorSettings = {
   acpxAgents?: MainAcpLegacyAgentCandidate[]
 } | null | undefined
 
+export type NextSessionAgentSelectionResult =
+  | { status: "selected"; agentId: string }
+  | { status: "no-agent" }
+  | { status: "stale-selection" }
+
 export function getEnabledAgentProfiles<T extends { enabled?: boolean }>(profiles: T[] = []): T[] {
   return profiles.filter((profile) => profile.enabled !== false)
 }
@@ -69,6 +74,25 @@ export function getDisplayAgentProfile<T extends AgentSelectorProfileCandidate>(
   selectedAgentId?: string | null,
 ): T | undefined {
   return getSelectedAgentProfile(profiles, selectedAgentId) ?? getDefaultAgentProfile(profiles)
+}
+
+export function resolveAgentProfileIdForNextSession<T extends AgentSelectorProfileCandidate>(
+  profiles: T[] = [],
+  selectedAgentId?: string | null,
+): NextSessionAgentSelectionResult {
+  const enabledProfiles = getEnabledAgentProfiles(profiles)
+
+  if (selectedAgentId) {
+    const selectedAgent = getSelectedAgentProfile(enabledProfiles, selectedAgentId)
+    return selectedAgent
+      ? { status: "selected", agentId: selectedAgent.id }
+      : { status: "stale-selection" }
+  }
+
+  const defaultAgent = getDefaultAgentProfile(enabledProfiles)
+  return defaultAgent
+    ? { status: "selected", agentId: defaultAgent.id }
+    : { status: "no-agent" }
 }
 
 export function toSelectableAgentProfile(profile: AgentSelectorProfileCandidate): SelectableAgentProfile {

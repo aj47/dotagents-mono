@@ -5,6 +5,7 @@ import {
   getDefaultAgentProfile,
   getDisplayAgentProfile,
   getEnabledAgentProfiles,
+  resolveAgentProfileIdForNextSession,
   sortAgentProfilesWithDefaultFirst,
   toSelectableAgentProfile,
 } from "./agent-selector-options"
@@ -60,6 +61,54 @@ describe("agent selector option helpers", () => {
 
     expect(getDisplayAgentProfile(profiles, "helper")?.id).toBe("helper")
     expect(getDisplayAgentProfile(profiles, "missing")?.id).toBe("main")
+  })
+
+  it("resolves the selected enabled agent for the next session", () => {
+    expect(
+      resolveAgentProfileIdForNextSession(
+        [
+          { id: "main", name: "main-agent" },
+          { id: "helper", name: "helper" },
+        ],
+        "helper",
+      ),
+    ).toEqual({ status: "selected", agentId: "helper" })
+  })
+
+  it("reports stale selected agents instead of silently falling back", () => {
+    expect(
+      resolveAgentProfileIdForNextSession(
+        [
+          { id: "main", name: "main-agent" },
+          { id: "disabled-helper", name: "helper", enabled: false },
+        ],
+        "disabled-helper",
+      ),
+    ).toEqual({ status: "stale-selection" })
+
+    expect(
+      resolveAgentProfileIdForNextSession(
+        [{ id: "main", name: "main-agent" }],
+        "missing",
+      ),
+    ).toEqual({ status: "stale-selection" })
+  })
+
+  it("resolves the default enabled agent when there is no selected agent", () => {
+    expect(
+      resolveAgentProfileIdForNextSession([
+        { id: "disabled-default", name: "main-agent", enabled: false },
+        { id: "first-enabled", name: "first" },
+      ]),
+    ).toEqual({ status: "selected", agentId: "first-enabled" })
+  })
+
+  it("allows starting without applying an agent when no profiles are enabled", () => {
+    expect(
+      resolveAgentProfileIdForNextSession([
+        { id: "disabled", name: "main-agent", enabled: false },
+      ]),
+    ).toEqual({ status: "no-agent" })
   })
 
   it("builds selectable profile entries from API profiles", () => {
