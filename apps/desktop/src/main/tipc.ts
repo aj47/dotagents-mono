@@ -88,6 +88,7 @@ import { generateTTS } from "./tts-service"
 import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus, getRemoteServerPairingApiKey } from "./remote-server"
 import { getDiscordLifecycleAction } from "./discord-config"
 import { discordService } from "./discord-service"
+import { applyDesktopShellSettings } from "./desktop-shell-settings"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
@@ -2127,39 +2128,7 @@ export const router = {
         // best-effort only; cache will eventually expire
       }
 
-      // Apply login item setting when configuration changes (production only; dev would launch bare Electron)
-      try {
-        if ((process.env.NODE_ENV === "production" || !process.env.ELECTRON_RENDERER_URL) && process.platform !== "linux") {
-          app.setLoginItemSettings({
-            openAtLogin: !!merged.launchAtLogin,
-            openAsHidden: true,
-          })
-        }
-      } catch (_e) {
-        // best-effort only
-      }
-
-      // Apply dock icon visibility changes immediately (macOS only)
-      if (process.env.IS_MAC) {
-        try {
-          const prevHideDock = !!(prev as any)?.hideDockIcon
-          const nextHideDock = !!(merged as any)?.hideDockIcon
-
-          if (prevHideDock !== nextHideDock) {
-            if (nextHideDock) {
-              // User wants to hide dock icon - hide it now
-              app.setActivationPolicy("accessory")
-              app.dock.hide()
-            } else {
-              // User wants to show dock icon - show it now
-              app.dock.show()
-              app.setActivationPolicy("regular")
-            }
-          }
-        } catch (_e) {
-          // best-effort only
-        }
-      }
+      applyDesktopShellSettings(prev, merged)
 
       // Manage Remote Server lifecycle on config changes
       try {

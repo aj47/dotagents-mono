@@ -184,6 +184,7 @@ export interface SettingsActionOptions<TConfig extends SettingsActionConfigLike 
   getDiscordLifecycleAction(prev: TConfig, next: TConfig): SettingsLifecycleAction;
   applyDiscordLifecycleAction(action: SettingsLifecycleAction): SettingsMaybePromise<void>;
   applyWhatsappToggle(prevEnabled: boolean, nextEnabled: boolean): SettingsMaybePromise<void>;
+  applyDesktopShellSettings?(prev: TConfig, next: TConfig): SettingsMaybePromise<void>;
 }
 
 function getRequestRecord(body: unknown): Record<string, unknown> {
@@ -266,6 +267,8 @@ export function buildSettingsResponse(
     themePreference: cfg.themePreference ?? 'system',
     floatingPanelAutoShow: cfg.floatingPanelAutoShow ?? true,
     hidePanelWhenMainFocused: cfg.hidePanelWhenMainFocused ?? true,
+    hideDockIcon: cfg.hideDockIcon ?? false,
+    launchAtLogin: cfg.launchAtLogin ?? false,
     panelPosition: cfg.panelPosition ?? 'top-right',
     panelCustomPosition: cfg.panelCustomPosition,
     panelDragEnabled: cfg.panelDragEnabled ?? true,
@@ -508,6 +511,14 @@ export async function updateSettingsAction<TConfig extends SettingsActionConfigL
     await options.config.save(nextConfig);
     options.diagnostics.logInfo('settings-actions', `Updated settings: ${Object.keys(updates).join(', ')}`);
 
+    if (updates.hideDockIcon !== undefined || updates.launchAtLogin !== undefined) {
+      try {
+        await options.applyDesktopShellSettings?.(cfg, nextConfig);
+      } catch {
+        // Desktop shell changes are best-effort; saved config remains authoritative.
+      }
+    }
+
     const discordLifecycleAction = options.getDiscordLifecycleAction(cfg, nextConfig);
     await options.applyDiscordLifecycleAction(discordLifecycleAction);
 
@@ -694,6 +705,8 @@ export function buildSettingsUpdatePatch(
   }
   if (typeof requestBody.floatingPanelAutoShow === 'boolean') updates.floatingPanelAutoShow = requestBody.floatingPanelAutoShow;
   if (typeof requestBody.hidePanelWhenMainFocused === 'boolean') updates.hidePanelWhenMainFocused = requestBody.hidePanelWhenMainFocused;
+  if (typeof requestBody.hideDockIcon === 'boolean') updates.hideDockIcon = requestBody.hideDockIcon;
+  if (typeof requestBody.launchAtLogin === 'boolean') updates.launchAtLogin = requestBody.launchAtLogin;
   if (typeof requestBody.panelPosition === 'string' && PANEL_POSITIONS.includes(requestBody.panelPosition as typeof PANEL_POSITIONS[number])) {
     updates.panelPosition = requestBody.panelPosition;
   }

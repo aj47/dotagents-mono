@@ -19,6 +19,7 @@ import {
   getMaskedDiscordBotToken,
 } from "./discord-config"
 import { diagnosticsService } from "./diagnostics"
+import { applyDesktopShellSettings } from "./desktop-shell-settings"
 import { discordService } from "./discord-service"
 import { handleWhatsAppToggle } from "./mcp-service"
 
@@ -58,6 +59,7 @@ const settingsActionOptions: SettingsActionOptions<Config> = {
   getDiscordLifecycleAction,
   applyDiscordLifecycleAction,
   applyWhatsappToggle: handleWhatsAppToggle,
+  applyDesktopShellSettings,
 }
 
 export function getSettings(providerSecretMask: string): SettingsActionResult {

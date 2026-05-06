@@ -106,6 +106,8 @@ describe('SettingsApiClient', () => {
         themePreference: 'dark',
         floatingPanelAutoShow: false,
         hidePanelWhenMainFocused: false,
+        hideDockIcon: true,
+        launchAtLogin: true,
         panelPosition: 'custom',
         panelCustomPosition: { x: 10.4, y: -20.6 },
         panelDragEnabled: false,
@@ -144,6 +146,8 @@ describe('SettingsApiClient', () => {
       themePreference: 'dark',
       floatingPanelAutoShow: false,
       hidePanelWhenMainFocused: false,
+      hideDockIcon: true,
+      launchAtLogin: true,
       panelPosition: 'custom',
       panelCustomPosition: { x: 10, y: -21 },
       panelDragEnabled: false,
@@ -195,6 +199,8 @@ describe('SettingsApiClient', () => {
         themePreference: 'light',
         floatingPanelAutoShow: false,
         hidePanelWhenMainFocused: false,
+        hideDockIcon: true,
+        launchAtLogin: true,
         panelPosition: 'bottom-left',
         panelCustomPosition: { x: 40, y: 80 },
         panelDragEnabled: false,
@@ -249,6 +255,8 @@ describe('SettingsApiClient', () => {
       themePreference: 'light',
       floatingPanelAutoShow: false,
       hidePanelWhenMainFocused: false,
+      hideDockIcon: true,
+      launchAtLogin: true,
       panelPosition: 'bottom-left',
       panelCustomPosition: { x: 40, y: 80 },
       panelDragEnabled: false,
@@ -335,6 +343,8 @@ describe('SettingsApiClient', () => {
       remoteServerPort: 3210,
       discordEnabled: false,
       whatsappEnabled: false,
+      hideDockIcon: false,
+      launchAtLogin: false,
       mcpMaxIterations: 10,
       modelPresets: [],
     };
@@ -368,6 +378,15 @@ describe('SettingsApiClient', () => {
           nextEnabled,
         });
       },
+      applyDesktopShellSettings: async (prev, next) => {
+        lifecycleCalls.push({
+          type: 'desktop-shell',
+          prevHideDock: prev.hideDockIcon,
+          nextHideDock: next.hideDockIcon,
+          prevLaunchAtLogin: prev.launchAtLogin,
+          nextLaunchAtLogin: next.launchAtLogin,
+        });
+      },
     };
 
     expect(getSettingsAction('MASKED', options)).toMatchObject({
@@ -384,6 +403,8 @@ describe('SettingsApiClient', () => {
       remoteServerEnabled: true,
       discordEnabled: true,
       whatsappEnabled: true,
+      hideDockIcon: true,
+      launchAtLogin: true,
       mcpMaxIterations: 20,
     }, {
       providerSecretMask: 'MASKED',
@@ -393,7 +414,7 @@ describe('SettingsApiClient', () => {
       statusCode: 200,
       body: {
         success: true,
-        updated: ['whatsappEnabled', 'discordEnabled', 'mcpMaxIterations', 'remoteServerEnabled'],
+        updated: ['whatsappEnabled', 'discordEnabled', 'mcpMaxIterations', 'hideDockIcon', 'launchAtLogin', 'remoteServerEnabled'],
       },
       remoteServerLifecycleAction: 'start',
       auditContext: {
@@ -410,6 +431,8 @@ describe('SettingsApiClient', () => {
       remoteServerEnabled: true,
       discordEnabled: true,
       whatsappEnabled: true,
+      hideDockIcon: true,
+      launchAtLogin: true,
       mcpMaxIterations: 20,
     });
     expect(savedConfigs).toHaveLength(1);
@@ -417,10 +440,17 @@ describe('SettingsApiClient', () => {
       {
         level: 'info',
         source: 'settings-actions',
-        message: 'Updated settings: whatsappEnabled, discordEnabled, mcpMaxIterations, remoteServerEnabled',
+        message: 'Updated settings: whatsappEnabled, discordEnabled, mcpMaxIterations, hideDockIcon, launchAtLogin, remoteServerEnabled',
       },
     ]);
     expect(lifecycleCalls).toEqual([
+      {
+        type: 'desktop-shell',
+        prevHideDock: false,
+        nextHideDock: true,
+        prevLaunchAtLogin: false,
+        nextLaunchAtLogin: true,
+      },
       { type: 'discord', action: 'start' },
       { type: 'whatsapp', prevEnabled: false, nextEnabled: true },
     ]);

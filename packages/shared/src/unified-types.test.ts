@@ -25,6 +25,7 @@ import type {
   ConversationStorageConfig,
   DesktopDisplayConfig,
   DesktopPanelLayoutConfig,
+  DesktopShellConfig,
   PredefinedPrompt,
   PredefinedPromptsConfig,
   SpeechToTextConfig,
@@ -460,6 +461,20 @@ describe('settings API request/response contracts', () => {
     expect(update.themePreference).toBe('dark')
   })
 
+  it('accepts desktop shell settings through the shared settings API', () => {
+    const config: DesktopShellConfig = {
+      hideDockIcon: true,
+      launchAtLogin: true,
+    }
+    const update: SettingsUpdate = {
+      ...config,
+    }
+
+    assertType<DesktopShellConfig>(config)
+    assertType<SettingsUpdate>(update)
+    expect(update.launchAtLogin).toBe(true)
+  })
+
   it('accepts desktop panel layout settings through the shared settings API', () => {
     const config: DesktopPanelLayoutConfig = {
       panelPosition: 'custom',
@@ -530,9 +545,14 @@ describe('settings API request/response contracts', () => {
       transcriptPostProcessingChatgptWebModel: 'gpt-5.1-codex',
       transcriptPostProcessingPrompt: 'Clean up punctuation only.',
     }
+    const update: SettingsUpdate = {
+      ...config,
+    }
 
     assertType<TranscriptPostProcessingConfig>(config)
+    assertType<SettingsUpdate>(update)
     expect(config.transcriptPostProcessingProviderId).toBe('gemini')
+    expect(update.transcriptPostProcessingPrompt).toBe('Clean up punctuation only.')
   })
 
   it('accepts text-to-speech config shared by desktop and mobile settings', () => {
