@@ -171,6 +171,11 @@
       "import": "./dist/error-utils.mjs",
       "require": "./dist/error-utils.js"
     },
+    "./config-save-error": {
+      "types": "./dist/config-save-error.d.ts",
+      "import": "./dist/config-save-error.mjs",
+      "require": "./dist/config-save-error.js"
+    },
     "./tool-activity-grouping": {
       "types": "./dist/tool-activity-grouping.d.ts",
       "import": "./dist/tool-activity-grouping.mjs",

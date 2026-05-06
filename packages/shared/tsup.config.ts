@@ -35,6 +35,7 @@ export default defineConfig({
     'stt-models': 'src/stt-models.ts',
     'api-key-error-utils': 'src/api-key-error-utils.ts',
     'error-utils': 'src/error-utils.ts',
+    'config-save-error': 'src/config-save-error.ts',
     'tool-activity-grouping': 'src/tool-activity-grouping.ts',
     'main-agent-selection': 'src/main-agent-selection.ts',
     'agent-profile-presets': 'src/agent-profile-presets.ts',
