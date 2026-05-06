@@ -18,7 +18,7 @@ import {
   getDiscordLifecycleAction,
   getDiscordResolvedDefaultProfileId,
   getMaskedDiscordBotToken,
-} from "./discord-config"
+} from "@dotagents/shared/discord-config"
 import { diagnosticsService } from "./diagnostics"
 import { applyDesktopShellSettings } from "./desktop-shell-settings"
 import { discordService } from "./discord-service"
@@ -52,11 +52,11 @@ const settingsActionOptions: SettingsActionOptions<Config> = {
   },
   diagnostics: diagnosticsService,
   getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey),
-  getMaskedDiscordBotToken,
-  getDiscordDefaultProfileId: (config) => getDiscordResolvedDefaultProfileId(config).profileId ?? "",
+  getMaskedDiscordBotToken: (config) => getMaskedDiscordBotToken(config, process.env),
+  getDiscordDefaultProfileId: (config) => getDiscordResolvedDefaultProfileId(config, process.env).profileId ?? "",
   getAcpxAgents: () => getEnabledAcpxAgentProfiles(agentProfileService.getAll())
     .map(p => ({ name: p.name, displayName: p.displayName })),
-  getDiscordLifecycleAction,
+  getDiscordLifecycleAction: (prev, next) => getDiscordLifecycleAction(prev, next, process.env),
   applyDiscordLifecycleAction,
   applyWhatsappToggle: handleWhatsAppToggle,
   applyDesktopShellSettings,

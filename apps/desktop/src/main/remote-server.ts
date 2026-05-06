@@ -1,6 +1,6 @@
 import { app } from "electron"
 import { configStore } from "./config"
-import { DISCORD_SECRET_MASK } from "./discord-config"
+import { DISCORD_SECRET_MASK } from "@dotagents/shared/discord-config"
 import { diagnosticsService } from "./diagnostics"
 import { notifyConversationHistoryChanged } from "./conversation-history-notifier"
 import { runAgent } from "./remote-agent-runner"

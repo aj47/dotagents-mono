@@ -9,7 +9,7 @@ import {
   getDiscordResolvedDefaultProfileId,
   getDiscordResolvedToken,
   getMaskedDiscordBotToken,
-} from "./discord-config"
+} from "@dotagents/shared/discord-config"
 
 describe("discord config helpers", () => {
   it("re-exports shared Discord integration defaults", () => {
@@ -41,10 +41,8 @@ describe("discord config helpers", () => {
   })
 
   it("treats clearing the bot token while enabled as an implicit stop", () => {
-    // The default `env` parameter is `process.env`. To prevent these
-    // assertions from being affected by an ambient
-    // DOTAGENTS_DISCORD_BOT_TOKEN in the developer's shell, all calls in
-    // this test pass an empty env explicitly.
+    // Pass an empty env explicitly so these assertions stay independent of
+    // any ambient DOTAGENTS_DISCORD_BOT_TOKEN in the developer's shell.
     const emptyEnv = {} as unknown as NodeJS.ProcessEnv
 
     // Clearing the token should not trigger restart (which would fail with

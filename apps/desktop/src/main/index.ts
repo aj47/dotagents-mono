@@ -51,7 +51,7 @@ import { startAgentsFolderWatcher } from "./agents-folder-watcher"
 import { setHeadlessMode } from "./state"
 import { stopRemoteServer } from "./remote-server"
 import { discordService } from "./discord-service"
-import { DEFAULT_DISCORD_ENABLED } from "./discord-config"
+import { DEFAULT_DISCORD_ENABLED } from "@dotagents/shared/discord-config"
 import { findHubBundleHandoffFilePath } from "./bundle-service"
 import {
   downloadHubBundleToTempFile,

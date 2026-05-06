@@ -99,7 +99,7 @@ import { generateTTS } from "./tts-service"
 
 
 import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus, getRemoteServerPairingApiKey } from "./remote-server"
-import { getDiscordLifecycleAction } from "./discord-config"
+import { getDiscordLifecycleAction } from "@dotagents/shared/discord-config"
 import { discordService } from "./discord-service"
 import { applyDesktopShellSettings } from "./desktop-shell-settings"
 import { emitAgentProgress } from "./emit-agent-progress"
@@ -2178,7 +2178,7 @@ export const router = {
       }
 
       try {
-        const discordLifecycleAction = getDiscordLifecycleAction(prev, merged)
+        const discordLifecycleAction = getDiscordLifecycleAction(prev, merged, process.env)
         if (discordLifecycleAction === "start") {
           await discordService.start()
         } else if (discordLifecycleAction === "restart") {

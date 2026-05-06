@@ -11,7 +11,7 @@ import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
 import { discordService } from "./discord-service"
-import { getDiscordLifecycleAction } from "./discord-config"
+import { getDiscordLifecycleAction } from "@dotagents/shared/discord-config"
 import { emergencyStopAll } from "./emergency-stop"
 import { getErrorMessage } from "@dotagents/shared/error-utils"
 import type { SessionProfileSnapshot } from "@dotagents/core"
@@ -138,7 +138,7 @@ async function saveDiscordConfig(partial: Partial<Config>, successMessage: strin
     return false
   }
 
-  const lifecycleAction = getDiscordLifecycleAction(prev, next)
+  const lifecycleAction = getDiscordLifecycleAction(prev, next, process.env)
   let lifecycleError: string | undefined
   if (lifecycleAction === "start") {
     const result = await discordService.start()

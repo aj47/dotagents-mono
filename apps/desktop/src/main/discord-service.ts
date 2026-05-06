@@ -11,7 +11,7 @@ import {
   DEFAULT_DISCORD_REQUIRE_MENTION,
   getDiscordResolvedDefaultProfileId,
   getDiscordResolvedToken,
-} from "./discord-config"
+} from "@dotagents/shared/discord-config"
 import {
   canUseMutatingSlashCommand,
   canUseReadOnlySlashCommand,
@@ -898,8 +898,8 @@ class DiscordService {
 
   getStatus(): DiscordStatus {
     const cfg = configStore.get()
-    const token = getDiscordResolvedToken(cfg)
-    const defaultProfile = getDiscordResolvedDefaultProfileId(cfg)
+    const token = getDiscordResolvedToken(cfg, process.env)
+    const defaultProfile = getDiscordResolvedDefaultProfileId(cfg, process.env)
     const dependencyStatus = getDiscordDependencyStatus()
     const profile = defaultProfile.profileId
       ? agentProfileService.getById(defaultProfile.profileId)
@@ -935,7 +935,7 @@ class DiscordService {
 
     const cfg = configStore.get()
     const dependencyStatus = getDiscordDependencyStatus()
-    const token = getDiscordResolvedToken(cfg).token
+    const token = getDiscordResolvedToken(cfg, process.env).token
     if (!(cfg.discordEnabled ?? DEFAULT_DISCORD_ENABLED)) {
       const error = "Discord integration is disabled"
       this.setStatus({ enabled: false, connected: false, connecting: false, lastError: error })
@@ -1208,7 +1208,7 @@ class DiscordService {
       return
     }
 
-    let profileId = getDiscordResolvedDefaultProfileId(cfg).profileId
+    let profileId = getDiscordResolvedDefaultProfileId(cfg, process.env).profileId
     let profile = profileId ? agentProfileService.getById(profileId) : undefined
 
     // Fall back to the current/default agent profile when none is explicitly configured
