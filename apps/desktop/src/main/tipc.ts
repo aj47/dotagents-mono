@@ -46,15 +46,21 @@ import {
 } from "electron"
 import path from "path"
 import { configStore, recordingsFolder, conversationsFolder } from "./config"
-import {
-  Config,
-  RecordingHistoryItem,
-  MCPConfig,
-  MCPServerConfig,
+import type { AgentProgressUpdate, AgentStepSummary } from "@dotagents/shared/agent-progress"
+import type {
   Conversation,
   ConversationHistoryItem,
-  AgentProgressUpdate,
-} from "../shared/types"
+  ConversationMessage,
+} from "@dotagents/shared/conversation-domain"
+import type {
+  KnowledgeNote,
+  KnowledgeNoteContext,
+  KnowledgeNoteDateFilter,
+  KnowledgeNoteSort,
+} from "@dotagents/shared/knowledge-note-domain"
+import type { MCPConfig, MCPServerConfig } from "@dotagents/shared/mcp-utils"
+import type { RecordingHistoryItem } from "@dotagents/shared/types"
+import type { Config } from "../shared/types"
 import type {
   AgentProfile,
   AgentProfileConnection,
@@ -3551,7 +3557,7 @@ export const router = {
   setAgentProfileConversation: t.procedure
     .input<{
       profileId: string
-      messages: import("@shared/types").ConversationMessage[]
+      messages: ConversationMessage[]
     }>()
     .action(async ({ input }) => {
       agentProfileService.setConversation(input.profileId, input.messages)
@@ -4292,9 +4298,9 @@ export const router = {
   // Knowledge notes service handlers
   getAllKnowledgeNotes: t.procedure
     .input<{
-      context?: import("../shared/types").KnowledgeNoteContext
-      dateFilter?: import("../shared/types").KnowledgeNoteDateFilter
-      sort?: import("../shared/types").KnowledgeNoteSort
+      context?: KnowledgeNoteContext
+      dateFilter?: KnowledgeNoteDateFilter
+      sort?: KnowledgeNoteSort
       limit?: number
     }>()
     .action(async ({ input }) => {
@@ -4308,8 +4314,8 @@ export const router = {
 
   getKnowledgeNotesOverview: t.procedure
     .input<{
-      context?: import("../shared/types").KnowledgeNoteContext
-      dateFilter?: import("../shared/types").KnowledgeNoteDateFilter
+      context?: KnowledgeNoteContext
+      dateFilter?: KnowledgeNoteDateFilter
     }>()
     .action(async ({ input }) => {
       return knowledgeNotesService.getOverview({ context: input?.context, dateFilter: input?.dateFilter })
@@ -4319,9 +4325,9 @@ export const router = {
     .input<{
       groupKey: string
       seriesKey?: string
-      context?: import("../shared/types").KnowledgeNoteContext
-      dateFilter?: import("../shared/types").KnowledgeNoteDateFilter
-      sort?: import("../shared/types").KnowledgeNoteSort
+      context?: KnowledgeNoteContext
+      dateFilter?: KnowledgeNoteDateFilter
+      sort?: KnowledgeNoteSort
     }>()
     .action(async ({ input }) => {
       return knowledgeNotesService.getNotesByGroup(input)
@@ -4335,7 +4341,7 @@ export const router = {
 
   saveKnowledgeNoteFromSummary: t.procedure
     .input<{
-      summary: import("../shared/types").AgentStepSummary
+      summary: AgentStepSummary
       title?: string
       userNotes?: string
       tags?: string[]
@@ -4360,7 +4366,7 @@ export const router = {
 
   saveKnowledgeNote: t.procedure
     .input<{
-      note: import("../shared/types").KnowledgeNote
+      note: KnowledgeNote
     }>()
     .action(async ({ input }) => {
       return knowledgeNotesService.saveNote(input.note)
@@ -4369,7 +4375,7 @@ export const router = {
   updateKnowledgeNote: t.procedure
     .input<{
       id: string
-      updates: Partial<Omit<import("../shared/types").KnowledgeNote, "id" | "createdAt">>
+      updates: Partial<Omit<KnowledgeNote, "id" | "createdAt">>
     }>()
     .action(async ({ input }) => {
       return knowledgeNotesService.updateNote(input.id, input.updates)
@@ -4403,9 +4409,9 @@ export const router = {
   searchKnowledgeNotes: t.procedure
     .input<{
       query: string
-      context?: import("../shared/types").KnowledgeNoteContext
-      dateFilter?: import("../shared/types").KnowledgeNoteDateFilter
-      sort?: import("../shared/types").KnowledgeNoteSort
+      context?: KnowledgeNoteContext
+      dateFilter?: KnowledgeNoteDateFilter
+      sort?: KnowledgeNoteSort
       limit?: number
     }>()
     .action(async ({ input }) => {
