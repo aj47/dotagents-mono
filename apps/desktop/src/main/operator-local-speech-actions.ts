@@ -10,7 +10,7 @@ import type {
 } from "@dotagents/shared/api-types"
 import type { OperatorRouteActionResult } from "@dotagents/shared/remote-server-route-contracts"
 import { diagnosticsService } from "./diagnostics"
-import { getErrorMessage } from "./error-utils"
+import { getErrorMessage } from "@dotagents/shared/error-utils"
 
 export type OperatorLocalSpeechActionResult = OperatorRouteActionResult
 

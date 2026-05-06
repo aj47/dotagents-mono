@@ -13,7 +13,7 @@ import {
 import type { OperatorRouteActionResult } from "@dotagents/shared/remote-server-route-contracts"
 import { diagnosticsService } from "./diagnostics"
 import { discordService } from "./discord-service"
-import { getErrorMessage } from "./error-utils"
+import { getErrorMessage } from "@dotagents/shared/error-utils"
 import { mcpService, WHATSAPP_SERVER_NAME } from "./mcp-service"
 import {
   buildOperatorIntegrationsSummary,

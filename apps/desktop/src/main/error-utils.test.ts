@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getErrorMessage, normalizeError } from "./error-utils"
+import { getErrorMessage, normalizeError } from "@dotagents/shared/error-utils"
 
 describe("error-utils", () => {
   it("returns fallback for nullish thrown values", () => {

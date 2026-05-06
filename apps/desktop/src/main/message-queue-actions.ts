@@ -10,7 +10,7 @@ import { agentSessionTracker } from "./agent-session-tracker"
 import { processWithAgentMode } from "./agent-loop-runner"
 import { conversationService } from "./conversation-service"
 import { logLLM } from "./debug"
-import { getErrorMessage } from "./error-utils"
+import { getErrorMessage } from "@dotagents/shared/error-utils"
 import { messageQueueService } from "./message-queue-service"
 import { WINDOWS } from "./window"
 

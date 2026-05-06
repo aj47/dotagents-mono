@@ -4,7 +4,7 @@ import {
   isSafeConversationVideoAssetFileName,
 } from "@dotagents/shared/conversation-media-assets"
 import { conversationsFolder } from "./config"
-import { assertSafeConversationId } from "./conversation-id"
+import { assertSafeConversationId } from "@dotagents/shared/conversation-id"
 
 export {
   CONVERSATION_VIDEO_ASSET_HOST,

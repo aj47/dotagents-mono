@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { resolveMainAcpAgentSelection, resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
+import { resolveMainAcpAgentSelection, resolvePreferredTopLevelAcpAgentSelection } from "@dotagents/shared/main-agent-selection"
 
 describe("resolveMainAcpAgentSelection", () => {
   it("resolves acpx profile display names to canonical profile names", () => {

@@ -5,7 +5,7 @@ import {
   buildAgentConnectionCommandPreview,
   normalizeAgentConnectionArgs,
 } from "@dotagents/shared/agent-profile-connection"
-import { getErrorMessage } from "./error-utils"
+import { getErrorMessage } from "@dotagents/shared/error-utils"
 import { mcpService } from "./mcp-service"
 
 export interface ExternalAgentCommandVerificationInput {

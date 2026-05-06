@@ -7,7 +7,7 @@ import type { AgentRunExecutor } from "@dotagents/shared/agent-run-utils"
 import type { OperatorRouteActionResult } from "@dotagents/shared/remote-server-route-contracts"
 import { stopAgentSessionById } from "./agent-session-actions"
 import { diagnosticsService } from "./diagnostics"
-import { getErrorMessage } from "./error-utils"
+import { getErrorMessage } from "@dotagents/shared/error-utils"
 
 export type OperatorRunAgentExecutor = AgentRunExecutor
 

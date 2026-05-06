@@ -31,7 +31,7 @@ import type { OperatorRouteActionResult } from "@dotagents/shared/remote-server-
 import type { MCPServerConfig } from "@dotagents/shared/mcp-utils"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
-import { getErrorMessage } from "./error-utils"
+import { getErrorMessage } from "@dotagents/shared/error-utils"
 import { mcpService } from "./mcp-service"
 
 export type OperatorMcpActionResult = OperatorRouteActionResult

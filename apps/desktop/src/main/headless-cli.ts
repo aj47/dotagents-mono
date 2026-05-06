@@ -13,7 +13,7 @@ import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-p
 import { discordService } from "./discord-service"
 import { getDiscordLifecycleAction } from "./discord-config"
 import { emergencyStopAll } from "./emergency-stop"
-import { getErrorMessage } from "./error-utils"
+import { getErrorMessage } from "@dotagents/shared/error-utils"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import type { Config } from "@shared/types"

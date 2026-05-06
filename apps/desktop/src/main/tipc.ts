@@ -1,6 +1,6 @@
 import fs from "fs"
 import { logApp, logLLM, getDebugFlags } from "./debug"
-import { getErrorMessage } from "./error-utils"
+import { getErrorMessage } from "@dotagents/shared/error-utils"
 import { getRendererHandlers, tipc } from "@egoist/tipc/main"
 import {
   showPanelWindow,

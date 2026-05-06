@@ -1,5 +1,5 @@
 import fs from "fs"
-import { getConversationIdValidationError } from "./conversation-id"
+import { getConversationIdValidationError } from "@dotagents/shared/conversation-id"
 import { getConversationVideoAssetPath } from "./conversation-video-assets"
 import { conversationService } from "./conversation-service"
 import { diagnosticsService } from "./diagnostics"

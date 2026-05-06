@@ -72,7 +72,7 @@ import {
   filterEphemeralMessages,
   getEmptyResponseRetryPrompt,
   isInternalNudgeContent,
-} from "./conversation-history-utils"
+} from "@dotagents/shared/conversation-history-utils"
 import {
   filterNamedItemsToAllowedTools,
 } from "./llm-tool-gating"

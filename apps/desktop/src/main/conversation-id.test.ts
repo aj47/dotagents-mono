@@ -4,7 +4,7 @@ import {
   getConversationIdValidationError,
   sanitizeConversationId,
   validateAndSanitizeConversationId,
-} from "./conversation-id"
+} from "@dotagents/shared/conversation-id"
 
 describe("conversation-id", () => {
   it("accepts conversation IDs used by external integrations", () => {

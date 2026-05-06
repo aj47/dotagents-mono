@@ -15,7 +15,7 @@ import {
   hasMappedToolResultPrefix,
   isGeneratedContextSummaryContent,
   MAPPED_TOOL_RESULT_PREFIX_RE,
-} from "./conversation-history-utils"
+} from "@dotagents/shared/conversation-history-utils"
 import { DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED } from "@dotagents/shared/mcp-api"
 
 export type LLMMessage = { role: string; content: string }

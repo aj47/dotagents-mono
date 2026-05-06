@@ -8,7 +8,7 @@ import {
   isInternalNudgeContent,
   isRealUserRequestContent,
   type ConversationMessage,
-} from "./conversation-history-utils"
+} from "@dotagents/shared/conversation-history-utils"
 
 describe("conversation-history-utils", () => {
   describe("isInternalNudgeContent", () => {
