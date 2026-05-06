@@ -17,6 +17,10 @@ export const AGENT_STOP_NOTE =
   "(Agent mode was stopped by emergency kill switch)"
 export const AGENT_STOPPED_QUEUE_PAUSED_DESCRIPTION =
   "Agent mode was stopped by emergency kill switch. Queue paused."
+export const SESSION_STOPPED_BY_KILL_SWITCH_REASON =
+  "Session stopped by kill switch"
+export const ABORTED_BY_EMERGENCY_STOP_REASON =
+  "Aborted by emergency stop"
 
 export interface AgentRunOptions {
   prompt: string
@@ -130,6 +134,14 @@ export interface AgentRuntimeTuningConfig
     CompletionVerificationTuningConfig {}
 
 export type AgentSessionIdKind = "missing" | "pending" | "subsession" | "session" | "unknown"
+export type ExpectedAgentStopReason =
+  | typeof SESSION_STOPPED_BY_KILL_SWITCH_REASON
+  | typeof ABORTED_BY_EMERGENCY_STOP_REASON
+
+export interface ResolveExpectedAgentStopReasonOptions {
+  sessionShouldStop?: boolean
+  globalShouldStop?: boolean
+}
 
 export interface AgentIterationLimits {
   loopMaxIterations: number
@@ -235,6 +247,53 @@ export function appendAgentStopNote(content: string): string {
   return normalizedContent.length > 0
     ? `${normalizedContent}\n\n${AGENT_STOP_NOTE}`
     : AGENT_STOP_NOTE
+}
+
+export function getExplicitAgentStopReason(error: unknown): ExpectedAgentStopReason | null {
+  const message = error instanceof Error ? error.message : String(error)
+  const normalized = message.toLowerCase()
+
+  if (normalized.includes("session stopped by kill switch")) {
+    return SESSION_STOPPED_BY_KILL_SWITCH_REASON
+  }
+
+  if (normalized.includes("aborted by emergency stop")) {
+    return ABORTED_BY_EMERGENCY_STOP_REASON
+  }
+
+  return null
+}
+
+export function resolveExpectedAgentStopReason(
+  error: unknown,
+  options: ResolveExpectedAgentStopReasonOptions = {},
+): ExpectedAgentStopReason | null {
+  const explicitReason = getExplicitAgentStopReason(error)
+  if (explicitReason) return explicitReason
+
+  const message = error instanceof Error ? error.message : String(error)
+  const normalized = message.toLowerCase()
+  const normalizedName = error instanceof Error ? error.name.toLowerCase() : ""
+  const isKnownStopError =
+    normalizedName === "aborterror" ||
+    normalizedName.includes("abort") ||
+    normalizedName.includes("cancel") ||
+    normalized.includes("abort") ||
+    normalized.includes("cancel")
+
+  if (!isKnownStopError) {
+    return null
+  }
+
+  if (options.sessionShouldStop) {
+    return SESSION_STOPPED_BY_KILL_SWITCH_REASON
+  }
+
+  if (options.globalShouldStop) {
+    return ABORTED_BY_EMERGENCY_STOP_REASON
+  }
+
+  return null
 }
 
 export function buildAgentStoppedProgressUpdate(

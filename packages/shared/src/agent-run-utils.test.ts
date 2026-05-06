@@ -3,12 +3,16 @@ import { describe, expect, it } from 'vitest';
 import {
   AGENT_STOP_NOTE,
   AGENT_STOPPED_QUEUE_PAUSED_DESCRIPTION,
+  ABORTED_BY_EMERGENCY_STOP_REASON,
   DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET,
+  SESSION_STOPPED_BY_KILL_SWITCH_REASON,
   appendAgentStopNote,
   buildAgentStoppedProgressUpdate,
   buildProfileContext,
   describeAgentSessionId,
+  getExplicitAgentStopReason,
   getPreferredDelegationOutput,
+  resolveExpectedAgentStopReason,
   resolveAgentModeMaxIterations,
   resolveAgentIterationLimits,
   runRemoteAgentAction,
@@ -96,6 +100,32 @@ describe('appendAgentStopNote', () => {
     expect(appendAgentStopNote(`Finished work\n\n${AGENT_STOP_NOTE}`)).toBe(
       `Finished work\n\n${AGENT_STOP_NOTE}`,
     );
+  });
+});
+
+describe('expected agent stop reasons', () => {
+  it('detects explicit kill-switch and emergency-stop errors', () => {
+    expect(getExplicitAgentStopReason(new Error('Session stopped by kill switch'))).toBe(
+      SESSION_STOPPED_BY_KILL_SWITCH_REASON,
+    );
+    expect(getExplicitAgentStopReason('Aborted by emergency stop')).toBe(
+      ABORTED_BY_EMERGENCY_STOP_REASON,
+    );
+    expect(getExplicitAgentStopReason(new Error('Provider failed'))).toBeNull();
+  });
+
+  it('resolves abort-like errors only when caller state confirms a stop', () => {
+    const abortError = new Error('The request was aborted');
+    abortError.name = 'AbortError';
+
+    expect(resolveExpectedAgentStopReason(abortError)).toBeNull();
+    expect(resolveExpectedAgentStopReason(abortError, { sessionShouldStop: true })).toBe(
+      SESSION_STOPPED_BY_KILL_SWITCH_REASON,
+    );
+    expect(resolveExpectedAgentStopReason(abortError, { globalShouldStop: true })).toBe(
+      ABORTED_BY_EMERGENCY_STOP_REASON,
+    );
+    expect(resolveExpectedAgentStopReason(new Error('Provider failed'), { sessionShouldStop: true })).toBeNull();
   });
 });
 

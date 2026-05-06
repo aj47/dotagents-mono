@@ -55,6 +55,7 @@ import {
 import { INTERNAL_COMPLETION_NUDGE_TEXT } from "@dotagents/shared/mcp-api"
 import {
   appendAgentStopNote,
+  resolveExpectedAgentStopReason,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
 import { filterEphemeralMessages, isInternalNudgeContent } from "./conversation-history-utils"
@@ -154,42 +155,14 @@ function resolveProgressConversationState(update: Pick<AgentProgressUpdate, "con
 }
 
 function getExpectedStopReason(error: unknown, sessionId?: string): string | null {
-  const message = error instanceof Error ? error.message : String(error)
-  const normalized = message.toLowerCase()
-
-  if (normalized.includes("session stopped by kill switch")) {
-    return "Session stopped by kill switch"
-  }
-
-  if (normalized.includes("aborted by emergency stop")) {
-    return "Aborted by emergency stop"
-  }
-
-  const normalizedName = error instanceof Error ? error.name.toLowerCase() : ""
-  const isKnownStopError =
-    normalizedName === "aborterror" ||
-    normalizedName.includes("abort") ||
-    normalizedName.includes("cancel") ||
-    normalized.includes("abort") ||
-    normalized.includes("cancel")
-
-  if (!isKnownStopError) {
-    return null
-  }
-
-  if (
-    sessionId &&
-    agentSessionStateManager.isSessionRegistered(sessionId) &&
-    agentSessionStateManager.shouldStopSession(sessionId)
-  ) {
-    return "Session stopped by kill switch"
-  }
-
-  if (state.shouldStopAgent) {
-    return "Aborted by emergency stop"
-  }
-
-  return null
+  return resolveExpectedAgentStopReason(error, {
+    sessionShouldStop: !!(
+      sessionId &&
+      agentSessionStateManager.isSessionRegistered(sessionId) &&
+      agentSessionStateManager.shouldStopSession(sessionId)
+    ),
+    globalShouldStop: state.shouldStopAgent,
+  })
 }
 
 function getVerificationOutcomeDescription(state: AgentConversationState): string {

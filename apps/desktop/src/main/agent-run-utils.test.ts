@@ -3,12 +3,16 @@ import { describe, expect, it } from "vitest"
 import {
   AGENT_STOP_NOTE,
   AGENT_STOPPED_QUEUE_PAUSED_DESCRIPTION,
+  ABORTED_BY_EMERGENCY_STOP_REASON,
   DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET,
+  SESSION_STOPPED_BY_KILL_SWITCH_REASON,
   appendAgentStopNote,
   buildAgentStoppedProgressUpdate,
   buildProfileContext,
   describeAgentSessionId,
+  getExplicitAgentStopReason,
   getPreferredDelegationOutput,
+  resolveExpectedAgentStopReason,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
 
@@ -50,6 +54,23 @@ describe("appendAgentStopNote", () => {
   it("does not duplicate the emergency stop note", () => {
     expect(appendAgentStopNote(`Finished work\n\n${AGENT_STOP_NOTE}`)).toBe(
       `Finished work\n\n${AGENT_STOP_NOTE}`,
+    )
+  })
+})
+
+describe("expected agent stop reasons", () => {
+  it("re-exports shared stop reason helpers", () => {
+    const abortError = new Error("The request was aborted")
+    abortError.name = "AbortError"
+
+    expect(getExplicitAgentStopReason("Session stopped by kill switch")).toBe(
+      SESSION_STOPPED_BY_KILL_SWITCH_REASON,
+    )
+    expect(resolveExpectedAgentStopReason("Aborted by emergency stop")).toBe(
+      ABORTED_BY_EMERGENCY_STOP_REASON,
+    )
+    expect(resolveExpectedAgentStopReason(abortError, { sessionShouldStop: true })).toBe(
+      SESSION_STOPPED_BY_KILL_SWITCH_REASON,
     )
   })
 })

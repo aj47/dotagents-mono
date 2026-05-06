@@ -20,7 +20,7 @@ import { agentSessionTracker } from '../agent-session-tracker';
 import { emitAgentProgress } from '../emit-agent-progress';
 import { skillsService } from '../skills-service';
 import { agentProfileService, createSessionSnapshotFromProfile } from '../agent-profile-service';
-import { getPreferredDelegationOutput } from '../agent-run-utils';
+import { getExplicitAgentStopReason, getPreferredDelegationOutput } from '../agent-run-utils';
 import { configStore } from '../config';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
 import { stringifySubAgentToolResultContent } from '@dotagents/shared/delegation-tool-display'
@@ -31,15 +31,6 @@ import type { MCPToolCall, MCPToolResult } from '../mcp-service';
 const logSubSession = (...args: unknown[]) => {
   console.log(`[${new Date().toISOString()}] [InternalSubSession]`, ...args);
 };
-
-function isExpectedCancellationError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes('session stopped by kill switch') ||
-    normalized.includes('aborted by emergency stop')
-  );
-}
 
 // ============================================================================
 // Configuration & Limits
@@ -681,7 +672,7 @@ export async function runInternalSubSession(
 
   } catch (error) {
     const currentSubSession = activeSubSessions.get(subSessionId);
-    const wasCancelled = currentSubSession?.status === 'cancelled' || isExpectedCancellationError(error);
+    const wasCancelled = currentSubSession?.status === 'cancelled' || getExplicitAgentStopReason(error) !== null;
 
     subSession.status = wasCancelled ? 'cancelled' : 'failed';
     subSession.endTime = Date.now();
