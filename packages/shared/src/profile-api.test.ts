@@ -23,9 +23,11 @@ import {
   parseAgentProfileUpdateRequestBody,
   parseImportProfileRequestBody,
   parseSetCurrentProfileRequestBody,
+  parseVerifyExternalAgentCommandRequestBody,
   setCurrentProfileAction,
   toggleAgentProfileAction,
   updateAgentProfileAction,
+  verifyExternalAgentCommandAction,
 } from "./profile-api"
 
 describe("profile API helpers", () => {
@@ -89,6 +91,34 @@ describe("profile API helpers", () => {
         isUserProfile: false,
         isAgentTarget: true,
       },
+    })
+  })
+
+  it("parses external agent command verification requests", () => {
+    expect(parseVerifyExternalAgentCommandRequestBody({
+      command: " codex-acp ",
+      args: ["--stdio"],
+      cwd: "/workspace",
+      probeArgs: ["--help"],
+    })).toEqual({
+      ok: true,
+      request: {
+        command: "codex-acp",
+        args: ["--stdio"],
+        cwd: "/workspace",
+        probeArgs: ["--help"],
+      },
+    })
+
+    expect(parseVerifyExternalAgentCommandRequestBody({ command: " " })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "command is required and must be a non-empty string",
+    })
+    expect(parseVerifyExternalAgentCommandRequestBody({ command: "codex-acp", args: ["--stdio", 3] })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "args must be an array of strings",
     })
   })
 
@@ -531,6 +561,40 @@ describe("profile API helpers", () => {
       { name: "Renamed Agent", displayName: "Renamed Agent" },
     ])
     expect(deletedProfileIds).toEqual(["agent-1"])
+  })
+
+  it("runs external agent command verification through a shared action adapter", async () => {
+    const verified = {
+      ok: true,
+      resolvedCommand: "/usr/local/bin/codex-acp",
+      details: "Successfully ran codex-acp --help.",
+    }
+    const verificationRequests: unknown[] = []
+    const diagnostics = {
+      logInfo: () => {
+        throw new Error("unexpected info log")
+      },
+      logError: () => {
+        throw new Error("unexpected error log")
+      },
+    }
+
+    await expect(verifyExternalAgentCommandAction({
+      command: " codex-acp ",
+      probeArgs: ["--help"],
+    }, {
+      diagnostics,
+      service: {
+        verifyExternalAgentCommand: async (request) => {
+          verificationRequests.push(request)
+          return verified
+        },
+      },
+    })).resolves.toEqual({
+      statusCode: 200,
+      body: verified,
+    })
+    expect(verificationRequests).toEqual([{ command: "codex-acp", probeArgs: ["--help"] }])
   })
 
   it("returns shared agent profile route validation and state errors", () => {

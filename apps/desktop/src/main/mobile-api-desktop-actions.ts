@@ -13,6 +13,7 @@ import {
   getAgentProfiles,
   toggleAgentProfile,
   updateAgentProfile,
+  verifyExternalAgentCommand,
 } from "./agent-profile-actions"
 import {
   createConversation,
@@ -139,6 +140,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   deleteMultipleKnowledgeNotes,
   deleteAllKnowledgeNotes,
   getAgentProfiles,
+  verifyExternalAgentCommand,
   toggleAgentProfile,
   getAgentProfile,
   createAgentProfile,

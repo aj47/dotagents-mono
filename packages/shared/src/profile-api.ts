@@ -4,6 +4,8 @@ import type {
   ApiAgentProfileFull,
   ApiAgentProfilesResponse,
   AgentProfileToggleResponse,
+  VerifyExternalAgentCommandRequest,
+  VerifyExternalAgentCommandResponse,
   Profile,
   ProfilesResponse,
 } from "./api-types"
@@ -147,6 +149,15 @@ export interface AgentProfileActionOptions<TProfile extends AgentProfileApiLike 
   diagnostics: ProfileActionDiagnostics
 }
 
+export interface ExternalAgentCommandVerificationActionService {
+  verifyExternalAgentCommand(request: VerifyExternalAgentCommandRequest): Promise<VerifyExternalAgentCommandResponse>
+}
+
+export interface ExternalAgentCommandVerificationActionOptions {
+  service: ExternalAgentCommandVerificationActionService
+  diagnostics: ProfileActionDiagnostics
+}
+
 function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {}
 }
@@ -207,6 +218,20 @@ function buildConnectionInput(
   }
 }
 
+function parseOptionalStringArray(value: unknown, field: string): ProfileRequestParseResult<string[] | undefined> {
+  if (value === undefined) return { ok: true, request: undefined }
+  if (!Array.isArray(value)) {
+    return { ok: false, statusCode: 400, error: `${field} must be an array of strings` }
+  }
+
+  const strings = value.filter((item): item is string => typeof item === "string")
+  if (strings.length !== value.length) {
+    return { ok: false, statusCode: 400, error: `${field} must be an array of strings` }
+  }
+
+  return { ok: true, request: strings }
+}
+
 export function parseSetCurrentProfileRequestBody(body: unknown): ProfileRequestParseResult<SetCurrentProfileRequest> {
   const requestBody = getRequestRecord(body)
   const profileId = requestBody.profileId
@@ -227,6 +252,38 @@ export function parseImportProfileRequestBody(body: unknown): ProfileRequestPars
   }
 
   return { ok: true, request: { profileJson } }
+}
+
+export function parseVerifyExternalAgentCommandRequestBody(
+  body: unknown,
+): ProfileRequestParseResult<VerifyExternalAgentCommandRequest> {
+  const requestBody = getRequestRecord(body)
+  const command = requestBody.command
+  const commandText = typeof command === "string" ? command.trim() : ""
+
+  if (!commandText) {
+    return { ok: false, statusCode: 400, error: "command is required and must be a non-empty string" }
+  }
+
+  const args = parseOptionalStringArray(requestBody.args, "args")
+  if (args.ok === false) return args
+
+  const probeArgs = parseOptionalStringArray(requestBody.probeArgs, "probeArgs")
+  if (probeArgs.ok === false) return probeArgs
+
+  if (requestBody.cwd !== undefined && typeof requestBody.cwd !== "string") {
+    return { ok: false, statusCode: 400, error: "cwd must be a string" }
+  }
+
+  return {
+    ok: true,
+    request: {
+      command: commandText,
+      ...(args.request ? { args: args.request } : {}),
+      ...(typeof requestBody.cwd === "string" ? { cwd: requestBody.cwd } : {}),
+      ...(probeArgs.request ? { probeArgs: probeArgs.request } : {}),
+    },
+  }
 }
 
 function profileActionOk(body: unknown, statusCode = 200): ProfileActionResult {
@@ -492,6 +549,24 @@ export function deleteAgentProfileAction<TProfile extends AgentProfileApiLike>(
   } catch (caughtError) {
     options.diagnostics.logError("agent-profile-actions", "Failed to delete agent profile", caughtError)
     return profileActionError(500, getUnknownErrorMessage(caughtError, "Failed to delete agent profile"))
+  }
+}
+
+export async function verifyExternalAgentCommandAction(
+  body: unknown,
+  options: ExternalAgentCommandVerificationActionOptions,
+): Promise<AgentProfileActionResult> {
+  try {
+    const parsedRequest = parseVerifyExternalAgentCommandRequestBody(body)
+    if (parsedRequest.ok === false) {
+      return profileActionError(parsedRequest.statusCode, parsedRequest.error)
+    }
+
+    const result = await options.service.verifyExternalAgentCommand(parsedRequest.request)
+    return profileActionOk(result)
+  } catch (caughtError) {
+    options.diagnostics.logError("agent-profile-actions", "Failed to verify external agent command", caughtError)
+    return profileActionError(500, getUnknownErrorMessage(caughtError, "Failed to verify external agent command"))
   }
 }
 

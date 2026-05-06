@@ -48,6 +48,8 @@ import type {
   ApiAgentProfile,
   ApiAgentProfileFull,
   ApiAgentProfilesResponse,
+  VerifyExternalAgentCommandRequest,
+  VerifyExternalAgentCommandResponse,
   CreateConversationRequest,
   EmergencyStopResponse,
   KnowledgeNoteCreateRequest,
@@ -1594,6 +1596,13 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
 
   async getAgentProfile(id: string): Promise<{ profile: ApiAgentProfileFull }> {
     return this.request<{ profile: ApiAgentProfileFull }>(API_BUILDERS.agentProfile(id));
+  }
+
+  async verifyExternalAgentCommand(data: VerifyExternalAgentCommandRequest): Promise<VerifyExternalAgentCommandResponse> {
+    return this.request<VerifyExternalAgentCommandResponse>(API_PATHS.agentProfileVerifyCommand, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   async createAgentProfile(data: AgentProfileCreateRequest): Promise<{ profile: ApiAgentProfileFull }> {

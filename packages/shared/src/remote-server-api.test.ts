@@ -46,6 +46,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_ROUTE_PATHS.knowledgeNotesSearch).toBe('/v1/knowledge/notes/search');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.knowledgeNotesDeleteMultiple).toBe('/v1/knowledge/notes/delete-multiple');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.knowledgeNotesDeleteAll).toBe('/v1/knowledge/notes/delete-all');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.agentProfileVerifyCommand).toBe('/v1/agent-profiles/verify-command');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.loopImportMarkdown).toBe('/v1/loops/import/markdown');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.loopStatuses).toBe('/v1/loops/statuses');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.loopStart).toBe('/v1/loops/:id/start');

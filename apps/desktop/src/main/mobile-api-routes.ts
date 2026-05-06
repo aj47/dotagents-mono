@@ -358,6 +358,12 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // POST /v1/agent-profiles/verify-command - Verify an external agent command
+  fastify.post(API_ROUTES.agentProfileVerifyCommand, async (req, reply) => {
+    const result = await actions.verifyExternalAgentCommand(req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // POST /v1/agent-profiles/:id/toggle - Toggle agent profile enabled state
   fastify.post(API_ROUTES.agentProfileToggle, async (req, reply) => {
     const params = req.params as { id?: string }

@@ -54,6 +54,8 @@ export type {
   AgentProfileDeleteResponse,
   AgentProfileToggleResponse,
   AgentProfileUpdateRequest,
+  VerifyExternalAgentCommandRequest,
+  VerifyExternalAgentCommandResponse,
   Loop,
   LoopCreateRequest,
   LoopDeleteResponse,

@@ -3,7 +3,15 @@ import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
-import { ExtendedSettingsApiClient, AgentProfileFull, AgentProfileCreateRequest, AgentProfileUpdateRequest, MCPServer, Skill } from '../lib/settingsApi';
+import {
+  ExtendedSettingsApiClient,
+  AgentProfileFull,
+  AgentProfileCreateRequest,
+  AgentProfileUpdateRequest,
+  MCPServer,
+  Skill,
+  type VerifyExternalAgentCommandResponse,
+} from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import { applyConnectionTypeChange, buildAgentConnectionRequestFields, type AgentConnectionFormFields, type ConnectionType } from './agent-edit-connection-utils';
 import { useConfigContext } from '../store/config';
@@ -260,6 +268,8 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const [isMcpServersLoading, setIsMcpServersLoading] = useState(false);
   const [newPropertyKey, setNewPropertyKey] = useState('');
   const [newPropertyValue, setNewPropertyValue] = useState('');
+  const [isVerifyingCommand, setIsVerifyingCommand] = useState(false);
+  const [commandVerification, setCommandVerification] = useState<VerifyExternalAgentCommandResponse | null>(null);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
   const runtimeTools = useMemo(() => RUNTIME_TOOLS, []);
@@ -366,6 +376,10 @@ export default function AgentEditScreen({ navigation, route }: any) {
     });
   }, [navigation, isEditing]);
 
+  useEffect(() => {
+    setCommandVerification(null);
+  }, [formData.connectionType, formData.connectionCommand, formData.connectionArgs, formData.connectionCwd, selectedPresetKey]);
+
   const handleSave = useCallback(async () => {
     if (!settingsClient) return;
     if (!formData.displayName.trim()) {
@@ -432,6 +446,30 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const handleConnectionTypeSelect = useCallback((connectionType: ConnectionType) => {
     setFormData(prev => applyConnectionTypeChange(prev, connectionType));
   }, []);
+
+  const handleVerifyExternalAgentCommand = useCallback(async () => {
+    if (!settingsClient || formData.connectionType !== 'acpx') return;
+
+    setIsVerifyingCommand(true);
+    setCommandVerification(null);
+    try {
+      const result = await settingsClient.verifyExternalAgentCommand({
+        command: formData.connectionCommand,
+        args: formData.connectionArgs.split(/\s+/).filter(Boolean),
+        cwd: formData.connectionCwd.trim() || undefined,
+        probeArgs: selectedPreset?.verifyArgs,
+      });
+      setCommandVerification(result);
+    } catch (err: any) {
+      console.error('[AgentEdit] Failed to verify external agent command:', err);
+      setCommandVerification({
+        ok: false,
+        error: err.message || 'Failed to verify setup',
+      });
+    } finally {
+      setIsVerifyingCommand(false);
+    }
+  }, [formData.connectionArgs, formData.connectionCommand, formData.connectionCwd, formData.connectionType, selectedPreset?.verifyArgs, settingsClient]);
 
   const applyAgentPreset = useCallback((presetKey: AgentProfilePresetKey) => {
     const preset = AGENT_PROFILE_PRESETS[presetKey];
@@ -794,6 +832,43 @@ export default function AgentEditScreen({ navigation, route }: any) {
               {selectedPreset.cwdHint ? <Text style={styles.presetHintText}>Working directory: {selectedPreset.cwdHint}</Text> : null}
             </View>
           )}
+          <View style={styles.verificationContainer}>
+            <TouchableOpacity
+              style={[
+                styles.verifyButton,
+                (!formData.connectionCommand.trim() || isVerifyingCommand || isBuiltInAgent) && styles.chipButtonDisabled,
+              ]}
+              onPress={handleVerifyExternalAgentCommand}
+              disabled={!formData.connectionCommand.trim() || isVerifyingCommand || isBuiltInAgent}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Verify external agent setup')}
+            >
+              {isVerifyingCommand ? (
+                <ActivityIndicator size="small" color={theme.colors.primaryForeground} />
+              ) : (
+                <Text style={styles.verifyButtonText}>Verify Setup</Text>
+              )}
+            </TouchableOpacity>
+            {commandVerification && (
+              <View style={[
+                styles.verificationResult,
+                commandVerification.ok ? styles.verificationResultSuccess : styles.verificationResultWarning,
+              ]}>
+                <Text style={styles.verificationTitle}>
+                  {commandVerification.ok ? 'Verification passed' : 'Verification needs attention'}
+                </Text>
+                <Text style={styles.verificationText}>
+                  {commandVerification.details || commandVerification.error}
+                </Text>
+                {commandVerification.resolvedCommand ? (
+                  <Text style={styles.verificationMetaText}>Resolved: {commandVerification.resolvedCommand}</Text>
+                ) : null}
+                {commandVerification.warnings?.map((warning, index) => (
+                  <Text key={`${warning}-${index}`} style={styles.verificationMetaText}>{warning}</Text>
+                ))}
+              </View>
+            )}
+          </View>
         </>
       )}
 
@@ -1288,6 +1363,57 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.mutedForeground,
       fontSize: 12,
       lineHeight: 16,
+    },
+    verificationContainer: {
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    verifyButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      alignSelf: 'flex-start',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.sm,
+      backgroundColor: theme.colors.primary,
+    },
+    verifyButtonText: {
+      color: theme.colors.primaryForeground,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    verificationResult: {
+      borderWidth: 1,
+      borderRadius: radius.sm,
+      padding: spacing.sm,
+      gap: spacing.xs,
+    },
+    verificationResultSuccess: {
+      borderColor: '#10b981',
+      backgroundColor: '#10b98118',
+    },
+    verificationResultWarning: {
+      borderColor: '#f59e0b',
+      backgroundColor: '#f59e0b18',
+    },
+    verificationTitle: {
+      color: theme.colors.foreground,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    verificationText: {
+      color: theme.colors.foreground,
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    verificationMetaText: {
+      color: theme.colors.mutedForeground,
+      fontSize: 11,
+      lineHeight: 15,
     },
     inlineLoadingRow: {
       flexDirection: 'row',

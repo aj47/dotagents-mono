@@ -5,10 +5,13 @@ import {
   getAgentProfilesAction,
   toggleAgentProfileAction,
   updateAgentProfileAction,
+  verifyExternalAgentCommandAction,
   type AgentProfileActionOptions,
+  type ExternalAgentCommandVerificationActionOptions,
 } from "@dotagents/shared/profile-api"
 import type { MobileApiActionResult } from "@dotagents/shared/remote-server-route-contracts"
 import { agentProfileService } from "./agent-profile-service"
+import { verifyExternalAgentCommand as verifyExternalAgentCommandService } from "./command-verification-service"
 import { diagnosticsService } from "./diagnostics"
 
 export type AgentProfileActionResult = MobileApiActionResult
@@ -21,6 +24,13 @@ const agentProfileActionOptions: AgentProfileActionOptions<DesktopAgentProfileAc
     create: (profile) => agentProfileService.create(profile),
     update: (profileId, updates) => agentProfileService.update(profileId, updates),
     deleteProfile: (profileId) => agentProfileService.delete(profileId),
+  },
+  diagnostics: diagnosticsService,
+}
+
+const externalAgentCommandVerificationActionOptions: ExternalAgentCommandVerificationActionOptions = {
+  service: {
+    verifyExternalAgentCommand: verifyExternalAgentCommandService,
   },
   diagnostics: diagnosticsService,
 }
@@ -47,4 +57,8 @@ export function updateAgentProfile(id: string | undefined, body: unknown): Agent
 
 export function deleteAgentProfile(id: string | undefined): AgentProfileActionResult {
   return deleteAgentProfileAction(id, agentProfileActionOptions)
+}
+
+export function verifyExternalAgentCommand(body: unknown): Promise<AgentProfileActionResult> {
+  return verifyExternalAgentCommandAction(body, externalAgentCommandVerificationActionOptions)
 }

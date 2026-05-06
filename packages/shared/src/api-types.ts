@@ -1064,6 +1064,21 @@ export interface AgentProfileDeleteResponse {
   success: true;
 }
 
+export interface VerifyExternalAgentCommandRequest {
+  command: string;
+  args?: string[];
+  cwd?: string;
+  probeArgs?: string[];
+}
+
+export interface VerifyExternalAgentCommandResponse {
+  ok: boolean;
+  resolvedCommand?: string;
+  details?: string;
+  error?: string;
+  warnings?: string[];
+}
+
 export interface AgentProfileCreateRequest {
   displayName: string;
   description?: string;
