@@ -6,11 +6,11 @@ import type {
   ModelPreset,
 } from '@dotagents/shared/providers'
 import type {
-  AgentProfileRole as SharedAgentProfileRole,
   ToolCall,
   ToolResult,
   LoopConfig as SharedLoopConfig,
 } from '@dotagents/shared/types'
+import type { AgentProfile as SharedAgentProfile } from '@dotagents/shared/agent-profile-domain'
 import type {
   ProfileMcpServerConfig as SharedProfileMcpServerConfig,
   ProfileModelConfig as SharedProfileModelConfig,
@@ -27,6 +27,7 @@ import {
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
+export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
 export type { AgentConversationState } from '@dotagents/shared/conversation-state'
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared/agent-progress'
@@ -490,50 +491,6 @@ export type PersonasData = {
 // ============================================================================
 
 /**
- * Connection type for an agent profile.
- * - "internal": Uses built-in DotAgents agent (model config from profile)
- * - "acpx": External agent executed through the acpx CLI
- * - "remote": Remote HTTP endpoint
- */
-export type AgentProfileConnectionType = "internal" | "acpx" | "acp" | "stdio" | "remote"
-
-/**
- * Connection configuration for an agent profile.
- */
-export type AgentProfileConnection = {
-  type: AgentProfileConnectionType
-  /** For acpx custom adapters: command to run through `acpx --agent` */
-  command?: string
-  /** For acpx custom adapters: command arguments */
-  args?: string[]
-  /** For acpx sessions: built-in or configured acpx agent id */
-  agent?: string
-  /** For acpx custom adapters: environment variables */
-  env?: Record<string, string>
-  /** For acpx sessions: preferred working directory */
-  cwd?: string
-  /** For remote: base URL of the agent server */
-  baseUrl?: string
-}
-
-/**
- * Tool access configuration for an agent profile.
- * Controls which MCP servers and tools the agent can access.
- */
-export type AgentProfileToolConfig = {
-  /** MCP servers enabled for this agent (whitelist) */
-  enabledServers?: string[]
-  /** MCP servers disabled for this agent (blacklist) */
-  disabledServers?: string[]
-  /** Specific tools disabled */
-  disabledTools?: string[]
-  /** Runtime tools enabled (whitelist) - if undefined, all are available */
-  enabledRuntimeTools?: string[]
-  /** When true, newly-added servers are disabled by default */
-  allServersDisabledByDefault?: boolean
-}
-
-/**
  * Unified Agent Profile.
  *
  * Can represent:
@@ -550,79 +507,6 @@ export type AgentProfileToolConfig = {
  * - "external-agent": External acpx agent
  * - "user-profile": Deprecated alias for "chat-agent" kept for compatibility
  */
-export type AgentProfile = {
-  /** Unique identifier */
-  id: string
-  /** Canonical name used for lookup (defaults to displayName; no longer auto-slugified) */
-  name: string
-  /** Human-readable display name (the single user-facing name) */
-  displayName: string
-  /** Description of what this agent does */
-  description?: string
-  /** Custom avatar as a base64 data URL. If absent, a deterministic face is generated. */
-  avatarDataUrl?: string | null
-
-  // Behavior
-  /** System prompt that defines the agent's behavior */
-  systemPrompt?: string
-  /** Additional guidelines for the agent */
-  guidelines?: string
-  /** Dynamic properties exposed in system prompt */
-  properties?: Record<string, string>
-
-  // Model Configuration (only for internal execution)
-  /** Model configuration - uses ProfileModelConfig format */
-  modelConfig?: SharedProfileModelConfig
-
-  // Tool Access
-  /** Tool and MCP server access configuration */
-  toolConfig?: AgentProfileToolConfig
-
-  // Skills
-  /** Skills configuration */
-  skillsConfig?: SharedProfileSkillsConfig
-
-  // Connection - how to run this agent
-  /** Connection configuration for the underlying agent */
-  connection: AgentProfileConnection
-
-  // State
-  /** Whether this agent maintains conversation state */
-  isStateful?: boolean
-  /** Current conversation ID for stateful agents */
-  conversationId?: string
-
-  // Role Classification
-  /** Role classification for this agent profile */
-  role?: SharedAgentProfileRole
-
-  // Flags
-  /** Whether this agent is enabled */
-  enabled: boolean
-  /** Whether this is a built-in agent (cannot be deleted) */
-  isBuiltIn?: boolean
-  /** Whether this appears in the agent picker (legacy, use role instead) */
-  isUserProfile?: boolean
-  /** Whether this is available as a delegation target (legacy, use role instead) */
-  isAgentTarget?: boolean
-  /** Whether this is the default profile */
-  isDefault?: boolean
-  /** Whether to auto-spawn this agent on app startup (for ACP agents) */
-  autoSpawn?: boolean
-
-  // Timestamps
-  createdAt: number
-  updatedAt: number
-}
-
-/**
- * Storage format for agent profiles.
- */
-export type AgentProfilesData = {
-  profiles: AgentProfile[]
-  currentProfileId?: string
-}
-
 // ============================================================================
 // Migration Utilities
 // ============================================================================
@@ -630,22 +514,22 @@ export type AgentProfilesData = {
 /**
  * Convert a legacy Profile to AgentProfile.
  */
-export function profileToAgentProfile(profile: Profile): AgentProfile {
-  return sharedLegacyProfileToAgentProfile(profile) as AgentProfile
+export function profileToAgentProfile(profile: Profile): SharedAgentProfile {
+  return sharedLegacyProfileToAgentProfile(profile) as SharedAgentProfile
 }
 
 /**
  * Convert a legacy Persona to AgentProfile (for migration).
  */
-export function personaToAgentProfile(persona: Persona): AgentProfile {
-  return sharedLegacyPersonaToAgentProfile(persona) as AgentProfile
+export function personaToAgentProfile(persona: Persona): SharedAgentProfile {
+  return sharedLegacyPersonaToAgentProfile(persona) as SharedAgentProfile
 }
 
 /**
  * Convert a legacy ACPAgentConfig to AgentProfile.
  */
-export function acpAgentConfigToAgentProfile(config: ACPAgentConfig): AgentProfile {
-  return sharedLegacyAcpAgentConfigToAgentProfile(config) as AgentProfile
+export function acpAgentConfigToAgentProfile(config: ACPAgentConfig): SharedAgentProfile {
+  return sharedLegacyAcpAgentConfigToAgentProfile(config) as SharedAgentProfile
 }
 
 // ModelPreset — re-exported from shared package (superset of all platform definitions)
@@ -1226,7 +1110,7 @@ export type Config = {
   acpAgents?: ACPAgentConfig[]
 
   // Unified Agent Profiles (managed by agent-profile-service)
-  agentProfiles?: AgentProfile[]
+  agentProfiles?: SharedAgentProfile[]
 
   // Main agent mode: "api" uses external LLM API, "acpx" uses an acpx-managed agent as the brain
   mainAgentMode?: "api" | "acpx"

@@ -71,6 +71,7 @@ export default defineConfig({
     'conversation-id': 'src/conversation-id.ts',
     'llm-continuation-guards': 'src/llm-continuation-guards.ts',
     'agent-profile-reference-cleanup': 'src/agent-profile-reference-cleanup.ts',
+    'agent-profile-domain': 'src/agent-profile-domain.ts',
     'agent-profile-session-snapshot': 'src/agent-profile-session-snapshot.ts',
     'agent-profile-config-validation': 'src/agent-profile-config-validation.ts',
     'agent-profile-config-updates': 'src/agent-profile-config-updates.ts',

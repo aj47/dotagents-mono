@@ -71,6 +71,7 @@ export * from './conversation-context-builder';
 export * from './conversation-id';
 export * from './llm-continuation-guards';
 export * from './agent-profile-reference-cleanup';
+export * from './agent-profile-domain';
 export * from './agent-profile-session-snapshot';
 export * from './agent-profile-config-validation';
 export * from './agent-profile-config-updates';

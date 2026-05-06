@@ -351,6 +351,11 @@
       "import": "./dist/agent-profile-reference-cleanup.mjs",
       "require": "./dist/agent-profile-reference-cleanup.js"
     },
+    "./agent-profile-domain": {
+      "types": "./dist/agent-profile-domain.d.ts",
+      "import": "./dist/agent-profile-domain.mjs",
+      "require": "./dist/agent-profile-domain.js"
+    },
     "./agent-profile-session-snapshot": {
       "types": "./dist/agent-profile-session-snapshot.d.ts",
       "import": "./dist/agent-profile-session-snapshot.mjs",

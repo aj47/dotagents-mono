@@ -6,7 +6,6 @@
  * Desktop's types.ts may define more detailed versions that are assignable to these.
  */
 
-import type { AgentProfileRole as SharedAgentProfileRole } from '@dotagents/shared/types'
 import type {
   ProfileMcpServerConfig as SharedProfileMcpServerConfig,
   ProfileModelConfig as SharedProfileModelConfig,
@@ -60,6 +59,13 @@ export type {
   ProfileSkillsConfig,
   SessionProfileSnapshot,
 } from '@dotagents/shared/agent-profile-session-snapshot'
+export type {
+  AgentProfile,
+  AgentProfileConnection,
+  AgentProfileConnectionType,
+  AgentProfilesData,
+  AgentProfileToolConfig,
+} from '@dotagents/shared/agent-profile-domain'
 
 // ============================================================================
 // Profile & Agent Types
@@ -80,56 +86,5 @@ export type Profile = {
 
 export type ProfilesData = {
   profiles: Profile[]
-  currentProfileId?: string
-}
-
-export type AgentProfileConnectionType = "internal" | "acpx" | "acp" | "stdio" | "remote"
-
-export type AgentProfileConnection = {
-  type: AgentProfileConnectionType
-  agent?: string
-  command?: string
-  args?: string[]
-  env?: Record<string, string>
-  cwd?: string
-  baseUrl?: string
-}
-
-export type AgentProfileToolConfig = {
-  enabledServers?: string[]
-  disabledServers?: string[]
-  disabledTools?: string[]
-  enabledRuntimeTools?: string[]
-  allServersDisabledByDefault?: boolean
-}
-
-export type AgentProfile = {
-  id: string
-  name: string
-  displayName: string
-  description?: string
-  avatarDataUrl?: string | null
-  systemPrompt?: string
-  guidelines?: string
-  properties?: Record<string, string>
-  modelConfig?: SharedProfileModelConfig
-  toolConfig?: AgentProfileToolConfig
-  skillsConfig?: SharedProfileSkillsConfig
-  connection: AgentProfileConnection
-  isStateful?: boolean
-  conversationId?: string
-  role?: SharedAgentProfileRole
-  enabled: boolean
-  isBuiltIn?: boolean
-  isUserProfile?: boolean
-  isAgentTarget?: boolean
-  isDefault?: boolean
-  autoSpawn?: boolean
-  createdAt: number
-  updatedAt: number
-}
-
-export type AgentProfilesData = {
-  profiles: AgentProfile[]
   currentProfileId?: string
 }
