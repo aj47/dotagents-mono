@@ -1,4 +1,10 @@
 import { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react"
+import {
+  RESIZABLE_STORAGE_KEY_PREFIX,
+  clearPersistedResizableSize,
+  loadPersistedResizableSize as loadPersistedSize,
+  savePersistedResizableSize,
+} from "@dotagents/shared/resizable-persistence"
 
 export const TILE_DIMENSIONS = {
   width: {
@@ -13,7 +19,7 @@ export const TILE_DIMENSIONS = {
   },
 } as const
 
-export const STORAGE_KEY_PREFIX = "dotagents-resizable-"
+export const STORAGE_KEY_PREFIX = RESIZABLE_STORAGE_KEY_PREFIX
 
 /**
  * Clears persisted sizes from localStorage for a specific storage key.
@@ -23,16 +29,7 @@ export const STORAGE_KEY_PREFIX = "dotagents-resizable-"
  * Returns true if the entry was cleared, false otherwise.
  */
 export function clearPersistedSize(storageKey: string): boolean {
-  try {
-    const fullKey = STORAGE_KEY_PREFIX + storageKey
-    if (localStorage.getItem(fullKey) !== null) {
-      localStorage.removeItem(fullKey)
-      return true
-    }
-    return false
-  } catch {
-    return false
-  }
+  return clearPersistedResizableSize(storageKey)
 }
 
 export interface UseResizableOptions {
@@ -57,27 +54,6 @@ export interface UseResizableReturn {
   reset: () => void
   hasPersistedSize: boolean
   setSize: (size: { width?: number; height?: number }, options?: { persist?: boolean }) => void
-}
-
-function loadPersistedSize(storageKey: string): { width?: number; height?: number } | null {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_PREFIX + storageKey)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      if (typeof parsed.width === "number" && typeof parsed.height === "number") {
-        return parsed
-      }
-    }
-  } catch {
-    return null
-  }
-  return null
-}
-
-function savePersistedSize(storageKey: string, size: { width: number; height: number }): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_PREFIX + storageKey, JSON.stringify(size))
-  } catch {}
 }
 
 export function useResizable(options: UseResizableOptions = {}): UseResizableReturn {
@@ -205,7 +181,7 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
 
       const finalSize = { width: lastWidth, height: heightRef.current }
       if (storageKey) {
-        savePersistedSize(storageKey, finalSize)
+        savePersistedResizableSize(storageKey, finalSize)
       }
       onResizeEnd?.(finalSize)
     }
@@ -261,7 +237,7 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
 
       const finalSize = { width: widthRef.current, height: lastHeight }
       if (storageKey) {
-        savePersistedSize(storageKey, finalSize)
+        savePersistedResizableSize(storageKey, finalSize)
       }
       onResizeEnd?.(finalSize)
     }
@@ -324,7 +300,7 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
 
       const finalSize = { width: lastWidth, height: lastHeight }
       if (storageKey) {
-        savePersistedSize(storageKey, finalSize)
+        savePersistedResizableSize(storageKey, finalSize)
       }
       onResizeEnd?.(finalSize)
     }
@@ -349,9 +325,7 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
     setWidth(initialWidth)
     setHeight(initialHeight)
     if (storageKey) {
-      try {
-        localStorage.removeItem(STORAGE_KEY_PREFIX + storageKey)
-      } catch {}
+      clearPersistedResizableSize(storageKey)
     }
   }, [initialWidth, initialHeight, storageKey])
 
@@ -370,7 +344,7 @@ export function useResizable(options: UseResizableOptions = {}): UseResizableRet
     }
 
     if (options?.persist && storageKey) {
-      savePersistedSize(storageKey, { width: newWidth, height: newHeight })
+      savePersistedResizableSize(storageKey, { width: newWidth, height: newHeight })
     }
   }, [clampWidth, clampHeight, storageKey])
 

@@ -186,6 +186,11 @@
       "import": "./dist/audio-input-device-utils.mjs",
       "require": "./dist/audio-input-device-utils.js"
     },
+    "./resizable-persistence": {
+      "types": "./dist/resizable-persistence.d.ts",
+      "import": "./dist/resizable-persistence.mjs",
+      "require": "./dist/resizable-persistence.js"
+    },
     "./tool-activity-grouping": {
       "types": "./dist/tool-activity-grouping.d.ts",
       "import": "./dist/tool-activity-grouping.mjs",
