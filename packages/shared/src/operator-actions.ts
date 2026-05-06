@@ -61,6 +61,20 @@ export type OperatorHttpResponseLike = {
   statusCode: number
 }
 
+export type OperatorAuditActionResult = {
+  statusCode: number
+  body: unknown
+}
+
+export interface OperatorAuditActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void
+}
+
+export interface OperatorAuditActionOptions {
+  getEntries(): OperatorAuditEntry[]
+  diagnostics: OperatorAuditActionDiagnostics
+}
+
 export type OperatorMcpRestartRequest = {
   server: string
 }
@@ -1231,6 +1245,25 @@ export function buildOperatorAuditResponse(
   return {
     count: responseEntries.length,
     entries: responseEntries,
+  }
+}
+
+function operatorAuditActionResult(statusCode: number, body: unknown): OperatorAuditActionResult {
+  return {
+    statusCode,
+    body,
+  }
+}
+
+export function getOperatorAuditAction(
+  count: string | number | undefined,
+  options: OperatorAuditActionOptions,
+): OperatorAuditActionResult {
+  try {
+    return operatorAuditActionResult(200, buildOperatorAuditResponse(options.getEntries(), count))
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-audit-actions", "Failed to build operator audit response", caughtError)
+    return operatorAuditActionResult(500, { error: "Failed to build operator audit response" })
   }
 }
 

@@ -4,12 +4,13 @@ import fs from "fs"
 import path from "path"
 import {
   buildOperatorAuditEventEntry,
-  buildOperatorAuditResponse,
   buildOperatorResponseAuditContext,
   buildRejectedOperatorDeviceAuditEntry,
+  getOperatorAuditAction,
   getOperatorAuditDeviceId,
   getOperatorAuditPath,
   getOperatorAuditSource,
+  type OperatorAuditActionOptions,
 } from "@dotagents/shared/operator-actions"
 import {
   DEFAULT_OPERATOR_AUDIT_LOG_LIMIT,
@@ -52,18 +53,9 @@ export interface OperatorAuditContext {
 
 export type OperatorAuditActionResult = OperatorRouteActionResult
 
-function ok(body: unknown): OperatorAuditActionResult {
-  return {
-    statusCode: 200,
-    body,
-  }
-}
-
-function error(statusCode: number, message: string): OperatorAuditActionResult {
-  return {
-    statusCode,
-    body: { error: message },
-  }
+const operatorAuditActionOptions: OperatorAuditActionOptions = {
+  getEntries: () => operatorAuditLogStore.getEntries(),
+  diagnostics: diagnosticsService,
 }
 
 export function recordRejectedOperatorDeviceAttempt(request: FastifyRequest, failureReason: string): void {
@@ -120,10 +112,5 @@ export function recordOperatorResponseAuditEvent(request: FastifyRequest, reply:
 }
 
 export function getOperatorAudit(count: string | number | undefined): OperatorAuditActionResult {
-  try {
-    return ok(buildOperatorAuditResponse(operatorAuditLogStore.getEntries(), count))
-  } catch (caughtError) {
-    diagnosticsService.logError("operator-audit-actions", "Failed to build operator audit response", caughtError)
-    return error(500, "Failed to build operator audit response")
-  }
+  return getOperatorAuditAction(count, operatorAuditActionOptions)
 }

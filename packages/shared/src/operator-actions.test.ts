@@ -74,6 +74,7 @@ import {
   connectOperatorDiscordAction,
   connectOperatorWhatsAppAction,
   getConfiguredCloudflareTunnelStartPlan,
+  getOperatorAuditAction,
   getOperatorDiscordAction,
   getOperatorDiscordLogsAction,
   getOperatorIntegrationsAction,
@@ -131,6 +132,7 @@ import {
   updateOperatorQueuedMessageAction,
   type OperatorAgentActionOptions,
   type OperatorApiKeyActionOptions,
+  type OperatorAuditActionOptions,
   type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
   type OperatorObservabilityActionOptions,
@@ -1276,6 +1278,45 @@ describe("operator action API helpers", () => {
       tokenCount: 0,
       platforms: [],
     })
+  })
+
+  it("builds operator audit route action responses from injected storage", () => {
+    const auditEntries = Array.from({ length: 2 }, (_, index) => ({
+      timestamp: index + 1,
+      action: `action-${index + 1}`,
+      path: "/v1/operator/test",
+      success: true,
+    }))
+    const errors: string[] = []
+    const options: OperatorAuditActionOptions = {
+      getEntries: () => auditEntries,
+      diagnostics: {
+        logError: (source, message, error) => {
+          errors.push(`${source}:${message}:${error instanceof Error ? error.message : String(error)}`)
+        },
+      },
+    }
+
+    expect(getOperatorAuditAction(1, options)).toEqual({
+      statusCode: 200,
+      body: {
+        count: 1,
+        entries: [auditEntries[1]],
+      },
+    })
+
+    expect(getOperatorAuditAction(1, {
+      ...options,
+      getEntries: () => {
+        throw new Error("storage unavailable")
+      },
+    })).toEqual({
+      statusCode: 500,
+      body: { error: "Failed to build operator audit response" },
+    })
+    expect(errors).toEqual([
+      "operator-audit-actions:Failed to build operator audit response:storage unavailable",
+    ])
   })
 
   it("builds audit action names from operator paths", () => {
