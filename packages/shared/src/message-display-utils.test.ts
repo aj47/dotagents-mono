@@ -4,6 +4,7 @@ import {
   sanitizeMessageContentForDisplay,
   sanitizeMessageContentForSpeech,
   sanitizeAgentProgressUpdateForDisplay,
+  stripDisplayOnlyContent,
 } from './message-display-utils'
 import type { AgentProgressUpdate } from './agent-progress'
 
@@ -77,6 +78,33 @@ describe('normalizeMessagePreviewText', () => {
   it('falls back to thought text for open or thought-only tags', () => {
     expect(normalizeMessagePreviewText('<think>still reasoning')).toBe('still reasoning')
     expect(normalizeMessagePreviewText('<think>only thought</think>')).toBe('only thought')
+  })
+})
+
+describe('stripDisplayOnlyContent', () => {
+  it('returns plain content unchanged', () => {
+    expect(stripDisplayOnlyContent('Final answer')).toBe('Final answer')
+  })
+
+  it('returns empty/falsy content as-is', () => {
+    expect(stripDisplayOnlyContent('')).toBe('')
+  })
+
+  it('strips a closed think block, keeping prose', () => {
+    expect(stripDisplayOnlyContent('<think>reasoning</think>\n\nFinal answer')).toBe('Final answer')
+  })
+
+  it('strips multiple think blocks', () => {
+    const input = '<think>step 1</think>\nintro\n<think>step 2</think>\noutro'
+    expect(stripDisplayOnlyContent(input)).toBe('intro\noutro')
+  })
+
+  it('strips an unclosed think block at end of content', () => {
+    expect(stripDisplayOnlyContent('answer\n<think>still reasoning')).toBe('answer')
+  })
+
+  it('strips think tags with attributes', () => {
+    expect(stripDisplayOnlyContent('<think kind="summary">x</think>\nok')).toBe('ok')
   })
 })
 

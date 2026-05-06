@@ -58,7 +58,7 @@ import { filterEphemeralMessages, isInternalNudgeContent } from "./conversation-
 import {
   filterNamedItemsToAllowedTools,
 } from "./llm-tool-gating"
-import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import { sanitizeMessageContentForDisplay, stripDisplayOnlyContent } from "@dotagents/shared"
 import {
   isDeliverableResponseContent,
   isGarbledToolCallText,
@@ -1488,7 +1488,7 @@ export async function processTranscriptWithAgentMode(
         if (entry.skipModelReplay) return null
 
         const rawContent = typeof entry.content === "string" ? entry.content : ""
-        const content = sanitizeMessageContentForDisplay(rawContent).trim()
+        const content = stripDisplayOnlyContent(sanitizeMessageContentForDisplay(rawContent)).trim()
         if (!content) return null
 
         if (entry.role === "tool") {
@@ -1961,7 +1961,7 @@ export async function processTranscriptWithAgentMode(
           if (entry.skipModelReplay) return null
 
           const rawContent = typeof entry.content === "string" ? entry.content : ""
-          const sanitizedContent = sanitizeMessageContentForDisplay(rawContent)
+          const sanitizedContent = stripDisplayOnlyContent(sanitizeMessageContentForDisplay(rawContent))
 
           if (entry.role === "tool") {
             const text = sanitizedContent.trim()
@@ -1982,9 +1982,10 @@ export async function processTranscriptWithAgentMode(
           }
 
           // Preserve user-provided image markdown for the provider adapter; it
-          // converts data/assets image URLs into multimodal message parts. The
-          // sanitized variant above is still used for tool replay and emptiness checks.
-          const content = rawContent
+          // converts data/assets image URLs into multimodal message parts. Reasoning
+          // <think> blocks (display-only) are still stripped, but image markdown is
+          // kept intact in the content forwarded to the provider.
+          const content = stripDisplayOnlyContent(rawContent)
           return {
             role: entry.role as "user" | "assistant",
             content,

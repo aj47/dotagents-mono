@@ -207,6 +207,33 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(firstPrompt).not.toContain("prior reasoning")
   })
 
+  it("strips think blocks from prior assistant content in the model prompt (defense in depth)", async () => {
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    mocks.makeLLMCallWithStreamingAndTools.mockResolvedValueOnce({ content: "Current answer", toolCalls: [] })
+
+    await processTranscriptWithAgentMode(
+      "Continue",
+      availableTools as any,
+      makeExecuteToolCall("session-think-in-content", 15),
+      1,
+      [{
+        role: "assistant",
+        content: "<think>leaked reasoning that should never reach the model</think>\n\nPrior answer",
+      }],
+      "conv-think-in-content",
+      "session-think-in-content",
+      undefined,
+      undefined,
+      15,
+    )
+
+    const firstPromptMessages = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? []) as Array<{ content: string }>
+    const firstPrompt = firstPromptMessages.map((m) => m.content).join("\n")
+    expect(firstPrompt).toContain("Prior answer")
+    expect(firstPrompt).not.toContain("leaked reasoning")
+    expect(firstPrompt).not.toMatch(/<think/i)
+  })
+
   it("logs diagnostics for unrelated provider errors even when the global stop flag is active", async () => {
     const { processTranscriptWithAgentMode } = await import("./llm")
     const providerError = new Error("provider exploded")

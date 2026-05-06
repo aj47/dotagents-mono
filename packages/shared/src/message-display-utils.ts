@@ -4,6 +4,8 @@ import type { AgentProgressUpdate } from "./agent-progress"
 const INLINE_DATA_IMAGE_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi
 const MARKDOWN_IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/gi
 const MARKDOWN_VIDEO_LINK_REGEX = /(^|[^!])\[([^\]]*)\]\((assets:\/\/conversation-video\/[^)]+|https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?)\)/gi
+const THINK_BLOCK_REGEX = /<think\b[^>]*>[\s\S]*?<\/think>\s*/gi
+const OPEN_THINK_REGEX = /<think\b[^>]*>[\s\S]*$/i
 
 function hasInlineDataImage(content: string): boolean {
   return !!content && /data:image\//i.test(content)
@@ -18,6 +20,24 @@ export function sanitizeMessageContentForDisplay(content: string): string {
     const cleanedAlt = altText?.trim()
     return cleanedAlt ? `[Image: ${cleanedAlt}]` : "[Image]"
   })
+}
+
+/**
+ * Strip display-only reasoning markers from text destined for the model.
+ *
+ * Reasoning summaries are wrapped in `<think>...</think>` for the UI; they must
+ * never reach the provider as ordinary assistant prose. This is a defense-in-
+ * depth pass for the model-replay path: the canonical pipeline keeps reasoning
+ * out of `content` already, but if anything upstream merges reasoning into the
+ * persisted assistant content, this strips it before the request goes out.
+ */
+export function stripDisplayOnlyContent(content: string): string {
+  if (!content) return content
+  if (!/<think\b/i.test(content)) return content
+  return content
+    .replace(THINK_BLOCK_REGEX, "")
+    .replace(OPEN_THINK_REGEX, "")
+    .trim()
 }
 
 export function sanitizeMessageContentForSpeech(content: string): string {

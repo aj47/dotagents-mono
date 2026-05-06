@@ -7,7 +7,7 @@ import type {
   AgentProgressStep,
   OnProgressCallback,
 } from '@dotagents/shared';
-import { normalizeApiBaseUrl } from '@dotagents/shared';
+import { normalizeApiBaseUrl, stripDisplayOnlyContent } from '@dotagents/shared';
 import { Platform } from 'react-native';
 import EventSource from 'react-native-sse';
 import {
@@ -55,6 +55,10 @@ export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage
     const requestMessage = { ...message };
     delete requestMessage.toolExecutions;
     delete requestMessage.displayContent;
+
+    if (typeof requestMessage.content === 'string' && requestMessage.content.length > 0) {
+      requestMessage.content = stripDisplayOnlyContent(requestMessage.content);
+    }
 
     if (message.toolExecutions?.length) {
       delete requestMessage.toolCalls;

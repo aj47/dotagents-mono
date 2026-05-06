@@ -120,4 +120,29 @@ describe('sanitizeMessagesForRequest', () => {
     expect(sanitized[0].content).toBe('Final answer');
     expect(sanitized[0].displayContent).toBeUndefined();
   });
+
+  it('strips think blocks that ended up inside content (defense in depth)', () => {
+    const messages: ChatMessage[] = [{
+      role: 'assistant',
+      content: '<think>internal reasoning</think>\n\nUser-facing answer',
+    }];
+
+    const sanitized = sanitizeMessagesForRequest(messages);
+
+    expect(sanitized[0].content).toBe('User-facing answer');
+    const serialized = JSON.stringify(sanitized);
+    expect(serialized).not.toMatch(/<think/i);
+  });
+
+  it('strips an unclosed think block from content', () => {
+    const messages: ChatMessage[] = [{
+      role: 'assistant',
+      content: 'Answer body\n<think>still reasoning, never closed',
+    }];
+
+    const sanitized = sanitizeMessagesForRequest(messages);
+
+    expect(sanitized[0].content).toBe('Answer body');
+    expect(JSON.stringify(sanitized)).not.toMatch(/<think/i);
+  });
 });
