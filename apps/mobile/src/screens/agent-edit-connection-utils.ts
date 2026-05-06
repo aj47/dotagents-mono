@@ -1,4 +1,5 @@
 export {
+  AGENT_EDIT_CONNECTION_TYPE_OPTIONS,
   applyConnectionTypeChange,
   buildAgentConnectionRequestFields,
   getAgentConnectionFormValidationError,

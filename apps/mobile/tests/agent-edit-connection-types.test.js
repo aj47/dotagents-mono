@@ -8,11 +8,18 @@ const screenSource = fs.readFileSync(
   'utf8'
 );
 
+const profileConnectionSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'agent-profile-connection.ts'),
+  'utf8'
+);
+
 test('explains agent connection types and exposes them as selected-state buttons', () => {
   assert.match(screenSource, /Choose how DotAgents should reach this agent\. The setup fields below change based on this choice\./);
-  assert.match(screenSource, /Uses the built-in DotAgents runtime with this profile’s prompts and settings\./);
-  assert.match(screenSource, /Runs this external agent through the acpx CLI adapter\./);
-  assert.match(screenSource, /Connects to an external HTTP agent endpoint by URL\./);
+  assert.match(screenSource, /AGENT_EDIT_CONNECTION_TYPE_OPTIONS\.map\(ct =>/);
+  assert.doesNotMatch(screenSource, /const CONNECTION_TYPES = \[/);
+  assert.match(profileConnectionSource, /Uses the built-in DotAgents runtime with this profile’s prompts and settings\./);
+  assert.match(profileConnectionSource, /Runs this external agent through the acpx CLI adapter\./);
+  assert.match(profileConnectionSource, /Connects to an external HTTP agent endpoint by URL\./);
   assert.match(screenSource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\(`Use \$\{ct\.label\} connection for this agent`\)/);
   assert.match(screenSource, /accessibilityState=\{\{ selected: formData\.connectionType === ct\.value, disabled: isBuiltInAgent \}\}/);
 });

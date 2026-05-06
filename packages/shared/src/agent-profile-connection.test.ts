@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  AGENT_EDIT_CONNECTION_TYPE_OPTIONS,
   applyConnectionTypeChange,
   buildAgentConnectionCommandPreview,
   buildAgentConnectionRequestFields,
@@ -90,6 +91,29 @@ describe("sanitizeAgentProfileConnection", () => {
 })
 
 describe("agent connection request helpers", () => {
+  it("exposes shared editable connection type labels for desktop and mobile editors", () => {
+    expect(AGENT_EDIT_CONNECTION_TYPE_OPTIONS).toEqual([
+      {
+        label: "Internal",
+        selectLabel: "Internal (built-in agent)",
+        value: "internal",
+        description: "Uses the built-in DotAgents runtime with this profile’s prompts and settings.",
+      },
+      {
+        label: "acpx",
+        selectLabel: "acpx (external agent)",
+        value: "acpx",
+        description: "Runs this external agent through the acpx CLI adapter.",
+      },
+      {
+        label: "Remote",
+        selectLabel: "Remote (HTTP endpoint)",
+        value: "remote",
+        description: "Connects to an external HTTP agent endpoint by URL.",
+      },
+    ])
+  })
+
   it("normalizes persisted profile connection types for edit forms", () => {
     expect(normalizeAgentEditConnectionType("internal")).toBe("internal")
     expect(normalizeAgentEditConnectionType("remote")).toBe("remote")

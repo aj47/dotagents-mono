@@ -3,6 +3,34 @@ export const VALID_AGENT_PROFILE_CONNECTION_TYPES = ["internal", "acpx", "acp", 
 export type AgentProfileConnectionTypeValue = typeof VALID_AGENT_PROFILE_CONNECTION_TYPES[number]
 export type AgentEditConnectionType = "internal" | "acpx" | "remote"
 
+export interface AgentEditConnectionTypeOption {
+  label: string
+  selectLabel: string
+  value: AgentEditConnectionType
+  description: string
+}
+
+export const AGENT_EDIT_CONNECTION_TYPE_OPTIONS = [
+  {
+    label: "Internal",
+    selectLabel: "Internal (built-in agent)",
+    value: "internal",
+    description: "Uses the built-in DotAgents runtime with this profile’s prompts and settings.",
+  },
+  {
+    label: "acpx",
+    selectLabel: "acpx (external agent)",
+    value: "acpx",
+    description: "Runs this external agent through the acpx CLI adapter.",
+  },
+  {
+    label: "Remote",
+    selectLabel: "Remote (HTTP endpoint)",
+    value: "remote",
+    description: "Connects to an external HTTP agent endpoint by URL.",
+  },
+] as const satisfies readonly AgentEditConnectionTypeOption[]
+
 export interface AgentProfileConnectionDraft {
   type: AgentProfileConnectionTypeValue
   agent?: string

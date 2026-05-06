@@ -16,6 +16,7 @@ import {
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import {
+  AGENT_EDIT_CONNECTION_TYPE_OPTIONS,
   applyConnectionTypeChange,
   buildAgentConnectionRequestFields,
   getAgentConnectionFormValidationError,
@@ -75,24 +76,6 @@ import {
   type AgentProfileSkillsConfigUpdateLike,
 } from '@dotagents/shared/agent-profile-config-updates';
 import { type CHAT_PROVIDER_ID } from '@dotagents/shared/providers';
-
-const CONNECTION_TYPES = [
-  {
-    label: 'Internal',
-    value: 'internal',
-    description: 'Uses the built-in DotAgents runtime with this profile’s prompts and settings.',
-  },
-  {
-    label: 'acpx',
-    value: 'acpx',
-    description: 'Runs this external agent through the acpx CLI adapter.',
-  },
-  {
-    label: 'Remote',
-    value: 'remote',
-    description: 'Connects to an external HTTP agent endpoint by URL.',
-  },
-] as const;
 
 const AGENT_MODEL_PROVIDERS = [
   { label: 'Global', value: 'global' },
@@ -734,7 +717,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
       <Text style={styles.label}>Connection Type</Text>
       <Text style={styles.sectionHelperText}>Choose how DotAgents should reach this agent. The setup fields below change based on this choice.</Text>
       <View style={styles.connectionTypeOptions}>
-        {CONNECTION_TYPES.map(ct => (
+        {AGENT_EDIT_CONNECTION_TYPE_OPTIONS.map(ct => (
           <TouchableOpacity
             key={ct.value}
             style={[

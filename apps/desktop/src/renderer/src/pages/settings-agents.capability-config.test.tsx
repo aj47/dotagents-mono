@@ -43,6 +43,7 @@ describe("settings agents capability config", () => {
   })
 
   it("uses shared connection normalization before saving desktop agents", () => {
+    expect(settingsAgentsSource).toContain("AGENT_EDIT_CONNECTION_TYPE_OPTIONS")
     expect(settingsAgentsSource).toContain("applyConnectionTypeChange")
     expect(settingsAgentsSource).toContain("buildAgentConnectionCommandPreview")
     expect(settingsAgentsSource).toContain("getAgentConnectionFormValidationError")
@@ -58,6 +59,7 @@ describe("settings agents capability config", () => {
     expect(settingsAgentsSource).not.toContain("const connection: AgentProfileConnection")
     expect(settingsAgentsSource).not.toContain("baseUrl: editing.connectionBaseUrl")
     expect(settingsAgentsSource).not.toContain("connectionType: agent.connection.type")
+    expect(settingsAgentsSource).not.toContain("<SelectItem value=\"internal\">Internal (built-in agent)</SelectItem>")
   })
 
   it("uses shared editable preset fields in the desktop agent editor", () => {

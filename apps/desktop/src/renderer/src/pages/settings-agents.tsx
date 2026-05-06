@@ -20,6 +20,7 @@ import {
   type AgentProfilePresetKey,
 } from "@dotagents/shared/agent-profile-presets"
 import {
+  AGENT_EDIT_CONNECTION_TYPE_OPTIONS,
   type AgentEditConnectionType,
   applyConnectionTypeChange,
   buildAgentConnectionCommandPreview,
@@ -755,9 +756,9 @@ export function SettingsAgents() {
                 <Select value={editing.connectionType} onValueChange={(v: ConnectionType) => setEditing(applyConnectionTypeChange(editing, v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="internal">Internal (built-in agent)</SelectItem>
-                    <SelectItem value="acpx">acpx (external agent)</SelectItem>
-                    <SelectItem value="remote">Remote (HTTP endpoint)</SelectItem>
+                    {AGENT_EDIT_CONNECTION_TYPE_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>{option.selectLabel}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
