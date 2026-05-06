@@ -1,5 +1,6 @@
 import { logApp, logLLM } from "./debug"
 import { getAppSessionForAcpSession } from "./acp-session-state"
+import { buildAgentStoppedProgressUpdate } from "./agent-run-utils"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { messageQueueService } from "./message-queue-service"
@@ -85,24 +86,10 @@ export async function stopAgentSessionById(sessionId: string): Promise<StopAgent
   }
 
   const runId = agentSessionStateManager.getSessionRunId(sessionId)
-  await emitAgentProgress({
+  await emitAgentProgress(buildAgentStoppedProgressUpdate({
     sessionId,
     runId,
-    currentIteration: 0,
-    maxIterations: 0,
-    steps: [
-      {
-        id: `stop_${Date.now()}`,
-        type: "completion",
-        title: "Agent stopped",
-        description: "Agent mode was stopped by emergency kill switch. Queue paused.",
-        status: "error",
-        timestamp: Date.now(),
-      },
-    ],
-    isComplete: true,
-    finalContent: "(Agent mode was stopped by emergency kill switch)",
-  })
+  }))
 
   agentSessionTracker.stopSession(sessionId)
 

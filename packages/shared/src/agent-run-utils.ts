@@ -12,6 +12,8 @@ import type { ConversationHistoryMessage } from './types';
 export const DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET = 10000
 export const AGENT_STOP_NOTE =
   "(Agent mode was stopped by emergency kill switch)"
+export const AGENT_STOPPED_QUEUE_PAUSED_DESCRIPTION =
+  "Agent mode was stopped by emergency kill switch. Queue paused."
 
 export interface AgentRunOptions {
   prompt: string
@@ -29,6 +31,15 @@ export type AgentRunResult = {
 }
 
 export type AgentRunExecutor = (options: AgentRunOptions) => Promise<AgentRunResult>
+
+export interface AgentStoppedProgressUpdateOptions {
+  sessionId: string
+  runId?: number
+  conversationId?: string
+  conversationTitle?: string
+  timestamp?: number
+  clearPendingToolApproval?: boolean
+}
 
 export interface AgentIterationLimits {
   loopMaxIterations: number
@@ -121,6 +132,33 @@ export function appendAgentStopNote(content: string): string {
   return normalizedContent.length > 0
     ? `${normalizedContent}\n\n${AGENT_STOP_NOTE}`
     : AGENT_STOP_NOTE
+}
+
+export function buildAgentStoppedProgressUpdate(
+  options: AgentStoppedProgressUpdateOptions,
+): AgentProgressUpdate {
+  const timestamp = options.timestamp ?? Date.now()
+  return {
+    sessionId: options.sessionId,
+    ...(options.runId === undefined ? {} : { runId: options.runId }),
+    ...(options.conversationId ? { conversationId: options.conversationId } : {}),
+    ...(options.conversationTitle ? { conversationTitle: options.conversationTitle } : {}),
+    currentIteration: 0,
+    maxIterations: 0,
+    steps: [
+      {
+        id: `stop_${timestamp}`,
+        type: "completion",
+        title: "Agent stopped",
+        description: AGENT_STOPPED_QUEUE_PAUSED_DESCRIPTION,
+        status: "error",
+        timestamp,
+      },
+    ],
+    isComplete: true,
+    finalContent: AGENT_STOP_NOTE,
+    ...(options.clearPendingToolApproval ? { pendingToolApproval: undefined } : {}),
+  }
 }
 
 function getLatestAssistantMessageContent(

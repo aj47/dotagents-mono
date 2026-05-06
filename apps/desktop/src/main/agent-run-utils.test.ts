@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest"
 
 import {
   AGENT_STOP_NOTE,
+  AGENT_STOPPED_QUEUE_PAUSED_DESCRIPTION,
   DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET,
   appendAgentStopNote,
+  buildAgentStoppedProgressUpdate,
   buildProfileContext,
   getPreferredDelegationOutput,
   resolveAgentIterationLimits,
@@ -48,6 +50,37 @@ describe("appendAgentStopNote", () => {
     expect(appendAgentStopNote(`Finished work\n\n${AGENT_STOP_NOTE}`)).toBe(
       `Finished work\n\n${AGENT_STOP_NOTE}`,
     )
+  })
+})
+
+describe("buildAgentStoppedProgressUpdate", () => {
+  it("re-exports the shared emergency-stop progress payload builder", () => {
+    expect(buildAgentStoppedProgressUpdate({
+      sessionId: "session-1",
+      runId: 3,
+      conversationId: "conv-1",
+      conversationTitle: "Planning",
+      timestamp: 1234,
+    })).toEqual({
+      sessionId: "session-1",
+      runId: 3,
+      conversationId: "conv-1",
+      conversationTitle: "Planning",
+      currentIteration: 0,
+      maxIterations: 0,
+      steps: [
+        {
+          id: "stop_1234",
+          type: "completion",
+          title: "Agent stopped",
+          description: AGENT_STOPPED_QUEUE_PAUSED_DESCRIPTION,
+          status: "error",
+          timestamp: 1234,
+        },
+      ],
+      isComplete: true,
+      finalContent: AGENT_STOP_NOTE,
+    })
   })
 })
 
