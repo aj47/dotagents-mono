@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  DEFAULT_GROQ_ARABIC_TTS_VOICE,
+  DEFAULT_SUPERTONIC_TTS_LANGUAGE,
+  DEFAULT_SUPERTONIC_TTS_STEPS,
+  GROQ_ARABIC_TTS_MODEL,
   TEXT_TO_SPEECH_SPEED_SETTING_KEYS,
   formatLocalSpeechModelProgress,
+  getTextToSpeechModelDefault,
   getTextToSpeechModelValue,
   getTextToSpeechPlaybackRate,
   getTextToSpeechSpeedDefault,
   getTextToSpeechSpeedSetting,
   getTextToSpeechSpeedSettingByKey,
   getTextToSpeechSpeedValue,
+  getTextToSpeechVoiceDefault,
   getTextToSpeechVoiceValue,
   isTextToSpeechSpeedUpdateValue,
   normalizeTextToSpeechVoiceUpdateValue,
@@ -40,6 +46,20 @@ describe("text to speech settings helpers", () => {
     expect(getTextToSpeechVoiceValue({
       openaiTtsVoice: "alloy",
     })).toBe("alloy")
+  })
+
+  it("resolves provider-specific model and voice defaults", () => {
+    expect(getTextToSpeechModelDefault()).toBe("gpt-4o-mini-tts")
+    expect(getTextToSpeechModelDefault("groq")).toBe("canopylabs/orpheus-v1-english")
+    expect(getTextToSpeechModelDefault("edge")).toBe("edge-tts")
+    expect(getTextToSpeechModelDefault("kitten")).toBeUndefined()
+    expect(getTextToSpeechVoiceDefault()).toBe("alloy")
+    expect(getTextToSpeechVoiceDefault("groq")).toBe("troy")
+    expect(getTextToSpeechVoiceDefault("groq", GROQ_ARABIC_TTS_MODEL)).toBe(DEFAULT_GROQ_ARABIC_TTS_VOICE)
+    expect(getTextToSpeechVoiceDefault("kitten")).toBe(0)
+    expect(getTextToSpeechVoiceDefault("supertonic")).toBe("M1")
+    expect(DEFAULT_SUPERTONIC_TTS_LANGUAGE).toBe("en")
+    expect(DEFAULT_SUPERTONIC_TTS_STEPS).toBe(5)
   })
 
   it("normalizes voice update values for string and numeric voice fields", () => {

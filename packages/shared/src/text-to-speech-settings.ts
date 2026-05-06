@@ -1,5 +1,6 @@
 import type { LocalSpeechModelStatus, TextToSpeechConfig } from "./api-types"
 import {
+  DEFAULT_EDGE_TTS_VOICE,
   getTtsModelSettingKey,
   getTtsVoiceSettingKey,
   type TtsVoiceSettingKey,
@@ -21,6 +22,27 @@ export const TEXT_TO_SPEECH_SPEED_SETTING_KEYS = [
   "edgeTtsRate",
   "supertonicSpeed",
 ] as const
+
+const DEFAULT_TTS_MODELS: Record<string, string> = {
+  openai: "gpt-4o-mini-tts",
+  groq: "canopylabs/orpheus-v1-english",
+  gemini: "gemini-2.5-flash-preview-tts",
+  edge: "edge-tts",
+}
+
+const DEFAULT_TTS_VOICES: Record<string, string | number> = {
+  openai: "alloy",
+  groq: "troy",
+  gemini: "Kore",
+  edge: DEFAULT_EDGE_TTS_VOICE,
+  kitten: 0,
+  supertonic: "M1",
+}
+
+export const DEFAULT_SUPERTONIC_TTS_LANGUAGE = "en"
+export const DEFAULT_SUPERTONIC_TTS_STEPS = 5
+export const GROQ_ARABIC_TTS_MODEL = "canopylabs/orpheus-arabic-saudi"
+export const DEFAULT_GROQ_ARABIC_TTS_VOICE = "fahad"
 
 const TEXT_TO_SPEECH_SPEED_SETTINGS: Record<string, TextToSpeechSpeedSetting> = {
   openai: {
@@ -55,6 +77,20 @@ const TEXT_TO_SPEECH_SPEED_SETTINGS_BY_KEY = Object.fromEntries(
 
 export function getTextToSpeechSpeedSetting(providerId?: string | null): TextToSpeechSpeedSetting | undefined {
   return TEXT_TO_SPEECH_SPEED_SETTINGS[providerId || "openai"]
+}
+
+export function getTextToSpeechModelDefault(providerId?: string | null): string | undefined {
+  return DEFAULT_TTS_MODELS[providerId || "openai"]
+}
+
+export function getTextToSpeechVoiceDefault(
+  providerId?: string | null,
+  model?: string | null,
+): string | number | undefined {
+  if ((providerId || "openai") === "groq" && model === GROQ_ARABIC_TTS_MODEL) {
+    return DEFAULT_GROQ_ARABIC_TTS_VOICE
+  }
+  return DEFAULT_TTS_VOICES[providerId || "openai"]
 }
 
 export function getTextToSpeechSpeedSettingByKey(

@@ -279,6 +279,31 @@ describe('shared TTS provider generation', () => {
     )).rejects.toThrow('https://console.groq.com/playground?model=canopylabs%2Forpheus-arabic-saudi');
   });
 
+  it('uses shared Groq TTS model and voice defaults', async () => {
+    const calls: Array<{ url: string; body: unknown }> = [];
+    const fetchImpl: TtsFetchLike = async (url, init) => {
+      calls.push({ url, body: JSON.parse(init.body) });
+      return createFetchResponse({ bytes: [1] });
+    };
+
+    await generateGroqTTS(
+      'Hello',
+      {},
+      { groqApiKey: 'key', groqBaseUrl: 'https://groq.example/openai/v1' },
+      { fetchImpl },
+    );
+
+    expect(calls).toEqual([{
+      url: 'https://groq.example/openai/v1/audio/speech',
+      body: {
+        model: 'canopylabs/orpheus-v1-english',
+        input: 'Hello',
+        voice: 'troy',
+        response_format: 'wav',
+      },
+    }]);
+  });
+
   it('generates Gemini TTS and decodes inline base64 audio', async () => {
     const calls: Array<{ url: string; body: unknown }> = [];
     const fetchImpl: TtsFetchLike = async (url, init) => {

@@ -5,6 +5,12 @@ import {
   validateTTSText,
   type TTSPreprocessingConfigLike,
 } from './tts-preprocessing';
+import {
+  GROQ_ARABIC_TTS_MODEL,
+  getTextToSpeechModelDefault,
+  getTextToSpeechSpeedDefault,
+  getTextToSpeechVoiceDefault,
+} from './text-to-speech-settings';
 
 export type { OpenAITtsResponseFormat } from './api-types';
 
@@ -314,9 +320,9 @@ export async function generateOpenAITTS(
   config: OpenAITtsConfigLike,
   options: TtsProviderRequestOptions = {},
 ): Promise<TtsGenerationResult> {
-  const model = input.model || config.openaiTtsModel || 'gpt-4o-mini-tts';
-  const voice = input.voice || config.openaiTtsVoice || 'alloy';
-  const speed = input.speed || config.openaiTtsSpeed || 1.0;
+  const model = input.model || config.openaiTtsModel || getTextToSpeechModelDefault('openai')!;
+  const voice = input.voice || config.openaiTtsVoice || String(getTextToSpeechVoiceDefault('openai'));
+  const speed = input.speed || config.openaiTtsSpeed || getTextToSpeechSpeedDefault('openai');
   const responseFormat = config.openaiTtsResponseFormat || 'mp3';
   const baseUrl = config.openaiBaseUrl || 'https://api.openai.com/v1';
   const apiKey = config.openaiApiKey;
@@ -358,8 +364,8 @@ export async function generateGroqTTS(
   config: GroqTtsConfigLike,
   options: TtsProviderRequestOptions = {},
 ): Promise<TtsGenerationResult> {
-  const model = input.model || config.groqTtsModel || 'canopylabs/orpheus-v1-english';
-  const defaultVoice = model === 'canopylabs/orpheus-arabic-saudi' ? 'fahad' : 'troy';
+  const model = input.model || config.groqTtsModel || getTextToSpeechModelDefault('groq')!;
+  const defaultVoice = String(getTextToSpeechVoiceDefault('groq', model));
   const voice = input.voice || config.groqTtsVoice || defaultVoice;
   const baseUrl = config.groqBaseUrl || 'https://api.groq.com/openai/v1';
   const apiKey = config.groqApiKey;
@@ -381,7 +387,7 @@ export async function generateGroqTTS(
   if (!response.ok) {
     const errorText = await response.text();
     if (errorText.includes('requires terms acceptance')) {
-      const modelParam = model === 'canopylabs/orpheus-arabic-saudi'
+      const modelParam = model === GROQ_ARABIC_TTS_MODEL
         ? 'canopylabs%2Forpheus-arabic-saudi'
         : 'canopylabs%2Forpheus-v1-english';
       throw new Error(`Groq TTS model requires terms acceptance. Please visit https://console.groq.com/playground?model=${modelParam} and accept the terms when prompted, then try again.`);
@@ -401,8 +407,8 @@ export async function generateGeminiTTS(
   config: GeminiTtsConfigLike,
   options: GeminiTtsProviderRequestOptions = {},
 ): Promise<TtsGenerationResult> {
-  const model = input.model || config.geminiTtsModel || 'gemini-2.5-flash-preview-tts';
-  const voice = input.voice || config.geminiTtsVoice || 'Kore';
+  const model = input.model || config.geminiTtsModel || getTextToSpeechModelDefault('gemini')!;
+  const voice = input.voice || config.geminiTtsVoice || String(getTextToSpeechVoiceDefault('gemini'));
   const baseUrl = config.geminiBaseUrl || 'https://generativelanguage.googleapis.com';
   const apiKey = config.geminiApiKey;
 

@@ -1,5 +1,5 @@
 import { normalizeApiBaseUrl } from './connection-recovery';
-import { DEFAULT_EDGE_TTS_VOICE, DEFAULT_MODEL_PRESET_ID, isChatProviderId } from './providers';
+import { DEFAULT_MODEL_PRESET_ID, isChatProviderId } from './providers';
 import type { CHAT_PROVIDER_ID, ModelPreset } from './providers';
 import {
   buildModelPresetsResponse,
@@ -38,8 +38,12 @@ import {
 } from './remote-pairing';
 import { getSensitiveOperatorSettingsKeys } from './operator-actions';
 import {
+  DEFAULT_SUPERTONIC_TTS_LANGUAGE,
+  DEFAULT_SUPERTONIC_TTS_STEPS,
   TEXT_TO_SPEECH_SPEED_SETTING_KEYS,
+  getTextToSpeechModelDefault,
   getTextToSpeechSpeedDefault,
+  getTextToSpeechVoiceDefault,
   isTextToSpeechSpeedUpdateValue,
 } from './text-to-speech-settings';
 import type {
@@ -401,22 +405,22 @@ export function buildSettingsResponse(
     transcriptPostProcessingGeminiModel: cfg.transcriptPostProcessingGeminiModel || '',
     transcriptPostProcessingChatgptWebModel: cfg.transcriptPostProcessingChatgptWebModel || '',
     mainAgentName: cfg.mainAgentName || '',
-    openaiTtsModel: cfg.openaiTtsModel || 'gpt-4o-mini-tts',
-    openaiTtsVoice: cfg.openaiTtsVoice || 'alloy',
+    openaiTtsModel: cfg.openaiTtsModel || getTextToSpeechModelDefault('openai')!,
+    openaiTtsVoice: cfg.openaiTtsVoice || String(getTextToSpeechVoiceDefault('openai')),
     openaiTtsSpeed: cfg.openaiTtsSpeed ?? getTextToSpeechSpeedDefault('openai'),
     openaiTtsResponseFormat: cfg.openaiTtsResponseFormat || 'mp3',
-    groqTtsModel: cfg.groqTtsModel || 'canopylabs/orpheus-v1-english',
-    groqTtsVoice: cfg.groqTtsVoice || 'autumn',
-    geminiTtsModel: cfg.geminiTtsModel || 'gemini-2.5-flash-preview-tts',
-    geminiTtsVoice: cfg.geminiTtsVoice || 'Kore',
-    edgeTtsModel: cfg.edgeTtsModel || 'edge-tts',
-    edgeTtsVoice: cfg.edgeTtsVoice || DEFAULT_EDGE_TTS_VOICE,
+    groqTtsModel: cfg.groqTtsModel || getTextToSpeechModelDefault('groq')!,
+    groqTtsVoice: cfg.groqTtsVoice || String(getTextToSpeechVoiceDefault('groq', cfg.groqTtsModel)),
+    geminiTtsModel: cfg.geminiTtsModel || getTextToSpeechModelDefault('gemini')!,
+    geminiTtsVoice: cfg.geminiTtsVoice || String(getTextToSpeechVoiceDefault('gemini')),
+    edgeTtsModel: cfg.edgeTtsModel || getTextToSpeechModelDefault('edge')!,
+    edgeTtsVoice: cfg.edgeTtsVoice || String(getTextToSpeechVoiceDefault('edge')),
     edgeTtsRate: cfg.edgeTtsRate ?? getTextToSpeechSpeedDefault('edge'),
-    kittenVoiceId: cfg.kittenVoiceId ?? 0,
-    supertonicVoice: cfg.supertonicVoice ?? 'M1',
-    supertonicLanguage: cfg.supertonicLanguage ?? 'en',
+    kittenVoiceId: cfg.kittenVoiceId ?? Number(getTextToSpeechVoiceDefault('kitten')),
+    supertonicVoice: cfg.supertonicVoice ?? String(getTextToSpeechVoiceDefault('supertonic')),
+    supertonicLanguage: cfg.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE,
     supertonicSpeed: cfg.supertonicSpeed ?? getTextToSpeechSpeedDefault('supertonic'),
-    supertonicSteps: cfg.supertonicSteps ?? 5,
+    supertonicSteps: cfg.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS,
     acpxAgents: options.acpxAgents ?? [],
     pinnedSessionIds: Array.isArray(cfg.pinnedSessionIds)
       ? cfg.pinnedSessionIds.filter((id): id is string => typeof id === 'string')
