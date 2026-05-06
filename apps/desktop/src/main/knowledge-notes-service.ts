@@ -21,6 +21,10 @@ import {
   writeKnowledgeNoteFile,
 } from "./agents-files/knowledge-notes"
 import { readTextFileIfExistsSync, safeWriteFileSync } from "./agents-files/safe-file"
+import {
+  createReadableKnowledgeNoteId,
+  slugifyKnowledgeNoteId,
+} from "@dotagents/shared/knowledge-note-domain"
 import { inferKnowledgeNoteGrouping } from "@dotagents/shared/knowledge-note-grouping"
 
 function normalizeSingleLine(text: string): string {
@@ -32,18 +36,8 @@ function asStringArray(value: unknown): string[] {
   return value.filter((x): x is string => typeof x === "string").map((s) => s.trim()).filter(Boolean)
 }
 
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 64)
-}
-
 function buildReadableId(...candidates: Array<string | undefined>): string {
-  const base = candidates.map((value) => slugify(value ?? "")).find(Boolean) || "note"
-  return `${base}-${Math.random().toString(36).slice(2, 8)}`
+  return createReadableKnowledgeNoteId(candidates, () => Math.random().toString(36).slice(2, 8))
 }
 
 function titleizePath(value: string): string {
@@ -211,7 +205,7 @@ function scoreSearchEntry(entry: SearchIndexEntry, query: string): number {
 function normalizeKnowledgeNoteForStorage(note: KnowledgeNote): KnowledgeNote {
   const now = Date.now()
   const providedId = normalizeSingleLine(note.id ?? "")
-  const id = providedId || slugify(note.title || "note") || buildReadableId(note.title, note.summary)
+  const id = providedId || slugifyKnowledgeNoteId(note.title || "note") || buildReadableId(note.title, note.summary)
   const visibleBody = stripLegacyEmbeddedMetadata(note.body ?? "")
   const title = normalizeSingleLine(note.title || visibleBody || note.summary || id).slice(0, 120) || id
   const context = VALID_CONTEXT_VALUES.has(note.context) ? note.context : "search-only"
