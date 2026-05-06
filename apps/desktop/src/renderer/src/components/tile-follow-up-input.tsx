@@ -21,6 +21,7 @@ import {
   MessageImageAttachment,
   readImageAttachments,
 } from "@renderer/lib/message-image-utils"
+import { DEFAULT_MCP_MESSAGE_QUEUE_ENABLED } from "@dotagents/shared/mcp-api"
 
 interface TileFollowUpInputProps {
   conversationId?: string
@@ -96,7 +97,7 @@ export function TileFollowUpInput({
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
-  const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? true
+  const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED
   const inputPresentation = presentation ?? getFollowUpInputPresentation({
     conversationState: isSessionActive ? "running" : "complete",
     isInitializingSession,
@@ -459,4 +460,3 @@ export function TileFollowUpInput({
     </form>
   )
 }
-

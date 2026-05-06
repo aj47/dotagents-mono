@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, Config } from "../../../shared/types"
-import { INTERNAL_COMPLETION_NUDGE_TEXT } from "@dotagents/shared/mcp-api"
+import {
+  DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
+  INTERNAL_COMPLETION_NUDGE_TEXT,
+} from "@dotagents/shared/mcp-api"
 import { RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "@dotagents/shared/chat-utils"
 import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
@@ -3471,7 +3474,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     profileName,
     acpSessionInfo,
   } = progress
-  const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? true
+  const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED
 
   // Detect if agent was stopped by kill switch
   const wasStopped = finalContent?.includes("emergency kill switch") ||
