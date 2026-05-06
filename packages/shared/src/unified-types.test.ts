@@ -22,6 +22,7 @@ import type {
   AudioInputDeviceConfig,
   ChatGptWebAuthConfig,
   ChatProviderCredentialsConfig,
+  DesktopDisplayConfig,
   PredefinedPrompt,
   PredefinedPromptsConfig,
   SpeechToTextConfig,
@@ -440,6 +441,21 @@ describe('settings API request/response contracts', () => {
     assertType<AgentGenerationOptionsConfig>(config)
     assertType<SettingsUpdate>(update)
     expect(update.openaiReasoningEffort).toBe('xhigh')
+  })
+
+  it('accepts desktop display settings through the shared settings API', () => {
+    const config: DesktopDisplayConfig = {
+      themePreference: 'dark',
+      floatingPanelAutoShow: false,
+      hidePanelWhenMainFocused: false,
+    }
+    const update: SettingsUpdate = {
+      ...config,
+    }
+
+    assertType<DesktopDisplayConfig>(config)
+    assertType<SettingsUpdate>(update)
+    expect(update.themePreference).toBe('dark')
   })
 
   it('accepts streamer mode config shared by settings and remote pairing', () => {

@@ -12,7 +12,7 @@ import type {
 } from '@dotagents/shared/conversation-state'
 import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
 import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
-import type { AgentExecutionConfig, AgentGenerationOptionsConfig, AgentModelSelectionConfig, AudioDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
+import type { AgentExecutionConfig, AgentGenerationOptionsConfig, AgentModelSelectionConfig, AudioDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, DesktopDisplayConfig, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
 import type { MainAgentConfig } from '@dotagents/shared/main-agent-selection'
 import type { CloudflareTunnelConfig, RemoteServerConfig, StreamerModeConfig } from '@dotagents/shared/remote-pairing'
 import type { ObservabilityConfig } from '@dotagents/shared/observability-config'
@@ -34,7 +34,7 @@ import {
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, RecordingHistoryItem, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
 export type { SessionHistoryConfig } from '@dotagents/shared/session'
-export type { AgentExecutionConfig, AgentGenerationOptionsConfig, AgentModelSelectionConfig, AudioDeviceConfig, AudioInputDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, CodexTextVerbosity, OpenAiReasoningEffort, OpenAITtsResponseFormat, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
+export type { AgentExecutionConfig, AgentGenerationOptionsConfig, AgentModelSelectionConfig, AudioDeviceConfig, AudioInputDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, CodexTextVerbosity, DesktopDisplayConfig, OpenAiReasoningEffort, OpenAITtsResponseFormat, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, ThemePreference, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
@@ -137,7 +137,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & AgentModelSelectionConfig & ChatProviderCredentialsConfig & ChatGptWebAuthConfig & AgentGenerationOptionsConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & TextToSpeechConfig & AudioDeviceConfig & AgentRuntimeTuningConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & AgentModelSelectionConfig & ChatProviderCredentialsConfig & ChatGptWebAuthConfig & AgentGenerationOptionsConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & TextToSpeechConfig & DesktopDisplayConfig & AudioDeviceConfig & AgentRuntimeTuningConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -154,9 +154,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   toggleVoiceDictationEnabled?: boolean
   toggleVoiceDictationHotkey?: "fn" | "f1" | "f2" | "f3" | "f4" | "f5" | "f6" | "f7" | "f8" | "f9" | "f10" | "f11" | "f12" | "custom"
   customToggleVoiceDictationHotkey?: string
-
-  // Theme Configuration
-  themePreference?: "system" | "light" | "dark"
 
   openaiCompatiblePreset?: OPENAI_COMPATIBLE_PRESET_ID
 
@@ -257,16 +254,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   panelWaveformSize?: { width: number; height: number }
   panelTextInputSize?: { width: number; height: number }
   panelProgressSize?: { width: number; height: number }
-
-  // Floating Panel Auto-Show Configuration
-  // When false, the floating panel will not automatically appear during agent sessions
-  // Users can still manually access the panel via hotkeys, tray menu, or UI
-  floatingPanelAutoShow?: boolean
-
-  // Hide Floating Panel When Main App is Focused
-  // When true (default), the floating panel will automatically hide when the main DotAgents window is focused
-  // The panel will reappear when the main window loses focus (if auto-show conditions are met)
-  hidePanelWhenMainFocused?: boolean
 
   // Stream Status Watcher Configuration
   streamStatusWatcherEnabled?: boolean
