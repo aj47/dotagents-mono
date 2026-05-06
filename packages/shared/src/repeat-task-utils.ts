@@ -25,6 +25,10 @@ export type RepeatTaskCadence = {
   schedule?: RepeatTaskSchedule | null
 }
 
+export type RepeatTaskRunNowDescriptionLike = RepeatTaskCadence & {
+  enabled: boolean
+}
+
 export type RepeatTaskScheduleParseResult =
   | { ok: true; schedule?: RepeatTaskSchedule | null }
   | { ok: false; error: string }
@@ -1297,6 +1301,10 @@ export function formatLoopInterval(minutes: number): string {
 export function describeLoopCadence(loop: RepeatTaskCadence): string {
   if (loop.runContinuously) return "Continuous"
   return loop.schedule ? describeSchedule(loop.schedule) : `Every ${formatLoopInterval(loop.intervalMinutes)}`
+}
+
+export function getRepeatTaskRunNowDescription(loop: RepeatTaskRunNowDescriptionLike): string {
+  return `Run repeat task now • ${describeLoopCadence(loop)}${loop.enabled ? "" : " • Disabled"}`
 }
 
 export function formatLoopIntervalDraft(minutes?: number): string {

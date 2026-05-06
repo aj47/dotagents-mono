@@ -28,6 +28,7 @@ import {
   deletePredefinedPromptFromList,
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
+  getPromptLibraryTaskDescription,
   updatePredefinedPromptList,
 } from "@dotagents/shared/predefined-prompts"
 import { useQuery } from "@tanstack/react-query"
@@ -297,7 +298,7 @@ export function PredefinedPromptsMenu({
                 <div className={entryTextClassName}>
                   <div className="truncate font-medium" title={task.name}>{task.name}</div>
                   <p className={secondaryTextClassName}>
-                    {task.prompt || "Run this task now."}
+                    {getPromptLibraryTaskDescription(task)}
                   </p>
                 </div>
               </DropdownMenuItem>

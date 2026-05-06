@@ -90,6 +90,8 @@ import {
   deletePredefinedPromptFromList,
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
+  getPromptLibraryTaskContent,
+  getPromptLibraryTaskDescription,
   isSlashCommandPrompt,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
@@ -2884,8 +2886,8 @@ export default function ChatScreen({ route, navigation }: any) {
       const taskItems = availableTasks.map((task) => ({
         id: `task-${task.id}`,
         title: task.name,
-        content: task.prompt || '',
-        description: task.prompt || 'Run this desktop task now.',
+        content: getPromptLibraryTaskContent(task),
+        description: getPromptLibraryTaskDescription(task, 'Run this desktop task now.'),
         source: 'task' as const,
         task,
       }));

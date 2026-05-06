@@ -25,6 +25,7 @@ import {
   formatLoopIntervalDraft,
   getNextRepeatTaskDelayMs,
   getRepeatTaskIntervalMs,
+  getRepeatTaskRunNowDescription,
   getLoopScheduleDaysOfWeek,
   getLoopScheduleMode,
   getLoopScheduleTimes,
@@ -157,6 +158,12 @@ describe("repeat task schedule helpers", () => {
     expect(describeLoopCadence({ intervalMinutes: 15 })).toBe("Every 15m")
     expect(describeLoopCadence({ intervalMinutes: 15, runContinuously: true })).toBe("Continuous")
     expect(describeLoopCadence({ intervalMinutes: 15, schedule: { type: "daily", times: ["09:00"] } })).toBe("Daily at 09:00")
+    expect(getRepeatTaskRunNowDescription({ intervalMinutes: 15, enabled: true })).toBe("Run repeat task now • Every 15m")
+    expect(getRepeatTaskRunNowDescription({
+      intervalMinutes: 15,
+      enabled: false,
+      schedule: { type: "daily", times: ["09:00"] },
+    })).toBe("Run repeat task now • Daily at 09:00 • Disabled")
   })
 
   it("computes local repeat task scheduling timestamps and delay fallbacks", () => {

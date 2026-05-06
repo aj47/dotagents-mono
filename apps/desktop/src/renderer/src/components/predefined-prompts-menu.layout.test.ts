@@ -37,6 +37,7 @@ describe("predefined prompts menu layout", () => {
     expect(predefinedPromptsMenuSource).toContain("createPredefinedPromptRecord")
     expect(predefinedPromptsMenuSource).toContain("getPromptLibrarySkillContent")
     expect(predefinedPromptsMenuSource).toContain("getPromptLibrarySkillDescription")
+    expect(predefinedPromptsMenuSource).toContain("getPromptLibraryTaskDescription")
     expect(predefinedPromptsMenuSource).toContain("updatePredefinedPromptList(prompts, editingPrompt.id, draft, now)")
     expect(predefinedPromptsMenuSource).toContain("deletePredefinedPromptFromList(prompts, prompt.id)")
     expect(predefinedPromptsMenuSource).not.toContain("Math.random().toString(36)")

@@ -6,9 +6,12 @@ import {
   deletePredefinedPromptFromList,
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
+  getPromptLibraryTaskContent,
+  getPromptLibraryTaskDescription,
   isSlashCommandPrompt,
   isSlashCommandPromptName,
   PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION,
+  PREDEFINED_PROMPT_TASK_FALLBACK_DESCRIPTION,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
   updatePredefinedPromptRecord,
@@ -17,6 +20,7 @@ import {
 describe("predefined prompt helpers", () => {
   it("classifies slash command prompt names", () => {
     expect(PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION).toBe("Use this skill as a reusable prompt.")
+    expect(PREDEFINED_PROMPT_TASK_FALLBACK_DESCRIPTION).toBe("Run this task now.")
     expect(isSlashCommandPromptName("/standup")).toBe(true)
     expect(isSlashCommandPromptName(" /standup ")).toBe(true)
     expect(isSlashCommandPromptName("/")).toBe(false)
@@ -40,6 +44,14 @@ describe("predefined prompt helpers", () => {
       description: "Find sources",
     })).toBe('Use the "Research" skill for this request.\n\nFind sources')
     expect(getPromptLibrarySkillContent({ name: "Research" })).toBe('Use the "Research" skill for this request.')
+  })
+
+  it("builds shared prompt-library task labels and content", () => {
+    expect(getPromptLibraryTaskContent({ prompt: "  Review open PRs  " })).toBe("Review open PRs")
+    expect(getPromptLibraryTaskContent({ prompt: "  " })).toBe("")
+    expect(getPromptLibraryTaskDescription({ prompt: "  Review open PRs  " })).toBe("Review open PRs")
+    expect(getPromptLibraryTaskDescription({ prompt: "" })).toBe(PREDEFINED_PROMPT_TASK_FALLBACK_DESCRIPTION)
+    expect(getPromptLibraryTaskDescription({ prompt: "" }, "Run this desktop task now.")).toBe("Run this desktop task now.")
   })
 
   it("creates stable prompt ids and trimmed records", () => {

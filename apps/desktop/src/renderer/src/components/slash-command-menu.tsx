@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 import { LoopConfig } from "@shared/types"
-import { formatLoopInterval } from "@dotagents/shared/repeat-task-utils"
+import { getRepeatTaskRunNowDescription } from "@dotagents/shared/repeat-task-utils"
 import {
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
@@ -75,7 +75,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
     const loops = (loopsQuery.data ?? []).map((loop) => ({
       id: loop.id,
       name: loop.name,
-      description: `Run repeat task now • Every ${formatLoopInterval(loop.intervalMinutes)}${loop.enabled ? "" : " • Disabled"}`,
+      description: getRepeatTaskRunNowDescription(loop),
       type: "loop" as const,
     }))
     return [...prompts, ...skills, ...loops]

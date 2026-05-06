@@ -10,10 +10,10 @@ describe("slash command menu repeat-task support", () => {
   it("loads repeat tasks into the shared slash-command list", () => {
     expect(slashCommandMenuSource).toContain("getPromptLibrarySkillContent(s)")
     expect(slashCommandMenuSource).toContain("getPromptLibrarySkillDescription(s)")
+    expect(slashCommandMenuSource).toContain("getRepeatTaskRunNowDescription(loop)")
     expect(slashCommandMenuSource).toContain('queryKey: ["loops"]')
     expect(slashCommandMenuSource).toContain('queryFn: () => tipcClient.getLoops() as Promise<LoopConfig[]>')
     expect(slashCommandMenuSource).toContain('type: "loop" as const')
-    expect(slashCommandMenuSource).toContain('Run repeat task now • Every ${formatLoopInterval(loop.intervalMinutes)}')
   })
 
   it("triggers repeat tasks instead of inserting them into the composer", () => {
