@@ -18,7 +18,7 @@ import {
   createButtonAccessibilityLabel,
   createSwitchAccessibilityLabel,
   createTextInputAccessibilityLabel,
-} from '../lib/accessibility';
+} from '@dotagents/shared/accessibility-utils';
 import { getDeviceIdentity } from '../lib/deviceIdentity';
 import {
   ExtendedSettingsApiClient,

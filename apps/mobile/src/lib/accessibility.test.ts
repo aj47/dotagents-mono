@@ -10,7 +10,7 @@ import {
   createSwitchAccessibilityLabel,
   createTextInputAccessibilityLabel,
   createVoiceInputLiveRegionAnnouncement,
-} from './accessibility';
+} from '@dotagents/shared/accessibility-utils';
 
 describe('createSwitchAccessibilityLabel', () => {
   it('adds a toggle suffix for named settings', () => {

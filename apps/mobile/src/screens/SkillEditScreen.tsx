@@ -9,7 +9,7 @@ import {
   SkillCreateRequest,
   SkillUpdateRequest,
 } from '../lib/settingsApi';
-import { createButtonAccessibilityLabel } from '../lib/accessibility';
+import { createButtonAccessibilityLabel } from '@dotagents/shared/accessibility-utils';
 import { useConfigContext } from '../store/config';
 
 type SkillFormData = {

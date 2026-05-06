@@ -14,7 +14,7 @@ import {
   type OperatorMCPToolSummary,
   type VerifyExternalAgentCommandResponse,
 } from '../lib/settingsApi';
-import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '@dotagents/shared/accessibility-utils';
 import {
   AGENT_EDIT_CONNECTION_TYPE_OPTIONS,
   DEFAULT_AGENT_CONNECTION_FORM_FIELDS,

@@ -21,7 +21,7 @@ import {
   createMcpServerSwitchAccessibilityLabel,
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
-} from '../lib/accessibility';
+} from '@dotagents/shared/accessibility-utils';
 import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteDateFilter, KnowledgeNoteSort, AgentProfile, Loop, LocalSpeechModelProviderId, LocalSpeechModelStatus, ModelPresetSummary } from '../lib/settingsApi';
 import { speakRemoteTts } from '../lib/remoteTts';
 import { TTSSettings } from '../ui/TTSSettings';

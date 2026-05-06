@@ -12,7 +12,7 @@ import {
   createButtonAccessibilityLabel,
   createMinimumTouchTargetStyle,
   createTextInputAccessibilityLabel,
-} from '../lib/accessibility';
+} from '@dotagents/shared/accessibility-utils';
 import { resolveQrScannerActivation } from './connection-settings-qr';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';

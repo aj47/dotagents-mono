@@ -135,7 +135,7 @@ import {
   createSwitchAccessibilityLabel,
   createTextInputAccessibilityLabel,
   createVoiceInputLiveRegionAnnouncement,
-} from '../lib/accessibility';
+} from '@dotagents/shared/accessibility-utils';
 import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';

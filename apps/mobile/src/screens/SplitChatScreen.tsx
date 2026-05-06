@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ChatMessage } from '../lib/openaiClient';
-import { createButtonAccessibilityLabel } from '../lib/accessibility';
+import { createButtonAccessibilityLabel } from '@dotagents/shared/accessibility-utils';
 import { ConfigContext, useConfigContext } from '../store/config';
 import { SessionContext, useSessionContext } from '../store/sessions';
 import type { SessionStore } from '../store/sessions';

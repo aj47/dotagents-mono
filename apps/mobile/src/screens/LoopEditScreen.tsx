@@ -22,7 +22,7 @@ import {
   LoopCreateRequest,
   LoopUpdateRequest,
 } from '../lib/settingsApi';
-import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
+import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '@dotagents/shared/accessibility-utils';
 import { useConfigContext } from '../store/config';
 import {
   buildAgentSessionCandidateOptions,
