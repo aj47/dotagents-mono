@@ -31,6 +31,7 @@ import Slider from '@react-native-community/slider';
 import {
   buildKnowledgeNoteSections,
 } from '@dotagents/shared/knowledge-note-grouping';
+import { sortAgentProfilesWithDefaultFirst } from '@dotagents/shared/agent-selector-options';
 import {
   filterModelOptionsByQuery,
   getAgentModelPlaceholder,
@@ -413,6 +414,10 @@ export default function SettingsScreen({ navigation }: any) {
     if (enabledDiff !== 0) return enabledDiff;
     return a.name.localeCompare(b.name);
   }), [skills]);
+  const sortedAgentProfiles = useMemo(
+    () => sortAgentProfilesWithDefaultFirst(agentProfiles),
+    [agentProfiles]
+  );
   const trimmedKnowledgeNoteSearchQuery = knowledgeNoteSearchQuery.trim();
   const knowledgeNoteFilterRequest = useMemo(() => ({
     context: knowledgeNoteContextFilter === 'all' ? undefined : knowledgeNoteContextFilter,
@@ -4640,10 +4645,10 @@ export default function SettingsScreen({ navigation }: any) {
                 </View>
                 {isLoadingAgentProfiles ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : agentProfiles.length === 0 ? (
+                ) : sortedAgentProfiles.length === 0 ? (
                   <Text style={styles.helperText}>No agents configured</Text>
                 ) : (
-                  agentProfiles.map((profile) => (
+                  sortedAgentProfiles.map((profile) => (
                     <View
                       key={profile.id}
                       style={styles.serverRow}
