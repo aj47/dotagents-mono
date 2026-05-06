@@ -8,6 +8,7 @@ import type {
 import type {
   ToolCall,
   ToolResult,
+  LoopConfig as SharedLoopConfig,
 } from '@dotagents/shared/types'
 import type {
   AgentConversationState,
@@ -18,7 +19,7 @@ import {
   legacyProfileToAgentProfile as sharedLegacyProfileToAgentProfile,
 } from '@dotagents/shared/agent-profile-legacy-converters'
 
-export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse } from '@dotagents/shared/types'
+export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule } from '@dotagents/shared/types'
 export type { AgentConversationState } from '@dotagents/shared/conversation-state'
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared/agent-progress'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '@dotagents/core'
@@ -969,27 +970,6 @@ export interface AgentSkillsData {
   skills: AgentSkill[]
 }
 
-export type LoopSchedule =
-  | { type: "daily"; times: string[] }
-  | { type: "weekly"; times: string[]; daysOfWeek: number[] }
-
-export interface LoopConfig {
-  id: string               // unique identifier (uuid)
-  name: string             // display name
-  prompt: string           // the prompt text sent to the agent
-  intervalMinutes: number  // fallback fixed interval when `schedule` is not set
-  enabled: boolean         // whether this loop is active
-  profileId?: string       // optional profile to use for the agent session
-  lastRunAt?: number       // timestamp (ms) of last execution
-  runOnStartup?: boolean   // if true, fires immediately on app start before first interval
-  speakOnTrigger?: boolean // if true, unsnoozes session on completion so TTS auto-plays
-  continueInSession?: boolean // if true, reuses the prior session across iterations
-  lastSessionId?: string   // session id to resume on next run when continueInSession is on
-  runContinuously?: boolean // if true, starts the next run immediately after the previous run finishes
-  maxIterations?: number   // optional per-task override for agent loop iterations
-  schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
-}
-
 export type Config = {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
@@ -1373,7 +1353,7 @@ export type Config = {
   localTraceLogPath?: string // Default directory: <dataFolder>/traces
 
   // Repeat Tasks Configuration
-  loops?: LoopConfig[]  // Scheduled repeat tasks that run at intervals
+  loops?: SharedLoopConfig[]  // Scheduled repeat tasks that run at intervals
 }
 
 // Push Notification Token (from mobile clients)

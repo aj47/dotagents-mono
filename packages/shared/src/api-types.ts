@@ -3,8 +3,9 @@
  * These are interface/type definitions only - no implementation classes
  */
 
-import type { QueuedMessage, ToolCall, ToolResult } from './types';
+import type { QueuedMessage, ToolCall, ToolResult, LoopSchedule } from './types';
 import type { ModelPreset } from './providers';
+export type { LoopSchedule } from './types';
 
 export interface Profile {
   id: string;
@@ -1028,11 +1029,6 @@ export interface AgentProfileUpdateRequest {
   autoSpawn?: boolean;
   properties?: Record<string, string>;
 }
-
-// Agent Loops Types
-export type LoopSchedule =
-  | { type: "daily"; times: string[] }
-  | { type: "weekly"; times: string[]; daysOfWeek: number[] };
 
 export interface Loop {
   id: string;

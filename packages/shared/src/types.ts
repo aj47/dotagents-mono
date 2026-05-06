@@ -118,3 +118,32 @@ export type HandsFreeDebugEventType =
   | 'session-timeout'
   | 'no-speech-timeout';
 
+/**
+ * Wall-clock schedule for a repeat task.
+ * - `daily`: fires at each HH:MM in `times` every day.
+ * - `weekly`: fires at each HH:MM in `times` on each day in `daysOfWeek`
+ *   (0=Sunday, 6=Saturday).
+ * All times are interpreted in the host's local timezone.
+ */
+export type LoopSchedule =
+  | { type: 'daily'; times: string[] }
+  | { type: 'weekly'; times: string[]; daysOfWeek: number[] };
+
+export interface LoopConfig {
+  id: string;
+  name: string;
+  prompt: string;
+  /** Fallback fixed interval in minutes when `schedule` is not set. */
+  intervalMinutes: number;
+  enabled: boolean;
+  profileId?: string;
+  lastRunAt?: number;
+  runOnStartup?: boolean;
+  speakOnTrigger?: boolean;
+  continueInSession?: boolean;
+  lastSessionId?: string;
+  runContinuously?: boolean;
+  maxIterations?: number;
+  /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
+  schedule?: LoopSchedule;
+}
