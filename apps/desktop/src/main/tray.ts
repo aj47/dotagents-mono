@@ -12,6 +12,7 @@ import {
 } from "./window"
 import { configStore } from "./config"
 import { state } from "./state"
+import { DEFAULT_FLOATING_PANEL_AUTO_SHOW } from "@dotagents/shared/api-types"
 
 // Use PNG for macOS and Linux (Waybar/SNI tray), ICO only for Windows
 const defaultIcon = path.join(
@@ -97,7 +98,7 @@ const buildMenu = (tray: Tray) =>
     {
       type: "checkbox",
       label: "Auto-Show Floating Panel",
-      checked: configStore.get().floatingPanelAutoShow !== false,
+      checked: configStore.get().floatingPanelAutoShow ?? DEFAULT_FLOATING_PANEL_AUTO_SHOW,
       click(menuItem) {
         configStore.save({
           ...configStore.get(),

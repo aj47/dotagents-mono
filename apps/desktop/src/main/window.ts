@@ -17,6 +17,11 @@ import { calculatePanelPosition } from "./panel-position"
 import { setupConsoleLogger } from "./console-logger"
 import { emergencyStopAll } from "./emergency-stop"
 import { setupRendererCrashRecovery } from "./dev-self-recovery/renderer-crash-recovery"
+import {
+  DEFAULT_FLOATING_PANEL_AUTO_SHOW,
+  DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED,
+  DEFAULT_PANEL_POSITION,
+} from "@dotagents/shared/api-types"
 import type { ScreenRegionCapture } from "./screenshot-capture"
 
 type WINDOW_ID = "main" | "panel" | "setup"
@@ -327,7 +332,7 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
     lastMainBlurWithoutAppFocusAt = 0
 
     const config = configStore.get()
-    if (config.hidePanelWhenMainFocused !== false) {
+    if (config.hidePanelWhenMainFocused ?? DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED) {
       const panel = WINDOWS.get("panel")
       if (panel && panel.isVisible()) {
         // Don't hide panel if it was intentionally opened while main window is visible
@@ -353,7 +358,7 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
     }
 
     const config = configStore.get()
-    if (config.hidePanelWhenMainFocused !== false && panelHiddenByMainFocus) {
+    if ((config.hidePanelWhenMainFocused ?? DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED) && panelHiddenByMainFocus) {
       logApp("[createMainWindow] Main window blur - evaluating panel restore", getWindowFocusDebugSnapshot())
       // Let the native app activation state settle before deciding whether to
       // restore the floating panel. On macOS, immediately re-showing our
@@ -938,7 +943,7 @@ export function hideFloatingPanelWindow() {
   // and is not re-shown by agent progress updates (#281)
   try {
     const config = configStore.get()
-    if (config.floatingPanelAutoShow !== false) {
+    if (config.floatingPanelAutoShow ?? DEFAULT_FLOATING_PANEL_AUTO_SHOW) {
       configStore.save({ ...config, floatingPanelAutoShow: false })
       logApp("[hideFloatingPanelWindow] Persisted floatingPanelAutoShow=false")
     }
@@ -971,7 +976,7 @@ export function resetFloatingPanelPositionAndSize(showAfterReset = true) {
   const config = configStore.get()
   configStore.save({
     ...config,
-    panelPosition: "top-right",
+    panelPosition: DEFAULT_PANEL_POSITION,
     panelCustomPosition: undefined,
     panelCustomSize: undefined,
     panelWaveformSize: undefined,

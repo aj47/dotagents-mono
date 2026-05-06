@@ -1,14 +1,11 @@
 import { screen } from "electron"
 import { configStore } from "./config"
+import {
+  DEFAULT_PANEL_POSITION,
+  type PanelPosition,
+} from "@dotagents/shared/api-types"
 
-export type PanelPosition =
-  | "top-left"
-  | "top-center"
-  | "top-right"
-  | "bottom-left"
-  | "bottom-center"
-  | "bottom-right"
-  | "custom"
+export type { PanelPosition } from "@dotagents/shared/api-types"
 
 export interface PanelSize {
   width: number
@@ -27,7 +24,7 @@ export function calculatePanelPosition(
   _mode: "normal" | "agent" | "textInput" = "normal",
 ): Position {
   const config = configStore.get()
-  const position = config.panelPosition || "top-right"
+  const position = config.panelPosition ?? DEFAULT_PANEL_POSITION
 
   if (position === "custom" && config.panelCustomPosition) {
     return config.panelCustomPosition

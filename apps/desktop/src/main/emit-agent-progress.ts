@@ -6,6 +6,10 @@ import { isPanelAutoShowSuppressed, agentSessionStateManager } from "./state"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
 import { sanitizeAgentProgressUpdateForDisplay } from "@dotagents/shared/message-display-utils"
+import {
+  DEFAULT_FLOATING_PANEL_AUTO_SHOW,
+  DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED,
+} from "@dotagents/shared/api-types"
 
 // Throttle interval for non-critical progress updates (ms).
 // Updates within this window are collapsed — only the latest is sent.
@@ -87,8 +91,8 @@ function sendToWindows(update: AgentProgressUpdate): void {
 
   // Handle auto-show logic for panel window
   const config = configStore.get()
-  const floatingPanelAutoShowEnabled = config.floatingPanelAutoShow !== false
-  const hidePanelWhenMainFocused = config.hidePanelWhenMainFocused !== false
+  const floatingPanelAutoShowEnabled = config.floatingPanelAutoShow ?? DEFAULT_FLOATING_PANEL_AUTO_SHOW
+  const hidePanelWhenMainFocused = config.hidePanelWhenMainFocused ?? DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED
   const isMainFocused = main?.isFocused() ?? false
 
   if (!panel.isVisible() && update.sessionId) {
