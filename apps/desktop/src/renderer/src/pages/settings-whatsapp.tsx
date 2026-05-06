@@ -9,6 +9,11 @@ import { AlertTriangle, Loader2, CheckCircle2, XCircle, RefreshCw, LogOut, QrCod
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { QRCodeSVG } from "qrcode.react"
 import { formatConfigListInput, parseConfigListInput } from "@dotagents/shared/config-list-input"
+import {
+  DEFAULT_WHATSAPP_AUTO_REPLY,
+  DEFAULT_WHATSAPP_ENABLED,
+  DEFAULT_WHATSAPP_LOG_MESSAGES,
+} from "@dotagents/shared/whatsapp-config"
 
 /**
  * Mask a phone number for streamer mode
@@ -171,7 +176,7 @@ export function Component() {
 
   if (!cfg) return null
 
-  const enabled = cfg.whatsappEnabled ?? false
+  const enabled = cfg.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED
   const remoteServerEnabled = cfg.remoteServerEnabled ?? false
   const hasApiKey = !!cfg.remoteServerApiKey
   const streamerMode = cfg.streamerModeEnabled ?? false
@@ -381,22 +386,22 @@ export function Component() {
               className="px-3"
             >
               <Switch
-                checked={cfg.whatsappAutoReply ?? false}
+                checked={cfg.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY}
                 onCheckedChange={(value) => {
                   saveConfig({ whatsappAutoReply: value })
                 }}
                 disabled={
                   // Only disable when trying to enable without prerequisites
                   // Always allow turning OFF (unchecking) so users can opt out
-                  !(cfg.whatsappAutoReply ?? false) && (!remoteServerEnabled || !hasApiKey)
+                  !(cfg.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY) && (!remoteServerEnabled || !hasApiKey)
                 }
               />
-              {cfg.whatsappAutoReply && remoteServerEnabled && hasApiKey && (
+              {(cfg.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY) && remoteServerEnabled && hasApiKey && (
                 <div className="mt-1 text-xs text-green-600 dark:text-green-400">
                   Auto-reply enabled - incoming messages will be processed and replied to
                 </div>
               )}
-              {cfg.whatsappAutoReply && (!remoteServerEnabled || !hasApiKey) && (
+              {(cfg.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY) && (!remoteServerEnabled || !hasApiKey) && (
                 <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                   Auto-reply is enabled but Remote Server or API key is missing
                 </div>
@@ -408,7 +413,7 @@ export function Component() {
               className="px-3"
             >
               <Switch
-                checked={cfg.whatsappLogMessages ?? false}
+                checked={cfg.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES}
                 onCheckedChange={(value) => {
                   saveConfig({ whatsappLogMessages: value })
                 }}

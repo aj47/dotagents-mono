@@ -79,6 +79,11 @@ import {
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
 } from './discord-config';
+import {
+  DEFAULT_WHATSAPP_AUTO_REPLY,
+  DEFAULT_WHATSAPP_ENABLED,
+  DEFAULT_WHATSAPP_LOG_MESSAGES,
+} from './whatsapp-config';
 import { getSensitiveOperatorSettingsKeys } from './operator-actions';
 import {
   DEFAULT_OPENAI_TTS_RESPONSE_FORMAT,
@@ -376,7 +381,7 @@ export function buildSettingsResponse(
     transcriptPostProcessingEnabled: cfg.transcriptPostProcessingEnabled ?? true,
     mcpRequireApprovalBeforeToolCall: cfg.mcpRequireApprovalBeforeToolCall ?? DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL,
     ttsEnabled: cfg.ttsEnabled ?? true,
-    whatsappEnabled: cfg.whatsappEnabled ?? false,
+    whatsappEnabled: cfg.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED,
     discordEnabled: cfg.discordEnabled ?? false,
     mcpMaxIterations: cfg.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT,
     streamerModeEnabled: cfg.streamerModeEnabled ?? false,
@@ -426,8 +431,8 @@ export function buildSettingsResponse(
     cloudflareTunnelHostname: cfg.cloudflareTunnelHostname ?? '',
     whatsappAllowFrom: cfg.whatsappAllowFrom ?? [],
     whatsappOperatorAllowFrom: cfg.whatsappOperatorAllowFrom ?? [],
-    whatsappAutoReply: cfg.whatsappAutoReply ?? false,
-    whatsappLogMessages: cfg.whatsappLogMessages ?? false,
+    whatsappAutoReply: cfg.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY,
+    whatsappLogMessages: cfg.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES,
     discordBotToken: options.discordBotToken,
     discordDmEnabled: cfg.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED,
     discordRequireMention: cfg.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION,
@@ -622,7 +627,7 @@ export async function updateSettingsAction<TConfig extends SettingsActionConfigL
 
     if (updates.whatsappEnabled !== undefined) {
       try {
-        const prevEnabled = cfg.whatsappEnabled ?? false;
+        const prevEnabled = cfg.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED;
         await options.applyWhatsappToggle(prevEnabled, updates.whatsappEnabled);
       } catch {
         // lifecycle is best-effort

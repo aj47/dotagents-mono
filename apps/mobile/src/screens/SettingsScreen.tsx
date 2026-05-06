@@ -70,6 +70,11 @@ import {
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
 } from '@dotagents/shared/discord-config';
+import {
+  DEFAULT_WHATSAPP_AUTO_REPLY,
+  DEFAULT_WHATSAPP_ENABLED,
+  DEFAULT_WHATSAPP_LOG_MESSAGES,
+} from '@dotagents/shared/whatsapp-config';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
 import {
   BUNDLE_COMPONENT_OPTIONS,
@@ -4014,14 +4019,14 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>WhatsApp Integration</Text>
                   <Switch
-                    value={remoteSettings.whatsappEnabled ?? false}
+                    value={remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('whatsappEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.whatsappEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
 
-                {remoteSettings.whatsappEnabled && (
+                {(remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED) && (
                   <>
                     <Text style={styles.label}>Allowed Numbers</Text>
                     <TextInput
@@ -4064,20 +4069,20 @@ export default function SettingsScreen({ navigation }: any) {
                     <View style={styles.row}>
                       <Text style={styles.label}>Auto-Reply</Text>
                       <Switch
-                        value={remoteSettings.whatsappAutoReply ?? false}
+                        value={remoteSettings.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY}
                         onValueChange={(v) => handleRemoteSettingToggle('whatsappAutoReply', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.whatsappAutoReply ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
 
                     <View style={styles.row}>
                       <Text style={styles.label}>Log Messages</Text>
                       <Switch
-                        value={remoteSettings.whatsappLogMessages ?? false}
+                        value={remoteSettings.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES}
                         onValueChange={(v) => handleRemoteSettingToggle('whatsappLogMessages', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.whatsappLogMessages ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
                     <Text style={styles.helperText}>

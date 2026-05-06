@@ -217,6 +217,23 @@ test('lets mobile configure desktop local trace logging', () => {
   assert.match(langfuseSection, />Langfuse tracing</);
 });
 
+test('uses shared WhatsApp defaults in mobile desktop settings', () => {
+  const whatsappSection = extractBetween(
+    '<CollapsibleSection id="whatsapp" title="WhatsApp">',
+    '<CollapsibleSection id="discord" title="Discord">'
+  );
+
+  assert.match(settingsSource, /DEFAULT_WHATSAPP_ENABLED/);
+  assert.match(settingsSource, /DEFAULT_WHATSAPP_AUTO_REPLY/);
+  assert.match(settingsSource, /DEFAULT_WHATSAPP_LOG_MESSAGES/);
+  assert.match(whatsappSection, /remoteSettings\.whatsappEnabled \?\? DEFAULT_WHATSAPP_ENABLED/);
+  assert.match(whatsappSection, /handleRemoteSettingToggle\('whatsappEnabled', v\)/);
+  assert.match(whatsappSection, /remoteSettings\.whatsappAutoReply \?\? DEFAULT_WHATSAPP_AUTO_REPLY/);
+  assert.match(whatsappSection, /handleRemoteSettingToggle\('whatsappAutoReply', v\)/);
+  assert.match(whatsappSection, /remoteSettings\.whatsappLogMessages \?\? DEFAULT_WHATSAPP_LOG_MESSAGES/);
+  assert.match(whatsappSection, /handleRemoteSettingToggle\('whatsappLogMessages', v\)/);
+});
+
 test('lets mobile configure desktop Discord integration settings without echoing the token', () => {
   const discordSection = extractBetween(
     '<CollapsibleSection id="discord" title="Discord">',

@@ -23,6 +23,7 @@ import {
   MAIN_AGENT_MODE_OPTIONS,
   type MainAgentMode,
 } from "@dotagents/shared/main-agent-selection"
+import { DEFAULT_WHATSAPP_ENABLED } from "@dotagents/shared/whatsapp-config"
 import type { STT_PROVIDER_ID } from "@dotagents/shared/providers"
 import { SUPPORTED_LANGUAGES } from "@dotagents/shared/languages"
 import { Textarea } from "@renderer/components/ui/textarea"
@@ -1347,7 +1348,7 @@ export function Component() {
         >
           <Control label={<ControlLabel label="Enable WhatsApp" tooltip="When enabled, allows sending and receiving WhatsApp messages through DotAgents" />} className="px-3">
             <Switch
-              checked={configQuery.data?.whatsappEnabled ?? false}
+              checked={configQuery.data?.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED}
               onCheckedChange={(value) => saveConfig({ whatsappEnabled: value })}
             />
           </Control>

@@ -31,6 +31,11 @@ import {
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
 } from './discord-config';
+import {
+  DEFAULT_WHATSAPP_AUTO_REPLY,
+  DEFAULT_WHATSAPP_ENABLED,
+  DEFAULT_WHATSAPP_LOG_MESSAGES,
+} from './whatsapp-config';
 
 function jsonResponse(body: unknown, status: number = 200) {
   return new Response(JSON.stringify(body), {
@@ -385,6 +390,9 @@ describe('SettingsApiClient', () => {
       supertonicSpeed: 1.05,
       supertonicSteps: 5,
       transcriptPostProcessingEnabled: true,
+      whatsappEnabled: DEFAULT_WHATSAPP_ENABLED,
+      whatsappAutoReply: DEFAULT_WHATSAPP_AUTO_REPLY,
+      whatsappLogMessages: DEFAULT_WHATSAPP_LOG_MESSAGES,
       remoteServerApiKey: 'REMOTE-MASK',
       remoteServerPort: 3210,
       remoteServerBindAddress: '127.0.0.1',
