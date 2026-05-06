@@ -115,6 +115,43 @@ export function getToolResultsSummary(toolResults: ToolResult[]): string {
 }
 
 /**
+ * Compact `<firstCommandWord>:<secondToLastOutputWord>` preview for an
+ * `execute_command` tool call. Used in collapsed tool-activity groups and
+ * single-line execute_command rows where space is at a premium.
+ *
+ * Returns null when the call is not an execute_command or has no command. If
+ * a result is supplied, the second-to-last whitespace token of its output is
+ * appended after a colon; if only one token is present, that token is used.
+ */
+export function getExecuteCommandResultPreview(
+  toolCall: ToolCall,
+  toolResult?: ToolResult | null,
+): string | null {
+  const toolName = toolCall.name?.trim().toLowerCase() || '';
+  const isExecute = toolName === 'execute_command' || toolName.endsWith(':execute_command');
+  if (!isExecute) return null;
+
+  const args = normalizeToolArguments(toolCall.arguments);
+  const command = typeof args?.command === 'string' ? args.command.trim() : '';
+  if (!command) return null;
+  const firstWord = command.split(/\s+/)[0];
+  if (!firstWord) return null;
+
+  const rawOutput = toolResult
+    ? toolResult.success === false
+      ? toolResult.error || toolResult.content || ''
+      : toolResult.content || ''
+    : '';
+  const output = rawOutput.trim();
+  if (!output) return firstWord;
+
+  const words = output.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return firstWord;
+  const prelast = words.length >= 2 ? words[words.length - 2] : words[words.length - 1];
+  return `${firstWord}:${prelast}`;
+}
+
+/**
  * Generate a preview string for a single tool result.
  * @param result Tool result to preview
  * @returns A short preview string or empty string if no meaningful preview

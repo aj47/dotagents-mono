@@ -291,6 +291,39 @@ async function loadAgentProgress(
     getAgentConversationStateLabel: (state: string) => state,
     getToolResultsSummary: () => "",
     getToolActivitySummaryLine: () => "",
+    getIndividualToolCallPreview: (call: { name: string; arguments?: Record<string, unknown> }) => {
+      const cmd = (call.arguments as { command?: string } | undefined)?.command
+      if (typeof cmd === "string" && cmd.trim()) return cmd.replace(/\s+/g, " ").trim()
+      return call.name
+    },
+    getToolCallPreview: (call: { name: string; arguments?: Record<string, unknown> }) => {
+      const cmd = (call.arguments as { command?: string } | undefined)?.command
+      if ((call.name === "execute_command") && typeof cmd === "string" && cmd.trim()) {
+        return cmd.trim().split(/\s+/)[0]
+      }
+      return call.name
+    },
+    getExecuteCommandResultPreview: (
+      call: { name: string; arguments?: Record<string, unknown> },
+      result?: { success: boolean; content: string; error?: string } | null,
+    ) => {
+      if (call.name !== "execute_command") return null
+      const cmd = (call.arguments as { command?: string } | undefined)?.command
+      if (typeof cmd !== "string" || !cmd.trim()) return null
+      const firstWord = cmd.trim().split(/\s+/)[0]
+      if (!firstWord) return null
+      const raw = result
+        ? result.success === false
+          ? result.error || result.content || ""
+          : result.content || ""
+        : ""
+      const output = raw.trim()
+      if (!output) return firstWord
+      const words = output.split(/\s+/).filter(Boolean)
+      if (words.length === 0) return firstWord
+      const prelast = words.length >= 2 ? words[words.length - 2] : words[words.length - 1]
+      return `${firstWord}:${prelast}`
+    },
     normalizeAgentConversationState: (state: string | null | undefined, fallback: string) => state ?? fallback,
     getBuiltInModelPresets: () => [{ id: "default", name: "OpenAI", baseUrl: "https://api.openai.com/v1", agentModel: "gpt-4.1-mini", isBuiltIn: true }],
     DEFAULT_MODEL_PRESET_ID: "default",
@@ -716,7 +749,7 @@ describe("agent progress response history", () => {
           content: "First tool thought",
           timestamp: 100,
           toolCalls: [
-            { name: "search_repo", arguments: { query: "thinking blocks" } },
+            { name: "execute_command", arguments: { command: "git status --short" } },
           ],
         },
         {
@@ -724,7 +757,7 @@ describe("agent progress response history", () => {
           content: "",
           timestamp: 110,
           toolResults: [
-            { success: true, content: "first result" },
+            { success: true, content: "M file.ts\n branch main" },
           ],
         },
         {
@@ -732,7 +765,7 @@ describe("agent progress response history", () => {
           content: "Second tool thought",
           timestamp: 120,
           toolCalls: [
-            { name: "open_file", arguments: { path: "agent-progress.tsx" } },
+            { name: "execute_command", arguments: { command: "pnpm test" } },
           ],
         },
         {
@@ -740,7 +773,7 @@ describe("agent progress response history", () => {
           content: "",
           timestamp: 130,
           toolResults: [
-            { success: true, content: "second result" },
+            { success: true, content: "all suites passed" },
           ],
         },
         { role: "assistant", content: "Now here is the answer", timestamp: 200 },
@@ -755,9 +788,11 @@ describe("agent progress response history", () => {
     expect(text).not.toMatch(/2 step(?:\s*s)?/)
     expect(text).not.toContain("First tool thought")
     expect(text).not.toContain("Second tool thought")
-    // Collapsed groups now preview the output of the most recent tool execution.
-    expect(text).toContain("second result")
-    expect(text.indexOf("second result")).toBeLessThan(text.indexOf("Now here is the answer"))
+    // Collapsed groups preview only the latest execute_command as
+    // "<firstCmdWord>:<secondToLastOutputWord>" (here: pnpm test → "suites passed").
+    expect(text).toContain("pnpm:suites")
+    expect(text).not.toContain("git:branch")
+    expect(text.indexOf("pnpm:suites")).toBeLessThan(text.indexOf("Now here is the answer"))
   })
 
   it("lets expanded tool groups collapse from the bottom", async () => {

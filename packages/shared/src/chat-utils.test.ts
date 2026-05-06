@@ -4,6 +4,7 @@ import {
   getToolCallsSummary,
   getToolCallPreview,
   getIndividualToolCallPreview,
+  getExecuteCommandResultPreview,
   getToolResultsSummary,
   getToolArgumentEntries,
   formatToolArguments,
@@ -116,6 +117,71 @@ describe('getIndividualToolCallPreview', () => {
 
   it('supports JSON string command arguments', () => {
     expect(getIndividualToolCallPreview({ name: 'execute_command', arguments: '{"command":"pnpm test"}' as unknown as Record<string, unknown> })).toBe('pnpm test')
+  })
+})
+
+describe('getExecuteCommandResultPreview', () => {
+  it('returns null for non execute_command tools', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'read_file', arguments: { path: 'README.md' } },
+        { success: true, content: 'hello world' },
+      ),
+    ).toBeNull()
+  })
+
+  it('returns first command word when no result is present', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: { command: 'git status --short' } },
+        null,
+      ),
+    ).toBe('git')
+  })
+
+  it('joins first command word with second-to-last output word on success', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: { command: 'git status --short' } },
+        { success: true, content: 'M file.ts\n branch main\n' },
+      ),
+    ).toBe('git:branch')
+  })
+
+  it('falls back to the only word when output has just one token', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: { command: 'pwd' } },
+        { success: true, content: '/home\n' },
+      ),
+    ).toBe('pwd:/home')
+  })
+
+  it('uses error text when the command failed', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: { command: 'pnpm test' } },
+        { success: false, content: '', error: 'exit code 1' },
+      ),
+    ).toBe('pnpm:code')
+  })
+
+  it('returns first word when output is empty whitespace', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: { command: 'echo' } },
+        { success: true, content: '   \n' },
+      ),
+    ).toBe('echo')
+  })
+
+  it('handles JSON-string arguments', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: '{"command":"ls -la"}' as unknown as Record<string, unknown> },
+        { success: true, content: 'total 8\ndrwxr-xr-x . user' },
+      ),
+    ).toBe('ls:.')
   })
 })
 

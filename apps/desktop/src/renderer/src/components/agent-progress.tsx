@@ -27,9 +27,10 @@ import {
   formatToolArguments,
   getToolArgumentEntries,
   getIndividualToolCallPreview,
+  getExecuteCommandResultPreview,
   getToolResultsSummary,
   TOOL_GROUP_MIN_SIZE,
-  getToolActivitySummaryLine,
+  getToolCallPreview,
   getBuiltInModelPresets,
   DEFAULT_MODEL_PRESET_ID,
 } from "@dotagents/shared"
@@ -1432,7 +1433,16 @@ const CompactToolExecutionList: React.FC<{
         {toolCallEntries.map(({ call, result }, idx) => {
           const callIsPending = !result
           const callSuccess = result?.success
-          const toolPreview = getIndividualToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
+          // For execute_command rows we prefer the compact
+          // `<firstCmdWord>:<secondToLastOutputWord>` format once a result is
+          // available; while still pending we fall through to the full command.
+          const execPreview = getExecuteCommandResultPreview(
+            { name: call.name, arguments: call.arguments ?? {} },
+            result ?? null,
+          )
+          const toolPreview = execPreview && result
+            ? execPreview
+            : getIndividualToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
 
           return (
             <div key={idx}>
@@ -1598,7 +1608,15 @@ const AssistantWithToolsBubble: React.FC<{
   const hasThought = data.thought && data.thought.trim().length > 0
   const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
   const collapsedToolPreviewLine = data.calls
-    .map((call) => getIndividualToolCallPreview({ name: call.name, arguments: call.arguments ?? {} }))
+    .map((call, idx) => {
+      const result = data.results[idx]
+      const execPreview = getExecuteCommandResultPreview(
+        { name: call.name, arguments: call.arguments ?? {} },
+        result ?? null,
+      )
+      if (execPreview && result) return execPreview
+      return getIndividualToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
+    })
     .join(", ")
 
   // Generate result summary for collapsed state
@@ -4191,33 +4209,42 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         return
       }
       const runItems = sortedItems.slice(runStart, runEnd + 1)
-      // Collapsed preview shows the output of the most recent tool execution in
-      // the run. If no result has arrived yet (still running), fall back to a
-      // tool-name summary of the latest call so something is rendered.
+      // Collapsed preview surfaces the most recent tool call. For
+      // execute_command we render `<firstCommandWord>:<secondToLastOutputWord>`
+      // so the header reads like a compact `git:branch` / `pnpm:passed` token.
+      // For other tools we fall back to the tool name only.
       let previewLine = ""
-      for (let j = runItems.length - 1; j >= 0; j--) {
+      for (let j = runItems.length - 1; j >= 0 && !previewLine; j--) {
         const it = runItems[j]
+        const calls =
+          it.kind === "assistant_with_tools"
+            ? it.data.calls
+            : it.kind === "tool_execution"
+              ? it.data.calls
+              : []
         const results =
-          it.kind === "tool_execution"
+          it.kind === "assistant_with_tools"
             ? it.data.results
-            : it.kind === "assistant_with_tools"
+            : it.kind === "tool_execution"
               ? it.data.results
-              : null
-        if (results && results.length > 0 && results.some((r) => r)) {
-          previewLine = getToolResultsSummary(results.filter((r): r is NonNullable<typeof r> => !!r))
-          if (previewLine) break
+              : []
+        if (calls.length === 0) continue
+        const lastCallIdx = calls.length - 1
+        const latestCall = calls[lastCallIdx]
+        if (!latestCall) continue
+        const latestResult = results[lastCallIdx] ?? undefined
+        const execPreview = getExecuteCommandResultPreview(
+          { name: latestCall.name, arguments: latestCall.arguments ?? {} },
+          latestResult ?? null,
+        )
+        if (execPreview) {
+          previewLine = execPreview
+          break
         }
-      }
-      if (!previewLine) {
-        for (let j = runItems.length - 1; j >= 0; j--) {
-          const it = runItems[j]
-          if (it.kind === "assistant_with_tools") {
-            const line = getToolActivitySummaryLine({ role: "assistant", toolCalls: it.data.calls })
-            if (line) { previewLine = line; break }
-          } else if (it.kind === "tool_execution") {
-            const line = getToolActivitySummaryLine({ role: "tool", toolResults: it.data.results })
-            if (line) { previewLine = line; break }
-          }
+        const namePreview = getToolCallPreview({ name: latestCall.name, arguments: latestCall.arguments ?? {} })
+        if (namePreview) {
+          previewLine = namePreview
+          break
         }
       }
       // Prefix the first child ID so the group stays stable as the run grows
