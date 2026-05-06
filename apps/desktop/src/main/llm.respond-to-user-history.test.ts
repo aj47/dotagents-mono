@@ -56,7 +56,38 @@ vi.mock("./acp-session-state", () => ({ getAcpSessionTitleOverride: mocks.getAcp
 vi.mock("./langfuse-service", () => ({ isLangfuseEnabled: vi.fn(() => false), createAgentTrace: vi.fn(), endAgentTrace: vi.fn(), flushLangfuse: vi.fn(async () => undefined) }))
 vi.mock("./summarization-service", () => ({ isSummarizationEnabled: vi.fn(() => false), shouldSummarizeStep: vi.fn(() => false), summarizeAgentStep: vi.fn(), summarizationService: { getSummaries: vi.fn(() => []), getLatestSummary: vi.fn(() => undefined), addSummary: vi.fn() } }))
 vi.mock("./knowledge-notes-service", () => ({ knowledgeNotesService: { createNoteFromSummary: vi.fn(), saveNote: vi.fn() } }))
-vi.mock("./agent-run-utils", () => ({ appendAgentStopNote: vi.fn(), resolveAgentIterationLimits: vi.fn((maxIterations: number) => ({ loopMaxIterations: maxIterations, guardrailBudget: maxIterations })) }))
+vi.mock("./agent-run-utils", () => ({
+  appendAgentStopNote: vi.fn(),
+  resolveAgentIterationLimits: vi.fn((maxIterations: number) => ({
+    loopMaxIterations: maxIterations,
+    guardrailBudget: maxIterations,
+  })),
+  resolveExpectedAgentStopReason: vi.fn((error: unknown, options: any = {}) => {
+    const message = error instanceof Error ? error.message : String(error)
+    const normalizedMessage = message.toLowerCase()
+    const normalizedName = error instanceof Error ? error.name.toLowerCase() : ""
+    const isKnownStopError =
+      normalizedName === "aborterror" ||
+      normalizedName.includes("abort") ||
+      normalizedName.includes("cancel") ||
+      normalizedMessage.includes("abort") ||
+      normalizedMessage.includes("cancel")
+
+    if (!isKnownStopError) {
+      return null
+    }
+
+    if (options.sessionShouldStop) {
+      return "Session stopped by kill switch"
+    }
+
+    if (options.globalShouldStop) {
+      return "Aborted by emergency stop"
+    }
+
+    return null
+  }),
+}))
 vi.mock("./agent-profile-service", () => ({ agentProfileService: { getCurrentProfile: mocks.getCurrentProfile } }))
 vi.mock("./skills-service", () => ({ skillsService: { getSkills: mocks.getSkills, refreshFromDisk: mocks.refreshFromDisk, getEnabledSkillsInstructionsForProfile: mocks.getEnabledSkillsInstructionsForProfile } }))
 vi.mock("./working-notes-runtime", () => ({ loadWorkingKnowledgeNotesForPrompt: vi.fn(() => []) }))

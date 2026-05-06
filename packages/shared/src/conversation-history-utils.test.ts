@@ -2,8 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { INTERNAL_COMPLETION_NUDGE_TEXT } from './mcp-api';
 import {
   collectRecentRealUserRequestIndices,
+  EMPTY_RESPONSE_FINAL_CONTENT,
+  EMPTY_RESPONSE_RETRY_PROMPT,
+  EMPTY_RESPONSE_TRUNCATED_RETRY_PROMPT,
   filterEphemeralMessages,
+  getEmptyResponseRetryPrompt,
   hasMappedToolResultPrefix,
+  hasTruncatedContentInRecentMessages,
   isGeneratedContextSummaryContent,
   isInternalNudgeContent,
   isRealUserRequestContent,
@@ -94,6 +99,42 @@ describe('conversation-history-utils', () => {
     it('recognizes shared tool and summary markers', () => {
       expect(hasMappedToolResultPrefix('[playwright-extension:browser_snapshot] result')).toBe(true);
       expect(isGeneratedContextSummaryContent('[Session Progress Summary]\nsummary')).toBe(true);
+    });
+  });
+
+  describe('empty response retry prompts', () => {
+    it('exports the repeated-empty-response final content', () => {
+      expect(EMPTY_RESPONSE_FINAL_CONTENT).toBe(
+        "I encountered repeated empty responses and couldn't complete the task. Please try again.",
+      );
+    });
+
+    it('uses the default retry prompt when recent context is not truncated', () => {
+      expect(getEmptyResponseRetryPrompt([{ role: 'assistant', content: 'No truncation here' }])).toBe(
+        EMPTY_RESPONSE_RETRY_PROMPT,
+      );
+    });
+
+    it('uses the truncated retry prompt when recent context contains truncation markers', () => {
+      const messages = [
+        { role: 'user', content: 'Earlier normal message' },
+        { role: 'tool', content: '[Truncated large output]' },
+      ];
+
+      expect(hasTruncatedContentInRecentMessages(messages)).toBe(true);
+      expect(getEmptyResponseRetryPrompt(messages)).toBe(EMPTY_RESPONSE_TRUNCATED_RETRY_PROMPT);
+    });
+
+    it('ignores truncation markers outside the recent-message window', () => {
+      const messages = [
+        { role: 'tool', content: '[Truncated old output]' },
+        { role: 'assistant', content: 'one' },
+        { role: 'assistant', content: 'two' },
+        { role: 'assistant', content: 'three' },
+      ];
+
+      expect(hasTruncatedContentInRecentMessages(messages)).toBe(false);
+      expect(getEmptyResponseRetryPrompt(messages)).toBe(EMPTY_RESPONSE_RETRY_PROMPT);
     });
   });
 

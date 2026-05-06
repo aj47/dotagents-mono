@@ -25,6 +25,10 @@ type WithEphemeralFlag = { ephemeral?: boolean }
 type ConversationLike = { role: string; content?: string }
 
 export const MAPPED_TOOL_RESULT_PREFIX_RE = /^\[((?=[^\]]*[a-z])[A-Za-z0-9._:/-]+)\]\s(?:ERROR:\s*)?/
+export const EMPTY_RESPONSE_FINAL_CONTENT = "I encountered repeated empty responses and couldn't complete the task. Please try again."
+export const EMPTY_RESPONSE_RETRY_PROMPT = "Previous request had empty response. Please retry or summarize progress."
+export const EMPTY_RESPONSE_TRUNCATED_RETRY_PROMPT =
+  "Previous request had empty response. The tool output was truncated which may have caused confusion. Please either: (1) try a different approach to get the data you need, (2) work with the partial data available, or (3) summarize your progress so far."
 
 const GENERATED_CONTEXT_SUMMARY_PREFIXES = [
   "[Earlier Context Summary:",
@@ -81,6 +85,33 @@ export function isRealUserRequestContent(content?: string): boolean {
   if (isGeneratedContextSummaryContent(trimmed)) return false
   if (isInternalNudgeContent(trimmed)) return false
   return true
+}
+
+export function hasTruncatedContentInRecentMessages(
+  messages: ConversationLike[],
+  recentMessageLimit = 3,
+): boolean {
+  if (recentMessageLimit <= 0) {
+    return false
+  }
+
+  return messages.slice(-recentMessageLimit).some((message) => {
+    const content = message.content ?? ""
+    return (
+      content.includes("[Truncated") ||
+      content.includes("[truncated]") ||
+      content.includes("(truncated")
+    )
+  })
+}
+
+export function getEmptyResponseRetryPrompt(
+  messages: ConversationLike[],
+  recentMessageLimit = 3,
+): string {
+  return hasTruncatedContentInRecentMessages(messages, recentMessageLimit)
+    ? EMPTY_RESPONSE_TRUNCATED_RETRY_PROMPT
+    : EMPTY_RESPONSE_RETRY_PROMPT
 }
 
 export function collectRecentRealUserRequestIndices<T extends ConversationLike>(

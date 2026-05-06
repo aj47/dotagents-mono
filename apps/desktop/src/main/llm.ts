@@ -58,7 +58,13 @@ import {
   resolveExpectedAgentStopReason,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
-import { filterEphemeralMessages, isInternalNudgeContent } from "./conversation-history-utils"
+import {
+  EMPTY_RESPONSE_FINAL_CONTENT,
+  EMPTY_RESPONSE_RETRY_PROMPT,
+  filterEphemeralMessages,
+  getEmptyResponseRetryPrompt,
+  isInternalNudgeContent,
+} from "./conversation-history-utils"
 import {
   filterNamedItemsToAllowedTools,
 } from "./llm-tool-gating"
@@ -2106,7 +2112,7 @@ export async function processTranscriptWithAgentMode(
           })
           thinkingStep.status = "error"
           thinkingStep.description = "Empty response limit exceeded"
-          const emptyResponseFinalContent = "I encountered repeated empty responses and couldn't complete the task. Please try again."
+          const emptyResponseFinalContent = EMPTY_RESPONSE_FINAL_CONTENT
           conversationHistory.push({ role: "assistant", content: emptyResponseFinalContent, timestamp: Date.now() })
           emit({
             currentIteration: iteration,
@@ -2128,7 +2134,7 @@ export async function processTranscriptWithAgentMode(
           isComplete: false,
           conversationHistory: formatConversationForProgress(conversationHistory),
         })
-        addEphemeralMessage("user", "Previous request had empty response. Please retry or summarize progress.")
+        addEphemeralMessage("user", EMPTY_RESPONSE_RETRY_PROMPT)
         continue
       }
 
@@ -2184,7 +2190,7 @@ export async function processTranscriptWithAgentMode(
         logLLM(`❌ Empty response retry limit exceeded (${MAX_EMPTY_RESPONSE_RETRIES} retries)`)
         thinkingStep.status = "error"
         thinkingStep.description = "Empty response limit exceeded"
-        const emptyResponseFinalContent = "I encountered repeated empty responses and couldn't complete the task. Please try again."
+        const emptyResponseFinalContent = EMPTY_RESPONSE_FINAL_CONTENT
         conversationHistory.push({ role: "assistant", content: emptyResponseFinalContent, timestamp: Date.now() })
         emit({
           currentIteration: iteration,
@@ -2206,16 +2212,7 @@ export async function processTranscriptWithAgentMode(
         isComplete: false,
         conversationHistory: formatConversationForProgress(conversationHistory),
       })
-      // Check if recent messages contain truncated content that might be confusing
-      const recentMessages = conversationHistory.slice(-3)
-      const hasTruncatedContent = recentMessages.some(m =>
-        m.content?.includes('[Truncated') ||
-        m.content?.includes('[truncated]') ||
-        m.content?.includes('(truncated')
-      )
-      const retryMessage = hasTruncatedContent
-        ? "Previous request had empty response. The tool output was truncated which may have caused confusion. Please either: (1) try a different approach to get the data you need, (2) work with the partial data available, or (3) summarize your progress so far."
-        : "Previous request had empty response. Please retry or summarize progress."
+      const retryMessage = getEmptyResponseRetryPrompt(conversationHistory)
       addEphemeralMessage("user", retryMessage)
       continue
     }
