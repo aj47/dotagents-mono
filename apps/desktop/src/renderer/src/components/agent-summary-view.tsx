@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import { cn } from "@renderer/lib/utils"
-import { AgentStepSummary, AgentProgressUpdate } from "../../../shared/types"
+import type { AgentProgressUpdate, AgentStepSummary } from "@dotagents/shared/agent-progress"
 import {
   ChevronDown,
   ChevronRight,

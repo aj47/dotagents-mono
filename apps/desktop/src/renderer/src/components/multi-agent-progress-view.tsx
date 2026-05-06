@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from "react"
 import { cn } from "@renderer/lib/utils"
 import { AgentProgress } from "@renderer/components/agent-progress"
-import { AgentProgressUpdate } from "../../../shared/types"
+import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { useAgentStore } from "@renderer/stores"
 import { tipcClient } from "@renderer/lib/tipc-client"

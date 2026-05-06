@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
-import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, Config } from "../../../shared/types"
+import type { ACPDelegationProgress, ACPSubAgentMessage, AgentProgressUpdate } from "@dotagents/shared/agent-progress"
+import type { Config } from "../../../shared/types"
 import {
   DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
   INTERNAL_COMPLETION_NUDGE_TEXT,

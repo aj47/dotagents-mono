@@ -28,7 +28,8 @@ import {
 } from "@renderer/components/ui/dialog"
 import { toast } from "sonner"
 import { useAgentStore } from "@renderer/stores"
-import type { AgentProgressUpdate, ConversationHistoryItem } from "@shared/types"
+import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
+import type { ConversationHistoryItem } from "@dotagents/shared/conversation-domain"
 import {
   CONVERSATION_SEARCH_RESULT_LIMIT,
   filterConversationSearchEntries,
