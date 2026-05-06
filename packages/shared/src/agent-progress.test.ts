@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import {
+  formatAgentDelegationDisplayStatus,
+  getAgentDelegationActivityTimestamp,
   getAgentDelegationChildSessionIds,
+  getAgentDelegationConversationPreview,
   getAgentDelegationDisplayTitle,
+  getAgentDelegationPresentation,
+  getAgentDelegationSourceLabel,
+  getAgentDelegationSubtitle,
+  getAgentDelegationTrackingLabel,
   resolveAgentProgressConversationState,
   getSubagentParentSessionIdMap,
   getSubagentTitleBySessionIdMap,
@@ -294,6 +301,47 @@ describe('ACPDelegationProgress', () => {
     }
     assertType<ACPDelegationProgress>(delegation)
     expect(delegation.status).toBe('completed')
+  })
+
+  it('builds shared delegation presentation metadata for desktop and mobile surfaces', () => {
+    const delegation: ACPDelegationProgress = {
+      runId: 'run-1',
+      agentName: 'Planner',
+      task: 'Draft a concise implementation plan with a fairly long description',
+      status: 'completed',
+      resultSummary: 'Built a focused implementation plan for the shared server migration',
+      startTime: 100,
+      endTime: 200,
+      connectionType: 'acpx',
+      acpSessionId: 'acpx-session-abcdef123456',
+      conversation: [
+        {
+          role: 'assistant',
+          content: 'I inspected the relevant files and found the next safe helper to share.',
+          timestamp: 250,
+        },
+      ],
+    }
+
+    expect(formatAgentDelegationDisplayStatus('pending')).toBe('Starting')
+    expect(formatAgentDelegationDisplayStatus('spawning')).toBe('Starting')
+    expect(formatAgentDelegationDisplayStatus('running')).toBe('Running')
+    expect(formatAgentDelegationDisplayStatus('completed')).toBe('Completed')
+    expect(formatAgentDelegationDisplayStatus('cancelled')).toBe('Cancelled')
+    expect(formatAgentDelegationDisplayStatus('failed')).toBe('Failed')
+    expect(getAgentDelegationSubtitle(delegation, 24)).toBe('Built a focused impleme…')
+    expect(getAgentDelegationConversationPreview(delegation.conversation, delegation.agentName, 32))
+      .toBe('Planner: I inspected the releva…')
+    expect(getAgentDelegationSourceLabel(delegation)).toBe('acpx session')
+    expect(getAgentDelegationTrackingLabel(delegation)).toBe('Session ef123456')
+    expect(getAgentDelegationActivityTimestamp(delegation)).toBe(250)
+    expect(getAgentDelegationPresentation(delegation, 24)).toEqual({
+      statusLabel: 'Completed',
+      subtitle: 'Built a focused impleme…',
+      sourceLabel: 'acpx session',
+      trackingLabel: 'Session ef123456',
+      activityTimestamp: 250,
+    })
   })
 })
 

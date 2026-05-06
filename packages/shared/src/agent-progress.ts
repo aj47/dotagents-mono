@@ -439,6 +439,14 @@ export interface AgentDelegationProgressMessage {
   variant: "delegation"
 }
 
+export interface AgentDelegationPresentation {
+  statusLabel: string
+  subtitle: string
+  sourceLabel: string
+  trackingLabel: string | null
+  activityTimestamp: number
+}
+
 function formatAgentDelegationStatus(status: ACPDelegationProgress["status"]): string {
   switch (status) {
     case "pending":
@@ -455,6 +463,104 @@ function formatAgentDelegationStatus(status: ACPDelegationProgress["status"]): s
       return "Cancelled"
     default:
       return status
+  }
+}
+
+export function formatAgentDelegationDisplayStatus(status: ACPDelegationProgress["status"]): string {
+  switch (status) {
+    case "pending":
+    case "spawning":
+      return "Starting"
+    case "running":
+      return "Running"
+    case "completed":
+      return "Completed"
+    case "cancelled":
+      return "Cancelled"
+    case "failed":
+    default:
+      return "Failed"
+  }
+}
+
+function truncateAgentDelegationPreview(text: string | undefined, maxLength: number): string {
+  const normalized = (text ?? "").trim().replace(/\s+/g, " ")
+  if (!normalized) return ""
+  if (normalized.length <= maxLength) return normalized
+  return `${normalized.slice(0, Math.max(0, maxLength - 1))}…`
+}
+
+export function getAgentDelegationConversationPreview(
+  conversation: ACPSubAgentMessage[] | undefined,
+  agentName: string,
+  maxLength: number,
+): string {
+  const lastMessage = conversation?.[conversation.length - 1]
+  if (!lastMessage) return "No conversation yet"
+
+  const roleLabel = lastMessage.role === "assistant"
+    ? agentName
+    : lastMessage.role === "tool"
+      ? lastMessage.toolName || "Tool"
+      : "Task"
+
+  return truncateAgentDelegationPreview(`${roleLabel}: ${lastMessage.content}`, maxLength)
+}
+
+export function getAgentDelegationSubtitle(delegation: ACPDelegationProgress, maxLength: number): string {
+  const source = delegation.status === "failed"
+    ? delegation.error ?? delegation.progressMessage
+    : delegation.status === "completed"
+      ? delegation.resultSummary ?? delegation.progressMessage
+      : delegation.progressMessage
+
+  const conversationPreview = delegation.conversation?.length
+    ? getAgentDelegationConversationPreview(delegation.conversation, delegation.agentName, maxLength)
+    : ""
+
+  return truncateAgentDelegationPreview(source, maxLength)
+    || conversationPreview
+    || truncateAgentDelegationPreview(delegation.task, maxLength)
+}
+
+export function getAgentDelegationSourceLabel(delegation: ACPDelegationProgress): string {
+  switch (delegation.connectionType) {
+    case "internal":
+      return "Internal session"
+    case "acpx":
+    case "acp":
+    case "stdio":
+      return delegation.acpSessionId ? "acpx session" : "acpx agent"
+    case "remote":
+      return delegation.acpRunId ? "Remote ACP run" : "Remote agent"
+    default:
+      return "Delegated run"
+  }
+}
+
+export function getAgentDelegationTrackingLabel(delegation: ACPDelegationProgress): string | null {
+  if (delegation.subSessionId) return `Session ${delegation.subSessionId.slice(-8)}`
+  if (delegation.acpSessionId) return `Session ${delegation.acpSessionId.slice(-8)}`
+  if (delegation.acpRunId) return `Run ${delegation.acpRunId.slice(-8)}`
+  return null
+}
+
+export function getAgentDelegationActivityTimestamp(delegation: ACPDelegationProgress): number {
+  return delegation.conversation?.[delegation.conversation.length - 1]?.timestamp
+    ?? delegation.endTime
+    ?? delegation.startTime
+}
+
+export function getAgentDelegationPresentation(
+  delegation: ACPDelegationProgress,
+  maxSubtitleLength: number,
+): AgentDelegationPresentation {
+  return {
+    statusLabel: formatAgentDelegationDisplayStatus(delegation.status),
+    subtitle: getAgentDelegationSubtitle(delegation, maxSubtitleLength),
+    sourceLabel: getAgentDelegationSourceLabel(delegation),
+    trackingLabel: getAgentDelegationTrackingLabel(delegation),
+    activityTimestamp: getAgentDelegationActivityTimestamp(delegation),
   }
 }
 

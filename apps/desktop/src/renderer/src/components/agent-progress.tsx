@@ -29,7 +29,16 @@ import {
   getIndividualToolCallPreview,
   getToolResultsSummary,
 } from "@dotagents/shared/chat-utils"
-import type { AgentUserResponseEvent } from "@dotagents/shared/agent-progress"
+import {
+  formatAgentDelegationDisplayStatus,
+  getAgentDelegationActivityTimestamp,
+  getAgentDelegationConversationPreview,
+  getAgentDelegationPresentation,
+  getAgentDelegationSourceLabel,
+  getAgentDelegationSubtitle,
+  getAgentDelegationTrackingLabel,
+  type AgentUserResponseEvent,
+} from "@dotagents/shared/agent-progress"
 import {
   TOOL_GROUP_PREVIEW_COUNT,
   TOOL_GROUP_MIN_SIZE,
@@ -1920,89 +1929,6 @@ const RetryStatusBanner: React.FC<{
 // Subagent Conversation Message - individual message in the collapsible conversation
 const DELEGATION_COMPACT_WIDTH = 360
 
-const truncatePreview = (text: string | undefined, maxLength: number): string => {
-  const normalized = (text ?? "").trim().replace(/\s+/g, " ")
-  if (!normalized) return ""
-  if (normalized.length <= maxLength) return normalized
-  return `${normalized.slice(0, Math.max(0, maxLength - 1))}…`
-}
-
-const formatDelegationStatus = (status: ACPDelegationProgress["status"]): string => {
-  switch (status) {
-    case "pending":
-    case "spawning":
-      return "Starting"
-    case "running":
-      return "Running"
-    case "completed":
-      return "Completed"
-    case "cancelled":
-      return "Cancelled"
-    case "failed":
-    default:
-      return "Failed"
-  }
-}
-
-const getDelegationSubtitle = (delegation: ACPDelegationProgress, maxLength: number): string => {
-  const source = delegation.status === "failed"
-    ? delegation.error ?? delegation.progressMessage
-    : delegation.status === "completed"
-      ? delegation.resultSummary ?? delegation.progressMessage
-      : delegation.progressMessage
-
-  const conversationPreview = delegation.conversation?.length
-    ? getConversationPreview(delegation.conversation, delegation.agentName, maxLength)
-    : ""
-
-  return truncatePreview(source, maxLength) || conversationPreview || truncatePreview(delegation.task, maxLength)
-}
-
-const getConversationPreview = (
-  conversation: ACPSubAgentMessage[],
-  agentName: string,
-  maxLength: number,
-): string => {
-  const lastMessage = conversation[conversation.length - 1]
-  if (!lastMessage) return "No conversation yet"
-
-  const roleLabel = lastMessage.role === "assistant"
-    ? agentName
-    : lastMessage.role === "tool"
-      ? lastMessage.toolName || "Tool"
-      : "Task"
-
-  return truncatePreview(`${roleLabel}: ${lastMessage.content}`, maxLength)
-}
-
-const getDelegationSourceLabel = (delegation: ACPDelegationProgress): string => {
-  switch (delegation.connectionType) {
-    case "internal":
-      return "Internal session"
-    case 'acpx':
-    case 'acp':
-    case 'stdio':
-      return delegation.acpSessionId ? 'acpx session' : 'acpx agent'
-    case "remote":
-      return delegation.acpRunId ? "Remote ACP run" : "Remote agent"
-    default:
-      return "Delegated run"
-  }
-}
-
-const getDelegationTrackingLabel = (delegation: ACPDelegationProgress): string | null => {
-  if (delegation.subSessionId) return `Session ${delegation.subSessionId.slice(-8)}`
-  if (delegation.acpSessionId) return `Session ${delegation.acpSessionId.slice(-8)}`
-  if (delegation.acpRunId) return `Run ${delegation.acpRunId.slice(-8)}`
-  return null
-}
-
-const getDelegationActivityTimestamp = (delegation: ACPDelegationProgress): number => (
-  delegation.conversation?.[delegation.conversation.length - 1]?.timestamp
-    ?? delegation.endTime
-    ?? delegation.startTime
-)
-
 type DelegationSummaryEntry = {
   delegation: ACPDelegationProgress
   statusLabel: string
@@ -2563,7 +2489,7 @@ const SubAgentConversationPanel: React.FC<{
     }
   }
 
-  const conversationPreview = getConversationPreview(conversation, agentName, isCompact ? 72 : 120)
+  const conversationPreview = getAgentDelegationConversationPreview(conversation, agentName, isCompact ? 72 : 120)
 
   useEffect(() => {
     if (defaultShowAll) {
@@ -2863,10 +2789,12 @@ const DelegationBubble: React.FC<{
   }
 
   const mutedTextColor = textColor.replace('800', '600').replace('200', '400')
-  const statusLabel = formatDelegationStatus(delegation.status)
-  const subtitle = getDelegationSubtitle(delegation, isCompact ? 72 : 120)
-  const sourceLabel = getDelegationSourceLabel(delegation)
-  const trackingLabel = getDelegationTrackingLabel(delegation)
+  const {
+    statusLabel,
+    subtitle,
+    sourceLabel,
+    trackingLabel,
+  } = getAgentDelegationPresentation(delegation, isCompact ? 72 : 120)
   const durationLabel = `${duration}s`
 
   useEffect(() => {
@@ -3087,10 +3015,12 @@ const DelegationDetailsDialog: React.FC<{
   }
 
   const hasConversation = (delegation.conversation?.length ?? 0) > 0
-  const trackingLabel = getDelegationTrackingLabel(delegation)
-  const sourceLabel = getDelegationSourceLabel(delegation)
-  const statusLabel = formatDelegationStatus(delegation.status)
-  const subtitle = getDelegationSubtitle(delegation, 220)
+  const {
+    trackingLabel,
+    sourceLabel,
+    statusLabel,
+    subtitle,
+  } = getAgentDelegationPresentation(delegation, 220)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -4187,7 +4117,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     for (const step of progress.steps) {
       if (!step.delegation) continue
 
-      const timestamp = step.timestamp ?? getDelegationActivityTimestamp(step.delegation)
+      const timestamp = step.timestamp ?? getAgentDelegationActivityTimestamp(step.delegation)
       const existing = latestByRunId.get(step.delegation.runId)
       if (!existing || timestamp >= existing.timestamp) {
         latestByRunId.set(step.delegation.runId, {
@@ -4200,10 +4130,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     return Array.from(latestByRunId.values())
       .map(({ delegation, timestamp }) => ({
         delegation,
-        statusLabel: formatDelegationStatus(delegation.status),
-        subtitle: getDelegationSubtitle(delegation, 140),
-        sourceLabel: getDelegationSourceLabel(delegation),
-        trackingLabel: getDelegationTrackingLabel(delegation),
+        statusLabel: formatAgentDelegationDisplayStatus(delegation.status),
+        subtitle: getAgentDelegationSubtitle(delegation, 140),
+        sourceLabel: getAgentDelegationSourceLabel(delegation),
+        trackingLabel: getAgentDelegationTrackingLabel(delegation),
         messageCount: delegation.conversation?.length ?? 0,
         isActive: isDelegationActiveStatus(delegation.status),
         activityTimestamp: timestamp,
