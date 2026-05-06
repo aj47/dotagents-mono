@@ -4,6 +4,7 @@ import {
   exportSkillToMarkdownAction,
   getSkillAction,
   getSkillsAction,
+  importSkillFromGitHubAction,
   importSkillFromMarkdownAction,
   toggleProfileSkillAction,
   updateSkillAction,
@@ -25,6 +26,7 @@ const skillActionOptions: SkillActionOptions = {
     getSkill: (id) => skillsService.getSkill(id),
     createSkill: (name, description, instructions) => skillsService.createSkill(name, description, instructions),
     importSkillFromMarkdown: (content) => skillsService.importSkillFromMarkdown(content),
+    importSkillFromGitHub: (repoIdentifier) => skillsService.importSkillFromGitHub(repoIdentifier),
     exportSkillToMarkdown: (id) => skillsService.exportSkillToMarkdown(id),
     updateSkill: (id, updates) => skillsService.updateSkill(id, updates),
     deleteSkill: (id) => {
@@ -66,6 +68,10 @@ export function createSkill(body: unknown): SkillActionResult {
 
 export function importSkillFromMarkdown(body: unknown): SkillActionResult {
   return importSkillFromMarkdownAction(body, skillActionOptions)
+}
+
+export async function importSkillFromGitHub(body: unknown): Promise<SkillActionResult> {
+  return importSkillFromGitHubAction(body, skillActionOptions)
 }
 
 export function exportSkillToMarkdown(skillId: string | undefined): SkillActionResult {

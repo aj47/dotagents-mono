@@ -106,6 +106,7 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   getSkill: (id?: string) => MobileApiActionResult;
   createSkill: (body: unknown) => MobileApiActionResult;
   importSkillFromMarkdown: (body: unknown) => MobileApiActionResult;
+  importSkillFromGitHub: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
   exportSkillToMarkdown: (id?: string) => MobileApiActionResult;
   updateSkill: (id: string | undefined, body: unknown) => MobileApiActionResult;
   deleteSkill: (id?: string) => MobileApiActionResult;

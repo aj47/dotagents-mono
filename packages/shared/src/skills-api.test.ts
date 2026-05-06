@@ -4,6 +4,7 @@ import {
   buildDisabledRuntimeSkillPayload,
   buildSkillDeleteResponse,
   buildSkillExportMarkdownResponse,
+  buildSkillImportGitHubResponse,
   buildSkillMutationResponse,
   buildSkillResponse,
   getSkillsAction,
@@ -12,6 +13,7 @@ import {
   createSkillAction,
   deleteSkillAction,
   exportSkillToMarkdownAction,
+  importSkillFromGitHubAction,
   buildIgnoredExecuteCommandSkillIdWarning,
   buildRuntimeSkillInstructionsText,
   buildRuntimeSkillNotFoundPayload,
@@ -20,6 +22,7 @@ import {
   getEnabledSkillIdsForProfile,
   getSkillFolderIdFromFilePath,
   getSkillRuntimeIds,
+  parseSkillImportGitHubRequestBody,
   importSkillFromMarkdownAction,
   isGitHubSkillMarkdownFileName,
   isSkillEnabledByConfig,
@@ -182,6 +185,23 @@ describe("skills API helpers", () => {
       skillId: "research",
       markdown: "---\nname: Research\n---\nUse sources",
     })
+    expect(buildSkillImportGitHubResponse([skills[0]], {
+      id: "profile-1",
+      skillsConfig: {
+        allSkillsDisabledByDefault: true,
+        enabledSkillIds: ["research"],
+      },
+    })).toEqual({
+      success: true,
+      currentProfileId: "profile-1",
+      imported: [buildSkillResponse(skills[0], {
+        skillsConfig: {
+          allSkillsDisabledByDefault: true,
+          enabledSkillIds: ["research"],
+        },
+      }).skill],
+      errors: [],
+    })
     expect(buildSkillDeleteResponse("research")).toEqual({
       success: true,
       id: "research",
@@ -241,7 +261,7 @@ describe("skills API helpers", () => {
     })
   })
 
-  it("runs shared skill CRUD actions through service adapters", () => {
+  it("runs shared skill CRUD actions through service adapters", async () => {
     const profile = {
       id: "profile-1",
       skillsConfig: {
@@ -281,6 +301,10 @@ describe("skills API helpers", () => {
         expect(content).toBe("---\nname: Created\n---\nDo it")
         return created
       },
+      importSkillFromGitHub: async (repoIdentifier: string) => {
+        expect(repoIdentifier).toBe("owner/repo")
+        return { imported: [created], errors: [] }
+      },
       exportSkillToMarkdown: (skillId: string) => {
         expect(skillId).toBe("research")
         return "---\nname: Research\n---\nUse sources"
@@ -319,6 +343,12 @@ describe("skills API helpers", () => {
       statusCode: 200,
       body: buildSkillMutationResponse(created, profile),
     })
+    await expect(importSkillFromGitHubAction({
+      repoIdentifier: " owner/repo ",
+    }, { service, diagnostics })).resolves.toEqual({
+      statusCode: 200,
+      body: buildSkillImportGitHubResponse([created], profile),
+    })
     expect(exportSkillToMarkdownAction("research", { service, diagnostics })).toEqual({
       statusCode: 200,
       body: buildSkillExportMarkdownResponse("research", "---\nname: Research\n---\nUse sources"),
@@ -335,7 +365,7 @@ describe("skills API helpers", () => {
     })
   })
 
-  it("returns shared skill action validation errors before mutating profile state", () => {
+  it("returns shared skill action validation errors before mutating profile state", async () => {
     const service = createSkillActionService({
       getCurrentProfile: () => null,
       deleteSkill: () => false,
@@ -372,6 +402,14 @@ describe("skills API helpers", () => {
     expect(importSkillFromMarkdownAction({ content: "   " }, { service, diagnostics })).toEqual({
       statusCode: 400,
       body: { error: "Skill Markdown content is required" },
+    })
+    await expect(importSkillFromGitHubAction({ repoIdentifier: "" }, { service, diagnostics })).resolves.toEqual({
+      statusCode: 400,
+      body: { error: "GitHub repository is required" },
+    })
+    expect(parseSkillImportGitHubRequestBody({ repoIdentifier: " owner/repo " })).toEqual({
+      ok: true,
+      request: { repoIdentifier: "owner/repo" },
     })
     expect(exportSkillToMarkdownAction(undefined, { service, diagnostics })).toEqual({
       statusCode: 400,

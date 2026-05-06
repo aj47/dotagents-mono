@@ -109,6 +109,8 @@ import type {
   SkillCreateRequest,
   SkillDeleteResponse,
   SkillExportMarkdownResponse,
+  SkillImportGitHubRequest,
+  SkillImportGitHubResponse,
   SkillImportMarkdownRequest,
   SkillMutationResponse,
   SkillResponse,
@@ -1481,6 +1483,14 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   async importSkillFromMarkdown(content: string): Promise<SkillMutationResponse> {
     const data: SkillImportMarkdownRequest = { content };
     return this.request<SkillMutationResponse>(API_PATHS.skillImportMarkdown, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async importSkillFromGitHub(repoIdentifier: string): Promise<SkillImportGitHubResponse> {
+    const data: SkillImportGitHubRequest = { repoIdentifier };
+    return this.request<SkillImportGitHubResponse>(API_PATHS.skillImportGitHub, {
       method: 'POST',
       body: JSON.stringify(data),
     });

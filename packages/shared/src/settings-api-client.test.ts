@@ -940,6 +940,7 @@ describe('SettingsApiClient', () => {
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.skill }, expectedPath: REMOTE_SERVER_API_BUILDERS.skill(skillId), run: () => client.getSkill(skillId) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.skills }, expectedPath: REMOTE_SERVER_API_PATHS.skills, run: () => client.createSkill({ name: 'Skill', description: 'Do work', instructions: 'Follow steps' }) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.skillImportMarkdown }, expectedPath: REMOTE_SERVER_API_PATHS.skillImportMarkdown, run: () => client.importSkillFromMarkdown('---\nname: Skill\n---\nFollow steps') },
+      { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.skillImportGitHub }, expectedPath: REMOTE_SERVER_API_PATHS.skillImportGitHub, run: () => client.importSkillFromGitHub('owner/repo') },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.skillExportMarkdown }, expectedPath: REMOTE_SERVER_API_BUILDERS.skillExportMarkdown(skillId), run: () => client.exportSkillToMarkdown(skillId) },
       { route: { method: 'PATCH', path: REMOTE_SERVER_API_PATHS.skill }, expectedPath: REMOTE_SERVER_API_BUILDERS.skill(skillId), run: () => client.updateSkill(skillId, { description: 'Updated' }) },
       { route: { method: 'DELETE', path: REMOTE_SERVER_API_PATHS.skill }, expectedPath: REMOTE_SERVER_API_BUILDERS.skill(skillId), run: () => client.deleteSkill(skillId) },

@@ -118,6 +118,14 @@ test('lets mobile import and export skill Markdown through the shared client', (
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Export skill \$\{skill\.name\} as Markdown`\)/);
 });
 
+test('lets mobile import GitHub skills through the shared client', () => {
+  assert.match(settingsSource, /showSkillGitHubImportModal/);
+  assert.match(settingsSource, /Import GitHub Skill/);
+  assert.match(settingsSource, /settingsClient\.importSkillFromGitHub\(skillGitHubImportText\.trim\(\)\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Import skill from GitHub'\)/);
+  assert.match(settingsSource, /accessibilityLabel="Import GitHub skill"/);
+});
+
 test('lets mobile import and export loop Markdown through the shared client', () => {
   assert.match(settingsSource, /showLoopImportModal/);
   assert.match(settingsSource, /Import Loop/);

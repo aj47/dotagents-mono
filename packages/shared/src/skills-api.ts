@@ -3,6 +3,8 @@ import type {
   SkillCreateRequest,
   SkillDeleteResponse,
   SkillExportMarkdownResponse,
+  SkillImportGitHubRequest,
+  SkillImportGitHubResponse,
   SkillImportMarkdownRequest,
   SkillMutationResponse,
   SkillResponse,
@@ -47,6 +49,7 @@ export interface SkillActionService {
   getSkill(id: string): SkillApiLike | undefined
   createSkill(name: string, description: string, instructions: string): SkillApiLike
   importSkillFromMarkdown(content: string): SkillApiLike
+  importSkillFromGitHub?(repoIdentifier: string): Promise<{ imported: SkillApiLike[]; errors: string[] }>
   exportSkillToMarkdown(id: string): string
   updateSkill(
     id: string,
@@ -372,6 +375,20 @@ export function buildSkillMutationResponse(
   }
 }
 
+export function buildSkillImportGitHubResponse(
+  imported: SkillApiLike[],
+  currentProfile?: SkillProfileLike | null,
+  errors: string[] = [],
+): SkillImportGitHubResponse {
+  const enabledSkillIds = getEnabledSkillIdsForProfile(imported, currentProfile)
+  return {
+    success: imported.length > 0,
+    imported: imported.map((skill) => formatSkillForApi(skill, enabledSkillIds.includes(skill.id))),
+    errors,
+    currentProfileId: currentProfile?.id,
+  }
+}
+
 export function buildSkillExportMarkdownResponse(skillId: string, markdown: string): SkillExportMarkdownResponse {
   return {
     success: true,
@@ -498,6 +515,20 @@ export function parseSkillImportMarkdownRequestBody(body: unknown): SkillImportM
   return { ok: true, request: { content } }
 }
 
+export type SkillImportGitHubParseResult =
+  | { ok: true; request: SkillImportGitHubRequest }
+  | { ok: false; error: string }
+
+export function parseSkillImportGitHubRequestBody(body: unknown): SkillImportGitHubParseResult {
+  const record = getRequestRecord(body)
+  const repoIdentifier = getNonEmptyString(record.repoIdentifier)
+  if (!repoIdentifier) {
+    return { ok: false, error: "GitHub repository is required" }
+  }
+
+  return { ok: true, request: { repoIdentifier } }
+}
+
 export function getSkillsAction(options: SkillActionOptions): SkillActionResult {
   try {
     const skills = options.service.getSkills()
@@ -571,6 +602,32 @@ export function importSkillFromMarkdownAction(
   } catch (caughtError) {
     options.diagnostics.logError("skill-actions", "Failed to import skill from Markdown", caughtError)
     return skillActionError(400, getUnknownErrorMessage(caughtError, "Failed to import skill"))
+  }
+}
+
+export async function importSkillFromGitHubAction(
+  body: unknown,
+  options: SkillActionOptions,
+): Promise<SkillActionResult> {
+  const parsed = parseSkillImportGitHubRequestBody(body)
+  if (parsed.ok === false) {
+    return skillActionError(400, parsed.error)
+  }
+
+  if (!options.service.importSkillFromGitHub) {
+    return skillActionError(503, "GitHub skill import is unavailable")
+  }
+
+  try {
+    const result = await options.service.importSkillFromGitHub(parsed.request.repoIdentifier)
+    let currentProfile = options.service.getCurrentProfile()
+    for (const skill of result.imported) {
+      currentProfile = options.service.enableSkillForCurrentProfile?.(skill.id) ?? currentProfile
+    }
+    return skillActionOk(buildSkillImportGitHubResponse(result.imported, currentProfile, result.errors))
+  } catch (caughtError) {
+    options.diagnostics.logError("skill-actions", "Failed to import skill from GitHub", caughtError)
+    return skillActionError(500, getUnknownErrorMessage(caughtError, "Failed to import skill from GitHub"))
   }
 }
 

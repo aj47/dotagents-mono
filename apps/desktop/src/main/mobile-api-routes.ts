@@ -273,6 +273,12 @@ export function registerMobileApiRoutes(
     return reply.code(result.statusCode).send(result.body)
   })
 
+  // POST /v1/skills/import/github - Import skill(s) from a GitHub repository
+  fastify.post(API_ROUTES.skillImportGitHub, async (req, reply) => {
+    const result = await actions.importSkillFromGitHub(req.body)
+    return reply.code(result.statusCode).send(result.body)
+  })
+
   // GET /v1/skills/:id/export/markdown - Export one skill as SKILL.md content
   fastify.get(API_ROUTES.skillExportMarkdown, async (req, reply) => {
     const params = req.params as { id?: string }

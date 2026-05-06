@@ -897,9 +897,20 @@ export interface SkillImportMarkdownRequest {
   content: string;
 }
 
+export interface SkillImportGitHubRequest {
+  repoIdentifier: string;
+}
+
 export interface SkillMutationResponse {
   success: true;
   skill: Skill;
+}
+
+export interface SkillImportGitHubResponse {
+  success: boolean;
+  imported: Skill[];
+  errors: string[];
+  currentProfileId?: string;
 }
 
 export interface SkillExportMarkdownResponse {

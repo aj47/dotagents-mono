@@ -26,6 +26,8 @@ export type {
   SkillCreateRequest,
   SkillDeleteResponse,
   SkillExportMarkdownResponse,
+  SkillImportGitHubRequest,
+  SkillImportGitHubResponse,
   SkillImportMarkdownRequest,
   SkillMutationResponse,
   SkillResponse,

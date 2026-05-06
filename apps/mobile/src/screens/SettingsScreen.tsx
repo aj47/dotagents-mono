@@ -366,6 +366,9 @@ export default function SettingsScreen({ navigation }: any) {
   const [isExportingSkillMarkdownId, setIsExportingSkillMarkdownId] = useState<string | null>(null);
   const [showSkillImportModal, setShowSkillImportModal] = useState(false);
   const [skillImportMarkdownText, setSkillImportMarkdownText] = useState('');
+  const [isImportingSkillGitHub, setIsImportingSkillGitHub] = useState(false);
+  const [showSkillGitHubImportModal, setShowSkillGitHubImportModal] = useState(false);
+  const [skillGitHubImportText, setSkillGitHubImportText] = useState('');
   const [isLoadingKnowledgeNotes, setIsLoadingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
@@ -1196,6 +1199,12 @@ export default function SettingsScreen({ navigation }: any) {
     setSkillImportMarkdownText('');
   }, [isImportingSkillMarkdown]);
 
+  const closeSkillGitHubImportModal = useCallback(() => {
+    if (isImportingSkillGitHub) return;
+    setShowSkillGitHubImportModal(false);
+    setSkillGitHubImportText('');
+  }, [isImportingSkillGitHub]);
+
   const handleSkillMarkdownImport = useCallback(async () => {
     if (!settingsClient || !skillImportMarkdownText.trim()) return;
 
@@ -1216,6 +1225,31 @@ export default function SettingsScreen({ navigation }: any) {
       setIsImportingSkillMarkdown(false);
     }
   }, [fetchSkills, settingsClient, skillImportMarkdownText]);
+
+  const handleSkillGitHubImport = useCallback(async () => {
+    if (!settingsClient || !skillGitHubImportText.trim()) return;
+
+    setIsImportingSkillGitHub(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importSkillFromGitHub(skillGitHubImportText.trim());
+      if (!result.success) {
+        throw new Error(result.errors.join(', ') || 'No skills imported');
+      }
+
+      setShowSkillGitHubImportModal(false);
+      setSkillGitHubImportText('');
+      setSaveStatusMessage(`Imported ${result.imported.length} GitHub skill${result.imported.length === 1 ? '' : 's'}`);
+      await fetchSkills();
+      Alert.alert('Import Complete', `Imported ${result.imported.length} skill${result.imported.length === 1 ? '' : 's'} from GitHub.`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to import GitHub skill:', error);
+      setRemoteError(error.message || 'Failed to import GitHub skill');
+      Alert.alert('Import Failed', error.message || 'Failed to import GitHub skill');
+    } finally {
+      setIsImportingSkillGitHub(false);
+    }
+  }, [fetchSkills, settingsClient, skillGitHubImportText]);
 
   const handleSkillMarkdownExport = useCallback(async (skill: Skill) => {
     if (!settingsClient) return;
@@ -4222,6 +4256,14 @@ export default function SettingsScreen({ navigation }: any) {
                   >
                     <Text style={styles.createAgentButtonText}>Import Skill</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => setShowSkillGitHubImportModal(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import skill from GitHub')}
+                  >
+                    <Text style={styles.createAgentButtonText}>Import GitHub</Text>
+                  </TouchableOpacity>
                 </View>
                 <Text style={styles.helperText}>
                   Tap a skill to edit, or toggle to enable it for the Main Agent.
@@ -5105,6 +5147,67 @@ export default function SettingsScreen({ navigation }: any) {
               >
                 <Text style={styles.importModalImportText}>
                   {isImportingSkillMarkdown ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Skill GitHub Import Modal */}
+      <Modal
+        visible={showSkillGitHubImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeSkillGitHubImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import GitHub Skill</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeSkillGitHubImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close GitHub skill import modal"
+                disabled={isImportingSkillGitHub}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.input}
+              value={skillGitHubImportText}
+              onChangeText={setSkillGitHubImportText}
+              placeholder="owner/repo"
+              placeholderTextColor={theme.colors.mutedForeground}
+              autoCorrect={false}
+              autoCapitalize="none"
+              spellCheck={false}
+              editable={!isImportingSkillGitHub}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeSkillGitHubImportModal}
+                disabled={isImportingSkillGitHub}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!skillGitHubImportText.trim() || isImportingSkillGitHub) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={handleSkillGitHubImport}
+                disabled={!skillGitHubImportText.trim() || isImportingSkillGitHub}
+                accessibilityRole="button"
+                accessibilityLabel="Import GitHub skill"
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingSkillGitHub ? 'Importing...' : 'Import'}
                 </Text>
               </TouchableOpacity>
             </View>
