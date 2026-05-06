@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Session } from '../types/session';
+import type { Session } from '@dotagents/shared/session';
 
 import { filterSessionSearchResults, filterSessionsByArchiveMode } from '@dotagents/shared/session';
 

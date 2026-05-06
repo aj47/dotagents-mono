@@ -1,6 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { Session, SessionListItem, generateSessionId, generateMessageId, generateSessionTitle, sessionToListItem, sortSessionsByPinnedFirst } from '../types/session';
+import {
+  generateMessageId,
+  generateSessionId,
+  generateSessionTitle,
+  sessionToListItem,
+  sortSessionsByPinnedFirst,
+  type Session,
+  type SessionListItem,
+} from '@dotagents/shared/session';
 import { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { syncConversations, SyncResult, fetchFullConversation } from '../lib/syncService';

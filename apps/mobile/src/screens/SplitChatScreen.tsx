@@ -17,7 +17,7 @@ import { createButtonAccessibilityLabel } from '@dotagents/shared/accessibility-
 import { ConfigContext, useConfigContext } from '../store/config';
 import { SessionContext, useSessionContext } from '../store/sessions';
 import type { SessionStore } from '../store/sessions';
-import type { SessionListItem } from '../types/session';
+import type { SessionListItem } from '@dotagents/shared/session';
 import { useTheme } from '../ui/ThemeProvider';
 import { radius, spacing } from '../ui/theme';
 import type { Theme } from '../ui/theme';

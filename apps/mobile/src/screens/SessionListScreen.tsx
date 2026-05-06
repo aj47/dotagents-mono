@@ -18,7 +18,7 @@ import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
 import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress';
 import type { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
-import { SessionListItem, isStubSession } from '../types/session';
+import { isStubSession, type SessionListItem } from '@dotagents/shared/session';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createTextInputAccessibilityLabel } from '@dotagents/shared/accessibility-utils';
 import {
   filterSessionSearchResults,

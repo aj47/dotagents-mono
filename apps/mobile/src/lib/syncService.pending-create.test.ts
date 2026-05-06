@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Session } from '../types/session';
+import type { Session } from '@dotagents/shared/session';
 
 import { syncConversations } from './syncService';
 
