@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentProgressStep } from '@dotagents/shared/agent-progress';
-import { createDelegationProgressMessages } from './delegationProgress';
+import {
+  createAgentDelegationProgressMessages as createDelegationProgressMessages,
+  type AgentProgressStep,
+} from '@dotagents/shared/agent-progress';
 
 describe('createDelegationProgressMessages', () => {
   it('keeps the latest update for each delegated run and surfaces status details', () => {

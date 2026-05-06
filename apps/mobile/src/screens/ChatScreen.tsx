@@ -70,7 +70,10 @@ import {
   getAgentConversationStateLabel,
   type AgentConversationState,
 } from '@dotagents/shared/conversation-state';
-import { resolveAgentProgressConversationState } from '@dotagents/shared/agent-progress';
+import {
+  createAgentDelegationProgressMessages as createDelegationProgressMessages,
+  resolveAgentProgressConversationState,
+} from '@dotagents/shared/agent-progress';
 import {
   DEFAULT_EDGE_TTS_VOICE,
 } from '@dotagents/shared/providers';
@@ -139,7 +142,6 @@ import {
 import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
-import { createDelegationProgressMessages } from '../lib/delegationProgress';
 
 interface PendingImageAttachment {
   id: string;
