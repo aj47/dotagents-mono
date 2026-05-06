@@ -9,4 +9,3 @@ export {
   parseFrontmatterOrBody,
   stringifyFrontmatterDocument,
 }
-export type { FrontmatterDocument } from "@dotagents/shared/frontmatter"

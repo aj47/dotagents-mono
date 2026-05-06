@@ -177,7 +177,3 @@ export interface ACPSubAgentState {
   /** Guards against resuming the parent session more than once */
   parentResumeQueued?: boolean;
 }
-
-// NOTE: ACPAgentConfig is the legacy ACP agent profile config shape.
-// Re-export it under the historical desktop ACP name for compatibility.
-export type { LegacyAcpAgentConfig as ACPAgentConfig } from '@dotagents/shared/agent-profile-legacy-converters';
