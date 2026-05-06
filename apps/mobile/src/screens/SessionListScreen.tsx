@@ -24,7 +24,7 @@ import {
   filterSessionsByArchiveMode,
   type SessionArchiveMode,
   type SessionSearchResult,
-} from './session-list-search';
+} from '@dotagents/shared/session';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Session } from '../types/session';
 
-import { filterSessionSearchResults, filterSessionsByArchiveMode } from './session-list-search';
+import { filterSessionSearchResults, filterSessionsByArchiveMode } from '@dotagents/shared/session';
 
 function createSession(overrides: Partial<Session>): Session {
   return {
