@@ -20,7 +20,11 @@ import { agentSessionTracker } from '../agent-session-tracker';
 import { emitAgentProgress } from '../emit-agent-progress';
 import { skillsService } from '../skills-service';
 import { agentProfileService, createSessionSnapshotFromProfile } from '../agent-profile-service';
-import { getExplicitAgentStopReason, getPreferredDelegationOutput } from '../agent-run-utils';
+import {
+  getExplicitAgentStopReason,
+  getPreferredDelegationOutput,
+  resolveAgentModeMaxIterations,
+} from '../agent-run-utils';
 import { configStore } from '../config';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
 import { stringifySubAgentToolResultContent } from '@dotagents/shared/delegation-tool-display'
@@ -41,9 +45,6 @@ const MAX_RECURSION_DEPTH = 3;
 
 /** Maximum concurrent sub-sessions per parent session */
 const MAX_CONCURRENT_SUB_SESSIONS = 5;
-
-/** Default max iterations for sub-session agent loops (used when config has no explicit value) */
-const DEFAULT_SUB_SESSION_MAX_ITERATIONS = 10;
 
 // ============================================================================
 // Sub-Session State Tracking
@@ -583,8 +584,7 @@ export async function runInternalSubSession(
 
     // Determine effective max iterations: explicit value > config unlimited > config max > default
     const cfg = configStore.get();
-    const effectiveSubSessionMaxIterations = maxIterations
-      ?? (cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? DEFAULT_SUB_SESSION_MAX_ITERATIONS));
+    const effectiveSubSessionMaxIterations = resolveAgentModeMaxIterations(cfg, maxIterations);
 
     subSession.conversationId = conversationId;
 

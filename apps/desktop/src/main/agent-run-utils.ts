@@ -12,6 +12,7 @@ export {
   getExplicitAgentStopReason,
   getPreferredDelegationOutput,
   resolveExpectedAgentStopReason,
+  resolveAgentModeMaxIterations,
   resolveAgentIterationLimits,
 } from "@dotagents/shared/agent-run-utils"
 

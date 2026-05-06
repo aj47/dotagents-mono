@@ -63,7 +63,8 @@ describe('resolveAgentModeMaxIterations', () => {
   it('resolves unlimited, configured, and default iteration limits', () => {
     expect(resolveAgentModeMaxIterations({ mcpUnlimitedIterations: true, mcpMaxIterations: 3 })).toBe(Number.POSITIVE_INFINITY);
     expect(resolveAgentModeMaxIterations({ mcpMaxIterations: 12 })).toBe(12);
-    expect(resolveAgentModeMaxIterations({})).toBe(10);
+    expect(resolveAgentModeMaxIterations({})).toBe(Number.POSITIVE_INFINITY);
+    expect(resolveAgentModeMaxIterations({ mcpUnlimitedIterations: false })).toBe(10);
   });
 });
 

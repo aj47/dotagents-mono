@@ -17,6 +17,7 @@ import { getErrorMessage } from "./error-utils"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressUpdate, Config } from "@shared/types"
 import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
+import { resolveAgentModeMaxIterations } from "@dotagents/shared/agent-run-utils"
 
 // ANSI color codes (no external deps)
 const colors = {
@@ -444,7 +445,7 @@ async function runAgentCLI(prompt: string): Promise<void> {
 
     const agentResult = await agentRuntime.runAgentTurn({
       transcript: prompt,
-      maxIterations: cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? 10),
+      maxIterations: resolveAgentModeMaxIterations(cfg),
       previousConversationHistory,
       conversationId,
       sessionId,

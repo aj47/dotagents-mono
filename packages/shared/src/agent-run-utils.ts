@@ -5,6 +5,7 @@ import {
   resolveLatestUserFacingResponse,
   type ConversationHistoryForApiEntryLike,
 } from './chat-utils';
+import { DEFAULT_MCP_UNLIMITED_ITERATIONS } from './mcp-api';
 import type { AgentProgressUpdate } from './agent-progress';
 import type { ConversationHistoryMessage } from './types';
 
@@ -247,9 +248,17 @@ export function resolveAgentModeMaxIterations(
     return maxIterationsOverride
   }
 
-  return config.mcpUnlimitedIterations
+  if (config.mcpUnlimitedIterations === true) {
+    return Number.POSITIVE_INFINITY
+  }
+
+  if (config.mcpUnlimitedIterations === false || typeof config.mcpMaxIterations === "number") {
+    return config.mcpMaxIterations ?? DEFAULT_AGENT_MODE_MAX_ITERATIONS
+  }
+
+  return DEFAULT_MCP_UNLIMITED_ITERATIONS
     ? Number.POSITIVE_INFINITY
-    : config.mcpMaxIterations ?? DEFAULT_AGENT_MODE_MAX_ITERATIONS
+    : DEFAULT_AGENT_MODE_MAX_ITERATIONS
 }
 
 export function appendAgentStopNote(content: string): string {
