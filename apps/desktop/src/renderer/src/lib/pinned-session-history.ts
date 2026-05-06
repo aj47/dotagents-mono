@@ -1,9 +1,9 @@
-import type { ConversationHistoryItem } from "@shared/types"
-import { orderConversationHistoryByPinnedFirst as orderPinnedConversationHistory } from "@dotagents/shared/session"
+import type { ConversationHistoryItem } from "@dotagents/shared/conversation-domain"
+import {
+  orderConversationHistoryByPinnedFirst as orderPinnedConversationHistory,
+} from "@dotagents/shared/session"
 
-export function orderConversationHistoryByPinnedFirst(
+export const orderConversationHistoryByPinnedFirst: (
   sessions: ConversationHistoryItem[],
   pinnedSessionIds: ReadonlySet<string>,
-): ConversationHistoryItem[] {
-  return orderPinnedConversationHistory(sessions, pinnedSessionIds)
-}
+) => ConversationHistoryItem[] = orderPinnedConversationHistory
