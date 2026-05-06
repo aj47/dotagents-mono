@@ -13,6 +13,7 @@ import {
   CLOUDFLARE_TUNNEL_MODE_OPTIONS,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   DEFAULT_REMOTE_SERVER_SECRET_MASK,
   ensureRemoteServerV1BaseUrl,
@@ -22,6 +23,7 @@ import {
   getConnectableRemoteHostResolutionForMobilePairing,
   getDotAgentsSecretReferenceId,
   getDotAgentsSecretsRecord,
+  getDefaultRemoteServerCorsOrigins,
   getMaskedRemoteServerApiKey,
   getRemoteServerPairingApiKey,
   getRemoteServerLifecycleAction,
@@ -85,6 +87,9 @@ describe('remote server config contracts', () => {
     expect(REMOTE_SERVER_BIND_ADDRESS_OPTIONS).toEqual(['127.0.0.1', '0.0.0.0']);
     expect(DEFAULT_REMOTE_SERVER_LOG_LEVEL).toBe('info');
     expect(REMOTE_SERVER_LOG_LEVEL_OPTIONS).toEqual(['error', 'info', 'debug']);
+    expect(DEFAULT_REMOTE_SERVER_CORS_ORIGINS).toEqual(['*']);
+    expect(getDefaultRemoteServerCorsOrigins()).toEqual(['*']);
+    expect(getDefaultRemoteServerCorsOrigins()).not.toBe(DEFAULT_REMOTE_SERVER_CORS_ORIGINS);
     expect(DEFAULT_CLOUDFLARE_TUNNEL_MODE).toBe('quick');
     expect(CLOUDFLARE_TUNNEL_MODE_OPTIONS).toEqual(['quick', 'named']);
 

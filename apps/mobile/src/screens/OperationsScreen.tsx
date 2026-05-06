@@ -55,6 +55,7 @@ import {
   CLOUDFLARE_TUNNEL_MODE_OPTIONS,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
+  DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
@@ -1546,7 +1547,7 @@ export default function OperationsScreen({ navigation }: any) {
                 onEndEditing={() => {
                   const origins = parseConfigListInput(drafts.remoteServerCorsOrigins, { unique: true });
                   void applySettingsUpdate(
-                    { remoteServerCorsOrigins: origins.length > 0 ? origins : ['*'] },
+                    { remoteServerCorsOrigins: origins.length > 0 ? origins : [...DEFAULT_REMOTE_SERVER_CORS_ORIGINS] },
                     'remote server CORS origins',
                     'Remote server CORS origins updated.',
                   );

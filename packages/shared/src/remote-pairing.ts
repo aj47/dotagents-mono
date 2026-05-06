@@ -11,6 +11,7 @@ export type RemoteServerLifecycleAction = 'noop' | 'start' | 'stop' | 'restart';
 export const REMOTE_SERVER_BIND_ADDRESS_OPTIONS = ['127.0.0.1', '0.0.0.0'] as const;
 export const REMOTE_SERVER_LOG_LEVEL_OPTIONS = ['error', 'info', 'debug'] as const;
 export const CLOUDFLARE_TUNNEL_MODE_OPTIONS = ['quick', 'named'] as const;
+export const DEFAULT_REMOTE_SERVER_CORS_ORIGINS = ['*'] as const;
 
 export type RemoteServerBindAddress = (typeof REMOTE_SERVER_BIND_ADDRESS_OPTIONS)[number];
 export type RemoteServerLogLevel = (typeof REMOTE_SERVER_LOG_LEVEL_OPTIONS)[number];
@@ -19,6 +20,10 @@ export type CloudflareTunnelMode = (typeof CLOUDFLARE_TUNNEL_MODE_OPTIONS)[numbe
 export const DEFAULT_REMOTE_SERVER_BIND_ADDRESS: RemoteServerBindAddress = '127.0.0.1';
 export const DEFAULT_REMOTE_SERVER_LOG_LEVEL: RemoteServerLogLevel = 'info';
 export const DEFAULT_CLOUDFLARE_TUNNEL_MODE: CloudflareTunnelMode = 'quick';
+
+export function getDefaultRemoteServerCorsOrigins(): string[] {
+  return [...DEFAULT_REMOTE_SERVER_CORS_ORIGINS];
+}
 
 export interface RemoteServerConfig {
   remoteServerEnabled?: boolean;
@@ -142,7 +147,7 @@ export type RemoteServerStatusSnapshotOptions = {
   addresses?: RemoteNetworkAddressLike[];
 };
 
-function areStringArraysEqual(a: string[], b: string[]): boolean {
+function areStringArraysEqual(a: readonly string[], b: readonly string[]): boolean {
   if (a.length !== b.length) {
     return false;
   }
@@ -400,14 +405,14 @@ export function getRemoteServerStartupPlan(
     bind: options.bindAddressOverride || config.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
     port: config.remoteServerPort || 3210,
     logLevel: config.remoteServerLogLevel || DEFAULT_REMOTE_SERVER_LOG_LEVEL,
-    corsOrigins: config.remoteServerCorsOrigins || ['*'],
+    corsOrigins: config.remoteServerCorsOrigins || getDefaultRemoteServerCorsOrigins(),
     resolvedApiKey,
     hasConfiguredApiKey,
     apiKeyAction,
   };
 }
 
-export function buildRemoteServerCorsOptions(corsOrigins: readonly string[] = ['*']): RemoteServerCorsOptions {
+export function buildRemoteServerCorsOptions(corsOrigins: readonly string[] = DEFAULT_REMOTE_SERVER_CORS_ORIGINS): RemoteServerCorsOptions {
   return {
     // When origin is ["*"] or includes "*", use true to reflect the request origin.
     // This is needed because credentials: true doesn't work with literal "*".
@@ -550,7 +555,7 @@ export function getRemoteServerLifecycleAction(
     || (prev.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS) !== (next.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS)
     || (prev.remoteServerApiKey ?? '') !== (next.remoteServerApiKey ?? '')
     || (prev.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL) !== (next.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL)
-    || !areStringArraysEqual(prev.remoteServerCorsOrigins ?? ['*'], next.remoteServerCorsOrigins ?? ['*']);
+    || !areStringArraysEqual(prev.remoteServerCorsOrigins ?? DEFAULT_REMOTE_SERVER_CORS_ORIGINS, next.remoteServerCorsOrigins ?? DEFAULT_REMOTE_SERVER_CORS_ORIGINS);
 
   return runtimeChanged ? 'restart' : 'noop';
 }

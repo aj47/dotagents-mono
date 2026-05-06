@@ -22,6 +22,7 @@ import {
   buildRemoteServerBaseUrl,
   CLOUDFLARE_TUNNEL_MODE_OPTIONS,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
+  DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   isLoopbackRemoteHost,
@@ -343,13 +344,13 @@ export function RemoteServerSettingsGroups({
               <Control label={<ControlLabel label="CORS Origins" tooltip="Allowed origins for CORS requests. Use * for all origins (development), or specify comma-separated URLs like http://localhost:8081" />} className="px-3">
                 <Input
                   type="text"
-                  value={(cfg.remoteServerCorsOrigins || ["*"]).join(", ")}
+                  value={(cfg.remoteServerCorsOrigins || DEFAULT_REMOTE_SERVER_CORS_ORIGINS).join(", ")}
                   onChange={(e) => {
                     const origins = e.currentTarget.value
                       .split(",")
                       .map(s => s.trim())
                       .filter(Boolean)
-                    saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : ["*"] })
+                    saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : [...DEFAULT_REMOTE_SERVER_CORS_ORIGINS] })
                   }}
                   placeholder="* or http://localhost:8081, http://example.com"
                   className="w-full"
