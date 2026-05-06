@@ -18,6 +18,34 @@ export const LOCAL_TTS_SPEECH_MODEL_PROVIDER_IDS = [
 
 export type LocalTtsSpeechModelProviderId = (typeof LOCAL_TTS_SPEECH_MODEL_PROVIDER_IDS)[number];
 
+export interface LocalSpeechModelActionAuditContext {
+  action: string;
+  success: boolean;
+  details?: Record<string, unknown>;
+  failureReason?: string;
+}
+
+export type LocalSpeechModelActionResult = {
+  statusCode: number;
+  body: unknown;
+  auditContext?: LocalSpeechModelActionAuditContext;
+};
+
+export interface LocalSpeechModelActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void;
+  getErrorMessage(error: unknown): string;
+}
+
+export interface LocalSpeechModelActionService {
+  getStatus(providerId: LocalSpeechModelProviderId): Promise<LocalSpeechModelStatus>;
+  startDownload(providerId: LocalSpeechModelProviderId): void;
+}
+
+export interface LocalSpeechModelActionOptions {
+  diagnostics: LocalSpeechModelActionDiagnostics;
+  service: LocalSpeechModelActionService;
+}
+
 export const LOCAL_SPEECH_MODEL_DOWNLOAD_ACTION = 'local-speech-model-download';
 
 export const LOCAL_SPEECH_MODEL_LABELS: Record<LocalSpeechModelProviderId, string> = {
@@ -111,4 +139,90 @@ export function buildLocalSpeechModelDownloadErrorResponse(
       providerId,
     },
   };
+}
+
+function buildLocalSpeechModelActionAuditContext(
+  response: Pick<OperatorActionResponse, 'action' | 'success' | 'message' | 'error' | 'details'>,
+): LocalSpeechModelActionAuditContext {
+  return {
+    action: response.action,
+    success: response.success,
+    ...(response.details ? { details: response.details } : {}),
+    ...(!response.success ? { failureReason: response.error || response.message } : {}),
+  };
+}
+
+function localSpeechModelActionOk(
+  body: unknown,
+  auditContext?: LocalSpeechModelActionAuditContext,
+): LocalSpeechModelActionResult {
+  return {
+    statusCode: 200,
+    body,
+    ...(auditContext ? { auditContext } : {}),
+  };
+}
+
+function localSpeechModelActionError(
+  statusCode: number,
+  message: string,
+  auditContext?: LocalSpeechModelActionAuditContext,
+): LocalSpeechModelActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+    ...(auditContext ? { auditContext } : {}),
+  };
+}
+
+export async function getOperatorLocalSpeechModelStatusesAction(
+  options: LocalSpeechModelActionOptions,
+): Promise<LocalSpeechModelActionResult> {
+  try {
+    return localSpeechModelActionOk(await buildLocalSpeechModelStatusesResponse((providerId) => (
+      options.service.getStatus(providerId)
+    )));
+  } catch (caughtError) {
+    options.diagnostics.logError('operator-local-speech-actions', 'Failed to build local speech model statuses', caughtError);
+    return localSpeechModelActionError(500, 'Failed to build local speech model statuses');
+  }
+}
+
+export async function getOperatorLocalSpeechModelStatusAction(
+  providerId: unknown,
+  options: LocalSpeechModelActionOptions,
+): Promise<LocalSpeechModelActionResult> {
+  if (!isLocalSpeechModelProviderId(providerId)) {
+    return localSpeechModelActionError(400, `Invalid local speech model provider: ${providerId || 'missing'}`);
+  }
+
+  try {
+    return localSpeechModelActionOk(await options.service.getStatus(providerId));
+  } catch (caughtError) {
+    options.diagnostics.logError('operator-local-speech-actions', `Failed to build ${providerId} local speech model status`, caughtError);
+    return localSpeechModelActionError(500, `Failed to build ${providerId} local speech model status`);
+  }
+}
+
+export async function downloadOperatorLocalSpeechModelAction(
+  providerId: unknown,
+  options: LocalSpeechModelActionOptions,
+): Promise<LocalSpeechModelActionResult> {
+  if (!isLocalSpeechModelProviderId(providerId)) {
+    return localSpeechModelActionError(400, `Invalid local speech model provider: ${providerId || 'missing'}`);
+  }
+
+  try {
+    const status = await options.service.getStatus(providerId);
+    if (!status.downloaded && !status.downloading) {
+      options.service.startDownload(providerId);
+    }
+
+    const response = buildLocalSpeechModelDownloadResponse(providerId, status);
+    return localSpeechModelActionOk(response, buildLocalSpeechModelActionAuditContext(response));
+  } catch (caughtError) {
+    const message = options.diagnostics.getErrorMessage(caughtError);
+    const response = buildLocalSpeechModelDownloadErrorResponse(providerId, message);
+    return localSpeechModelActionOk(response, buildLocalSpeechModelActionAuditContext(response));
+  }
 }

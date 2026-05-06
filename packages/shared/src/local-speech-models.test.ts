@@ -7,11 +7,15 @@ import {
   buildLocalSpeechModelDownloadErrorResponse,
   buildLocalSpeechModelDownloadResponse,
   buildLocalSpeechModelStatusesResponse,
+  downloadOperatorLocalSpeechModelAction,
   formatLocalSpeechModelStatusesResponse,
   getLocalSpeechModelLabel,
   getLocalTtsSpeechModelProviderId,
+  getOperatorLocalSpeechModelStatusAction,
+  getOperatorLocalSpeechModelStatusesAction,
   isLocalSpeechModelProviderId,
   isLocalTtsSpeechModelProviderId,
+  type LocalSpeechModelActionOptions,
 } from './local-speech-models';
 
 describe('local speech model metadata', () => {
@@ -125,5 +129,107 @@ describe('local speech model metadata', () => {
         providerId: 'kitten',
       },
     });
+  });
+
+  it('runs local speech route actions through a shared service adapter', async () => {
+    const calls: string[] = [];
+    const statuses = {
+      parakeet: { downloaded: true, downloading: false, progress: 1 },
+      kitten: { downloaded: false, downloading: true, progress: 0.3 },
+      supertonic: { downloaded: false, downloading: false, progress: 0 },
+    };
+    const options: LocalSpeechModelActionOptions = {
+      diagnostics: {
+        logError: (_source, message) => { calls.push(`error:${message}`); },
+        getErrorMessage: (error) => error instanceof Error ? error.message : String(error),
+      },
+      service: {
+        getStatus: async (providerId) => {
+          calls.push(`status:${providerId}`);
+          return statuses[providerId];
+        },
+        startDownload: (providerId) => { calls.push(`download:${providerId}`); },
+      },
+    };
+
+    expect(await getOperatorLocalSpeechModelStatusesAction(options)).toEqual({
+      statusCode: 200,
+      body: { models: statuses },
+    });
+    expect(await getOperatorLocalSpeechModelStatusAction('kitten', options)).toEqual({
+      statusCode: 200,
+      body: statuses.kitten,
+    });
+    expect(await getOperatorLocalSpeechModelStatusAction('edge', options)).toEqual({
+      statusCode: 400,
+      body: { error: 'Invalid local speech model provider: edge' },
+    });
+    expect(await downloadOperatorLocalSpeechModelAction('supertonic', options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: 'local-speech-model-download',
+        scheduled: true,
+        details: {
+          providerId: 'supertonic',
+          downloading: true,
+        },
+      },
+      auditContext: {
+        action: 'local-speech-model-download',
+        success: true,
+        details: {
+          providerId: 'supertonic',
+          downloading: true,
+        },
+      },
+    });
+    expect(await downloadOperatorLocalSpeechModelAction('parakeet', options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: 'local-speech-model-download',
+        details: {
+          providerId: 'parakeet',
+          downloaded: true,
+        },
+      },
+      auditContext: {
+        action: 'local-speech-model-download',
+        success: true,
+      },
+    });
+
+    const failingOptions: LocalSpeechModelActionOptions = {
+      ...options,
+      service: {
+        ...options.service,
+        getStatus: async () => { throw new Error('status denied'); },
+      },
+    };
+    expect(await getOperatorLocalSpeechModelStatusesAction(failingOptions)).toEqual({
+      statusCode: 500,
+      body: { error: 'Failed to build local speech model statuses' },
+    });
+    expect(await downloadOperatorLocalSpeechModelAction('kitten', failingOptions)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: false,
+        action: 'local-speech-model-download',
+        error: 'status denied',
+      },
+      auditContext: {
+        action: 'local-speech-model-download',
+        success: false,
+        failureReason: 'status denied',
+      },
+    });
+    expect(calls).toEqual(expect.arrayContaining([
+      'status:parakeet',
+      'status:kitten',
+      'status:supertonic',
+      'download:supertonic',
+      'error:Failed to build local speech model statuses',
+    ]));
   });
 });

@@ -203,6 +203,12 @@ function getOperatorLocalSpeechActionsSource(): string {
   return readFileSync(operatorLocalSpeechActionsPath, "utf8")
 }
 
+function getSharedLocalSpeechModelsSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedLocalSpeechModelsPath = path.join(testDir, "../../../../packages/shared/src/local-speech-models.ts")
+  return readFileSync(sharedLocalSpeechModelsPath, "utf8")
+}
+
 function getOperatorModelPresetActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const operatorModelPresetActionsPath = path.join(testDir, "operator-model-preset-actions.ts")
@@ -1452,13 +1458,21 @@ describe("remote-server route registration", () => {
     expect(operatorMcpActionsSource).toContain("mcpService.restartServer(")
     // Local speech model operator endpoints
     const operatorLocalSpeechActionsSource = getOperatorLocalSpeechActionsSource()
+    const sharedLocalSpeechModelsSource = getSharedLocalSpeechModelsSource()
     expect(operatorRoutesSource).toContain("actions.getOperatorLocalSpeechModelStatuses()")
     expect(operatorRoutesSource).toContain("actions.getOperatorLocalSpeechModelStatus(params.providerId)")
     expect(operatorRoutesSource).toContain("actions.downloadOperatorLocalSpeechModel(params.providerId)")
-    expect(operatorLocalSpeechActionsSource).toContain("buildLocalSpeechModelStatusesResponse(getLocalSpeechModelStatus)")
-    expect(operatorLocalSpeechActionsSource).toContain("startLocalSpeechModelDownload(providerId)")
-    expect(operatorLocalSpeechActionsSource).toContain("buildLocalSpeechModelDownloadResponse")
-    expect(operatorLocalSpeechActionsSource).toContain("buildLocalSpeechModelDownloadErrorResponse")
+    expect(operatorLocalSpeechActionsSource).toContain("getOperatorLocalSpeechModelStatusesAction(localSpeechModelActionOptions)")
+    expect(operatorLocalSpeechActionsSource).toContain("getOperatorLocalSpeechModelStatusAction(providerId, localSpeechModelActionOptions)")
+    expect(operatorLocalSpeechActionsSource).toContain("downloadOperatorLocalSpeechModelAction(providerId, localSpeechModelActionOptions)")
+    expect(operatorLocalSpeechActionsSource).toContain("service: {")
+    expect(operatorLocalSpeechActionsSource).toContain("getStatus: getLocalSpeechModelStatus")
+    expect(operatorLocalSpeechActionsSource).toContain("startDownload: startLocalSpeechModelDownload")
+    expect(sharedLocalSpeechModelsSource).toContain("export async function getOperatorLocalSpeechModelStatusesAction(")
+    expect(sharedLocalSpeechModelsSource).toContain("export async function downloadOperatorLocalSpeechModelAction(")
+    expect(sharedLocalSpeechModelsSource).toContain("buildLocalSpeechModelStatusesResponse((providerId) => (")
+    expect(sharedLocalSpeechModelsSource).toContain("buildLocalSpeechModelDownloadResponse(providerId, status)")
+    expect(sharedLocalSpeechModelsSource).toContain("buildLocalSpeechModelDownloadErrorResponse(providerId, message)")
     expect(operatorLocalSpeechActionsSource).toContain('await import("./parakeet-stt")')
     expect(operatorLocalSpeechActionsSource).toContain('await import("./kitten-tts")')
     expect(operatorLocalSpeechActionsSource).toContain('await import("./supertonic-tts")')
