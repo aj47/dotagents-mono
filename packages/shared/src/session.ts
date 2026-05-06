@@ -79,6 +79,15 @@ export interface NormalizeConversationTitleOptions {
   maxWords?: number;
 }
 
+export type SessionSearchMatchedField = 'title' | 'preview' | 'message';
+
+export type SessionSearchResult = SessionListItem & {
+  matchedField?: SessionSearchMatchedField;
+  searchPreview?: string;
+};
+
+export type SessionArchiveMode = 'active' | 'archived';
+
 export function sortSessionsByPinnedFirst<T extends Pick<Session, 'updatedAt' | 'isPinned'>>(sessions: T[]): T[] {
   return [...sessions].sort((a, b) => {
     const pinOrder = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
@@ -202,6 +211,87 @@ export function sessionToListItem(session: Session): SessionListItem {
     lastMessage: preview.substring(0, 100),
     preview: preview.substring(0, 200),
   };
+}
+
+function normalizeSessionSearchValue(value: string): string {
+  return sanitizeSessionText(value).toLowerCase();
+}
+
+export function createSessionSearchSnippet(text: string, query: string, maxLength: number = 140): string {
+  const sanitized = sanitizeSessionText(text);
+  if (!sanitized) return '';
+
+  const normalizedText = sanitized.toLowerCase();
+  const normalizedQuery = normalizeSessionSearchValue(query);
+  const matchIndex = normalizedText.indexOf(normalizedQuery);
+  if (!normalizedQuery || matchIndex < 0 || sanitized.length <= maxLength) {
+    return sanitized.slice(0, maxLength);
+  }
+
+  const contextRadius = Math.max(24, Math.floor((maxLength - normalizedQuery.length) / 2));
+  const start = Math.max(0, matchIndex - contextRadius);
+  const end = Math.min(sanitized.length, matchIndex + normalizedQuery.length + contextRadius);
+
+  const prefix = start > 0 ? '…' : '';
+  const suffix = end < sanitized.length ? '…' : '';
+  return `${prefix}${sanitized.slice(start, end).trim()}${suffix}`;
+}
+
+function findSessionSearchMatch(
+  session: Session,
+  normalizedQuery: string,
+): Omit<SessionSearchResult, keyof SessionListItem> | null {
+  const listItem = sessionToListItem(session);
+
+  if (normalizeSessionSearchValue(listItem.title).includes(normalizedQuery)) {
+    return { matchedField: 'title' };
+  }
+
+  if (normalizeSessionSearchValue(listItem.preview).includes(normalizedQuery)) {
+    return {
+      matchedField: 'preview',
+      searchPreview: createSessionSearchSnippet(listItem.preview, normalizedQuery),
+    };
+  }
+
+  for (let index = session.messages.length - 1; index >= 0; index -= 1) {
+    const message = session.messages[index];
+    if (!normalizeSessionSearchValue(message.content).includes(normalizedQuery)) continue;
+
+    return {
+      matchedField: 'message',
+      searchPreview: createSessionSearchSnippet(message.content, normalizedQuery),
+    };
+  }
+
+  return null;
+}
+
+export function filterSessionSearchResults(sessions: Session[], searchQuery: string): SessionSearchResult[] {
+  const normalizedQuery = normalizeSessionSearchValue(searchQuery);
+  const sortedSessions = sortSessionsByPinnedFirst(sessions);
+
+  if (!normalizedQuery) {
+    return sortedSessions.map(sessionToListItem);
+  }
+
+  return sortedSessions.flatMap((session) => {
+    const listItem = sessionToListItem(session);
+    const match = findSessionSearchMatch(session, normalizedQuery);
+    if (!match) return [];
+    return [{ ...listItem, ...match }];
+  });
+}
+
+export function filterSessionsByArchiveMode<T extends { isArchived?: boolean }>(
+  sessions: T[],
+  mode: SessionArchiveMode,
+): T[] {
+  return sessions.filter((session) => (
+    mode === 'archived'
+      ? !!session.isArchived
+      : !session.isArchived
+  ));
 }
 
 export function buildConversationPreview(
