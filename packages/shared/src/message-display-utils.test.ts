@@ -3,7 +3,9 @@ import {
   normalizeMessagePreviewText,
   normalizeAssistantResponseForDedupe,
   sanitizeMessageContentForDisplay,
+  sanitizeMessageContentForModel,
   sanitizeMessageMediaContentForPreview,
+  sanitizeMessagesForModel,
   sanitizeMessageContentForSpeech,
   sanitizeAgentProgressUpdateForDisplay,
   hasMarkdownMediaPayload,
@@ -35,6 +37,44 @@ describe('sanitizeMessageContentForDisplay', () => {
   it('handles multiple inline data images', () => {
     const content = '![a](data:image/png;base64,x) text ![b](data:image/jpeg;base64,y)'
     expect(sanitizeMessageContentForDisplay(content)).toBe('[Image: a] text [Image: b]')
+  })
+})
+
+describe('sanitizeMessageContentForModel', () => {
+  it('replaces inline data image payloads while preserving alt placeholders', () => {
+    expect(sanitizeMessageContentForModel('Describe ![diagram](data:image/png;base64,abc)')).toBe('Describe [Image: diagram]')
+  })
+
+  it('preserves remote markdown images as text for model history replay', () => {
+    const content = 'See ![remote](https://example.com/image.png)'
+    expect(sanitizeMessageContentForModel(content)).toBe(content)
+  })
+})
+
+describe('sanitizeMessagesForModel', () => {
+  it('returns unchanged message references when no model sanitization is needed', () => {
+    const messages = [
+      { role: 'user' as const, content: 'hello' },
+      { role: 'assistant' as const },
+    ]
+
+    const result = sanitizeMessagesForModel(messages)
+
+    expect(result[0]).toBe(messages[0])
+    expect(result[1]).toBe(messages[1])
+  })
+
+  it('sanitizes only messages containing inline data image payloads', () => {
+    const messages = [
+      { role: 'user' as const, content: '![pic](data:image/png;base64,abc)', id: '1' },
+      { role: 'assistant' as const, content: 'ok', id: '2' },
+    ]
+
+    const result = sanitizeMessagesForModel(messages)
+
+    expect(result[0]).toEqual({ role: 'user', content: '[Image: pic]', id: '1' })
+    expect(result[0]).not.toBe(messages[0])
+    expect(result[1]).toBe(messages[1])
   })
 })
 

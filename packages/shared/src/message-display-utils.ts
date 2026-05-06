@@ -32,6 +32,31 @@ export function sanitizeMessageContentForDisplay(content: string): string {
   })
 }
 
+export type MessageContentForModelLike = {
+  content?: string | null
+}
+
+export function sanitizeMessageContentForModel(content: string): string {
+  return sanitizeMessageContentForDisplay(content)
+}
+
+export function sanitizeMessagesForModel<T extends MessageContentForModelLike>(
+  messages: T[],
+): T[] {
+  return messages.map((message) => {
+    const rawContent = typeof message.content === "string" ? message.content : ""
+    const sanitizedContent = sanitizeMessageContentForModel(rawContent)
+    if (sanitizedContent === rawContent) {
+      return message
+    }
+
+    return {
+      ...message,
+      content: sanitizedContent,
+    }
+  })
+}
+
 export function sanitizeMessageContentForSpeech(content: string): string {
   if (!content) {
     return content

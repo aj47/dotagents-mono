@@ -73,7 +73,10 @@ import {
   groupToolActivity,
   type ToolActivityGroup,
 } from '@dotagents/shared/tool-activity-grouping';
-import { sanitizeMessageMediaContentForPreview } from '@dotagents/shared/message-display-utils';
+import {
+  sanitizeMessageMediaContentForPreview,
+  sanitizeMessagesForModel,
+} from '@dotagents/shared/message-display-utils';
 import {
   buildConversationImageMarkdownMessage,
   extractDataImageMarkdownReferences,
@@ -207,37 +210,6 @@ type QuickStartShortcut = {
 
 /** Meta-tools whose results are already shown as visible message content or are purely internal */
 const HIDDEN_META_TOOLS = new Set([RESPOND_TO_USER_TOOL, 'mark_work_complete']);
-
-const sanitizeMessageContentForModel = (content: string) => {
-  const imageReferences = extractDataImageMarkdownReferences(content);
-  if (imageReferences.length === 0) {
-    return content;
-  }
-
-  let sanitizedContent = '';
-  let lastIndex = 0;
-  for (const imageReference of imageReferences) {
-    const cleanedAlt = imageReference.altText.trim();
-    sanitizedContent += content.slice(lastIndex, imageReference.index);
-    sanitizedContent += cleanedAlt ? `[Image: ${cleanedAlt}]` : '[Image]';
-    lastIndex = imageReference.index + imageReference.fullMatch.length;
-  }
-
-  return sanitizedContent + content.slice(lastIndex);
-};
-
-const sanitizeMessagesForModel = (messages: ChatMessage[]): ChatMessage[] =>
-  messages.map((message) => {
-    const rawContent = typeof message.content === 'string' ? message.content : '';
-    const sanitizedContent = sanitizeMessageContentForModel(rawContent);
-    if (sanitizedContent === rawContent) {
-      return message;
-    }
-    return {
-      ...message,
-      content: sanitizedContent,
-    };
-  });
 
 const resolveConversationStateFromProgress = (
   update: AgentProgressUpdate,
