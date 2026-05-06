@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   applyRepeatTaskUpdate,
+  applyRepeatTaskRuntimeStatus,
   createRepeatTaskAction,
   buildRepeatTaskMutationResponse,
   buildRepeatTaskDeleteResponse,
@@ -18,8 +19,11 @@ import {
   dedupeRepeatTaskEntriesByTitle,
   deleteRepeatTaskAction,
   describeLoopCadence,
+  describeRepeatTaskRuntime,
   describeRepeatTaskScheduleForLog,
   describeSchedule,
+  formatRepeatTaskRuntimeTimestamp,
+  formatRepeatTaskRuntimeTimestampOrFallback,
   formatRepeatTaskTitle,
   formatLoopInterval,
   formatLoopIntervalDraft,
@@ -164,6 +168,57 @@ describe("repeat task schedule helpers", () => {
       enabled: false,
       schedule: { type: "daily", times: ["09:00"] },
     })).toBe("Run repeat task now • Daily at 09:00 • Disabled")
+  })
+
+  it("formats repeat task runtime status for shared desktop and mobile surfaces", () => {
+    const timestamp = Date.UTC(2026, 0, 5, 9, 30)
+    const timestampFormatOptions = {
+      locale: "en-US",
+      dateTimeFormatOptions: {
+        timeZone: "UTC",
+        hour: "numeric",
+        minute: "2-digit",
+      },
+    } as const
+
+    expect(formatRepeatTaskRuntimeTimestamp(timestamp, timestampFormatOptions)).toBe("9:30 AM")
+    expect(formatRepeatTaskRuntimeTimestamp(undefined, timestampFormatOptions)).toBeUndefined()
+    expect(formatRepeatTaskRuntimeTimestampOrFallback(undefined, "Never", timestampFormatOptions)).toBe("Never")
+    expect(describeRepeatTaskRuntime({ enabled: true, isRunning: true })).toBe("Running now")
+    expect(describeRepeatTaskRuntime({ enabled: true, nextRunAt: timestamp }, { timestampFormatOptions })).toBe("Next: 9:30 AM")
+    expect(describeRepeatTaskRuntime({ enabled: false })).toBe("Disabled")
+    expect(describeRepeatTaskRuntime({ enabled: true })).toBe("No scheduled run")
+  })
+
+  it("applies repeat task runtime status updates without app-specific merge logic", () => {
+    const loop = {
+      name: "Daily Review",
+      enabled: true,
+      isRunning: false,
+      lastRunAt: 10,
+      nextRunAt: 20,
+      intervalMinutes: 15,
+      schedule: null,
+    }
+
+    expect(applyRepeatTaskRuntimeStatus(loop)).toBe(loop)
+    expect(applyRepeatTaskRuntimeStatus(loop, {
+      name: "Daily Review Updated",
+      enabled: false,
+      isRunning: true,
+      lastRunAt: 30,
+      nextRunAt: 40,
+      intervalMinutes: 60,
+      schedule: { type: "daily", times: ["09:00"] },
+    })).toEqual({
+      name: "Daily Review Updated",
+      enabled: false,
+      isRunning: true,
+      lastRunAt: 30,
+      nextRunAt: 40,
+      intervalMinutes: 60,
+      schedule: { type: "daily", times: ["09:00"] },
+    })
   })
 
   it("computes local repeat task scheduling timestamps and delay fallbacks", () => {

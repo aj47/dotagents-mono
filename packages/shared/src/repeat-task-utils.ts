@@ -116,6 +116,24 @@ export type RepeatTaskStatusLike = {
   schedule?: RepeatTaskSchedule
 }
 
+export type RepeatTaskRuntimeTimestampFormatOptions = {
+  locale?: string | string[]
+  dateTimeFormatOptions?: Intl.DateTimeFormatOptions
+}
+
+export type RepeatTaskRuntimeDescriptionLike = {
+  enabled: boolean
+  isRunning?: boolean
+  nextRunAt?: number
+}
+
+export type RepeatTaskRuntimeMergeTarget = RepeatTaskRuntimeDescriptionLike & {
+  name: string
+  lastRunAt?: number
+  intervalMinutes: number
+  schedule?: RepeatTaskSchedule | null
+}
+
 export type RepeatTaskSessionLike = {
   id: string
   conversationId?: string | null
@@ -1305,6 +1323,50 @@ export function describeLoopCadence(loop: RepeatTaskCadence): string {
 
 export function getRepeatTaskRunNowDescription(loop: RepeatTaskRunNowDescriptionLike): string {
   return `Run repeat task now • ${describeLoopCadence(loop)}${loop.enabled ? "" : " • Disabled"}`
+}
+
+export function formatRepeatTaskRuntimeTimestamp(
+  timestamp?: number,
+  options: RepeatTaskRuntimeTimestampFormatOptions = {},
+): string | undefined {
+  if (!timestamp) return undefined
+  return new Date(timestamp).toLocaleString(options.locale, options.dateTimeFormatOptions)
+}
+
+export function formatRepeatTaskRuntimeTimestampOrFallback(
+  timestamp?: number,
+  fallback = "Never",
+  options?: RepeatTaskRuntimeTimestampFormatOptions,
+): string {
+  return formatRepeatTaskRuntimeTimestamp(timestamp, options) ?? fallback
+}
+
+export function describeRepeatTaskRuntime(
+  loop: RepeatTaskRuntimeDescriptionLike,
+  options?: { timestampFormatOptions?: RepeatTaskRuntimeTimestampFormatOptions },
+): string {
+  if (loop.isRunning) return "Running now"
+  const nextRunTime = formatRepeatTaskRuntimeTimestamp(loop.nextRunAt, options?.timestampFormatOptions)
+  if (nextRunTime) return `Next: ${nextRunTime}`
+  if (!loop.enabled) return "Disabled"
+  return "No scheduled run"
+}
+
+export function applyRepeatTaskRuntimeStatus<TLoop extends RepeatTaskRuntimeMergeTarget>(
+  loop: TLoop,
+  status?: RepeatTaskStatusLike,
+): TLoop {
+  if (!status) return loop
+  return {
+    ...loop,
+    name: status.name ?? loop.name,
+    enabled: status.enabled ?? loop.enabled,
+    isRunning: status.isRunning ?? loop.isRunning,
+    lastRunAt: status.lastRunAt,
+    nextRunAt: status.nextRunAt,
+    intervalMinutes: status.intervalMinutes ?? loop.intervalMinutes,
+    schedule: status.schedule ?? loop.schedule,
+  }
 }
 
 export function formatLoopIntervalDraft(minutes?: number): string {

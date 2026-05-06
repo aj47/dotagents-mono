@@ -19,7 +19,7 @@ import {
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
 } from '../lib/accessibility';
-import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteDateFilter, KnowledgeNoteSort, AgentProfile, Loop, LoopRuntimeStatus, LocalSpeechModelProviderId, LocalSpeechModelStatus, ModelPresetSummary } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteDateFilter, KnowledgeNoteSort, AgentProfile, Loop, LocalSpeechModelProviderId, LocalSpeechModelStatus, ModelPresetSummary } from '../lib/settingsApi';
 import { getAcpxMainAgentOptions } from '../lib/mainAgentOptions';
 import { speakRemoteTts } from '../lib/remoteTts';
 import { TTSSettings } from '../ui/TTSSettings';
@@ -47,7 +47,12 @@ import {
   getTranscriptPostProcessingModelSettingKey,
   type CHAT_PROVIDER_ID,
 } from '@dotagents/shared/providers';
-import { describeLoopCadence } from '@dotagents/shared/repeat-task-utils';
+import {
+  applyRepeatTaskRuntimeStatus,
+  describeLoopCadence,
+  describeRepeatTaskRuntime,
+  formatRepeatTaskRuntimeTimestamp,
+} from '@dotagents/shared/repeat-task-utils';
 import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
 import { getDefaultSttModel, KNOWN_STT_MODEL_IDS } from '@dotagents/shared/stt-models';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
@@ -143,32 +148,9 @@ type LoopRuntimeAction = {
   action: 'start' | 'stop';
 };
 
-function formatLoopRuntimeTime(timestamp?: number): string | undefined {
-  if (!timestamp) return undefined;
-  return new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
-
-function describeLoopRuntime(loop: Loop): string {
-  if (loop.isRunning) return 'Running now';
-  const nextRunTime = formatLoopRuntimeTime(loop.nextRunAt);
-  if (nextRunTime) return `Next: ${nextRunTime}`;
-  if (!loop.enabled) return 'Disabled';
-  return 'No scheduled run';
-}
-
-function applyLoopRuntimeStatus(loop: Loop, status?: LoopRuntimeStatus): Loop {
-  if (!status) return loop;
-  return {
-    ...loop,
-    name: status.name ?? loop.name,
-    enabled: status.enabled ?? loop.enabled,
-    isRunning: status.isRunning,
-    lastRunAt: status.lastRunAt,
-    nextRunAt: status.nextRunAt,
-    intervalMinutes: status.intervalMinutes ?? loop.intervalMinutes,
-    schedule: status.schedule ?? loop.schedule,
-  };
-}
+const MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT = {
+  dateTimeFormatOptions: { hour: 'numeric', minute: '2-digit' },
+} as const;
 
 const KNOWLEDGE_CONTEXT_FILTER_OPTIONS: Array<{ label: string; value: 'all' | KnowledgeNoteContext }> = [
   { label: 'All', value: 'all' },
@@ -1954,7 +1936,7 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       const result = await settingsClient.startLoop(loop.id);
       setLoops(prev =>
-        prev.map(item => (item.id === loop.id ? applyLoopRuntimeStatus(item, result.status) : item))
+        prev.map(item => (item.id === loop.id ? applyRepeatTaskRuntimeStatus(item, result.status) : item))
       );
       setSaveStatusMessage(`Started loop "${loop.name}"`);
       await fetchLoops();
@@ -1976,7 +1958,7 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       const result = await settingsClient.stopLoop(loop.id);
       setLoops(prev =>
-        prev.map(item => (item.id === loop.id ? applyLoopRuntimeStatus(item, result.status) : item))
+        prev.map(item => (item.id === loop.id ? applyRepeatTaskRuntimeStatus(item, result.status) : item))
       );
       setSaveStatusMessage(`Stopped loop "${loop.name}"`);
       await fetchLoops();
@@ -4779,7 +4761,9 @@ export default function SettingsScreen({ navigation }: any) {
                   <Text style={styles.helperText}>No agent loops configured</Text>
                 ) : (
                   loops.map((loop) => {
-                    const loopRuntimeLabel = describeLoopRuntime(loop);
+                    const loopRuntimeLabel = describeRepeatTaskRuntime(loop, {
+                      timestampFormatOptions: MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT,
+                    });
                     const isLoopStarting = loopRuntimeAction?.loopId === loop.id && loopRuntimeAction.action === 'start';
                     const isLoopStopping = loopRuntimeAction?.loopId === loop.id && loopRuntimeAction.action === 'stop';
                     const isLoopRuntimeBusy = isLoopStarting || isLoopStopping;
@@ -4803,7 +4787,7 @@ export default function SettingsScreen({ navigation }: any) {
                             <Text style={styles.serverMeta} numberOfLines={2}>
                               {describeLoopCadence(loop)}
                               {loop.profileName && ` • ${loop.profileName}`}
-                              {loop.lastRunAt && ` • Last: ${new Date(loop.lastRunAt).toLocaleTimeString()}`}
+                              {loop.lastRunAt && ` • Last: ${formatRepeatTaskRuntimeTimestamp(loop.lastRunAt, MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT)}`}
                             </Text>
                             <Text style={styles.loopRuntimeMeta} numberOfLines={1}>
                               {loopRuntimeLabel}

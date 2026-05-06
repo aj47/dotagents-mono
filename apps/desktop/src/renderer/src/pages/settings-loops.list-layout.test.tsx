@@ -35,9 +35,18 @@ describe("desktop repeat-task list layout", () => {
   it("shows continuous repeat tasks as a distinct cadence", () => {
     const listSection = getSection(settingsLoopsSource, "  const renderLoopList = () => (", "  const renderEditForm")
 
-    expect(settingsLoopsSource).toContain('type ScheduleMode = "continuous" | "interval" | "daily" | "weekly"')
+    expect(settingsLoopsSource).toContain("type RepeatTaskScheduleMode")
     expect(settingsLoopsSource).toContain("describeLoopCadence")
     expect(listSection).toContain("{describeLoopCadence(loop)}")
     expect(settingsLoopsSource).toContain('{ mode: "continuous", label: "Continuous" }')
+  })
+
+  it("uses shared runtime timestamp formatting for repeat-task run metadata", () => {
+    const listSection = getSection(settingsLoopsSource, "  const renderLoopList = () => (", "  const renderEditForm")
+
+    expect(settingsLoopsSource).toContain("formatRepeatTaskRuntimeTimestampOrFallback")
+    expect(listSection).toContain("Next run: {formatRepeatTaskRuntimeTimestampOrFallback(nextRunAt)}")
+    expect(listSection).toContain("Last run: {formatRepeatTaskRuntimeTimestampOrFallback(lastRunAt)}")
+    expect(settingsLoopsSource).not.toContain("function formatLastRun")
   })
 })

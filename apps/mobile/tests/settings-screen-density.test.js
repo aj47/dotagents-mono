@@ -167,10 +167,11 @@ test('lets mobile import and export loop Markdown through the shared client', ()
 
 test('lets mobile start and stop desktop loop schedules through the shared client', () => {
   assert.match(settingsSource, /loopRuntimeAction/);
-  assert.match(settingsSource, /describeLoopRuntime\(loop\)/);
+  assert.match(settingsSource, /describeRepeatTaskRuntime\(loop/);
+  assert.match(settingsSource, /formatRepeatTaskRuntimeTimestamp\(loop\.lastRunAt, MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT\)/);
   assert.match(settingsSource, /settingsClient\.startLoop\(loop\.id\)/);
   assert.match(settingsSource, /settingsClient\.stopLoop\(loop\.id\)/);
-  assert.match(settingsSource, /applyLoopRuntimeStatus\(item, result\.status\)/);
+  assert.match(settingsSource, /applyRepeatTaskRuntimeStatus\(item, result\.status\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Start \$\{loop\.name\} loop schedule`\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Stop \$\{loop\.name\} loop schedule`\)/);
 });

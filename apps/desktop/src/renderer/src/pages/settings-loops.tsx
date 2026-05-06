@@ -32,6 +32,7 @@ import {
   DEFAULT_REPEAT_TASK_WEEKDAYS,
   REPEAT_TASK_DAY_LABELS,
   describeLoopCadence,
+  formatRepeatTaskRuntimeTimestampOrFallback,
   formatLoopIntervalDraft,
   getLoopScheduleDaysOfWeek,
   getLoopScheduleMode,
@@ -83,12 +84,6 @@ const INTERVAL_PRESETS = [
   { label: "6 hours", value: 360 },
   { label: "24 hours", value: 1440 },
 ]
-
-function formatLastRun(timestamp?: number): string {
-  if (!timestamp) return "Never"
-  const date = new Date(timestamp)
-  return date.toLocaleString()
-}
 
 // Sentinel used by the session picker to represent "no pinned session";
 // Radix Select does not accept an empty string as an item value.
@@ -416,9 +411,9 @@ export function SettingsLoops() {
               {loop.speakOnTrigger && <div>Speaks on trigger</div>}
               {loop.continueInSession && <div>Continues in same session</div>}
               {typeof nextRunAt === "number" && (
-                <div>Next run: {formatLastRun(nextRunAt)}</div>
+                <div>Next run: {formatRepeatTaskRuntimeTimestampOrFallback(nextRunAt)}</div>
               )}
-              <div>Last run: {formatLastRun(lastRunAt)}</div>
+              <div>Last run: {formatRepeatTaskRuntimeTimestampOrFallback(lastRunAt)}</div>
             </div>
           </div>
         )
