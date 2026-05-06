@@ -15,7 +15,7 @@ import type {
   LoadedConversation,
 } from "@dotagents/shared/conversation-domain"
 import { summarizeContent } from "./context-budget"
-import { extractHighSignalFactsFromConversationMessages } from "./conversation-context-builder"
+import { extractHighSignalFactsFromConversationMessages } from "@dotagents/shared/conversation-context-builder"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "@dotagents/shared/conversation-id"
 import { filterVisibleChatMessages } from "@dotagents/shared/chat-utils"
 import {

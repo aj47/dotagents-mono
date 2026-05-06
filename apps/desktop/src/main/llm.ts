@@ -84,13 +84,13 @@ import {
   normalizeMissingItemsList,
   normalizeVerificationResultForCompletion,
   resolveIterationLimitFinalContent,
-} from "./llm-continuation-guards"
+} from "@dotagents/shared/llm-continuation-guards"
 import { buildVerificationMessagesFromAgentState } from "./llm-verification-replay"
 import { loadWorkingKnowledgeNotesForPrompt } from "./working-notes-runtime"
 import {
   buildCompactionCheckpointContextMessage,
   buildRelevantEarlierConversationContextMessage,
-} from "./conversation-context-builder"
+} from "@dotagents/shared/conversation-context-builder"
 import {
   normalizeAgentConversationState,
   type AgentConversationState,

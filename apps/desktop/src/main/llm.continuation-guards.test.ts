@@ -6,7 +6,7 @@ import {
   isProgressUpdateResponse,
   normalizeVerificationResultForCompletion,
   resolveIterationLimitFinalContent,
-} from "./llm-continuation-guards"
+} from "@dotagents/shared/llm-continuation-guards"
 
 describe("continuation guard helpers", () => {
   it("normalizes verifier output using explicit conversation states", () => {

@@ -3,7 +3,7 @@ import {
   buildCompactionCheckpointContextMessage,
   buildRelevantEarlierConversationContextMessage,
   extractHighSignalFactsFromConversationMessages,
-} from "./conversation-context-builder"
+} from "@dotagents/shared/conversation-context-builder"
 
 describe("buildRelevantEarlierConversationContextMessage", () => {
   it("retrieves an older source-backed repo fact for a later memory question", () => {

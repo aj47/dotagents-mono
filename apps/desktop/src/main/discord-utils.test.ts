@@ -6,7 +6,7 @@ import {
   getDiscordConversationKey,
   getDiscordMessageRejectionReason,
   splitDiscordMessageContent,
-} from "./discord-utils"
+} from "@dotagents/shared/discord-utils"
 
 describe("discord utils", () => {
   it("builds deterministic conversation ids for DMs, channels, and threads", () => {

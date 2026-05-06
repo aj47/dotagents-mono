@@ -110,7 +110,7 @@ describeLiveReplay("llm continue replay live regression harness", () => {
   for (const fixture of fixtures) {
     it(`replays ${fixture.id}`, async () => {
       const { verifyCompletionWithFetch } = await import("./llm-fetch")
-      const { normalizeVerificationResultForCompletion } = await import("./llm-continuation-guards")
+      const { normalizeVerificationResultForCompletion } = await import("@dotagents/shared/llm-continuation-guards")
       const messages = resolveContinueReplayMessages(fixture)
 
       logReplayEvent(`fixture=${fixture.id} provider=${liveReplayConfig.providerId} baseUrl=${liveReplayConfig.baseUrl || "(provider default)"} model=${liveReplayConfig.model}`)
