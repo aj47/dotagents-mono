@@ -388,3 +388,306 @@ export function getSubagentTitleBySessionIdMap(
 
   return titlesByChildId
 }
+
+export interface AgentDelegationProgressMessage {
+  id: string
+  role: "assistant"
+  content: string
+  timestamp: number
+  toolCalls?: ToolCall[]
+  toolResults?: ToolResult[]
+  /** Render-only aligned call/result pairs for pending delegation tool activity. */
+  toolExecutions?: Array<{ toolCall: ToolCall; result?: ToolResult }>
+  variant: "delegation"
+}
+
+function formatAgentDelegationStatus(status: ACPDelegationProgress["status"]): string {
+  switch (status) {
+    case "pending":
+      return "Pending"
+    case "spawning":
+      return "Spawning"
+    case "running":
+      return "Running"
+    case "completed":
+      return "Completed"
+    case "failed":
+      return "Failed"
+    case "cancelled":
+      return "Cancelled"
+    default:
+      return status
+  }
+}
+
+function summarizeAgentDelegation(delegation: ACPDelegationProgress): string {
+  if (delegation.status === "failed") {
+    return delegation.error || delegation.progressMessage || delegation.task
+  }
+  if (delegation.status === "completed") {
+    return delegation.resultSummary || delegation.progressMessage || delegation.task
+  }
+
+  const conversationSnippet = delegation.conversation?.[delegation.conversation.length - 1]?.content
+  return delegation.progressMessage || conversationSnippet || delegation.task
+}
+
+const TOOL_USE_PREFIX = /^using tool:\s*/i
+const TOOL_RESULT_PREFIX = /^tool result:\s*/i
+
+type DelegationToolEntry = {
+  toolCall: ToolCall
+  result?: ToolResult
+  source: "structured" | "legacy"
+}
+
+function normalizeDelegationToolArguments(input: unknown): Record<string, unknown> {
+  if (input && typeof input === "object" && !Array.isArray(input)) {
+    return input as Record<string, unknown>
+  }
+  if (input === undefined) {
+    return {}
+  }
+  return { input }
+}
+
+function parseDelegationToolUsePayload(content?: string): { name?: string; input?: unknown } | null {
+  const trimmedContent = (content ?? "").trim()
+  if (!TOOL_USE_PREFIX.test(trimmedContent)) {
+    return null
+  }
+
+  const nameMatch = trimmedContent.match(/^using tool:\s*([^\n]+)/i)
+  const inputMatch = trimmedContent.match(/\ninput:\s*([\s\S]*)$/i)
+  const rawInput = inputMatch?.[1]?.trim()
+
+  let parsedInput: unknown = undefined
+  if (rawInput) {
+    try {
+      parsedInput = JSON.parse(rawInput)
+    } catch {
+      parsedInput = rawInput
+    }
+  }
+
+  return {
+    name: nameMatch?.[1]?.trim() || undefined,
+    input: parsedInput,
+  }
+}
+
+function normalizeDelegationToolResultContent(content?: string): string {
+  return (content ?? "").replace(TOOL_RESULT_PREFIX, "").trim()
+}
+
+function hasDelegationToolError(result: { error?: string }): boolean {
+  return result.error !== undefined && result.error !== null
+}
+
+function defaultDelegationToolResultContent(result: { success?: boolean; content?: string; error?: string }): string {
+  if (typeof result.content === "string") {
+    return result.content
+  }
+  if (result.success === false || hasDelegationToolError(result)) {
+    return "Tool failed"
+  }
+  return "Tool completed"
+}
+
+function normalizeDelegationToolResult(result: Partial<ToolResult>): ToolResult {
+  return {
+    success: !hasDelegationToolError(result) && result.success !== false,
+    content: defaultDelegationToolResultContent(result),
+    error: result.error,
+  }
+}
+
+function attachResultToPendingDelegationToolEntry(
+  entries: DelegationToolEntry[],
+  result: ToolResult,
+  options: { source: DelegationToolEntry["source"]; direction: "earliest" | "latest" },
+): boolean {
+  const start = options.direction === "earliest" ? 0 : entries.length - 1
+  const end = options.direction === "earliest" ? entries.length : -1
+  const step = options.direction === "earliest" ? 1 : -1
+
+  for (let index = start; index !== end; index += step) {
+    const entry = entries[index]
+    if (entry.source !== options.source || entry.result) {
+      continue
+    }
+    entry.result = result
+    return true
+  }
+
+  return false
+}
+
+function getAgentDelegationToolMetadata(
+  delegation: ACPDelegationProgress,
+): Pick<AgentDelegationProgressMessage, "toolCalls" | "toolResults" | "toolExecutions"> {
+  const entries: DelegationToolEntry[] = []
+
+  for (const message of delegation.conversation ?? []) {
+    const structuredCalls = Array.isArray(message.toolCalls) ? message.toolCalls : []
+    const structuredResults = Array.isArray(message.toolResults) ? message.toolResults : []
+    if (structuredCalls.length > 0 || structuredResults.length > 0) {
+      for (let index = 0; index < structuredCalls.length; index += 1) {
+        const call = structuredCalls[index]
+        const result = structuredResults[index]
+
+        entries.push({
+          toolCall: {
+            name: call?.name?.trim() || "tool_call",
+            arguments: normalizeDelegationToolArguments(call?.arguments),
+          },
+          result: result
+            ? normalizeDelegationToolResult(result)
+            : undefined,
+          source: "structured",
+        })
+      }
+      if (structuredResults.length > structuredCalls.length) {
+        for (let index = structuredCalls.length; index < structuredResults.length; index += 1) {
+          const result = structuredResults[index]
+          if (!result) {
+            continue
+          }
+          const normalizedResult = normalizeDelegationToolResult(result)
+          const attached = attachResultToPendingDelegationToolEntry(entries, normalizedResult, {
+            source: "structured",
+            direction: "earliest",
+          })
+          if (!attached) {
+            entries.push({
+              toolCall: {
+                name: "tool_call",
+                arguments: {},
+              },
+              result: normalizedResult,
+              source: "structured",
+            })
+          }
+        }
+      }
+      continue
+    }
+
+    if (message.role !== "tool") {
+      continue
+    }
+
+    const parsedToolUse = parseDelegationToolUsePayload(message.content)
+    if (parsedToolUse) {
+      entries.push({
+        toolCall: {
+          name: message.toolName || parsedToolUse.name || "tool_call",
+          arguments: normalizeDelegationToolArguments(message.toolInput ?? parsedToolUse.input),
+        },
+        source: "legacy",
+      })
+      continue
+    }
+
+    const normalizedMessageContent = (message.content ?? "").trim()
+    if (TOOL_RESULT_PREFIX.test(normalizedMessageContent)) {
+      const attached = attachResultToPendingDelegationToolEntry(
+        entries,
+        normalizeDelegationToolResult({
+          success: true,
+          content: normalizeDelegationToolResultContent(message.content),
+        }),
+        { source: "legacy", direction: "latest" },
+      )
+      if (!attached) {
+        entries.push({
+          toolCall: {
+            name: message.toolName || "tool_call",
+            arguments: normalizeDelegationToolArguments(message.toolInput),
+          },
+          result: normalizeDelegationToolResult({
+            success: true,
+            content: normalizeDelegationToolResultContent(message.content),
+          }),
+          source: "legacy",
+        })
+      }
+      continue
+    }
+
+    if (message.toolName || message.toolInput !== undefined) {
+      const normalizedContent = normalizeDelegationToolResultContent(message.content)
+      entries.push({
+        toolCall: {
+          name: message.toolName || "tool_call",
+          arguments: normalizeDelegationToolArguments(message.toolInput),
+        },
+        result: normalizedContent
+          ? normalizeDelegationToolResult({
+              success: true,
+              content: normalizedContent,
+            })
+          : undefined,
+        source: "legacy",
+      })
+      continue
+    }
+  }
+
+  const toolCalls = entries.map((entry) => entry.toolCall)
+  const toolResults = entries
+    .map((entry) => entry.result)
+    .filter((result): result is ToolResult => !!result)
+  const toolExecutions = entries.map((entry) => ({
+    toolCall: entry.toolCall,
+    ...(entry.result ? { result: entry.result } : {}),
+  }))
+
+  return {
+    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    toolResults: toolResults.length > 0 ? toolResults : undefined,
+    toolExecutions: toolExecutions.length > 0 ? toolExecutions : undefined,
+  }
+}
+
+export function createAgentDelegationProgressMessages(
+  steps?: AgentProgressStep[],
+): AgentDelegationProgressMessage[] {
+  if (!steps || steps.length === 0) {
+    return []
+  }
+
+  const latestDelegationsByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()
+
+  for (const step of steps) {
+    if (!step.delegation?.runId) {
+      continue
+    }
+
+    const timestamp = step.timestamp || step.delegation.endTime || step.delegation.startTime || Date.now()
+    const existing = latestDelegationsByRunId.get(step.delegation.runId)
+
+    if (!existing || timestamp >= existing.timestamp) {
+      latestDelegationsByRunId.set(step.delegation.runId, {
+        delegation: step.delegation,
+        timestamp,
+      })
+    }
+  }
+
+  return Array.from(latestDelegationsByRunId.values())
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .map(({ delegation, timestamp }) => {
+      const summary = summarizeAgentDelegation(delegation)
+      const fallbackContent = `Delegated to ${delegation.agentName} · ${formatAgentDelegationStatus(delegation.status)}${summary ? `\n${summary}` : ""}`
+
+      return {
+        id: `delegation-${delegation.runId}`,
+        role: "assistant",
+        variant: "delegation",
+        timestamp,
+        content: fallbackContent,
+        ...getAgentDelegationToolMetadata(delegation),
+      }
+    })
+}
