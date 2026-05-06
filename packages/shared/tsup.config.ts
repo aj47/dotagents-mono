@@ -17,6 +17,7 @@ export default defineConfig({
     hub: 'src/hub.ts',
     'conversation-state': 'src/conversation-state.ts',
     'session-presentation': 'src/session-presentation.ts',
+    'conversation-progress': 'src/conversation-progress.ts',
     'conversation-media-assets': 'src/conversation-media-assets.ts',
     'agent-progress': 'src/agent-progress.ts',
     'agent-user-response-store': 'src/agent-user-response-store.ts',
