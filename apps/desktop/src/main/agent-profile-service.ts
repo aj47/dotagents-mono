@@ -11,15 +11,15 @@ import type {
   ProfileModelConfig,
   ProfileSkillsConfig,
 } from "@dotagents/core"
+import type { ConversationMessage } from "@dotagents/shared/conversation-domain"
+import type { MCPServerConfig } from "@dotagents/shared/mcp-utils"
 import {
-  ConversationMessage,
-  PersonasData,
-  MCPServerConfig,
-  ACPAgentConfig,
-  profileToAgentProfile,
-  personaToAgentProfile,
-  acpAgentConfigToAgentProfile,
-} from "@shared/types"
+  legacyAcpAgentConfigToAgentProfile as acpAgentConfigToAgentProfile,
+  legacyPersonaToAgentProfile as personaToAgentProfile,
+  legacyProfileToAgentProfile as profileToAgentProfile,
+  type LegacyAcpAgentConfig as ACPAgentConfig,
+  type LegacyPersonasData as PersonasData,
+} from "@dotagents/shared/agent-profile-legacy-converters"
 import {
   createSessionSnapshotFromProfile,
   refreshSessionSnapshotSkillsFromProfile,
