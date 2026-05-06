@@ -18,6 +18,12 @@ import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "./conversation-context-builder"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
 import { filterVisibleChatMessages } from "@dotagents/shared/chat-utils"
+import {
+  getConversationImageExtensionForMimeType,
+  getConversationImageMimeTypeFromFileName,
+  getConversationVideoExtensionForMimeType,
+  getRenderableVideoMimeTypeFromFileName,
+} from "@dotagents/shared/conversation-media-assets"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared/message-display-utils"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
 import {
@@ -53,40 +59,6 @@ const COMPACTION_EXTRACTED_FACT_LIMIT = 8
 const createInlineDataImageMarkdownRegex = () =>
   /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
 const DATA_IMAGE_URL_REGEX = /^data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)$/i
-const IMAGE_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
-  png: "png",
-  apng: "apng",
-  gif: "gif",
-  jpeg: "jpg",
-  jpg: "jpg",
-  webp: "webp",
-  bmp: "bmp",
-  avif: "avif",
-}
-const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
-  ".png": "image/png",
-  ".apng": "image/apng",
-  ".gif": "image/gif",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".webp": "image/webp",
-  ".bmp": "image/bmp",
-  ".avif": "image/avif",
-}
-const VIDEO_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
-  mp4: "mp4",
-  m4v: "m4v",
-  webm: "webm",
-  quicktime: "mov",
-  ogg: "ogv",
-}
-const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
-  ".mp4": "video/mp4",
-  ".m4v": "video/mp4",
-  ".webm": "video/webm",
-  ".mov": "video/quicktime",
-  ".ogv": "video/ogg",
-}
 
 export class ConversationService {
   private static instance: ConversationService | null = null
@@ -134,30 +106,12 @@ export class ConversationService {
     return path.join(conversationsFolder, "index.json")
   }
 
-  private getImageExtensionForMimeType(mimeType: string): string | null {
-    const normalized = mimeType.toLowerCase().replace(/^image\//u, "")
-    return IMAGE_EXTENSION_BY_MIME_SUBTYPE[normalized] ?? null
-  }
-
-  private getImageMimeTypeFromPath(imagePath: string): string | null {
-    return IMAGE_MIME_BY_EXTENSION[path.extname(imagePath).toLowerCase()] ?? null
-  }
-
-  private getVideoExtensionForMimeType(mimeType: string): string | null {
-    const normalized = mimeType.toLowerCase().replace(/^video\//u, "")
-    return VIDEO_EXTENSION_BY_MIME_SUBTYPE[normalized] ?? null
-  }
-
-  private getVideoMimeTypeFromPath(videoPath: string): string | null {
-    return VIDEO_MIME_BY_EXTENSION[path.extname(videoPath).toLowerCase()] ?? null
-  }
-
   private async storeConversationImageBuffer(
     conversationId: string,
     buffer: Buffer,
     mimeType: string,
   ): Promise<string> {
-    const extension = this.getImageExtensionForMimeType(mimeType)
+    const extension = getConversationImageExtensionForMimeType(mimeType)
     if (!extension || buffer.length <= 0) {
       throw new Error(`Unsupported or empty conversation image: ${mimeType}`)
     }
@@ -179,7 +133,7 @@ export class ConversationService {
   }
 
   async storeImagePathAsConversationAsset(conversationId: string, imagePath: string): Promise<string> {
-    const mimeType = this.getImageMimeTypeFromPath(imagePath)
+    const mimeType = getConversationImageMimeTypeFromFileName(imagePath)
     if (!mimeType) {
       throw new Error(`Unsupported image extension for path: ${imagePath}`)
     }
@@ -214,12 +168,12 @@ export class ConversationService {
   }
 
   async storeVideoPathAsConversationAsset(conversationId: string, videoPath: string): Promise<string> {
-    const mimeType = this.getVideoMimeTypeFromPath(videoPath)
+    const mimeType = getRenderableVideoMimeTypeFromFileName(videoPath)
     if (!mimeType) {
       throw new Error(`Unsupported video extension for path: ${videoPath}`)
     }
 
-    const extension = this.getVideoExtensionForMimeType(mimeType)
+    const extension = getConversationVideoExtensionForMimeType(mimeType)
     const sourceStat = await fsPromises.stat(videoPath)
     if (!sourceStat.isFile()) {
       throw new Error(`Video path is not a regular file: ${videoPath}`)

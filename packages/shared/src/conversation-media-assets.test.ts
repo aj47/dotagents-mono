@@ -5,8 +5,10 @@ import {
   buildConversationImageAssetUrl,
   buildConversationVideoAssetHttpUrl,
   escapeMarkdownAltText,
+  getConversationImageExtensionForMimeType,
   getConversationImageMimeTypeFromFileName,
   getConversationVideoByteRange,
+  getConversationVideoExtensionForMimeType,
   getConversationVideoMimeTypeFromFileName,
   getDataImageBytesFromUrl,
   getDecodedBase64ByteLength,
@@ -122,6 +124,9 @@ describe('conversation video asset utilities', () => {
     expect(getConversationVideoMimeTypeFromFileName('abcdef1234567890.unknown')).toBe('application/octet-stream');
     expect(getRenderableVideoMimeTypeFromFileName('abcdef1234567890.mp4')).toBe('video/mp4');
     expect(getRenderableVideoMimeTypeFromFileName('abcdef1234567890.unknown')).toBeUndefined();
+    expect(getConversationVideoExtensionForMimeType('video/mp4')).toBe('mp4');
+    expect(getConversationVideoExtensionForMimeType('video/quicktime')).toBe('mov');
+    expect(getConversationVideoExtensionForMimeType('video/x-msvideo')).toBeUndefined();
   });
 
   it('resolves respond_to_user image MIME types from filenames', () => {
@@ -130,6 +135,9 @@ describe('conversation video asset utilities', () => {
     expect(getConversationImageMimeTypeFromFileName('demo.jpeg')).toBe('image/jpeg');
     expect(getConversationImageMimeTypeFromFileName('demo.avif')).toBe('image/avif');
     expect(getConversationImageMimeTypeFromFileName('demo.svg')).toBeUndefined();
+    expect(getConversationImageExtensionForMimeType('image/jpeg')).toBe('jpg');
+    expect(getConversationImageExtensionForMimeType('image/avif')).toBe('avif');
+    expect(getConversationImageExtensionForMimeType('image/svg+xml')).toBeUndefined();
   });
 
   it('validates respond_to_user media urls', () => {

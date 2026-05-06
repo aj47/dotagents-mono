@@ -22,6 +22,14 @@ const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
   '.ogv': 'video/ogg',
 };
 
+const VIDEO_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
+  mp4: 'mp4',
+  m4v: 'm4v',
+  webm: 'webm',
+  quicktime: 'mov',
+  ogg: 'ogv',
+};
+
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
   '.apng': 'image/apng',
@@ -31,6 +39,17 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.webp': 'image/webp',
   '.bmp': 'image/bmp',
   '.avif': 'image/avif',
+};
+
+const IMAGE_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
+  png: 'png',
+  apng: 'apng',
+  gif: 'gif',
+  jpeg: 'jpg',
+  jpg: 'jpg',
+  webp: 'webp',
+  bmp: 'bmp',
+  avif: 'avif',
 };
 
 const DATA_IMAGE_BASE64_PREFIX_REGEX = /^data:image\/[a-z0-9.+-]+;base64,/i;
@@ -273,9 +292,19 @@ export function getConversationImageMimeTypeFromFileName(fileName: string): stri
   return IMAGE_MIME_BY_EXTENSION[extension];
 }
 
+export function getConversationImageExtensionForMimeType(mimeType: string): string | undefined {
+  const normalized = mimeType.toLowerCase().replace(/^image\//u, '');
+  return IMAGE_EXTENSION_BY_MIME_SUBTYPE[normalized];
+}
+
 export function getRenderableVideoMimeTypeFromFileName(fileName: string): string | undefined {
   const mimeType = getConversationVideoMimeTypeFromFileName(fileName);
   return mimeType === 'application/octet-stream' ? undefined : mimeType;
+}
+
+export function getConversationVideoExtensionForMimeType(mimeType: string): string | undefined {
+  const normalized = mimeType.toLowerCase().replace(/^video\//u, '');
+  return VIDEO_EXTENSION_BY_MIME_SUBTYPE[normalized];
 }
 
 export function escapeMarkdownAltText(value: string): string {
