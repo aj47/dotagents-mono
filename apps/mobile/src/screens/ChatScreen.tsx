@@ -60,6 +60,10 @@ import {
 } from '@dotagents/shared/chat-utils';
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
+  mergeVoiceText,
+  normalizeAutoTtsTextKey,
+} from '@dotagents/shared/voice-text-utils';
+import {
   getAgentConversationStateLabel,
   type AgentConversationState,
 } from '@dotagents/shared/conversation-state';
@@ -147,8 +151,6 @@ const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
 const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 
-const normalizeAutoTtsTextKey = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase();
-
 const getApproxDataUrlBytes = (dataUrl: string) => {
   return getDataImageBytesFromUrl(dataUrl) ?? 0;
 };
@@ -200,29 +202,6 @@ const getMessageLogMeta = (content: string) => ({
   length: content.length,
   inlineImageCount: extractDataImageMarkdownReferences(content).length,
 });
-
-const normalizeVoiceText = (text?: string) => (text || '').replace(/\s+/g, ' ').trim();
-
-const mergeVoiceText = (base?: string, live?: string) => {
-	const a = normalizeVoiceText(base);
-	const b = normalizeVoiceText(live);
-	if (!a) return b;
-	if (!b) return a;
-	if (a === b) return a;
-	if (b.startsWith(a)) return b;
-	if (a.startsWith(b)) return a;
-	const aWords = a.split(' ');
-	const bWords = b.split(' ');
-	const maxOverlap = Math.min(aWords.length, bWords.length);
-	for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
-		const aSuffix = aWords.slice(-overlap).join(' ');
-		const bPrefix = bWords.slice(0, overlap).join(' ');
-		if (aSuffix === bPrefix) {
-			return normalizeVoiceText(`${a} ${bWords.slice(overlap).join(' ')}`);
-		}
-	}
-	return normalizeVoiceText(`${a} ${b}`);
-};
 
 const getCollapsedMessagePreview = (content: string) =>
   sanitizeMessageMediaContentForPreview(

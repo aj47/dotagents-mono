@@ -7,6 +7,7 @@
 export * from './colors';
 export * from './types';
 export * from './tts-preprocessing';
+export * from './voice-text-utils';
 export * from './chat-utils';
 export * from './providers';
 export * from './provider-tool-utils';

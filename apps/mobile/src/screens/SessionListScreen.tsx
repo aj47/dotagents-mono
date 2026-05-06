@@ -2,6 +2,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, TextInput, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EventEmitter } from 'expo-modules-core';
+import {
+  mergeVoiceText,
+  normalizeVoiceText,
+} from '@dotagents/shared/voice-text-utils';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
 import { useConfigContext } from '../store/config';
@@ -70,33 +74,6 @@ export default function SessionListScreen({ navigation }: Props) {
     if (typeof extra !== 'undefined') console.log(`[RapidFireDebug] ${msg}`, extra);
     else console.log(`[RapidFireDebug] ${msg}`);
   }, []);
-
-  const normalizeVoiceText = useCallback((t?: string) => (t || '').replace(/\s+/g, ' ').trim(), []);
-  const mergeVoiceText = useCallback((base?: string, live?: string) => {
-    const a = normalizeVoiceText(base);
-    const b = normalizeVoiceText(live);
-    if (!a) return b;
-    if (!b) return a;
-    if (a === b) return a;
-    if (b.startsWith(a)) return b;
-    if (a.startsWith(b)) return a;
-    const bWordBoundary = new RegExp(`(?:^|\\s)${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`);
-    if (bWordBoundary.test(a)) return a;
-    const aWordBoundary = new RegExp(`(?:^|\\s)${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`);
-    if (aWordBoundary.test(b)) return b;
-    const aWords = a.split(' ');
-    const bWords = b.split(' ');
-    const maxOverlap = Math.min(aWords.length, bWords.length);
-    for (let k = maxOverlap; k > 0; k--) {
-      const aSuffix = aWords.slice(-k).join(' ');
-      const bPrefix = bWords.slice(0, k).join(' ');
-      if (aSuffix === bPrefix) {
-        const prefix = aWords.slice(0, aWords.length - k).join(' ');
-        return normalizeVoiceText(`${prefix} ${b}`);
-      }
-    }
-    return normalizeVoiceText(`${a} ${b}`);
-  }, [normalizeVoiceText]);
 
   const rfBuildMessagesFromHistory = useCallback((history: any[]): ChatMessage[] => {
     if (!history || history.length === 0) return [];

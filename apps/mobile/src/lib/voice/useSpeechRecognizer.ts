@@ -8,7 +8,7 @@ import {
 import { EventEmitter } from 'expo-modules-core';
 import { DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS } from '../../store/config';
 import type { VoiceDebugLog } from './voiceDebug';
-import { mergeVoiceText } from './mergeVoiceText';
+import { mergeVoiceText, normalizeVoiceText } from './mergeVoiceText';
 
 export type VoiceFinalizationMode = 'edit' | 'send' | 'handsfree';
 
@@ -40,8 +40,6 @@ type UseSpeechRecognizerOptions = {
 };
 
 const MIN_HOLD_MS = 200;
-
-const normalizeVoiceText = (text?: string) => (text || '').replace(/\s+/g, ' ').trim();
 
 export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const {

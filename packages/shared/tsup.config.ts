@@ -6,6 +6,7 @@ export default defineConfig({
     colors: 'src/colors.ts',
     types: 'src/types.ts',
     'tts-preprocessing': 'src/tts-preprocessing.ts',
+    'voice-text-utils': 'src/voice-text-utils.ts',
     'chat-utils': 'src/chat-utils.ts',
     providers: 'src/providers.ts',
     'provider-tool-utils': 'src/provider-tool-utils.ts',
