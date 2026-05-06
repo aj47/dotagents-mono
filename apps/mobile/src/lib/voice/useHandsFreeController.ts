@@ -11,7 +11,7 @@ import {
   type HandsFreeControllerState,
   type HandsFreeUtteranceAction,
 } from '@dotagents/shared/hands-free-controller';
-import type { VoiceDebugLog } from './voiceDebug';
+import type { VoiceDebugLog } from '@dotagents/shared/voice-debug-log';
 
 export {
   DEFAULT_HANDS_FREE_MAX_AWAKE_MS,

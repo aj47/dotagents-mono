@@ -1,18 +1,9 @@
 import { useCallback, useState } from 'react';
 import {
-  formatVoiceDebugEntry,
-  MAX_VOICE_DEBUG_EVENTS,
   prependVoiceDebugEntry,
   type VoiceDebugEntry,
   type VoiceDebugLog,
 } from '@dotagents/shared/voice-debug-log';
-
-export {
-  formatVoiceDebugEntry,
-  MAX_VOICE_DEBUG_EVENTS,
-  prependVoiceDebugEntry,
-};
-export type { VoiceDebugEntry, VoiceDebugLog } from '@dotagents/shared/voice-debug-log';
 
 export function useVoiceDebug(enabled: boolean) {
   const [events, setEvents] = useState<VoiceDebugEntry[]>([]);

@@ -139,7 +139,8 @@ import {
   createTextInputAccessibilityLabel,
   createVoiceInputLiveRegionAnnouncement,
 } from '@dotagents/shared/accessibility-utils';
-import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
+import { formatVoiceDebugEntry } from '@dotagents/shared/voice-debug-log';
+import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 
