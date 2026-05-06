@@ -77,6 +77,7 @@ import {
   getOperatorAuditPath,
   getOperatorAuditSource,
   getOperatorMcpToolResultText,
+  getOperatorUpdaterAction,
   getSanitizedWhatsAppOperatorDetails,
   getSensitiveOperatorSettingsKeys,
   isLoopbackOperatorAccessIp,
@@ -85,6 +86,10 @@ import {
   isSensitiveOperatorSettingsKey,
   mergeOperatorWhatsAppStatusPayload,
   normalizeOperatorLogLevel,
+  checkOperatorUpdaterAction,
+  downloadLatestOperatorUpdateAssetAction,
+  openOperatorReleasesPageAction,
+  openOperatorUpdateAssetAction,
   pauseOperatorMessageQueueAction,
   OPERATOR_AUDIT_DEVICE_HEADER_KEYS,
   parseOperatorJsonRecord,
@@ -99,6 +104,7 @@ import {
   resumeOperatorMessageQueueAction,
   rotateOperatorRemoteServerApiKeyAction,
   retryOperatorQueuedMessageAction,
+  revealOperatorUpdateAssetAction,
   sanitizeOperatorAuditDetails,
   sanitizeOperatorAuditText,
   serializeOperatorAuditLogEntries,
@@ -106,6 +112,7 @@ import {
   updateOperatorQueuedMessageAction,
   type OperatorApiKeyActionOptions,
   type OperatorMessageQueueActionOptions,
+  type OperatorUpdaterActionOptions,
 } from "./operator-actions"
 
 describe("operator action API helpers", () => {
@@ -1415,6 +1422,132 @@ describe("operator action API helpers", () => {
       action: "message-queue-message-update",
       message: "Updated queued message msg-1",
       details: { conversationId: "conv-1", messageId: "msg-1", processingStarted: false },
+    })
+  })
+
+  it("runs updater route actions through a shared service adapter", async () => {
+    const calls: string[] = []
+    const options: OperatorUpdaterActionOptions = {
+      service: {
+        getUpdateInfo: () => ({
+          currentVersion: "1.0.0",
+          updateAvailable: true,
+          lastCheckedAt: 10,
+        }),
+        checkForUpdatesAndDownload: async () => {
+          calls.push("check")
+          return {
+            updateInfo: {
+              currentVersion: "1.0.0",
+              updateAvailable: false,
+              lastCheckedAt: 11,
+            },
+          }
+        },
+        downloadLatestReleaseAsset: async () => {
+          calls.push("download")
+          return {
+            downloadedAsset: {
+              name: "DotAgents.dmg",
+              filePath: "/tmp/DotAgents.dmg",
+              downloadedAt: 12,
+            },
+            updateInfo: {
+              latestRelease: { tagName: "v1.2.3" },
+            },
+          }
+        },
+        revealDownloadedReleaseAsset: async () => {
+          calls.push("reveal")
+          return { name: "DotAgents.dmg", filePath: "/tmp/DotAgents.dmg" }
+        },
+        openDownloadedReleaseAsset: async () => {
+          calls.push("open")
+          return { name: "DotAgents.dmg", filePath: "/tmp/DotAgents.dmg" }
+        },
+        openManualReleasesPage: async () => {
+          calls.push("releases")
+          return { url: "https://example.com/releases" }
+        },
+      },
+    }
+
+    expect(getOperatorUpdaterAction("1.0.0", "https://example.com/releases", options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        currentVersion: "1.0.0",
+        manualReleasesUrl: "https://example.com/releases",
+        updateAvailable: true,
+      },
+    })
+    expect(await checkOperatorUpdaterAction("https://example.com/releases", options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "updater-check",
+        details: {
+          currentVersion: "1.0.0",
+          checkedAt: 11,
+          updateAvailable: false,
+        },
+      },
+      auditContext: {
+        action: "updater-check",
+        success: true,
+      },
+    })
+    expect(await downloadLatestOperatorUpdateAssetAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "updater-download-latest",
+        details: {
+          fileName: "DotAgents.dmg",
+          filePath: "/tmp/DotAgents.dmg",
+          releaseTag: "v1.2.3",
+        },
+      },
+    })
+    expect(await revealOperatorUpdateAssetAction(options)).toMatchObject({
+      body: {
+        success: true,
+        action: "updater-reveal-download",
+      },
+    })
+    expect(await openOperatorUpdateAssetAction(options)).toMatchObject({
+      body: {
+        success: true,
+        action: "updater-open-download",
+      },
+    })
+    expect(await openOperatorReleasesPageAction(options)).toMatchObject({
+      body: {
+        success: true,
+        action: "updater-open-releases",
+        details: { url: "https://example.com/releases" },
+      },
+    })
+    expect(calls).toEqual(["check", "download", "reveal", "open", "releases"])
+
+    const failingOptions: OperatorUpdaterActionOptions = {
+      service: {
+        ...options.service,
+        downloadLatestReleaseAsset: async () => { throw new Error("No asset found") },
+      },
+    }
+
+    expect(await downloadLatestOperatorUpdateAssetAction(failingOptions)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: false,
+        action: "updater-download-latest",
+        error: "No asset found",
+      },
+      auditContext: {
+        action: "updater-download-latest",
+        success: false,
+        failureReason: "No asset found",
+      },
     })
   })
 

@@ -143,6 +143,25 @@ export interface OperatorApiKeyActionOptions<TConfig extends OperatorApiKeyActio
   generateApiKey(): string
 }
 
+export type OperatorUpdaterActionResult = {
+  statusCode: number
+  body: unknown
+  auditContext?: OperatorActionAuditContext
+}
+
+export interface OperatorUpdaterActionService {
+  getUpdateInfo(): OperatorUpdateInfoLike
+  checkForUpdatesAndDownload(): Promise<{ updateInfo: OperatorUpdateInfoLike }>
+  downloadLatestReleaseAsset(): Promise<OperatorUpdaterDownloadLatestResultLike>
+  revealDownloadedReleaseAsset(): Promise<OperatorDownloadedReleaseAssetLike>
+  openDownloadedReleaseAsset(): Promise<OperatorDownloadedReleaseAssetLike>
+  openManualReleasesPage(): Promise<{ url: string }>
+}
+
+export interface OperatorUpdaterActionOptions {
+  service: OperatorUpdaterActionService
+}
+
 export type RunAgentResultLike = AgentRunResult
 
 export type OperatorHealthLike = Pick<OperatorHealthSnapshot, "overall" | "checks">
@@ -1868,6 +1887,111 @@ export function restartOperatorAppAction(appVersion: string): OperatorRestartAct
     buildOperatorRestartAppActionResponse(appVersion),
     { shouldRestartApp: true },
   )
+}
+
+function operatorUpdaterActionResult(
+  body: unknown,
+  auditContext?: OperatorActionAuditContext,
+): OperatorUpdaterActionResult {
+  return {
+    statusCode: 200,
+    body,
+    ...(auditContext ? { auditContext } : {}),
+  }
+}
+
+function getUnknownOperatorActionErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === "string") return error
+  if (error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string") {
+    return (error as { message: string }).message
+  }
+  return "Unknown error"
+}
+
+export function getOperatorUpdaterAction(
+  currentVersion: string,
+  manualReleasesUrl: string,
+  options: OperatorUpdaterActionOptions,
+): OperatorUpdaterActionResult {
+  return operatorUpdaterActionResult(buildOperatorUpdaterStatus({
+    currentVersion,
+    updateInfo: options.service.getUpdateInfo(),
+    manualReleasesUrl,
+  }))
+}
+
+export async function checkOperatorUpdaterAction(
+  manualReleasesUrl: string,
+  options: OperatorUpdaterActionOptions,
+): Promise<OperatorUpdaterActionResult> {
+  const result = await options.service.checkForUpdatesAndDownload()
+  const response = buildOperatorUpdaterCheckActionResponse(result.updateInfo, manualReleasesUrl)
+  return operatorUpdaterActionResult(response, buildOperatorActionAuditContext(response))
+}
+
+export async function downloadLatestOperatorUpdateAssetAction(
+  options: OperatorUpdaterActionOptions,
+): Promise<OperatorUpdaterActionResult> {
+  try {
+    const result = await options.service.downloadLatestReleaseAsset()
+    const response = buildOperatorUpdaterDownloadLatestActionResponse(result)
+    return operatorUpdaterActionResult(response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const response = buildOperatorActionErrorResponse(
+      "updater-download-latest",
+      getUnknownOperatorActionErrorMessage(caughtError),
+    )
+    return operatorUpdaterActionResult(response, buildOperatorActionAuditContext(response))
+  }
+}
+
+export async function revealOperatorUpdateAssetAction(
+  options: OperatorUpdaterActionOptions,
+): Promise<OperatorUpdaterActionResult> {
+  try {
+    const downloadedAsset = await options.service.revealDownloadedReleaseAsset()
+    const response = buildOperatorDownloadedAssetActionResponse("updater-reveal-download", downloadedAsset)
+    return operatorUpdaterActionResult(response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const response = buildOperatorActionErrorResponse(
+      "updater-reveal-download",
+      getUnknownOperatorActionErrorMessage(caughtError),
+    )
+    return operatorUpdaterActionResult(response, buildOperatorActionAuditContext(response))
+  }
+}
+
+export async function openOperatorUpdateAssetAction(
+  options: OperatorUpdaterActionOptions,
+): Promise<OperatorUpdaterActionResult> {
+  try {
+    const downloadedAsset = await options.service.openDownloadedReleaseAsset()
+    const response = buildOperatorDownloadedAssetActionResponse("updater-open-download", downloadedAsset)
+    return operatorUpdaterActionResult(response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const response = buildOperatorActionErrorResponse(
+      "updater-open-download",
+      getUnknownOperatorActionErrorMessage(caughtError),
+    )
+    return operatorUpdaterActionResult(response, buildOperatorActionAuditContext(response))
+  }
+}
+
+export async function openOperatorReleasesPageAction(
+  options: OperatorUpdaterActionOptions,
+): Promise<OperatorUpdaterActionResult> {
+  try {
+    const result = await options.service.openManualReleasesPage()
+    const response = buildOperatorOpenReleasesActionResponse(result.url)
+    return operatorUpdaterActionResult(response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const response = buildOperatorActionErrorResponse(
+      "updater-open-releases",
+      getUnknownOperatorActionErrorMessage(caughtError),
+    )
+    return operatorUpdaterActionResult(response, buildOperatorActionAuditContext(response))
+  }
 }
 
 export function buildOperatorUpdaterCheckActionResponse(
