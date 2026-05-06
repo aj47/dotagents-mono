@@ -1,15 +1,17 @@
 import fs from "fs"
 import path from "path"
+import type { AgentStepSummary } from "@dotagents/shared/agent-progress"
 import type {
-  AgentStepSummary,
   KnowledgeNote,
   KnowledgeNoteContext,
   KnowledgeNoteDateFilter,
-  KnowledgeNoteGroupSummary,
   KnowledgeNoteSort,
+} from "@dotagents/shared/knowledge-note-domain"
+import type {
+  KnowledgeNoteGroupSummary,
   KnowledgeNoteSeriesSummary,
   KnowledgeNotesOverview,
-} from "@shared/types"
+} from "@dotagents/shared/knowledge-note-grouping"
 import { logLLM, isDebugLLM } from "./debug"
 import { globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"

@@ -6,14 +6,14 @@ import { Writable } from "stream"
 import { pipeline } from "stream/promises"
 import { conversationsFolder } from "./config"
 import { logApp } from "./debug"
-import {
+import type {
   Conversation,
   ConversationBranchSource,
   ConversationCompactionMetadata,
   ConversationMessage,
   ConversationHistoryItem,
   LoadedConversation,
-} from "../shared/types"
+} from "@dotagents/shared/conversation-domain"
 import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "./conversation-context-builder"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
