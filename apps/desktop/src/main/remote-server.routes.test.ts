@@ -311,12 +311,6 @@ function getPushNotificationServiceSource(): string {
   return readFileSync(pushNotificationServicePath, "utf8")
 }
 
-function getConversationActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const conversationActionsPath = path.join(testDir, "conversation-actions.ts")
-  return readFileSync(conversationActionsPath, "utf8")
-}
-
 function getConversationImageAssetsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const conversationImageAssetsPath = path.join(testDir, "conversation-image-assets.ts")
@@ -688,7 +682,6 @@ describe("remote-server route registration", () => {
 
   it("keeps remote route action result contracts shared", () => {
     const mobileActionSources = [
-      getConversationActionsSource(),
       getSettingsActionsSource(),
     ]
     const operatorActionSources = [
@@ -1170,7 +1163,7 @@ describe("remote-server route registration", () => {
     const source = getRemoteServerSource()
     const serveSource = getServeSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
-    const conversationActionsSource = getConversationActionsSource()
+    const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const conversationImageAssetsSource = getConversationImageAssetsSource()
     const sharedRemoteServerRouteContractsSource = getSharedRemoteServerRouteContractsSource()
     const sharedConversationSyncSource = getSharedConversationSyncSource()
@@ -1186,10 +1179,14 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.getConversations()")
     expect(mobileApiRoutesSource).toContain("actions.createConversation(req.body, notifyConversationHistoryChanged)")
     expect(mobileApiRoutesSource).toContain("actions.updateConversation(params.id, req.body, notifyConversationHistoryChanged)")
-    expect(conversationActionsSource).toContain("getConversationAction(id, conversationActionOptions)")
-    expect(conversationActionsSource).toContain("getConversationsAction(conversationActionOptions)")
-    expect(conversationActionsSource).toContain("createConversationAction(body, onChanged, conversationActionOptions)")
-    expect(conversationActionsSource).toContain("updateConversationAction(id, body, onChanged, conversationActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getConversationAction(id, conversationActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getConversationsAction(conversationActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain(
+      "createConversationAction(body, onChanged, conversationActionOptions)",
+    )
+    expect(mobileApiDesktopActionsSource).toContain(
+      "updateConversationAction(id, body, onChanged, conversationActionOptions)",
+    )
     expect(sharedConversationSyncSource).toContain("export interface ConversationActionOptions")
     expect(sharedConversationSyncSource).toContain("export async function getConversationAction")
     expect(sharedConversationSyncSource).toContain("export async function getConversationsAction")
@@ -1204,10 +1201,12 @@ describe("remote-server route registration", () => {
     expect(sharedConversationSyncSource).toContain("parseUpdateConversationRequestBody(body)")
     expect(sharedConversationSyncSource).toContain("applyServerConversationUpdate(conversation, parsedRequest.request, timestamp)")
     expect(sharedConversationSyncSource).not.toContain('from "./conversation-service"')
-    expect(conversationActionsSource).toContain("getConversationVideoAssetPath(conversationId, fileName ?? \"\")")
-    expect(conversationActionsSource).toContain("buildConversationVideoAssetStreamPlan(fileName ?? \"\", rangeHeader, stat.size)")
-    expect(conversationActionsSource).toContain("buildMobileApiActionError(400, conversationIdError)")
-    expect(conversationActionsSource).toContain("buildMobileApiActionResult(")
+    expect(mobileApiDesktopActionsSource).toContain("getConversationVideoAssetPath(conversationId, fileName ?? \"\")")
+    expect(mobileApiDesktopActionsSource).toContain(
+      "buildConversationVideoAssetStreamPlan(fileName ?? \"\", rangeHeader, stat.size)",
+    )
+    expect(mobileApiDesktopActionsSource).toContain("buildMobileApiActionError(400, conversationIdError)")
+    expect(mobileApiDesktopActionsSource).toContain("buildMobileApiActionResult(")
     expect(sharedRemoteServerRouteContractsSource).toContain("export function buildMobileApiActionResult(")
     expect(sharedRemoteServerRouteContractsSource).toContain("export function buildMobileApiActionError(")
     expect(sharedRemoteServerRouteContractsSource).toContain("return buildMobileApiActionResult({ error: message }, statusCode, headers)")
@@ -1224,7 +1223,7 @@ describe("remote-server route registration", () => {
     expect(conversationImageAssetsSource).not.toContain("SAFE_IMAGE_ASSET_FILE_REGEX")
     expect(serveSource).toContain("parseConversationImageAssetUrl(request.url)")
     expect(serveSource).toContain("parseConversationVideoAssetUrl(request.url)")
-    expect(conversationActionsSource).toContain("fs.createReadStream(assetPath")
+    expect(mobileApiDesktopActionsSource).toContain("fs.createReadStream(assetPath")
   })
 
   it("registers the operator remote-operations endpoints", () => {

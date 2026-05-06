@@ -36,6 +36,15 @@ import {
   type ModelActionOptions,
 } from "@dotagents/shared/chat-utils"
 import {
+  createConversationAction,
+  getConversationAction,
+  getConversationsAction,
+  updateConversationAction,
+  type ConversationActionOptions,
+} from "@dotagents/shared/conversation-sync"
+import { getConversationIdValidationError } from "@dotagents/shared/conversation-id"
+import { buildConversationVideoAssetStreamPlan } from "@dotagents/shared/conversation-media-assets"
+import {
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   deleteMcpServerConfigAction,
   exportMcpServerConfigsAction,
@@ -92,6 +101,10 @@ import {
   type ProfileActionOptions,
 } from "@dotagents/shared/profile-api"
 import {
+  buildMobileApiActionError,
+  buildMobileApiActionResult,
+} from "@dotagents/shared/remote-server-route-contracts"
+import {
   createRepeatTaskAction,
   deleteRepeatTaskAction,
   exportRepeatTaskToMarkdownAction,
@@ -114,13 +127,8 @@ import {
   previewBundleWithConflicts,
 } from "./bundle-service"
 import { handleChatCompletionRequest } from "./chat-completion-actions"
-import {
-  createConversation,
-  getConversation,
-  getConversations,
-  getConversationVideoAsset,
-  updateConversation,
-} from "./conversation-actions"
+import { conversationService } from "./conversation-service"
+import { getConversationVideoAssetPath } from "./conversation-video-assets"
 import { recordOperatorAuditEvent } from "./operator-audit-actions"
 import {
   getSettings,
@@ -142,6 +150,7 @@ import { generateTTS } from "./tts-service"
 
 type DesktopProfileActionProfile = ReturnType<typeof agentProfileService.setCurrentProfileStrict>
 type DesktopAgentProfileActionProfile = NonNullable<ReturnType<typeof agentProfileService.getById>>
+type DesktopConversationActionConversation = NonNullable<Awaited<ReturnType<typeof conversationService.loadConversation>>>
 
 const modelActionOptions: ModelActionOptions = {
   getConfig: () => configStore.get(),
@@ -240,6 +249,19 @@ const bundleActionOptions: BundleActionOptions = {
       ),
   },
   diagnostics: diagnosticsService,
+}
+
+const conversationActionOptions: ConversationActionOptions<DesktopConversationActionConversation> = {
+  service: {
+    loadConversation: (conversationId) => conversationService.loadConversation(conversationId),
+    getConversationHistory: () => conversationService.getConversationHistory(),
+    generateConversationId: () => conversationService.generateConversationIdPublic(),
+    saveConversation: (conversation, preserveTimestamp) =>
+      conversationService.saveConversation(conversation, preserveTimestamp),
+  },
+  diagnostics: diagnosticsService,
+  validateConversationId: getConversationIdValidationError,
+  now: () => Date.now(),
 }
 
 const profileActionOptions: ProfileActionOptions<DesktopProfileActionProfile> = {
@@ -472,6 +494,73 @@ function previewBundleImport(body: unknown) {
 
 function importBundle(body: unknown) {
   return importBundleAction(body, bundleActionOptions)
+}
+
+async function getConversation(id: string | undefined) {
+  return getConversationAction(id, conversationActionOptions)
+}
+
+async function getConversationVideoAsset(
+  id: string | undefined,
+  fileName: string | undefined,
+  rangeHeader: string | undefined,
+) {
+  try {
+    const conversationId = id ?? ""
+
+    const conversationIdError = getConversationIdValidationError(conversationId)
+    if (conversationIdError) {
+      return buildMobileApiActionError(400, conversationIdError)
+    }
+
+    let assetPath: string
+    try {
+      assetPath = getConversationVideoAssetPath(conversationId, fileName ?? "")
+    } catch (caughtError) {
+      return buildMobileApiActionError(400, caughtError instanceof Error ? caughtError.message : "Invalid video asset")
+    }
+
+    const stat = await fs.promises.stat(assetPath)
+    if (!stat.isFile() || stat.size <= 0) {
+      return buildMobileApiActionError(404, "Video asset not found")
+    }
+
+    const streamPlan = buildConversationVideoAssetStreamPlan(fileName ?? "", rangeHeader, stat.size)
+    if (!streamPlan.ok) {
+      return {
+        statusCode: streamPlan.statusCode,
+        headers: streamPlan.headers,
+      }
+    }
+
+    if (streamPlan.range) {
+      return buildMobileApiActionResult(
+        fs.createReadStream(assetPath, { start: streamPlan.range.start, end: streamPlan.range.end }),
+        streamPlan.statusCode,
+        streamPlan.headers,
+      )
+    }
+
+    return buildMobileApiActionResult(fs.createReadStream(assetPath), streamPlan.statusCode, streamPlan.headers)
+  } catch (caughtError: any) {
+    if (caughtError?.code === "ENOENT") {
+      return buildMobileApiActionError(404, "Video asset not found")
+    }
+    diagnosticsService.logError("mobile-api-desktop-actions", "Failed to stream conversation video asset", caughtError)
+    return buildMobileApiActionError(500, caughtError?.message || "Failed to stream video asset")
+  }
+}
+
+async function getConversations() {
+  return getConversationsAction(conversationActionOptions)
+}
+
+async function createConversation(body: unknown, onChanged: () => void) {
+  return createConversationAction(body, onChanged, conversationActionOptions)
+}
+
+async function updateConversation(id: string | undefined, body: unknown, onChanged: () => void) {
+  return updateConversationAction(id, body, onChanged, conversationActionOptions)
 }
 
 function getAgentProfiles(role: string | undefined) {
