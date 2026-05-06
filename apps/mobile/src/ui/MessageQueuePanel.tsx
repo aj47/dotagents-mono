@@ -15,7 +15,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { QueuedMessage } from '@dotagents/shared';
+import type { QueuedMessage } from '@dotagents/shared/message-queue-utils';
 import { useTheme } from './ThemeProvider';
 
 interface MessageQueuePanelProps {

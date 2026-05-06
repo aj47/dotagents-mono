@@ -4,8 +4,8 @@
  */
 import readline from "readline"
 import { configStore, trySaveConfig } from "./config"
-import { mcpService, MCPToolResult } from "./mcp-service"
-import { processTranscriptWithAgentMode } from "./llm"
+import { mcpService } from "./mcp-service"
+import { agentRuntime } from "./agent-runtime"
 import { state } from "./state"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
@@ -14,7 +14,8 @@ import { discordService } from "./discord-service"
 import { getDiscordLifecycleAction } from "./discord-config"
 import { emergencyStopAll } from "./emergency-stop"
 import { getErrorMessage } from "./error-utils"
-import { SessionProfileSnapshot, AgentProgressUpdate, Config } from "@shared/types"
+import type { SessionProfileSnapshot } from "@dotagents/core"
+import type { AgentProgressUpdate, Config } from "@shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 
 // ANSI color codes (no external deps)
@@ -409,17 +410,6 @@ async function runAgentCLI(prompt: string): Promise<void> {
   const sessionId = agentSessionTracker.startSession(conversationId, conversationTitle, true, profileSnapshot)
 
   try {
-    await mcpService.initialize()
-    mcpService.registerExistingProcessesWithAgentManager()
-
-    const availableTools = profileSnapshot?.mcpServerConfig
-      ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
-      : mcpService.getAvailableTools()
-
-    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
-      return await mcpService.executeToolCall(toolCall, onProgress, false, sessionId, profileSnapshot?.mcpServerConfig)
-    }
-
     // Track last shown step to avoid duplicates
     let lastShownStepId = ""
     let lastShownIteration = 0
@@ -452,17 +442,15 @@ async function runAgentCLI(prompt: string): Promise<void> {
 
     console.log(`${colors.dim}Processing...${colors.reset}`)
 
-    const agentResult = await processTranscriptWithAgentMode(
-      prompt,
-      availableTools,
-      executeToolCall,
-      cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? 10),
+    const agentResult = await agentRuntime.runAgentTurn({
+      transcript: prompt,
+      maxIterations: cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? 10),
       previousConversationHistory,
       conversationId,
       sessionId,
       onProgress,
       profileSnapshot,
-    )
+    })
 
     agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
 

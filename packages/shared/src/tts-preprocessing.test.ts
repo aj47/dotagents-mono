@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { preprocessTextForTTS, validateTTSText } from './tts-preprocessing'
-import type { TTSPreprocessingOptions } from './tts-preprocessing'
+import {
+  buildTTSPreprocessingPrompt,
+  getTTSPreprocessingOptionsFromConfig,
+  preprocessTextForTTS,
+  validateTTSText,
+} from './tts-preprocessing'
 
 // ── preprocessTextForTTS ─────────────────────────────────────────────────────
 
@@ -113,6 +117,49 @@ describe('preprocessTextForTTS', () => {
     const result = preprocessTextForTTS(text)
     expect(result).not.toContain('  ')
     expect(result).not.toContain('\n')
+  })
+})
+
+describe('shared TTS preprocessing policy', () => {
+  it('derives regex preprocessing options from app config defaults', () => {
+    expect(getTTSPreprocessingOptionsFromConfig({})).toEqual({
+      removeCodeBlocks: true,
+      removeUrls: true,
+      convertMarkdown: true,
+    })
+
+    expect(getTTSPreprocessingOptionsFromConfig({
+      ttsRemoveCodeBlocks: false,
+      ttsRemoveUrls: false,
+      ttsConvertMarkdown: false,
+    })).toEqual({
+      removeCodeBlocks: false,
+      removeUrls: false,
+      convertMarkdown: false,
+    })
+  })
+
+  it('builds the LLM preprocessing prompt from app config', () => {
+    const defaultPrompt = buildTTSPreprocessingPrompt({})
+
+    expect(defaultPrompt).toContain('Convert this AI response to natural spoken text.')
+    expect(defaultPrompt).toContain('- Remove code blocks and replace with brief description if relevant')
+    expect(defaultPrompt).toContain('- Remove URLs but mention if a link was shared')
+    expect(defaultPrompt).toContain('- Convert markdown formatting to natural speech')
+    expect(defaultPrompt).toContain('- Strip bullet/list markers silently')
+    expect(defaultPrompt).toContain('- Expand abbreviations and acronyms appropriately')
+    expect(defaultPrompt).toContain('- Convert technical symbols to spoken words')
+    expect(defaultPrompt).toContain('Text to convert:')
+
+    const minimalPrompt = buildTTSPreprocessingPrompt({
+      ttsRemoveCodeBlocks: false,
+      ttsRemoveUrls: false,
+      ttsConvertMarkdown: false,
+    })
+    expect(minimalPrompt).not.toContain('Remove code blocks')
+    expect(minimalPrompt).not.toContain('Remove URLs')
+    expect(minimalPrompt).not.toContain('Convert markdown formatting')
+    expect(minimalPrompt).toContain('- Keep the core meaning but optimize for listening')
   })
 })
 

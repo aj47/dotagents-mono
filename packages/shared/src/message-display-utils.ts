@@ -4,6 +4,13 @@ import type { AgentProgressUpdate } from "./agent-progress"
 const INLINE_DATA_IMAGE_REGEX = /!\[([^\]]*)\]\((data:image\/[^)]+)\)/gi
 const MARKDOWN_IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/gi
 const MARKDOWN_VIDEO_LINK_REGEX = /(^|[^!])\[([^\]]*)\]\((assets:\/\/conversation-video\/[^)]+|https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?)\)/gi
+const MARKDOWN_MEDIA_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/gi
+const MARKDOWN_ANY_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\([^)]*\)/gi
+const MARKDOWN_MEDIA_VIDEO_PAYLOAD_REGEX = /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/gi
+
+export interface StripMarkdownMediaPayloadOptions {
+  stripAllImages?: boolean
+}
 
 function hasInlineDataImage(content: string): boolean {
   return !!content && /data:image\//i.test(content)
@@ -36,6 +43,40 @@ export function sanitizeMessageContentForSpeech(content: string): string {
       const cleanedLabel = label?.trim()
       return `${prefix}${cleanedLabel ? `Video: ${cleanedLabel}` : "Video"}`
     })
+}
+
+export function sanitizeMessageMediaContentForPreview(content: string): string {
+  if (!content) {
+    return content
+  }
+
+  return content
+    .replace(MARKDOWN_IMAGE_REGEX, "[Image]")
+    .replace(MARKDOWN_VIDEO_LINK_REGEX, "$1[Video]")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+export function stripMarkdownMediaPayloads(
+  content: string,
+  options: StripMarkdownMediaPayloadOptions = {},
+): string {
+  const imageRegex = options.stripAllImages
+    ? MARKDOWN_ANY_IMAGE_PAYLOAD_REGEX
+    : MARKDOWN_MEDIA_IMAGE_PAYLOAD_REGEX
+
+  return content
+    .replace(imageRegex, "")
+    .replace(MARKDOWN_MEDIA_VIDEO_PAYLOAD_REGEX, "$1")
+}
+
+export function hasMarkdownMediaPayload(content: string): boolean {
+  return /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/i.test(content) ||
+    /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/i.test(content)
+}
+
+export function normalizeAssistantResponseForDedupe(content: string | undefined): string {
+  return (content ?? "").replace(/\s+/g, " ").trim()
 }
 
 /**

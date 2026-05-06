@@ -11,6 +11,12 @@ import { Bot, Check, Edit2, Plus } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import type { AgentProfile } from "../../../shared/types"
 import {
+  getDefaultAgentProfile,
+  getDisplayAgentProfile,
+  getEnabledAgentProfiles,
+  getSelectedAgentProfile,
+} from "@dotagents/shared/agent-selector-options"
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -105,9 +111,9 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
     queryFn: () => tipcClient.getAgentProfiles(),
   })
 
-  const enabledAgents = agents.filter((a) => a.enabled)
-  const selectedAgent = enabledAgents.find((a) => a.id === selectedAgentId)
-  const defaultAgent = enabledAgents.find((a) => a.isDefault) ?? enabledAgents[0]
+  const enabledAgents = getEnabledAgentProfiles(agents)
+  const selectedAgent = getSelectedAgentProfile(enabledAgents, selectedAgentId)
+  const defaultAgent = getDefaultAgentProfile(enabledAgents)
 
   // If the selected agent was disabled/deleted, reset to default
   React.useEffect(() => {
@@ -121,7 +127,7 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
   }
 
   // When no agent is explicitly selected, show the default agent's avatar
-  const displayAgent = selectedAgent ?? defaultAgent
+  const displayAgent = getDisplayAgentProfile(enabledAgents, selectedAgentId)
   const displayName = displayAgent?.displayName || displayAgent?.name || "Default Agent"
 
   return (

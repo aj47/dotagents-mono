@@ -3,14 +3,25 @@ import type {
   STT_PROVIDER_ID,
   TTS_PROVIDER_ID,
   OPENAI_COMPATIBLE_PRESET_ID,
+  ModelPreset,
+} from '@dotagents/shared/providers'
+import type {
   ToolCall,
   ToolResult,
+} from '@dotagents/shared/types'
+import type {
   AgentConversationState,
-} from '@dotagents/shared'
+} from '@dotagents/shared/conversation-state'
+import {
+  legacyAcpAgentConfigToAgentProfile as sharedLegacyAcpAgentConfigToAgentProfile,
+  legacyPersonaToAgentProfile as sharedLegacyPersonaToAgentProfile,
+  legacyProfileToAgentProfile as sharedLegacyProfileToAgentProfile,
+} from '@dotagents/shared/agent-profile-legacy-converters'
 
-export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, AgentConversationState } from '@dotagents/shared'
-export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared'
-export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '../../../../packages/core/src/types'
+export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse } from '@dotagents/shared/types'
+export type { AgentConversationState } from '@dotagents/shared/conversation-state'
+export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback } from '@dotagents/shared/agent-progress'
+export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '@dotagents/core'
 
 export type KnowledgeNoteSort =
   | "relevance"
@@ -170,7 +181,7 @@ export interface DetailedToolInfo {
 // AgentStepSummary — re-exported from @dotagents/shared (see above)
 
 // Message Queue Types — re-exported from shared package
-export type { QueuedMessage, MessageQueue } from '@dotagents/shared'
+export type { QueuedMessage, MessageQueue } from '@dotagents/shared/message-queue-utils'
 
 // Conversation Types
 export interface ConversationMessage {
@@ -697,116 +708,25 @@ export type AgentProfilesData = {
  * Convert a legacy Profile to AgentProfile.
  */
 export function profileToAgentProfile(profile: Profile): AgentProfile {
-  return {
-    id: profile.id,
-    name: profile.name,
-    displayName: profile.name,
-    description: undefined,
-    systemPrompt: profile.systemPrompt,
-    guidelines: profile.guidelines,
-    properties: undefined,
-    modelConfig: profile.modelConfig,
-    toolConfig: profile.mcpServerConfig ? {
-      disabledServers: profile.mcpServerConfig.disabledServers,
-      disabledTools: profile.mcpServerConfig.disabledTools,
-      allServersDisabledByDefault: profile.mcpServerConfig.allServersDisabledByDefault,
-      enabledServers: profile.mcpServerConfig.enabledServers,
-      enabledRuntimeTools: profile.mcpServerConfig.enabledRuntimeTools,
-    } : undefined,
-    skillsConfig: profile.skillsConfig,
-    connection: { type: "internal" },
-    isStateful: false,
-    role: "chat-agent",
-    enabled: true,
-    isBuiltIn: false,
-    isUserProfile: true,
-    isAgentTarget: false,
-    isDefault: profile.isDefault,
-    createdAt: profile.createdAt,
-    updatedAt: profile.updatedAt,
-  }
+  return sharedLegacyProfileToAgentProfile(profile) as AgentProfile
 }
 
 /**
  * Convert a legacy Persona to AgentProfile (for migration).
  */
 export function personaToAgentProfile(persona: Persona): AgentProfile {
-  // Map legacy connection type to AgentProfile connection type
-  const connectionType: AgentProfileConnectionType =
-    persona.connection.type === "acp-agent" ? "acpx" : persona.connection.type === 'stdio' ? 'acpx' : persona.connection.type
-
-  return {
-    id: persona.id,
-    name: persona.name,
-    displayName: persona.displayName,
-    description: persona.description,
-    systemPrompt: persona.systemPrompt,
-    guidelines: persona.guidelines,
-    properties: persona.properties,
-    modelConfig: persona.profileModelConfig,
-    toolConfig: {
-      enabledServers: persona.mcpServerConfig.enabledServers,
-      disabledTools: persona.mcpServerConfig.disabledTools,
-      enabledRuntimeTools: persona.mcpServerConfig.enabledRuntimeTools,
-    },
-    skillsConfig: { enabledSkillIds: persona.skillsConfig.enabledSkillIds },
-    connection: {
-      type: connectionType,
-      command: persona.connection.command,
-      args: persona.connection.args,
-      env: persona.connection.env,
-      cwd: persona.connection.cwd,
-      baseUrl: persona.connection.baseUrl,
-    },
-    isStateful: persona.isStateful,
-    conversationId: persona.conversationId,
-    role: "delegation-target",
-    enabled: persona.enabled,
-    isBuiltIn: persona.isBuiltIn,
-    isUserProfile: false,
-    isAgentTarget: true,
-    createdAt: persona.createdAt,
-    updatedAt: persona.updatedAt,
-  }
+  return sharedLegacyPersonaToAgentProfile(persona) as AgentProfile
 }
 
 /**
  * Convert a legacy ACPAgentConfig to AgentProfile.
  */
 export function acpAgentConfigToAgentProfile(config: ACPAgentConfig): AgentProfile {
-  const now = Date.now()
-  const connectionType: AgentProfileConnectionType =
-    config.connection.type === "internal" ? "internal" :
-    config.connection.type === "remote" ? "remote" : "acpx"
-
-  return {
-    id: config.name,
-    name: config.name,
-    displayName: config.displayName,
-    description: config.description,
-    connection: {
-      type: connectionType,
-      agent: config.name,
-      command: config.connection.command,
-      args: config.connection.args,
-      env: config.connection.env,
-      cwd: config.connection.cwd,
-      baseUrl: config.connection.baseUrl,
-    },
-    role: "external-agent",
-    enabled: config.enabled ?? true,
-    isBuiltIn: config.isInternal,
-    isUserProfile: false,
-    isAgentTarget: true,
-    autoSpawn: config.autoSpawn,
-    createdAt: now,
-    updatedAt: now,
-  }
+  return sharedLegacyAcpAgentConfigToAgentProfile(config) as AgentProfile
 }
 
 // ModelPreset — re-exported from shared package (superset of all platform definitions)
-import type { ModelPreset } from '@dotagents/shared'
-export type { ModelPreset } from '@dotagents/shared'
+export type { ModelPreset } from '@dotagents/shared/providers'
 
 // ============================================================================
 // Model Information Types

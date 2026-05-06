@@ -21,14 +21,19 @@ import {
   updateConversationRuntimeSessionId,
 } from "./acp-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
-import { AgentProgressUpdate, AgentProgressStep, SessionProfileSnapshot, ACPConfigOption, ToolCall, ToolResult } from "../shared/types"
+import type { SessionProfileSnapshot } from "@dotagents/core"
+import type { AgentProgressUpdate, AgentProgressStep, ACPConfigOption, ToolCall, ToolResult } from "../shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
-import { MARK_WORK_COMPLETE_TOOL, RESPOND_TO_USER_TOOL } from "../shared/runtime-tool-names"
+import {
+  extractRespondToUserResponseEvents,
+  MARK_WORK_COMPLETE_TOOL,
+  RESPOND_TO_USER_TOOL,
+} from "@dotagents/shared/chat-utils"
+import type { AgentConversationState } from "@dotagents/shared/conversation-state"
+import type { AgentUserResponseEvent } from "@dotagents/shared/agent-progress"
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { buildProfileContext } from "./agent-run-utils"
-import { extractRespondToUserContentFromArgs } from "./respond-to-user-utils"
-import { resolveMessageTimestamps, type AgentConversationState, type AgentUserResponseEvent } from "@dotagents/shared"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 
@@ -239,32 +244,15 @@ function deriveAcpUserResponseState(conversationHistory: ConversationHistoryMess
   userResponse?: string
   userResponseHistory?: string[]
 } {
-  const responseEvents: AgentUserResponseEvent[] = []
   const sinceIndex = Math.max(0, options?.sinceIndex ?? 0)
   const resolvedSessionId = options?.sessionId ?? "acp-session"
-  const scopedConversationHistory = conversationHistory.slice(sinceIndex)
-  const resolvedTimestamps = resolveMessageTimestamps(scopedConversationHistory)
-
-  for (let localMessageIndex = 0; localMessageIndex < scopedConversationHistory.length; localMessageIndex += 1) {
-    const messageIndex = sinceIndex + localMessageIndex
-    const message = scopedConversationHistory[localMessageIndex]
-    if (message.role !== "assistant" || !message.toolCalls?.length) continue
-
-    for (let toolCallIndex = 0; toolCallIndex < message.toolCalls.length; toolCallIndex += 1) {
-      const toolCall = message.toolCalls[toolCallIndex]
-      if (normalizeAcpToolName(toolCall.name) !== RESPOND_TO_USER_TOOL) continue
-      const content = extractRespondToUserContentFromArgs(toolCall.arguments)
-      if (!content) continue
-      responseEvents.push({
-        id: `acp-${resolvedSessionId}-${options?.runId ?? "run"}-${messageIndex}-${toolCallIndex}-${responseEvents.length + 1}`,
-        sessionId: resolvedSessionId,
-        runId: options?.runId,
-        ordinal: responseEvents.length + 1,
-        text: content,
-        timestamp: resolvedTimestamps[localMessageIndex],
-      })
-    }
-  }
+  const responseEvents = extractRespondToUserResponseEvents(conversationHistory, {
+    idPrefix: `acp-${resolvedSessionId}-${options?.runId ?? "run"}`,
+    runId: options?.runId,
+    sessionId: resolvedSessionId,
+    sinceIndex,
+    toolNameNormalizer: normalizeAcpToolName,
+  })
 
   const userResponse = responseEvents[responseEvents.length - 1]?.text
   return {

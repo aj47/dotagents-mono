@@ -1,4 +1,4 @@
-import type { AgentProgressUpdate } from '@dotagents/shared';
+import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress';
 import type { ProgressEmitter } from '../interfaces/progress-emitter';
 
 /**

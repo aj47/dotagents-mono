@@ -5,6 +5,9 @@ import {
   setAudioModeAsync,
 } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
+import { createExtendedSettingsApiClient } from './settingsApi';
+
+export { resolveEdgeTtsVoice } from '@dotagents/shared/providers';
 
 // Remote TTS client. Audio synthesis happens on the paired desktop's
 // remote-server (POST /v1/tts/speak); this module only handles the HTTP
@@ -12,25 +15,6 @@ import { File, Paths } from 'expo-file-system';
 // headers Microsoft's Edge TTS endpoint requires, and mobile shouldn't need
 // provider API keys locally, so going through the desktop is the one path
 // that works on every platform without duplicating provider integrations.
-
-// Edge voices the UI still surfaces. Validated here (rather than only on the
-// desktop) so stale persisted values like 'en-US-DavisNeural' fall back
-// gracefully without a server round-trip.
-const SUPPORTED_EDGE_VOICES: ReadonlySet<string> = new Set([
-  'en-US-AriaNeural',
-  'en-US-GuyNeural',
-  'en-US-JennyNeural',
-  'en-US-BrianNeural',
-  'en-GB-SoniaNeural',
-  'en-GB-RyanNeural',
-]);
-const DEFAULT_EDGE_VOICE = 'en-US-AriaNeural';
-
-/** Returns `voice` if it's in the supported catalog, otherwise the default. */
-export function resolveEdgeTtsVoice(voice: string | undefined | null): string {
-  if (voice && SUPPORTED_EDGE_VOICES.has(voice)) return voice;
-  return DEFAULT_EDGE_VOICE;
-}
 
 function logRemoteTts(level: 'warn' | 'info', message: string, extra?: unknown): void {
   const prefix = '[remote-tts]';
@@ -111,32 +95,14 @@ async function fetchRemoteTts(
   text: string,
   options: RemoteSpeakOptions,
 ): Promise<{ audio: ArrayBuffer; mimeType: string }> {
-  const base = options.baseUrl.replace(/\/+$/, '');
-  const url = `${base}/tts/speak`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${options.apiKey}`,
-      Accept: 'audio/*',
-    },
-    body: JSON.stringify({
-      text,
-      providerId: options.providerId,
-      voice: options.voice,
-      model: options.model,
-      speed: options.rate,
-    }),
+  const client = createExtendedSettingsApiClient(options.baseUrl, options.apiKey);
+  return client.synthesizeSpeech({
+    text,
+    providerId: options.providerId,
+    voice: options.voice,
+    model: options.model,
+    speed: options.rate,
   });
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => response.statusText);
-    throw new Error(`Remote TTS returned ${response.status}: ${detail}`);
-  }
-
-  const mimeType = response.headers.get('content-type') || 'audio/mpeg';
-  const audio = await response.arrayBuffer();
-  return { audio, mimeType };
 }
 
 function startWebPlayback(

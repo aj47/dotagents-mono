@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
-import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, Config, ModelPreset } from "../../../shared/types"
-import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
+import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, Config } from "../../../shared/types"
+import { INTERNAL_COMPLETION_NUDGE_TEXT } from "@dotagents/shared/mcp-api"
+import { RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "@dotagents/shared/chat-utils"
 import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
@@ -21,19 +22,30 @@ import { OverlayFollowUpInput } from "./overlay-follow-up-input"
 import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
 import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
 import {
-  type AgentUserResponseEvent,
   extractRespondToUserResponseEvents,
   formatArgumentsPreview,
   formatToolArguments,
   getToolArgumentEntries,
   getIndividualToolCallPreview,
   getToolResultsSummary,
+} from "@dotagents/shared/chat-utils"
+import type { AgentUserResponseEvent } from "@dotagents/shared/agent-progress"
+import {
   TOOL_GROUP_PREVIEW_COUNT,
   TOOL_GROUP_MIN_SIZE,
   getToolActivitySummaryLine,
-  getBuiltInModelPresets,
+} from "@dotagents/shared/tool-activity-grouping"
+import {
+  AGENT_MODEL_FALLBACKS,
+  buildAgentModelConfigUpdates,
+  getActiveModelPreset,
+  resolveAgentProviderId,
+  resolveConfiguredAgentModel,
+} from "@dotagents/shared/model-presets"
+import {
   DEFAULT_MODEL_PRESET_ID,
-} from "@dotagents/shared"
+  type CHAT_PROVIDER_ID,
+} from "@dotagents/shared/providers"
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
@@ -41,7 +53,13 @@ import { LoadingSpinner } from "./ui/loading-spinner"
 import { extractSubAgentToolDisplayContent } from "@shared/delegation-tool-display"
 import { buildContentTTSKey, buildResponseEventTTSKey, consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
-import { sanitizeMessageContentForDisplay, sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
+import {
+  hasMarkdownMediaPayload,
+  normalizeAssistantResponseForDedupe,
+  sanitizeMessageContentForDisplay,
+  sanitizeMessageContentForSpeech,
+  stripMarkdownMediaPayloads,
+} from "@dotagents/shared/message-display-utils"
 import { toast } from "sonner"
 import {
   getFollowUpInputPresentation,
@@ -147,92 +165,14 @@ type DisplayItem =
       previewLines: string[]
     } }
 
-type ChatProviderId = NonNullable<Config["agentProviderId"]>
-
 type SessionModelInfo = NonNullable<AgentProgressUpdate["modelInfo"]>
 
-const AGENT_MODEL_FALLBACKS: Record<ChatProviderId, string> = {
-  openai: "gpt-4.1-mini",
-  groq: "openai/gpt-oss-120b",
-  gemini: "gemini-2.5-flash",
-  "chatgpt-web": "gpt-5.4-mini",
-}
+const getAgentProviderId = (config: Config | undefined): CHAT_PROVIDER_ID => resolveAgentProviderId(config)
 
-const getAgentProviderId = (config: Config | undefined): ChatProviderId => (
-  config?.agentProviderId || config?.mcpToolsProviderId || "openai"
-)
-
-const getMergedModelPresets = (config: Config | undefined): ModelPreset[] => {
-  const builtIn = getBuiltInModelPresets()
-  const saved = config?.modelPresets || []
-  const mergedBuiltIn = builtIn.map((preset) => {
-    const savedPreset = saved.find((candidate) => candidate.id === preset.id)
-    if (!savedPreset) {
-      if (preset.id === DEFAULT_MODEL_PRESET_ID && config?.openaiApiKey) {
-        return { ...preset, apiKey: config.openaiApiKey }
-      }
-      return preset
-    }
-    const merged = { ...preset, ...savedPreset }
-    if (preset.id === DEFAULT_MODEL_PRESET_ID && !merged.apiKey && config?.openaiApiKey) {
-      merged.apiKey = config.openaiApiKey
-    }
-    return merged
-  })
-  return [...mergedBuiltIn, ...saved.filter((preset) => !preset.isBuiltIn)]
-}
-
-const getActiveModelPreset = (config: Config | undefined): ModelPreset | undefined => {
-  const currentPresetId = config?.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
-  return getMergedModelPresets(config).find((preset) => preset.id === currentPresetId)
-}
-
-const getConfiguredAgentModel = (config: Config | undefined, providerId: ChatProviderId): string => {
-  if (providerId === "openai") {
-    const activePreset = getActiveModelPreset(config)
-    return config?.agentOpenaiModel || config?.mcpToolsOpenaiModel || activePreset?.agentModel || activePreset?.mcpToolsModel || AGENT_MODEL_FALLBACKS.openai
-  }
-  if (providerId === "groq") return config?.agentGroqModel || config?.mcpToolsGroqModel || AGENT_MODEL_FALLBACKS.groq
-  if (providerId === "gemini") return config?.agentGeminiModel || config?.mcpToolsGeminiModel || AGENT_MODEL_FALLBACKS.gemini
-  return config?.agentChatgptWebModel || config?.mcpToolsChatgptWebModel || AGENT_MODEL_FALLBACKS["chatgpt-web"]
-}
+const getConfiguredAgentModel = (config: Config | undefined, providerId: CHAT_PROVIDER_ID): string =>
+  resolveConfiguredAgentModel(config, providerId)
 
 const getModelDisplayName = (model: string): string => model.split("/").pop() || model
-
-const buildAgentModelConfigUpdates = (config: Config, providerId: ChatProviderId, modelId: string): Partial<Config> => {
-  if (providerId === "openai") {
-    const currentPresetId = config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
-    const existingPresets = config.modelPresets || []
-    const existingPreset = existingPresets.find((preset) => preset.id === currentPresetId)
-    const builtInPreset = getBuiltInModelPresets().find((preset) => preset.id === currentPresetId)
-    const presetBase = existingPreset || builtInPreset
-    const updatedPreset: ModelPreset | undefined = presetBase
-      ? {
-          ...presetBase,
-          apiKey: presetBase.apiKey || (currentPresetId === DEFAULT_MODEL_PRESET_ID ? config.openaiApiKey || "" : ""),
-          agentModel: modelId,
-          mcpToolsModel: modelId,
-          updatedAt: Date.now(),
-        }
-      : undefined
-
-    return {
-      agentOpenaiModel: modelId,
-      mcpToolsOpenaiModel: modelId,
-      ...(updatedPreset
-        ? {
-            modelPresets: existingPreset
-              ? existingPresets.map((preset) => preset.id === currentPresetId ? updatedPreset : preset)
-              : [...existingPresets, updatedPreset],
-          }
-        : {}),
-    }
-  }
-
-  if (providerId === "groq") return { agentGroqModel: modelId, mcpToolsGroqModel: modelId }
-  if (providerId === "gemini") return { agentGeminiModel: modelId, mcpToolsGeminiModel: modelId }
-  return { agentChatgptWebModel: modelId, mcpToolsChatgptWebModel: modelId }
-}
 
 const SessionModelPicker: React.FC<{
   modelInfo?: SessionModelInfo
@@ -330,10 +270,10 @@ const VERBOSITY_OPTIONS: Array<{ value: CodexVerbosity; label: string }> = [
   { value: "high", label: "High" },
 ]
 
-const providerSupportsThinking = (providerId: ChatProviderId): boolean =>
+const providerSupportsThinking = (providerId: CHAT_PROVIDER_ID): boolean =>
   providerId === "openai" || providerId === "chatgpt-web"
 
-const providerSupportsVerbosity = (providerId: ChatProviderId): boolean =>
+const providerSupportsVerbosity = (providerId: CHAT_PROVIDER_ID): boolean =>
   providerId === "chatgpt-web"
 
 const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
@@ -696,20 +636,6 @@ function isCompletionControlTool(toolName: string): boolean {
   return toolName === RESPOND_TO_USER_TOOL || toolName === MARK_WORK_COMPLETE_TOOL
 }
 
-const MARKDOWN_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/gi
-const MARKDOWN_VIDEO_PAYLOAD_REGEX = /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/gi
-
-function stripMarkdownMediaPayloads(content: string): string {
-  return content
-    .replace(MARKDOWN_IMAGE_PAYLOAD_REGEX, "")
-    .replace(MARKDOWN_VIDEO_PAYLOAD_REGEX, "$1")
-}
-
-function hasMarkdownMediaPayload(content: string): boolean {
-  return /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/i.test(content) ||
-    /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/i.test(content)
-}
-
 function extractRespondToUserResponsesFromMessages(
   messages: Array<{
     role: "user" | "assistant" | "tool"
@@ -722,10 +648,6 @@ function extractRespondToUserResponsesFromMessages(
 
 function messageStableId(message: { timestamp: number; role: string }): string {
   return `${message.timestamp}-${message.role}`
-}
-
-function normalizeAssistantResponseForDedupe(content: string | undefined): string {
-  return (content ?? "").replace(/\s+/g, " ").trim()
 }
 
 function shouldAutoPlayTTSForVariant(
@@ -3859,11 +3781,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       )
       .map(({ i }) => i)
 
-    const stripMediaMarkdown = (text: string) =>
-      text
-        .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
-        .replace(/(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/gi, "$1")
-
     const attachEvent = (event: AgentUserResponseEvent, normalizedEventText: string) => {
       if (!normalizedEventText) return false
       const candidates = eligibleIndexes.filter((i) =>
@@ -3899,7 +3816,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     // can still bind to the text-only streamed prose that carries the same words.
     for (const event of effectiveResponseEvents) {
       if (usedEventIds.has(event.id)) continue
-      attachEvent(event, normalizeAssistantResponseForDedupe(stripMediaMarkdown(event.text)))
+      attachEvent(event, normalizeAssistantResponseForDedupe(stripMarkdownMediaPayloads(event.text, { stripAllImages: true })))
     }
 
     // Pass 4: synthesize standalone assistant messages for unmatched events.

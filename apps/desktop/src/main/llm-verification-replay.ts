@@ -1,5 +1,6 @@
-import type { AgentConversationState, AgentUserResponseEvent } from "@dotagents/shared"
-import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import type { AgentConversationState } from "@dotagents/shared/conversation-state"
+import type { AgentUserResponseEvent } from "@dotagents/shared/agent-progress"
+import { sanitizeMessageContentForDisplay } from "@dotagents/shared/message-display-utils"
 import { collectRecentRealUserRequestIndices } from "./conversation-history-utils"
 import { resolveLatestUserFacingResponse } from "./respond-to-user-utils"
 

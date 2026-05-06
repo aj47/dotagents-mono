@@ -18,13 +18,13 @@ import {
   type DotAgentsBundle,
   type ImportConflictStrategy,
 } from "./bundle-service"
-import type { HubPublishPayload } from "@dotagents/shared"
+import type { HubPublishPayload } from "@dotagents/shared/hub"
 import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import { loadAgentsSkillsLayer, writeAgentsSkillFile } from "./agents-files/skills"
 import { writeKnowledgeNoteFile } from "./agents-files/knowledge-notes"
 import { loadTasksLayer, writeTaskFile } from "./agents-files/tasks"
-import type { AgentProfile, AgentSkill, KnowledgeNote, LoopConfig } from "@shared/types"
+import type { AgentProfile, AgentSkill, KnowledgeNote, LoopConfig } from "@dotagents/core"
 
 // ============================================================================
 // Test Utilities

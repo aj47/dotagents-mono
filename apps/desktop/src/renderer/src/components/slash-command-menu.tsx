@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 import { LoopConfig } from "@shared/types"
+import { formatLoopInterval } from "@dotagents/shared/repeat-task-utils"
 
 export interface SlashCommandItem {
   id: string
@@ -28,24 +29,6 @@ interface SlashCommandMenuProps {
   onClose: () => void
   /** Anchor position relative to the input */
   className?: string
-}
-
-function formatLoopInterval(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`
-  if (minutes < 1440) {
-    const hours = Math.floor(minutes / 60)
-    const remainingMinutes = minutes % 60
-    if (remainingMinutes === 0) return `${hours}h`
-    return `${hours}h ${remainingMinutes}m`
-  }
-  const days = Math.floor(minutes / 1440)
-  const remainingMinutes = minutes % 1440
-  if (remainingMinutes === 0) return `${days}d`
-  const hours = Math.floor(remainingMinutes / 60)
-  const minutesPart = remainingMinutes % 60
-  if (hours === 0) return `${days}d ${minutesPart}m`
-  if (minutesPart === 0) return `${days}d ${hours}h`
-  return `${days}d ${hours}h ${minutesPart}m`
 }
 
 export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProps>(({

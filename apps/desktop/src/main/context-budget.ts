@@ -5,7 +5,7 @@ import { fetchModelsDevData, getModelFromModelsDevByProviderId } from "./models-
 import { constructMinimalSystemPrompt } from "./system-prompts"
 import { agentSessionStateManager } from "./state"
 import { summarizationService } from "./summarization-service"
-import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import { sanitizeMessageContentForDisplay } from "@dotagents/shared/message-display-utils"
 import {
   collectRecentRealUserRequestIndices,
   hasMappedToolResultPrefix,

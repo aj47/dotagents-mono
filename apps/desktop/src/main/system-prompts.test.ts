@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import type { AgentProfile, AgentProfileRole } from "../shared/types"
+import type { AgentProfile, AgentProfileRole } from "@dotagents/core"
 
 const mockAgentProfileService = {
   getByRole: vi.fn((_role: AgentProfileRole) => [] as AgentProfile[]),

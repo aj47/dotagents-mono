@@ -1,4 +1,5 @@
 import { agentProcessManager, llmRequestAbortManager, state, agentSessionStateManager, toolApprovalManager } from "./state"
+import { buildAgentStoppedProgressUpdate } from "./agent-run-utils"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
@@ -35,26 +36,12 @@ export async function emergencyStopAll(): Promise<{ before: number; after: numbe
       // Note: pendingToolApproval is explicitly set to undefined to clear any stale
       // approval bubble from the UI since updateSessionProgress preserves fields not
       // present in the update (spreads existing state)
-      await emitAgentProgress({
+      await emitAgentProgress(buildAgentStoppedProgressUpdate({
         sessionId: session.id,
         conversationId: session.conversationId,
         conversationTitle: session.conversationTitle,
-        currentIteration: 0,
-        maxIterations: 0,
-        steps: [
-          {
-            id: `stop_${Date.now()}`,
-            type: "completion",
-            title: "Agent stopped",
-            description: "Agent mode was stopped by emergency kill switch. Queue paused.",
-            status: "error",
-            timestamp: Date.now(),
-          },
-        ],
-        isComplete: true,
-        finalContent: "(Agent mode was stopped by emergency kill switch)",
-        pendingToolApproval: undefined,
-      })
+        clearPendingToolApproval: true,
+      }))
 
       // We do NOT call agentSessionTracker.stopSession(session.id) here anymore.
       // Doing so bypasses the normal completion flow and can cause the UI to
@@ -112,4 +99,3 @@ export async function emergencyStopAll(): Promise<{ before: number; after: numbe
 
   return { before, after }
 }
-

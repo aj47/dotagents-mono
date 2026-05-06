@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ElementType, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState, type ElementType, type ReactNode } from "react"
 import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/control"
 import { Input } from "@renderer/components/ui/input"
 import { Textarea } from "@renderer/components/ui/textarea"
@@ -14,7 +14,7 @@ import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-clien
 import { ModelPresetManager } from "@renderer/components/model-preset-manager"
 import { ModelSelector, ProviderModelSelector } from "@renderer/components/model-selector"
 import { PresetModelSelector } from "@renderer/components/preset-model-selector"
-import { Config, ModelPreset } from "@shared/types"
+import { Config } from "@shared/types"
 import {
   STT_PROVIDERS,
   CHAT_PROVIDERS,
@@ -34,9 +34,8 @@ import {
   KITTEN_TTS_VOICES,
   SUPERTONIC_TTS_LANGUAGES,
   SUPERTONIC_TTS_VOICES,
-  DEFAULT_MODEL_PRESET_ID,
-  getBuiltInModelPresets,
-} from "@dotagents/shared"
+  getTranscriptPostProcessingModelSettingKey,
+} from "@dotagents/shared/providers"
 import { getDefaultSttModel } from "@dotagents/shared/stt-models"
 import { Mic, FileText, Volume2, Bot } from "lucide-react"
 
@@ -120,32 +119,6 @@ export function Component() {
     }
   }, [])
 
-  const allPresets = useMemo(() => {
-    const builtIn = getBuiltInModelPresets()
-    const custom = configQuery.data?.modelPresets || []
-    const mergedBuiltIn = builtIn.map((preset) => {
-      const saved = custom.find((candidate) => candidate.id === preset.id)
-      if (saved) {
-        const merged = { ...preset, ...saved }
-        if (preset.id === DEFAULT_MODEL_PRESET_ID && !merged.apiKey && configQuery.data?.openaiApiKey) {
-          merged.apiKey = configQuery.data.openaiApiKey
-        }
-        return merged
-      }
-      if (preset.id === DEFAULT_MODEL_PRESET_ID && configQuery.data?.openaiApiKey) {
-        return { ...preset, apiKey: configQuery.data.openaiApiKey }
-      }
-      return preset
-    })
-
-    return [...mergedBuiltIn, ...custom.filter((preset) => !preset.isBuiltIn)]
-  }, [configQuery.data?.modelPresets, configQuery.data?.openaiApiKey])
-
-  const getPresetById = useCallback((presetId?: string): ModelPreset | undefined => {
-    if (!presetId) return undefined
-    return allPresets.find((preset) => preset.id === presetId)
-  }, [allPresets])
-
   if (!configQuery.data) return null
 
   const config = configQuery.data
@@ -154,16 +127,13 @@ export function Component() {
   const ttsProviderId = config.ttsProviderId || "openai"
   const agentProviderId = config.agentProviderId || config.mcpToolsProviderId || "openai"
   const transcriptProcessingEnabled = config.transcriptPostProcessingEnabled ?? false
+  const transcriptProcessingModelKey = getTranscriptPostProcessingModelSettingKey(transcriptProcessingProviderId)
   const usesOpenAiCompatiblePreset =
     agentProviderId === "openai" ||
     (transcriptProcessingEnabled && transcriptProcessingProviderId === "openai")
-  const transcriptProcessingModel = transcriptProcessingProviderId === "openai"
-    ? config.transcriptPostProcessingOpenaiModel
-    : transcriptProcessingProviderId === "groq"
-      ? config.transcriptPostProcessingGroqModel
-      : transcriptProcessingProviderId === "gemini"
-        ? config.transcriptPostProcessingGeminiModel
-        : config.transcriptPostProcessingChatgptWebModel
+  const transcriptProcessingModel = transcriptProcessingModelKey
+    ? config[transcriptProcessingModelKey]
+    : undefined
 
   return (
     <div className="mx-auto max-w-4xl px-6 pb-10 pt-8">
@@ -351,12 +321,9 @@ export function Component() {
                     providerId={transcriptProcessingProviderId}
                     value={transcriptProcessingModel}
                     onValueChange={(value) => {
-                      if (transcriptProcessingProviderId === "groq") {
-                        saveConfig({ transcriptPostProcessingGroqModel: value })
-                      } else if (transcriptProcessingProviderId === "gemini") {
-                        saveConfig({ transcriptPostProcessingGeminiModel: value })
-                      } else {
-                        saveConfig({ transcriptPostProcessingChatgptWebModel: value })
+                      const modelKey = getTranscriptPostProcessingModelSettingKey(transcriptProcessingProviderId)
+                      if (modelKey) {
+                        saveConfig({ [modelKey]: value } as Partial<Config>)
                       }
                     }}
                     label="Transcript Processing model"

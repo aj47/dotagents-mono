@@ -19,13 +19,18 @@ function extractBetween(startMarker, endMarker) {
 }
 
 test('keeps the mobile knowledge notes subsection free of decorative delete emoji chrome', () => {
+  const knowledgeNoteRowRenderer = extractBetween(
+    'const renderKnowledgeNoteRow = (note: KnowledgeNote) => (',
+    '  );\n\n  if (!ready)'
+  );
   const knowledgeNotesSection = extractBetween(
     '<CollapsibleSection id="knowledgeNotes" title="Knowledge Notes">',
     '{/* 4m. Agents */}'
   );
 
-  assert.doesNotMatch(knowledgeNotesSection, /🗑️/);
-  assert.match(knowledgeNotesSection, /<Text style=\{styles\.noteDeleteButtonText\}>Delete<\/Text>/);
-  assert.match(knowledgeNotesSection, /accessibilityLabel=\{`Delete note \$\{note\.title\}`\}/);
+  assert.doesNotMatch(knowledgeNoteRowRenderer, /🗑️/);
+  assert.match(knowledgeNoteRowRenderer, /<Text style=\{styles\.noteDeleteButtonText\}>Delete<\/Text>/);
+  assert.match(knowledgeNoteRowRenderer, /accessibilityLabel=\{`Delete note \$\{note\.title\}`\}/);
+  assert.match(knowledgeNotesSection, /knowledgeNoteSections\.map/);
   assert.match(knowledgeNotesSection, /Canonical note fields are title, context, summary, body, tags, and references\./);
 });

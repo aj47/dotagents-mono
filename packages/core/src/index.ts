@@ -40,17 +40,26 @@ export type {
   KnowledgeNoteContext,
   KnowledgeNoteEntryType,
   AgentSkill,
+  AgentSkillsData,
   LoopConfig,
   LoopSchedule,
+  Profile,
+  ProfilesData,
   AgentProfile,
+  AgentProfilesData,
   AgentProfileConnection,
   AgentProfileConnectionType,
+  PreferredAgentProfileRole,
+  LegacyAgentProfileRole,
   AgentProfileRole,
   AgentProfileToolConfig,
   ProfileMcpServerConfig,
   ProfileModelConfig,
   ProfileSkillsConfig,
   SessionProfileSnapshot,
+} from './types';
+export {
+  normalizeAgentProfileRole,
 } from './types';
 
 // Config module

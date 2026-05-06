@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import type { HandsFreePhase } from '@dotagents/shared';
+import type { HandsFreePhase } from '@dotagents/shared/types';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
 

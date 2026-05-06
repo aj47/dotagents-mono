@@ -1,15 +1,13 @@
 import { protocol, ProtocolRequest, ProtocolResponse } from "electron"
 import path from "path"
 import fs from "fs"
+import {
+  parseConversationImageAssetUrl,
+  parseConversationVideoAssetUrl,
+} from "@dotagents/shared/conversation-media-assets"
 import { recordingsFolder } from "./config"
-import {
-  CONVERSATION_IMAGE_ASSET_HOST,
-  getConversationImageAssetPath,
-} from "./conversation-image-assets"
-import {
-  CONVERSATION_VIDEO_ASSET_HOST,
-  getConversationVideoAssetPath,
-} from "./conversation-video-assets"
+import { getConversationImageAssetPath } from "./conversation-image-assets"
+import { getConversationVideoAssetPath } from "./conversation-video-assets"
 
 const rendererDir = path.join(__dirname, "../renderer")
 
@@ -74,6 +72,28 @@ export function registerServeSchema() {
 
 export function registerServeProtocol() {
   protocol.registerFileProtocol("assets", (request, callback) => {
+    const imageAssetRef = parseConversationImageAssetUrl(request.url)
+    if (imageAssetRef) {
+      try {
+        return callback({
+          path: getConversationImageAssetPath(imageAssetRef.conversationId, imageAssetRef.fileName),
+        })
+      } catch {
+        return callback({ error: FILE_NOT_FOUND })
+      }
+    }
+
+    const videoAssetRef = parseConversationVideoAssetUrl(request.url)
+    if (videoAssetRef) {
+      try {
+        return callback({
+          path: getConversationVideoAssetPath(videoAssetRef.conversationId, videoAssetRef.fileName),
+        })
+      } catch {
+        return callback({ error: FILE_NOT_FOUND })
+      }
+    }
+
     const { host, pathname, searchParams } = new URL(request.url)
 
     if (host === "recording") {
@@ -91,32 +111,6 @@ export function registerServeProtocol() {
 
     if (host === "app") {
       return handleApp(request, callback)
-    }
-
-    if (host === CONVERSATION_IMAGE_ASSET_HOST || host === CONVERSATION_VIDEO_ASSET_HOST) {
-      let pathSegments: string[] = []
-
-      try {
-        pathSegments = pathname
-          .split("/")
-          .filter(Boolean)
-          .map((segment) => decodeURIComponent(segment))
-      } catch {
-        return callback({ error: FILE_NOT_FOUND })
-      }
-
-      const [conversationId, fileName] = pathSegments
-
-      if (conversationId && fileName) {
-        try {
-          const assetPath = host === CONVERSATION_IMAGE_ASSET_HOST
-            ? getConversationImageAssetPath(conversationId, fileName)
-            : getConversationVideoAssetPath(conversationId, fileName)
-          return callback({ path: assetPath })
-        } catch {
-          return callback({ error: FILE_NOT_FOUND })
-        }
-      }
     }
 
     callback({ error: FILE_NOT_FOUND })

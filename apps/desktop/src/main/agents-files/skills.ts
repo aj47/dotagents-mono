@@ -9,7 +9,7 @@ import {
   parseSkillMarkdown,
   loadAgentsSkillsLayer,
   writeAgentsSkillFile,
-} from "../../../../../packages/core/src/agents-files/skills"
+} from "@dotagents/core"
 
 export {
   AGENTS_SKILLS_DIR,
@@ -23,4 +23,4 @@ export {
   loadAgentsSkillsLayer,
   writeAgentsSkillFile,
 }
-export type { AgentsSkillOrigin, LoadedAgentsSkillsLayer } from "../../../../../packages/core/src/agents-files/skills"
+export type { AgentsSkillOrigin, LoadedAgentsSkillsLayer } from "@dotagents/core"

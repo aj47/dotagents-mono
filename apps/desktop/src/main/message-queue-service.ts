@@ -1,4 +1,5 @@
-import { QueuedMessage, MessageQueue } from "../shared/types"
+import { createMessageQueueStore } from "@dotagents/shared/message-queue-store"
+import type { MessageQueue, QueuedMessage } from "@dotagents/shared/message-queue-utils"
 import { logApp } from "./debug"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import { RendererHandlers } from "./renderer-handlers"
@@ -11,11 +12,9 @@ import { WINDOWS } from "./window"
  */
 class MessageQueueService {
   private static instance: MessageQueueService | null = null
-  private queues: Map<string, QueuedMessage[]> = new Map()
-  // Track which conversations are currently being processed to prevent concurrent processing
-  private processingConversations: Set<string> = new Set()
-  // Track which conversations have their queue paused (e.g., after kill switch)
-  private pausedConversations: Set<string> = new Set()
+  private queueStore = createMessageQueueStore({
+    onQueueChanged: (conversationId) => this.emitQueueUpdate(conversationId),
+  })
 
   static getInstance(): MessageQueueService {
     if (!MessageQueueService.instance) {
@@ -32,25 +31,23 @@ class MessageQueueService {
    * Used by kill switch to prevent executing the next queued message after stopping.
    */
   pauseQueue(conversationId: string): void {
-    this.pausedConversations.add(conversationId)
+    this.queueStore.pauseQueue(conversationId)
     logApp(`[MessageQueueService] Paused queue for ${conversationId}`)
-    this.emitQueueUpdate(conversationId)
   }
 
   /**
    * Resume queue processing for a conversation.
    */
   resumeQueue(conversationId: string): void {
-    this.pausedConversations.delete(conversationId)
+    this.queueStore.resumeQueue(conversationId)
     logApp(`[MessageQueueService] Resumed queue for ${conversationId}`)
-    this.emitQueueUpdate(conversationId)
   }
 
   /**
    * Check if a conversation's queue is paused.
    */
   isQueuePaused(conversationId: string): boolean {
-    return this.pausedConversations.has(conversationId)
+    return this.queueStore.isQueuePaused(conversationId)
   }
 
   /**
@@ -58,15 +55,17 @@ class MessageQueueService {
    * Returns true if lock acquired, false if already being processed or paused.
    */
   tryAcquireProcessingLock(conversationId: string): boolean {
-    if (this.pausedConversations.has(conversationId)) {
+    if (this.queueStore.isQueuePaused(conversationId)) {
       logApp(`[MessageQueueService] Queue is paused for ${conversationId}, skipping`)
       return false
     }
-    if (this.processingConversations.has(conversationId)) {
+    if (this.queueStore.isProcessing(conversationId)) {
       logApp(`[MessageQueueService] Already processing queue for ${conversationId}, skipping`)
       return false
     }
-    this.processingConversations.add(conversationId)
+    if (!this.queueStore.tryAcquireProcessingLock(conversationId)) {
+      return false
+    }
     logApp(`[MessageQueueService] Acquired processing lock for ${conversationId}`)
     return true
   }
@@ -75,7 +74,7 @@ class MessageQueueService {
    * Release the processing lock for a conversation.
    */
   releaseProcessingLock(conversationId: string): void {
-    this.processingConversations.delete(conversationId)
+    this.queueStore.releaseProcessingLock(conversationId)
     logApp(`[MessageQueueService] Released processing lock for ${conversationId}`)
   }
 
@@ -83,33 +82,16 @@ class MessageQueueService {
    * Check if a conversation is currently being processed.
    */
   isProcessing(conversationId: string): boolean {
-    return this.processingConversations.has(conversationId)
-  }
-
-  private generateMessageId(): string {
-    return `qmsg_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+    return this.queueStore.isProcessing(conversationId)
   }
 
   /**
    * Add a message to the queue for a conversation
    */
   enqueue(conversationId: string, text: string, sessionId?: string): QueuedMessage {
-    const message: QueuedMessage = {
-      id: this.generateMessageId(),
-      conversationId,
-      sessionId,
-      text,
-      createdAt: Date.now(),
-      status: "pending",
-    }
-
-    const queue = this.queues.get(conversationId) || []
-    queue.push(message)
-    this.queues.set(conversationId, queue)
+    const message = this.queueStore.enqueue(conversationId, text, sessionId)
 
     logApp(`[MessageQueueService] Enqueued message for ${conversationId}: ${message.id}`)
-    this.emitQueueUpdate(conversationId)
-    
     return message
   }
 
@@ -117,20 +99,14 @@ class MessageQueueService {
    * Get all queued messages for a conversation
    */
   getQueue(conversationId: string): QueuedMessage[] {
-    return this.queues.get(conversationId) || []
+    return this.queueStore.getQueue(conversationId)
   }
 
   /**
    * Get all queues (for debugging/UI purposes)
    */
   getAllQueues(): MessageQueue[] {
-    const result: MessageQueue[] = []
-    this.queues.forEach((messages, conversationId) => {
-      if (messages.length > 0) {
-        result.push({ conversationId, messages })
-      }
-    })
-    return result
+    return this.queueStore.getAllQueues()
   }
 
   /**
@@ -138,24 +114,16 @@ class MessageQueueService {
    * Cannot remove a message that is currently being processed.
    */
   removeFromQueue(conversationId: string, messageId: string): boolean {
-    const queue = this.queues.get(conversationId)
-    if (!queue) return false
-
-    const index = queue.findIndex((m) => m.id === messageId)
-    if (index === -1) return false
-
-    // Don't allow removing a message that's currently processing
-    if (queue[index].status === "processing") {
-      logApp(`[MessageQueueService] Cannot remove message ${messageId} - currently processing`)
+    const result = this.queueStore.removeFromQueue(conversationId, messageId)
+    if (!result.success) {
+      if (result.reason === "processing") {
+        // Don't allow removing a message that's currently processing
+        logApp(`[MessageQueueService] Cannot remove message ${messageId} - currently processing`)
+      }
       return false
     }
 
-    queue.splice(index, 1)
-    if (queue.length === 0) {
-      this.queues.delete(conversationId)
-    }
     logApp(`[MessageQueueService] Removed message ${messageId} from ${conversationId}`)
-    this.emitQueueUpdate(conversationId)
 
     return true
   }
@@ -165,18 +133,17 @@ class MessageQueueService {
    * Cannot clear if any message is currently being processed.
    */
   clearQueue(conversationId: string): boolean {
-    const queue = this.queues.get(conversationId)
-    if (!queue) return true // Nothing to clear
-
-    // Don't clear if there's a message currently processing
-    if (queue.some((m) => m.status === "processing")) {
-      logApp(`[MessageQueueService] Cannot clear queue for ${conversationId} - message is processing`)
+    const result = this.queueStore.clearQueue(conversationId)
+    if (!result.success) {
+      if (result.reason === "processing") {
+        // Don't clear if there's a message currently processing
+        logApp(`[MessageQueueService] Cannot clear queue for ${conversationId} - message is processing`)
+      }
       return false
     }
+    if (!result.changed) return true // Nothing to clear
 
-    this.queues.delete(conversationId)
     logApp(`[MessageQueueService] Cleared queue for ${conversationId}`)
-    this.emitQueueUpdate(conversationId)
     return true
   }
 
@@ -185,34 +152,23 @@ class MessageQueueService {
    * If the message was in failed status, resets it to pending for retry.
    */
   updateMessageText(conversationId: string, messageId: string, newText: string): boolean {
-    const queue = this.queues.get(conversationId)
-    if (!queue) return false
-
-    const message = queue.find((m) => m.id === messageId)
-    if (!message) return false
-
-    if (message.status === "processing") {
-      logApp(`[MessageQueueService] Cannot update message ${messageId} text while it is processing`)
+    const result = this.queueStore.updateMessageText(conversationId, messageId, newText)
+    if (!result.success) {
+      if (result.reason === "processing") {
+        logApp(`[MessageQueueService] Cannot update message ${messageId} text while it is processing`)
+      } else if (result.reason === "added_to_history") {
+        // Prevent editing messages that have already been added to conversation history
+        // to maintain consistency between history and what gets processed on retry
+        logApp(`[MessageQueueService] Cannot update message ${messageId} text - already added to conversation history`)
+      }
       return false
     }
 
-    // Prevent editing messages that have already been added to conversation history
-    // to maintain consistency between history and what gets processed on retry
-    if (message.addedToHistory) {
-      logApp(`[MessageQueueService] Cannot update message ${messageId} text - already added to conversation history`)
-      return false
-    }
-
-    message.text = newText
-    // Reset failed messages to pending status so they can be retried
-    if (message.status === "failed") {
-      message.status = "pending"
-      delete message.errorMessage
+    if (result.resetFailedToPending) {
       logApp(`[MessageQueueService] Reset failed message ${messageId} to pending in ${conversationId}`)
     } else {
       logApp(`[MessageQueueService] Updated message ${messageId} text in ${conversationId}`)
     }
-    this.emitQueueUpdate(conversationId)
 
     return true
   }
@@ -223,12 +179,7 @@ class MessageQueueService {
    * Failed/cancelled messages at the head of the queue block processing until handled.
    */
   peek(conversationId: string): QueuedMessage | null {
-    const queue = this.queues.get(conversationId)
-    if (!queue || queue.length === 0) return null
-    // Strict FIFO: only return first item if it's pending
-    // Failed/cancelled messages block the queue until user handles them (retry or remove)
-    const firstMessage = queue[0]
-    return firstMessage.status === "pending" ? firstMessage : null
+    return this.queueStore.peek(conversationId)
   }
 
   /**
@@ -236,15 +187,10 @@ class MessageQueueService {
    * This prevents UI actions (edit/remove) from affecting the message while processing.
    */
   markProcessing(conversationId: string, messageId: string): boolean {
-    const queue = this.queues.get(conversationId)
-    if (!queue) return false
+    const result = this.queueStore.markProcessing(conversationId, messageId)
+    if (!result.success) return false
 
-    const message = queue.find((m) => m.id === messageId)
-    if (!message) return false
-
-    message.status = "processing"
     logApp(`[MessageQueueService] Marked message ${messageId} as processing in ${conversationId}`)
-    this.emitQueueUpdate(conversationId)
 
     return true
   }
@@ -254,25 +200,17 @@ class MessageQueueService {
    * Finds the message by ID regardless of position (handles queue reordering during processing)
    */
   markProcessed(conversationId: string, messageId: string): boolean {
-    const queue = this.queues.get(conversationId)
-    if (!queue || queue.length === 0) return false
-
-    const index = queue.findIndex((m) => m.id === messageId)
-    if (index === -1) {
+    const result = this.queueStore.markProcessed(conversationId, messageId)
+    if (!result.success) {
       logApp(`[MessageQueueService] Warning: markProcessed called for ${messageId} but message not found in queue`)
       return false
     }
 
-    if (index !== 0) {
-      logApp(`[MessageQueueService] Message ${messageId} was at position ${index} (queue was reordered during processing)`)
+    if (result.index !== 0) {
+      logApp(`[MessageQueueService] Message ${messageId} was at position ${result.index} (queue was reordered during processing)`)
     }
 
-    queue.splice(index, 1)
-    if (queue.length === 0) {
-      this.queues.delete(conversationId)
-    }
     logApp(`[MessageQueueService] Marked message ${messageId} as processed for ${conversationId}`)
-    this.emitQueueUpdate(conversationId)
 
     return true
   }
@@ -281,19 +219,13 @@ class MessageQueueService {
    * Mark a message as failed with an error message
    */
   markFailed(conversationId: string, messageId: string, errorMessage: string): boolean {
-    const queue = this.queues.get(conversationId)
-    if (!queue || queue.length === 0) return false
-
-    const message = queue.find((m) => m.id === messageId)
-    if (!message) {
+    const result = this.queueStore.markFailed(conversationId, messageId, errorMessage)
+    if (!result.success) {
       logApp(`[MessageQueueService] Warning: markFailed called for ${messageId} but message not found in queue`)
       return false
     }
 
-    message.status = "failed"
-    message.errorMessage = errorMessage
     logApp(`[MessageQueueService] Marked message ${messageId} as failed for ${conversationId}: ${errorMessage}`)
-    this.emitQueueUpdate(conversationId)
 
     return true
   }
@@ -303,13 +235,9 @@ class MessageQueueService {
    * This prevents duplicates when retrying failed messages.
    */
   markAddedToHistory(conversationId: string, messageId: string): boolean {
-    const queue = this.queues.get(conversationId)
-    if (!queue) return false
+    const result = this.queueStore.markAddedToHistory(conversationId, messageId)
+    if (!result.success) return false
 
-    const message = queue.find((m) => m.id === messageId)
-    if (!message) return false
-
-    message.addedToHistory = true
     logApp(`[MessageQueueService] Marked message ${messageId} as added to history in ${conversationId}`)
     // Note: No need to emit queue update - this is an internal tracking flag
     return true
@@ -320,21 +248,15 @@ class MessageQueueService {
    * Unlike updateMessageText, this only changes status and works for addedToHistory messages.
    */
   resetToPending(conversationId: string, messageId: string): boolean {
-    const queue = this.queues.get(conversationId)
-    if (!queue) return false
-
-    const message = queue.find((m) => m.id === messageId)
-    if (!message) return false
-
-    if (message.status !== "failed") {
-      logApp(`[MessageQueueService] Cannot reset message ${messageId} - not in failed status (current: ${message.status})`)
+    const result = this.queueStore.resetToPending(conversationId, messageId)
+    if (!result.success) {
+      if (result.reason === "not_failed") {
+        logApp(`[MessageQueueService] Cannot reset message ${messageId} - not in failed status (current: ${result.message?.status})`)
+      }
       return false
     }
 
-    message.status = "pending"
-    delete message.errorMessage
     logApp(`[MessageQueueService] Reset message ${messageId} to pending for retry in ${conversationId}`)
-    this.emitQueueUpdate(conversationId)
 
     return true
   }
@@ -343,25 +265,10 @@ class MessageQueueService {
    * Reorder messages in the queue
    */
   reorderQueue(conversationId: string, messageIds: string[]): boolean {
-    const queue = this.queues.get(conversationId)
-    if (!queue) return false
+    const result = this.queueStore.reorderQueue(conversationId, messageIds)
+    if (!result.success) return false
 
-    const messageMap = new Map(queue.map((m) => [m.id, m]))
-
-    const newQueue: QueuedMessage[] = []
-    for (const id of messageIds) {
-      const message = messageMap.get(id)
-      if (message) {
-        newQueue.push(message)
-        messageMap.delete(id)
-      }
-    }
-
-    messageMap.forEach((m) => newQueue.push(m))
-
-    this.queues.set(conversationId, newQueue)
     logApp(`[MessageQueueService] Reordered queue for ${conversationId}`)
-    this.emitQueueUpdate(conversationId)
 
     return true
   }
@@ -370,8 +277,7 @@ class MessageQueueService {
    * Check if a conversation has queued messages
    */
   hasQueuedMessages(conversationId: string): boolean {
-    const queue = this.queues.get(conversationId)
-    return !!queue && queue.length > 0
+    return this.queueStore.hasQueuedMessages(conversationId)
   }
 
   /**
@@ -408,4 +314,3 @@ class MessageQueueService {
 }
 
 export const messageQueueService = MessageQueueService.getInstance()
-

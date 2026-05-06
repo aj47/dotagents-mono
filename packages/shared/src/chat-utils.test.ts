@@ -8,14 +8,46 @@ import {
   getToolArgumentEntries,
   formatToolArguments,
   formatArgumentsPreview,
+  formatConversationHistoryForApi,
   RESPOND_TO_USER_TOOL,
   MARK_WORK_COMPLETE_TOOL,
+  buildChatCompletionDoneSsePayload,
+  buildChatCompletionErrorSsePayload,
+  buildChatCompletionProgressSsePayload,
+  buildChatCompletionPushNotificationPlan,
+  buildChatCompletionRequestBody,
+  buildChatCompletionSseHeaders,
+  buildDotAgentsChatCompletionResponse,
+  buildOpenAIChatCompletionResponse,
+  buildOpenAICompatibleModelsResponse,
+  buildProviderModelsResponse,
+  getModelsAction,
+  getProviderModelsAction,
+  extractUserPromptFromChatCompletionBody,
   extractRespondToUserContentFromArgs,
   extractRespondToUserResponseEvents,
+  formatServerSentEventData,
+  getLatestRespondToUserContentFromConversationHistory,
+  getNextAgentUserResponseEventOrdinal,
+  getOrderedRespondToUserContentsFromToolCalls,
+  getUnmaterializedUserResponseEvents,
+  normalizeUserFacingResponseContent,
+  parseChatCompletionRequestBody,
+  parseChatCompletionSseEvent,
   resolveMessageTimestamps,
+  resolveLatestUserFacingResponse,
+  sanitizeMessagesForRequest,
+  sortAgentUserResponseEvents,
+  getRenderableMessageContent,
+  getRespondToUserContentFromMessage,
+  getVisibleMessageContent,
   isToolOnlyMessage,
+  normalizeServerSentEventOrigin,
   isInternalCompletionControlMessage,
+  looksLikeToolPayloadContent,
+  stripRawToolTextFromContent,
   filterVisibleChatMessages,
+  validateChatCompletionRequestBody,
 } from './chat-utils'
 
 // ── Collapse Logic ───────────────────────────────────────────────────────────
@@ -60,6 +92,600 @@ describe('shouldCollapseMessage', () => {
 
   it('returns false for undefined content with no extras', () => {
     expect(shouldCollapseMessage(undefined)).toBe(false)
+  })
+})
+
+describe('sanitizeMessagesForRequest', () => {
+  it('removes render-only tool executions from request messages', () => {
+    const sanitized = sanitizeMessagesForRequest([{
+      role: 'assistant' as const,
+      content: '',
+      toolCalls: [
+        { name: 'first_tool', arguments: { a: 1 } },
+        { name: 'second_tool', arguments: { b: 2 } },
+      ],
+      toolResults: [{ success: true, content: 'ok' }],
+      toolExecutions: [
+        { toolCall: { name: 'first_tool', arguments: { a: 1 } } },
+        { toolCall: { name: 'second_tool', arguments: { b: 2 } }, result: { success: true, content: 'ok' } },
+      ],
+    }])
+
+    expect(sanitized[0].toolExecutions).toBeUndefined()
+    expect(sanitized[0].toolCalls).toBeUndefined()
+    expect(sanitized[0].toolResults).toBeUndefined()
+  })
+
+  it('drops misaligned tool calls but keeps valid tool results', () => {
+    const sanitized = sanitizeMessagesForRequest([{
+      role: 'assistant' as const,
+      content: '',
+      toolCalls: [
+        { name: 'first_tool', arguments: { a: 1 } },
+        { name: 'second_tool', arguments: { b: 2 } },
+      ],
+      toolResults: [{ success: true, content: 'single-result' }],
+    }])
+
+    expect(sanitized[0].toolCalls).toBeUndefined()
+    expect(sanitized[0].toolResults).toEqual([
+      { success: true, content: 'single-result' },
+    ])
+  })
+
+  it('removes display-only content before model replay', () => {
+    const sanitized = sanitizeMessagesForRequest([{
+      role: 'assistant' as const,
+      content: 'Final answer',
+      displayContent: '<think>reasoning</think>\n\nFinal answer',
+    }])
+
+    expect(sanitized[0].content).toBe('Final answer')
+    expect(sanitized[0].displayContent).toBeUndefined()
+  })
+})
+
+describe('formatConversationHistoryForApi', () => {
+  it('normalizes persisted tool calls and MCP-style tool results', () => {
+    expect(formatConversationHistoryForApi([{
+      role: 'assistant',
+      content: 'Checking',
+      displayContent: '<hidden>Checking',
+      toolCalls: [{ name: 'search', arguments: { query: 'weather' } }],
+      toolResults: [{
+        content: [
+          { type: 'text', text: 'first line' },
+          { type: 'text', text: 'second line' },
+        ],
+        isError: false,
+      }],
+      timestamp: 10,
+    }])).toEqual([{
+      role: 'assistant',
+      content: 'Checking',
+      toolCalls: [{ name: 'search', arguments: { query: 'weather' } }],
+      toolResults: [{ success: true, content: 'first line\nsecond line', error: undefined }],
+      timestamp: 10,
+    }])
+  })
+
+  it('normalizes failed stored tool results without exposing display-only content', () => {
+    expect(formatConversationHistoryForApi([{
+      role: 'tool',
+      content: 'Tool failed',
+      displayContent: 'Rendered failure',
+      toolCalls: [{ name: 'bad_args', arguments: 'raw' }],
+      toolResults: [{
+        success: false,
+        content: 'permission denied',
+      }],
+    }])).toEqual([{
+      role: 'tool',
+      content: 'Tool failed',
+      toolCalls: [{ name: 'bad_args', arguments: {} }],
+      toolResults: [{
+        success: false,
+        content: 'permission denied',
+        error: 'permission denied',
+      }],
+      timestamp: undefined,
+    }])
+  })
+})
+
+describe('buildChatCompletionRequestBody', () => {
+  it('builds the OpenAI-compatible request body with DotAgents extensions', () => {
+    expect(buildChatCompletionRequestBody({
+      model: 'gpt-4.1',
+      messages: [{
+        role: 'assistant',
+        content: 'Final answer',
+        displayContent: '<think>hidden</think>\n\nFinal answer',
+      }],
+      conversationId: ' conv-1 ',
+      profileId: ' profile-1 ',
+      sendPushNotification: false,
+    })).toEqual({
+      model: 'gpt-4.1',
+      messages: [{ role: 'assistant', content: 'Final answer' }],
+      stream: true,
+      conversation_id: 'conv-1',
+      profile_id: 'profile-1',
+      send_push_notification: false,
+    })
+  })
+
+  it('omits blank optional DotAgents extension fields', () => {
+    expect(buildChatCompletionRequestBody({
+      messages: [{ role: 'user', content: 'Hello' }],
+      stream: false,
+      conversationId: '   ',
+      profileId: '',
+    })).toEqual({
+      model: undefined,
+      messages: [{ role: 'user', content: 'Hello' }],
+      stream: false,
+    })
+  })
+})
+
+describe('extractUserPromptFromChatCompletionBody', () => {
+  it('extracts the most recent user message content', () => {
+    expect(extractUserPromptFromChatCompletionBody({
+      messages: [
+        { role: 'user', content: 'old question' },
+        { role: 'assistant', content: 'answer' },
+        { role: 'user', content: '  latest question  ' },
+      ],
+    })).toBe('latest question')
+  })
+
+  it('normalizes array and object content blocks', () => {
+    expect(extractUserPromptFromChatCompletionBody({
+      messages: [
+        {
+          role: 'user',
+          content: [
+            'first',
+            { text: 'second' },
+            { content: 'third' },
+            { image_url: { url: 'ignored' } },
+          ],
+        },
+      ],
+    })).toBe('first second third')
+
+    expect(extractUserPromptFromChatCompletionBody({
+      messages: [
+        {
+          role: 'user',
+          content: { text: 'from object' },
+        },
+      ],
+    })).toBe('from object')
+  })
+
+  it('falls back to prompt and input fields', () => {
+    expect(extractUserPromptFromChatCompletionBody({
+      prompt: [{ text: 'from prompt' }],
+    })).toBe('from prompt')
+
+    expect(extractUserPromptFromChatCompletionBody({
+      input: ' from input ',
+    })).toBe('from input')
+  })
+
+  it('returns null when no non-empty user prompt is present', () => {
+    expect(extractUserPromptFromChatCompletionBody({
+      messages: [
+        { role: 'assistant', content: 'answer' },
+        { role: 'user', content: '   ' },
+      ],
+      prompt: '',
+      input: [{ image_url: { url: 'ignored' } }],
+    })).toBeNull()
+
+    expect(extractUserPromptFromChatCompletionBody(null)).toBeNull()
+  })
+})
+
+describe('buildOpenAIChatCompletionResponse', () => {
+  it('formats a non-streaming OpenAI-compatible chat response', () => {
+    expect(buildOpenAIChatCompletionResponse('Done', 'gpt-test', {
+      id: 'chatcmpl-fixed',
+      created: 1710000000,
+    })).toEqual({
+      id: 'chatcmpl-fixed',
+      object: 'chat.completion',
+      created: 1710000000,
+      model: 'gpt-test',
+      choices: [
+        {
+          index: 0,
+          message: { role: 'assistant', content: 'Done' },
+          finish_reason: 'stop',
+        },
+      ],
+    })
+  })
+})
+
+describe('buildDotAgentsChatCompletionResponse', () => {
+  it('adds DotAgents conversation fields to the OpenAI-compatible chat response', () => {
+    expect(buildDotAgentsChatCompletionResponse({
+      content: 'Done',
+      model: 'gpt-test',
+      conversationId: 'conv-1',
+      conversationHistory: [{ role: 'assistant', content: 'Done' }],
+      id: 'chatcmpl-fixed',
+      created: 1710000000,
+    })).toEqual({
+      id: 'chatcmpl-fixed',
+      object: 'chat.completion',
+      created: 1710000000,
+      model: 'gpt-test',
+      choices: [
+        {
+          index: 0,
+          message: { role: 'assistant', content: 'Done' },
+          finish_reason: 'stop',
+        },
+      ],
+      conversation_id: 'conv-1',
+      conversation_history: [{ role: 'assistant', content: 'Done' }],
+    })
+  })
+})
+
+describe('buildOpenAICompatibleModelsResponse', () => {
+  it('formats OpenAI-compatible model list responses', () => {
+    expect(buildOpenAICompatibleModelsResponse([
+      'gpt-test',
+      { id: 'custom-model', object: 'model', owned_by: 'workspace' },
+    ])).toEqual({
+      object: 'list',
+      data: [
+        { id: 'gpt-test', object: 'model', owned_by: 'system' },
+        { id: 'custom-model', object: 'model', owned_by: 'workspace' },
+      ],
+    })
+  })
+})
+
+describe('buildProviderModelsResponse', () => {
+  it('formats provider model list responses with supported model fields only', () => {
+    expect(buildProviderModelsResponse('openai', [
+      {
+        id: 'gpt-test',
+        name: 'GPT Test',
+        description: 'Test model',
+        context_length: 128000,
+        extra: 'ignored',
+      } as any,
+    ])).toEqual({
+      providerId: 'openai',
+      models: [{
+        id: 'gpt-test',
+        name: 'GPT Test',
+        description: 'Test model',
+        context_length: 128000,
+      }],
+    })
+  })
+})
+
+describe('model actions', () => {
+  it('uses shared config and provider adapters for model list responses', async () => {
+    const providerModels = [{
+      id: 'gpt-test',
+      name: 'GPT Test',
+      description: 'Test model',
+      context_length: 128000,
+    }]
+    const diagnostics = {
+      logError: () => {
+        throw new Error('unexpected diagnostics log')
+      },
+    }
+    const options = {
+      getConfig: () => ({
+        agentProviderId: 'openai',
+        agentOpenaiModel: 'gpt-active',
+      }),
+      fetchAvailableModels: async (providerId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web') => {
+        expect(providerId).toBe('openai')
+        return providerModels
+      },
+      diagnostics,
+    }
+
+    expect(getModelsAction(options)).toEqual({
+      statusCode: 200,
+      body: buildOpenAICompatibleModelsResponse(['gpt-active']),
+    })
+    expect(await getProviderModelsAction('openai', options)).toEqual({
+      statusCode: 200,
+      body: buildProviderModelsResponse('openai', providerModels),
+    })
+  })
+
+  it('rejects invalid provider ids before fetching provider models', async () => {
+    const options = {
+      getConfig: () => ({}),
+      fetchAvailableModels: async () => {
+        throw new Error('unexpected provider fetch')
+      },
+      diagnostics: {
+        logError: () => {
+          throw new Error('unexpected diagnostics log')
+        },
+      },
+    }
+
+    expect(await getProviderModelsAction('bad-provider', options)).toEqual({
+      statusCode: 400,
+      body: {
+        error: 'Invalid provider: bad-provider. Valid providers: openai, groq, gemini, chatgpt-web',
+      },
+    })
+  })
+
+  it('logs provider fetch failures and returns an error response', async () => {
+    const error = new Error('provider unavailable')
+    const loggedErrors: unknown[] = []
+    const options = {
+      getConfig: () => ({}),
+      fetchAvailableModels: async () => {
+        throw error
+      },
+      diagnostics: {
+        logError: (source: string, message: string, caughtError: unknown) => {
+          loggedErrors.push({ source, message, caughtError })
+        },
+      },
+    }
+
+    expect(await getProviderModelsAction('openai', options)).toEqual({
+      statusCode: 500,
+      body: { error: 'provider unavailable' },
+    })
+    expect(loggedErrors).toEqual([{
+      source: 'model-actions',
+      message: 'Failed to fetch models',
+      caughtError: error,
+    }])
+  })
+})
+
+describe('parseChatCompletionRequestBody', () => {
+  it('parses the prompt and DotAgents request extensions', () => {
+    expect(parseChatCompletionRequestBody({
+      messages: [{ role: 'user', content: 'Hello' }],
+      conversation_id: 'conv-1',
+      profile_id: 'profile-1',
+      stream: true,
+      send_push_notification: false,
+    })).toEqual({
+      prompt: 'Hello',
+      conversationId: 'conv-1',
+      profileId: 'profile-1',
+      stream: true,
+      sendPushNotification: false,
+    })
+  })
+
+  it('normalizes absent request extensions to route defaults', () => {
+    expect(parseChatCompletionRequestBody({
+      input: 'Fallback',
+      conversation_id: '',
+      profile_id: '',
+      stream: false,
+    })).toEqual({
+      prompt: 'Fallback',
+      conversationId: undefined,
+      profileId: undefined,
+      stream: false,
+      sendPushNotification: true,
+    })
+  })
+})
+
+describe('validateChatCompletionRequestBody', () => {
+  it('returns a typed request for valid chat completion bodies', () => {
+    expect(validateChatCompletionRequestBody({
+      messages: [{ role: 'user', content: 'Hello' }],
+      conversation_id: 'conv-1',
+      profile_id: 'profile-1',
+      stream: true,
+      send_push_notification: false,
+    }, {
+      validateConversationId: () => null,
+    })).toEqual({
+      ok: true,
+      request: {
+        prompt: 'Hello',
+        conversationId: 'conv-1',
+        profileId: 'profile-1',
+        stream: true,
+        sendPushNotification: false,
+      },
+    })
+  })
+
+  it('builds route errors for missing prompts and invalid conversation IDs', () => {
+    expect(validateChatCompletionRequestBody({
+      messages: [{ role: 'assistant', content: 'No user message' }],
+    })).toEqual({
+      ok: false,
+      statusCode: 400,
+      body: { error: 'Missing user prompt' },
+    })
+
+    expect(validateChatCompletionRequestBody({
+      messages: [{ role: 'user', content: 'Hello' }],
+      conversation_id: 'bad/id',
+    }, {
+      validateConversationId: () => 'Invalid conversation ID format',
+    })).toEqual({
+      ok: false,
+      statusCode: 400,
+      body: { error: 'Invalid conversation ID format' },
+    })
+  })
+})
+
+describe('buildChatCompletionPushNotificationPlan', () => {
+  it('returns null when the request or push store disables notifications', () => {
+    expect(buildChatCompletionPushNotificationPlan({
+      sendPushNotification: false,
+      pushEnabled: true,
+      prompt: 'Hello',
+      conversationId: 'conv-1',
+      content: 'Done',
+    })).toBeNull()
+
+    expect(buildChatCompletionPushNotificationPlan({
+      sendPushNotification: true,
+      pushEnabled: false,
+      prompt: 'Hello',
+      conversationId: 'conv-1',
+      content: 'Done',
+    })).toBeNull()
+  })
+
+  it('builds a reusable push notification payload plan with capped titles', () => {
+    expect(buildChatCompletionPushNotificationPlan({
+      sendPushNotification: true,
+      pushEnabled: true,
+      prompt: 'Explain the modular server extraction plan',
+      conversationId: 'conv-1',
+      content: 'Done',
+    })).toEqual({
+      conversationId: 'conv-1',
+      conversationTitle: 'Explain the modular server ext...',
+      content: 'Done',
+    })
+
+    expect(buildChatCompletionPushNotificationPlan({
+      sendPushNotification: true,
+      pushEnabled: true,
+      prompt: 'Short prompt',
+      conversationId: 'conv-2',
+      content: 'Ready',
+    })).toEqual({
+      conversationId: 'conv-2',
+      conversationTitle: 'Short prompt',
+      content: 'Ready',
+    })
+  })
+})
+
+describe('chat completion SSE payload builders', () => {
+  it('builds and formats progress, done, and error payloads consumed by the parser', () => {
+    const progress = buildChatCompletionProgressSsePayload({
+      sessionId: 's1',
+      currentIteration: 1,
+      maxIterations: 5,
+      steps: [],
+      isComplete: false,
+      streamingContent: { text: 'hi', isStreaming: true },
+    })
+    const done = buildChatCompletionDoneSsePayload({
+      content: 'Finished',
+      conversationId: 'conv-1',
+      conversationHistory: [{ role: 'assistant', content: 'Finished' }],
+      model: 'gpt-test',
+    })
+    const error = buildChatCompletionErrorSsePayload('Boom')
+
+    expect(parseChatCompletionSseEvent(formatServerSentEventData(progress))).toEqual([{
+      type: 'progress',
+      update: {
+        sessionId: 's1',
+        currentIteration: 1,
+        maxIterations: 5,
+        steps: [],
+        isComplete: false,
+        streamingContent: { text: 'hi', isStreaming: true },
+      },
+    }])
+
+    expect(parseChatCompletionSseEvent(formatServerSentEventData(done))).toEqual([{
+      type: 'complete',
+      content: 'Finished',
+      conversationId: 'conv-1',
+      conversationHistory: [{ role: 'assistant', content: 'Finished' }],
+      model: 'gpt-test',
+    }])
+
+    expect(formatServerSentEventData(error)).toBe('data: {"type":"error","data":{"message":"Boom"}}\n\n')
+    expect(parseChatCompletionSseEvent(formatServerSentEventData(error))).toEqual([
+      { type: 'error', message: 'Boom' },
+    ])
+  })
+})
+
+describe('buildChatCompletionSseHeaders', () => {
+  it('builds the shared streaming response headers', () => {
+    expect(buildChatCompletionSseHeaders('https://mobile.example')).toEqual({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'Access-Control-Allow-Origin': 'https://mobile.example',
+      'Access-Control-Allow-Credentials': 'true',
+    })
+  })
+
+  it('normalizes array and missing origins for SSE CORS headers', () => {
+    expect(normalizeServerSentEventOrigin(['https://first.example', 'https://second.example']))
+      .toBe('https://first.example')
+    expect(normalizeServerSentEventOrigin([])).toBe('*')
+    expect(normalizeServerSentEventOrigin(undefined)).toBe('*')
+  })
+})
+
+describe('parseChatCompletionSseEvent', () => {
+  it('parses DotAgents progress, completion, and error events', () => {
+    expect(parseChatCompletionSseEvent(
+      'data: {"type":"progress","data":{"sessionId":"s1","currentStep":"thinking","isComplete":false,"streamingContent":{"text":"hi"}}}\n\n',
+    )).toEqual([{
+      type: 'progress',
+      update: {
+        sessionId: 's1',
+        currentStep: 'thinking',
+        isComplete: false,
+        streamingContent: { text: 'hi' },
+      },
+    }])
+
+    expect(parseChatCompletionSseEvent(
+      'data: {"type":"done","data":{"content":"Finished","conversation_id":"conv-1","conversation_history":[{"role":"assistant","content":"Finished"}]}}\n\n',
+    )).toEqual([{
+      type: 'complete',
+      content: 'Finished',
+      conversationId: 'conv-1',
+      conversationHistory: [{ role: 'assistant', content: 'Finished' }],
+    }])
+
+    expect(parseChatCompletionSseEvent(
+      'data: {"type":"error","data":{"message":"Boom"}}\n\n',
+    )).toEqual([{ type: 'error', message: 'Boom' }])
+  })
+
+  it('parses OpenAI delta tokens and done markers', () => {
+    expect(parseChatCompletionSseEvent([
+      'data: {"choices":[{"delta":{"content":"Hel"}}]}',
+      'data: {"choices":[{"delta":{"content":"lo"}}]}',
+      'data: [DONE]',
+    ].join('\n'))).toEqual([
+      { type: 'token', token: 'Hel' },
+      { type: 'token', token: 'lo' },
+      { type: 'done' },
+    ])
+  })
+
+  it('ignores malformed or empty SSE lines', () => {
+    expect(parseChatCompletionSseEvent('data: {not-json}\n\nevent: ping\n\n')).toEqual([])
   })
 })
 // ── Tool Preview ─────────────────────────────────────────────────────────────
@@ -306,6 +932,89 @@ describe('extractRespondToUserContentFromArgs', () => {
   })
 })
 
+describe('respond_to_user response resolution helpers', () => {
+  it('normalizes blank user-facing response content to undefined', () => {
+    expect(normalizeUserFacingResponseContent('  answer  ')).toBe('  answer  ')
+    expect(normalizeUserFacingResponseContent('   ')).toBeUndefined()
+    expect(normalizeUserFacingResponseContent(null)).toBeUndefined()
+  })
+
+  it('keeps ordered respond_to_user entries from mixed tool calls', () => {
+    expect(getOrderedRespondToUserContentsFromToolCalls([
+      { name: RESPOND_TO_USER_TOOL, arguments: { text: '1. First option\n2. Second option' } },
+      { name: 'web_search', arguments: { query: 'ignored' } },
+      { name: RESPOND_TO_USER_TOOL, arguments: { text: 'Please reply with the numbers you want.' } },
+    ])).toEqual([
+      '1. First option\n2. Second option',
+      'Please reply with the numbers you want.',
+    ])
+  })
+
+  it('returns unmaterialized response events', () => {
+    const responseEvents = [
+      { id: 'evt-1', sessionId: 'session-1', runId: 5, ordinal: 1, text: '1. First option', timestamp: 10 },
+      { id: 'evt-2', sessionId: 'session-1', runId: 5, ordinal: 2, text: 'Please reply with the numbers you want.', timestamp: 11 },
+    ]
+
+    expect(getUnmaterializedUserResponseEvents(responseEvents, [])).toEqual(responseEvents)
+    expect(getUnmaterializedUserResponseEvents(responseEvents, ['evt-1'])).toEqual([responseEvents[1]])
+  })
+
+  it('sorts response events by run id, ordinal, then timestamp', () => {
+    const events = [
+      { id: 'evt-3', sessionId: 'session-1', runId: 2, ordinal: 2, text: 'second', timestamp: 10 },
+      { id: 'evt-1', sessionId: 'session-1', runId: 1, ordinal: 2, text: 'older second', timestamp: 9 },
+      { id: 'evt-2', sessionId: 'session-1', runId: 2, ordinal: 1, text: 'first', timestamp: 12 },
+      { id: 'evt-4', sessionId: 'session-1', runId: 2, ordinal: 2, text: 'second earlier', timestamp: 8 },
+    ]
+
+    expect(sortAgentUserResponseEvents(events).map(event => event.id)).toEqual(['evt-1', 'evt-2', 'evt-4', 'evt-3'])
+  })
+
+  it('computes the next response event ordinal', () => {
+    expect(getNextAgentUserResponseEventOrdinal([])).toBe(1)
+    expect(getNextAgentUserResponseEventOrdinal([
+      { id: 'evt-1', sessionId: 'session-1', ordinal: 2, text: 'Two', timestamp: 1 },
+      { id: 'evt-2', sessionId: 'session-1', ordinal: 7, text: 'Seven', timestamp: 2 },
+    ])).toBe(8)
+  })
+
+  it('falls back to the latest respond_to_user entry in conversation history', () => {
+    expect(getLatestRespondToUserContentFromConversationHistory([
+      { role: 'assistant', toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Earlier' } }] },
+      { role: 'tool', toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Ignored' } }] },
+      { role: 'assistant', toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Latest' } }] },
+    ])).toBe('Latest')
+  })
+
+  it('can scope conversation-history fallback to the current turn', () => {
+    expect(getLatestRespondToUserContentFromConversationHistory([
+      { role: 'assistant', toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Earlier' } }] },
+      { role: 'assistant', toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Current' } }] },
+    ], 1)).toBe('Current')
+  })
+
+  it('resolves the latest user-facing response by priority', () => {
+    expect(resolveLatestUserFacingResponse({
+      storedResponse: 'Stale answer',
+      plannedToolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Fresh answer' } }],
+      conversationHistory: [{ role: 'assistant', toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Older history' } }] }],
+    })).toBe('Fresh answer')
+
+    expect(resolveLatestUserFacingResponse({
+      storedResponse: 'Stored answer',
+      responseEvents: [{ id: 'evt-1', sessionId: 'session-1', runId: 2, ordinal: 1, text: '', timestamp: 1 }],
+    })).toBe('Stored answer')
+
+    expect(resolveLatestUserFacingResponse({
+      responseEvents: [
+        { id: 'evt-1', sessionId: 'session-1', runId: 2, ordinal: 1, text: 'Visible answer', timestamp: 1 },
+        { id: 'evt-2', sessionId: 'session-1', runId: 2, ordinal: 2, text: '   ', timestamp: 2 },
+      ],
+    })).toBe('Visible answer')
+  })
+})
+
 describe('resolveMessageTimestamps', () => {
   it('treats non-finite timestamps as missing and fills them monotonically', () => {
     const messages = [
@@ -420,6 +1129,38 @@ describe('extractRespondToUserResponseEvents', () => {
       1,
     ])
   })
+
+  it('can scope extraction and normalize provider-specific tool aliases', () => {
+    const messages = [
+      {
+        role: 'assistant' as const,
+        timestamp: 10,
+        toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Previous run' } }],
+      },
+      {
+        role: 'assistant' as const,
+        timestamp: 20,
+        toolCalls: [{ name: 'tool__respond_to_user', arguments: { text: 'Scoped alias' } }],
+      },
+    ]
+
+    expect(extractRespondToUserResponseEvents(messages, {
+      idPrefix: 'acp-session-1-3',
+      runId: 3,
+      sessionId: 'session-1',
+      sinceIndex: 1,
+      toolNameNormalizer: (name) => name.replace(/^tool__/, ''),
+    })).toEqual([
+      {
+        id: 'acp-session-1-3-1-0-1',
+        sessionId: 'session-1',
+        runId: 3,
+        ordinal: 1,
+        text: 'Scoped alias',
+        timestamp: 20,
+      },
+    ])
+  })
 })
 
 // ── isToolOnlyMessage ────────────────────────────────────────────────────────
@@ -463,6 +1204,48 @@ describe('isInternalCompletionControlMessage', () => {
       role: 'assistant',
       content: 'Hi — what can I help with?',
     })).toBe(false)
+  })
+})
+
+describe('visible message content helpers', () => {
+  it('prefers displayContent when deriving renderable content', () => {
+    expect(getRenderableMessageContent({ content: 'stored', displayContent: 'display' })).toBe('display')
+    expect(getRenderableMessageContent({ content: 'stored' })).toBe('stored')
+  })
+
+  it('extracts respond_to_user content from assistant tool calls', () => {
+    const message = {
+      role: 'assistant' as const,
+      content: '',
+      toolCalls: [{ name: RESPOND_TO_USER_TOOL, arguments: { text: 'Visible answer' } }],
+    }
+    expect(getRespondToUserContentFromMessage(message)).toBe('Visible answer')
+    expect(getVisibleMessageContent(message)).toBe('Visible answer')
+  })
+
+  it('hides tool role content and raw tool payload assistant messages', () => {
+    expect(getVisibleMessageContent({ role: 'tool', content: 'raw result' })).toBe('')
+    expect(getVisibleMessageContent({ role: 'assistant', content: 'tool result: {"ok":true}' })).toBe('')
+    expect(getVisibleMessageContent({ role: 'assistant', content: '[execute_command] {"cmd":"ls"}' })).toBe('')
+  })
+
+  it('strips inline raw tool payloads from otherwise visible assistant content', () => {
+    const content = 'Here is the answer.\n[execute_command] {"cmd":"ls"}'
+    expect(stripRawToolTextFromContent(content)).toBe('Here is the answer.')
+    expect(getVisibleMessageContent({ role: 'assistant', content })).toBe('Here is the answer.')
+  })
+
+  it('detects known raw tool payload patterns', () => {
+    expect(looksLikeToolPayloadContent('<|tool_calls_section_begin|>')).toBe(true)
+    expect(looksLikeToolPayloadContent('using tool: read_file')).toBe(true)
+    expect(looksLikeToolPayloadContent('tool_call')).toBe(true)
+    expect(looksLikeToolPayloadContent('recipient_name functions.exec_command')).toBe(true)
+    expect(looksLikeToolPayloadContent('Normal assistant text')).toBe(false)
+  })
+
+  it('keeps ordinary assistant and user text visible', () => {
+    expect(getVisibleMessageContent({ role: 'assistant', content: 'Normal assistant text' })).toBe('Normal assistant text')
+    expect(getVisibleMessageContent({ role: 'user', content: 'Question' })).toBe('Question')
   })
 })
 

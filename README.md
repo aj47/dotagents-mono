@@ -24,8 +24,8 @@
 DotAgents gives you a team of AI specialists — each with knowledge, skills, and tools — controlled by your voice. Built on the `.agents` open standard, so your skills work across Claude Code, Cursor, Codex, and every tool adopting the protocol.
 
 ## Preview
-<img width="951" height="992" alt="image" src="https://github.com/user-attachments/assets/c569bf67-73e6-41d7-ab0b-89dd77d73e2b" />
 
+<img width="951" height="992" alt="image" src="https://github.com/user-attachments/assets/c569bf67-73e6-41d7-ab0b-89dd77d73e2b" />
 
 ## What is DotAgents?
 
@@ -39,14 +39,14 @@ DotAgents is three things:
 
 ## Key Concepts
 
-| Concept | Description |
-|---------|-------------|
-| **Skills** | Portable agent capabilities defined in `.agents/skills/`. Works across tools. |
+| Concept             | Description                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Skills**          | Portable agent capabilities defined in `.agents/skills/`. Works across tools.                              |
 | **Knowledge notes** | Persistent agent context stored in `.agents/knowledge/`. Agents retain note-based context across sessions. |
-| **Agent Profiles** | Specialized AI agents with distinct skills and tools. Delegate tasks to the right agent. |
-| **Voice Interface** | Hold-to-record, 30+ languages, auto-insert results into any app. Voice is the primary interface. |
-| **MCP Tools** | Model Context Protocol integration for tool execution, OAuth 2.1 auth, and real-time progress. |
-| **acpx Delegation** | Multi-agent coordination. Agents delegate subtasks to other agents through the `acpx` runner. |
+| **Agent Profiles**  | Specialized AI agents with distinct skills and tools. Delegate tasks to the right agent.                   |
+| **Voice Interface** | Hold-to-record, 30+ languages, auto-insert results into any app. Voice is the primary interface.           |
+| **MCP Tools**       | Model Context Protocol integration for tool execution, OAuth 2.1 auth, and real-time progress.             |
+| **acpx Delegation** | Multi-agent coordination. Agents delegate subtasks to other agents through the `acpx` runner.              |
 
 ## The `.agents` Protocol
 
@@ -111,25 +111,27 @@ Manual downloads:
 
 ## Features
 
-| Category | Capabilities |
-|----------|--------------|
-| **Voice** | Hold-to-record, 30+ languages, Fn toggle mode, auto-insert to any app |
-| **TTS** | 50+ AI voices via OpenAI, Groq, and Gemini with auto-play |
-| **Multi-Agent** | Agent profiles, skill-based delegation, persistent knowledge, `acpx`-backed coordination |
-| **MCP Tools** | Tool execution, OAuth 2.1 auth, real-time progress, conversation context |
+| Category          | Capabilities                                                                                       |
+| ----------------- | -------------------------------------------------------------------------------------------------- |
+| **Voice**         | Hold-to-record, 30+ languages, Fn toggle mode, auto-insert to any app                              |
+| **TTS**           | 50+ AI voices via OpenAI, Groq, and Gemini with auto-play                                          |
+| **Multi-Agent**   | Agent profiles, skill-based delegation, persistent knowledge, `acpx`-backed coordination           |
+| **MCP Tools**     | Tool execution, OAuth 2.1 auth, real-time progress, conversation context                           |
 | **Remote Server** | Optional local API for mobile pairing, OpenAI-compatible clients, operator dashboards, and tunnels |
-| **Observability** | [Langfuse](https://langfuse.com/) integration for LLM tracing, token usage, and debugging |
-| **Platform** | macOS/Windows/Linux, rate limit handling, multi-provider AI |
-| **UX** | Dark/light themes, resizable panels, kill switch, conversation history |
+| **Observability** | [Langfuse](https://langfuse.com/) integration for LLM tracing, token usage, and debugging          |
+| **Platform**      | macOS/Windows/Linux, rate limit handling, multi-provider AI                                        |
+| **UX**            | Dark/light themes, resizable panels, kill switch, conversation history                             |
 
 ## Configuration
 
 **AI Providers** — Configure in settings:
+
 - OpenAI, Groq, or Google Gemini API keys
 - Model selection per provider
 - Custom base URLs (optional)
 
 **MCP Servers** — Add tools in `mcpServers` JSON format:
+
 ```json
 {
   "mcpServers": {
@@ -143,13 +145,13 @@ Manual downloads:
 
 **Keyboard Shortcuts**:
 
-| Shortcut | Action |
-|----------|--------|
-| Hold `Ctrl` / `Ctrl+/` (Win) | Voice recording |
-| `Fn` | Toggle dictation on/off |
-| Hold `Ctrl+Alt` | Agent mode (macOS) |
-| `Ctrl+T` / `Ctrl+Shift+T` (Win) | Text input |
-| `Ctrl+Shift+Escape` | Kill switch |
+| Shortcut                        | Action                  |
+| ------------------------------- | ----------------------- |
+| Hold `Ctrl` / `Ctrl+/` (Win)    | Voice recording         |
+| `Fn`                            | Toggle dictation on/off |
+| Hold `Ctrl+Alt`                 | Agent mode (macOS)      |
+| `Ctrl+T` / `Ctrl+Shift+T` (Win) | Text input              |
+| `Ctrl+Shift+Escape`             | Kill switch             |
 
 ## Development
 
@@ -157,6 +159,39 @@ Manual downloads:
 git clone https://github.com/aj47/dotagents-mono.git && cd dotagents-mono
 nvm use
 pnpm install && pnpm --filter @dotagents/desktop build-rs && pnpm dev
+```
+
+### Headless server and terminal clients
+
+Run the Electron main process headlessly from source:
+
+```bash
+pnpm --filter @dotagents/desktop dev -- --headless
+```
+
+Run it as a daemon without the interactive REPL:
+
+```bash
+pnpm --filter @dotagents/desktop dev -- --headless </dev/null
+```
+
+Then use either terminal client against the running local server:
+
+```bash
+# shell client
+bash scripts/dotagents-cli.sh chat "hello from the shell client"
+
+# OpenTUI client
+pnpm tui
+
+# non-interactive OpenTUI smoke test
+pnpm tui -- --once "hello from the TUI"
+```
+
+The TUI and shell client read the remote server port/API key from the same local config as the desktop app. If you hit a `401 Unauthorized`, override the API key explicitly:
+
+```bash
+DOTAGENTS_API_KEY="your-remote-server-api-key" pnpm tui
 ```
 
 See **[DEVELOPMENT.md](DEVELOPMENT.md)** for full setup, build commands, troubleshooting, and architecture details.

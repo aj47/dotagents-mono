@@ -6,7 +6,7 @@ import {
   radius,
   typography as sharedTypography,
   hexToRgba,
-} from '@dotagents/shared';
+} from '@dotagents/shared/colors';
 
 // Re-export shared tokens
 export { spacing, radius, hexToRgba };
@@ -114,4 +114,3 @@ export const theme = createTheme(getColorScheme());
 
 // Re-export types
 export type Theme = ReturnType<typeof createTheme>;
-

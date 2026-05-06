@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 // Import from shared package to match runtime behavior (tipc.ts imports from @dotagents/shared)
-import { preprocessTextForTTS, validateTTSText } from '@dotagents/shared'
+import { preprocessTextForTTS, validateTTSText } from '@dotagents/shared/tts-preprocessing'
 
 describe('TTS Preprocessing - Thinking Blocks', () => {
   it('should remove simple thinking blocks', () => {
@@ -180,4 +180,3 @@ describe('TTS Preprocessing - Placeholder Preservation', () => {
     expect(result).not.toContain('[some technical note]')
   })
 })
-

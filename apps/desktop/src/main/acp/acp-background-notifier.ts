@@ -71,7 +71,7 @@ export class ACPBackgroundNotifier {
     state.parentResumeQueued = true
 
     try {
-      const { runAgentLoopSession } = await import('../tipc')
+      const { runAgentLoopSession } = await import('../agent-loop-runner')
       await runAgentLoopSession(
         INTERNAL_COMPLETION_NUDGE_TEXT,
         conversationId,

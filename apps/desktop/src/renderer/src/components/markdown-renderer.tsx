@@ -3,7 +3,13 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck, PlayCircle } from "lucide-react"
-import { getVideoAssetLabel, isRenderableVideoUrl } from "@dotagents/shared"
+import {
+  getVideoAssetLabel,
+  isAllowedMarkdownImageUrl as isSharedAllowedMarkdownImageUrl,
+  isAllowedMarkdownLinkUrl as isSharedAllowedMarkdownLinkUrl,
+  isRenderableVideoUrl,
+  transformMarkdownUrl,
+} from "@dotagents/shared/conversation-media-assets"
 import { cn } from "@renderer/lib/utils"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import "highlight.js/styles/github.css"
@@ -34,32 +40,10 @@ const COMPACT_THINK_PROSE_CLASS_NAME =
 
 const SELECTABLE_MARKDOWN_CLASS_NAME = "markdown-selectable"
 
-const ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX =
-  /^data:image\/(?:png|apng|gif|jpe?g|webp|bmp|avif)(?:;|,)/
-const ALLOWED_CONVERSATION_IMAGE_ASSET_URL_REGEX =
-  /^assets:\/\/conversation-image\//
-const ALLOWED_CONVERSATION_VIDEO_ASSET_URL_REGEX =
-  /^assets:\/\/conversation-video\//
 const ALLOWED_RECORDING_ASSET_URL_REGEX = /^assets:\/\/recording\//
 
 export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
-  if (!rawUrl) return false
-
-  const url = rawUrl.trim().toLowerCase()
-
-  // Allow in-app anchors and common safe external link schemes.
-  if (
-    url.startsWith("#") ||
-    url.startsWith("http://") ||
-    url.startsWith("https://") ||
-    ALLOWED_CONVERSATION_VIDEO_ASSET_URL_REGEX.test(url) ||
-    ALLOWED_RECORDING_ASSET_URL_REGEX.test(url) ||
-    url.startsWith("mailto:")
-  ) {
-    return true
-  }
-
-  return false
+  return isSharedAllowedMarkdownLinkUrl(rawUrl, { allowRecordingAssetUrls: true })
 }
 
 const isDesktopRenderableVideoUrl = (rawUrl?: string) => {
@@ -115,23 +99,11 @@ const VideoAttachmentCard = ({
 }
 
 export const isAllowedMarkdownImageUrl = (rawUrl?: string) => {
-  if (!rawUrl) return false
-
-  const url = rawUrl.trim().toLowerCase()
-  return (
-    url.startsWith("http://") ||
-    url.startsWith("https://") ||
-    ALLOWED_CONVERSATION_IMAGE_ASSET_URL_REGEX.test(url) ||
-    ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX.test(url)
-  )
+  return isSharedAllowedMarkdownImageUrl(rawUrl)
 }
 
 export const markdownUrlTransform = (url: string, key?: string) => {
-  const isImageSrc = key === "src"
-  const isAllowed = isImageSrc
-    ? isAllowedMarkdownImageUrl(url)
-    : isAllowedMarkdownLinkUrl(url)
-  return isAllowed ? url : ""
+  return transformMarkdownUrl(url, key, { allowRecordingAssetUrls: true })
 }
 
 const markdownLinkComponent = ({

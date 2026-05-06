@@ -1,4 +1,4 @@
-import { sanitizeSessionText } from '@dotagents/shared';
+import { sanitizeSessionText } from '@dotagents/shared/session';
 
 import { sessionToListItem, sortSessionsByPinnedFirst, type Session, type SessionListItem } from '../types/session';
 
@@ -6,6 +6,8 @@ export type SessionSearchResult = SessionListItem & {
   matchedField?: 'title' | 'preview' | 'message';
   searchPreview?: string;
 };
+
+export type SessionArchiveMode = 'active' | 'archived';
 
 function normalizeSearchValue(value: string): string {
   return sanitizeSessionText(value).toLowerCase();
@@ -71,4 +73,15 @@ export function filterSessionSearchResults(sessions: Session[], searchQuery: str
     if (!match) return [];
     return [{ ...listItem, ...match }];
   });
+}
+
+export function filterSessionsByArchiveMode<T extends { isArchived?: boolean }>(
+  sessions: T[],
+  mode: SessionArchiveMode,
+): T[] {
+  return sessions.filter((session) => (
+    mode === 'archived'
+      ? !!session.isArchived
+      : !session.isArchived
+  ));
 }

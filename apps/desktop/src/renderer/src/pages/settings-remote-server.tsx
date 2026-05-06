@@ -17,6 +17,13 @@ import type { Config } from "@shared/types"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
 import { EyeOff, ExternalLink } from "lucide-react"
+import {
+  buildDotAgentsConfigDeepLink,
+  buildRemoteServerBaseUrl,
+  isLoopbackRemoteHost,
+  isUnconnectableRemoteHostForMobilePairing,
+  isWildcardRemoteHost,
+} from "@dotagents/shared/remote-pairing"
 
 /**
  * Mask a URL for streamer mode - masks all alphanumeric content (including the protocol)
@@ -26,36 +33,6 @@ function maskUrl(url: string): string {
   if (!url) return "https://***.***.***.***:****/v1"
   // Replace the sensitive parts with asterisks while preserving structure
   return url.replace(/([a-zA-Z0-9-]+)/g, (match) => "*".repeat(Math.min(match.length, 8)))
-}
-
-function normalizeHostForComparison(host: string): string {
-  const normalized = host.trim().toLowerCase()
-  if (normalized.startsWith("[") && normalized.endsWith("]")) {
-    return normalized.slice(1, -1)
-  }
-  return normalized
-}
-
-function isWildcardMobileHost(host: string): boolean {
-  const normalizedHost = normalizeHostForComparison(host)
-  return normalizedHost === "0.0.0.0" || normalizedHost === "::"
-}
-
-function isLoopbackMobileHost(host: string): boolean {
-  const normalizedHost = normalizeHostForComparison(host)
-  return normalizedHost === "127.0.0.1" || normalizedHost === "localhost" || normalizedHost === "::1"
-}
-
-function isUnconnectableMobileHost(host: string): boolean {
-  return isWildcardMobileHost(host) || isLoopbackMobileHost(host)
-}
-
-function formatHostForHttpUrl(host: string): string {
-  const normalizedHost = host.trim()
-  if (normalizedHost.includes(":") && !normalizedHost.startsWith("[") && !normalizedHost.endsWith("]")) {
-    return `[${normalizedHost}]`
-  }
-  return normalizedHost
 }
 
 interface RemoteServerSettingsGroupsProps {
@@ -182,23 +159,26 @@ export function RemoteServerSettingsGroups({
   const configuredBindAddress = cfg.remoteServerBindAddress || "127.0.0.1"
   const isRemoteServerRunning = enabled && (remoteServerStatus?.running ?? false)
 
-  const fallbackBaseUrl = !isUnconnectableMobileHost(configuredBindAddress) &&
+  const fallbackBaseUrl = !isUnconnectableRemoteHostForMobilePairing(configuredBindAddress) &&
     cfg.remoteServerPort
-      ? `http://${formatHostForHttpUrl(configuredBindAddress)}:${cfg.remoteServerPort}/v1`
+      ? buildRemoteServerBaseUrl(configuredBindAddress, cfg.remoteServerPort)
       : undefined
 
   const liveConnectableUrl = isRemoteServerRunning
     ? remoteServerStatus?.connectableUrl
     : undefined
   const baseUrl = liveConnectableUrl ?? fallbackBaseUrl
+  const pairingDeepLink = baseUrl
+    ? buildDotAgentsConfigDeepLink({ baseUrl, apiKey: remoteServerPairingApiKey })
+    : ""
   const shouldShowConnectabilityWarning =
     isRemoteServerRunning &&
-    isUnconnectableMobileHost(configuredBindAddress) &&
+    isUnconnectableRemoteHostForMobilePairing(configuredBindAddress) &&
     !liveConnectableUrl
   const showConnectableUrlResolutionWarning =
-    shouldShowConnectabilityWarning && isWildcardMobileHost(configuredBindAddress)
+    shouldShowConnectabilityWarning && isWildcardRemoteHost(configuredBindAddress)
   const showLoopbackBindWarning =
-    shouldShowConnectabilityWarning && isLoopbackMobileHost(configuredBindAddress)
+    shouldShowConnectabilityWarning && isLoopbackRemoteHost(configuredBindAddress)
 
   return (
     <>
@@ -409,7 +389,7 @@ export function RemoteServerSettingsGroups({
                         ) : (
                           <div className="p-3 bg-white rounded-lg">
                             <QRCodeSVG
-                              value={`dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`}
+                              value={pairingDeepLink}
                               size={160}
                               level="M"
                             />
@@ -423,8 +403,7 @@ export function RemoteServerSettingsGroups({
                             title={streamerMode ? "Disabled in Streamer Mode" : !hasRemoteServerApiKey ? "API key unavailable" : undefined}
                             onClick={() => {
                               if (streamerMode || !remoteServerPairingApiKey) return
-                              const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`
-                              void copyTextToClipboard(deepLink).catch((err) => {
+                              void copyTextToClipboard(pairingDeepLink).catch((err) => {
                                 console.error("Failed to copy deep link", err)
                               })
                             }}
@@ -718,7 +697,7 @@ export function RemoteServerSettingsGroups({
                           ) : (
                             <div className="p-3 bg-white rounded-lg">
                               <QRCodeSVG
-                                value={`dotagents://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`}
+                                value={buildDotAgentsConfigDeepLink({ baseUrl: `${tunnelStatus.url}/v1`, apiKey: remoteServerPairingApiKey })}
                                 size={160}
                                 level="M"
                               />
@@ -732,8 +711,7 @@ export function RemoteServerSettingsGroups({
                               title={streamerMode ? "Disabled in Streamer Mode" : !hasRemoteServerApiKey ? "API key unavailable" : undefined}
                               onClick={() => {
                                 if (streamerMode || !remoteServerPairingApiKey) return
-                                const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(`${tunnelStatus.url}/v1`)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`
-                                void copyTextToClipboard(deepLink).catch((err) => {
+                                void copyTextToClipboard(buildDotAgentsConfigDeepLink({ baseUrl: `${tunnelStatus.url}/v1`, apiKey: remoteServerPairingApiKey })).catch((err) => {
                                   console.error("Failed to copy tunnel deep link", err)
                                 })
                               }}

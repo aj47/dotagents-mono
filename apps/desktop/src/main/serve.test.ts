@@ -23,12 +23,10 @@ vi.mock("./config", () => ({
 }))
 
 vi.mock("./conversation-image-assets", () => ({
-  CONVERSATION_IMAGE_ASSET_HOST: "conversation-image",
   getConversationImageAssetPath: mocks.getConversationImageAssetPath,
 }))
 
 vi.mock("./conversation-video-assets", () => ({
-  CONVERSATION_VIDEO_ASSET_HOST: "conversation-video",
   getConversationVideoAssetPath: mocks.getConversationVideoAssetPath,
 }))
 
@@ -48,6 +46,19 @@ describe("serve protocol", () => {
 
     expect(callback).toHaveBeenCalledWith({ error: -6 })
     expect(mocks.getConversationImageAssetPath).not.toHaveBeenCalled()
+  })
+
+  it("resolves conversation image asset paths", async () => {
+    const { registerServeProtocol } = await import("./serve")
+    registerServeProtocol()
+
+    const handler = mocks.registerFileProtocol.mock.calls[0][1]
+    const callback = vi.fn()
+
+    handler({ url: "assets://conversation-image/conv%201/abcdef1234567890.png" }, callback)
+
+    expect(mocks.getConversationImageAssetPath).toHaveBeenCalledWith("conv 1", "abcdef1234567890.png")
+    expect(callback).toHaveBeenCalledWith({ path: "/images/conv 1/abcdef1234567890.png" })
   })
 
   it("resolves conversation video asset paths", async () => {

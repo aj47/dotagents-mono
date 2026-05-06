@@ -1,4 +1,4 @@
-import type { AgentProgressUpdate } from '@dotagents/shared';
+import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress';
 
 /**
  * ProgressEmitter — abstracts how agent progress events are pushed to the UI layer.

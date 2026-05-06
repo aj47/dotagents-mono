@@ -14,7 +14,7 @@ import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
-import type { LoopConfig, SessionProfileSnapshot } from "../shared/types"
+import type { LoopConfig, SessionProfileSnapshot } from "@dotagents/core"
 import { formatRepeatTaskTitle } from "../shared/repeat-tasks"
 import type { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
@@ -26,6 +26,12 @@ import {
   writeAllTaskFiles,
   deleteTaskFiles,
 } from "./agents-files/tasks"
+import {
+  describeRepeatTaskScheduleForLog,
+  getNextRepeatTaskDelayMs,
+  isContinuousRepeatTask,
+  mergeRepeatTaskLayers,
+} from "@dotagents/shared/repeat-task-utils"
 
 export interface LoopStatus {
   id: string
@@ -39,7 +45,7 @@ export interface LoopStatus {
 }
 
 export function isContinuousLoop(loop: Pick<LoopConfig, "runContinuously">): boolean {
-  return loop.runContinuously === true
+  return isContinuousRepeatTask(loop)
 }
 
 class LoopService {
@@ -79,11 +85,7 @@ class LoopService {
     }
 
     if (globalResult.tasks.length > 0 || workspaceTasks.length > 0) {
-      // Merge: workspace overrides global by ID
-      const mergedById = new Map<string, LoopConfig>()
-      for (const t of globalResult.tasks) mergedById.set(t.id, t)
-      for (const t of workspaceTasks) mergedById.set(t.id, t) // workspace wins
-      this.loops = Array.from(mergedById.values())
+      this.loops = mergeRepeatTaskLayers(globalResult.tasks, workspaceTasks)
       logApp(`[LoopService] Loaded ${this.loops.length} task(s) from .agents/tasks/`)
       return
     }
@@ -237,7 +239,7 @@ class LoopService {
 
     this.clearScheduledTimer(loopId)
 
-    logApp(`[LoopService] Started loop "${loop.name}" (${loopId}), ${describeLoopSchedule(loop)}`)
+    logApp(`[LoopService] Started loop "${loop.name}" (${loopId}), ${describeRepeatTaskScheduleForLog(loop)}`)
 
     if (loop.runOnStartup || isContinuousLoop(loop)) {
       const reason = isContinuousLoop(loop) ? "continuous" : "runOnStartup"
@@ -427,8 +429,8 @@ class LoopService {
         }
       }
 
-      // Reuse the main agent execution flow.
-      const { runAgentLoopSession } = await import("./tipc")
+      // Reuse the main agent execution flow without pulling in the TIPC router.
+      const { runAgentLoopSession } = await import("./agent-loop-runner")
       await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)
 
       // When `speakOnTrigger` is set, unsnooze the now-completed session and
@@ -501,91 +503,23 @@ class LoopService {
   }
 
   private getNextDelayMs(loop: LoopConfig, now: number = Date.now()): number {
-    if (isContinuousLoop(loop)) {
-      return 0
-    }
-
-    if (loop.schedule) {
-      const nextRun = computeNextScheduledRun(loop.schedule, now)
-      if (nextRun !== null) {
-        return Math.max(1000, nextRun - now)
-      }
+    const scheduling = getNextRepeatTaskDelayMs(loop, now)
+    if (scheduling.invalidSchedule) {
       logApp(`[LoopService] Loop ${loop.id} has invalid schedule; falling back to interval`)
     }
-    return this.getIntervalMs(loop)
-  }
-
-  private getIntervalMs(loop: LoopConfig): number {
-    const safeMinutes = Number.isFinite(loop.intervalMinutes) && loop.intervalMinutes >= 1
-      ? Math.floor(loop.intervalMinutes)
-      : 1
-
-    if (safeMinutes !== loop.intervalMinutes) {
-      logApp(`[LoopService] Loop ${loop.id} has invalid interval (${loop.intervalMinutes}), clamping to ${safeMinutes} minute(s)`)
+    if (scheduling.clampedIntervalMinutes !== undefined) {
+      logApp(`[LoopService] Loop ${loop.id} has invalid interval (${loop.intervalMinutes}), clamping to ${scheduling.clampedIntervalMinutes} minute(s)`)
     }
 
-    return safeMinutes * 60 * 1000
+    return scheduling.delayMs
   }
 }
 
 export const loopService = LoopService.getInstance()
 
 // ============================================================================
-// Schedule helpers
+// Tasks folder watcher
 // ============================================================================
-
-const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
-
-function parseTimeToHM(time: string): { h: number; m: number } | null {
-  if (!TIME_RE.test(time)) return null
-  const [h, m] = time.split(":").map(Number)
-  return { h, m }
-}
-
-/**
- * Compute the next scheduled run timestamp (ms since epoch) strictly after `now`,
- * interpreting all times in the machine's local timezone. Returns null if the
- * schedule is malformed (no valid times, or weekly with no valid days).
- */
-export function computeNextScheduledRun(
-  schedule: NonNullable<LoopConfig["schedule"]>,
-  now: number,
-): number | null {
-  const hmList: Array<{ h: number; m: number }> = []
-  for (const t of schedule.times) {
-    const hm = parseTimeToHM(t)
-    if (hm) hmList.push(hm)
-  }
-  if (hmList.length === 0) return null
-
-  const allowedDays = schedule.type === "weekly"
-    ? new Set(schedule.daysOfWeek.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))
-    : null
-  if (allowedDays && allowedDays.size === 0) return null
-
-  // Scan up to 8 days ahead (covers a full week plus today).
-  const base = new Date(now)
-  for (let offset = 0; offset < 8; offset++) {
-    const day = new Date(base.getFullYear(), base.getMonth(), base.getDate() + offset)
-    if (allowedDays && !allowedDays.has(day.getDay())) continue
-    for (const { h, m } of hmList) {
-      const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m, 0, 0).getTime()
-      if (candidate > now) return candidate
-    }
-  }
-  return null
-}
-
-function describeLoopSchedule(loop: LoopConfig): string {
-  if (isContinuousLoop(loop)) return "continuous"
-  if (!loop.schedule) return `interval: ${loop.intervalMinutes}m`
-  const s = loop.schedule
-  const times = s.times.join(", ")
-  if (s.type === "daily") return `schedule: daily at ${times}`
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-  const days = s.daysOfWeek.map((d) => dayNames[d] ?? String(d)).join(",")
-  return `schedule: weekly ${days} at ${times}`
-}
 
 function notifyLoopsFolderChanged(): void {
   const windows = [WINDOWS.get("main"), WINDOWS.get("panel")]

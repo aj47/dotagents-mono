@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
-import { INTERNAL_COMPLETION_NUDGE_TEXT } from "../shared/runtime-tool-names"
+import { INTERNAL_COMPLETION_NUDGE_TEXT } from "@dotagents/shared/mcp-api"
 
 let currentConfig: any
 

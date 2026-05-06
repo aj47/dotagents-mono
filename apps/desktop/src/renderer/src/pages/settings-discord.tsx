@@ -8,6 +8,7 @@ import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { formatConfigListInput, parseConfigListInput } from "@dotagents/shared/config-list-input"
 import type { AgentProfile, Config } from "@shared/types"
 
 interface DiscordStatus {
@@ -25,17 +26,6 @@ interface DiscordLogEntry {
   level: "info" | "warn" | "error"
   message: string
   timestamp: number
-}
-
-function formatIdList(values: string[] | undefined): string {
-  return (values || []).join("\n")
-}
-
-function parseIdList(value: string): string[] {
-  return value
-    .split(/[\n,]/)
-    .map((entry) => entry.trim())
-    .filter(Boolean)
 }
 
 export function Component() {
@@ -59,9 +49,9 @@ export function Component() {
 
   useEffect(() => {
     setBotTokenDraft(cfg?.discordBotToken || "")
-    setUserAllowlistDraft(formatIdList(cfg?.discordAllowUserIds))
-    setGuildAllowlistDraft(formatIdList(cfg?.discordAllowGuildIds))
-    setChannelAllowlistDraft(formatIdList(cfg?.discordAllowChannelIds))
+    setUserAllowlistDraft(formatConfigListInput(cfg?.discordAllowUserIds, { separator: "newline" }))
+    setGuildAllowlistDraft(formatConfigListInput(cfg?.discordAllowGuildIds, { separator: "newline" }))
+    setChannelAllowlistDraft(formatConfigListInput(cfg?.discordAllowChannelIds, { separator: "newline" }))
   }, [cfg?.discordBotToken, cfg?.discordAllowUserIds, cfg?.discordAllowGuildIds, cfg?.discordAllowChannelIds])
 
   // Pure: returns the merged config without touching `cfgRef.current`. The
@@ -286,7 +276,7 @@ export function Component() {
               value={userAllowlistDraft}
               placeholder="One Discord user ID per line"
               onChange={(event) => setUserAllowlistDraft(event.target.value)}
-              onBlur={() => saveConfig({ discordAllowUserIds: parseIdList(userAllowlistDraft) })}
+              onBlur={() => saveConfig({ discordAllowUserIds: parseConfigListInput(userAllowlistDraft) })}
             />
           </Control>
 
@@ -296,7 +286,7 @@ export function Component() {
               value={guildAllowlistDraft}
               placeholder="One Discord server ID per line"
               onChange={(event) => setGuildAllowlistDraft(event.target.value)}
-              onBlur={() => saveConfig({ discordAllowGuildIds: parseIdList(guildAllowlistDraft) })}
+              onBlur={() => saveConfig({ discordAllowGuildIds: parseConfigListInput(guildAllowlistDraft) })}
             />
           </Control>
 
@@ -306,7 +296,7 @@ export function Component() {
               value={channelAllowlistDraft}
               placeholder="One Discord channel or thread ID per line"
               onChange={(event) => setChannelAllowlistDraft(event.target.value)}
-              onBlur={() => saveConfig({ discordAllowChannelIds: parseIdList(channelAllowlistDraft) })}
+              onBlur={() => saveConfig({ discordAllowChannelIds: parseConfigListInput(channelAllowlistDraft) })}
             />
           </Control>
 

@@ -11,7 +11,7 @@ import { Badge } from "@renderer/components/ui/badge"
 import { Loader2, Copy, Download, Globe, User, Tag, Info, AlertTriangle, FileJson } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
-import { buildHubBundleArtifactUrl, slugifyHubCatalogId, type HubPublishSubmission } from "@dotagents/shared"
+import { buildHubBundleArtifactUrl, slugifyHubCatalogId, type HubPublishSubmission } from "@dotagents/shared/hub"
 import { toast } from "sonner"
 import {
   BundleDetailedSelectionCard,

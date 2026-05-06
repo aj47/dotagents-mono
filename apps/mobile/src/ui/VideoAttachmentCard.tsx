@@ -7,7 +7,7 @@ import {
   getVideoAssetLabel,
   isConversationVideoAssetUrl,
   isRenderableVideoUrl,
-} from '@dotagents/shared';
+} from '@dotagents/shared/conversation-media-assets';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing } from './theme';
 

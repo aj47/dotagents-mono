@@ -1,28 +1,85 @@
 import { app } from "electron"
 import path from "path"
 import fs from "fs"
-import {
+import type {
   AgentProfile,
   AgentProfileRole,
   AgentProfilesData,
-  AgentProfileToolConfig,
-  ConversationMessage,
   Profile,
   ProfilesData,
   ProfileMcpServerConfig,
   ProfileModelConfig,
   ProfileSkillsConfig,
-  SessionProfileSnapshot,
-  Persona,
+} from "@dotagents/core"
+import {
+  ConversationMessage,
   PersonasData,
   MCPServerConfig,
   ACPAgentConfig,
-  normalizeAgentProfileRole,
   profileToAgentProfile,
   personaToAgentProfile,
   acpAgentConfigToAgentProfile,
 } from "@shared/types"
-import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@shared/runtime-tool-names"
+import {
+  createSessionSnapshotFromProfile,
+  refreshSessionSnapshotSkillsFromProfile,
+  toolConfigToMcpServerConfig,
+} from "@dotagents/shared/agent-profile-session-snapshot"
+import {
+  buildAgentProfileUpdatePatch,
+  canSetCurrentAgentProfile,
+  createAgentProfileRecord,
+  getDeletableAgentProfileIndex,
+} from "@dotagents/shared/agent-profile-mutations"
+import {
+  addAgentProfileConversationMessage,
+  clearAgentProfileConversationId,
+  getAgentProfileConversation,
+  removeAgentProfileConversation,
+  setAgentProfileConversation,
+} from "@dotagents/shared/agent-profile-conversations"
+import {
+  agentProfileToLegacyProfile,
+  buildInternalDelegationAgentProfileCreateInput,
+  createDefaultAgentProfiles,
+} from "@dotagents/shared/agent-profile-factories"
+import {
+  buildAgentProfilesDataFromLayers,
+  migrateAgentProfilesFromLegacySources,
+} from "@dotagents/shared/agent-profile-storage"
+import {
+  isValidAgentProfileMcpServerConfig,
+  isValidAgentProfileModelConfig,
+  isValidAgentProfileSkillsConfig,
+} from "@dotagents/shared/agent-profile-config-validation"
+import {
+  getAgentProfileSkillsConfigAfterEnable,
+  hasAllAgentProfileSkillsEnabledByDefault,
+  isAgentProfileSkillEnabled,
+  mergeAgentProfileMcpConfig,
+  mergeAgentProfileModelConfig,
+  mergeAgentProfileSkillsConfig,
+  toggleAgentProfileSkillConfig,
+  getEnabledAgentProfileSkillIds,
+} from "@dotagents/shared/agent-profile-config-updates"
+import {
+  getAgentProfileByName,
+  getAgentProfilesByRole,
+  getChatAgentProfiles,
+  getCurrentAgentProfile,
+  getDelegationAgentProfiles,
+  getEnabledDelegationAgentProfiles,
+  getExternalAgentProfiles,
+} from "@dotagents/shared/agent-profile-queries"
+import {
+  mergeImportedAgentProfileMcpServers,
+  parseAgentProfileImportJson,
+  serializeAgentProfileExport,
+} from "@dotagents/shared/agent-profile-import-export"
+import {
+  migrateAgentProfilesForAcpxRuntime,
+  migrateLegacyAcpRuntimeConfig,
+} from "@dotagents/shared/agent-profile-acpx-migration"
 import { randomUUID } from "crypto"
 import { logApp } from "./debug"
 import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
@@ -55,152 +112,11 @@ export const agentProfileConversationsPath = path.join(
 const legacyProfilesPath = path.join(app.getPath("userData"), "profiles.json")
 const legacyPersonasPath = path.join(app.getPath("userData"), "personas.json")
 
-// ============================================================================
-// Validation Helpers (ported from the legacy profile service)
-// ============================================================================
-
-const RESERVED_SERVER_NAMES = [...RESERVED_RUNTIME_TOOL_SERVER_NAMES]
-const VALID_PROVIDER_IDS = ["openai", "groq", "gemini", "chatgpt-web"]
-const VALID_STT_PROVIDER_IDS = ["openai", "groq", "parakeet"]
-const VALID_TTS_PROVIDER_IDS = ["openai", "groq", "gemini", "edge", "kitten", "supertonic"]
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string")
-}
-
-function isValidServerConfig(config: unknown): boolean {
-  if (typeof config !== "object" || config === null || Array.isArray(config)) return false
-  const c = config as Record<string, unknown>
-  if (c.transport !== undefined && (typeof c.transport !== "string" || !["stdio", "websocket", "streamableHttp"].includes(c.transport))) return false
-  if (c.command !== undefined && typeof c.command !== "string") return false
-  if (c.args !== undefined && (!Array.isArray(c.args) || !c.args.every((arg) => typeof arg === "string"))) return false
-  if (c.url !== undefined && typeof c.url !== "string") return false
-  const transport = c.transport as string | undefined
-  if (transport === "stdio" && !c.command) return false
-  if ((transport === "websocket" || transport === "streamableHttp") && !c.url) return false
-  if (transport === undefined && !c.command && !c.url) return false
-  if (c.env !== undefined) {
-    if (typeof c.env !== "object" || c.env === null || Array.isArray(c.env)) return false
-    if (!Object.values(c.env as Record<string, unknown>).every((val) => typeof val === "string")) return false
-  }
-  if (c.headers !== undefined) {
-    if (typeof c.headers !== "object" || c.headers === null || Array.isArray(c.headers)) return false
-    if (!Object.values(c.headers as Record<string, unknown>).every((val) => typeof val === "string")) return false
-  }
-  if (c.timeout !== undefined && typeof c.timeout !== "number") return false
-  if (c.disabled !== undefined && typeof c.disabled !== "boolean") return false
-  if (c.oauth !== undefined) {
-    if (typeof c.oauth !== "object" || c.oauth === null || Array.isArray(c.oauth)) return false
-    const oauth = c.oauth as Record<string, unknown>
-    if (oauth.clientId !== undefined && typeof oauth.clientId !== "string") return false
-    if (oauth.clientSecret !== undefined && typeof oauth.clientSecret !== "string") return false
-    if (oauth.scope !== undefined && typeof oauth.scope !== "string") return false
-    if (oauth.redirectUri !== undefined && typeof oauth.redirectUri !== "string") return false
-    if (oauth.useDiscovery !== undefined && typeof oauth.useDiscovery !== "boolean") return false
-    if (oauth.useDynamicRegistration !== undefined && typeof oauth.useDynamicRegistration !== "boolean") return false
-    if (oauth.serverMetadata !== undefined) {
-      if (typeof oauth.serverMetadata !== "object" || oauth.serverMetadata === null || Array.isArray(oauth.serverMetadata)) return false
-      const sm = oauth.serverMetadata as Record<string, unknown>
-      if (sm.authorization_endpoint !== undefined && typeof sm.authorization_endpoint !== "string") return false
-      if (sm.token_endpoint !== undefined && typeof sm.token_endpoint !== "string") return false
-      if (sm.issuer !== undefined && typeof sm.issuer !== "string") return false
-    }
-  }
-  return true
-}
-
-function isValidMcpServerConfig(config: unknown): config is Partial<ProfileMcpServerConfig> {
-  if (config === null || typeof config !== "object" || Array.isArray(config)) return false
-  const c = config as Record<string, unknown>
-  if (c.disabledServers !== undefined && !isStringArray(c.disabledServers)) return false
-  if (c.disabledTools !== undefined && !isStringArray(c.disabledTools)) return false
-  if (c.enabledServers !== undefined && !isStringArray(c.enabledServers)) return false
-  if (c.enabledRuntimeTools !== undefined && !isStringArray(c.enabledRuntimeTools)) return false
-  if (c.allServersDisabledByDefault !== undefined && typeof c.allServersDisabledByDefault !== "boolean") return false
-  return true
-}
-
-function isValidModelConfig(config: unknown): boolean {
-  if (typeof config !== "object" || config === null || Array.isArray(config)) return false
-  const c = config as Record<string, unknown>
-  for (const field of ["agentProviderId", "mcpToolsProviderId", "transcriptPostProcessingProviderId"]) {
-    if (c[field] !== undefined && (typeof c[field] !== "string" || !VALID_PROVIDER_IDS.includes(c[field] as string))) return false
-  }
-  if (c.sttProviderId !== undefined && (typeof c.sttProviderId !== "string" || !VALID_STT_PROVIDER_IDS.includes(c.sttProviderId as string))) return false
-  if (c.ttsProviderId !== undefined && (typeof c.ttsProviderId !== "string" || !VALID_TTS_PROVIDER_IDS.includes(c.ttsProviderId as string))) return false
-  for (const field of ["agentOpenaiModel", "agentGroqModel", "agentGeminiModel", "agentChatgptWebModel", "mcpToolsOpenaiModel", "mcpToolsGroqModel", "mcpToolsGeminiModel", "mcpToolsChatgptWebModel", "currentModelPresetId", "openaiSttModel", "groqSttModel", "transcriptPostProcessingOpenaiModel", "transcriptPostProcessingGroqModel", "transcriptPostProcessingGeminiModel", "transcriptPostProcessingChatgptWebModel"]) {
-    if (c[field] !== undefined && typeof c[field] !== "string") return false
-  }
-  return true
-}
-
-function isValidSkillsConfig(config: unknown): config is Partial<ProfileSkillsConfig> {
-  if (config === null || typeof config !== "object" || Array.isArray(config)) return false
-  const c = config as Record<string, unknown>
-  if (c.enabledSkillIds !== undefined && !isStringArray(c.enabledSkillIds)) return false
-  if (c.allSkillsDisabledByDefault !== undefined && typeof c.allSkillsDisabledByDefault !== "boolean") return false
-  return true
-}
-
-// ============================================================================
-// Conversion Helpers
-// ============================================================================
-
-/**
- * Convert AgentProfileToolConfig to ProfileMcpServerConfig.
- * Used when creating session snapshots from AgentProfile.
- */
-export function toolConfigToMcpServerConfig(toolConfig?: AgentProfileToolConfig): ProfileMcpServerConfig | undefined {
-  if (!toolConfig) return undefined
-  return {
-    disabledServers: toolConfig.disabledServers,
-    disabledTools: toolConfig.disabledTools,
-    allServersDisabledByDefault: toolConfig.allServersDisabledByDefault,
-    enabledServers: toolConfig.enabledServers,
-    enabledRuntimeTools: toolConfig.enabledRuntimeTools,
-  }
-}
-
-/**
- * Create a SessionProfileSnapshot from an AgentProfile.
- * Used by session creation code to capture profile state at session start.
- */
-export function createSessionSnapshotFromProfile(
-  profile: AgentProfile,
-  skillsInstructions?: string,
-): SessionProfileSnapshot {
-  return {
-    profileId: profile.id,
-    profileName: profile.displayName,
-    guidelines: profile.guidelines || "",
-    systemPrompt: profile.systemPrompt,
-    mcpServerConfig: toolConfigToMcpServerConfig(profile.toolConfig),
-    modelConfig: profile.modelConfig,
-    skillsInstructions,
-    agentProperties: profile.properties,
-    skillsConfig: profile.skillsConfig,
-  }
-}
-
-/**
- * Refresh the skills portion of a stored session snapshot from the current
- * profile. Sessions intentionally snapshot most profile settings for isolation,
- * but skill toggles are user-facing access controls that should take effect for
- * follow-up runs without requiring a brand-new conversation.
- */
-export function refreshSessionSnapshotSkillsFromProfile(
-  snapshot: SessionProfileSnapshot | undefined,
-  profile: AgentProfile | undefined,
-): SessionProfileSnapshot | undefined {
-  if (!snapshot || !profile || snapshot.profileId !== profile.id) return snapshot
-  return {
-    ...snapshot,
-    skillsConfig: profile.skillsConfig,
-    // If a caller cached rendered skill instructions in the snapshot, invalidate
-    // them so the next prompt is rebuilt from the latest enabled skill IDs.
-    skillsInstructions: undefined,
-  }
-}
+export {
+  createSessionSnapshotFromProfile,
+  refreshSessionSnapshotSkillsFromProfile,
+  toolConfigToMcpServerConfig,
+} from "@dotagents/shared/agent-profile-session-snapshot"
 
 /**
  * Type for agent profile conversations storage.
@@ -208,29 +124,6 @@ export function refreshSessionSnapshotSkillsFromProfile(
 interface AgentProfileConversationsData {
   [profileId: string]: ConversationMessage[]
 }
-
-/**
- * Default built-in agents.
- * The "main-agent" is the primary agent that handles all user interactions.
- * Its guidelines come from `.agents/agents.md` via config.mcpToolsSystemPrompt.
- */
-const DEFAULT_PROFILES: Omit<AgentProfile, "id" | "createdAt" | "updatedAt">[] = [
-  {
-    name: "main-agent",
-    displayName: "Main Agent",
-    description: "The primary agent that handles all user interactions",
-    systemPrompt: "You are a highly autonomous and proactive assistant. Answer questions clearly and assist with a wide variety of tasks. Make as many tool calls as needed and do NOT stop to ask for permission unless absolutely necessary.",
-    guidelines: "",
-    connection: { type: "internal" },
-    isStateful: false,
-    role: "delegation-target",
-    enabled: true,
-    isBuiltIn: true,
-    isUserProfile: false,
-    isAgentTarget: true,
-    isDefault: true,
-  },
-]
 
 /**
  * Service for managing agent profiles.
@@ -246,80 +139,28 @@ class AgentProfileService {
     this.migrateAcpxRuntimeConfig()
   }
 
-  private normalizeConnection(profile: AgentProfile): boolean {
-    if (profile.connection.type === 'internal' || profile.connection.type === 'remote') {
-      return false
-    }
-
-    const legacyConnection = profile.connection as AgentProfile['connection'] & {
-      command?: string
-      args?: string[]
-      env?: Record<string, string>
-      cwd?: string
-      agent?: string
-    }
-
-    profile.connection = {
-      type: 'acpx',
-      ...(legacyConnection.command || legacyConnection.agent ? {} : { agent: profile.name }),
-      ...(legacyConnection.agent ? { agent: legacyConnection.agent } : {}),
-      ...(legacyConnection.command ? { command: legacyConnection.command } : {}),
-      ...(legacyConnection.args ? { args: legacyConnection.args } : {}),
-      ...(legacyConnection.env ? { env: legacyConnection.env } : {}),
-      ...(legacyConnection.cwd ? { cwd: legacyConnection.cwd } : {}),
-    }
-
-    return true
-  }
-
   private migrateAcpxRuntimeConfig(): void {
     if (!this.profilesData) return
 
-    let profilesChanged = false
-    const seenNames = new Set(this.profilesData.profiles.map(profile => profile.name))
-
-    for (const profile of this.profilesData.profiles) {
-      profilesChanged = this.normalizeConnection(profile) || profilesChanged
-    }
-
     const config = configStore.get()
-    let configChanged = false
-    const nextConfig = { ...config } as typeof config & { acpInjectRuntimeTools?: boolean }
+    const legacyAgents = Array.isArray(config.acpAgents) ? config.acpAgents as ACPAgentConfig[] : []
+    const profileMigration = migrateAgentProfilesForAcpxRuntime(this.profilesData.profiles, legacyAgents)
 
-    const legacyMainAgentMode = (config as { mainAgentMode?: string }).mainAgentMode
-    if (legacyMainAgentMode === 'acp') {
-      nextConfig.mainAgentMode = 'acpx'
-      configChanged = true
+    for (const agentName of profileMigration.skippedRemoteAgentNames) {
+      logApp(`[AgentProfileService] Skipping unsupported legacy remote ACP agent during acpx migration: ${agentName}`)
     }
 
-    if (Array.isArray(nextConfig.acpAgents) && nextConfig.acpAgents.length > 0) {
-      for (const legacyAgent of nextConfig.acpAgents) {
-        if (legacyAgent.connection.type === 'remote') {
-          logApp(`[AgentProfileService] Skipping unsupported legacy remote ACP agent during acpx migration: ${legacyAgent.name}`)
-          continue
-        }
-
-        if (seenNames.has(legacyAgent.name)) continue
-        this.profilesData.profiles.push(acpAgentConfigToAgentProfile(legacyAgent))
-        seenNames.add(legacyAgent.name)
-        profilesChanged = true
-      }
-
-      delete nextConfig.acpAgents
-      configChanged = true
-    }
-
-    if ('acpInjectRuntimeTools' in nextConfig) {
-      delete nextConfig.acpInjectRuntimeTools
-      configChanged = true
-    }
-
-    if (profilesChanged) {
+    if (profileMigration.changed) {
+      this.profilesData.profiles = [
+        ...profileMigration.profiles,
+        ...profileMigration.legacyAgentsToAdd.map(acpAgentConfigToAgentProfile),
+      ]
       this.saveProfiles()
     }
 
-    if (configChanged) {
-      configStore.save(nextConfig)
+    const configMigration = migrateLegacyAcpRuntimeConfig(config)
+    if (configMigration.changed) {
+      configStore.save(configMigration.config)
     }
   }
 
@@ -346,11 +187,6 @@ class AgentProfileService {
     }
 
     if (globalResult.profiles.length > 0 || workspaceProfiles.length > 0) {
-      // Merge: workspace overrides global by ID
-      const mergedById = new Map<string, AgentProfile>()
-      for (const p of globalResult.profiles) mergedById.set(p.id, p)
-      for (const p of workspaceProfiles) mergedById.set(p.id, p) // workspace wins
-
       // Also load currentProfileId from legacy JSON if available
       let currentProfileId: string | undefined
       try {
@@ -360,10 +196,7 @@ class AgentProfileService {
         }
       } catch { /* best-effort */ }
 
-      this.profilesData = {
-        profiles: Array.from(mergedById.values()),
-        currentProfileId,
-      }
+      this.profilesData = buildAgentProfilesDataFromLayers(globalResult.profiles, workspaceProfiles, currentProfileId)
       logApp(`Loaded ${this.profilesData.profiles.length} agent profile(s) from .agents/agents/`)
       return this.profilesData
     }
@@ -390,13 +223,7 @@ class AgentProfileService {
     }
 
     // 4. Initialize with defaults
-    const now = Date.now()
-    const defaultProfiles: AgentProfile[] = DEFAULT_PROFILES.map((p) => ({
-      ...p,
-      id: randomUUID(),
-      createdAt: now,
-      updatedAt: now,
-    }))
+    const defaultProfiles = createDefaultAgentProfiles(randomUUID, Date.now()) as AgentProfile[]
 
     this.profilesData = { profiles: defaultProfiles }
     this.saveProfiles()
@@ -420,24 +247,15 @@ class AgentProfileService {
    * Migrate from legacy Profile, Persona, and ACPAgentConfig formats (one-time migration).
    */
   private migrateFromLegacy(): AgentProfile[] {
-    const migrated: AgentProfile[] = []
-    const seenIds = new Set<string>()
+    let legacyProfilesData: ProfilesData | undefined
+    let legacyPersonasData: PersonasData | undefined
+    let legacyAcpAgents: ACPAgentConfig[] | undefined
 
     // Migrate legacy Profile records into chat-agent profiles.
     try {
       if (fs.existsSync(legacyProfilesPath)) {
         const data = JSON.parse(fs.readFileSync(legacyProfilesPath, "utf8")) as ProfilesData
-        for (const profile of data.profiles) {
-          if (!seenIds.has(profile.id)) {
-            const agentProfile = profileToAgentProfile(profile)
-            // Preserve currentProfileId as isDefault
-            if (data.currentProfileId === profile.id) {
-              agentProfile.isDefault = true
-            }
-            migrated.push(agentProfile)
-            seenIds.add(profile.id)
-          }
-        }
+        legacyProfilesData = data
         logApp(`Migrated ${data.profiles.length} legacy profiles`)
       }
     } catch (error) {
@@ -448,12 +266,7 @@ class AgentProfileService {
     try {
       if (fs.existsSync(legacyPersonasPath)) {
         const data = JSON.parse(fs.readFileSync(legacyPersonasPath, "utf8")) as PersonasData
-        for (const persona of data.personas) {
-          if (!seenIds.has(persona.id)) {
-            migrated.push(personaToAgentProfile(persona))
-            seenIds.add(persona.id)
-          }
-        }
+        legacyPersonasData = data
         logApp(`Migrated ${data.personas.length} legacy agents (from personas.json)`)
       }
     } catch (error) {
@@ -464,19 +277,25 @@ class AgentProfileService {
     try {
       const config = configStore.get()
       if (config.acpAgents) {
-        for (const acpAgent of config.acpAgents) {
-          if (!seenIds.has(acpAgent.name)) {
-            migrated.push(acpAgentConfigToAgentProfile(acpAgent))
-            seenIds.add(acpAgent.name)
-          }
-        }
+        legacyAcpAgents = config.acpAgents as ACPAgentConfig[]
         logApp(`Migrated ${config.acpAgents.length} legacy ACP agents`)
       }
     } catch (error) {
       logApp("Error migrating legacy ACP agents:", error)
     }
 
-    return migrated
+    return migrateAgentProfilesFromLegacySources(
+      {
+        legacyProfilesData,
+        legacyPersonasData,
+        legacyAcpAgents,
+      },
+      {
+        profileToAgentProfile,
+        personaToAgentProfile,
+        acpAgentConfigToAgentProfile,
+      },
+    ).profiles as AgentProfile[]
   }
 
   /**
@@ -559,10 +378,7 @@ class AgentProfileService {
    * Get a profile by name.
    */
   getByName(name: string): AgentProfile | undefined {
-    // Try exact match on name first, then displayName for flexibility
-    // (handles both old slugged names and new display names)
-    return this.profilesData?.profiles.find((p) => p.name === name)
-      || this.profilesData?.profiles.find((p) => p.displayName === name)
+    return getAgentProfileByName(this.getAll(), name)
   }
 
   /**
@@ -570,14 +386,7 @@ class AgentProfileService {
    */
   create(profile: Omit<AgentProfile, "id" | "createdAt" | "updatedAt">): AgentProfile {
     const now = Date.now()
-    const newProfile: AgentProfile = {
-      ...profile,
-      // Use displayName as the canonical name (no slug transformation)
-      name: profile.name || profile.displayName,
-      id: randomUUID(),
-      createdAt: now,
-      updatedAt: now,
-    }
+    const newProfile = createAgentProfileRecord(profile, randomUUID(), now) as AgentProfile
 
     if (!this.profilesData) {
       this.profilesData = { profiles: [] }
@@ -595,15 +404,7 @@ class AgentProfileService {
     const profile = this.getById(id)
     if (!profile) return undefined
 
-    // Don't allow updating certain fields
-    const { id: _, createdAt, isBuiltIn, ...allowedUpdates } = updates
-
-    // Keep name in sync with displayName (skip for built-in agents)
-    if (allowedUpdates.displayName && !profile.isBuiltIn) {
-      allowedUpdates.name = allowedUpdates.displayName
-    }
-
-    Object.assign(profile, allowedUpdates, { updatedAt: Date.now() })
+    Object.assign(profile, buildAgentProfileUpdatePatch(profile, updates, Date.now()))
     this.saveProfiles()
 
     return profile
@@ -615,10 +416,7 @@ class AgentProfileService {
   delete(id: string): boolean {
     if (!this.profilesData) return false
 
-    const profile = this.getById(id)
-    if (!profile || profile.isBuiltIn) return false
-
-    const index = this.profilesData.profiles.findIndex((p) => p.id === id)
+    const index = getDeletableAgentProfileIndex(this.profilesData.profiles, id)
     if (index === -1) return false
 
     this.profilesData.profiles.splice(index, 1)
@@ -633,7 +431,7 @@ class AgentProfileService {
     }
 
     // Also delete conversation
-    delete this.conversationsData[id]
+    this.conversationsData = removeAgentProfileConversation(this.conversationsData, id)
     this.saveConversations()
 
     return true
@@ -648,28 +446,7 @@ class AgentProfileService {
    * Uses the new role field, falling back to legacy flags for backward compatibility.
    */
   getByRole(role: AgentProfileRole): AgentProfile[] {
-    return this.getAll().filter((p) => {
-      const requestedRole = normalizeAgentProfileRole(role)
-
-      // Use role field if present
-      if (p.role) {
-        return normalizeAgentProfileRole(p.role) === requestedRole
-      }
-      // Fall back to legacy flags for backward compatibility
-      switch (role) {
-        case "chat-agent":
-        case "user-profile":
-          return p.isUserProfile === true
-        case "delegation-target":
-          return p.isAgentTarget === true
-        case "external-agent":
-          // External agents have acpx/remote connection types and are agent targets
-          return p.isAgentTarget === true &&
-            (p.connection.type === 'acpx' || p.connection.type === 'remote')
-        default:
-          return false
-      }
-    })
+    return getAgentProfilesByRole(this.getAll(), role)
   }
 
   /**
@@ -677,12 +454,7 @@ class AgentProfileService {
    * Uses getByRole internally for consistency.
    */
   getUserProfiles(): AgentProfile[] {
-    // Use getByRole, but also include legacy isUserProfile for backward compatibility
-    const byRole = this.getByRole("chat-agent")
-    const byLegacy = this.getAll().filter((p) => p.isUserProfile && !p.role)
-    // Combine and deduplicate by id
-    const ids = new Set(byRole.map(p => p.id))
-    return [...byRole, ...byLegacy.filter(p => !ids.has(p.id))]
+    return getChatAgentProfiles(this.getAll())
   }
 
   /**
@@ -690,30 +462,21 @@ class AgentProfileService {
    * Uses getByRole internally for consistency.
    */
   getAgentTargets(): AgentProfile[] {
-    // Use getByRole, but also include legacy isAgentTarget for backward compatibility
-    const byRole = this.getByRole("delegation-target")
-    const byLegacy = this.getAll().filter((p) => p.isAgentTarget && !p.role)
-    // Combine and deduplicate by id
-    const ids = new Set(byRole.map(p => p.id))
-    return [...byRole, ...byLegacy.filter(p => !ids.has(p.id))]
+    return getDelegationAgentProfiles(this.getAll())
   }
 
   /**
    * Get external agents (acpx/remote agents).
    */
   getExternalAgents(): AgentProfile[] {
-    return this.getAll().filter((profile) =>
-      profile.role === "external-agent"
-      || profile.connection.type === 'acpx'
-      || profile.connection.type === "remote"
-    )
+    return getExternalAgentProfiles(this.getAll())
   }
 
   /**
    * Get enabled agent targets.
    */
   getEnabledAgentTargets(): AgentProfile[] {
-    return this.getAgentTargets().filter((p) => p.enabled)
+    return getEnabledDelegationAgentProfiles(this.getAll())
   }
 
   /**
@@ -721,15 +484,7 @@ class AgentProfileService {
    * Falls back to the default agent if no current profile is set.
    */
   getCurrentProfile(): AgentProfile | undefined {
-    const currentId = this.profilesData?.currentProfileId
-    if (currentId) {
-      return this.getById(currentId)
-    }
-    // Fall back to any default profile
-    const defaultProfile = this.getAll().find((p) => p.isDefault)
-    if (defaultProfile) return defaultProfile
-    // Fall back to the built-in profile (handles migrated data without isDefault set)
-    return this.getAll().find((p) => p.isBuiltIn)
+    return getCurrentAgentProfile(this.getAll(), this.profilesData?.currentProfileId)
   }
 
   /**
@@ -737,8 +492,7 @@ class AgentProfileService {
    */
   setCurrentProfile(id: string): void {
     if (!this.profilesData) return
-    const profile = this.getById(id)
-    if (profile) {
+    if (canSetCurrentAgentProfile(this.profilesData.profiles, id)) {
       this.profilesData.currentProfileId = id
       this.saveProfiles()
     }
@@ -752,14 +506,14 @@ class AgentProfileService {
    * Get conversation for a profile.
    */
   getConversation(profileId: string): ConversationMessage[] {
-    return this.conversationsData[profileId] ?? []
+    return getAgentProfileConversation(this.conversationsData, profileId)
   }
 
   /**
    * Set conversation for a profile.
    */
   setConversation(profileId: string, messages: ConversationMessage[]): void {
-    this.conversationsData[profileId] = messages
+    this.conversationsData = setAgentProfileConversation(this.conversationsData, profileId, messages)
     this.saveConversations()
   }
 
@@ -767,10 +521,7 @@ class AgentProfileService {
    * Add message to a profile's conversation.
    */
   addToConversation(profileId: string, message: ConversationMessage): void {
-    if (!this.conversationsData[profileId]) {
-      this.conversationsData[profileId] = []
-    }
-    this.conversationsData[profileId].push(message)
+    this.conversationsData = addAgentProfileConversationMessage(this.conversationsData, profileId, message)
     this.saveConversations()
   }
 
@@ -778,13 +529,13 @@ class AgentProfileService {
    * Clear conversation for a profile.
    */
   clearConversation(profileId: string): void {
-    delete this.conversationsData[profileId]
+    this.conversationsData = removeAgentProfileConversation(this.conversationsData, profileId)
     this.saveConversations()
 
     // Also clear conversationId on the profile
     const profile = this.getById(profileId)
     if (profile) {
-      profile.conversationId = undefined
+      Object.assign(profile, clearAgentProfileConversationId(profile))
       this.saveProfiles()
     }
   }
@@ -819,20 +570,7 @@ class AgentProfileService {
     const profile = this.getById(id)
     if (!profile) return undefined
 
-    const existing = profile.toolConfig ?? {}
-    const mergedToolConfig: AgentProfileToolConfig = {
-      ...existing,
-      ...(mcpServerConfig.disabledServers !== undefined && { disabledServers: mcpServerConfig.disabledServers }),
-      ...(mcpServerConfig.disabledTools !== undefined && { disabledTools: mcpServerConfig.disabledTools }),
-      ...(mcpServerConfig.allServersDisabledByDefault !== undefined && { allServersDisabledByDefault: mcpServerConfig.allServersDisabledByDefault }),
-      ...(mcpServerConfig.enabledServers !== undefined && { enabledServers: mcpServerConfig.enabledServers }),
-      ...(mcpServerConfig.enabledRuntimeTools !== undefined && {
-        // Empty array is treated as "not configured" (allow all runtime tools) — clear persisted whitelist.
-        enabledRuntimeTools: mcpServerConfig.enabledRuntimeTools.length > 0
-          ? mcpServerConfig.enabledRuntimeTools
-          : undefined,
-      }),
-    }
+    const mergedToolConfig = mergeAgentProfileMcpConfig(profile.toolConfig, mcpServerConfig)
 
     return this.update(id, { toolConfig: mergedToolConfig })
   }
@@ -867,29 +605,7 @@ class AgentProfileService {
     const profile = this.getById(id)
     if (!profile) return undefined
 
-    const mergedModelConfig: ProfileModelConfig = {
-      ...(profile.modelConfig ?? {}),
-      ...(modelConfig.agentProviderId !== undefined && { agentProviderId: modelConfig.agentProviderId, mcpToolsProviderId: modelConfig.agentProviderId }),
-      ...(modelConfig.agentOpenaiModel !== undefined && { agentOpenaiModel: modelConfig.agentOpenaiModel, mcpToolsOpenaiModel: modelConfig.agentOpenaiModel }),
-      ...(modelConfig.agentGroqModel !== undefined && { agentGroqModel: modelConfig.agentGroqModel, mcpToolsGroqModel: modelConfig.agentGroqModel }),
-      ...(modelConfig.agentGeminiModel !== undefined && { agentGeminiModel: modelConfig.agentGeminiModel, mcpToolsGeminiModel: modelConfig.agentGeminiModel }),
-      ...(modelConfig.agentChatgptWebModel !== undefined && { agentChatgptWebModel: modelConfig.agentChatgptWebModel, mcpToolsChatgptWebModel: modelConfig.agentChatgptWebModel }),
-      ...(modelConfig.mcpToolsProviderId !== undefined && { mcpToolsProviderId: modelConfig.mcpToolsProviderId, agentProviderId: modelConfig.mcpToolsProviderId }),
-      ...(modelConfig.mcpToolsOpenaiModel !== undefined && { mcpToolsOpenaiModel: modelConfig.mcpToolsOpenaiModel, agentOpenaiModel: modelConfig.mcpToolsOpenaiModel }),
-      ...(modelConfig.mcpToolsGroqModel !== undefined && { mcpToolsGroqModel: modelConfig.mcpToolsGroqModel, agentGroqModel: modelConfig.mcpToolsGroqModel }),
-      ...(modelConfig.mcpToolsGeminiModel !== undefined && { mcpToolsGeminiModel: modelConfig.mcpToolsGeminiModel, agentGeminiModel: modelConfig.mcpToolsGeminiModel }),
-      ...(modelConfig.mcpToolsChatgptWebModel !== undefined && { mcpToolsChatgptWebModel: modelConfig.mcpToolsChatgptWebModel, agentChatgptWebModel: modelConfig.mcpToolsChatgptWebModel }),
-      ...(modelConfig.currentModelPresetId !== undefined && { currentModelPresetId: modelConfig.currentModelPresetId }),
-      ...(modelConfig.sttProviderId !== undefined && { sttProviderId: modelConfig.sttProviderId }),
-      ...(modelConfig.openaiSttModel !== undefined && { openaiSttModel: modelConfig.openaiSttModel }),
-      ...(modelConfig.groqSttModel !== undefined && { groqSttModel: modelConfig.groqSttModel }),
-      ...(modelConfig.transcriptPostProcessingProviderId !== undefined && { transcriptPostProcessingProviderId: modelConfig.transcriptPostProcessingProviderId }),
-      ...(modelConfig.transcriptPostProcessingOpenaiModel !== undefined && { transcriptPostProcessingOpenaiModel: modelConfig.transcriptPostProcessingOpenaiModel }),
-      ...(modelConfig.transcriptPostProcessingGroqModel !== undefined && { transcriptPostProcessingGroqModel: modelConfig.transcriptPostProcessingGroqModel }),
-      ...(modelConfig.transcriptPostProcessingGeminiModel !== undefined && { transcriptPostProcessingGeminiModel: modelConfig.transcriptPostProcessingGeminiModel }),
-      ...(modelConfig.transcriptPostProcessingChatgptWebModel !== undefined && { transcriptPostProcessingChatgptWebModel: modelConfig.transcriptPostProcessingChatgptWebModel }),
-      ...(modelConfig.ttsProviderId !== undefined && { ttsProviderId: modelConfig.ttsProviderId }),
-    }
+    const mergedModelConfig = mergeAgentProfileModelConfig(profile.modelConfig, modelConfig)
 
     return this.update(id, { modelConfig: mergedModelConfig })
   }
@@ -913,11 +629,7 @@ class AgentProfileService {
     const profile = this.getById(id)
     if (!profile) return undefined
 
-    const mergedSkillsConfig: ProfileSkillsConfig = {
-      ...(profile.skillsConfig ?? {}),
-      ...(skillsConfig.enabledSkillIds !== undefined && { enabledSkillIds: skillsConfig.enabledSkillIds }),
-      ...(skillsConfig.allSkillsDisabledByDefault !== undefined && { allSkillsDisabledByDefault: skillsConfig.allSkillsDisabledByDefault }),
-    }
+    const mergedSkillsConfig = mergeAgentProfileSkillsConfig(profile.skillsConfig, skillsConfig)
 
     return this.update(id, { skillsConfig: mergedSkillsConfig })
   }
@@ -931,39 +643,10 @@ class AgentProfileService {
     const profile = this.getById(profileId)
     if (!profile) return undefined
 
-    // If profile has no explicit skills config (all enabled by default)
-    if (!profile.skillsConfig || !profile.skillsConfig.allSkillsDisabledByDefault) {
-      // Transitioning from "all enabled" to opt-in: enable all EXCEPT the toggled skill
-      const allIds = allSkillIds ?? []
-      const newEnabledSkillIds = allIds.filter(id => id !== skillId)
-      return this.updateProfileSkillsConfig(profileId, {
-        enabledSkillIds: newEnabledSkillIds,
-        allSkillsDisabledByDefault: true,
-      })
-    }
-
-    const currentEnabledSkills = profile.skillsConfig.enabledSkillIds ?? []
-    const isCurrentlyEnabled = currentEnabledSkills.includes(skillId)
-
-    const newEnabledSkillIds = isCurrentlyEnabled
-      ? currentEnabledSkills.filter(id => id !== skillId)
-      : [...currentEnabledSkills, skillId]
-
-    const allAvailableSkillIds = new Set(allSkillIds ?? [])
-    const hasAllAvailableSkillsEnabled = allAvailableSkillIds.size > 0
-      && Array.from(allAvailableSkillIds).every(id => newEnabledSkillIds.includes(id))
-
-    if (hasAllAvailableSkillsEnabled) {
-      return this.updateProfileSkillsConfig(profileId, {
-        enabledSkillIds: [],
-        allSkillsDisabledByDefault: false,
-      })
-    }
-
-    return this.updateProfileSkillsConfig(profileId, {
-      enabledSkillIds: newEnabledSkillIds,
-      allSkillsDisabledByDefault: true,
-    })
+    return this.updateProfileSkillsConfig(
+      profileId,
+      toggleAgentProfileSkillConfig(profile.skillsConfig, skillId, allSkillIds),
+    )
   }
 
   /**
@@ -973,9 +656,7 @@ class AgentProfileService {
   isSkillEnabledForProfile(profileId: string, skillId: string): boolean {
     const profile = this.getById(profileId)
     if (!profile) return false
-    // No skillsConfig = unconfigured = all skills enabled by default
-    if (!profile.skillsConfig || !profile.skillsConfig.allSkillsDisabledByDefault) return true
-    return (profile.skillsConfig.enabledSkillIds ?? []).includes(skillId)
+    return isAgentProfileSkillEnabled(profile.skillsConfig, skillId)
   }
 
   /**
@@ -984,7 +665,7 @@ class AgentProfileService {
   hasAllSkillsEnabledByDefault(profileId: string): boolean {
     const profile = this.getById(profileId)
     if (!profile) return false
-    return !profile.skillsConfig || !profile.skillsConfig.allSkillsDisabledByDefault
+    return hasAllAgentProfileSkillsEnabledByDefault(profile.skillsConfig)
   }
 
   /**
@@ -995,9 +676,7 @@ class AgentProfileService {
   getEnabledSkillIdsForProfile(profileId: string): string[] | null {
     const profile = this.getById(profileId)
     if (!profile) return []
-    // No skillsConfig = unconfigured = all skills enabled
-    if (!profile.skillsConfig || !profile.skillsConfig.allSkillsDisabledByDefault) return null
-    return profile.skillsConfig.enabledSkillIds ?? []
+    return getEnabledAgentProfileSkillIds(profile.skillsConfig)
   }
 
   /**
@@ -1008,18 +687,10 @@ class AgentProfileService {
     const currentProfile = this.getCurrentProfile()
     if (!currentProfile) return undefined
 
-    // If all skills are enabled by default (no skillsConfig), no need to add explicitly
-    if (!currentProfile.skillsConfig || !currentProfile.skillsConfig.allSkillsDisabledByDefault) {
-      return currentProfile
-    }
+    const nextSkillsConfig = getAgentProfileSkillsConfigAfterEnable(currentProfile.skillsConfig, skillId)
+    if (!nextSkillsConfig) return currentProfile
 
-    const currentEnabledSkills = currentProfile.skillsConfig.enabledSkillIds ?? []
-    if (currentEnabledSkills.includes(skillId)) return currentProfile
-
-    return this.updateProfileSkillsConfig(currentProfile.id, {
-      enabledSkillIds: [...currentEnabledSkills, skillId],
-      allSkillsDisabledByDefault: true,
-    })
+    return this.updateProfileSkillsConfig(currentProfile.id, nextSkillsConfig)
   }
 
   // ============================================================================
@@ -1033,49 +704,8 @@ class AgentProfileService {
     const profile = this.getById(id)
     if (!profile) throw new Error(`Profile with id ${id} not found`)
 
-    const mcpServerConfig = toolConfigToMcpServerConfig(profile.toolConfig)
-    const exportData: Record<string, unknown> = {
-      version: 1,
-      name: profile.displayName,
-      guidelines: profile.guidelines || "",
-    }
-
-    if (profile.systemPrompt) exportData.systemPrompt = profile.systemPrompt
-    if (mcpServerConfig) exportData.mcpServerConfig = mcpServerConfig
-    if (profile.modelConfig) exportData.modelConfig = profile.modelConfig
-    if (profile.skillsConfig) exportData.skillsConfig = profile.skillsConfig
-
-    // Include actual MCP server definitions for enabled servers
     const config = configStore.get()
-    const mcpConfig = config.mcpConfig
-    if (mcpConfig?.mcpServers) {
-      const enabledServers: Record<string, unknown> = {}
-      const allServerNames = Object.keys(mcpConfig.mcpServers)
-
-      let serversToExport: string[]
-      if (mcpServerConfig) {
-        if (mcpServerConfig.allServersDisabledByDefault) {
-          serversToExport = mcpServerConfig.enabledServers || []
-        } else {
-          serversToExport = allServerNames.filter(name => !(mcpServerConfig.disabledServers || []).includes(name))
-        }
-      } else {
-        serversToExport = allServerNames
-      }
-
-      for (const serverName of serversToExport) {
-        if (mcpConfig.mcpServers[serverName]) {
-          const { env, headers, oauth, ...sanitizedConfig } = mcpConfig.mcpServers[serverName]
-          enabledServers[serverName] = sanitizedConfig
-        }
-      }
-
-      if (Object.keys(enabledServers).length > 0) {
-        exportData.mcpServers = enabledServers
-      }
-    }
-
-    return JSON.stringify(exportData, null, 2)
+    return serializeAgentProfileExport(profile, config.mcpConfig?.mcpServers)
   }
 
   /**
@@ -1083,17 +713,7 @@ class AgentProfileService {
    */
   importProfile(profileJson: string): AgentProfile {
     try {
-      const importData = JSON.parse(profileJson)
-
-      if (!importData.name || typeof importData.name !== "string") {
-        throw new Error("Invalid profile data: missing or invalid name")
-      }
-      if (importData.guidelines !== undefined && typeof importData.guidelines !== "string") {
-        throw new Error("Invalid profile data: guidelines must be a string")
-      }
-      if (importData.systemPrompt !== undefined && typeof importData.systemPrompt !== "string") {
-        throw new Error("Invalid profile data: systemPrompt must be a string")
-      }
+      const importData = parseAgentProfileImportJson(profileJson)
 
       // Create default tool config with all servers disabled
       const appConfig = configStore.get()
@@ -1112,40 +732,30 @@ class AgentProfileService {
         isAgentTarget: true,
         toolConfig: {
           disabledServers: allServerNames,
-            disabledTools: runtimeToolNames,
+          disabledTools: runtimeToolNames,
           allServersDisabledByDefault: true,
         },
       })
 
-      // Import MCP server definitions if present
-      const importedServerNames: string[] = []
-      if (importData.mcpServers && typeof importData.mcpServers === "object" && !Array.isArray(importData.mcpServers)) {
-        const currentMcpServers = appConfig.mcpConfig?.mcpServers || {}
-        const mergedServers = { ...currentMcpServers }
-        let newServersAdded = 0
-
-        for (const [serverName, serverConfig] of Object.entries(importData.mcpServers)) {
-          const normalizedServerName = serverName.trim()
-          if (!normalizedServerName) continue
-          if (["__proto__", "constructor", "prototype"].includes(normalizedServerName)) continue
-          if (RESERVED_SERVER_NAMES.some(r => r.toLowerCase() === normalizedServerName.toLowerCase())) continue
-          if (!mergedServers[normalizedServerName]) {
-            if (!isValidServerConfig(serverConfig)) continue
-            mergedServers[normalizedServerName] = serverConfig as MCPServerConfig
-            importedServerNames.push(normalizedServerName)
-            newServersAdded++
-          }
-        }
-
-        if (newServersAdded > 0) {
-          configStore.save({ ...appConfig, mcpConfig: { ...appConfig.mcpConfig, mcpServers: mergedServers } })
-          logApp(`Imported ${newServersAdded} new MCP server(s)`)
-        }
+      const mcpServerMerge = mergeImportedAgentProfileMcpServers(
+        appConfig.mcpConfig?.mcpServers || {},
+        importData.mcpServers,
+      )
+      const importedServerNames = mcpServerMerge.importedServerNames
+      if (mcpServerMerge.newServerCount > 0) {
+        configStore.save({
+          ...appConfig,
+          mcpConfig: {
+            ...appConfig.mcpConfig,
+            mcpServers: mcpServerMerge.mcpServers as Record<string, MCPServerConfig>,
+          },
+        })
+        logApp(`Imported ${mcpServerMerge.newServerCount} new MCP server(s)`)
       }
 
       // Apply MCP server configuration if present
       if (importData.mcpServerConfig && typeof importData.mcpServerConfig === "object") {
-        if (isValidMcpServerConfig(importData.mcpServerConfig)) {
+        if (isValidAgentProfileMcpServerConfig(importData.mcpServerConfig)) {
           this.updateProfileMcpConfig(newProfile.id, importData.mcpServerConfig)
         }
       } else if (importedServerNames.length > 0) {
@@ -1158,14 +768,14 @@ class AgentProfileService {
 
       // Apply model configuration if present
       if (importData.modelConfig && typeof importData.modelConfig === "object") {
-        if (isValidModelConfig(importData.modelConfig)) {
+        if (isValidAgentProfileModelConfig(importData.modelConfig)) {
           this.updateProfileModelConfig(newProfile.id, importData.modelConfig)
         }
       }
 
       // Apply skills configuration if present
       if (importData.skillsConfig && typeof importData.skillsConfig === "object") {
-        if (isValidSkillsConfig(importData.skillsConfig)) {
+        if (isValidAgentProfileSkillsConfig(importData.skillsConfig)) {
           this.updateProfileSkillsConfig(newProfile.id, importData.skillsConfig)
         }
       }
@@ -1185,7 +795,7 @@ class AgentProfileService {
    * Returns only chat-agent profiles shaped like the legacy Profile type.
    */
   getProfilesLegacy(): Profile[] {
-    return this.getUserProfiles().map(p => this.agentProfileToLegacyProfile(p))
+    return this.getUserProfiles().map(p => agentProfileToLegacyProfile(p) as Profile)
   }
 
   /**
@@ -1194,7 +804,7 @@ class AgentProfileService {
   getProfileLegacy(id: string): Profile | undefined {
     const profile = this.getById(id)
     if (!profile) return undefined
-    return this.agentProfileToLegacyProfile(profile)
+    return agentProfileToLegacyProfile(profile) as Profile
   }
 
   /**
@@ -1203,25 +813,7 @@ class AgentProfileService {
   getCurrentProfileLegacy(): Profile | undefined {
     const profile = this.getCurrentProfile()
     if (!profile) return undefined
-    return this.agentProfileToLegacyProfile(profile)
-  }
-
-  /**
-   * Convert an AgentProfile to legacy Profile format.
-   */
-  private agentProfileToLegacyProfile(p: AgentProfile): Profile {
-    return {
-      id: p.id,
-      name: p.displayName,
-      guidelines: p.guidelines || "",
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      isDefault: p.isDefault,
-      mcpServerConfig: toolConfigToMcpServerConfig(p.toolConfig),
-      modelConfig: p.modelConfig,
-      skillsConfig: p.skillsConfig,
-      systemPrompt: p.systemPrompt,
-    }
+    return agentProfileToLegacyProfile(profile) as Profile
   }
 
   /**
@@ -1233,22 +825,13 @@ class AgentProfileService {
     const allServerNames = Object.keys(config.mcpConfig?.mcpServers || {})
     const runtimeToolNames = getRuntimeToolNames()
 
-    return this.create({
+    return this.create(buildInternalDelegationAgentProfileCreateInput(
       name,
-      displayName: name,
       guidelines,
       systemPrompt,
-      connection: { type: "internal" },
-      role: "delegation-target",
-      enabled: true,
-      isUserProfile: false,
-      isAgentTarget: true,
-      toolConfig: {
-        disabledServers: allServerNames,
-          disabledTools: runtimeToolNames,
-        allServersDisabledByDefault: true,
-      },
-    })
+      allServerNames,
+      runtimeToolNames,
+    ) as Omit<AgentProfile, "id" | "createdAt" | "updatedAt">)
   }
 
   /**

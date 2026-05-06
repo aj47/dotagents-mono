@@ -14,6 +14,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createExtendedSettingsApiClient } from './settingsApi';
 
 const PUSH_TOKEN_KEY = 'push_token_v2';
 const SERVER_REGISTERED_KEY = 'push_server_registered_v2';
@@ -48,13 +49,6 @@ export interface NotificationData {
  */
 export function isSupported(): boolean {
   return Platform.OS !== 'web' && Device.isDevice;
-}
-
-/**
- * Normalize baseUrl by removing trailing /v1 and slashes
- */
-function normalizeBaseUrl(baseUrl: string): string {
-  return baseUrl.replace(/\/v1\/?$/, '').replace(/\/+$/, '');
 }
 
 /**
@@ -127,26 +121,15 @@ export async function registerWithServer(baseUrl: string, apiKey: string): Promi
   if (!token) return false;
 
   try {
-    const response = await fetch(`${normalizeBaseUrl(baseUrl)}/v1/push/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        token,
-        type: 'expo',
-        platform: Platform.OS as 'ios' | 'android',
-      }),
+    const client = createExtendedSettingsApiClient(baseUrl, apiKey);
+    await client.registerPushToken({
+      token,
+      type: 'expo',
+      platform: Platform.OS as 'ios' | 'android',
     });
-
-    if (response.ok) {
-      await AsyncStorage.setItem(SERVER_REGISTERED_KEY, 'true');
-      console.log('[Push] Registered with server');
-      return true;
-    }
-    console.error('[Push] Server registration failed:', await response.text());
-    return false;
+    await AsyncStorage.setItem(SERVER_REGISTERED_KEY, 'true');
+    console.log('[Push] Registered with server');
+    return true;
   } catch (error) {
     console.error('[Push] Registration error:', error);
     return false;
@@ -164,21 +147,11 @@ export async function unregisterFromServer(baseUrl: string, apiKey: string): Pro
   }
 
   try {
-    const response = await fetch(`${normalizeBaseUrl(baseUrl)}/v1/push/unregister`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ token }),
-    });
-
-    if (response.ok) {
-      await AsyncStorage.setItem(SERVER_REGISTERED_KEY, 'false');
-      console.log('[Push] Unregistered from server');
-      return true;
-    }
-    return false;
+    const client = createExtendedSettingsApiClient(baseUrl, apiKey);
+    await client.unregisterPushToken(token);
+    await AsyncStorage.setItem(SERVER_REGISTERED_KEY, 'false');
+    console.log('[Push] Unregistered from server');
+    return true;
   } catch (error) {
     console.error('[Push] Unregistration error:', error);
     return false;
@@ -214,14 +187,8 @@ export async function clearServerBadge(baseUrl: string, apiKey: string): Promise
   if (!token) return;
 
   try {
-    await fetch(`${normalizeBaseUrl(baseUrl)}/v1/push/clear-badge`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ token }),
-    });
+    const client = createExtendedSettingsApiClient(baseUrl, apiKey);
+    await client.clearPushBadge(token);
   } catch (error) {
     console.warn('[Push] Failed to clear server badge:', error);
   }
@@ -350,4 +317,3 @@ export function usePushNotifications(): UsePushNotificationsResult {
     clear,
   };
 }
-

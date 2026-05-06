@@ -1,20 +1,218 @@
 /**
  * Shared chat utilities for DotAgents apps (desktop and mobile)
- * 
+ *
  * These utilities provide consistent behavior for chat UI features
  * across both platforms while allowing platform-specific rendering.
  */
 
-import type { AgentUserResponseEvent } from './agent-progress';
-import { ToolCall, ToolResult } from './types';
+import type { AgentProgressUpdate, AgentUserResponseEvent } from './agent-progress';
+import type { ModelInfo, ModelsResponse, OpenAICompatibleModelSummary, OpenAICompatibleModelsResponse } from './api-types';
+import { CHAT_PROVIDER_IDS, isChatProviderId, type CHAT_PROVIDER_ID } from './providers';
+import { resolveActiveModelId, type ActiveModelConfigLike } from './model-presets';
+import type { ConversationHistoryMessage, ToolCall, ToolResult } from './types';
+
+export type ChatRequestMessageLike = {
+  role: 'user' | 'assistant' | 'tool';
+  content?: string;
+  displayContent?: string;
+  toolCalls?: ToolCall[];
+  toolResults?: Array<ToolResult | null | undefined>;
+  toolExecutions?: Array<{ toolCall: ToolCall; result?: ToolResult }>;
+};
+
+export type ConversationHistoryForApiEntryLike = {
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  displayContent?: string;
+  toolCalls?: Array<{
+    name: string;
+    arguments: unknown;
+  }>;
+  toolResults?: unknown[];
+  timestamp?: number;
+};
+
+export type ChatCompletionRequestBody<T extends ChatRequestMessageLike = ChatRequestMessageLike> = {
+  model?: string;
+  messages: T[];
+  stream: boolean;
+  conversation_id?: string;
+  profile_id?: string;
+  send_push_notification?: boolean;
+};
+
+export type BuildChatCompletionRequestOptions<T extends ChatRequestMessageLike = ChatRequestMessageLike> = {
+  model?: string;
+  messages: T[];
+  stream?: boolean;
+  conversationId?: string;
+  profileId?: string;
+  sendPushNotification?: boolean;
+};
+
+export type ParsedChatCompletionRequestBody = {
+  prompt: string | null;
+  conversationId?: string;
+  profileId?: string;
+  stream: boolean;
+  sendPushNotification: boolean;
+};
+
+export type ValidatedChatCompletionRequestBody = ParsedChatCompletionRequestBody & {
+  prompt: string;
+};
+
+export type ChatCompletionRequestValidationResult =
+  | { ok: true; request: ValidatedChatCompletionRequestBody }
+  | { ok: false; statusCode: 400; body: { error: string } };
+
+export interface ChatCompletionRequestValidationOptions {
+  validateConversationId?: (conversationId: string) => string | null | undefined;
+}
+
+export type ChatCompletionPushNotificationPlan = {
+  conversationId: string;
+  conversationTitle: string;
+  content: string;
+};
+
+export type BuildChatCompletionPushNotificationPlanOptions = {
+  sendPushNotification: boolean;
+  pushEnabled: boolean;
+  prompt: string;
+  conversationId: string;
+  content: string;
+  maxTitleLength?: number;
+};
+
+export type OpenAIChatCompletionResponse = {
+  id: string;
+  object: 'chat.completion';
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    message: {
+      role: 'assistant';
+      content: string;
+    };
+    finish_reason: 'stop';
+  }>;
+};
+
+export type DotAgentsChatCompletionResponse = OpenAIChatCompletionResponse & {
+  conversation_id: string;
+  conversation_history: ConversationHistoryMessage[];
+};
+
+export type BuildOpenAIChatCompletionResponseOptions = {
+  id?: string;
+  created?: number;
+};
+
+export type BuildDotAgentsChatCompletionResponseOptions = BuildOpenAIChatCompletionResponseOptions & {
+  content: string;
+  model: string;
+  conversationId: string;
+  conversationHistory: ConversationHistoryMessage[];
+};
+
+export type OpenAICompatibleModelInput = string | OpenAICompatibleModelSummary;
+export type ProviderModelInfoInput = Pick<ModelInfo, 'id' | 'name' | 'description' | 'context_length'>;
+
+export type ModelActionResult = {
+  statusCode: number;
+  body: unknown;
+};
+
+export interface ModelActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void;
+}
+
+export interface ModelActionOptions {
+  getConfig(): ActiveModelConfigLike;
+  fetchAvailableModels(providerId: CHAT_PROVIDER_ID): Promise<ProviderModelInfoInput[]>;
+  diagnostics: ModelActionDiagnostics;
+}
+
+export type ParsedChatCompletionSseEvent =
+  | { type: 'done' }
+  | { type: 'progress'; update: AgentProgressUpdate }
+  | {
+    type: 'complete';
+    content: string;
+    conversationId?: string;
+    conversationHistory?: ConversationHistoryMessage[];
+    model?: string;
+  }
+  | { type: 'error'; message: string }
+  | { type: 'token'; token: string };
+
+export type DotAgentsChatCompletionProgressSsePayload = {
+  type: 'progress';
+  data: AgentProgressUpdate;
+};
+
+export type DotAgentsChatCompletionDoneSsePayload = {
+  type: 'done';
+  data: {
+    content: string;
+    conversation_id?: string;
+    conversation_history?: ConversationHistoryMessage[];
+    model?: string;
+  };
+};
+
+export type DotAgentsChatCompletionErrorSsePayload = {
+  type: 'error';
+  data: {
+    message: string;
+  };
+};
+
+export type DotAgentsChatCompletionSsePayload =
+  | DotAgentsChatCompletionProgressSsePayload
+  | DotAgentsChatCompletionDoneSsePayload
+  | DotAgentsChatCompletionErrorSsePayload;
+
+export type ChatCompletionSseHeaders = {
+  'Content-Type': 'text/event-stream';
+  'Cache-Control': 'no-cache';
+  Connection: 'keep-alive';
+  'Access-Control-Allow-Origin': string;
+  'Access-Control-Allow-Credentials': 'true';
+};
+
+export type BuildChatCompletionDoneSsePayloadOptions = {
+  content: string;
+  conversationId?: string;
+  conversationHistory?: ConversationHistoryMessage[];
+  model?: string;
+};
 
 export type ToolArgumentEntry = {
   key: string;
   value: unknown;
 };
 
+export type RespondToUserToolCallLike = {
+  name?: string;
+  arguments?: unknown;
+};
+
+export type RespondToUserConversationHistoryLike = Array<{
+  role?: string;
+  timestamp?: number;
+  toolCalls?: RespondToUserToolCallLike[];
+}>;
+
 const COLLAPSE_THRESHOLD = 200;
 const MARKDOWN_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/gi;
+const TOOL_PAYLOAD_PREFIX_REGEX = /^(?:using tool:|tool result:)/i;
+const TOOL_RESULT_BRACKET_REGEX = /^\[[\w_.-]+\]\s*[{\[#]/;
+const INLINE_TOOL_BRACKET_REGEX = /\[[\w_.-]+\]\s*(?:\{[\s\S]*?\}|\[[\s\S]*?\])/g;
+const GARBLED_TOOL_CALL_REGEX = /(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.|recipient_name.*functions\.)/i;
+const DEFAULT_CHAT_COMPLETION_PUSH_NOTIFICATION_TITLE_LENGTH = 30;
 
 /**
  * Determine if a message should be collapsible based on its content
@@ -31,6 +229,497 @@ export function shouldCollapseMessage(
   const hasExtras = (toolCalls?.length ?? 0) > 0 || (toolResults?.length ?? 0) > 0;
   const contentLength = content?.replace(MARKDOWN_IMAGE_PAYLOAD_REGEX, '').length ?? 0;
   return contentLength > COLLAPSE_THRESHOLD || hasExtras;
+}
+
+export function sanitizeMessagesForRequest<T extends ChatRequestMessageLike>(messages: T[]): T[] {
+  return messages.map((message) => {
+    const requestMessage = { ...message };
+    delete requestMessage.toolExecutions;
+    delete requestMessage.displayContent;
+
+    if (message.toolExecutions?.length) {
+      delete requestMessage.toolCalls;
+      delete requestMessage.toolResults;
+      return requestMessage as T;
+    }
+
+    if (!Array.isArray(message.toolResults)) {
+      return requestMessage as T;
+    }
+
+    const originalToolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : undefined;
+    const toolResults = message.toolResults.filter((result): result is ToolResult => result != null);
+
+    if (toolResults.length === 0) {
+      delete requestMessage.toolResults;
+      if (Array.isArray(message.toolCalls)) {
+        delete requestMessage.toolCalls;
+      }
+      return requestMessage as T;
+    }
+
+    const originalCallsAreIndexAligned =
+      Array.isArray(originalToolCalls) && originalToolCalls.length === toolResults.length;
+    const sanitizedToolCalls = originalCallsAreIndexAligned
+      ? originalToolCalls.every((toolCall): toolCall is ToolCall => !!toolCall)
+        ? originalToolCalls
+        : undefined
+      : undefined;
+    const shouldDropToolCalls = !!originalToolCalls && !sanitizedToolCalls;
+
+    const sanitizedMessage = {
+      ...requestMessage,
+      ...(sanitizedToolCalls ? { toolCalls: sanitizedToolCalls } : {}),
+      toolResults,
+    };
+
+    if (shouldDropToolCalls) {
+      delete sanitizedMessage.toolCalls;
+    }
+
+    return sanitizedMessage as T;
+  });
+}
+
+function formatConversationToolResultContent(content: unknown): string {
+  if (Array.isArray(content)) {
+    return content
+      .map((entry) => {
+        if (entry && typeof entry === 'object' && 'text' in entry) {
+          const text = (entry as { text?: unknown }).text;
+          return text === undefined || text === null ? String(entry) : String(text);
+        }
+        return String(entry ?? '');
+      })
+      .join('\n');
+  }
+
+  return String(content || '');
+}
+
+function formatConversationToolResultForApi(result: unknown): ToolResult {
+  const record = result && typeof result === 'object' && !Array.isArray(result)
+    ? result as Record<string, unknown>
+    : {};
+  const contentText = formatConversationToolResultContent(record.content);
+  const isError = record.isError ?? (record.success === false);
+
+  return {
+    success: !isError,
+    content: contentText,
+    error: isError ? contentText : undefined,
+  };
+}
+
+function formatConversationToolCallForApi(toolCall: { name: string; arguments: unknown }): ToolCall {
+  return {
+    name: toolCall.name,
+    arguments: toolCall.arguments && typeof toolCall.arguments === 'object' && !Array.isArray(toolCall.arguments)
+      ? toolCall.arguments as Record<string, unknown>
+      : {},
+  };
+}
+
+export function formatConversationHistoryForApi(
+  history: ConversationHistoryForApiEntryLike[],
+): ConversationHistoryMessage[] {
+  return history.map((entry) => ({
+    role: entry.role,
+    content: entry.content,
+    toolCalls: entry.toolCalls?.map(formatConversationToolCallForApi),
+    toolResults: entry.toolResults?.map(formatConversationToolResultForApi),
+    timestamp: entry.timestamp,
+  }));
+}
+
+export function buildChatCompletionRequestBody<T extends ChatRequestMessageLike>(
+  options: BuildChatCompletionRequestOptions<T>,
+): ChatCompletionRequestBody<T> {
+  const body: ChatCompletionRequestBody<T> = {
+    model: options.model,
+    messages: sanitizeMessagesForRequest(options.messages),
+    stream: options.stream ?? true,
+  };
+
+  const conversationId = options.conversationId?.trim();
+  if (conversationId) {
+    body.conversation_id = conversationId;
+  }
+
+  const profileId = options.profileId?.trim();
+  if (profileId) {
+    body.profile_id = profileId;
+  }
+
+  if (typeof options.sendPushNotification === 'boolean') {
+    body.send_push_notification = options.sendPushNotification;
+  }
+
+  return body;
+}
+
+export function normalizeChatCompletionContent(content: unknown): string | null {
+  if (!content) return null;
+  if (typeof content === 'string') return content;
+
+  if (Array.isArray(content)) {
+    const parts = content
+      .map((part) => {
+        if (typeof part === 'string') return part;
+        if (part && typeof part === 'object') {
+          if (typeof (part as { text?: unknown }).text === 'string') {
+            return (part as { text: string }).text;
+          }
+          if (typeof (part as { content?: unknown }).content === 'string') {
+            return (part as { content: string }).content;
+          }
+        }
+        return '';
+      })
+      .filter(Boolean);
+
+    return parts.length ? parts.join(' ') : null;
+  }
+
+  if (typeof content === 'object' && content !== null) {
+    if (typeof (content as { text?: unknown }).text === 'string') {
+      return (content as { text: string }).text;
+    }
+  }
+
+  return null;
+}
+
+export function extractUserPromptFromChatCompletionBody(body: unknown): string | null {
+  try {
+    if (!body || typeof body !== 'object') return null;
+
+    const requestBody = body as {
+      messages?: unknown;
+      prompt?: unknown;
+      input?: unknown;
+    };
+
+    if (Array.isArray(requestBody.messages)) {
+      for (let i = requestBody.messages.length - 1; i >= 0; i--) {
+        const message = requestBody.messages[i];
+        if (!message || typeof message !== 'object') continue;
+
+        const role = String((message as { role?: unknown }).role || '').toLowerCase();
+        if (role === 'user') {
+          const content = normalizeChatCompletionContent((message as { content?: unknown }).content);
+          if (content && content.trim()) return content.trim();
+        }
+      }
+    }
+
+    const prompt = normalizeChatCompletionContent(requestBody.prompt);
+    if (prompt && prompt.trim()) return prompt.trim();
+
+    const input = normalizeChatCompletionContent(requestBody.input);
+    if (input && input.trim()) return input.trim();
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function parseChatCompletionRequestBody(body: unknown): ParsedChatCompletionRequestBody {
+  const requestBody = body && typeof body === 'object'
+    ? body as {
+      conversation_id?: unknown;
+      profile_id?: unknown;
+      stream?: unknown;
+      send_push_notification?: unknown;
+    }
+    : {};
+
+  const rawConversationId = typeof requestBody.conversation_id === 'string'
+    ? requestBody.conversation_id
+    : undefined;
+  const rawProfileId = typeof requestBody.profile_id === 'string'
+    ? requestBody.profile_id
+    : undefined;
+
+  return {
+    prompt: extractUserPromptFromChatCompletionBody(body),
+    conversationId: rawConversationId !== '' ? rawConversationId : undefined,
+    profileId: rawProfileId !== '' ? rawProfileId : undefined,
+    stream: requestBody.stream === true,
+    sendPushNotification: requestBody.send_push_notification !== false,
+  };
+}
+
+export function validateChatCompletionRequestBody(
+  body: unknown,
+  options: ChatCompletionRequestValidationOptions = {},
+): ChatCompletionRequestValidationResult {
+  const request = parseChatCompletionRequestBody(body);
+  if (!request.prompt) {
+    return {
+      ok: false,
+      statusCode: 400,
+      body: { error: 'Missing user prompt' },
+    };
+  }
+
+  if (request.conversationId && options.validateConversationId) {
+    const conversationIdError = options.validateConversationId(request.conversationId);
+    if (conversationIdError) {
+      return {
+        ok: false,
+        statusCode: 400,
+        body: { error: conversationIdError },
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    request: {
+      ...request,
+      prompt: request.prompt,
+    },
+  };
+}
+
+export function buildChatCompletionPushNotificationPlan(
+  options: BuildChatCompletionPushNotificationPlanOptions,
+): ChatCompletionPushNotificationPlan | null {
+  if (!options.sendPushNotification || !options.pushEnabled) {
+    return null;
+  }
+
+  const maxTitleLength = Math.max(
+    0,
+    Math.floor(options.maxTitleLength ?? DEFAULT_CHAT_COMPLETION_PUSH_NOTIFICATION_TITLE_LENGTH),
+  );
+  const conversationTitle = options.prompt.length > maxTitleLength
+    ? `${options.prompt.substring(0, maxTitleLength)}...`
+    : options.prompt;
+
+  return {
+    conversationId: options.conversationId,
+    conversationTitle,
+    content: options.content,
+  };
+}
+
+export function buildOpenAIChatCompletionResponse(
+  content: string,
+  model: string,
+  options: BuildOpenAIChatCompletionResponseOptions = {},
+): OpenAIChatCompletionResponse {
+  const now = Date.now();
+
+  return {
+    id: options.id ?? `chatcmpl-${now.toString(36)}`,
+    object: 'chat.completion',
+    created: options.created ?? Math.floor(now / 1000),
+    model,
+    choices: [
+      {
+        index: 0,
+        message: { role: 'assistant', content },
+        finish_reason: 'stop',
+      },
+    ],
+  };
+}
+
+export function buildDotAgentsChatCompletionResponse(
+  options: BuildDotAgentsChatCompletionResponseOptions,
+): DotAgentsChatCompletionResponse {
+  return {
+    ...buildOpenAIChatCompletionResponse(options.content, options.model, {
+      id: options.id,
+      created: options.created,
+    }),
+    conversation_id: options.conversationId,
+    conversation_history: options.conversationHistory,
+  };
+}
+
+export function buildOpenAICompatibleModelsResponse(
+  models: OpenAICompatibleModelInput[],
+  defaultOwner = 'system',
+): OpenAICompatibleModelsResponse {
+  return {
+    object: 'list',
+    data: models.map((model) => {
+      if (typeof model === 'string') {
+        return { id: model, object: 'model', owned_by: defaultOwner };
+      }
+      return model;
+    }),
+  };
+}
+
+export function buildProviderModelsResponse(
+  providerId: CHAT_PROVIDER_ID,
+  models: ProviderModelInfoInput[],
+): ModelsResponse {
+  return {
+    providerId,
+    models: models.map((model) => ({
+      id: model.id,
+      name: model.name,
+      description: model.description,
+      context_length: model.context_length,
+    })),
+  };
+}
+
+function modelActionOk(body: unknown): ModelActionResult {
+  return {
+    statusCode: 200,
+    body,
+  };
+}
+
+function modelActionError(statusCode: number, message: string): ModelActionResult {
+  return {
+    statusCode,
+    body: { error: message },
+  };
+}
+
+function getUnknownErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+export function getModelsAction(options: Pick<ModelActionOptions, 'getConfig'>): ModelActionResult {
+  const model = resolveActiveModelId(options.getConfig());
+  return modelActionOk(buildOpenAICompatibleModelsResponse([model]));
+}
+
+export async function getProviderModelsAction(
+  providerId: string | undefined,
+  options: ModelActionOptions,
+): Promise<ModelActionResult> {
+  try {
+    if (!isChatProviderId(providerId)) {
+      return modelActionError(
+        400,
+        `Invalid provider: ${providerId}. Valid providers: ${CHAT_PROVIDER_IDS.join(', ')}`,
+      );
+    }
+
+    const models = await options.fetchAvailableModels(providerId);
+    return modelActionOk(buildProviderModelsResponse(providerId, models));
+  } catch (caughtError) {
+    options.diagnostics.logError('model-actions', 'Failed to fetch models', caughtError);
+    return modelActionError(500, getUnknownErrorMessage(caughtError, 'Failed to fetch models'));
+  }
+}
+
+export function buildChatCompletionProgressSsePayload(update: AgentProgressUpdate): DotAgentsChatCompletionProgressSsePayload {
+  return {
+    type: 'progress',
+    data: update,
+  };
+}
+
+export function buildChatCompletionDoneSsePayload(
+  options: BuildChatCompletionDoneSsePayloadOptions,
+): DotAgentsChatCompletionDoneSsePayload {
+  return {
+    type: 'done',
+    data: {
+      content: options.content,
+      conversation_id: options.conversationId,
+      conversation_history: options.conversationHistory,
+      model: options.model,
+    },
+  };
+}
+
+export function buildChatCompletionErrorSsePayload(message: string): DotAgentsChatCompletionErrorSsePayload {
+  return {
+    type: 'error',
+    data: { message },
+  };
+}
+
+export function formatServerSentEventData(payload: unknown): string {
+  return `data: ${JSON.stringify(payload)}\n\n`;
+}
+
+export function normalizeServerSentEventOrigin(origin: string | string[] | undefined): string {
+  if (Array.isArray(origin)) {
+    return origin[0] || '*';
+  }
+
+  return origin || '*';
+}
+
+export function buildChatCompletionSseHeaders(
+  origin: string | string[] | undefined,
+): ChatCompletionSseHeaders {
+  return {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    'Access-Control-Allow-Origin': normalizeServerSentEventOrigin(origin),
+    'Access-Control-Allow-Credentials': 'true',
+  };
+}
+
+export function parseChatCompletionSseEvent(event: string): ParsedChatCompletionSseEvent[] {
+  if (!event.trim()) return [];
+
+  const lines = event
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^data:\s?/, '').trim())
+    .filter(Boolean);
+
+  const parsedEvents: ParsedChatCompletionSseEvent[] = [];
+
+  for (const line of lines) {
+    if (line === '[DONE]' || line === '"[DONE]"') {
+      parsedEvents.push({ type: 'done' });
+      continue;
+    }
+
+    try {
+      const obj = JSON.parse(line);
+
+      if (obj.type === 'progress' && obj.data) {
+        parsedEvents.push({ type: 'progress', update: obj.data as AgentProgressUpdate });
+        continue;
+      }
+
+      if (obj.type === 'done' && obj.data) {
+        const completeEvent: ParsedChatCompletionSseEvent = {
+          type: 'complete',
+          content: obj.data.content || '',
+          conversationId: obj.data.conversation_id,
+          conversationHistory: obj.data.conversation_history,
+        };
+        if (typeof obj.data.model === 'string') {
+          completeEvent.model = obj.data.model;
+        }
+        parsedEvents.push(completeEvent);
+        continue;
+      }
+
+      if (obj.type === 'error' && obj.data) {
+        parsedEvents.push({ type: 'error', message: obj.data.message || 'Server error' });
+        continue;
+      }
+
+      const token = obj?.choices?.[0]?.delta?.content;
+      if (typeof token === 'string' && token.length > 0) {
+        parsedEvents.push({ type: 'token', token });
+      }
+    } catch {
+      // Ignore malformed SSE lines. The transport layer can decide whether the
+      // stream itself failed; a partial/incomplete event should not fail parsing.
+    }
+  }
+
+  return parsedEvents;
 }
 
 /**
@@ -407,6 +1096,108 @@ export function extractRespondToUserContentFromArgs(args: unknown): string | nul
   return combined || null;
 }
 
+export function normalizeUserFacingResponseContent(content: string | null | undefined): string | undefined {
+  return typeof content === 'string' && content.trim().length > 0
+    ? content
+    : undefined;
+}
+
+export function getOrderedRespondToUserContentsFromToolCalls(toolCalls?: RespondToUserToolCallLike[]): string[] {
+  if (!Array.isArray(toolCalls) || toolCalls.length === 0) return [];
+
+  const orderedResponses: string[] = [];
+  for (const toolCall of toolCalls) {
+    if (toolCall?.name !== RESPOND_TO_USER_TOOL) continue;
+    const content = extractRespondToUserContentFromArgs(toolCall.arguments);
+    if (content) {
+      orderedResponses.push(content);
+    }
+  }
+
+  return orderedResponses;
+}
+
+export function getUnmaterializedUserResponseEvents<T extends { id: string }>(
+  responseEvents: T[],
+  materializedEventIds: Iterable<string>,
+): T[] {
+  const materializedIds = new Set(materializedEventIds);
+  return responseEvents.filter((responseEvent) => !materializedIds.has(responseEvent.id));
+}
+
+export function sortAgentUserResponseEvents<T extends Pick<AgentUserResponseEvent, 'ordinal' | 'timestamp' | 'runId'>>(
+  events: T[],
+): T[] {
+  return [...events].sort((a, b) => {
+    if ((a.runId ?? 0) !== (b.runId ?? 0)) return (a.runId ?? 0) - (b.runId ?? 0);
+    if (a.ordinal !== b.ordinal) return a.ordinal - b.ordinal;
+    return a.timestamp - b.timestamp;
+  });
+}
+
+export function getNextAgentUserResponseEventOrdinal<T extends { ordinal: number }>(events: T[]): number {
+  return events.reduce((maxOrdinal, event) => Math.max(maxOrdinal, event.ordinal), 0) + 1;
+}
+
+function getLatestRespondToUserContentFromToolCalls(toolCalls?: RespondToUserToolCallLike[]): string | undefined {
+  const orderedResponses = getOrderedRespondToUserContentsFromToolCalls(toolCalls);
+  return orderedResponses[orderedResponses.length - 1];
+}
+
+export function getLatestRespondToUserContentFromConversationHistory(
+  conversationHistory: RespondToUserConversationHistoryLike,
+  sinceIndex = 0,
+): string | undefined {
+  if (!Array.isArray(conversationHistory) || conversationHistory.length === 0) return undefined;
+
+  let latestResponse: string | undefined;
+  for (const message of conversationHistory.slice(Math.max(0, sinceIndex))) {
+    if (message?.role !== 'assistant') continue;
+    const content = getLatestRespondToUserContentFromToolCalls(message.toolCalls);
+    if (content) {
+      latestResponse = content;
+    }
+  }
+
+  return latestResponse;
+}
+
+function getLatestRespondToUserEventTextFromResponseEvents(
+  responseEvents?: AgentUserResponseEvent[],
+): string | undefined {
+  if (!Array.isArray(responseEvents) || responseEvents.length === 0) return undefined;
+
+  for (const responseEvent of sortAgentUserResponseEvents(responseEvents).reverse()) {
+    const normalizedText = normalizeUserFacingResponseContent(responseEvent.text);
+    if (normalizedText) {
+      return normalizedText;
+    }
+  }
+
+  return undefined;
+}
+
+export function resolveLatestUserFacingResponse({
+  storedResponse,
+  plannedToolCalls,
+  conversationHistory,
+  sinceIndex,
+  responseEvents,
+}: {
+  storedResponse?: string;
+  plannedToolCalls?: RespondToUserToolCallLike[];
+  conversationHistory?: RespondToUserConversationHistoryLike;
+  sinceIndex?: number;
+  responseEvents?: AgentUserResponseEvent[];
+}): string | undefined {
+  const normalizedStoredResponse = normalizeUserFacingResponseContent(storedResponse);
+
+  return getLatestRespondToUserContentFromToolCalls(plannedToolCalls)
+    ?? getLatestRespondToUserEventTextFromResponseEvents(responseEvents)
+    ?? normalizedStoredResponse
+    ?? getLatestRespondToUserContentFromConversationHistory(conversationHistory ?? [], sinceIndex);
+}
+
 /**
  * Resolve a monotonic timestamp for each message, filling missing or invalid
  * timestamps relative to neighboring messages when possible.
@@ -457,19 +1248,25 @@ export function extractRespondToUserResponseEvents(
     sessionId?: string;
     runId?: number;
     idPrefix?: string;
+    sinceIndex?: number;
+    toolNameNormalizer?: (name: string) => string | undefined;
   },
 ): AgentUserResponseEvent[] {
   const events: AgentUserResponseEvent[] = [];
   const idPrefix = options?.idPrefix ?? 'history';
-  const resolvedTimestamps = resolveMessageTimestamps(messages);
+  const sinceIndex = Math.max(0, options?.sinceIndex ?? 0);
+  const scopedMessages = messages.slice(sinceIndex);
+  const resolvedTimestamps = resolveMessageTimestamps(scopedMessages);
 
-  for (let messageIndex = 0; messageIndex < messages.length; messageIndex += 1) {
-    const message = messages[messageIndex];
+  for (let localMessageIndex = 0; localMessageIndex < scopedMessages.length; localMessageIndex += 1) {
+    const messageIndex = sinceIndex + localMessageIndex;
+    const message = scopedMessages[localMessageIndex];
     if (message.role !== 'assistant' || !message.toolCalls?.length) continue;
 
     for (let toolCallIndex = 0; toolCallIndex < message.toolCalls.length; toolCallIndex += 1) {
       const call = message.toolCalls[toolCallIndex];
-      if (call.name !== RESPOND_TO_USER_TOOL) continue;
+      const toolName = options?.toolNameNormalizer ? options.toolNameNormalizer(call.name) : call.name;
+      if (toolName !== RESPOND_TO_USER_TOOL) continue;
       const content = extractRespondToUserContentFromArgs(call.arguments);
       if (!content) continue;
 
@@ -479,7 +1276,7 @@ export function extractRespondToUserResponseEvents(
         runId: options?.runId,
         ordinal: events.length + 1,
         text: content,
-        timestamp: resolvedTimestamps[messageIndex],
+        timestamp: resolvedTimestamps[localMessageIndex],
       });
     }
   }
@@ -538,6 +1335,122 @@ export function isInternalCompletionControlMessage(message: {
   }
 
   return false;
+}
+
+export function getRenderableMessageContent(message: {
+  content?: string;
+  displayContent?: string;
+}): string {
+  return message.displayContent ?? message.content ?? '';
+}
+
+export function getRespondToUserContentFromMessage(message: {
+  role: 'user' | 'assistant' | 'tool';
+  toolCalls?: Array<{ name: string; arguments: unknown }>;
+}): string | null {
+  if (message.role !== 'assistant' || !message.toolCalls?.length) {
+    return null;
+  }
+
+  for (const call of message.toolCalls) {
+    if (call.name !== RESPOND_TO_USER_TOOL) {
+      continue;
+    }
+
+    const extractedContent = extractRespondToUserContentFromArgs(call.arguments);
+    if (extractedContent) {
+      return extractedContent;
+    }
+  }
+
+  return null;
+}
+
+export function looksLikeToolPayloadContent(content?: string): boolean {
+  const trimmedContent = content?.trim();
+  if (!trimmedContent) {
+    return false;
+  }
+
+  if (/<\|tool_calls_section_begin\|>|<\|tool_call_begin\|>/i.test(trimmedContent)) {
+    return true;
+  }
+
+  if (TOOL_PAYLOAD_PREFIX_REGEX.test(trimmedContent)) {
+    return true;
+  }
+
+  if (/^tool_call$/i.test(trimmedContent)) {
+    return true;
+  }
+
+  if (TOOL_RESULT_BRACKET_REGEX.test(trimmedContent)) {
+    return true;
+  }
+
+  if (GARBLED_TOOL_CALL_REGEX.test(trimmedContent)) {
+    return true;
+  }
+
+  return false;
+}
+
+export function stripRawToolTextFromContent(content: string): string {
+  if (!content) return content;
+
+  return content
+    .replace(INLINE_TOOL_BRACKET_REGEX, '')
+    .replace(/<\|[^|]*\|>/g, '')
+    .replace(/(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.)[\s\S]*$/i, '')
+    .trim();
+}
+
+export function getVisibleMessageContent(message: {
+  role: 'user' | 'assistant' | 'tool';
+  content?: string;
+  displayContent?: string;
+  toolCalls?: Array<{ name: string; arguments?: unknown }>;
+  toolResults?: Array<unknown>;
+}): string {
+  if (message.role === 'tool') {
+    return '';
+  }
+
+  if (message.role !== 'assistant') {
+    return getRenderableMessageContent(message);
+  }
+
+  const respondToUserContent = getRespondToUserContentFromMessage(
+    message as { role: 'user' | 'assistant' | 'tool'; toolCalls?: Array<{ name: string; arguments: unknown }> },
+  );
+  if (respondToUserContent) {
+    return respondToUserContent;
+  }
+
+  const hasToolMetadata =
+    (message.toolCalls?.length ?? 0) > 0 ||
+    (message.toolResults?.length ?? 0) > 0;
+  const renderContent = getRenderableMessageContent(message);
+  const displayMessage = { ...message, content: renderContent };
+
+  if (isToolOnlyMessage(displayMessage)) {
+    return '';
+  }
+
+  if (hasToolMetadata && looksLikeToolPayloadContent(renderContent)) {
+    return '';
+  }
+
+  if (looksLikeToolPayloadContent(renderContent)) {
+    return '';
+  }
+
+  const stripped = stripRawToolTextFromContent(renderContent);
+  if (stripped.length > 0) {
+    return stripped;
+  }
+
+  return stripped === renderContent ? renderContent : '';
 }
 
 export function filterVisibleChatMessages<

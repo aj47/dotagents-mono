@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import type { ModelPreset } from './providers'
 import type { QueuedMessage, MessageQueue } from './types'
+import type {
+  KnowledgeNoteCreateRequest,
+  KnowledgeNoteResponse,
+  KnowledgeNoteUpdateRequest,
+  LoopCreateRequest,
+  LoopUpdateRequest,
+  EmergencyStopResponse,
+  OperatorDiscordLogsResponse,
+  OperatorTunnelSetupSummary,
+} from './api-types'
 import { RESPOND_TO_USER_TOOL } from './chat-utils'
 
 /**
@@ -170,5 +180,95 @@ describe('RESPOND_TO_USER_TOOL', () => {
 
   it('is a string constant', () => {
     expect(typeof RESPOND_TO_USER_TOOL).toBe('string')
+  })
+})
+
+// ── Mobile Settings API Contracts ────────────────────────────────────────────
+
+describe('settings API request/response contracts', () => {
+  it('accepts knowledge note create/update payloads from mobile editors', () => {
+    const createPayload: KnowledgeNoteCreateRequest = {
+      id: 'note-id',
+      title: 'Architecture note',
+      body: 'Details',
+      summary: 'Short summary',
+      context: 'search-only',
+      tags: ['architecture'],
+      references: ['docs/architecture.md'],
+    }
+    const updatePayload: KnowledgeNoteUpdateRequest = {
+      title: 'Updated note',
+      context: 'auto',
+      tags: [],
+      references: [],
+    }
+    const response: KnowledgeNoteResponse = {
+      note: {
+        id: 'note-id',
+        title: 'Architecture note',
+        context: 'search-only',
+        body: 'Details',
+        tags: [],
+        updatedAt: Date.now(),
+        group: 'engineering',
+        series: 'notes',
+        entryType: 'entry',
+      },
+    }
+
+    assertType<KnowledgeNoteCreateRequest>(createPayload)
+    assertType<KnowledgeNoteUpdateRequest>(updatePayload)
+    assertType<KnowledgeNoteResponse>(response)
+    expect(response.note.group).toBe('engineering')
+  })
+
+  it('accepts repeat task create/update payloads with nullable schedules', () => {
+    const createPayload: LoopCreateRequest = {
+      name: 'Daily standup',
+      prompt: 'Summarize yesterday',
+      intervalMinutes: 60,
+      enabled: true,
+      runContinuously: false,
+      schedule: { type: 'daily', times: ['09:00'] },
+    }
+    const updatePayload: LoopUpdateRequest = {
+      intervalMinutes: 15,
+      runContinuously: false,
+      schedule: null,
+    }
+
+    assertType<LoopCreateRequest>(createPayload)
+    assertType<LoopUpdateRequest>(updatePayload)
+    expect(createPayload.schedule?.type).toBe('daily')
+  })
+
+  it('accepts operator diagnostics contracts consumed by mobile Operations', () => {
+    const tunnelSetup: OperatorTunnelSetupSummary = {
+      installed: true,
+      loggedIn: true,
+      mode: 'named',
+      autoStart: false,
+      namedTunnelConfigured: true,
+      configuredTunnelId: 'abc',
+      configuredHostname: 'ops.example.com',
+      credentialsPathConfigured: true,
+      tunnelCount: 1,
+      tunnels: [{ id: 'abc', name: 'ops', createdAt: '2026-01-01T00:00:00Z' }],
+    }
+    const discordLogs: OperatorDiscordLogsResponse = {
+      count: 1,
+      logs: [{ id: 'log-1', level: 'info', message: 'Connected', timestamp: Date.now() }],
+    }
+    const emergencyStop: EmergencyStopResponse = {
+      success: true,
+      message: 'Emergency stop executed',
+      processesKilled: 2,
+      processesRemaining: 0,
+    }
+
+    assertType<OperatorTunnelSetupSummary>(tunnelSetup)
+    assertType<OperatorDiscordLogsResponse>(discordLogs)
+    assertType<EmergencyStopResponse>(emergencyStop)
+    expect(tunnelSetup.tunnels[0].name).toBe('ops')
   })
 })

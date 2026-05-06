@@ -3,41 +3,19 @@
  * Sends push notifications to registered mobile clients via Expo Push Notification Service.
  */
 
+import {
+  buildMessagePushNotificationPayload,
+  buildPushNotificationDispatchPlan,
+  type ExpoPushMessage,
+  type ExpoPushTicket,
+  type PushNotificationPayload,
+  summarizeExpoPushTickets,
+} from "@dotagents/shared/push-notifications"
+import { PushNotificationToken } from "../shared/types"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
-import { PushNotificationToken } from "../shared/types"
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
-
-export interface PushNotificationPayload {
-  title: string
-  body: string
-  data?: Record<string, unknown>
-  badge?: number
-  sound?: "default" | null
-  channelId?: string
-  priority?: "default" | "high" | "normal"
-}
-
-interface ExpoPushMessage {
-  to: string
-  title?: string
-  body?: string
-  data?: Record<string, unknown>
-  badge?: number
-  sound?: "default" | null
-  channelId?: string
-  priority?: "default" | "high" | "normal"
-}
-
-interface ExpoPushTicket {
-  status: "ok" | "error"
-  id?: string
-  message?: string
-  details?: {
-    error?: string
-  }
-}
 
 /**
  * Send push notification to all registered mobile clients
@@ -56,25 +34,12 @@ export async function sendPushNotification(payload: PushNotificationPayload): Pr
     return { success: true, sent: 0, failed: 0, errors: [] }
   }
 
-  // Increment badge count for each token and save updated counts
-  const updatedTokens = tokens.map((token: PushNotificationToken) => ({
-    ...token,
-    badgeCount: (token.badgeCount ?? 0) + 1,
-  }))
+  const dispatchPlan = buildPushNotificationDispatchPlan(tokens, payload)
+  const updatedTokens = dispatchPlan.updatedTokens
 
   // Save updated badge counts
   configStore.save({ ...cfg, pushNotificationTokens: updatedTokens })
-
-  const messages: ExpoPushMessage[] = updatedTokens.map((token: PushNotificationToken) => ({
-    to: token.token,
-    title: payload.title,
-    body: payload.body,
-    data: payload.data,
-    badge: token.badgeCount ?? 1, // Use per-token badge count
-    sound: payload.sound ?? "default",
-    channelId: payload.channelId ?? "default",
-    priority: payload.priority ?? "high",
-  }))
+  const messages: ExpoPushMessage[] = dispatchPlan.messages
 
   try {
     const response = await fetch(EXPO_PUSH_URL, {
@@ -95,43 +60,28 @@ export async function sendPushNotification(payload: PushNotificationPayload): Pr
 
     const result = await response.json() as { data: ExpoPushTicket[] }
     const tickets = result.data || []
-
-    let sent = 0
-    let failed = 0
-    const errors: string[] = []
-    const invalidTokens: string[] = []
-
-    tickets.forEach((ticket: ExpoPushTicket, index: number) => {
-      if (ticket.status === "ok") {
-        sent++
-      } else {
-        failed++
-        const errorMsg = ticket.message || ticket.details?.error || "Unknown error"
-        errors.push(errorMsg)
-
-        // Track invalid tokens for cleanup
-        // Guard against partial response from Expo API
-        if (ticket.details?.error === "DeviceNotRegistered" && tokens[index]) {
-          invalidTokens.push(tokens[index].token)
-        }
-      }
-    })
+    const ticketSummary = summarizeExpoPushTickets(tickets, tokens)
 
     // Clean up invalid tokens
-    if (invalidTokens.length > 0) {
+    if (ticketSummary.invalidTokens.length > 0) {
       // Fetch fresh config to avoid overwriting concurrent token changes
       const freshCfg = configStore.get()
       // Filter fresh config tokens (not updatedTokens) to preserve any newly-added tokens
       const cleanedTokens = (freshCfg.pushNotificationTokens || []).filter(
-        (t: PushNotificationToken) => !invalidTokens.includes(t.token)
+        (t: PushNotificationToken) => !ticketSummary.invalidTokens.includes(t.token)
       )
       configStore.save({ ...freshCfg, pushNotificationTokens: cleanedTokens })
-      diagnosticsService.logInfo("push-service", `Removed ${invalidTokens.length} invalid push tokens`)
+      diagnosticsService.logInfo("push-service", `Removed ${ticketSummary.invalidTokens.length} invalid push tokens`)
     }
 
-    diagnosticsService.logInfo("push-service", `Push notification sent: ${sent} success, ${failed} failed`)
+    diagnosticsService.logInfo("push-service", `Push notification sent: ${ticketSummary.sent} success, ${ticketSummary.failed} failed`)
 
-    return { success: failed === 0, sent, failed, errors }
+    return {
+      success: ticketSummary.failed === 0,
+      sent: ticketSummary.sent,
+      failed: ticketSummary.failed,
+      errors: ticketSummary.errors,
+    }
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     diagnosticsService.logError("push-service", `Failed to send push notification: ${errorMsg}`)
@@ -147,22 +97,11 @@ export async function sendMessageNotification(
   conversationTitle: string,
   messagePreview: string
 ): Promise<void> {
-  const truncatedPreview = messagePreview.length > 100
-    ? messagePreview.substring(0, 100) + "..."
-    : messagePreview
-
-  await sendPushNotification({
-    title: "DotAgents",
-    body: truncatedPreview,
-    data: {
-      type: "message",
-      conversationId,
-      conversationTitle,
-    },
-    // badge is now handled per-token in sendPushNotification
-    sound: "default",
-    priority: "high",
-  })
+  await sendPushNotification(buildMessagePushNotificationPayload({
+    conversationId,
+    conversationTitle,
+    messagePreview,
+  }))
 }
 
 /**
@@ -190,4 +129,3 @@ export function clearBadgeCount(tokenValue: string): void {
   configStore.save({ ...cfg, pushNotificationTokens: updatedTokens })
   diagnosticsService.logInfo("push-service", `Badge count cleared for token: ${tokenValue.substring(0, 20)}...`)
 }
-

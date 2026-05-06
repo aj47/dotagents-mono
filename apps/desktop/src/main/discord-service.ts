@@ -3,7 +3,7 @@ import { configStore } from "./config"
 import { emergencyStopAll } from "./emergency-stop"
 import { logApp } from "./debug"
 import { agentProfileService } from "./agent-profile-service"
-import { runAgent } from "./remote-server"
+import { runAgent } from "./remote-agent-runner"
 import {
   getDiscordResolvedDefaultProfileId,
   getDiscordResolvedToken,
@@ -14,10 +14,12 @@ import {
   getDiscordConversationId,
   getDiscordConversationKey,
   getDiscordMessageRejectionReason,
+  getDiscordOperatorAccessRejectionReason as getSharedDiscordOperatorAccessRejectionReason,
   isBotNameMentioned,
   splitDiscordMessageContent,
   type DiscordConversationLocation,
-} from "./discord-utils"
+} from "@dotagents/shared/discord-utils"
+import { sanitizeConfigStringList } from "@dotagents/shared/config-list-input"
 import {
   DISCORD_UNAVAILABLE_ERROR,
   getDiscordDependencyStatus,
@@ -169,72 +171,24 @@ function getOperatorHelpText(channel: string): string {
   ].join("\n")
 }
 
-function sanitizeDiscordAllowlist(values: string[] | undefined): string[] {
-  return (values ?? []).map((value) => value.trim()).filter(Boolean)
-}
-
 function getDiscordOperatorAccessRejectionReason(
   cfg: ReturnType<typeof configStore.get>,
   message: Message<boolean>,
 ): string | null {
-  const allowUserIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowUserIds)
-  const allowGuildIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowGuildIds)
-  const allowChannelIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowChannelIds)
-  const allowRoleIds = sanitizeDiscordAllowlist(cfg.discordOperatorAllowRoleIds)
-
-  // Fail closed: if no operator allowlist is configured, deny all operator
-  // commands. Previously this branch returned `null` ("allow") which combined
-  // with parsing `/ops` before the normal Discord chat gate would let any
-  // Discord user that can message the bot run privileged operator commands
-  // (e.g. `/ops restart-server`, `/ops tunnel start`) on a fresh install.
-  // Operator command access is now opt-in and must be explicitly configured
-  // via `discordOperatorAllow*` (user / role / guild / channel).
-  if (allowUserIds.length === 0 && allowGuildIds.length === 0 && allowChannelIds.length === 0 && allowRoleIds.length === 0) {
-    return "Discord operator commands are disabled. Configure discordOperatorAllowUserIds (or guild/channel/role) to enable them."
-  }
-
-  // Check if user has an allowed role (role match grants access regardless of user/channel allowlists)
-  if (allowRoleIds.length > 0 && message.member) {
-    const memberRoleIds = Array.from(message.member.roles.cache.keys())
-    if (memberRoleIds.some((roleId) => allowRoleIds.includes(roleId))) {
-      return null // Role match grants operator access
-    }
-  }
-
-  if (allowUserIds.length > 0 && allowUserIds.includes(message.author.id)) {
-    return null // User match grants operator access
-  }
-
-  if (allowGuildIds.length > 0 && message.guildId && allowGuildIds.includes(message.guildId)) {
-    // Guild match — still check channel if channel allowlist is set
-    const operatorChannelId = message.channel.isThread()
-      ? (message.channel.parentId || message.channel.id)
-      : message.channel.id
-    if (allowChannelIds.length > 0 && !allowChannelIds.includes(operatorChannelId)) {
-      return "channel is not in the Discord operator allowlist"
-    }
-    return null
-  }
-
-  // No match found
-  if (allowRoleIds.length > 0) {
-    return "user does not have an operator-allowlisted role"
-  }
-  if (allowUserIds.length > 0) {
-    return "user is not in the Discord operator allowlist"
-  }
-  if (allowGuildIds.length > 0) {
-    return "guild is not in the Discord operator allowlist"
-  }
-
-  const operatorChannelId = message.channel.isThread()
-    ? (message.channel.parentId || message.channel.id)
-    : message.channel.id
-  if (allowChannelIds.length > 0 && !allowChannelIds.includes(operatorChannelId)) {
-    return "channel is not in the Discord operator allowlist"
-  }
-
-  return null
+  const isThread = message.channel.isThread()
+  const parentChannelId = isThread && "parentId" in message.channel ? message.channel.parentId : null
+  return getSharedDiscordOperatorAccessRejectionReason({
+    authorId: message.author.id,
+    channelId: message.channel.id,
+    guildId: message.guildId,
+    parentChannelId,
+    isThread,
+    authorRoleIds: message.member ? Array.from(message.member.roles.cache.keys()) : [],
+    allowUserIds: cfg.discordOperatorAllowUserIds,
+    allowGuildIds: cfg.discordOperatorAllowGuildIds,
+    allowChannelIds: cfg.discordOperatorAllowChannelIds,
+    allowRoleIds: cfg.discordOperatorAllowRoleIds,
+  })
 }
 
 function parseOperatorCountToken(token: string | undefined): number | null {
@@ -1667,7 +1621,7 @@ class DiscordService {
   private classifyCaller(userId: string): "owner" | "allowlist" | "none" {
     if (this.applicationOwnerIds.has(userId)) return "owner"
     const cfg = configStore.get()
-    const dmAllowList = sanitizeDiscordAllowlist(cfg.discordDmAllowUserIds)
+    const dmAllowList = sanitizeConfigStringList(cfg.discordDmAllowUserIds)
     return dmAllowList.includes(userId) ? "allowlist" : "none"
   }
 
@@ -1678,7 +1632,7 @@ class DiscordService {
     const userId = interaction.user.id
     const isReadOnly = DiscordService.READ_ONLY_SLASH_COMMANDS.has(commandName)
     const cfg = configStore.get()
-    const dmAllowUserIds = sanitizeDiscordAllowlist(cfg.discordDmAllowUserIds)
+    const dmAllowUserIds = sanitizeConfigStringList(cfg.discordDmAllowUserIds)
 
     // Two-tier auth:
     //   • Read-only commands (/status, /logs, /whoami) → owner OR allowlist

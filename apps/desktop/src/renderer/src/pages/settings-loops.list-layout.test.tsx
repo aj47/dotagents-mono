@@ -36,7 +36,7 @@ describe("desktop repeat-task list layout", () => {
     const listSection = getSection(settingsLoopsSource, "  const renderLoopList = () => (", "  const renderEditForm")
 
     expect(settingsLoopsSource).toContain('type ScheduleMode = "continuous" | "interval" | "daily" | "weekly"')
-    expect(settingsLoopsSource).toContain('if (loop.runContinuously) return "Continuous"')
+    expect(settingsLoopsSource).toContain("describeLoopCadence")
     expect(listSection).toContain("{describeLoopCadence(loop)}")
     expect(settingsLoopsSource).toContain('{ mode: "continuous", label: "Continuous" }')
   })

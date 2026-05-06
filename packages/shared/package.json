@@ -66,15 +66,45 @@
       "import": "./dist/hub.mjs",
       "require": "./dist/hub.js"
     },
+    "./conversation-state": {
+      "types": "./dist/conversation-state.d.ts",
+      "import": "./dist/conversation-state.mjs",
+      "require": "./dist/conversation-state.js"
+    },
     "./agent-progress": {
       "types": "./dist/agent-progress.d.ts",
       "import": "./dist/agent-progress.mjs",
       "require": "./dist/agent-progress.js"
     },
+    "./agent-user-response-store": {
+      "types": "./dist/agent-user-response-store.d.ts",
+      "import": "./dist/agent-user-response-store.mjs",
+      "require": "./dist/agent-user-response-store.js"
+    },
     "./message-display-utils": {
       "types": "./dist/message-display-utils.d.ts",
       "import": "./dist/message-display-utils.mjs",
       "require": "./dist/message-display-utils.js"
+    },
+    "./conversation-media-assets": {
+      "types": "./dist/conversation-media-assets.d.ts",
+      "import": "./dist/conversation-media-assets.mjs",
+      "require": "./dist/conversation-media-assets.js"
+    },
+    "./message-queue-utils": {
+      "types": "./dist/message-queue-utils.d.ts",
+      "import": "./dist/message-queue-utils.mjs",
+      "require": "./dist/message-queue-utils.js"
+    },
+    "./message-queue-store": {
+      "types": "./dist/message-queue-store.d.ts",
+      "import": "./dist/message-queue-store.mjs",
+      "require": "./dist/message-queue-store.js"
+    },
+    "./mobile-app-config": {
+      "types": "./dist/mobile-app-config.d.ts",
+      "import": "./dist/mobile-app-config.mjs",
+      "require": "./dist/mobile-app-config.js"
     },
     "./stt-models": {
       "types": "./dist/stt-models.d.ts",
@@ -85,6 +115,231 @@
       "types": "./dist/api-key-error-utils.d.ts",
       "import": "./dist/api-key-error-utils.mjs",
       "require": "./dist/api-key-error-utils.js"
+    },
+    "./tool-activity-grouping": {
+      "types": "./dist/tool-activity-grouping.d.ts",
+      "import": "./dist/tool-activity-grouping.mjs",
+      "require": "./dist/tool-activity-grouping.js"
+    },
+    "./main-agent-selection": {
+      "types": "./dist/main-agent-selection.d.ts",
+      "import": "./dist/main-agent-selection.mjs",
+      "require": "./dist/main-agent-selection.js"
+    },
+    "./agent-profile-connection": {
+      "types": "./dist/agent-profile-connection.d.ts",
+      "import": "./dist/agent-profile-connection.mjs",
+      "require": "./dist/agent-profile-connection.js"
+    },
+    "./agent-selector-options": {
+      "types": "./dist/agent-selector-options.d.ts",
+      "import": "./dist/agent-selector-options.mjs",
+      "require": "./dist/agent-selector-options.js"
+    },
+    "./repeat-task-utils": {
+      "types": "./dist/repeat-task-utils.d.ts",
+      "import": "./dist/repeat-task-utils.mjs",
+      "require": "./dist/repeat-task-utils.js"
+    },
+    "./knowledge-note-grouping": {
+      "types": "./dist/knowledge-note-grouping.d.ts",
+      "import": "./dist/knowledge-note-grouping.mjs",
+      "require": "./dist/knowledge-note-grouping.js"
+    },
+    "./knowledge-note-form": {
+      "types": "./dist/knowledge-note-form.d.ts",
+      "import": "./dist/knowledge-note-form.mjs",
+      "require": "./dist/knowledge-note-form.js"
+    },
+    "./settings-api-client": {
+      "types": "./dist/settings-api-client.d.ts",
+      "import": "./dist/settings-api-client.mjs",
+      "require": "./dist/settings-api-client.js"
+    },
+    "./conversation-sync": {
+      "types": "./dist/conversation-sync.d.ts",
+      "import": "./dist/conversation-sync.mjs",
+      "require": "./dist/conversation-sync.js"
+    },
+    "./config-list-input": {
+      "types": "./dist/config-list-input.d.ts",
+      "import": "./dist/config-list-input.mjs",
+      "require": "./dist/config-list-input.js"
+    },
+    "./remote-pairing": {
+      "types": "./dist/remote-pairing.d.ts",
+      "import": "./dist/remote-pairing.mjs",
+      "require": "./dist/remote-pairing.js"
+    },
+    "./remote-server-api": {
+      "types": "./dist/remote-server-api.d.ts",
+      "import": "./dist/remote-server-api.mjs",
+      "require": "./dist/remote-server-api.js"
+    },
+    "./remote-server-controller-contracts": {
+      "types": "./dist/remote-server-controller-contracts.d.ts",
+      "import": "./dist/remote-server-controller-contracts.mjs",
+      "require": "./dist/remote-server-controller-contracts.js"
+    },
+    "./remote-server-route-contracts": {
+      "types": "./dist/remote-server-route-contracts.d.ts",
+      "import": "./dist/remote-server-route-contracts.mjs",
+      "require": "./dist/remote-server-route-contracts.js"
+    },
+    "./model-presets": {
+      "types": "./dist/model-presets.d.ts",
+      "import": "./dist/model-presets.mjs",
+      "require": "./dist/model-presets.js"
+    },
+    "./local-speech-models": {
+      "types": "./dist/local-speech-models.d.ts",
+      "import": "./dist/local-speech-models.mjs",
+      "require": "./dist/local-speech-models.js"
+    },
+    "./tts-api": {
+      "types": "./dist/tts-api.d.ts",
+      "import": "./dist/tts-api.mjs",
+      "require": "./dist/tts-api.js"
+    },
+    "./tts-voice-picker": {
+      "types": "./dist/tts-voice-picker.d.ts",
+      "import": "./dist/tts-voice-picker.mjs",
+      "require": "./dist/tts-voice-picker.js"
+    },
+    "./push-notifications": {
+      "types": "./dist/push-notifications.d.ts",
+      "import": "./dist/push-notifications.mjs",
+      "require": "./dist/push-notifications.js"
+    },
+    "./profile-api": {
+      "types": "./dist/profile-api.d.ts",
+      "import": "./dist/profile-api.mjs",
+      "require": "./dist/profile-api.js"
+    },
+    "./skills-api": {
+      "types": "./dist/skills-api.d.ts",
+      "import": "./dist/skills-api.mjs",
+      "require": "./dist/skills-api.js"
+    },
+    "./runtime-command-utils": {
+      "types": "./dist/runtime-command-utils.d.ts",
+      "import": "./dist/runtime-command-utils.mjs",
+      "require": "./dist/runtime-command-utils.js"
+    },
+    "./runtime-tool-utils": {
+      "types": "./dist/runtime-tool-utils.d.ts",
+      "import": "./dist/runtime-tool-utils.mjs",
+      "require": "./dist/runtime-tool-utils.js"
+    },
+    "./system-prompt-utils": {
+      "types": "./dist/system-prompt-utils.d.ts",
+      "import": "./dist/system-prompt-utils.mjs",
+      "require": "./dist/system-prompt-utils.js"
+    },
+    "./operator-actions": {
+      "types": "./dist/operator-actions.d.ts",
+      "import": "./dist/operator-actions.mjs",
+      "require": "./dist/operator-actions.js"
+    },
+    "./operator-audit-store": {
+      "types": "./dist/operator-audit-store.d.ts",
+      "import": "./dist/operator-audit-store.mjs",
+      "require": "./dist/operator-audit-store.js"
+    },
+    "./mcp-api": {
+      "types": "./dist/mcp-api.d.ts",
+      "import": "./dist/mcp-api.mjs",
+      "require": "./dist/mcp-api.js"
+    },
+    "./discord-utils": {
+      "types": "./dist/discord-utils.d.ts",
+      "import": "./dist/discord-utils.mjs",
+      "require": "./dist/discord-utils.js"
+    },
+    "./discord-config": {
+      "types": "./dist/discord-config.d.ts",
+      "import": "./dist/discord-config.mjs",
+      "require": "./dist/discord-config.js"
+    },
+    "./agent-run-utils": {
+      "types": "./dist/agent-run-utils.d.ts",
+      "import": "./dist/agent-run-utils.mjs",
+      "require": "./dist/agent-run-utils.js"
+    },
+    "./conversation-history-utils": {
+      "types": "./dist/conversation-history-utils.d.ts",
+      "import": "./dist/conversation-history-utils.mjs",
+      "require": "./dist/conversation-history-utils.js"
+    },
+    "./conversation-context-builder": {
+      "types": "./dist/conversation-context-builder.d.ts",
+      "import": "./dist/conversation-context-builder.mjs",
+      "require": "./dist/conversation-context-builder.js"
+    },
+    "./llm-continuation-guards": {
+      "types": "./dist/llm-continuation-guards.d.ts",
+      "import": "./dist/llm-continuation-guards.mjs",
+      "require": "./dist/llm-continuation-guards.js"
+    },
+    "./agent-profile-reference-cleanup": {
+      "types": "./dist/agent-profile-reference-cleanup.d.ts",
+      "import": "./dist/agent-profile-reference-cleanup.mjs",
+      "require": "./dist/agent-profile-reference-cleanup.js"
+    },
+    "./agent-profile-session-snapshot": {
+      "types": "./dist/agent-profile-session-snapshot.d.ts",
+      "import": "./dist/agent-profile-session-snapshot.mjs",
+      "require": "./dist/agent-profile-session-snapshot.js"
+    },
+    "./agent-profile-config-validation": {
+      "types": "./dist/agent-profile-config-validation.d.ts",
+      "import": "./dist/agent-profile-config-validation.mjs",
+      "require": "./dist/agent-profile-config-validation.js"
+    },
+    "./agent-profile-config-updates": {
+      "types": "./dist/agent-profile-config-updates.d.ts",
+      "import": "./dist/agent-profile-config-updates.mjs",
+      "require": "./dist/agent-profile-config-updates.js"
+    },
+    "./agent-profile-import-export": {
+      "types": "./dist/agent-profile-import-export.d.ts",
+      "import": "./dist/agent-profile-import-export.mjs",
+      "require": "./dist/agent-profile-import-export.js"
+    },
+    "./agent-profile-queries": {
+      "types": "./dist/agent-profile-queries.d.ts",
+      "import": "./dist/agent-profile-queries.mjs",
+      "require": "./dist/agent-profile-queries.js"
+    },
+    "./agent-profile-mutations": {
+      "types": "./dist/agent-profile-mutations.d.ts",
+      "import": "./dist/agent-profile-mutations.mjs",
+      "require": "./dist/agent-profile-mutations.js"
+    },
+    "./agent-profile-conversations": {
+      "types": "./dist/agent-profile-conversations.d.ts",
+      "import": "./dist/agent-profile-conversations.mjs",
+      "require": "./dist/agent-profile-conversations.js"
+    },
+    "./agent-profile-acpx-migration": {
+      "types": "./dist/agent-profile-acpx-migration.d.ts",
+      "import": "./dist/agent-profile-acpx-migration.mjs",
+      "require": "./dist/agent-profile-acpx-migration.js"
+    },
+    "./agent-profile-factories": {
+      "types": "./dist/agent-profile-factories.d.ts",
+      "import": "./dist/agent-profile-factories.mjs",
+      "require": "./dist/agent-profile-factories.js"
+    },
+    "./agent-profile-storage": {
+      "types": "./dist/agent-profile-storage.d.ts",
+      "import": "./dist/agent-profile-storage.mjs",
+      "require": "./dist/agent-profile-storage.js"
+    },
+    "./agent-profile-legacy-converters": {
+      "types": "./dist/agent-profile-legacy-converters.d.ts",
+      "import": "./dist/agent-profile-legacy-converters.mjs",
+      "require": "./dist/agent-profile-legacy-converters.js"
     }
   },
   "scripts": {
@@ -104,4 +359,3 @@
   ],
   "private": true
 }
-

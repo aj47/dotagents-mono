@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import type { AgentSkill } from "@shared/types"
+import type { AgentSkill } from "@dotagents/core"
 import { getAgentsLayerPaths } from "./modular-config"
 import {
   getAgentsSkillsBackupDir,

@@ -19,199 +19,220 @@ import {
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
 } from '../lib/accessibility';
-import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, AgentProfile, Loop } from '../lib/settingsApi';
+import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, AgentProfile, Loop, LocalSpeechModelProviderId, LocalSpeechModelStatus, ModelPresetSummary } from '../lib/settingsApi';
 import { getAcpxMainAgentOptions } from '../lib/mainAgentOptions';
+import { speakRemoteTts } from '../lib/remoteTts';
 import { TTSSettings } from '../ui/TTSSettings';
 import { MicrophoneSelector } from '../ui/MicrophoneSelector';
 import Slider from '@react-native-community/slider';
+import {
+  buildKnowledgeNoteSections,
+} from '@dotagents/shared/knowledge-note-grouping';
+import {
+  filterModelOptionsByQuery,
+  getAgentModelPlaceholder,
+  getAgentModelSettingKey,
+  resolveAgentProviderId,
+  resolveConfiguredAgentModel,
+} from '@dotagents/shared/model-presets';
+import {
+  CHAT_PROVIDERS,
+  STT_PROVIDERS,
+  SUPERTONIC_TTS_LANGUAGES,
+  TTS_PROVIDERS,
+  getTtsModelSettingKey,
+  getTtsModelsForProvider,
+  getTtsVoiceSettingKey,
+  getTtsVoicesForProvider,
+  getTranscriptPostProcessingModelSettingKey,
+  type CHAT_PROVIDER_ID,
+} from '@dotagents/shared/providers';
+import { describeLoopCadence } from '@dotagents/shared/repeat-task-utils';
+import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
+import { getDefaultSttModel, KNOWN_STT_MODEL_IDS } from '@dotagents/shared/stt-models';
+import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
+import {
+  formatMcpMaxIterationsValidationMessage,
+  MCP_MAX_ITERATIONS_DEFAULT,
+  parseMcpMaxIterationsDraft,
+} from '@dotagents/shared/mcp-api';
 
-// STT Provider Options
-const STT_PROVIDERS = [
-  { label: 'OpenAI', value: 'openai' },
-  { label: 'Groq', value: 'groq' },
-  { label: 'Parakeet (Local)', value: 'parakeet' },
-] as const;
+const getRemoteTtsModelValue = (settings?: Settings | null): string | undefined => {
+  if (!settings) return undefined;
+  const key = getTtsModelSettingKey(settings.ttsProviderId || 'openai');
+  return key ? settings[key] : undefined;
+};
 
-// Chat/Agent Provider Options (for Agent and Transcript Processing)
-const CHAT_PROVIDERS = [
-  { label: 'OpenAI', value: 'openai' },
-  { label: 'Groq', value: 'groq' },
-  { label: 'Gemini', value: 'gemini' },
-] as const;
+const getRemoteTtsVoiceValue = (settings?: Settings | null): string | number | undefined => {
+  if (!settings) return undefined;
+  const key = getTtsVoiceSettingKey(settings.ttsProviderId || 'openai');
+  return key ? settings[key] : undefined;
+};
 
-// TTS Provider Options
-const TTS_PROVIDERS = [
-  { label: 'OpenAI', value: 'openai' },
-  { label: 'Groq', value: 'groq' },
-  { label: 'Gemini', value: 'gemini' },
-  { label: 'Edge TTS (Free)', value: 'edge' },
-  { label: 'Kitten', value: 'kitten' },
-  { label: 'Supertonic', value: 'supertonic' },
-] as const;
+const normalizeTtsVoiceUpdateValue = (key: keyof SettingsUpdate, value: string | number): string | number => {
+  return key === 'kittenVoiceId' ? Number(value) : String(value);
+};
 
-const LOOP_DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const SECRET_MASK = '••••••••';
 
-function describeLoopCadence(loop: Loop): string {
-  if (loop.runContinuously) return 'Continuous';
-  if (!loop.schedule) return `Every ${loop.intervalMinutes}min`;
-  const times = loop.schedule.times.join(', ');
-  if (loop.schedule.type === 'daily') return `Daily at ${times}`;
-  const days = loop.schedule.daysOfWeek.map(day => LOOP_DAY_LABELS[day] ?? String(day)).join(', ');
-  return `${days} at ${times}`;
+type ProviderSecretSettingKey = 'openaiApiKey' | 'groqApiKey' | 'geminiApiKey';
+type ProviderBaseUrlSettingKey = 'openaiBaseUrl' | 'groqBaseUrl' | 'geminiBaseUrl';
+type DiscordListSettingKey =
+  | 'discordAllowUserIds'
+  | 'discordAllowGuildIds'
+  | 'discordAllowChannelIds'
+  | 'discordAllowRoleIds'
+  | 'discordDmAllowUserIds';
+
+type ModelPresetEditorMode = 'create' | 'edit';
+
+type ModelPresetDraft = {
+  id?: string;
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  agentModel: string;
+  transcriptProcessingModel: string;
+  isBuiltIn: boolean;
+  hasApiKey: boolean;
+};
+
+const PROVIDER_CREDENTIAL_SECTIONS: Array<{
+  id: string;
+  label: string;
+  apiKey: ProviderSecretSettingKey;
+  baseUrl: ProviderBaseUrlSettingKey;
+  apiKeyPlaceholder: string;
+  baseUrlPlaceholder: string;
+}> = [
+  {
+    id: 'openai',
+    label: 'OpenAI Compatible',
+    apiKey: 'openaiApiKey',
+    baseUrl: 'openaiBaseUrl',
+    apiKeyPlaceholder: 'sk-...',
+    baseUrlPlaceholder: 'https://api.openai.com/v1',
+  },
+  {
+    id: 'groq',
+    label: 'Groq',
+    apiKey: 'groqApiKey',
+    baseUrl: 'groqBaseUrl',
+    apiKeyPlaceholder: 'gsk_...',
+    baseUrlPlaceholder: 'https://api.groq.com/openai/v1',
+  },
+  {
+    id: 'gemini',
+    label: 'Gemini',
+    apiKey: 'geminiApiKey',
+    baseUrl: 'geminiBaseUrl',
+    apiKeyPlaceholder: 'AIza...',
+    baseUrlPlaceholder: 'https://generativelanguage.googleapis.com',
+  },
+];
+
+const DISCORD_LIST_SETTING_KEYS: DiscordListSettingKey[] = [
+  'discordAllowUserIds',
+  'discordAllowGuildIds',
+  'discordAllowChannelIds',
+  'discordAllowRoleIds',
+  'discordDmAllowUserIds',
+];
+
+const DISCORD_LIST_SETTING_SECTIONS: Array<{
+  key: DiscordListSettingKey;
+  label: string;
+  placeholder: string;
+  helper: string;
+}> = [
+  {
+    key: 'discordAllowUserIds',
+    label: 'Allowed User IDs',
+    placeholder: 'One Discord user ID per line',
+    helper: 'Leave blank to allow the bot owner and configured operator allowlists.',
+  },
+  {
+    key: 'discordAllowGuildIds',
+    label: 'Allowed Server IDs',
+    placeholder: 'One Discord server ID per line',
+    helper: 'Restrict server mention handling to specific Discord servers.',
+  },
+  {
+    key: 'discordAllowChannelIds',
+    label: 'Allowed Channel IDs',
+    placeholder: 'One Discord channel or thread ID per line',
+    helper: 'Restrict server mention handling to specific channels or threads.',
+  },
+  {
+    key: 'discordAllowRoleIds',
+    label: 'Allowed Role IDs',
+    placeholder: 'One Discord role ID per line',
+    helper: 'Allow users with these roles to interact with the bot in servers.',
+  },
+  {
+    key: 'discordDmAllowUserIds',
+    label: 'DM Allowed User IDs',
+    placeholder: 'One Discord user ID per line',
+    helper: 'Restrict direct-message access to specific Discord users.',
+  },
+];
+
+const EMPTY_MODEL_PRESET_DRAFT: ModelPresetDraft = {
+  name: '',
+  baseUrl: '',
+  apiKey: '',
+  agentModel: '',
+  transcriptProcessingModel: '',
+  isBuiltIn: false,
+  hasApiKey: false,
+};
+
+function buildRemoteSettingsInputDrafts(settings: Settings): Record<string, string> {
+  return {
+    sttLanguage: settings.sttLanguage || '',
+    openaiSttLanguage: settings.openaiSttLanguage || '',
+    groqSttLanguage: settings.groqSttLanguage || '',
+    groqSttPrompt: settings.groqSttPrompt || '',
+    transcriptPostProcessingPrompt: settings.transcriptPostProcessingPrompt || '',
+    transcriptPostProcessingOpenaiModel: settings.transcriptPostProcessingOpenaiModel || '',
+    transcriptPostProcessingGroqModel: settings.transcriptPostProcessingGroqModel || '',
+    transcriptPostProcessingGeminiModel: settings.transcriptPostProcessingGeminiModel || '',
+    transcriptPostProcessingChatgptWebModel: settings.transcriptPostProcessingChatgptWebModel || '',
+    mcpMaxIterations: String(settings.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
+    whatsappAllowFrom: formatConfigListInput(settings.whatsappAllowFrom),
+    discordBotToken: settings.discordBotToken === SECRET_MASK ? '' : (settings.discordBotToken || ''),
+    discordAllowUserIds: formatConfigListInput(settings.discordAllowUserIds, { separator: 'newline' }),
+    discordAllowGuildIds: formatConfigListInput(settings.discordAllowGuildIds, { separator: 'newline' }),
+    discordAllowChannelIds: formatConfigListInput(settings.discordAllowChannelIds, { separator: 'newline' }),
+    discordAllowRoleIds: formatConfigListInput(settings.discordAllowRoleIds, { separator: 'newline' }),
+    discordDmAllowUserIds: formatConfigListInput(settings.discordDmAllowUserIds, { separator: 'newline' }),
+    openaiApiKey: settings.openaiApiKey === SECRET_MASK ? '' : (settings.openaiApiKey || ''),
+    openaiBaseUrl: settings.openaiBaseUrl || '',
+    groqApiKey: settings.groqApiKey === SECRET_MASK ? '' : (settings.groqApiKey || ''),
+    groqBaseUrl: settings.groqBaseUrl || '',
+    geminiApiKey: settings.geminiApiKey === SECRET_MASK ? '' : (settings.geminiApiKey || ''),
+    geminiBaseUrl: settings.geminiBaseUrl || '',
+    langfusePublicKey: settings.langfusePublicKey || '',
+    langfuseSecretKey: settings.langfuseSecretKey === SECRET_MASK ? '' : (settings.langfuseSecretKey || ''),
+    langfuseBaseUrl: settings.langfuseBaseUrl || '',
+    localTraceLogPath: settings.localTraceLogPath || '',
+  };
 }
 
-// OpenAI TTS Voice Options
-const OPENAI_TTS_VOICES = [
-  { label: 'Alloy', value: 'alloy' },
-  { label: 'Echo', value: 'echo' },
-  { label: 'Fable', value: 'fable' },
-  { label: 'Onyx', value: 'onyx' },
-  { label: 'Nova', value: 'nova' },
-  { label: 'Shimmer', value: 'shimmer' },
-] as const;
-
-const OPENAI_TTS_MODELS = [
-  { label: 'GPT-4o Mini TTS', value: 'gpt-4o-mini-tts' },
-  { label: 'TTS-1 (Standard)', value: 'tts-1' },
-  { label: 'TTS-1-HD (High Quality)', value: 'tts-1-hd' },
-] as const;
-
-// Groq TTS Voice Options (English) - Orpheus model voices
-const GROQ_TTS_VOICES_ENGLISH = [
-  { label: 'Autumn', value: 'autumn' },
-  { label: 'Diana', value: 'diana' },
-  { label: 'Hannah', value: 'hannah' },
-  { label: 'Austin', value: 'austin' },
-  { label: 'Daniel', value: 'daniel' },
-  { label: 'Troy', value: 'troy' },
-] as const;
-
-// Groq TTS Voice Options (Arabic Saudi) - Orpheus model voices
-const GROQ_TTS_VOICES_ARABIC = [
-  { label: 'Fahad', value: 'fahad' },
-  { label: 'Sultan', value: 'sultan' },
-  { label: 'Lulwa', value: 'lulwa' },
-  { label: 'Noura', value: 'noura' },
-] as const;
-
-const GROQ_TTS_MODELS = [
-  { label: 'Orpheus TTS (English)', value: 'canopylabs/orpheus-v1-english' },
-  { label: 'Orpheus TTS (Arabic Saudi)', value: 'canopylabs/orpheus-arabic-saudi' },
-] as const;
-
-// Gemini TTS Voice Options (30 voices)
-const GEMINI_TTS_VOICES = [
-  { label: 'Zephyr (Bright)', value: 'Zephyr' },
-  { label: 'Puck (Upbeat)', value: 'Puck' },
-  { label: 'Charon (Informative)', value: 'Charon' },
-  { label: 'Kore (Firm)', value: 'Kore' },
-  { label: 'Fenrir (Excitable)', value: 'Fenrir' },
-  { label: 'Leda (Young)', value: 'Leda' },
-  { label: 'Orus (Corporate)', value: 'Orus' },
-  { label: 'Aoede (Breezy)', value: 'Aoede' },
-  { label: 'Callirrhoe (Casual)', value: 'Callirrhoe' },
-  { label: 'Autonoe (Bright)', value: 'Autonoe' },
-  { label: 'Enceladus (Breathy)', value: 'Enceladus' },
-  { label: 'Iapetus (Clear)', value: 'Iapetus' },
-  { label: 'Umbriel (Calm)', value: 'Umbriel' },
-  { label: 'Algieba (Smooth)', value: 'Algieba' },
-  { label: 'Despina (Smooth)', value: 'Despina' },
-  { label: 'Erinome (Serene)', value: 'Erinome' },
-  { label: 'Algenib (Gravelly)', value: 'Algenib' },
-  { label: 'Rasalgethi (Informative)', value: 'Rasalgethi' },
-  { label: 'Laomedeia (Upbeat)', value: 'Laomedeia' },
-  { label: 'Achernar (Soft)', value: 'Achernar' },
-  { label: 'Alnilam (Firm)', value: 'Alnilam' },
-  { label: 'Schedar (Even)', value: 'Schedar' },
-  { label: 'Gacrux (Mature)', value: 'Gacrux' },
-  { label: 'Pulcherrima (Forward)', value: 'Pulcherrima' },
-  { label: 'Achird (Friendly)', value: 'Achird' },
-  { label: 'Zubenelgenubi (Casual)', value: 'Zubenelgenubi' },
-  { label: 'Vindemiatrix (Gentle)', value: 'Vindemiatrix' },
-  { label: 'Sadachbia (Lively)', value: 'Sadachbia' },
-  { label: 'Sadaltager (Knowledgeable)', value: 'Sadaltager' },
-  { label: 'Sulafat (Warm)', value: 'Sulafat' },
-] as const;
-
-const GEMINI_TTS_MODELS = [
-  { label: 'Gemini 2.5 Flash TTS', value: 'gemini-2.5-flash-preview-tts' },
-  { label: 'Gemini 2.5 Pro TTS', value: 'gemini-2.5-pro-preview-tts' },
-] as const;
-
-const EDGE_TTS_VOICES = [
-  { label: 'Aria (US, Female)', value: 'en-US-AriaNeural' },
-  { label: 'Guy (US, Male)', value: 'en-US-GuyNeural' },
-  { label: 'Jenny (US, Female)', value: 'en-US-JennyNeural' },
-  { label: 'Brian (US, Male)', value: 'en-US-BrianNeural' },
-  { label: 'Sonia (UK, Female)', value: 'en-GB-SoniaNeural' },
-  { label: 'Ryan (UK, Male)', value: 'en-GB-RyanNeural' },
-] as const;
-
-const EDGE_TTS_MODELS = [
-  { label: 'Edge Neural (Free)', value: 'edge-tts' },
-] as const;
-
-// Helper to get TTS voices for a provider
-const getTtsVoicesForProvider = (providerId: string, ttsModel?: string): readonly { label: string; value: string }[] => {
-  switch (providerId) {
-    case 'openai':
-      return OPENAI_TTS_VOICES;
-    case 'groq':
-      // Groq voices depend on the selected model (English vs Arabic)
-      return ttsModel === 'canopylabs/orpheus-arabic-saudi' ? GROQ_TTS_VOICES_ARABIC : GROQ_TTS_VOICES_ENGLISH;
-    case 'gemini':
-      return GEMINI_TTS_VOICES;
-    case 'edge':
-      return EDGE_TTS_VOICES;
-    default:
-      return [];
-  }
+const getRemoteTtsSpeedValue = (settings?: Settings | null): number | undefined => {
+  if (!settings) return undefined;
+  if (settings.ttsProviderId === 'openai') return settings.openaiTtsSpeed;
+  if (settings.ttsProviderId === 'edge') return settings.edgeTtsRate;
+  if (settings.ttsProviderId === 'supertonic') return settings.supertonicSpeed;
+  return undefined;
 };
 
-// Helper to get TTS models for a provider
-const getTtsModelsForProvider = (providerId: string): readonly { label: string; value: string }[] => {
-  switch (providerId) {
-    case 'openai':
-      return OPENAI_TTS_MODELS;
-    case 'groq':
-      return GROQ_TTS_MODELS;
-    case 'gemini':
-      return GEMINI_TTS_MODELS;
-    case 'edge':
-      return EDGE_TTS_MODELS;
-    default:
-      return [];
-  }
-};
-
-const getTtsModelSettingKey = (providerId?: string): keyof SettingsUpdate => {
-  switch (providerId) {
-    case 'openai':
-      return 'openaiTtsModel';
-    case 'groq':
-      return 'groqTtsModel';
-    case 'gemini':
-      return 'geminiTtsModel';
-    case 'edge':
-      return 'edgeTtsModel';
-    default:
-      return 'openaiTtsModel';
-  }
-};
-
-const getTtsVoiceSettingKey = (providerId?: string): keyof SettingsUpdate => {
-  switch (providerId) {
-    case 'openai':
-      return 'openaiTtsVoice';
-    case 'groq':
-      return 'groqTtsVoice';
-    case 'gemini':
-      return 'geminiTtsVoice';
-    case 'edge':
-      return 'edgeTtsVoice';
-    default:
-      return 'openaiTtsVoice';
-  }
+const formatLocalModelProgress = (status?: LocalSpeechModelStatus): string => {
+  if (!status) return 'Unknown';
+  if (status.downloaded) return 'Ready';
+  if (status.downloading) return `Downloading ${Math.round((status.progress ?? 0) * 100)}%`;
+  if (status.error) return 'Needs retry';
+  return 'Not installed';
 };
 
 // Enable LayoutAnimation on Android
@@ -256,6 +277,8 @@ export default function SettingsScreen({ navigation }: any) {
   const [currentProfileId, setCurrentProfileId] = useState<string | undefined>();
   const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
   const [remoteSettings, setRemoteSettings] = useState<Settings | null>(null);
+  const [localSpeechModelStatuses, setLocalSpeechModelStatuses] = useState<Partial<Record<LocalSpeechModelProviderId, LocalSpeechModelStatus>>>({});
+  const [pendingLocalSpeechModelAction, setPendingLocalSpeechModelAction] = useState<string | null>(null);
   const [isLoadingRemote, setIsLoadingRemote] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -276,6 +299,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (enabledDiff !== 0) return enabledDiff;
     return a.name.localeCompare(b.name);
   }), [skills]);
+  const knowledgeNoteSections = useMemo(() => buildKnowledgeNoteSections(knowledgeNotes), [knowledgeNotes]);
   const availableAcpMainAgents = useMemo(
     () => getAcpxMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
@@ -296,6 +320,10 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Preset picker state
   const [showPresetPicker, setShowPresetPicker] = useState(false);
+  const [showPresetEditor, setShowPresetEditor] = useState(false);
+  const [presetEditorMode, setPresetEditorMode] = useState<ModelPresetEditorMode>('create');
+  const [presetDraft, setPresetDraft] = useState<ModelPresetDraft>(EMPTY_MODEL_PRESET_DRAFT);
+  const [isSavingPreset, setIsSavingPreset] = useState(false);
 
   // TTS voice/model picker state
   const [showTtsVoicePicker, setShowTtsVoicePicker] = useState(false);
@@ -322,6 +350,7 @@ export default function SettingsScreen({ navigation }: any) {
     knowledgeNotes: false,
     agents: false,
     agentLoops: false,
+    discord: false,
   });
 
   // Debounced input state for string/number fields
@@ -440,6 +469,7 @@ export default function SettingsScreen({ navigation }: any) {
       setProfiles([]);
       setMcpServers([]);
       setRemoteSettings(null);
+      setLocalSpeechModelStatuses({});
       setIsDotAgentsServer(false);
       return;
     }
@@ -451,10 +481,11 @@ export default function SettingsScreen({ navigation }: any) {
       const errors: string[] = [];
       let successCount = 0;
 
-      const [profilesRes, serversRes, settingsRes] = await Promise.all([
+      const [profilesRes, serversRes, settingsRes, localModelsRes] = await Promise.all([
         settingsClient.getProfiles().catch((e) => { errors.push('profiles'); return null; }),
         settingsClient.getMCPServers().catch((e) => { errors.push('MCP servers'); return null; }),
         settingsClient.getSettings().catch((e) => { errors.push('settings'); return null; }),
+        settingsClient.getLocalSpeechModelStatuses().catch((e) => { errors.push('local speech models'); return null; }),
       ]);
 
       if (profilesRes) {
@@ -470,15 +501,11 @@ export default function SettingsScreen({ navigation }: any) {
         setRemoteSettings(settingsRes);
         // Sync input drafts from fetched settings (only on explicit fetch,
         // not on optimistic local updates, to avoid overwriting user's typing)
-        setInputDrafts({
-          sttLanguage: settingsRes.sttLanguage || '',
-          transcriptPostProcessingPrompt: settingsRes.transcriptPostProcessingPrompt || '',
-          mcpMaxIterations: String(settingsRes.mcpMaxIterations ?? 10),
-          whatsappAllowFrom: (settingsRes.whatsappAllowFrom || []).join(', '),
-          langfusePublicKey: settingsRes.langfusePublicKey || '',
-          langfuseSecretKey: settingsRes.langfuseSecretKey === '••••••••' ? '' : (settingsRes.langfuseSecretKey || ''),
-          langfuseBaseUrl: settingsRes.langfuseBaseUrl || '',
-        });
+        setInputDrafts(buildRemoteSettingsInputDrafts(settingsRes));
+        successCount++;
+      }
+      if (localModelsRes) {
+        setLocalSpeechModelStatuses(localModelsRes.models);
         successCount++;
       }
 
@@ -500,6 +527,15 @@ export default function SettingsScreen({ navigation }: any) {
     } finally {
       setIsLoadingRemote(false);
     }
+  }, [settingsClient]);
+
+  const refreshRemoteSettingsSnapshot = useCallback(async () => {
+    if (!settingsClient) return null;
+
+    const settingsRes = await settingsClient.getSettings();
+    setRemoteSettings(settingsRes);
+    setInputDrafts(buildRemoteSettingsInputDrafts(settingsRes));
+    return settingsRes;
   }, [settingsClient]);
 
   // Fetch skills from desktop
@@ -581,13 +617,14 @@ export default function SettingsScreen({ navigation }: any) {
       if (!settingsClient) return;
       fetchRemoteSettings();
       if (isDotAgentsServer) {
+        fetchSkills();
         fetchAgentProfiles();
         fetchKnowledgeNotes();
         fetchLoops();
       }
     });
     return unsubscribe;
-  }, [navigation, settingsClient, isDotAgentsServer, fetchRemoteSettings, fetchAgentProfiles, fetchKnowledgeNotes, fetchLoops]);
+  }, [navigation, settingsClient, isDotAgentsServer, fetchRemoteSettings, fetchSkills, fetchAgentProfiles, fetchKnowledgeNotes, fetchLoops]);
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
@@ -599,6 +636,92 @@ export default function SettingsScreen({ navigation }: any) {
     await Promise.all(fetches);
     setIsRefreshing(false);
   }, [isDotAgentsServer, fetchRemoteSettings, fetchSkills, fetchKnowledgeNotes, fetchAgentProfiles, fetchLoops]);
+
+  const refreshLocalSpeechModelStatuses = useCallback(async () => {
+    if (!settingsClient) return;
+    try {
+      const response = await settingsClient.getLocalSpeechModelStatuses();
+      setLocalSpeechModelStatuses(response.models);
+    } catch (error: any) {
+      console.warn('[Settings] Failed to refresh local speech model statuses:', error);
+    }
+  }, [settingsClient]);
+
+  useEffect(() => {
+    if (!settingsClient) return;
+    const hasActiveDownload = Object.values(localSpeechModelStatuses).some(status => status?.downloading);
+    if (!hasActiveDownload) return;
+
+    const interval = setInterval(() => {
+      void refreshLocalSpeechModelStatuses();
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [localSpeechModelStatuses, refreshLocalSpeechModelStatuses, settingsClient]);
+
+  const handleLocalSpeechModelDownload = useCallback(async (providerId: LocalSpeechModelProviderId) => {
+    if (!settingsClient) return;
+
+    setPendingLocalSpeechModelAction(`${providerId}:download`);
+    setRemoteError(null);
+    setSaveStatusMessage(null);
+    try {
+      const response = await settingsClient.downloadLocalSpeechModel(providerId);
+      if (!response.success) {
+        throw new Error(response.error || response.message || 'Failed to start model download');
+      }
+      setSaveStatusMessage(response.message);
+      const downloaded = response.details?.downloaded === true;
+      setLocalSpeechModelStatuses((current) => ({
+        ...current,
+        [providerId]: {
+          downloaded,
+          downloading: !downloaded,
+          progress: downloaded ? 1 : current[providerId]?.progress ?? 0,
+          error: undefined,
+          path: current[providerId]?.path,
+        },
+      }));
+      await refreshLocalSpeechModelStatuses();
+    } catch (error: any) {
+      console.error('[Settings] Failed to start local speech model download:', error);
+      setRemoteError(error.message || 'Failed to start model download');
+    } finally {
+      setPendingLocalSpeechModelAction(null);
+    }
+  }, [refreshLocalSpeechModelStatuses, settingsClient]);
+
+  const handleRemoteTtsTest = useCallback(async () => {
+    if (!remoteSettings?.ttsProviderId || !config.baseUrl || !config.apiKey) return;
+
+    const localProviderId = getLocalTtsSpeechModelProviderId(remoteSettings?.ttsProviderId);
+    if (localProviderId && !localSpeechModelStatuses[localProviderId]?.downloaded) {
+      setRemoteError('Download the selected local TTS model before testing its voice.');
+      return;
+    }
+
+    setPendingLocalSpeechModelAction(`${remoteSettings.ttsProviderId}:test`);
+    setRemoteError(null);
+    setSaveStatusMessage(null);
+    try {
+      const started = await speakRemoteTts('Hello. This is a test of the selected desktop text to speech voice.', {
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        providerId: remoteSettings.ttsProviderId,
+        voice: getRemoteTtsVoiceValue(remoteSettings) !== undefined ? String(getRemoteTtsVoiceValue(remoteSettings)) : undefined,
+        model: getRemoteTtsModelValue(remoteSettings),
+        rate: getRemoteTtsSpeedValue(remoteSettings),
+      });
+      if (!started) {
+        throw new Error('The desktop did not return playable speech audio.');
+      }
+      setSaveStatusMessage('Test voice started');
+    } catch (error: any) {
+      console.error('[Settings] Failed to test desktop TTS voice:', error);
+      setRemoteError(error.message || 'Failed to test desktop TTS voice');
+    } finally {
+      setPendingLocalSpeechModelAction(null);
+    }
+  }, [config.apiKey, config.baseUrl, localSpeechModelStatuses, remoteSettings]);
 
   // Handle profile switch
   const handleProfileSwitch = async (profileId: string) => {
@@ -734,6 +857,55 @@ export default function SettingsScreen({ navigation }: any) {
     }, 1000);
   }, [clearRemotePending, fetchRemoteSettings, markRemotePending, settingsClient]);
 
+  const handleRemoteListSettingUpdate = useCallback((key: DiscordListSettingKey, value: string) => {
+    markRemotePending(key);
+    setSaveStatusMessage(null);
+    setInputDrafts(prev => ({ ...prev, [key]: value }));
+
+    const parsedValues = parseConfigListInput(value, { unique: true });
+    if (inputTimeoutRefs.current[key]) {
+      clearTimeout(inputTimeoutRefs.current[key]);
+    }
+
+    inputTimeoutRefs.current[key] = setTimeout(async () => {
+      if (!settingsClient) return;
+
+      try {
+        await settingsClient.updateSettings({ [key]: parsedValues } as SettingsUpdate);
+        setRemoteSettings(prev => prev ? { ...prev, [key]: parsedValues } : null);
+        clearRemotePending(key);
+        delete inputTimeoutRefs.current[key];
+      } catch (error: any) {
+        console.error(`[Settings] Failed to update ${key}:`, error);
+        setRemoteError(error.message || `Failed to update ${key}`);
+        fetchRemoteSettings();
+      }
+    }, 1000);
+  }, [clearRemotePending, fetchRemoteSettings, markRemotePending, settingsClient]);
+
+  const handleRemoteSecretDraftChange = useCallback((key: ProviderSecretSettingKey, value: string) => {
+    markRemotePending(key);
+    setSaveStatusMessage(null);
+    setInputDrafts(prev => ({ ...prev, [key]: value }));
+  }, [markRemotePending]);
+
+  const commitRemoteSecretDraft = useCallback(async (key: ProviderSecretSettingKey) => {
+    if (!settingsClient || !pendingRemoteSaveKeys.includes(key)) return;
+
+    const value = inputDrafts[key] ?? '';
+    try {
+      await settingsClient.updateSettings({ [key]: value } as SettingsUpdate);
+      setRemoteSettings(prev => prev ? { ...prev, [key]: value ? SECRET_MASK : '' } : null);
+      clearRemotePending(key);
+      setInputDrafts(prev => ({ ...prev, [key]: '' }));
+      setSaveStatusMessage('Saved');
+    } catch (error: any) {
+      console.error(`[Settings] Failed to update ${key}:`, error);
+      setRemoteError(error.message || `Failed to update ${key}`);
+      fetchRemoteSettings();
+    }
+  }, [clearRemotePending, fetchRemoteSettings, inputDrafts, pendingRemoteSaveKeys, settingsClient]);
+
   // Cleanup input timeouts on unmount
   useEffect(() => {
     return () => {
@@ -839,6 +1011,26 @@ export default function SettingsScreen({ navigation }: any) {
       note,
     });
   }, [navigation]);
+
+  const handleSkillEdit = useCallback((skill?: Skill) => {
+    navigation.navigate('SkillEdit', {
+      skillId: skill?.id,
+      skill,
+    });
+  }, [navigation]);
+
+  const handleSkillDelete = useCallback((skill: Skill) => {
+    if (!settingsClient) return;
+    confirmDestructiveAction('Delete Skill', `Are you sure you want to delete "${skill.name}"?`, async () => {
+      try {
+        await settingsClient.deleteSkill(skill.id);
+        setSkills(prev => prev.filter(item => item.id !== skill.id));
+      } catch (error: any) {
+        console.error('[Settings] Failed to delete skill:', error);
+        Alert.alert('Error', error.message || 'Failed to delete skill');
+      }
+    });
+  }, [confirmDestructiveAction, settingsClient]);
 
   // Handle agent profile toggle
   const handleAgentProfileToggle = async (profileId: string) => {
@@ -949,7 +1141,7 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   // Fetch available models for the current provider
-  const fetchModels = useCallback(async (providerId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web') => {
+  const fetchModels = useCallback(async (providerId: CHAT_PROVIDER_ID) => {
     if (!settingsClient) return;
 
     setIsLoadingModels(true);
@@ -971,12 +1163,7 @@ export default function SettingsScreen({ navigation }: any) {
     }
   }, [settingsClient]);
 
-  const getAgentProvider = () => remoteSettings?.agentProviderId || remoteSettings?.mcpToolsProviderId || 'openai';
-
-  const getAgentModelKey = (provider: string) => provider === 'openai' ? 'agentOpenaiModel'
-    : provider === 'groq' ? 'agentGroqModel'
-    : provider === 'gemini' ? 'agentGeminiModel'
-    : 'agentChatgptWebModel';
+  const getAgentProvider = (): CHAT_PROVIDER_ID => resolveAgentProviderId(remoteSettings);
 
   // Fetch models when remote settings load or provider changes
   useEffect(() => {
@@ -987,7 +1174,7 @@ export default function SettingsScreen({ navigation }: any) {
   }, [remoteSettings?.agentProviderId, remoteSettings?.mcpToolsProviderId, settingsClient, fetchModels]);
 
   // Handle provider change
-  const handleProviderChange = async (provider: 'openai' | 'groq' | 'gemini' | 'chatgpt-web') => {
+  const handleProviderChange = async (provider: CHAT_PROVIDER_ID) => {
     if (!settingsClient || !remoteSettings || getAgentProvider() === provider) return;
 
     // Cancel any pending model update to avoid writing to the wrong provider's model key
@@ -1021,18 +1208,23 @@ export default function SettingsScreen({ navigation }: any) {
     setShowPresetPicker(false);
     try {
       await settingsClient.updateSettings({ currentModelPresetId: presetId });
-      setRemoteSettings(prev => prev ? { ...prev, currentModelPresetId: presetId } : null);
+      const nextSettings = await refreshRemoteSettingsSnapshot();
       // Reset models and fetch new ones for the new preset
       setAvailableModels([]);
       setUseCustomModel(false);
       // Fetch models for the new preset
-      if (getAgentProvider() === 'openai') {
+      if ((nextSettings?.agentProviderId || nextSettings?.mcpToolsProviderId || getAgentProvider()) === 'openai') {
         fetchModels('openai');
       }
     } catch (error: any) {
       console.error('[Settings] Failed to change preset:', error);
       setRemoteError(error.message || 'Failed to change preset');
     }
+  };
+
+  const getCurrentModelPreset = (): ModelPresetSummary | undefined => {
+    if (!remoteSettings?.availablePresets || !remoteSettings.currentModelPresetId) return undefined;
+    return remoteSettings.availablePresets.find(p => p.id === remoteSettings.currentModelPresetId);
   };
 
   // Get current preset display name
@@ -1042,12 +1234,118 @@ export default function SettingsScreen({ navigation }: any) {
     return preset?.name || 'OpenAI';
   };
 
+  const openPresetEditor = (mode: ModelPresetEditorMode, preset?: ModelPresetSummary) => {
+    setPresetEditorMode(mode);
+    if (mode === 'edit' && preset) {
+      setPresetDraft({
+        id: preset.id,
+        name: preset.name,
+        baseUrl: preset.baseUrl,
+        apiKey: '',
+        agentModel: preset.agentModel || preset.mcpToolsModel || '',
+        transcriptProcessingModel: preset.transcriptProcessingModel || '',
+        isBuiltIn: preset.isBuiltIn ?? false,
+        hasApiKey: !!preset.hasApiKey,
+      });
+    } else {
+      setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
+    }
+    setShowPresetEditor(true);
+  };
+
+  const closePresetEditor = () => {
+    if (isSavingPreset) return;
+    setShowPresetEditor(false);
+    setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
+  };
+
+  const handlePresetDraftChange = (key: keyof ModelPresetDraft, value: string) => {
+    setPresetDraft(prev => ({ ...prev, [key]: value }));
+  };
+
+  const refreshSettingsAfterPresetMutation = async () => {
+    const nextSettings = await refreshRemoteSettingsSnapshot();
+    if ((nextSettings?.agentProviderId || nextSettings?.mcpToolsProviderId) === 'openai') {
+      setAvailableModels([]);
+      fetchModels('openai');
+    }
+  };
+
+  const handlePresetEditorSave = async () => {
+    if (!settingsClient) return;
+
+    const name = presetDraft.name.trim();
+    const baseUrl = presetDraft.baseUrl.trim();
+    if (!name) {
+      setRemoteError('Endpoint name is required');
+      return;
+    }
+    if (!baseUrl) {
+      setRemoteError('Endpoint base URL is required');
+      return;
+    }
+
+    setIsSavingPreset(true);
+    setRemoteError(null);
+    try {
+      const payload = {
+        name,
+        baseUrl,
+        apiKey: presetDraft.apiKey.trim(),
+        agentModel: presetDraft.agentModel.trim(),
+        transcriptProcessingModel: presetDraft.transcriptProcessingModel.trim(),
+      };
+
+      if (presetEditorMode === 'create') {
+        await settingsClient.createModelPreset(payload);
+      } else if (presetDraft.id) {
+        await settingsClient.updateModelPreset(presetDraft.id, payload);
+      }
+
+      await refreshSettingsAfterPresetMutation();
+      setShowPresetEditor(false);
+      setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
+      setSaveStatusMessage('Saved');
+    } catch (error: any) {
+      console.error('[Settings] Failed to save endpoint:', error);
+      setRemoteError(error.message || 'Failed to save endpoint');
+    } finally {
+      setIsSavingPreset(false);
+    }
+  };
+
+  const handlePresetDelete = () => {
+    if (!settingsClient || !presetDraft.id || presetDraft.isBuiltIn) return;
+
+    confirmDestructiveAction(
+      'Delete Endpoint',
+      `Are you sure you want to delete "${presetDraft.name}"?`,
+      async () => {
+        setIsSavingPreset(true);
+        setRemoteError(null);
+        try {
+          await settingsClient.deleteModelPreset(presetDraft.id!);
+          await refreshSettingsAfterPresetMutation();
+          setShowPresetEditor(false);
+          setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
+          setSaveStatusMessage('Saved');
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete endpoint:', error);
+          setRemoteError(error.message || 'Failed to delete endpoint');
+        } finally {
+          setIsSavingPreset(false);
+        }
+      },
+      'Delete'
+    );
+  };
+
   // Handle model name change with debouncing to avoid request storms per keystroke
   const handleModelNameChange = useCallback((modelName: string) => {
     // Update draft state immediately for responsive UI
     setCustomModelDraft(modelName);
     if (remoteSettings) {
-      const pendingModelKey = getAgentModelKey(getAgentProvider());
+      const pendingModelKey = getAgentModelSettingKey(getAgentProvider());
       markRemotePending(pendingModelKey);
     }
     setSaveStatusMessage(null);
@@ -1062,7 +1360,7 @@ export default function SettingsScreen({ navigation }: any) {
       if (!settingsClient || !remoteSettings) return;
 
       const provider = getAgentProvider();
-      const modelKey = getAgentModelKey(provider);
+      const modelKey = getAgentModelSettingKey(provider);
 
       // Update local state
       setRemoteSettings(prev => prev ? { ...prev, [modelKey]: modelName } : null);
@@ -1099,21 +1397,16 @@ export default function SettingsScreen({ navigation }: any) {
   // Get current model value based on provider
   const getCurrentModelValue = () => {
     if (!remoteSettings) return '';
-    const provider = getAgentProvider();
-    if (provider === 'openai') return remoteSettings.agentOpenaiModel || remoteSettings.mcpToolsOpenaiModel || '';
-    if (provider === 'groq') return remoteSettings.agentGroqModel || remoteSettings.mcpToolsGroqModel || '';
-    if (provider === 'gemini') return remoteSettings.agentGeminiModel || remoteSettings.mcpToolsGeminiModel || '';
-    return remoteSettings.agentChatgptWebModel || remoteSettings.mcpToolsChatgptWebModel || '';
+    return resolveConfiguredAgentModel(remoteSettings, getAgentProvider(), {
+      includeFallback: false,
+      includeOpenAiPresetFallback: false,
+    });
   };
 
   // Get placeholder based on provider
   const getModelPlaceholder = () => {
     if (!remoteSettings) return '';
-    const provider = getAgentProvider();
-    if (provider === 'openai') return 'gpt-4.1-mini';
-    if (provider === 'groq') return 'openai/gpt-oss-120b';
-    if (provider === 'gemini') return 'gemini-2.5-flash';
-    return 'gpt-5.4-mini';
+    return getAgentModelPlaceholder(getAgentProvider());
   };
 
   // Get display name for current model
@@ -1133,11 +1426,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Filter models by search query
   const filteredModels = useMemo(() => {
-    if (!modelSearchQuery.trim()) return availableModels;
-    const query = modelSearchQuery.toLowerCase();
-    return availableModels.filter(
-      m => m.id.toLowerCase().includes(query) || m.name.toLowerCase().includes(query)
-    );
+    return filterModelOptionsByQuery(availableModels, modelSearchQuery);
   }, [availableModels, modelSearchQuery]);
 
   const flushAllSettingsSaves = useCallback(async () => {
@@ -1160,8 +1449,35 @@ export default function SettingsScreen({ navigation }: any) {
         if (pendingKeys.has('sttLanguage')) {
           updates.sttLanguage = inputDrafts.sttLanguage ?? '';
         }
+        if (pendingKeys.has('openaiSttLanguage')) {
+          updates.openaiSttLanguage = inputDrafts.openaiSttLanguage ?? '';
+        }
+        if (pendingKeys.has('groqSttLanguage')) {
+          updates.groqSttLanguage = inputDrafts.groqSttLanguage ?? '';
+        }
+        if (pendingKeys.has('openaiSttModel')) {
+          updates.openaiSttModel = inputDrafts.openaiSttModel ?? '';
+        }
+        if (pendingKeys.has('groqSttModel')) {
+          updates.groqSttModel = inputDrafts.groqSttModel ?? '';
+        }
+        if (pendingKeys.has('groqSttPrompt')) {
+          updates.groqSttPrompt = inputDrafts.groqSttPrompt ?? '';
+        }
         if (pendingKeys.has('transcriptPostProcessingPrompt')) {
           updates.transcriptPostProcessingPrompt = inputDrafts.transcriptPostProcessingPrompt ?? '';
+        }
+        if (pendingKeys.has('transcriptPostProcessingOpenaiModel')) {
+          updates.transcriptPostProcessingOpenaiModel = inputDrafts.transcriptPostProcessingOpenaiModel ?? '';
+        }
+        if (pendingKeys.has('transcriptPostProcessingGroqModel')) {
+          updates.transcriptPostProcessingGroqModel = inputDrafts.transcriptPostProcessingGroqModel ?? '';
+        }
+        if (pendingKeys.has('transcriptPostProcessingGeminiModel')) {
+          updates.transcriptPostProcessingGeminiModel = inputDrafts.transcriptPostProcessingGeminiModel ?? '';
+        }
+        if (pendingKeys.has('transcriptPostProcessingChatgptWebModel')) {
+          updates.transcriptPostProcessingChatgptWebModel = inputDrafts.transcriptPostProcessingChatgptWebModel ?? '';
         }
         if (pendingKeys.has('langfusePublicKey')) {
           updates.langfusePublicKey = inputDrafts.langfusePublicKey ?? '';
@@ -1169,21 +1485,34 @@ export default function SettingsScreen({ navigation }: any) {
         if (pendingKeys.has('langfuseBaseUrl')) {
           updates.langfuseBaseUrl = inputDrafts.langfuseBaseUrl ?? '';
         }
+        if (pendingKeys.has('localTraceLogPath')) {
+          updates.localTraceLogPath = inputDrafts.localTraceLogPath ?? '';
+        }
         if (pendingKeys.has('mcpMaxIterations')) {
-          const parsedIterations = parseInt(inputDrafts.mcpMaxIterations ?? '', 10);
-          if (Number.isNaN(parsedIterations) || parsedIterations < 1 || parsedIterations > 100) {
-            throw new Error('Max Iterations must be between 1 and 100 before saving.');
+          const parsedIterations = parseMcpMaxIterationsDraft(inputDrafts.mcpMaxIterations ?? '');
+          if (parsedIterations === null) {
+            throw new Error(formatMcpMaxIterationsValidationMessage());
           }
           updates.mcpMaxIterations = parsedIterations;
         }
         if (pendingKeys.has('whatsappAllowFrom')) {
-          updates.whatsappAllowFrom = (inputDrafts.whatsappAllowFrom ?? '')
-            .split(',')
-            .map((value) => value.trim())
-            .filter(Boolean);
+          updates.whatsappAllowFrom = parseConfigListInput(inputDrafts.whatsappAllowFrom ?? '');
+        }
+        for (const key of DISCORD_LIST_SETTING_KEYS) {
+          if (pendingKeys.has(key)) {
+            updates[key] = parseConfigListInput(inputDrafts[key] ?? '', { unique: true });
+          }
+        }
+        for (const section of PROVIDER_CREDENTIAL_SECTIONS) {
+          if (pendingKeys.has(section.baseUrl)) {
+            updates[section.baseUrl] = inputDrafts[section.baseUrl] ?? '';
+          }
+          if (pendingKeys.has(section.apiKey)) {
+            updates[section.apiKey] = inputDrafts[section.apiKey] ?? '';
+          }
         }
 
-        const modelKey = getAgentModelKey(getAgentProvider());
+        const modelKey = getAgentModelSettingKey(getAgentProvider());
         if (pendingKeys.has(modelKey)) {
           if (modelKey === 'agentOpenaiModel') {
             updates.agentOpenaiModel = customModelDraft;
@@ -1200,17 +1529,31 @@ export default function SettingsScreen({ navigation }: any) {
         if (pendingKeys.has('langfuseSecretKey') && langfuseSecretDraft) {
           updates.langfuseSecretKey = langfuseSecretDraft;
         }
+        if (pendingKeys.has('discordBotToken')) {
+          updates.discordBotToken = inputDrafts.discordBotToken ?? '';
+        }
 
         if (Object.keys(updates).length > 0) {
           await settingsClient.updateSettings(updates);
           setRemoteSettings((prev) => prev ? {
             ...prev,
             ...updates,
+            ...(updates.openaiApiKey !== undefined ? { openaiApiKey: updates.openaiApiKey ? SECRET_MASK : '' } : {}),
+            ...(updates.groqApiKey !== undefined ? { groqApiKey: updates.groqApiKey ? SECRET_MASK : '' } : {}),
+            ...(updates.geminiApiKey !== undefined ? { geminiApiKey: updates.geminiApiKey ? SECRET_MASK : '' } : {}),
+            ...(updates.discordBotToken !== undefined ? { discordBotToken: updates.discordBotToken ? SECRET_MASK : '' } : {}),
             ...(updates.langfuseSecretKey ? { langfuseSecretKey: '••••••••' } : {}),
           } : null);
 
-          if (updates.langfuseSecretKey) {
-            setInputDrafts((prev) => ({ ...prev, langfuseSecretKey: '' }));
+          if (updates.langfuseSecretKey || updates.discordBotToken !== undefined || updates.openaiApiKey !== undefined || updates.groqApiKey !== undefined || updates.geminiApiKey !== undefined) {
+            setInputDrafts((prev) => ({
+              ...prev,
+              ...(updates.langfuseSecretKey ? { langfuseSecretKey: '' } : {}),
+              ...(updates.discordBotToken !== undefined ? { discordBotToken: '' } : {}),
+              ...(updates.openaiApiKey !== undefined ? { openaiApiKey: '' } : {}),
+              ...(updates.groqApiKey !== undefined ? { groqApiKey: '' } : {}),
+              ...(updates.geminiApiKey !== undefined ? { geminiApiKey: '' } : {}),
+            }));
           }
         }
 
@@ -1279,6 +1622,51 @@ export default function SettingsScreen({ navigation }: any) {
       </View>
     );
   };
+
+  const renderKnowledgeNoteRow = (note: KnowledgeNote) => (
+    <View key={note.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
+      <TouchableOpacity
+        style={styles.agentInfoPressable}
+        onPress={() => handleKnowledgeNoteEdit(note)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.serverInfo, { flex: 1 }]}>
+          <Text style={styles.serverName}>{note.title}</Text>
+          <Text style={styles.serverMeta} numberOfLines={2}>{note.summary || note.body}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 }}>
+            {note.tags.map((tag, idx) => (
+              <View key={idx} style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
+                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{tag}</Text>
+              </View>
+            ))}
+            <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
+              <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{note.context}</Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+      <View style={styles.noteActions}>
+        {note.context === 'search-only' && (
+          <TouchableOpacity
+            style={styles.notePromoteButton}
+            onPress={() => handleKnowledgeNotePromote(note)}
+            accessibilityLabel={`Promote note ${note.title} to auto context`}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.notePromoteButtonText}>Promote to auto</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={styles.noteDeleteButton}
+          onPress={() => handleKnowledgeNoteDelete(note.id)}
+          accessibilityLabel={`Delete note ${note.title}`}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.noteDeleteButtonText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   if (!ready) return null;
 
@@ -1688,6 +2076,45 @@ export default function SettingsScreen({ navigation }: any) {
               </CollapsibleSection>
             )}
 
+            {/* Provider Setup */}
+            {remoteSettings && (
+              <CollapsibleSection id="providerSetup" title="Provider Setup">
+                {PROVIDER_CREDENTIAL_SECTIONS.map((provider) => {
+                  const hasConfiguredKey = remoteSettings[provider.apiKey] === SECRET_MASK;
+                  return (
+                    <View key={provider.id} style={styles.providerCredentialGroup}>
+                      <Text style={styles.subsectionTitle}>{provider.label}</Text>
+
+                      <Text style={styles.label}>API Key</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inputDrafts[provider.apiKey] ?? ''}
+                        onChangeText={(v) => handleRemoteSecretDraftChange(provider.apiKey, v)}
+                        onBlur={() => { void commitRemoteSecretDraft(provider.apiKey); }}
+                        placeholder={hasConfiguredKey ? 'Configured' : provider.apiKeyPlaceholder}
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        autoCapitalize='none'
+                        autoCorrect={false}
+                        secureTextEntry
+                      />
+
+                      <Text style={styles.label}>Base URL</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inputDrafts[provider.baseUrl] ?? ''}
+                        onChangeText={(v) => handleRemoteSettingUpdate(provider.baseUrl, v)}
+                        placeholder={provider.baseUrlPlaceholder}
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        autoCapitalize='none'
+                        autoCorrect={false}
+                        keyboardType="url"
+                      />
+                    </View>
+                  );
+                })}
+              </CollapsibleSection>
+            )}
+
             {/* 4a. Profile & Model */}
             {remoteSettings && (
               <CollapsibleSection id="profileModel" title="Profile & Model">
@@ -1777,6 +2204,45 @@ export default function SettingsScreen({ navigation }: any) {
                         <Text style={styles.modelSelectorChevron}>▼</Text>
                       </View>
                     </TouchableOpacity>
+                    {(() => {
+                      const currentPreset = getCurrentModelPreset();
+                      return (
+                        <View style={styles.endpointPanel}>
+                          <View style={styles.endpointMetaRow}>
+                            <Text style={styles.endpointBaseUrl} numberOfLines={1}>
+                              {currentPreset?.baseUrl || 'No base URL set'}
+                            </Text>
+                            <Text style={[
+                              styles.endpointKeyBadge,
+                              currentPreset?.hasApiKey && styles.endpointKeyBadgeActive,
+                            ]}>
+                              {currentPreset?.hasApiKey ? 'Key set' : 'No key'}
+                            </Text>
+                          </View>
+                          <View style={styles.profileActions}>
+                            <TouchableOpacity
+                              style={styles.profileActionButton}
+                              onPress={() => currentPreset && openPresetEditor('edit', currentPreset)}
+                              disabled={!currentPreset}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Configure endpoint ${currentPreset?.name || getCurrentPresetName()}`}
+                            >
+                              <Text style={styles.profileActionButtonText}>
+                                {currentPreset?.isBuiltIn ? 'Configure' : 'Edit Endpoint'}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.profileActionButton}
+                              onPress={() => openPresetEditor('create')}
+                              accessibilityRole="button"
+                              accessibilityLabel="Create endpoint"
+                            >
+                              <Text style={styles.profileActionButtonText}>New Endpoint</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })()}
                   </>
                 )}
 
@@ -1881,6 +2347,29 @@ export default function SettingsScreen({ navigation }: any) {
 
                 {remoteSettings.transcriptPostProcessingEnabled && (
                   <>
+                    {(() => {
+                      const providerId = remoteSettings.transcriptPostProcessingProviderId || 'openai';
+                      const modelKey = getTranscriptPostProcessingModelSettingKey(providerId);
+                      if (!modelKey) return null;
+
+                      return (
+                        <>
+                          <Text style={styles.label}>Model</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={inputDrafts[modelKey] ?? remoteSettings[modelKey] ?? ''}
+                            onChangeText={(v) => handleRemoteSettingUpdate(modelKey, v)}
+                            placeholder="Use provider default"
+                            placeholderTextColor={theme.colors.mutedForeground}
+                            autoCapitalize='none'
+                          />
+                          <Text style={styles.helperText}>
+                            Provider model used to clean up speech-to-text transcripts.
+                          </Text>
+                        </>
+                      );
+                    })()}
+
                     <Text style={styles.label}>Prompt</Text>
                     <TextInput
                       style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
@@ -1930,6 +2419,73 @@ export default function SettingsScreen({ navigation }: any) {
                   Language code for speech-to-text (e.g., en, es, fr)
                 </Text>
 
+                {(remoteSettings.sttProviderId === 'openai' || remoteSettings.sttProviderId === 'groq') && (() => {
+                  const providerId = remoteSettings.sttProviderId;
+                  const languageKey = providerId === 'openai' ? 'openaiSttLanguage' : 'groqSttLanguage';
+                  const languageLabel = providerId === 'openai' ? 'OpenAI Language Override' : 'Groq Language Override';
+                  const modelKey = providerId === 'openai' ? 'openaiSttModel' : 'groqSttModel';
+                  const currentModel = remoteSettings[modelKey] || getDefaultSttModel(providerId) || '';
+
+                  return (
+                    <>
+                      <Text style={styles.label}>{languageLabel}</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inputDrafts[languageKey] ?? ''}
+                        onChangeText={(v) => handleRemoteSettingUpdate(languageKey, v)}
+                        placeholder="Use global language"
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        autoCapitalize='none'
+                      />
+                      <Text style={styles.helperText}>
+                        Leave blank to use STT Language.
+                      </Text>
+
+                      <Text style={styles.label}>STT Model</Text>
+                      <View style={styles.providerSelector}>
+                        {KNOWN_STT_MODEL_IDS[providerId].map((modelId) => (
+                          <Pressable
+                            key={modelId}
+                            style={[
+                              styles.providerOption,
+                              currentModel === modelId && styles.providerOptionActive,
+                            ]}
+                            onPress={() => handleRemoteSettingUpdate(modelKey, modelId)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Use ${modelId} for ${providerId} speech-to-text`}
+                          >
+                            <Text style={[
+                              styles.providerOptionText,
+                              currentModel === modelId && styles.providerOptionTextActive,
+                            ]}>
+                              {modelId}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </>
+                  );
+                })()}
+
+                {remoteSettings.sttProviderId === 'groq' && (
+                  <>
+                    <Text style={styles.label}>Groq Prompt</Text>
+                    <TextInput
+                      style={[styles.input, { minHeight: 88 }]}
+                      value={inputDrafts.groqSttPrompt ?? ''}
+                      onChangeText={(v) => handleRemoteSettingUpdate('groqSttPrompt', v)}
+                      placeholder="Optional spelling or style hints for Groq transcription"
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                    />
+                    <Text style={styles.helperText}>
+                      Optional hints for spelling unfamiliar words or names.
+                    </Text>
+                  </>
+                )}
+
                 <View style={styles.row}>
                   <Text style={styles.label}>Transcription Preview</Text>
                   <Switch
@@ -1942,6 +2498,78 @@ export default function SettingsScreen({ navigation }: any) {
                 <Text style={styles.helperText}>
                   Show live transcription while recording
                 </Text>
+
+                {remoteSettings.sttProviderId === 'parakeet' && (
+                  <View style={styles.localSpeechModelBlock}>
+                    {(() => {
+                      const status = localSpeechModelStatuses.parakeet;
+                      const progress = Math.max(0, Math.min(1, status?.progress ?? 0));
+                      const isDownloading = !!status?.downloading || pendingLocalSpeechModelAction === 'parakeet:download';
+                      const downloadDisabled = isDownloading || !!status?.downloaded;
+
+                      return (
+                        <>
+                          <View style={styles.row}>
+                            <View style={styles.rowCopy}>
+                              <Text style={styles.label}>Parakeet Model</Text>
+                              <Text style={styles.helperText}>{formatLocalModelProgress(status)}</Text>
+                            </View>
+                            <TouchableOpacity
+                              style={[
+                                styles.profileActionButton,
+                                styles.localSpeechModelButton,
+                                downloadDisabled && styles.profileActionButtonDisabled,
+                              ]}
+                              onPress={() => handleLocalSpeechModelDownload('parakeet')}
+                              disabled={downloadDisabled}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`${status?.error ? 'Retry' : 'Download'} Parakeet model`)}
+                            >
+                              <Text style={styles.profileActionButtonText}>
+                                {status?.downloaded
+                                  ? 'Ready'
+                                  : isDownloading
+                                    ? 'Downloading...'
+                                    : status?.error
+                                      ? 'Retry'
+                                      : 'Download'}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {(status?.downloading || isDownloading) && (
+                            <View style={styles.localSpeechProgressTrack}>
+                              <View style={[styles.localSpeechProgressFill, { width: `${Math.round(progress * 100)}%` }]} />
+                            </View>
+                          )}
+
+                          {status?.error ? <Text style={styles.warningText}>{status.error}</Text> : null}
+                        </>
+                      );
+                    })()}
+
+                    <Text style={[styles.label, { marginTop: spacing.sm }]}>CPU Threads</Text>
+                    <View style={styles.providerSelector}>
+                      {[1, 2, 4, 8].map((threadCount) => (
+                        <Pressable
+                          key={threadCount}
+                          style={[
+                            styles.providerOption,
+                            (remoteSettings.parakeetNumThreads ?? 2) === threadCount && styles.providerOptionActive,
+                          ]}
+                          onPress={() => handleRemoteSettingUpdate('parakeetNumThreads', threadCount)}
+                        >
+                          <Text style={[
+                            styles.providerOptionText,
+                            (remoteSettings.parakeetNumThreads ?? 2) === threadCount && styles.providerOptionTextActive,
+                          ]}>
+                            {threadCount}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                )}
 
               </CollapsibleSection>
             )}
@@ -1989,9 +2617,8 @@ export default function SettingsScreen({ navigation }: any) {
                     </ScrollView>
 
                     {/* Per-provider Voice/Model Settings */}
-                    {(remoteSettings.ttsProviderId === 'openai' || remoteSettings.ttsProviderId === 'groq' || remoteSettings.ttsProviderId === 'gemini' || remoteSettings.ttsProviderId === 'edge') && (
+                    {getTtsModelsForProvider(remoteSettings.ttsProviderId || 'openai').length > 0 && (
                       <>
-                        {/* TTS Model Selector */}
                         <Text style={[styles.label, { marginTop: spacing.sm }]}>Model</Text>
                         <TouchableOpacity
                           style={styles.modelSelector}
@@ -2001,10 +2628,7 @@ export default function SettingsScreen({ navigation }: any) {
                             <Text style={styles.modelSelectorText}>
                               {(() => {
                                 const models = getTtsModelsForProvider(remoteSettings.ttsProviderId || 'openai');
-                                const modelValue = remoteSettings.ttsProviderId === 'openai' ? remoteSettings.openaiTtsModel
-                                  : remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel
-                                  : remoteSettings.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsModel
-                                  : remoteSettings.edgeTtsModel;
+                                const modelValue = getRemoteTtsModelValue(remoteSettings);
                                 const model = models.find(m => m.value === modelValue);
                                 return model?.label || modelValue || 'Select model';
                               })()}
@@ -2012,8 +2636,14 @@ export default function SettingsScreen({ navigation }: any) {
                             <Text style={styles.modelSelectorChevron}>▼</Text>
                           </View>
                         </TouchableOpacity>
+                      </>
+                    )}
 
-                        {/* TTS Voice Selector */}
+                    {getTtsVoicesForProvider(
+                      remoteSettings.ttsProviderId || 'openai',
+                      remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined,
+                    ).length > 0 && (
+                      <>
                         <Text style={[styles.label, { marginTop: spacing.sm }]}>Voice</Text>
                         <TouchableOpacity
                           style={styles.modelSelector}
@@ -2024,72 +2654,193 @@ export default function SettingsScreen({ navigation }: any) {
                               {(() => {
                                 const ttsModel = remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
                                 const voices = getTtsVoicesForProvider(remoteSettings.ttsProviderId || 'openai', ttsModel);
-                                const voiceValue = remoteSettings.ttsProviderId === 'openai' ? remoteSettings.openaiTtsVoice
-                                  : remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsVoice
-                                  : remoteSettings.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsVoice
-                                  : remoteSettings.edgeTtsVoice;
-                                const voice = voices.find(v => v.value === voiceValue);
-                                return voice?.label || voiceValue || 'Select voice';
+                                const voiceValue = getRemoteTtsVoiceValue(remoteSettings);
+                                const voice = voices.find(v => String(v.value) === String(voiceValue));
+                                return voice?.label || String(voiceValue ?? '') || 'Select voice';
                               })()}
                             </Text>
                             <Text style={styles.modelSelectorChevron}>▼</Text>
                           </View>
                         </TouchableOpacity>
-
-                        {/* OpenAI Speed Slider */}
-                        {remoteSettings.ttsProviderId === 'openai' && (
-                          <View style={{ marginTop: spacing.sm }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Text style={styles.label}>Speed</Text>
-                              <Text style={[styles.helperText, { marginTop: 0 }]}>
-                                {(remoteSettings.openaiTtsSpeed ?? 1.0).toFixed(1)}x
-                              </Text>
-                            </View>
-                            <Slider
-                              style={{ width: '100%', height: 40 }}
-                              minimumValue={0.25}
-                              maximumValue={4.0}
-                              step={0.25}
-                              value={remoteSettings.openaiTtsSpeed ?? 1.0}
-                              onSlidingComplete={(v) => handleRemoteSettingUpdate('openaiTtsSpeed', v)}
-                              minimumTrackTintColor={theme.colors.primary}
-                              maximumTrackTintColor={theme.colors.muted}
-                              thumbTintColor={theme.colors.primary}
-                            />
-                          </View>
-                        )}
-
-                        {remoteSettings.ttsProviderId === 'edge' && (
-                          <View style={{ marginTop: spacing.sm }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Text style={styles.label}>Speed</Text>
-                              <Text style={[styles.helperText, { marginTop: 0 }]}>
-                                {(remoteSettings.edgeTtsRate ?? 1.0).toFixed(1)}x
-                              </Text>
-                            </View>
-                            <Slider
-                              style={{ width: '100%', height: 40 }}
-                              minimumValue={0.5}
-                              maximumValue={2.0}
-                              step={0.1}
-                              value={remoteSettings.edgeTtsRate ?? 1.0}
-                              onSlidingComplete={(v) => handleRemoteSettingUpdate('edgeTtsRate', v)}
-                              minimumTrackTintColor={theme.colors.primary}
-                              maximumTrackTintColor={theme.colors.muted}
-                              thumbTintColor={theme.colors.primary}
-                            />
-                          </View>
-                        )}
                       </>
                     )}
 
-                    {/* Kitten/Supertonic notice */}
-                    {(remoteSettings.ttsProviderId === 'kitten' || remoteSettings.ttsProviderId === 'supertonic') && (
-                      <Text style={[styles.helperText, { marginTop: spacing.sm }]}>
-                        {remoteSettings.ttsProviderId === 'kitten'
-                          ? 'Kitten uses local TTS. Configure voice in desktop settings.'
-                          : 'Supertonic uses local TTS. Configure voice in desktop settings.'}
-                      </Text>
+                    {(() => {
+                      const localProviderId = getLocalTtsSpeechModelProviderId(remoteSettings?.ttsProviderId);
+                      if (!localProviderId) return null;
+
+                      const status = localSpeechModelStatuses[localProviderId];
+                      const progress = Math.max(0, Math.min(1, status?.progress ?? 0));
+                      const isDownloading = !!status?.downloading || pendingLocalSpeechModelAction === `${localProviderId}:download`;
+                      const isTesting = pendingLocalSpeechModelAction === `${localProviderId}:test`;
+                      const downloadDisabled = isDownloading || !!status?.downloaded;
+
+                      return (
+                        <View style={styles.localSpeechModelBlock}>
+                          <View style={styles.row}>
+                            <View style={styles.rowCopy}>
+                              <Text style={styles.label}>{getLocalSpeechModelLabel(localProviderId)} Model</Text>
+                              <Text style={styles.helperText}>{formatLocalModelProgress(status)}</Text>
+                            </View>
+                            <TouchableOpacity
+                              style={[
+                                styles.profileActionButton,
+                                styles.localSpeechModelButton,
+                                downloadDisabled && styles.profileActionButtonDisabled,
+                              ]}
+                              onPress={() => handleLocalSpeechModelDownload(localProviderId)}
+                              disabled={downloadDisabled}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`${status?.error ? 'Retry' : 'Download'} ${localProviderId} model`)}
+                            >
+                              <Text style={styles.profileActionButtonText}>
+                                {status?.downloaded
+                                  ? 'Ready'
+                                  : isDownloading
+                                    ? 'Downloading...'
+                                    : status?.error
+                                      ? 'Retry'
+                                      : 'Download'}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {(status?.downloading || isDownloading) && (
+                            <View style={styles.localSpeechProgressTrack}>
+                              <View style={[styles.localSpeechProgressFill, { width: `${Math.round(progress * 100)}%` }]} />
+                            </View>
+                          )}
+
+                          {status?.error ? <Text style={styles.warningText}>{status.error}</Text> : null}
+
+                          {status?.downloaded && (
+                            <TouchableOpacity
+                              style={[
+                                styles.profileActionButton,
+                                styles.localSpeechTestButton,
+                                isTesting && styles.profileActionButtonDisabled,
+                              ]}
+                              onPress={handleRemoteTtsTest}
+                              disabled={isTesting}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel('Test selected desktop TTS voice')}
+                            >
+                              <Text style={styles.profileActionButtonText}>
+                                {isTesting ? 'Testing...' : 'Test voice'}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
+                    })()}
+
+                    {remoteSettings.ttsProviderId === 'openai' && (
+                      <View style={{ marginTop: spacing.sm }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={styles.label}>Speed</Text>
+                          <Text style={[styles.helperText, { marginTop: 0 }]}>
+                            {(remoteSettings.openaiTtsSpeed ?? 1.0).toFixed(1)}x
+                          </Text>
+                        </View>
+                        <Slider
+                          style={{ width: '100%', height: 40 }}
+                          minimumValue={0.25}
+                          maximumValue={4.0}
+                          step={0.25}
+                          value={remoteSettings.openaiTtsSpeed ?? 1.0}
+                          onSlidingComplete={(v) => handleRemoteSettingUpdate('openaiTtsSpeed', v)}
+                          minimumTrackTintColor={theme.colors.primary}
+                          maximumTrackTintColor={theme.colors.muted}
+                          thumbTintColor={theme.colors.primary}
+                        />
+                      </View>
+                    )}
+
+                    {remoteSettings.ttsProviderId === 'edge' && (
+                      <View style={{ marginTop: spacing.sm }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text style={styles.label}>Speed</Text>
+                          <Text style={[styles.helperText, { marginTop: 0 }]}>
+                            {(remoteSettings.edgeTtsRate ?? 1.0).toFixed(1)}x
+                          </Text>
+                        </View>
+                        <Slider
+                          style={{ width: '100%', height: 40 }}
+                          minimumValue={0.5}
+                          maximumValue={2.0}
+                          step={0.1}
+                          value={remoteSettings.edgeTtsRate ?? 1.0}
+                          onSlidingComplete={(v) => handleRemoteSettingUpdate('edgeTtsRate', v)}
+                          minimumTrackTintColor={theme.colors.primary}
+                          maximumTrackTintColor={theme.colors.muted}
+                          thumbTintColor={theme.colors.primary}
+                        />
+                      </View>
+                    )}
+
+                    {remoteSettings.ttsProviderId === 'supertonic' && (
+                      <>
+                        <Text style={[styles.label, { marginTop: spacing.sm }]}>Language</Text>
+                        <View style={styles.providerSelector}>
+                          {SUPERTONIC_TTS_LANGUAGES.map((language) => (
+                            <Pressable
+                              key={language.value}
+                              style={[
+                                styles.providerOption,
+                                (remoteSettings.supertonicLanguage ?? 'en') === language.value && styles.providerOptionActive,
+                              ]}
+                              onPress={() => handleRemoteSettingUpdate('supertonicLanguage', language.value)}
+                            >
+                              <Text style={[
+                                styles.providerOptionText,
+                                (remoteSettings.supertonicLanguage ?? 'en') === language.value && styles.providerOptionTextActive,
+                              ]}>
+                                {language.label}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+
+                        <View style={{ marginTop: spacing.sm }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={styles.label}>Speed</Text>
+                            <Text style={[styles.helperText, { marginTop: 0 }]}>
+                              {(remoteSettings.supertonicSpeed ?? 1.05).toFixed(2)}x
+                            </Text>
+                          </View>
+                          <Slider
+                            style={{ width: '100%', height: 40 }}
+                            minimumValue={0.5}
+                            maximumValue={2.0}
+                            step={0.05}
+                            value={remoteSettings.supertonicSpeed ?? 1.05}
+                            onSlidingComplete={(v) => handleRemoteSettingUpdate('supertonicSpeed', v)}
+                            minimumTrackTintColor={theme.colors.primary}
+                            maximumTrackTintColor={theme.colors.muted}
+                            thumbTintColor={theme.colors.primary}
+                          />
+                        </View>
+
+                        <View style={{ marginTop: spacing.sm }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={styles.label}>Quality Steps</Text>
+                            <Text style={[styles.helperText, { marginTop: 0 }]}>
+                              {Math.round(remoteSettings.supertonicSteps ?? 5)}
+                            </Text>
+                          </View>
+                          <Slider
+                            style={{ width: '100%', height: 40 }}
+                            minimumValue={2}
+                            maximumValue={10}
+                            step={1}
+                            value={remoteSettings.supertonicSteps ?? 5}
+                            onSlidingComplete={(v) => handleRemoteSettingUpdate('supertonicSteps', Math.round(v))}
+                            minimumTrackTintColor={theme.colors.primary}
+                            maximumTrackTintColor={theme.colors.muted}
+                            thumbTintColor={theme.colors.primary}
+                          />
+                        </View>
+                      </>
                     )}
 
                     <View style={[styles.row, { marginTop: spacing.md }]}>
@@ -2272,18 +3023,18 @@ export default function SettingsScreen({ navigation }: any) {
                 <Text style={styles.label}>Max Iterations</Text>
                 <TextInput
                   style={styles.input}
-                  value={inputDrafts.mcpMaxIterations ?? '10'}
+                  value={inputDrafts.mcpMaxIterations ?? String(MCP_MAX_ITERATIONS_DEFAULT)}
                   onChangeText={(v) => {
                     markRemotePending('mcpMaxIterations');
                     setSaveStatusMessage(null);
-                    const num = parseInt(v, 10);
-                    if (!isNaN(num) && num >= 1 && num <= 100) {
+                    const num = parseMcpMaxIterationsDraft(v);
+                    if (num !== null) {
                       handleRemoteSettingUpdate('mcpMaxIterations', num);
                     } else {
                       setInputDrafts(prev => ({ ...prev, mcpMaxIterations: v }));
                     }
                   }}
-                  placeholder="10"
+                  placeholder={String(MCP_MAX_ITERATIONS_DEFAULT)}
                   placeholderTextColor={theme.colors.mutedForeground}
                   keyboardType="number-pad"
                 />
@@ -2399,7 +3150,7 @@ export default function SettingsScreen({ navigation }: any) {
                         // Parse comma-separated numbers and debounce the API update
                         // Don't update remoteSettings locally to avoid the sync effect
                         // rewriting the user's raw text (losing trailing commas/spaces)
-                        const numbers = v.split(',').map(n => n.trim()).filter(n => n);
+                        const numbers = parseConfigListInput(v);
                         if (inputTimeoutRefs.current.whatsappAllowFrom) {
                           clearTimeout(inputTimeoutRefs.current.whatsappAllowFrom);
                         }
@@ -2452,11 +3203,181 @@ export default function SettingsScreen({ navigation }: any) {
               </CollapsibleSection>
             )}
 
-            {/* 4j. Langfuse */}
+            {/* 4j. Discord */}
+            {remoteSettings && (
+              <CollapsibleSection id="discord" title="Discord">
+                <View style={styles.row}>
+                  <Text style={styles.label}>Discord Integration</Text>
+                  <Switch
+                    value={remoteSettings.discordEnabled ?? false}
+                    onValueChange={(v) => handleRemoteSettingToggle('discordEnabled', v)}
+                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                    thumbColor={remoteSettings.discordEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                  />
+                </View>
+
+                {remoteSettings.discordEnabled && (
+                  <>
+                    <Text style={styles.label}>Bot Token</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={inputDrafts.discordBotToken ?? ''}
+                      onChangeText={(v) => {
+                        markRemotePending('discordBotToken');
+                        setSaveStatusMessage(null);
+                        setInputDrafts(prev => ({ ...prev, discordBotToken: v }));
+                      }}
+                      onBlur={() => {
+                        if (!settingsClient || !pendingRemoteSaveKeys.includes('discordBotToken')) return;
+                        const value = inputDrafts.discordBotToken ?? '';
+                        settingsClient.updateSettings({ discordBotToken: value }).then(() => {
+                          setRemoteSettings(prev => prev ? { ...prev, discordBotToken: value ? SECRET_MASK : '' } : null);
+                          clearRemotePending('discordBotToken');
+                          setInputDrafts(prev => ({ ...prev, discordBotToken: '' }));
+                        }).catch((error: any) => {
+                          console.error('[Settings] Failed to update discordBotToken:', error);
+                          setRemoteError(error.message || 'Failed to update discordBotToken');
+                        });
+                      }}
+                      placeholder={remoteSettings.discordBotToken === SECRET_MASK ? 'Configured' : 'Paste your Discord bot token'}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      autoCapitalize='none'
+                      autoCorrect={false}
+                      secureTextEntry
+                    />
+                    <Text style={styles.helperText}>
+                      Leave unchanged to keep the existing desktop token.
+                    </Text>
+
+                    {profiles.length > 0 && (
+                      <>
+                        <Text style={styles.label}>Default Profile</Text>
+                        <View style={styles.providerSelector}>
+                          <Pressable
+                            style={[
+                              styles.providerOption,
+                              !remoteSettings.discordDefaultProfileId && styles.providerOptionActive,
+                            ]}
+                            onPress={() => handleRemoteSettingUpdate('discordDefaultProfileId', '')}
+                          >
+                            <Text style={[
+                              styles.providerOptionText,
+                              !remoteSettings.discordDefaultProfileId && styles.providerOptionTextActive,
+                            ]}>
+                              None
+                            </Text>
+                          </Pressable>
+                          {profiles.map((profile) => (
+                            <Pressable
+                              key={profile.id}
+                              style={[
+                                styles.providerOption,
+                                remoteSettings.discordDefaultProfileId === profile.id && styles.providerOptionActive,
+                              ]}
+                              onPress={() => handleRemoteSettingUpdate('discordDefaultProfileId', profile.id)}
+                            >
+                              <Text style={[
+                                styles.providerOptionText,
+                                remoteSettings.discordDefaultProfileId === profile.id && styles.providerOptionTextActive,
+                              ]}>
+                                {profile.name}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </>
+                    )}
+
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Allow Direct Messages</Text>
+                      <Switch
+                        value={remoteSettings.discordDmEnabled ?? true}
+                        onValueChange={(v) => handleRemoteSettingToggle('discordDmEnabled', v)}
+                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                        thumbColor={remoteSettings.discordDmEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                      />
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Require Mention</Text>
+                      <Switch
+                        value={remoteSettings.discordRequireMention ?? true}
+                        onValueChange={(v) => handleRemoteSettingToggle('discordRequireMention', v)}
+                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                        thumbColor={remoteSettings.discordRequireMention ? theme.colors.primaryForeground : theme.colors.background}
+                      />
+                    </View>
+
+                    {DISCORD_LIST_SETTING_SECTIONS.map((section) => (
+                      <View key={section.key} style={styles.providerCredentialGroup}>
+                        <Text style={styles.label}>{section.label}</Text>
+                        <TextInput
+                          style={[styles.input, { minHeight: 76, textAlignVertical: 'top' }]}
+                          value={inputDrafts[section.key] ?? ''}
+                          onChangeText={(v) => handleRemoteListSettingUpdate(section.key, v)}
+                          placeholder={section.placeholder}
+                          placeholderTextColor={theme.colors.mutedForeground}
+                          autoCapitalize='none'
+                          autoCorrect={false}
+                          multiline
+                          numberOfLines={3}
+                        />
+                        <Text style={styles.helperText}>{section.helper}</Text>
+                      </View>
+                    ))}
+
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Log Messages</Text>
+                      <Switch
+                        value={remoteSettings.discordLogMessages ?? false}
+                        onValueChange={(v) => handleRemoteSettingToggle('discordLogMessages', v)}
+                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                        thumbColor={remoteSettings.discordLogMessages ? theme.colors.primaryForeground : theme.colors.background}
+                      />
+                    </View>
+                    <Text style={styles.helperText}>
+                      Log Discord message content on the desktop.
+                    </Text>
+                  </>
+                )}
+              </CollapsibleSection>
+            )}
+
+            {/* 4k. Langfuse */}
             {remoteSettings && (
               <CollapsibleSection id="langfuse" title="Langfuse">
                 <View style={styles.row}>
-                  <Text style={styles.label}>Enable tracing</Text>
+                  <Text style={styles.label}>Local trace logging</Text>
+                  <Switch
+                    value={remoteSettings.localTraceLoggingEnabled ?? false}
+                    onValueChange={(v) => handleRemoteSettingToggle('localTraceLoggingEnabled', v)}
+                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                    thumbColor={remoteSettings.localTraceLoggingEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                  />
+                </View>
+                <Text style={styles.helperText}>
+                  Write agent session traces to JSONL files on the desktop machine.
+                </Text>
+
+                {remoteSettings.localTraceLoggingEnabled && (
+                  <>
+                    <Text style={styles.label}>Trace Folder</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={inputDrafts.localTraceLogPath ?? ''}
+                      onChangeText={(v) => handleRemoteSettingUpdate('localTraceLogPath', v)}
+                      placeholder="Use default traces folder"
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      autoCapitalize='none'
+                    />
+                    <Text style={styles.helperText}>
+                      Optional desktop filesystem path for trace files.
+                    </Text>
+                  </>
+                )}
+
+                <View style={styles.row}>
+                  <Text style={styles.label}>Langfuse tracing</Text>
                   <Switch
                     value={remoteSettings.langfuseEnabled ?? false}
                     onValueChange={(v) => handleRemoteSettingToggle('langfuseEnabled', v)}
@@ -2533,24 +3454,56 @@ export default function SettingsScreen({ navigation }: any) {
                 ) : (
                   displaySkills.map((skill) => (
                     <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
-                      <View style={styles.serverInfo}>
-                        <Text style={styles.serverName}>{skill.name}</Text>
-                        <Text style={styles.serverMeta}>
-                          {!skill.enabled ? '(Globally disabled) ' : ''}{skill.description}
-                        </Text>
+                      <TouchableOpacity
+                        style={styles.agentInfoPressable}
+                        onPress={() => handleSkillEdit(skill)}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Edit skill ${skill.name}`)}
+                      >
+                        <View style={styles.serverInfo}>
+                          <View style={styles.serverNameRow}>
+                            <Text style={styles.serverName}>{skill.name}</Text>
+                            {skill.source && (
+                              <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
+                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{skill.source}</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.serverMeta} numberOfLines={2}>
+                            {!skill.enabled ? '(Globally disabled) ' : ''}{skill.description || 'No description'}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      <View style={styles.agentActions}>
+                        <Switch
+                          value={skill.enabledForProfile}
+                          onValueChange={() => handleSkillToggle(skill.id)}
+                          disabled={!skill.enabled}
+                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                          thumbColor={skill.enabledForProfile && skill.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                        />
+                        <TouchableOpacity
+                          style={styles.agentDeleteButton}
+                          onPress={() => handleSkillDelete(skill)}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Delete skill ${skill.name}`)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Text style={styles.agentDeleteButtonText}>Delete</Text>
+                        </TouchableOpacity>
                       </View>
-                      <Switch
-                        value={skill.enabledForProfile}
-                        onValueChange={() => handleSkillToggle(skill.id)}
-                        disabled={!skill.enabled}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={skill.enabledForProfile && skill.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                      />
                     </View>
                   ))
                 )}
+                <TouchableOpacity
+                  style={styles.createAgentButton}
+                  onPress={() => handleSkillEdit()}
+                >
+                  <Text style={styles.createAgentButtonText}>+ Create New Skill</Text>
+                </TouchableOpacity>
                 <Text style={styles.helperText}>
-                  Toggle skills for the Main Agent
+                  Tap a skill to edit, or toggle to enable it for the Main Agent.
                 </Text>
               </CollapsibleSection>
             )}
@@ -2563,48 +3516,18 @@ export default function SettingsScreen({ navigation }: any) {
                 ) : knowledgeNotes.length === 0 ? (
                   <Text style={styles.helperText}>No notes saved</Text>
                 ) : (
-                  knowledgeNotes.map((note) => (
-                    <View key={note.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
-                      <TouchableOpacity
-                        style={styles.agentInfoPressable}
-                        onPress={() => handleKnowledgeNoteEdit(note)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={[styles.serverInfo, { flex: 1 }]}> 
-                          <Text style={styles.serverName}>{note.title}</Text>
-                          <Text style={styles.serverMeta} numberOfLines={2}>{note.summary || note.body}</Text>
-                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 }}>
-                            {note.tags.map((tag, idx) => (
-                              <View key={idx} style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
-                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{tag}</Text>
-                              </View>
-                            ))}
-                            <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
-                              <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{note.context}</Text>
-                            </View>
-                          </View>
+                  knowledgeNoteSections.map((section) => (
+                    <View key={section.key}>
+                      <Text style={styles.subsectionTitle}>{section.label}</Text>
+                      {section.notes.map(renderKnowledgeNoteRow)}
+                      {section.seriesSections.map((series) => (
+                        <View key={series.key}>
+                          <Text style={[styles.serverMeta, { marginTop: spacing.xs, marginBottom: spacing.xs }]}>
+                            {series.label}
+                          </Text>
+                          {series.notes.map(renderKnowledgeNoteRow)}
                         </View>
-                      </TouchableOpacity>
-                      <View style={styles.noteActions}>
-                        {note.context === 'search-only' && (
-                          <TouchableOpacity
-                            style={styles.notePromoteButton}
-                            onPress={() => handleKnowledgeNotePromote(note)}
-                            accessibilityLabel={`Promote note ${note.title} to auto context`}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Text style={styles.notePromoteButtonText}>Promote to auto</Text>
-                          </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                          style={styles.noteDeleteButton}
-                          onPress={() => handleKnowledgeNoteDelete(note.id)}
-                          accessibilityLabel={`Delete note ${note.title}`}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Text style={styles.noteDeleteButtonText}>Delete</Text>
-                        </TouchableOpacity>
-                      </View>
+                      ))}
                     </View>
                   ))
                 )}
@@ -2703,7 +3626,7 @@ export default function SettingsScreen({ navigation }: any) {
                         onPress={() => handleLoopEdit(loop)}
                         activeOpacity={0.7}
                       >
-                        <View style={[styles.serverInfo, { flex: 1 }]}> 
+                        <View style={[styles.serverInfo, { flex: 1 }]}>
                           <View style={styles.serverNameRow}>
                             <View style={[
                               styles.statusDot,
@@ -2933,6 +3856,128 @@ export default function SettingsScreen({ navigation }: any) {
         </View>
       </Modal>
 
+      {/* Preset Editor Modal */}
+      <Modal
+        visible={showPresetEditor}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closePresetEditor}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={[styles.importModalContainer, styles.presetEditorContainer]}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>
+                {presetEditorMode === 'create'
+                  ? 'New Endpoint'
+                  : presetDraft.isBuiltIn
+                    ? 'Configure Endpoint'
+                    : 'Edit Endpoint'}
+              </Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closePresetEditor}
+                accessibilityRole="button"
+                accessibilityLabel="Close endpoint editor"
+                disabled={isSavingPreset}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.presetEditorBody} keyboardShouldPersistTaps="handled">
+              <Text style={styles.label}>Name</Text>
+              <TextInput
+                style={[styles.input, presetDraft.isBuiltIn && styles.inputDisabled]}
+                value={presetDraft.name}
+                onChangeText={(v) => handlePresetDraftChange('name', v)}
+                placeholder="My endpoint"
+                placeholderTextColor={theme.colors.mutedForeground}
+                editable={!presetDraft.isBuiltIn && !isSavingPreset}
+              />
+
+              <Text style={styles.label}>Base URL</Text>
+              <TextInput
+                style={[styles.input, presetDraft.isBuiltIn && styles.inputDisabled]}
+                value={presetDraft.baseUrl}
+                onChangeText={(v) => handlePresetDraftChange('baseUrl', v)}
+                placeholder="https://api.example.com/v1"
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!presetDraft.isBuiltIn && !isSavingPreset}
+              />
+
+              <Text style={styles.label}>API Key</Text>
+              <TextInput
+                style={styles.input}
+                value={presetDraft.apiKey}
+                onChangeText={(v) => handlePresetDraftChange('apiKey', v)}
+                placeholder={presetDraft.hasApiKey ? 'Configured' : 'sk-...'}
+                placeholderTextColor={theme.colors.mutedForeground}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSavingPreset}
+              />
+
+              <Text style={styles.label}>Agent Model</Text>
+              <TextInput
+                style={styles.input}
+                value={presetDraft.agentModel}
+                onChangeText={(v) => handlePresetDraftChange('agentModel', v)}
+                placeholder="gpt-4.1-mini"
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSavingPreset}
+              />
+
+              <Text style={styles.label}>Transcript Model</Text>
+              <TextInput
+                style={styles.input}
+                value={presetDraft.transcriptProcessingModel}
+                onChangeText={(v) => handlePresetDraftChange('transcriptProcessingModel', v)}
+                placeholder="gpt-4.1-mini"
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSavingPreset}
+              />
+            </ScrollView>
+
+            <View style={styles.importModalActions}>
+              {presetEditorMode === 'edit' && !presetDraft.isBuiltIn && (
+                <TouchableOpacity
+                  style={[styles.dangerActionButton, styles.presetDeleteButton, isSavingPreset && styles.dangerActionButtonDisabled]}
+                  onPress={handlePresetDelete}
+                  disabled={isSavingPreset}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete endpoint ${presetDraft.name}`}
+                >
+                  <Text style={styles.dangerActionButtonText}>Delete</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closePresetEditor}
+                disabled={isSavingPreset}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.importModalImportButton, isSavingPreset && styles.importModalImportButtonDisabled]}
+                onPress={handlePresetEditorSave}
+                disabled={isSavingPreset}
+              >
+                <Text style={styles.importModalImportText}>
+                  {isSavingPreset ? 'Saving...' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* TTS Model Picker Modal */}
       <Modal
         visible={showTtsModelPicker}
@@ -2956,10 +4001,7 @@ export default function SettingsScreen({ navigation }: any) {
 
             <ScrollView style={styles.modelList}>
               {getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai').map((model) => {
-                const currentValue = remoteSettings?.ttsProviderId === 'openai' ? remoteSettings.openaiTtsModel
-                  : remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel
-                  : remoteSettings?.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsModel
-                  : remoteSettings?.edgeTtsModel;
+                const currentValue = getRemoteTtsModelValue(remoteSettings);
                 const isSelected = currentValue === model.value;
                 return (
                   <TouchableOpacity
@@ -2970,7 +4012,9 @@ export default function SettingsScreen({ navigation }: any) {
                     ]}
                     onPress={() => {
                       const key = getTtsModelSettingKey(remoteSettings?.ttsProviderId);
-                      handleRemoteSettingUpdate(key, model.value);
+                      if (key) {
+                        handleRemoteSettingUpdate(key, model.value);
+                      }
                       setShowTtsModelPicker(false);
                     }}
                   >
@@ -3026,11 +4070,8 @@ export default function SettingsScreen({ navigation }: any) {
                 const ttsModel = remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
                 const voices = getTtsVoicesForProvider(remoteSettings?.ttsProviderId || 'openai', ttsModel);
                 return voices.map((voice) => {
-                  const currentValue = remoteSettings?.ttsProviderId === 'openai' ? remoteSettings.openaiTtsVoice
-                    : remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsVoice
-                    : remoteSettings?.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsVoice
-                    : remoteSettings?.edgeTtsVoice;
-                  const isSelected = currentValue === voice.value;
+                  const currentValue = getRemoteTtsVoiceValue(remoteSettings);
+                  const isSelected = String(currentValue) === String(voice.value);
                   return (
                     <TouchableOpacity
                       key={voice.value}
@@ -3040,7 +4081,9 @@ export default function SettingsScreen({ navigation }: any) {
                       ]}
                       onPress={() => {
                         const key = getTtsVoiceSettingKey(remoteSettings?.ttsProviderId);
-                        handleRemoteSettingUpdate(key, voice.value);
+                        if (key) {
+                          handleRemoteSettingUpdate(key, normalizeTtsVoiceUpdateValue(key, voice.value));
+                        }
                         setShowTtsVoicePicker(false);
                       }}
                     >
@@ -3219,12 +4262,21 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     input: {
       ...theme.input,
     },
+    inputDisabled: {
+      opacity: 0.65,
+      backgroundColor: theme.colors.muted,
+    },
     row: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: spacing.md,
       marginTop: spacing.sm,
+    },
+    rowCopy: {
+      flex: 1,
+      gap: spacing.xs,
+      minWidth: 0,
     },
     sectionLeadRow: {
       marginTop: spacing.lg,
@@ -3290,6 +4342,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     providerOptionTextActive: {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
+    },
+    providerCredentialGroup: {
+      gap: spacing.xs,
+      paddingBottom: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
     },
     primaryButton: {
       backgroundColor: theme.colors.primary,
@@ -3480,6 +4538,36 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontWeight: '500',
       textAlign: 'center',
     },
+    localSpeechModelBlock: {
+      gap: spacing.sm,
+      marginTop: spacing.md,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    localSpeechModelButton: {
+      flexBasis: 104,
+      minWidth: 104,
+      flexGrow: 0,
+      marginTop: spacing.sm,
+    },
+    localSpeechTestButton: {
+      alignSelf: 'stretch',
+      minWidth: 0,
+      marginTop: 0,
+      width: '100%' as const,
+    },
+    localSpeechProgressTrack: {
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: theme.colors.muted,
+      overflow: 'hidden',
+    },
+    localSpeechProgressFill: {
+      height: '100%',
+      borderRadius: 3,
+      backgroundColor: theme.colors.primary,
+    },
     importModalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -3493,6 +4581,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       padding: spacing.lg,
       width: '100%',
       maxWidth: 400,
+    },
+    presetEditorContainer: {
+      maxHeight: '82%',
+    },
+    presetEditorBody: {
+      maxHeight: 460,
     },
     importModalHeader: {
       flexDirection: 'row',
@@ -3529,6 +4623,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexDirection: 'row',
       gap: spacing.sm,
       marginTop: spacing.md,
+    },
+    presetDeleteButton: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     importModalCancelButton: {
       flex: 1,
@@ -3736,6 +4835,38 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     modelActionText: {
       fontSize: 12,
       color: theme.colors.primary,
+    },
+    endpointPanel: {
+      marginTop: spacing.sm,
+      gap: spacing.sm,
+    },
+    endpointMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    endpointBaseUrl: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.colors.mutedForeground,
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    endpointKeyBadge: {
+      flexShrink: 0,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 3,
+      color: theme.colors.mutedForeground,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    endpointKeyBadgeActive: {
+      borderColor: theme.colors.primary,
+      color: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '10',
     },
     modelSelector: {
       borderWidth: 1,

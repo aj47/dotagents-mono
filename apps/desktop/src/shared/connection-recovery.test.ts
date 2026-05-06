@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { normalizeApiBaseUrl } from "@dotagents/shared"
+import { normalizeApiBaseUrl } from "@dotagents/shared/connection-recovery"
 
 describe("normalizeApiBaseUrl", () => {
   it("adds scheme and /v1 for bare local remote-server URLs", () => {

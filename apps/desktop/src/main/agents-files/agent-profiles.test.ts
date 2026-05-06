@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import type { AgentProfileConnectionType, AgentProfileRole } from "@shared/types"
+import type { AgentProfileConnectionType, AgentProfileRole } from "@dotagents/core"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./modular-config"
 import {
   AGENTS_PROFILE_CANONICAL_FILENAME,
@@ -106,4 +106,3 @@ describe("agent-profiles role inference", () => {
     expect(profiles[0].isAgentTarget).toBeUndefined()
   })
 })
-

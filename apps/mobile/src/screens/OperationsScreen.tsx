@@ -26,7 +26,10 @@ import {
   OperatorConversationItem,
   OperatorDiscordIntegrationSummary,
   OperatorDiscordLogEntry,
+  OperatorMessageQueueSummary,
+  OperatorMCPServerLogEntry,
   OperatorMCPServerSummary,
+  OperatorMCPToolSummary,
   OperatorRecentError,
   OperatorRuntimeStatus,
   OperatorTunnelSetupSummary,
@@ -37,23 +40,29 @@ import {
 import { saveConfig, useConfigContext } from '../store/config';
 import { useTheme } from '../ui/ThemeProvider';
 import { radius, spacing } from '../ui/theme';
+import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
 
 const RECENT_ERROR_COUNT = 8;
+const RECENT_LOG_COUNT = 10;
 const RECENT_AUDIT_ENTRY_COUNT = 10;
 const DISCORD_LOG_PREVIEW_COUNT = 6;
+const MCP_LOG_PREVIEW_COUNT = 20;
 const ACTION_REFRESH_DELAY_MS = 1200;
 const AUTO_REFRESH_INTERVAL_MS = 30_000;
 
 type RemoteAccessDrafts = {
   remoteServerPort: string;
+  remoteServerCorsOrigins: string;
   remoteServerOperatorAllowDeviceIds: string;
   cloudflareTunnelId: string;
+  cloudflareTunnelName: string;
   cloudflareTunnelHostname: string;
   cloudflareTunnelCredentialsPath: string;
   whatsappOperatorAllowFrom: string;
   discordOperatorAllowUserIds: string;
   discordOperatorAllowGuildIds: string;
   discordOperatorAllowChannelIds: string;
+  discordOperatorAllowRoleIds: string;
 };
 
 function getErrorMessage(error: unknown): string {
@@ -120,24 +129,18 @@ function formatAuditDetails(details?: Record<string, unknown>): string | null {
 function buildDrafts(settings: Settings | null): RemoteAccessDrafts {
   return {
     remoteServerPort: String(settings?.remoteServerPort ?? 3210),
-    remoteServerOperatorAllowDeviceIds: (settings?.remoteServerOperatorAllowDeviceIds ?? []).join(', '),
+    remoteServerCorsOrigins: formatConfigListInput(settings?.remoteServerCorsOrigins ?? ['*']),
+    remoteServerOperatorAllowDeviceIds: formatConfigListInput(settings?.remoteServerOperatorAllowDeviceIds),
     cloudflareTunnelId: settings?.cloudflareTunnelId ?? '',
+    cloudflareTunnelName: settings?.cloudflareTunnelName ?? '',
     cloudflareTunnelHostname: settings?.cloudflareTunnelHostname ?? '',
     cloudflareTunnelCredentialsPath: settings?.cloudflareTunnelCredentialsPath ?? '',
-    whatsappOperatorAllowFrom: (settings?.whatsappOperatorAllowFrom ?? []).join(', '),
-    discordOperatorAllowUserIds: (settings?.discordOperatorAllowUserIds ?? []).join(', '),
-    discordOperatorAllowGuildIds: (settings?.discordOperatorAllowGuildIds ?? []).join(', '),
-    discordOperatorAllowChannelIds: (settings?.discordOperatorAllowChannelIds ?? []).join(', '),
+    whatsappOperatorAllowFrom: formatConfigListInput(settings?.whatsappOperatorAllowFrom),
+    discordOperatorAllowUserIds: formatConfigListInput(settings?.discordOperatorAllowUserIds),
+    discordOperatorAllowGuildIds: formatConfigListInput(settings?.discordOperatorAllowGuildIds),
+    discordOperatorAllowChannelIds: formatConfigListInput(settings?.discordOperatorAllowChannelIds),
+    discordOperatorAllowRoleIds: formatConfigListInput(settings?.discordOperatorAllowRoleIds),
   };
-}
-
-function parseCommaSeparatedList(value: string): string[] {
-  return [...new Set(
-    value
-      .split(',')
-      .map((entry) => entry.trim())
-      .filter(Boolean),
-  )];
 }
 
 export default function OperationsScreen({ navigation }: any) {
@@ -153,9 +156,15 @@ export default function OperationsScreen({ navigation }: any) {
   const [discordLogs, setDiscordLogs] = useState<OperatorDiscordLogEntry[]>([]);
   const [whatsAppSummary, setWhatsAppSummary] = useState<OperatorWhatsAppIntegrationSummary | null>(null);
   const [recentErrors, setRecentErrors] = useState<OperatorRecentError[]>([]);
+  const [operatorLogs, setOperatorLogs] = useState<OperatorRecentError[]>([]);
   const [auditEntries, setAuditEntries] = useState<OperatorAuditEntry[]>([]);
   const [conversations, setConversations] = useState<OperatorConversationItem[]>([]);
+  const [messageQueues, setMessageQueues] = useState<OperatorMessageQueueSummary[]>([]);
   const [mcpServers, setMcpServers] = useState<OperatorMCPServerSummary[]>([]);
+  const [mcpServerLogs, setMcpServerLogs] = useState<Record<string, OperatorMCPServerLogEntry[]>>({});
+  const [expandedMcpLogs, setExpandedMcpLogs] = useState<Set<string>>(new Set());
+  const [mcpServerTools, setMcpServerTools] = useState<Record<string, OperatorMCPToolSummary[]>>({});
+  const [expandedMcpTools, setExpandedMcpTools] = useState<Set<string>>(new Set());
   const [drafts, setDrafts] = useState<RemoteAccessDrafts>(buildDrafts(null));
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -164,6 +173,12 @@ export default function OperationsScreen({ navigation }: any) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [pendingSetting, setPendingSetting] = useState<string | null>(null);
   const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null);
+  const [operatorAgentPrompt, setOperatorAgentPrompt] = useState('');
+  const [editingQueuedMessage, setEditingQueuedMessage] = useState<{
+    conversationId: string;
+    messageId: string;
+    text: string;
+  } | null>(null);
 
   const settingsClient = useMemo(() => {
     if (!config.baseUrl || !config.apiKey) {
@@ -181,9 +196,16 @@ export default function OperationsScreen({ navigation }: any) {
       setDiscordLogs([]);
       setWhatsAppSummary(null);
       setRecentErrors([]);
+      setOperatorLogs([]);
       setAuditEntries([]);
       setConversations([]);
+      setMessageQueues([]);
+      setEditingQueuedMessage(null);
       setMcpServers([]);
+      setMcpServerLogs({});
+      setExpandedMcpLogs(new Set());
+      setMcpServerTools({});
+      setExpandedMcpTools(new Set());
       setDrafts(buildDrafts(null));
       setError(null);
       setIsLoading(false);
@@ -200,6 +222,7 @@ export default function OperationsScreen({ navigation }: any) {
     const [
       statusResult,
       errorsResult,
+      logsResult,
       settingsResult,
       tunnelSetupResult,
       discordResult,
@@ -207,10 +230,12 @@ export default function OperationsScreen({ navigation }: any) {
       whatsAppResult,
       auditResult,
       conversationsResult,
+      messageQueuesResult,
       mcpResult,
     ] = await Promise.allSettled([
       settingsClient.getOperatorStatus(),
       settingsClient.getOperatorErrors(RECENT_ERROR_COUNT),
+      settingsClient.getOperatorLogs(RECENT_LOG_COUNT),
       settingsClient.getSettings(),
       settingsClient.getOperatorTunnelSetup(),
       settingsClient.getOperatorDiscord(),
@@ -218,6 +243,7 @@ export default function OperationsScreen({ navigation }: any) {
       settingsClient.getOperatorWhatsApp(),
       settingsClient.getOperatorAudit(RECENT_AUDIT_ENTRY_COUNT),
       settingsClient.getOperatorConversations(10),
+      settingsClient.getOperatorMessageQueues(),
       settingsClient.getOperatorMCP(),
     ]);
 
@@ -235,6 +261,13 @@ export default function OperationsScreen({ navigation }: any) {
     } else {
       setRecentErrors([]);
       issues.push(getErrorMessage(errorsResult.reason));
+    }
+
+    if (logsResult.status === 'fulfilled') {
+      setOperatorLogs(logsResult.value.logs);
+    } else {
+      setOperatorLogs([]);
+      issues.push(getErrorMessage(logsResult.reason));
     }
 
     if (settingsResult.status === 'fulfilled') {
@@ -283,6 +316,12 @@ export default function OperationsScreen({ navigation }: any) {
       setConversations(conversationsResult.value.conversations);
     } else {
       setConversations([]);
+    }
+
+    if (messageQueuesResult.status === 'fulfilled') {
+      setMessageQueues(messageQueuesResult.value.queues);
+    } else {
+      setMessageQueues([]);
     }
 
     if (mcpResult.status === 'fulfilled') {
@@ -452,6 +491,131 @@ export default function OperationsScreen({ navigation }: any) {
     }
   }, [loadOperatorData, settingsClient]);
 
+  const fetchMcpLogsForServer = useCallback(async (serverName: string) => {
+    if (!settingsClient) {
+      Alert.alert('Connection Required', 'Configure your desktop server connection before viewing MCP logs.');
+      return;
+    }
+
+    const action = `mcp-logs:${serverName}`;
+    setPendingAction(action);
+    try {
+      const response = await settingsClient.getOperatorMCPServerLogs(serverName, MCP_LOG_PREVIEW_COUNT);
+      setMcpServerLogs((current) => ({ ...current, [serverName]: response.logs }));
+    } catch (actionError) {
+      Alert.alert('Action Failed', getErrorMessage(actionError));
+    } finally {
+      setPendingAction(null);
+    }
+  }, [settingsClient]);
+
+  const toggleMcpLogsForServer = useCallback((serverName: string) => {
+    setExpandedMcpLogs((current) => {
+      const next = new Set(current);
+      if (next.has(serverName)) {
+        next.delete(serverName);
+      } else {
+        next.add(serverName);
+        void fetchMcpLogsForServer(serverName);
+      }
+      return next;
+    });
+  }, [fetchMcpLogsForServer]);
+
+  const fetchMcpToolsForServer = useCallback(async (serverName: string) => {
+    if (!settingsClient) {
+      Alert.alert('Connection Required', 'Configure your desktop server connection before viewing MCP tools.');
+      return;
+    }
+
+    const action = `mcp-tools:${serverName}`;
+    setPendingAction(action);
+    try {
+      const response = await settingsClient.getOperatorMCPTools(serverName);
+      setMcpServerTools((current) => ({ ...current, [serverName]: response.tools }));
+    } catch (actionError) {
+      Alert.alert('Action Failed', getErrorMessage(actionError));
+    } finally {
+      setPendingAction(null);
+    }
+  }, [settingsClient]);
+
+  const toggleMcpToolsForServer = useCallback((serverName: string) => {
+    setExpandedMcpTools((current) => {
+      const next = new Set(current);
+      if (next.has(serverName)) {
+        next.delete(serverName);
+      } else {
+        next.add(serverName);
+        void fetchMcpToolsForServer(serverName);
+      }
+      return next;
+    });
+  }, [fetchMcpToolsForServer]);
+
+  const setMcpToolEnabled = useCallback(async (serverName: string, toolName: string, enabled: boolean) => {
+    if (!settingsClient) {
+      Alert.alert('Connection Required', 'Configure your desktop server connection before changing MCP tools.');
+      return;
+    }
+
+    const action = `mcp-tool-toggle:${toolName}`;
+    setPendingAction(action);
+    try {
+      const response = await settingsClient.setOperatorMCPToolEnabled(toolName, enabled);
+      if (!response.success) {
+        throw new Error(response.error || response.message || 'Tool toggle failed');
+      }
+      setMcpServerTools((current) => ({
+        ...current,
+        [serverName]: (current[serverName] ?? []).map((tool) => (
+          tool.name === toolName ? { ...tool, enabled } : tool
+        )),
+      }));
+      setActionFeedback(response.message);
+    } catch (actionError) {
+      Alert.alert('Action Failed', getErrorMessage(actionError));
+      void fetchMcpToolsForServer(serverName);
+    } finally {
+      setPendingAction(null);
+    }
+  }, [fetchMcpToolsForServer, settingsClient]);
+
+  const runOperatorAgent = useCallback(async () => {
+    if (!settingsClient) {
+      Alert.alert('Connection Required', 'Configure your desktop server connection before running an agent.');
+      return;
+    }
+
+    const prompt = operatorAgentPrompt.trim();
+    if (!prompt) {
+      Alert.alert('Prompt Required', 'Enter a prompt for the desktop agent to run.');
+      return;
+    }
+
+    setPendingAction('run-agent');
+    setActionFeedback(null);
+    try {
+      const response = await settingsClient.runOperatorAgent({ prompt });
+      if (!response.success) {
+        throw new Error(response.error || 'Agent run failed');
+      }
+
+      const preview = response.content.trim().replace(/\s+/g, ' ').slice(0, 140);
+      setActionFeedback(
+        `Agent run finished in ${response.conversationId} (${response.messageCount} messages).${preview ? ` ${preview}` : ''}`,
+      );
+      setOperatorAgentPrompt('');
+      setTimeout(() => {
+        void loadOperatorData(true);
+      }, ACTION_REFRESH_DELAY_MS);
+    } catch (actionError) {
+      Alert.alert('Action Failed', getErrorMessage(actionError));
+    } finally {
+      setPendingAction(null);
+    }
+  }, [loadOperatorData, operatorAgentPrompt, settingsClient]);
+
   const applySettingsUpdate = useCallback(async (
     updates: SettingsUpdate,
     fieldLabel: string,
@@ -617,14 +781,319 @@ export default function OperationsScreen({ navigation }: any) {
               <Text style={styles.detailText}>
                 Active: {status.sessions.activeSessions} • Recent: {status.sessions.recentSessions}
               </Text>
-              {status.sessions.activeSessionDetails.map((s) => (
-                <Text key={s.id} style={styles.detailText}>
-                  • {s.title ?? s.id} — {s.status} ({s.currentIteration ?? 0}/{s.maxIterations ?? '?'}) since {formatTimestamp(s.startTime)}
-                </Text>
-              ))}
+              {status.sessions.activeSessionDetails.map((s) => {
+                const stopAction = `agent-session-stop:${s.id}`;
+                return (
+                  <View key={s.id} style={styles.agentSessionRow}>
+                    <View style={styles.agentSessionCopy}>
+                      <Text style={styles.detailText}>
+                        {s.title ?? s.id} — {s.status} ({s.currentIteration ?? 0}/{s.maxIterations ?? '?'})
+                      </Text>
+                      <Text style={styles.mutedText}>Since {formatTimestamp(s.startTime)}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.sessionStopButton,
+                        styles.secondaryActionButton,
+                        controlsDisabled && styles.actionButtonDisabled,
+                      ]}
+                      onPress={() => confirmAction(
+                        'Stop Agent Session',
+                        `Stop ${s.title ?? s.id} on the desktop app? The conversation queue for this session will be paused.`,
+                        'Stop Session',
+                        false,
+                        () => runAction(stopAction, () => settingsClient.stopOperatorAgentSession(s.id)),
+                      )}
+                      disabled={controlsDisabled}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`Stop ${s.title ?? s.id} agent session`)}
+                    >
+                      <Text style={styles.secondaryActionText}>
+                        {pendingAction === stopAction ? 'Stopping...' : 'Stop'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
               {status.sessions.activeSessions === 0 && (
                 <Text style={styles.mutedText}>No active agent sessions</Text>
               )}
+            </View>
+          )}
+
+          {messageQueues.length > 0 && (
+            <View style={styles.panel}>
+              <Text style={styles.panelTitle}>Desktop message queues</Text>
+              <Text style={styles.detailText}>
+                {messageQueues.reduce((sum, queue) => sum + queue.messageCount, 0)} queued messages across {messageQueues.length} conversations
+              </Text>
+              {messageQueues.map((queue) => {
+                const clearAction = `message-queue-clear:${queue.conversationId}`;
+                const pauseAction = `message-queue-pause:${queue.conversationId}`;
+                const resumeAction = `message-queue-resume:${queue.conversationId}`;
+                const hasProcessingMessage = queue.messages.some((message) => message.status === 'processing');
+                return (
+                  <View key={queue.conversationId} style={styles.agentSessionRow}>
+                    <View style={styles.agentSessionCopy}>
+                      <Text style={styles.detailText}>
+                        {queue.conversationId}: {queue.messageCount} queued{queue.isPaused ? ' (paused)' : ''}
+                      </Text>
+                      <View style={styles.queueMessageList}>
+                        {queue.messages.map((message) => {
+                          const isEditingMessage = editingQueuedMessage?.conversationId === queue.conversationId
+                            && editingQueuedMessage.messageId === message.id;
+                          const editedText = isEditingMessage ? editingQueuedMessage.text : message.text;
+                          const retryAction = `message-queue-message-retry:${queue.conversationId}:${message.id}`;
+                          const removeAction = `message-queue-message-remove:${queue.conversationId}:${message.id}`;
+                          const updateAction = `message-queue-message-update:${queue.conversationId}:${message.id}`;
+                          const canMutateMessage = message.status !== 'processing';
+                          const canEditMessage = canMutateMessage && !message.addedToHistory;
+
+                          return (
+                            <View key={message.id} style={styles.queueMessageItem}>
+                              <View style={styles.queueMessageCopy}>
+                                {isEditingMessage ? (
+                                  <TextInput
+                                    style={styles.queueMessageInput}
+                                    value={editedText}
+                                    onChangeText={(text) => setEditingQueuedMessage({ conversationId: queue.conversationId, messageId: message.id, text })}
+                                    multiline
+                                    accessibilityLabel={createTextInputAccessibilityLabel(`Queued message ${message.id}`)}
+                                  />
+                                ) : (
+                                  <>
+                                    <Text
+                                      style={message.status === 'failed' ? styles.warningText : styles.mutedText}
+                                      numberOfLines={2}
+                                    >
+                                      {message.status}: {message.text}
+                                    </Text>
+                                    {message.errorMessage ? (
+                                      <Text style={styles.warningText} numberOfLines={1}>{message.errorMessage}</Text>
+                                    ) : null}
+                                  </>
+                                )}
+                              </View>
+                              <View style={styles.queueMessageActionRow}>
+                                {isEditingMessage ? (
+                                  <>
+                                    <TouchableOpacity
+                                      style={[styles.queueMessageButton, styles.secondaryActionButton, controlsDisabled && styles.actionButtonDisabled]}
+                                      onPress={() => setEditingQueuedMessage(null)}
+                                      disabled={controlsDisabled}
+                                      accessibilityRole="button"
+                                      accessibilityLabel={createButtonAccessibilityLabel(`Cancel editing queued message ${message.id}`)}
+                                    >
+                                      <Text style={styles.secondaryActionText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      style={[
+                                        styles.queueMessageButton,
+                                        styles.secondaryActionButton,
+                                        (controlsDisabled || !editedText.trim()) && styles.actionButtonDisabled,
+                                      ]}
+                                      onPress={() => void runAction(updateAction, async () => {
+                                        const response = await settingsClient.updateOperatorQueuedMessageText(queue.conversationId, message.id, editedText);
+                                        if (response.success) {
+                                          setEditingQueuedMessage(null);
+                                          setMessageQueues((current) => current.map((entry) => (
+                                            entry.conversationId === queue.conversationId
+                                              ? {
+                                                ...entry,
+                                                messages: entry.messages.map((queuedMessage) => (
+                                                  queuedMessage.id === message.id
+                                                    ? { ...queuedMessage, text: editedText.trim(), status: queuedMessage.status === 'failed' ? 'pending' : queuedMessage.status }
+                                                    : queuedMessage
+                                                )),
+                                              }
+                                              : entry
+                                          )));
+                                        }
+                                        return response;
+                                      })}
+                                      disabled={controlsDisabled || !editedText.trim()}
+                                      accessibilityRole="button"
+                                      accessibilityLabel={createButtonAccessibilityLabel(`Save queued message ${message.id}`)}
+                                    >
+                                      <Text style={styles.secondaryActionText}>
+                                        {pendingAction === updateAction ? 'Saving...' : 'Save'}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  </>
+                                ) : (
+                                  <>
+                                    {message.status === 'failed' ? (
+                                      <TouchableOpacity
+                                        style={[styles.queueMessageButton, styles.secondaryActionButton, controlsDisabled && styles.actionButtonDisabled]}
+                                        onPress={() => void runAction(retryAction, async () => {
+                                          const response = await settingsClient.retryOperatorQueuedMessage(queue.conversationId, message.id);
+                                          if (response.success) {
+                                            setMessageQueues((current) => current.map((entry) => (
+                                              entry.conversationId === queue.conversationId
+                                                ? {
+                                                  ...entry,
+                                                  messages: entry.messages.map((queuedMessage) => (
+                                                    queuedMessage.id === message.id
+                                                      ? (() => {
+                                                        const { errorMessage: _errorMessage, ...queuedMessageWithoutError } = queuedMessage;
+                                                        return { ...queuedMessageWithoutError, status: 'pending' as const };
+                                                      })()
+                                                      : queuedMessage
+                                                  )),
+                                                }
+                                                : entry
+                                            )));
+                                          }
+                                          return response;
+                                        })}
+                                        disabled={controlsDisabled}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={createButtonAccessibilityLabel(`Retry queued message ${message.id}`)}
+                                      >
+                                        <Text style={styles.secondaryActionText}>
+                                          {pendingAction === retryAction ? 'Retrying...' : 'Retry'}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    ) : null}
+                                    {canEditMessage ? (
+                                      <TouchableOpacity
+                                        style={[styles.queueMessageButton, styles.secondaryActionButton, controlsDisabled && styles.actionButtonDisabled]}
+                                        onPress={() => setEditingQueuedMessage({ conversationId: queue.conversationId, messageId: message.id, text: message.text })}
+                                        disabled={controlsDisabled}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={createButtonAccessibilityLabel(`Edit queued message ${message.id}`)}
+                                      >
+                                        <Text style={styles.secondaryActionText}>Edit</Text>
+                                      </TouchableOpacity>
+                                    ) : null}
+                                    {canMutateMessage ? (
+                                      <TouchableOpacity
+                                        style={[styles.queueMessageButton, styles.secondaryActionButton, controlsDisabled && styles.actionButtonDisabled]}
+                                        onPress={() => confirmAction(
+                                          'Remove Queued Message',
+                                          `Remove queued message ${message.id} from ${queue.conversationId}?`,
+                                          'Remove',
+                                          true,
+                                          () => runAction(removeAction, async () => {
+                                            const response = await settingsClient.removeOperatorQueuedMessage(queue.conversationId, message.id);
+                                            if (response.success) {
+                                              setMessageQueues((current) => current
+                                                .map((entry) => (
+                                                  entry.conversationId === queue.conversationId
+                                                    ? {
+                                                      ...entry,
+                                                      messageCount: Math.max(0, entry.messageCount - 1),
+                                                      messages: entry.messages.filter((queuedMessage) => queuedMessage.id !== message.id),
+                                                    }
+                                                    : entry
+                                                ))
+                                                .filter((entry) => entry.messageCount > 0));
+                                            }
+                                            return response;
+                                          }, false),
+                                        )}
+                                        disabled={controlsDisabled}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={createButtonAccessibilityLabel(`Remove queued message ${message.id}`)}
+                                      >
+                                        <Text style={styles.secondaryActionText}>
+                                          {pendingAction === removeAction ? 'Removing...' : 'Remove'}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    ) : null}
+                                  </>
+                                )}
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                    <View style={styles.mcpActionRow}>
+                      {queue.isPaused ? (
+                        <TouchableOpacity
+                          style={[
+                            styles.mcpRestartButton,
+                            styles.secondaryActionButton,
+                            controlsDisabled && styles.actionButtonDisabled,
+                          ]}
+                          onPress={() => void runAction(resumeAction, async () => {
+                            const response = await settingsClient.resumeOperatorMessageQueue(queue.conversationId);
+                            if (response.success) {
+                              setMessageQueues((current) => current.map((entry) => (
+                                entry.conversationId === queue.conversationId
+                                  ? { ...entry, isPaused: false }
+                                  : entry
+                              )));
+                            }
+                            return response;
+                          })}
+                          disabled={controlsDisabled}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Resume ${queue.conversationId} desktop message queue`)}
+                        >
+                          <Text style={styles.secondaryActionText}>
+                            {pendingAction === resumeAction ? 'Resuming...' : 'Resume'}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={[
+                            styles.mcpRestartButton,
+                            styles.secondaryActionButton,
+                            (controlsDisabled || hasProcessingMessage) && styles.actionButtonDisabled,
+                          ]}
+                          onPress={() => void runAction(pauseAction, async () => {
+                            const response = await settingsClient.pauseOperatorMessageQueue(queue.conversationId);
+                            if (response.success) {
+                              setMessageQueues((current) => current.map((entry) => (
+                                entry.conversationId === queue.conversationId
+                                  ? { ...entry, isPaused: true }
+                                  : entry
+                              )));
+                            }
+                            return response;
+                          }, false)}
+                          disabled={controlsDisabled || hasProcessingMessage}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Pause ${queue.conversationId} desktop message queue`)}
+                        >
+                          <Text style={styles.secondaryActionText}>
+                            {pendingAction === pauseAction ? 'Pausing...' : 'Pause'}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={[
+                          styles.mcpRestartButton,
+                          styles.secondaryActionButton,
+                          (controlsDisabled || hasProcessingMessage) && styles.actionButtonDisabled,
+                        ]}
+                        onPress={() => confirmAction(
+                          'Clear Message Queue',
+                          `Clear the queued desktop messages for ${queue.conversationId}? Processing messages cannot be cleared.`,
+                          'Clear Queue',
+                          true,
+                          () => runAction(clearAction, async () => {
+                            const response = await settingsClient.clearOperatorMessageQueue(queue.conversationId);
+                            if (response.success) {
+                              setMessageQueues((current) => current.filter((entry) => entry.conversationId !== queue.conversationId));
+                            }
+                            return response;
+                          }, false),
+                        )}
+                        disabled={controlsDisabled || hasProcessingMessage}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Clear ${queue.conversationId} desktop message queue`)}
+                      >
+                        <Text style={styles.secondaryActionText}>
+                          {pendingAction === clearAction ? 'Clearing...' : 'Clear'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           )}
 
@@ -634,11 +1103,249 @@ export default function OperationsScreen({ navigation }: any) {
               <Text style={styles.detailText}>
                 {mcpServers.filter((s) => s.connected).length}/{mcpServers.length} connected • {mcpServers.reduce((sum, s) => sum + s.toolCount, 0)} tools
               </Text>
-              {mcpServers.map((s) => (
-                <Text key={s.name} style={styles.detailText}>
-                  {s.connected ? '✓' : s.enabled ? '✗' : '○'} {s.name}: {s.toolCount} tools{!s.enabled ? ' (disabled)' : ''}{s.error ? ` — ${s.error}` : ''}
-                </Text>
-              ))}
+              {mcpServers.map((s) => {
+                const startAction = `mcp-start:${s.name}`;
+                const stopAction = `mcp-stop:${s.name}`;
+                const restartAction = `mcp-restart:${s.name}`;
+                const testAction = `mcp-test:${s.name}`;
+                const logsAction = `mcp-logs:${s.name}`;
+                const toolsAction = `mcp-tools:${s.name}`;
+                const clearLogsAction = `mcp-clear-logs:${s.name}`;
+                const configDisabled = !!s.configDisabled;
+                const runtimeEnabled = s.runtimeEnabled !== false;
+                const startDisabled = controlsDisabled || configDisabled || runtimeEnabled;
+                const stopDisabled = controlsDisabled || configDisabled || !runtimeEnabled;
+                const restartDisabled = controlsDisabled || configDisabled || !runtimeEnabled;
+                const logsExpanded = expandedMcpLogs.has(s.name);
+                const toolsExpanded = expandedMcpTools.has(s.name);
+                const logs = mcpServerLogs[s.name] ?? [];
+                const tools = mcpServerTools[s.name] ?? [];
+
+                return (
+                  <View key={s.name} style={styles.mcpServerCard}>
+                    <View style={styles.mcpServerRow}>
+                      <View style={styles.mcpServerCopy}>
+                        <Text style={styles.detailText}>
+                          {s.connected ? '✓' : s.enabled ? '✗' : '○'} {s.name}: {s.toolCount} tools{!s.enabled ? ' (disabled)' : ''}
+                        </Text>
+                        {s.error ? <Text style={styles.warningText}>{s.error}</Text> : null}
+                      </View>
+                      <View style={styles.mcpActionRow}>
+                        {runtimeEnabled ? (
+                          <>
+                            <TouchableOpacity
+                              style={[
+                                styles.mcpRestartButton,
+                                styles.secondaryActionButton,
+                                restartDisabled && styles.actionButtonDisabled,
+                              ]}
+                              onPress={() => void runAction(restartAction, async () => {
+                                const response = await settingsClient.restartMCPServer(s.name);
+                                return response.success
+                                  ? { ...response, message: `Restarted ${s.name}` }
+                                  : response;
+                              })}
+                              disabled={restartDisabled}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`Restart ${s.name} MCP server`)}
+                            >
+                              <Text style={styles.secondaryActionText}>
+                                {pendingAction === restartAction ? 'Restarting...' : 'Restart'}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[
+                                styles.mcpRestartButton,
+                                styles.secondaryActionButton,
+                                stopDisabled && styles.actionButtonDisabled,
+                              ]}
+                              onPress={() => confirmAction(
+                                'Stop MCP Server',
+                                `Stop ${s.name} on the desktop app? Its tools will be hidden until the server is started again.`,
+                                'Stop Server',
+                                false,
+                                () => runAction(stopAction, () => settingsClient.stopMCPServer(s.name)),
+                              )}
+                              disabled={stopDisabled}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`Stop ${s.name} MCP server`)}
+                            >
+                              <Text style={styles.secondaryActionText}>
+                                {pendingAction === stopAction ? 'Stopping...' : 'Stop'}
+                              </Text>
+                            </TouchableOpacity>
+                          </>
+                        ) : (
+                          <TouchableOpacity
+                            style={[
+                              styles.mcpRestartButton,
+                              styles.secondaryActionButton,
+                              startDisabled && styles.actionButtonDisabled,
+                            ]}
+                            onPress={() => void runAction(startAction, () => settingsClient.startMCPServer(s.name))}
+                            disabled={startDisabled}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Start ${s.name} MCP server`)}
+                          >
+                            <Text style={styles.secondaryActionText}>
+                              {pendingAction === startAction ? 'Starting...' : 'Start'}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          style={[
+                            styles.mcpRestartButton,
+                            styles.secondaryActionButton,
+                            controlsDisabled && styles.actionButtonDisabled,
+                          ]}
+                          onPress={() => void runAction(testAction, async () => {
+                            const response = await settingsClient.testOperatorMCPServer(s.name);
+                            return response.success
+                              ? {
+                                success: true,
+                                message: typeof response.toolCount === 'number'
+                                  ? `Connection test passed for ${s.name} (${response.toolCount} tools)`
+                                  : `Connection test passed for ${s.name}`,
+                              }
+                              : {
+                                success: false,
+                                message: response.message,
+                                error: response.error || response.message,
+                              };
+                          }, false)}
+                          disabled={controlsDisabled}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Test ${s.name} MCP server connection`)}
+                        >
+                          <Text style={styles.secondaryActionText}>
+                            {pendingAction === testAction ? 'Testing...' : 'Test'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.mcpRestartButton,
+                            styles.secondaryActionButton,
+                            controlsDisabled && styles.actionButtonDisabled,
+                          ]}
+                          onPress={() => toggleMcpLogsForServer(s.name)}
+                          disabled={controlsDisabled}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`${logsExpanded ? 'Hide' : 'Show'} ${s.name} MCP server logs`)}
+                        >
+                          <Text style={styles.secondaryActionText}>
+                            {pendingAction === logsAction ? 'Loading...' : logsExpanded ? 'Hide logs' : 'Logs'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.mcpRestartButton,
+                            styles.secondaryActionButton,
+                            controlsDisabled && styles.actionButtonDisabled,
+                          ]}
+                          onPress={() => toggleMcpToolsForServer(s.name)}
+                          disabled={controlsDisabled}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`${toolsExpanded ? 'Hide' : 'Show'} ${s.name} MCP server tools`)}
+                        >
+                          <Text style={styles.secondaryActionText}>
+                            {pendingAction === toolsAction ? 'Loading...' : toolsExpanded ? 'Hide tools' : 'Tools'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    {logsExpanded ? (
+                      <View style={styles.mcpLogsPanel}>
+                        <View style={styles.logHeader}>
+                          <Text style={styles.sectionCaption}>Server logs</Text>
+                          <TouchableOpacity
+                            style={[
+                              styles.mcpClearLogsButton,
+                              styles.secondaryActionButton,
+                              (controlsDisabled || logs.length === 0) && styles.actionButtonDisabled,
+                            ]}
+                            onPress={() => confirmAction(
+                              'Clear MCP Logs',
+                              `Clear logs for ${s.name} on the desktop app?`,
+                              'Clear Logs',
+                              true,
+                              () => runAction(clearLogsAction, async () => {
+                                const response = await settingsClient.clearOperatorMCPServerLogs(s.name);
+                                if (response.success) {
+                                  setMcpServerLogs((current) => ({ ...current, [s.name]: [] }));
+                                }
+                                return response;
+                              }, false),
+                            )}
+                            disabled={controlsDisabled || logs.length === 0}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Clear ${s.name} MCP server logs`)}
+                          >
+                            <Text style={styles.secondaryActionText}>
+                              {pendingAction === clearLogsAction ? 'Clearing...' : 'Clear'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        {pendingAction === logsAction ? (
+                          <View style={styles.loadingRow}>
+                            <ActivityIndicator size="small" color={theme.colors.primary} />
+                            <Text style={styles.mutedText}>Loading MCP logs...</Text>
+                          </View>
+                        ) : logs.length === 0 ? (
+                          <Text style={styles.mutedText}>No logs returned for this server.</Text>
+                        ) : (
+                          logs.map((entry, index) => (
+                            <View key={`${entry.timestamp}-${index}`} style={styles.logItem}>
+                              <Text style={styles.logTimestamp}>{formatTimestamp(entry.timestamp)}</Text>
+                              <Text style={styles.logMessage}>{entry.message}</Text>
+                            </View>
+                          ))
+                        )}
+                      </View>
+                    ) : null}
+                    {toolsExpanded ? (
+                      <View style={styles.mcpToolsPanel}>
+                        <Text style={styles.sectionCaption}>Server tools</Text>
+                        {pendingAction === toolsAction ? (
+                          <View style={styles.loadingRow}>
+                            <ActivityIndicator size="small" color={theme.colors.primary} />
+                            <Text style={styles.mutedText}>Loading MCP tools...</Text>
+                          </View>
+                        ) : tools.length === 0 ? (
+                          <Text style={styles.mutedText}>No tools returned for this server.</Text>
+                        ) : (
+                          tools.map((tool) => {
+                            const toolAction = `mcp-tool-toggle:${tool.name}`;
+                            const toolDisabled = controlsDisabled || !tool.serverEnabled || pendingAction === toolAction;
+                            return (
+                              <View key={tool.name} style={styles.mcpToolRow}>
+                                <View style={styles.mcpToolCopy}>
+                                  <Text style={styles.detailText}>{tool.name}</Text>
+                                  {tool.description ? (
+                                    <Text style={styles.helperText}>{tool.description}</Text>
+                                  ) : (
+                                    <Text style={styles.helperText}>{tool.sourceLabel}</Text>
+                                  )}
+                                  {!tool.serverEnabled ? (
+                                    <Text style={styles.mutedText}>Server disabled</Text>
+                                  ) : null}
+                                </View>
+                                <Switch
+                                  value={tool.enabled}
+                                  onValueChange={(nextEnabled) => void setMcpToolEnabled(s.name, tool.name, nextEnabled)}
+                                  disabled={toolDisabled}
+                                  accessibilityLabel={createSwitchAccessibilityLabel(`Enable ${tool.name} MCP tool`)}
+                                  trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                                  thumbColor={tool.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                                />
+                              </View>
+                            );
+                          })
+                        )}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
             </View>
           )}
 
@@ -660,7 +1367,36 @@ export default function OperationsScreen({ navigation }: any) {
 
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Actions</Text>
+            <Text style={styles.label}>Run Agent on Desktop</Text>
+            <TextInput
+              style={[styles.input, styles.promptInput]}
+              value={operatorAgentPrompt}
+              onChangeText={setOperatorAgentPrompt}
+              placeholder="Ask the desktop agent to run a task"
+              placeholderTextColor={theme.colors.mutedForeground}
+              multiline
+              textAlignVertical="top"
+              editable={pendingAction === null}
+              accessibilityLabel={createTextInputAccessibilityLabel('Desktop agent prompt')}
+              accessibilityHint="Enter a task for the connected desktop agent to run through the operator API."
+            />
             <View style={styles.actionGrid}>
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  styles.primaryActionButton,
+                  (pendingAction !== null || !operatorAgentPrompt.trim()) && styles.actionButtonDisabled,
+                ]}
+                onPress={runOperatorAgent}
+                disabled={pendingAction !== null || !operatorAgentPrompt.trim()}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Run agent on desktop')}
+              >
+                <Text style={styles.primaryActionText}>
+                  {pendingAction === 'run-agent' ? 'Running agent…' : 'Run agent'}
+                </Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={[styles.actionButton, styles.primaryActionButton, pendingAction === 'refresh' && styles.actionButtonDisabled]}
                 onPress={handleRefresh}
@@ -842,6 +1578,56 @@ export default function OperationsScreen({ navigation }: any) {
               </View>
               <Text style={styles.helperText}>Use 0.0.0.0 for LAN/mobile access. 127.0.0.1 keeps the server on the desktop only.</Text>
 
+              <Text style={styles.label}>Log Level</Text>
+              <View style={styles.chipRow}>
+                {(['error', 'info', 'debug'] as const).map((value) => {
+                  const selected = (settings.remoteServerLogLevel ?? 'info') === value;
+                  return (
+                    <TouchableOpacity
+                      key={value}
+                      style={[
+                        styles.chipButton,
+                        selected && styles.chipButtonActive,
+                        controlsDisabled && styles.actionButtonDisabled,
+                      ]}
+                      onPress={() => void applySettingsUpdate(
+                        { remoteServerLogLevel: value },
+                        'remote server log level',
+                        `Remote server log level saved as ${value}.`,
+                      )}
+                      disabled={controlsDisabled}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected, disabled: controlsDisabled }}
+                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${value} remote server log level`)}
+                    >
+                      <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>{value}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.label}>CORS Origins</Text>
+              <TextInput
+                style={[styles.input, controlsDisabled && styles.inputDisabled]}
+                value={drafts.remoteServerCorsOrigins}
+                onChangeText={(value) => setDrafts((current) => ({ ...current, remoteServerCorsOrigins: value }))}
+                onEndEditing={() => {
+                  const origins = parseConfigListInput(drafts.remoteServerCorsOrigins, { unique: true });
+                  void applySettingsUpdate(
+                    { remoteServerCorsOrigins: origins.length > 0 ? origins : ['*'] },
+                    'remote server CORS origins',
+                    'Remote server CORS origins updated.',
+                  );
+                }}
+                editable={!controlsDisabled}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="* or http://localhost:8081"
+                placeholderTextColor={theme.colors.mutedForeground}
+                accessibilityLabel={createTextInputAccessibilityLabel('Remote server CORS origins')}
+              />
+              <Text style={styles.helperText}>Use * for development or comma-separated allowed origins.</Text>
+
               <Text style={styles.subsectionTitle}>Trusted operator devices</Text>
               <Text style={styles.helperText}>If this list is empty, any authenticated client can use operator/admin routes. Once set, non-loopback operator access requires a matching stable device ID.</Text>
               <Text style={styles.detailText}>Current device ID: {currentDeviceId ?? 'Loading…'}</Text>
@@ -851,7 +1637,7 @@ export default function OperationsScreen({ navigation }: any) {
                 value={drafts.remoteServerOperatorAllowDeviceIds}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, remoteServerOperatorAllowDeviceIds: value }))}
                 onEndEditing={() => void applySettingsUpdate(
-                  { remoteServerOperatorAllowDeviceIds: parseCommaSeparatedList(drafts.remoteServerOperatorAllowDeviceIds) },
+                  { remoteServerOperatorAllowDeviceIds: parseConfigListInput(drafts.remoteServerOperatorAllowDeviceIds, { unique: true }) },
                   'trusted operator devices',
                   'Trusted operator device allowlist updated.',
                 )}
@@ -872,7 +1658,7 @@ export default function OperationsScreen({ navigation }: any) {
                   onPress={() => {
                     if (!currentDeviceId) return;
                     const nextIds = [...new Set([...(settings?.remoteServerOperatorAllowDeviceIds ?? []), currentDeviceId])];
-                    setDrafts((current) => ({ ...current, remoteServerOperatorAllowDeviceIds: nextIds.join(', ') }));
+                    setDrafts((current) => ({ ...current, remoteServerOperatorAllowDeviceIds: formatConfigListInput(nextIds) }));
                     void applySettingsUpdate(
                       { remoteServerOperatorAllowDeviceIds: nextIds },
                       'trusted operator devices',
@@ -1009,6 +1795,24 @@ export default function OperationsScreen({ navigation }: any) {
                 accessibilityLabel={createTextInputAccessibilityLabel('Cloudflare tunnel hostname')}
               />
 
+              <Text style={styles.label}>Tunnel Name</Text>
+              <TextInput
+                style={[styles.input, controlsDisabled && styles.inputDisabled]}
+                value={drafts.cloudflareTunnelName}
+                onChangeText={(value) => setDrafts((current) => ({ ...current, cloudflareTunnelName: value }))}
+                onEndEditing={() => void applySettingsUpdate(
+                  { cloudflareTunnelName: drafts.cloudflareTunnelName.trim() },
+                  'tunnel name',
+                  'Tunnel name saved.',
+                )}
+                editable={!controlsDisabled}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="my-dotagents-tunnel"
+                placeholderTextColor={theme.colors.mutedForeground}
+                accessibilityLabel={createTextInputAccessibilityLabel('Cloudflare tunnel name')}
+              />
+
               <Text style={styles.label}>Credentials Path</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
@@ -1037,7 +1841,7 @@ export default function OperationsScreen({ navigation }: any) {
                 value={drafts.discordOperatorAllowUserIds}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, discordOperatorAllowUserIds: value }))}
                 onEndEditing={() => void applySettingsUpdate(
-                  { discordOperatorAllowUserIds: parseCommaSeparatedList(drafts.discordOperatorAllowUserIds) },
+                  { discordOperatorAllowUserIds: parseConfigListInput(drafts.discordOperatorAllowUserIds, { unique: true }) },
                   'Discord operator user IDs',
                   'Discord operator user allowlist updated.',
                 )}
@@ -1055,7 +1859,7 @@ export default function OperationsScreen({ navigation }: any) {
                 value={drafts.discordOperatorAllowGuildIds}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, discordOperatorAllowGuildIds: value }))}
                 onEndEditing={() => void applySettingsUpdate(
-                  { discordOperatorAllowGuildIds: parseCommaSeparatedList(drafts.discordOperatorAllowGuildIds) },
+                  { discordOperatorAllowGuildIds: parseConfigListInput(drafts.discordOperatorAllowGuildIds, { unique: true }) },
                   'Discord operator guild IDs',
                   'Discord operator guild allowlist updated.',
                 )}
@@ -1073,7 +1877,7 @@ export default function OperationsScreen({ navigation }: any) {
                 value={drafts.discordOperatorAllowChannelIds}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, discordOperatorAllowChannelIds: value }))}
                 onEndEditing={() => void applySettingsUpdate(
-                  { discordOperatorAllowChannelIds: parseCommaSeparatedList(drafts.discordOperatorAllowChannelIds) },
+                  { discordOperatorAllowChannelIds: parseConfigListInput(drafts.discordOperatorAllowChannelIds, { unique: true }) },
                   'Discord operator channel IDs',
                   'Discord operator channel allowlist updated.',
                 )}
@@ -1085,13 +1889,31 @@ export default function OperationsScreen({ navigation }: any) {
                 accessibilityLabel={createTextInputAccessibilityLabel('Discord operator channel IDs')}
               />
 
+              <Text style={styles.label}>Discord Operator Role IDs</Text>
+              <TextInput
+                style={[styles.input, controlsDisabled && styles.inputDisabled]}
+                value={drafts.discordOperatorAllowRoleIds}
+                onChangeText={(value) => setDrafts((current) => ({ ...current, discordOperatorAllowRoleIds: value }))}
+                onEndEditing={() => void applySettingsUpdate(
+                  { discordOperatorAllowRoleIds: parseConfigListInput(drafts.discordOperatorAllowRoleIds, { unique: true }) },
+                  'Discord operator role IDs',
+                  'Discord operator role allowlist updated.',
+                )}
+                editable={!controlsDisabled}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="9988776655"
+                placeholderTextColor={theme.colors.mutedForeground}
+                accessibilityLabel={createTextInputAccessibilityLabel('Discord operator role IDs')}
+              />
+
               <Text style={styles.label}>WhatsApp Operator Allowlist</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.whatsappOperatorAllowFrom}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, whatsappOperatorAllowFrom: value }))}
                 onEndEditing={() => void applySettingsUpdate(
-                  { whatsappOperatorAllowFrom: parseCommaSeparatedList(drafts.whatsappOperatorAllowFrom) },
+                  { whatsappOperatorAllowFrom: parseConfigListInput(drafts.whatsappOperatorAllowFrom, { unique: true }) },
                   'WhatsApp operator allowlist',
                   'WhatsApp operator allowlist updated.',
                 )}
@@ -1458,6 +2280,23 @@ export default function OperationsScreen({ navigation }: any) {
           )}
 
           <View style={styles.panel}>
+            <Text style={styles.panelTitle}>Recent operator logs</Text>
+            {operatorLogs.length === 0 ? (
+              <Text style={styles.mutedText}>No recent operator log entries returned by the desktop server.</Text>
+            ) : (
+              operatorLogs.map((entry) => (
+                <View key={`${entry.timestamp}-${entry.component}-${entry.level}-${entry.message}`} style={styles.logItem}>
+                  <View style={styles.logHeader}>
+                    <Text style={styles.logLevel}>{entry.level} • {entry.component}</Text>
+                    <Text style={styles.logTimestamp}>{formatTimestamp(entry.timestamp)}</Text>
+                  </View>
+                  <Text style={styles.logMessage}>{entry.message}</Text>
+                </View>
+              ))
+            )}
+          </View>
+
+          <View style={styles.panel}>
             <Text style={styles.panelTitle}>Recent errors</Text>
             {recentErrors.length === 0 ? (
               <Text style={styles.mutedText}>No recent errors returned by the desktop server.</Text>
@@ -1581,6 +2420,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.foreground,
       fontSize: 15,
     },
+    promptInput: {
+      minHeight: 96,
+      lineHeight: 20,
+    },
     inputDisabled: {
       opacity: 0.65,
     },
@@ -1629,6 +2472,146 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
+    },
+    mcpServerCard: {
+      gap: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: spacing.sm,
+    },
+    agentSessionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: spacing.sm,
+    },
+    agentSessionCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: spacing.xs,
+    },
+    queueMessageList: {
+      gap: spacing.xs,
+    },
+    queueMessageItem: {
+      gap: spacing.xs,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: spacing.xs,
+    },
+    queueMessageCopy: {
+      minWidth: 0,
+      gap: spacing.xs,
+    },
+    queueMessageInput: {
+      minHeight: 72,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.sm,
+      color: theme.colors.foreground,
+      backgroundColor: theme.colors.background,
+      textAlignVertical: 'top',
+    },
+    queueMessageActionRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'flex-start',
+      gap: spacing.xs,
+    },
+    queueMessageButton: {
+      minHeight: 32,
+      minWidth: 72,
+      flexGrow: 0,
+      borderRadius: radius.md,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    sessionStopButton: {
+      minHeight: 36,
+      minWidth: 78,
+      flexGrow: 0,
+      borderRadius: radius.md,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    mcpServerRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+    },
+    mcpServerCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: spacing.xs,
+    },
+    mcpActionRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'flex-end',
+      gap: spacing.xs,
+    },
+    mcpRestartButton: {
+      minHeight: 36,
+      minWidth: 82,
+      flexGrow: 0,
+      borderRadius: radius.md,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    mcpClearLogsButton: {
+      minHeight: 32,
+      minWidth: 72,
+      flexGrow: 0,
+      borderRadius: radius.md,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    mcpLogsPanel: {
+      backgroundColor: theme.colors.background,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.md,
+      padding: spacing.sm,
+      gap: spacing.sm,
+    },
+    mcpToolsPanel: {
+      backgroundColor: theme.colors.background,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.md,
+      padding: spacing.sm,
+      gap: spacing.sm,
+    },
+    mcpToolRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: spacing.sm,
+    },
+    mcpToolCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: spacing.xs,
     },
     actionButtonDisabled: {
       opacity: 0.5,

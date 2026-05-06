@@ -3,6 +3,8 @@
  * Platform-agnostic - does NOT include ConnectionRecoveryManager which uses React Native AppState
  */
 
+import { REMOTE_SERVER_API_PATHS } from './remote-server-api';
+
 export type ConnectionStatus =
   | 'connected'
   | 'connecting'
@@ -188,8 +190,8 @@ export async function checkServerConnection(
   // Normalize the base URL, including adding /v1 for root-level OpenAI-compatible endpoints
   const normalizedUrl = normalizeApiBaseUrl(baseUrl);
 
-  // Try the /models endpoint first (OpenAI-compatible)
-  const modelsUrl = `${normalizedUrl}/models`;
+  // Try the models endpoint first (OpenAI-compatible)
+  const modelsUrl = `${normalizedUrl}${REMOTE_SERVER_API_PATHS.models}`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -317,4 +319,3 @@ export async function checkServerConnection(
     };
   }
 }
-

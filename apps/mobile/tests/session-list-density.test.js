@@ -38,3 +38,10 @@ test('keeps pin controls in chat rows and removes the helper copy under search',
   assert.match(screenSource, /styles\.sessionPinButton/);
   assert.doesNotMatch(screenSource, /styles\.searchHelperText/);
 });
+
+test('keeps archived chats reachable from the session list', () => {
+  assert.match(screenSource, /sessionListMode/);
+  assert.match(screenSource, /filterSessionsByArchiveMode\(results, sessionListMode\)/);
+  assert.match(screenSource, /Archived\$\{sessionArchiveCount > 0/);
+  assert.match(screenSource, /Unarchive/);
+});

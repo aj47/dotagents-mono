@@ -1,4 +1,9 @@
 import { toast } from "sonner"
+import {
+  getDefaultAgentProfile,
+  getEnabledAgentProfiles,
+  getSelectedAgentProfile,
+} from "@dotagents/shared/agent-selector-options"
 
 import type { AgentProfile } from "@shared/types"
 
@@ -23,11 +28,11 @@ export async function applySelectedAgentToNextSession({
     const agents = agentProfiles && agentProfiles.length > 0
       ? agentProfiles
       : ((await tipcClient.getAgentProfiles()) as AgentProfile[])
-    const enabledAgents = agents.filter((agent) => agent.enabled)
+    const enabledAgents = getEnabledAgentProfiles(agents)
 
     let agentIdToApply: string | null
     if (selectedAgentId) {
-      const selectedAgent = enabledAgents.find((agent) => agent.id === selectedAgentId)
+      const selectedAgent = getSelectedAgentProfile(enabledAgents, selectedAgentId)
       if (!selectedAgent) {
         setSelectedAgentId(null)
         if (!silent) {
@@ -37,10 +42,7 @@ export async function applySelectedAgentToNextSession({
       }
       agentIdToApply = selectedAgent.id
     } else {
-      const defaultAgent =
-        enabledAgents.find((agent) => agent.isDefault)
-        ?? enabledAgents.find((agent) => agent.name === "main-agent")
-        ?? enabledAgents[0]
+      const defaultAgent = getDefaultAgentProfile(enabledAgents)
       agentIdToApply = defaultAgent?.id ?? null
     }
 

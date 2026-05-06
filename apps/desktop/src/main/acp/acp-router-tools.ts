@@ -15,7 +15,8 @@ import { buildProfileContext, getPreferredDelegationOutput } from '../agent-run-
 import { emitAgentProgress } from '../emit-agent-progress';
 import { agentSessionStateManager } from '../state';
 import type { ACPDelegationProgress, ACPSubAgentMessage } from '../../shared/types';
-import { RESPOND_TO_USER_TOOL } from '../../shared/runtime-tool-names';
+import type { AgentProfile } from '@dotagents/core';
+import { RESPOND_TO_USER_TOOL } from '@dotagents/shared/chat-utils';
 import { extractRespondToUserContentFromArgs } from '../respond-to-user-utils';
 import {
   runInternalSubSession,
@@ -26,7 +27,6 @@ import {
 } from './internal-agent';
 import { agentProfileService } from '../agent-profile-service';
 import { getDelegationAcpxSessionName } from '../acp-session-state';
-import type { AgentProfile } from '../../shared/types';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
 
 // ============================================================================

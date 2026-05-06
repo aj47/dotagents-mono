@@ -45,6 +45,21 @@ describe("applySelectedAgentToNextSession", () => {
     expect(toastError).not.toHaveBeenCalled()
   })
 
+  it("treats agents without an explicit enabled flag as selectable", async () => {
+    getAgentProfiles.mockResolvedValue([
+      { id: "agent-1", name: "main-agent", displayName: "Main" },
+    ])
+    setCurrentAgentProfile.mockResolvedValue({ success: true })
+
+    const result = await applySelectedAgentToNextSession({
+      selectedAgentId: null,
+      setSelectedAgentId: vi.fn(),
+    })
+
+    expect(result).toBe(true)
+    expect(setCurrentAgentProfile).toHaveBeenCalledWith({ id: "agent-1" })
+  })
+
   it("clears stale selections and blocks the session start instead of silently switching agents", async () => {
     getAgentProfiles.mockResolvedValue([
       { id: "agent-2", name: "main-agent", displayName: "Main", enabled: true },

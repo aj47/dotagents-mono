@@ -2,11 +2,11 @@ import {
   parseFrontmatterDocument,
   parseFrontmatterOrBody,
   stringifyFrontmatterDocument,
-} from "../../../../../packages/core/src/agents-files/frontmatter"
+} from "@dotagents/core"
 
 export {
   parseFrontmatterDocument,
   parseFrontmatterOrBody,
   stringifyFrontmatterDocument,
 }
-export type { FrontmatterDocument } from "../../../../../packages/core/src/agents-files/frontmatter"
+export type { FrontmatterDocument } from "@dotagents/core"

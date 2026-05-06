@@ -7,44 +7,12 @@
 import { makeTextCompletionWithFetch } from "./llm-fetch"
 import { getCurrentProviderId } from "./ai-sdk-provider"
 import { configStore } from "./config"
-import { Config } from "@shared/types"
 import { diagnosticsService } from "./diagnostics"
-import { preprocessTextForTTS as regexPreprocessTextForTTS } from "@dotagents/shared"
-
-/**
- * Builds a dynamic TTS preprocessing prompt based on user config settings.
- * Respects ttsRemoveCodeBlocks, ttsRemoveUrls, and ttsConvertMarkdown settings.
- */
-function buildTTSPreprocessingPrompt(config: Config): string {
-  const instructions: string[] = []
-
-  // Only add instructions for enabled options
-  if (config.ttsRemoveCodeBlocks ?? true) {
-    instructions.push("- Remove code blocks and replace with brief description if relevant")
-  }
-  if (config.ttsRemoveUrls ?? true) {
-    instructions.push("- Remove URLs but mention if a link was shared")
-  }
-  if (config.ttsConvertMarkdown ?? true) {
-    instructions.push("- Convert markdown formatting to natural speech")
-    instructions.push("- Strip bullet/list markers silently; do not say or add words like \"item\" for list entries")
-  }
-
-  // Always include these LLM-specific enhancements (the main value of LLM preprocessing)
-  instructions.push("- Expand abbreviations and acronyms appropriately (e.g., \"Dr.\" → \"Doctor\", \"API\" → \"A P I\")")
-  instructions.push("- Convert technical symbols to spoken words (e.g., \"&&\" → \"and\", \"=>\" → \"arrow\")")
-  instructions.push("- Remove or describe any content that wouldn't make sense when spoken aloud")
-  instructions.push("- Keep the core meaning but optimize for listening")
-  instructions.push("- Do NOT add any commentary, just output the converted text")
-
-  return `Convert this AI response to natural spoken text.
-${instructions.join("\n")}
-
-Only output the converted text, nothing else.
-
-Text to convert:
-`
-}
+import {
+  buildTTSPreprocessingPrompt,
+  getTTSPreprocessingOptionsFromConfig,
+  preprocessTextForTTS as regexPreprocessTextForTTS,
+} from "@dotagents/shared/tts-preprocessing"
 
 /**
  * Preprocesses text for TTS using an LLM for more natural speech output.
@@ -98,12 +66,6 @@ export async function preprocessTextForTTSWithLLM(
     )
 
     // Fall back to regex-based preprocessing with user-configured options
-    const preprocessingOptions = {
-      removeCodeBlocks: config.ttsRemoveCodeBlocks ?? true,
-      removeUrls: config.ttsRemoveUrls ?? true,
-      convertMarkdown: config.ttsConvertMarkdown ?? true,
-    }
-    return regexPreprocessTextForTTS(text, preprocessingOptions)
+    return regexPreprocessTextForTTS(text, getTTSPreprocessingOptionsFromConfig(config))
   }
 }
-

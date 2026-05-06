@@ -14,7 +14,7 @@ import {
   writeAllAgentsProfileFiles,
   deleteAgentProfileFiles,
   loadMergedAgentProfiles,
-} from "../../../../../packages/core/src/agents-files/agent-profiles"
+} from "@dotagents/core"
 
 export {
   AGENTS_PROFILE_CANONICAL_FILENAME,
@@ -33,4 +33,4 @@ export {
   deleteAgentProfileFiles,
   loadMergedAgentProfiles,
 }
-export type { AgentProfileOrigin, LoadedAgentProfilesLayer, AgentProfileConfigJson } from "../../../../../packages/core/src/agents-files/agent-profiles"
+export type { AgentProfileOrigin, LoadedAgentProfilesLayer, AgentProfileConfigJson } from "@dotagents/core"

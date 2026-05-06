@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Session } from '../types/session';
 
-import { filterSessionSearchResults } from './session-list-search';
+import { filterSessionSearchResults, filterSessionsByArchiveMode } from './session-list-search';
 
 function createSession(overrides: Partial<Session>): Session {
   return {
@@ -13,6 +13,7 @@ function createSession(overrides: Partial<Session>): Session {
     isPinned: overrides.isPinned,
     messages: overrides.messages ?? [],
     serverConversationId: overrides.serverConversationId,
+    isArchived: overrides.isArchived,
     metadata: overrides.metadata,
     serverMetadata: overrides.serverMetadata,
   };
@@ -74,5 +75,25 @@ describe('filterSessionSearchResults', () => {
     expect(results).toHaveLength(1);
     expect(results[0]?.matchedField).toBe('preview');
     expect(results[0]?.searchPreview).toContain('Codex ACP setup');
+  });
+});
+
+describe('filterSessionsByArchiveMode', () => {
+  it('keeps the normal chats list focused on unarchived sessions', () => {
+    const results = filterSessionsByArchiveMode([
+      createSession({ id: 'active-chat', title: 'Active' }),
+      createSession({ id: 'archived-chat', title: 'Archived', isArchived: true }),
+    ], 'active');
+
+    expect(results.map((item) => item.id)).toEqual(['active-chat']);
+  });
+
+  it('keeps archived chats reachable for unarchive and delete actions', () => {
+    const results = filterSessionsByArchiveMode([
+      createSession({ id: 'active-chat', title: 'Active' }),
+      createSession({ id: 'archived-chat', title: 'Archived', isArchived: true }),
+    ], 'archived');
+
+    expect(results.map((item) => item.id)).toEqual(['archived-chat']);
   });
 });

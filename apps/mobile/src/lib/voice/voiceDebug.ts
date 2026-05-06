@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { HandsFreeDebugEventType } from '@dotagents/shared';
+import type { HandsFreeDebugEventType } from '@dotagents/shared/types';
 
 export type VoiceDebugEntry = {
   id: string;

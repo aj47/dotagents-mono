@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pnpm --filter @dotagents/desktop dev",
     "dev:mobile": "pnpm --filter @dotagents/mobile start",
+    "tui": "bun scripts/dotagents-tui.ts",
     "build": "pnpm --filter @dotagents/shared build && pnpm --filter @dotagents/core build && pnpm --filter @dotagents/desktop build",
     "build:shared": "pnpm --filter @dotagents/shared build",
     "build:core": "pnpm --filter @dotagents/core build",
@@ -25,5 +26,8 @@
       "micromark-util-symbol": "^2.0.1",
       "nan": "^2.25.0"
     }
+  },
+  "devDependencies": {
+    "@opentui/core": "^0.2.2"
   }
 }
