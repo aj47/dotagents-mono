@@ -12,6 +12,7 @@ import type { ConversationHistoryMessage } from './types';
 // bound to scale loop guardrails against. Individual guardrails are expected
 // to track consecutive failures and reset on progress.
 export const DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET = 10000
+export const DEFAULT_AGENT_MODE_MAX_ITERATIONS = 10
 export const AGENT_STOP_NOTE =
   "(Agent mode was stopped by emergency kill switch)"
 export const AGENT_STOPPED_QUEUE_PAUSED_DESCRIPTION =
@@ -90,6 +91,11 @@ export interface AgentStoppedProgressUpdateOptions {
   conversationTitle?: string
   timestamp?: number
   clearPendingToolApproval?: boolean
+}
+
+export type AgentModeIterationConfigLike = {
+  mcpUnlimitedIterations?: boolean
+  mcpMaxIterations?: number
 }
 
 export type AgentSessionIdKind = "missing" | "pending" | "subsession" | "session" | "unknown"
@@ -174,6 +180,19 @@ export function resolveAgentIterationLimits(
     loopMaxIterations: normalizedMaxIterations,
     guardrailBudget: normalizedMaxIterations,
   }
+}
+
+export function resolveAgentModeMaxIterations(
+  config: AgentModeIterationConfigLike,
+  maxIterationsOverride?: number,
+): number {
+  if (typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)) {
+    return maxIterationsOverride
+  }
+
+  return config.mcpUnlimitedIterations
+    ? Number.POSITIVE_INFINITY
+    : config.mcpMaxIterations ?? DEFAULT_AGENT_MODE_MAX_ITERATIONS
 }
 
 export function appendAgentStopNote(content: string): string {

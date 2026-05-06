@@ -9,6 +9,7 @@ import {
   buildProfileContext,
   describeAgentSessionId,
   getPreferredDelegationOutput,
+  resolveAgentModeMaxIterations,
   resolveAgentIterationLimits,
   runRemoteAgentAction,
   type RemoteAgentConversationLike,
@@ -40,6 +41,19 @@ describe('resolveAgentIterationLimits', () => {
       loopMaxIterations: 1,
       guardrailBudget: 1,
     });
+  });
+});
+
+describe('resolveAgentModeMaxIterations', () => {
+  it('prefers finite explicit overrides', () => {
+    expect(resolveAgentModeMaxIterations({ mcpUnlimitedIterations: true }, 4)).toBe(4);
+    expect(resolveAgentModeMaxIterations({ mcpMaxIterations: 20 }, 2.5)).toBe(2.5);
+  });
+
+  it('resolves unlimited, configured, and default iteration limits', () => {
+    expect(resolveAgentModeMaxIterations({ mcpUnlimitedIterations: true, mcpMaxIterations: 3 })).toBe(Number.POSITIVE_INFINITY);
+    expect(resolveAgentModeMaxIterations({ mcpMaxIterations: 12 })).toBe(12);
+    expect(resolveAgentModeMaxIterations({})).toBe(10);
   });
 });
 

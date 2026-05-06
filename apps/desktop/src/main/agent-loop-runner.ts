@@ -1,4 +1,5 @@
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
+import { resolveAgentModeMaxIterations } from "@dotagents/shared/agent-run-utils"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressUpdate, Config, ConversationCompactionMetadata } from "../shared/types"
 import { agentRuntime } from "./agent-runtime"
@@ -35,7 +36,7 @@ async function initializeMcpWithProgress(
   onProgress?: (update: AgentProgressUpdate) => void,
 ): Promise<void> {
   const shouldStop = () => agentSessionStateManager.shouldStopSession(sessionId)
-  const effectiveMaxIterations = config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10)
+  const effectiveMaxIterations = resolveAgentModeMaxIterations(config)
 
   if (shouldStop()) {
     return
@@ -133,10 +134,7 @@ export async function processWithAgentMode(
   options: ProcessWithAgentModeOptions = {},
 ): Promise<string> {
   const config = configStore.get()
-  const maxIterationsFromOverride = typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)
-    ? maxIterationsOverride
-    : undefined
-  const effectiveMaxIterations = maxIterationsFromOverride ?? (config.mcpUnlimitedIterations ? Infinity : (config.mcpMaxIterations ?? 10))
+  const effectiveMaxIterations = resolveAgentModeMaxIterations(config, maxIterationsOverride)
   const allProfiles = agentProfileService.getAll()
   const requestedProfile = options.profileId
     ? agentProfileService.getById(options.profileId)
