@@ -4,7 +4,23 @@ import os from "os"
 import type { Config, ModelPreset } from "./types"
 import type { PathResolver } from "./interfaces/path-resolver"
 import { container, ServiceTokens } from "./service-container"
-import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID, DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT } from "@dotagents/shared/providers"
+import {
+  getBuiltInModelPresets,
+  DEFAULT_MODEL_PRESET_ID,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT,
+  GROQ_TTS_MODELS,
+  GROQ_TTS_VOICES_ARABIC,
+  GROQ_TTS_VOICES_ENGLISH,
+} from "@dotagents/shared/providers"
+import {
+  DEFAULT_GROQ_ARABIC_TTS_VOICE,
+  DEFAULT_SUPERTONIC_TTS_LANGUAGE,
+  DEFAULT_SUPERTONIC_TTS_STEPS,
+  GROQ_ARABIC_TTS_MODEL,
+  getTextToSpeechModelDefault,
+  getTextToSpeechSpeedDefault,
+  getTextToSpeechVoiceDefault,
+} from "@dotagents/shared/text-to-speech-settings"
 
 import {
   getAgentsLayerPaths,
@@ -48,12 +64,20 @@ export function getConfigPath(): string {
 // Everything lives here so it's easy to version-control, share, or distribute as a profile pack.
 export const globalAgentsFolder = path.join(os.homedir(), ".agents")
 
+const DEFAULT_OPENAI_TTS_MODEL = getTextToSpeechModelDefault("openai")!
+const DEFAULT_OPENAI_TTS_VOICE = String(getTextToSpeechVoiceDefault("openai"))
+const DEFAULT_GROQ_TTS_MODEL = getTextToSpeechModelDefault("groq")!
+const DEFAULT_GROQ_TTS_VOICE = String(getTextToSpeechVoiceDefault("groq"))
+const DEFAULT_GEMINI_TTS_MODEL = getTextToSpeechModelDefault("gemini")!
+const DEFAULT_GEMINI_TTS_VOICE = String(getTextToSpeechVoiceDefault("gemini"))
+const DEFAULT_SUPERTONIC_TTS_VOICE = String(getTextToSpeechVoiceDefault("supertonic"))
+
 // Valid Orpheus voices - used for migration validation
-const ORPHEUS_ENGLISH_VOICES = ["autumn", "diana", "hannah", "austin", "daniel", "troy"]
-const ORPHEUS_ARABIC_VOICES = ["fahad", "sultan", "lulwa", "noura"]
+const ORPHEUS_ENGLISH_VOICES: readonly string[] = GROQ_TTS_VOICES_ENGLISH.map((voice) => voice.value)
+const ORPHEUS_ARABIC_VOICES: readonly string[] = GROQ_TTS_VOICES_ARABIC.map((voice) => voice.value)
 
 // Valid Groq TTS model IDs
-const VALID_GROQ_TTS_MODELS = ["canopylabs/orpheus-v1-english", "canopylabs/orpheus-arabic-saudi"]
+const VALID_GROQ_TTS_MODELS: readonly string[] = GROQ_TTS_MODELS.map((model) => model.value)
 
 const AGENT_CONFIG_ALIAS_PAIRS = [
   ["agentProviderId", "mcpToolsProviderId"],
@@ -87,12 +111,12 @@ function migrateGroqTtsConfig(config: Partial<Config>): Partial<Config> {
   // Use string comparison since saved config may contain deprecated values not in current type
   const savedModel = config.groqTtsModel as string | undefined
   if (savedModel === "playai-tts") {
-    config.groqTtsModel = "canopylabs/orpheus-v1-english"
+    config.groqTtsModel = DEFAULT_GROQ_TTS_MODEL
   } else if (savedModel === "playai-tts-arabic") {
-    config.groqTtsModel = "canopylabs/orpheus-arabic-saudi"
+    config.groqTtsModel = GROQ_ARABIC_TTS_MODEL
   } else if (savedModel && !VALID_GROQ_TTS_MODELS.includes(savedModel)) {
     // Unknown model value (user-edited config.json) - reset to default English model
-    config.groqTtsModel = "canopylabs/orpheus-v1-english"
+    config.groqTtsModel = DEFAULT_GROQ_TTS_MODEL
   }
 
   // Migrate voices: check if voice is valid for the current model
@@ -100,15 +124,15 @@ function migrateGroqTtsConfig(config: Partial<Config>): Partial<Config> {
   const voice = config.groqTtsVoice
   const isValidVoice = voice && typeof voice === "string"
 
-  if (config.groqTtsModel === "canopylabs/orpheus-arabic-saudi") {
+  if (config.groqTtsModel === GROQ_ARABIC_TTS_MODEL) {
     // For Arabic model, ensure voice is a valid Arabic voice
     if (!isValidVoice || !ORPHEUS_ARABIC_VOICES.includes(voice)) {
-      config.groqTtsVoice = "fahad" // Default Arabic voice
+      config.groqTtsVoice = DEFAULT_GROQ_ARABIC_TTS_VOICE
     }
-  } else if (config.groqTtsModel === "canopylabs/orpheus-v1-english") {
+  } else if (config.groqTtsModel === DEFAULT_GROQ_TTS_MODEL) {
     // For English model, ensure voice is a valid English voice
     if (!isValidVoice || !ORPHEUS_ENGLISH_VOICES.includes(voice)) {
-      config.groqTtsVoice = "troy" // Default English voice
+      config.groqTtsVoice = DEFAULT_GROQ_TTS_VOICE
     }
   }
 
@@ -271,23 +295,23 @@ const getConfig = (): LoadedConfig => {
     // LLM-based TTS preprocessing (off by default - uses regex for fast/free processing)
     ttsUseLLMPreprocessing: false,
     // OpenAI TTS defaults
-    openaiTtsModel: "gpt-4o-mini-tts",
-    openaiTtsVoice: "alloy",
-    openaiTtsSpeed: 1.0,
+    openaiTtsModel: DEFAULT_OPENAI_TTS_MODEL,
+    openaiTtsVoice: DEFAULT_OPENAI_TTS_VOICE,
+    openaiTtsSpeed: getTextToSpeechSpeedDefault("openai"),
     openaiTtsResponseFormat: "mp3",
     // OpenAI Compatible Provider defaults
     openaiCompatiblePreset: "openai",
     // Groq TTS defaults
-    groqTtsModel: "canopylabs/orpheus-v1-english",
-    groqTtsVoice: "troy",
+    groqTtsModel: DEFAULT_GROQ_TTS_MODEL,
+    groqTtsVoice: DEFAULT_GROQ_TTS_VOICE,
     // Gemini TTS defaults
-    geminiTtsModel: "gemini-2.5-flash-preview-tts",
-    geminiTtsVoice: "Kore",
+    geminiTtsModel: DEFAULT_GEMINI_TTS_MODEL,
+    geminiTtsVoice: DEFAULT_GEMINI_TTS_VOICE,
     // Supertonic TTS defaults
-    supertonicVoice: "M1",
-    supertonicLanguage: "en",
-    supertonicSpeed: 1.05,
-    supertonicSteps: 5,
+    supertonicVoice: DEFAULT_SUPERTONIC_TTS_VOICE,
+    supertonicLanguage: DEFAULT_SUPERTONIC_TTS_LANGUAGE,
+    supertonicSpeed: getTextToSpeechSpeedDefault("supertonic"),
+    supertonicSteps: DEFAULT_SUPERTONIC_TTS_STEPS,
 
     // Provider Section Collapse defaults - collapsed by default
     providerSectionCollapsedOpenai: true,
