@@ -145,6 +145,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
 test('loads saved prompts from the settings API for the mobile quick-start launcher', () => {
   assert.match(screenSource, /settingsClient\.getSettings\(\)/);
   assert.match(screenSource, /settings\.predefinedPrompts \|\| \[\]/);
+  assert.match(screenSource, /sortPredefinedPromptsByUpdatedAt\(settings\.predefinedPrompts \|\| \[\]\)/);
   assert.match(screenSource, /isSlashCommandPrompt/);
 });
 
@@ -153,9 +154,10 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /const \[editingPrompt, setEditingPrompt\] = useState<PredefinedPromptSummary \| null>\(null\);/);
   assert.match(screenSource, /openEditPromptModal\(item\.prompt!\)/);
   assert.match(screenSource, /handleDeletePrompt\(item\.prompt!\)/);
+  assert.match(screenSource, /createPredefinedPromptRecord\(draft, now\)/);
   assert.match(screenSource, /settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
-  assert.match(screenSource, /prompt\.id === editingPrompt\.id/);
-  assert.match(screenSource, /predefinedPrompts\.filter\(\(candidate\) => candidate\.id !== prompt\.id\)/);
+  assert.match(screenSource, /updatePredefinedPromptList\(predefinedPrompts, editingPrompt\.id, draft, now\)/);
+  assert.match(screenSource, /deletePredefinedPromptFromList\(predefinedPrompts, prompt\.id\)/);
   assert.match(screenSource, /editingPrompt \? 'Edit Prompt' : 'Add New Prompt'/);
   assert.match(screenSource, /editingPrompt \? 'Save Changes' : 'Add Prompt'/);
   assert.match(screenSource, /styles\.chatHomeShortcutActions/);

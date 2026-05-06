@@ -32,4 +32,12 @@ describe("predefined prompts menu layout", () => {
     expect(predefinedPromptsMenuSource).toContain('No matching skills')
     expect(predefinedPromptsMenuSource).toContain('No matching tasks')
   })
+
+  it("uses shared predefined prompt mutation helpers", () => {
+    expect(predefinedPromptsMenuSource).toContain("createPredefinedPromptRecord")
+    expect(predefinedPromptsMenuSource).toContain("updatePredefinedPromptList(prompts, editingPrompt.id, draft, now)")
+    expect(predefinedPromptsMenuSource).toContain("deletePredefinedPromptFromList(prompts, prompt.id)")
+    expect(predefinedPromptsMenuSource).not.toContain("Math.random().toString(36)")
+    expect(predefinedPromptsMenuSource).not.toContain("prompts.filter((p) => p.id !== prompt.id)")
+  })
 })

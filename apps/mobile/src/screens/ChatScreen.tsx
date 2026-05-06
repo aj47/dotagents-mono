@@ -85,6 +85,12 @@ import type {
   PredefinedPromptSummary,
   Skill,
 } from '@dotagents/shared/api-types';
+import {
+  createPredefinedPromptRecord,
+  deletePredefinedPromptFromList,
+  sortPredefinedPromptsByUpdatedAt,
+  updatePredefinedPromptList,
+} from '@dotagents/shared/predefined-prompts';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../ui/ThemeProvider';
@@ -1431,7 +1437,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
         if (settingsResult.status === 'fulfilled') {
           const settings = settingsResult.value;
-          const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
+          const nextPrompts = sortPredefinedPromptsByUpdatedAt(settings.predefinedPrompts || []);
           setPredefinedPrompts(nextPrompts);
           setRemoteTtsProvider(settings.ttsProviderId || 'native');
           setRemoteTtsVoice(getRemoteDesktopTtsVoice(settings) || DEFAULT_EDGE_TTS_VOICE);
@@ -1461,25 +1467,16 @@ export default function ChatScreen({ route, navigation }: any) {
       const now = Date.now();
       const name = newPromptName.trim();
       const content = newPromptContent.trim();
+      const draft = { name, content };
       const updatedPrompts = editingPrompt
-        ? predefinedPrompts.map((prompt) =>
-          prompt.id === editingPrompt.id
-            ? { ...prompt, name, content, updatedAt: now }
-            : prompt
-        )
+        ? updatePredefinedPromptList(predefinedPrompts, editingPrompt.id, draft, now)
         : [
-          {
-            id: `prompt-${now}-${Math.random().toString(36).substr(2, 9)}`,
-            name,
-            content,
-            createdAt: now,
-            updatedAt: now,
-          },
+          createPredefinedPromptRecord(draft, now),
           ...predefinedPrompts,
         ];
 
       await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
-      setPredefinedPrompts([...updatedPrompts].sort((a, b) => b.updatedAt - a.updatedAt));
+      setPredefinedPrompts(sortPredefinedPromptsByUpdatedAt(updatedPrompts));
       setAddPromptModalVisible(false);
       setEditingPrompt(null);
       setNewPromptName('');
@@ -1499,7 +1496,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const deletePrompt = async () => {
       setIsSavingPrompt(true);
       try {
-        const updatedPrompts = predefinedPrompts.filter((candidate) => candidate.id !== prompt.id);
+        const updatedPrompts = deletePredefinedPromptFromList(predefinedPrompts, prompt.id);
         await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
         setPredefinedPrompts(updatedPrompts);
       } catch (error: any) {

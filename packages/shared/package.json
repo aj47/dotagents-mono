@@ -66,6 +66,11 @@
       "import": "./dist/api-types.mjs",
       "require": "./dist/api-types.js"
     },
+    "./predefined-prompts": {
+      "types": "./dist/predefined-prompts.d.ts",
+      "import": "./dist/predefined-prompts.mjs",
+      "require": "./dist/predefined-prompts.js"
+    },
     "./bundle-api": {
       "types": "./dist/bundle-api.d.ts",
       "import": "./dist/bundle-api.mjs",

@@ -1,0 +1,65 @@
+import type { PredefinedPromptSummary } from "./api-types"
+
+export type PredefinedPromptDraft = {
+  name: string
+  content: string
+}
+
+export type PredefinedPromptIdGenerator = (now: number) => string
+
+export function createPredefinedPromptId(now: number, random: () => number = Math.random): string {
+  return `prompt-${now}-${random().toString(36).slice(2, 11)}`
+}
+
+export function createPredefinedPromptRecord(
+  draft: PredefinedPromptDraft,
+  now: number = Date.now(),
+  createId: PredefinedPromptIdGenerator = createPredefinedPromptId,
+): PredefinedPromptSummary {
+  return {
+    id: createId(now),
+    name: draft.name.trim(),
+    content: draft.content.trim(),
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
+export function updatePredefinedPromptRecord(
+  prompt: PredefinedPromptSummary,
+  draft: PredefinedPromptDraft,
+  now: number = Date.now(),
+): PredefinedPromptSummary {
+  return {
+    ...prompt,
+    name: draft.name.trim(),
+    content: draft.content.trim(),
+    updatedAt: now,
+  }
+}
+
+export function updatePredefinedPromptList(
+  prompts: readonly PredefinedPromptSummary[],
+  promptId: string,
+  draft: PredefinedPromptDraft,
+  now: number = Date.now(),
+): PredefinedPromptSummary[] {
+  return prompts.map((prompt) =>
+    prompt.id === promptId
+      ? updatePredefinedPromptRecord(prompt, draft, now)
+      : prompt
+  )
+}
+
+export function deletePredefinedPromptFromList(
+  prompts: readonly PredefinedPromptSummary[],
+  promptId: string,
+): PredefinedPromptSummary[] {
+  return prompts.filter((prompt) => prompt.id !== promptId)
+}
+
+export function sortPredefinedPromptsByUpdatedAt(
+  prompts: readonly PredefinedPromptSummary[],
+): PredefinedPromptSummary[] {
+  return [...prompts].sort((a, b) => b.updatedAt - a.updatedAt)
+}

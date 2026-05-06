@@ -23,6 +23,11 @@ import {
 import { BookMarked, Plus, Pencil, Trash2, Sparkles, Clock3, Search } from "lucide-react"
 import { queryClient, useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { PredefinedPrompt, LoopConfig } from "../../../shared/types"
+import {
+  createPredefinedPromptRecord,
+  deletePredefinedPromptFromList,
+  updatePredefinedPromptList,
+} from "@dotagents/shared/predefined-prompts"
 import { useQuery } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
@@ -127,7 +132,7 @@ export function PredefinedPromptsMenu({
     e.preventDefault()
     e.stopPropagation()
     if (!configQuery.data) return
-    const updatedPrompts = prompts.filter((p) => p.id !== prompt.id)
+    const updatedPrompts = deletePredefinedPromptFromList(prompts, prompt.id)
     saveConfig.mutate({
       config: {
         ...configQuery.data,
@@ -141,22 +146,16 @@ export function PredefinedPromptsMenu({
     if (!configQuery.data) return
 
     const now = Date.now()
+    const draft = {
+      name: promptName,
+      content: promptContent,
+    }
     let updatedPrompts: PredefinedPrompt[]
 
     if (editingPrompt) {
-      updatedPrompts = prompts.map((p) =>
-        p.id === editingPrompt.id
-          ? { ...p, name: promptName.trim(), content: promptContent.trim(), updatedAt: now }
-          : p
-      )
+      updatedPrompts = updatePredefinedPromptList(prompts, editingPrompt.id, draft, now)
     } else {
-      const newPrompt: PredefinedPrompt = {
-        id: `prompt-${now}-${Math.random().toString(36).substr(2, 9)}`,
-        name: promptName.trim(),
-        content: promptContent.trim(),
-        createdAt: now,
-        updatedAt: now,
-      }
+      const newPrompt: PredefinedPrompt = createPredefinedPromptRecord(draft, now)
       updatedPrompts = [...prompts, newPrompt]
     }
 
@@ -347,4 +346,3 @@ export function PredefinedPromptsMenu({
     </>
   )
 }
-
