@@ -8,10 +8,10 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 import {
-  DEFAULT_APP_CONFIG,
   normalizeStoredConfig,
 } from './config';
 import {
+  DEFAULT_MOBILE_APP_CONFIG as DEFAULT_APP_CONFIG,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   DEFAULT_HANDS_FREE_SLEEP_PHRASE,
   DEFAULT_HANDS_FREE_WAKE_PHRASE,

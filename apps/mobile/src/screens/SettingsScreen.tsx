@@ -2,16 +2,16 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Pressable, ActivityIndicator, RefreshControl, Share, Alert, LayoutAnimation, UIManager, KeyboardAvoidingView, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  AppConfig,
-  DEFAULT_APP_CONFIG,
-  saveConfig,
-  useConfigContext,
-} from '../store/config';
-import {
+  DEFAULT_MOBILE_APP_CONFIG as DEFAULT_APP_CONFIG,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   DEFAULT_HANDS_FREE_SLEEP_PHRASE,
   DEFAULT_HANDS_FREE_WAKE_PHRASE,
+  type MobileAppConfig as AppConfig,
 } from '@dotagents/shared/mobile-app-config';
+import {
+  saveConfig,
+  useConfigContext,
+} from '../store/config';
 import { useSessionContext } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTheme, ThemeMode } from '../ui/ThemeProvider';
