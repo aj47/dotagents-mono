@@ -8,6 +8,7 @@ import {
   getAgentSessionCandidatesAction,
   type AgentSessionCandidateActionOptions,
 } from "@dotagents/shared/agent-session-candidates"
+import { getEnabledAcpxAgentProfiles } from "@dotagents/shared/agent-profile-queries"
 import {
   exportBundleAction,
   getBundleExportableItemsAction,
@@ -45,6 +46,11 @@ import {
 import { getConversationIdValidationError } from "@dotagents/shared/conversation-id"
 import { buildConversationVideoAssetStreamPlan } from "@dotagents/shared/conversation-media-assets"
 import {
+  getDiscordLifecycleAction,
+  getDiscordResolvedDefaultProfileId,
+  getMaskedDiscordBotToken,
+} from "@dotagents/shared/discord-config"
+import {
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   deleteMcpServerConfigAction,
   exportMcpServerConfigsAction,
@@ -54,13 +60,17 @@ import {
   upsertMcpServerConfigAction,
 } from "@dotagents/shared/mcp-api"
 import type { MCPConfig } from "@dotagents/shared/mcp-utils"
+import { getMaskedRemoteServerApiKey } from "@dotagents/shared/remote-pairing"
 import {
   synthesizeSpeechAction,
   type TtsActionOptions,
 } from "@dotagents/shared/tts-api"
 import {
+  getSettingsAction,
   triggerEmergencyStopAction,
+  updateSettingsAction,
   type EmergencyStopActionOptions,
+  type SettingsActionOptions,
 } from "@dotagents/shared/settings-api-client"
 import {
   createSkillAction,
@@ -130,20 +140,18 @@ import { handleChatCompletionRequest } from "./chat-completion-actions"
 import { conversationService } from "./conversation-service"
 import { getConversationVideoAssetPath } from "./conversation-video-assets"
 import { recordOperatorAuditEvent } from "./operator-audit-actions"
-import {
-  getSettings,
-  updateSettings,
-} from "./settings-actions"
 import { cleanupInvalidMcpServerReferencesInLayers } from "./agent-profile-mcp-cleanup"
 import { cleanupInvalidSkillReferencesInLayers } from "./agent-profile-skill-cleanup"
 import { agentProfileService, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { verifyExternalAgentCommand as verifyExternalAgentCommandService } from "./command-verification-service"
 import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
+import { applyDesktopShellSettings } from "./desktop-shell-settings"
 import { diagnosticsService } from "./diagnostics"
+import { discordService } from "./discord-service"
 import { emergencyStopAll } from "./emergency-stop"
 import { knowledgeNotesService } from "./knowledge-notes-service"
-import { mcpService } from "./mcp-service"
+import { handleWhatsAppToggle, mcpService } from "./mcp-service"
 import { clearBadgeCount } from "./push-notification-service"
 import { skillsService } from "./skills-service"
 import { generateTTS } from "./tts-service"
@@ -151,6 +159,12 @@ import { generateTTS } from "./tts-service"
 type DesktopProfileActionProfile = ReturnType<typeof agentProfileService.setCurrentProfileStrict>
 type DesktopAgentProfileActionProfile = NonNullable<ReturnType<typeof agentProfileService.getById>>
 type DesktopConversationActionConversation = NonNullable<Awaited<ReturnType<typeof conversationService.loadConversation>>>
+type SettingsUpdateMasks = {
+  providerSecretMask: string
+  remoteServerSecretMask: string
+  discordSecretMask: string
+  langfuseSecretMask: string
+}
 
 const modelActionOptions: ModelActionOptions = {
   getConfig: () => configStore.get(),
@@ -180,6 +194,33 @@ const emergencyStopActionOptions: EmergencyStopActionOptions = {
   stopAll: emergencyStopAll,
   diagnostics: diagnosticsService,
   logger: console,
+}
+
+async function applyDiscordLifecycleAction(discordLifecycleAction: ReturnType<typeof getDiscordLifecycleAction>): Promise<void> {
+  if (discordLifecycleAction === "start") {
+    await discordService.start()
+  } else if (discordLifecycleAction === "restart") {
+    await discordService.restart()
+  } else if (discordLifecycleAction === "stop") {
+    await discordService.stop()
+  }
+}
+
+const settingsActionOptions: SettingsActionOptions<Config> = {
+  config: {
+    get: () => configStore.get(),
+    save: (config) => configStore.save(config),
+  },
+  diagnostics: diagnosticsService,
+  getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey),
+  getMaskedDiscordBotToken: (config) => getMaskedDiscordBotToken(config, process.env),
+  getDiscordDefaultProfileId: (config) => getDiscordResolvedDefaultProfileId(config, process.env).profileId ?? "",
+  getAcpxAgents: () => getEnabledAcpxAgentProfiles(agentProfileService.getAll())
+    .map(p => ({ name: p.name, displayName: p.displayName })),
+  getDiscordLifecycleAction: (prev, next) => getDiscordLifecycleAction(prev, next, process.env),
+  applyDiscordLifecycleAction,
+  applyWhatsappToggle: handleWhatsAppToggle,
+  applyDesktopShellSettings,
 }
 
 const pushActionOptions = {
@@ -442,6 +483,14 @@ async function synthesizeSpeech(body: unknown) {
 
 async function triggerEmergencyStop() {
   return triggerEmergencyStopAction(emergencyStopActionOptions)
+}
+
+function getSettings(providerSecretMask: string) {
+  return getSettingsAction(providerSecretMask, settingsActionOptions)
+}
+
+async function updateSettings(body: unknown, masks: SettingsUpdateMasks) {
+  return updateSettingsAction(body, masks, settingsActionOptions)
 }
 
 function registerPushToken(body: unknown) {
