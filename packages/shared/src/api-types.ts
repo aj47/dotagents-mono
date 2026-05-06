@@ -757,13 +757,17 @@ export interface DesktopPanelLayoutConfig {
   panelProgressSize?: PanelSize;
 }
 
+export interface DesktopTextInputConfig {
+  textInputEnabled?: boolean;
+}
+
 export interface ConversationStorageConfig {
   conversationsEnabled?: boolean;
   maxConversationsToKeep?: number;
   autoSaveConversations?: boolean;
 }
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, AgentGenerationOptionsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, DesktopDisplayConfig, DesktopShellConfig, DesktopPanelLayoutConfig, ConversationStorageConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, AgentGenerationOptionsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, DesktopDisplayConfig, DesktopShellConfig, DesktopPanelLayoutConfig, DesktopTextInputConfig, ConversationStorageConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: CHAT_PROVIDER_ID;
   mcpToolsProviderId: CHAT_PROVIDER_ID;
@@ -773,7 +777,7 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, St
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, ChatGptWebAuthConfig, AgentGenerationOptionsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, DesktopDisplayConfig, DesktopShellConfig, DesktopPanelLayoutConfig, ConversationStorageConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {}
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, AgentModelSelectionConfig, ChatProviderCredentialsConfig, ChatGptWebAuthConfig, AgentGenerationOptionsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig, DesktopDisplayConfig, DesktopShellConfig, DesktopPanelLayoutConfig, DesktopTextInputConfig, ConversationStorageConfig, WhatsAppIntegrationConfig, DiscordIntegrationSettingsConfig {}
 
 // Conversation Sync Types
 export interface ServerConversationMessage {

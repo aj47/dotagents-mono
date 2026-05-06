@@ -276,6 +276,7 @@ export function buildSettingsResponse(
     panelWaveformSize: cfg.panelWaveformSize,
     panelTextInputSize: cfg.panelTextInputSize,
     panelProgressSize: cfg.panelProgressSize,
+    textInputEnabled: cfg.textInputEnabled ?? true,
     conversationsEnabled: cfg.conversationsEnabled ?? true,
     maxConversationsToKeep: cfg.maxConversationsToKeep ?? 100,
     autoSaveConversations: cfg.autoSaveConversations ?? true,
@@ -724,6 +725,7 @@ export function buildSettingsUpdatePatch(
     const size = normalizePanelSizeValue(requestBody[key]);
     if (size) updates[key] = size;
   }
+  if (typeof requestBody.textInputEnabled === 'boolean') updates.textInputEnabled = requestBody.textInputEnabled;
   if (typeof requestBody.conversationsEnabled === 'boolean') updates.conversationsEnabled = requestBody.conversationsEnabled;
   if (typeof requestBody.autoSaveConversations === 'boolean') updates.autoSaveConversations = requestBody.autoSaveConversations;
   if (typeof requestBody.maxConversationsToKeep === 'number' && Number.isFinite(requestBody.maxConversationsToKeep)) {

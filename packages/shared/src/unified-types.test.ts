@@ -26,6 +26,7 @@ import type {
   DesktopDisplayConfig,
   DesktopPanelLayoutConfig,
   DesktopShellConfig,
+  DesktopTextInputConfig,
   PredefinedPrompt,
   PredefinedPromptsConfig,
   SpeechToTextConfig,
@@ -492,6 +493,19 @@ describe('settings API request/response contracts', () => {
     assertType<DesktopPanelLayoutConfig>(config)
     assertType<SettingsUpdate>(update)
     expect(update.panelPosition).toBe('custom')
+  })
+
+  it('accepts desktop text input settings through the shared settings API', () => {
+    const config: DesktopTextInputConfig = {
+      textInputEnabled: false,
+    }
+    const update: SettingsUpdate = {
+      ...config,
+    }
+
+    assertType<DesktopTextInputConfig>(config)
+    assertType<SettingsUpdate>(update)
+    expect(update.textInputEnabled).toBe(false)
   })
 
   it('accepts conversation storage settings through the shared settings API', () => {
