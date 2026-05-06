@@ -1,10 +1,12 @@
-import type { TtsSpeakRequest } from './api-types';
+import type { OpenAITtsResponseFormat, TtsSpeakRequest } from './api-types';
 import {
   getTTSPreprocessingOptionsFromConfig,
   preprocessTextForTTS,
   validateTTSText,
   type TTSPreprocessingConfigLike,
 } from './tts-preprocessing';
+
+export type { OpenAITtsResponseFormat } from './api-types';
 
 export const TTS_SPEAK_MAX_TEXT_BYTES = 32 * 1024;
 
@@ -28,8 +30,6 @@ export type GenerateTtsOutput = TtsGenerationResult & {
   processedText: string;
   provider: string;
 };
-
-export type OpenAITtsResponseFormat = 'mp3' | 'opus' | 'aac' | 'flac' | 'wav' | 'pcm';
 
 export type OpenAITtsConfigLike = {
   openaiTtsModel?: string;

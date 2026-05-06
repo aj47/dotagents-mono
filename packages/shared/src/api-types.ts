@@ -625,6 +625,8 @@ export interface TranscriptPostProcessingConfig {
   transcriptPostProcessingPrompt?: string;
 }
 
+export type OpenAITtsResponseFormat = "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm";
+
 export interface TextToSpeechConfig {
   ttsEnabled?: boolean;
   ttsAutoPlay?: boolean;
@@ -634,9 +636,11 @@ export interface TextToSpeechConfig {
   ttsRemoveUrls?: boolean;
   ttsConvertMarkdown?: boolean;
   ttsUseLLMPreprocessing?: boolean;
+  ttsLLMPreprocessingProviderId?: CHAT_PROVIDER_ID;
   openaiTtsModel?: string;
   openaiTtsVoice?: string;
   openaiTtsSpeed?: number;
+  openaiTtsResponseFormat?: OpenAITtsResponseFormat;
   groqTtsModel?: string;
   groqTtsVoice?: string;
   geminiTtsModel?: string;

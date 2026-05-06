@@ -1,5 +1,4 @@
 import type {
-  CHAT_PROVIDER_ID,
   OPENAI_COMPATIBLE_PRESET_ID,
   ModelPreset,
 } from '@dotagents/shared/providers'
@@ -35,7 +34,7 @@ import {
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, RecordingHistoryItem, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
 export type { SessionHistoryConfig } from '@dotagents/shared/session'
-export type { AgentExecutionConfig, AgentGenerationOptionsConfig, AgentModelSelectionConfig, AudioDeviceConfig, AudioInputDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, CodexTextVerbosity, OpenAiReasoningEffort, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
+export type { AgentExecutionConfig, AgentGenerationOptionsConfig, AgentModelSelectionConfig, AudioDeviceConfig, AudioInputDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, CodexTextVerbosity, OpenAiReasoningEffort, OpenAITtsResponseFormat, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
@@ -167,9 +166,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   parakeetModelPath?: string // Optional custom model path
   parakeetModelDownloaded?: boolean // Whether model has been downloaded
 
-  // OpenAI TTS Configuration
-  openaiTtsResponseFormat?: "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm"
-
   // Gemini TTS Configuration
   geminiTtsLanguage?: string
 
@@ -178,9 +174,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
 
   // Supertonic (Local) TTS Configuration
   supertonicModelDownloaded?: boolean // Whether model has been downloaded
-
-  // LLM-based TTS Preprocessing (for more natural speech output)
-  ttsLLMPreprocessingProviderId?: CHAT_PROVIDER_ID
 
   // Text Input Configuration
   textInputEnabled?: boolean

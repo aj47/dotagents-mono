@@ -259,6 +259,7 @@ export function buildSettingsResponse(
     ttsRemoveUrls: cfg.ttsRemoveUrls ?? true,
     ttsConvertMarkdown: cfg.ttsConvertMarkdown ?? true,
     ttsUseLLMPreprocessing: cfg.ttsUseLLMPreprocessing ?? false,
+    ttsLLMPreprocessingProviderId: cfg.ttsLLMPreprocessingProviderId,
     mainAgentMode: cfg.mainAgentMode ?? 'api',
     mcpMessageQueueEnabled: cfg.mcpMessageQueueEnabled ?? true,
     mcpVerifyCompletionEnabled: cfg.mcpVerifyCompletionEnabled ?? true,
@@ -318,6 +319,7 @@ export function buildSettingsResponse(
     openaiTtsModel: cfg.openaiTtsModel || 'gpt-4o-mini-tts',
     openaiTtsVoice: cfg.openaiTtsVoice || 'alloy',
     openaiTtsSpeed: cfg.openaiTtsSpeed ?? 1.0,
+    openaiTtsResponseFormat: cfg.openaiTtsResponseFormat || 'mp3',
     groqTtsModel: cfg.groqTtsModel || 'canopylabs/orpheus-v1-english',
     groqTtsVoice: cfg.groqTtsVoice || 'autumn',
     geminiTtsModel: cfg.geminiTtsModel || 'gemini-2.5-flash-preview-tts',
@@ -670,6 +672,14 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.ttsRemoveUrls === 'boolean') updates.ttsRemoveUrls = requestBody.ttsRemoveUrls;
   if (typeof requestBody.ttsConvertMarkdown === 'boolean') updates.ttsConvertMarkdown = requestBody.ttsConvertMarkdown;
   if (typeof requestBody.ttsUseLLMPreprocessing === 'boolean') updates.ttsUseLLMPreprocessing = requestBody.ttsUseLLMPreprocessing;
+  if (typeof requestBody.ttsLLMPreprocessingProviderId === 'string') {
+    const providerId = requestBody.ttsLLMPreprocessingProviderId.trim();
+    if (providerId === '') {
+      updates.ttsLLMPreprocessingProviderId = undefined;
+    } else if (isChatProviderId(providerId)) {
+      updates.ttsLLMPreprocessingProviderId = providerId;
+    }
+  }
 
   if (typeof requestBody.mainAgentMode === 'string' && ['api', 'acpx'].includes(requestBody.mainAgentMode)) updates.mainAgentMode = requestBody.mainAgentMode;
   if (typeof requestBody.mcpMessageQueueEnabled === 'boolean') updates.mcpMessageQueueEnabled = requestBody.mcpMessageQueueEnabled;
@@ -774,6 +784,9 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.openaiTtsModel === 'string') updates.openaiTtsModel = requestBody.openaiTtsModel;
   if (typeof requestBody.openaiTtsVoice === 'string') updates.openaiTtsVoice = requestBody.openaiTtsVoice;
   if (typeof requestBody.openaiTtsSpeed === 'number' && requestBody.openaiTtsSpeed >= 0.25 && requestBody.openaiTtsSpeed <= 4.0) updates.openaiTtsSpeed = requestBody.openaiTtsSpeed;
+  if (typeof requestBody.openaiTtsResponseFormat === 'string' && ['mp3', 'opus', 'aac', 'flac', 'wav', 'pcm'].includes(requestBody.openaiTtsResponseFormat)) {
+    updates.openaiTtsResponseFormat = requestBody.openaiTtsResponseFormat;
+  }
   if (typeof requestBody.groqTtsModel === 'string' && ['canopylabs/orpheus-v1-english', 'canopylabs/orpheus-arabic-saudi'].includes(requestBody.groqTtsModel)) updates.groqTtsModel = requestBody.groqTtsModel;
   if (typeof requestBody.groqTtsVoice === 'string') updates.groqTtsVoice = requestBody.groqTtsVoice;
   if (typeof requestBody.geminiTtsModel === 'string' && ['gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts'].includes(requestBody.geminiTtsModel)) updates.geminiTtsModel = requestBody.geminiTtsModel;
