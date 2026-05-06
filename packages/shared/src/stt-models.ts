@@ -3,6 +3,9 @@ export const DEFAULT_STT_MODELS = {
   groq: "whisper-large-v3-turbo",
 } as const
 
+export const DEFAULT_PARAKEET_NUM_THREADS = 2
+export const PARAKEET_NUM_THREAD_OPTIONS = [1, 2, 4, 8] as const
+
 export const KNOWN_STT_MODEL_IDS = {
   openai: ["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"],
   groq: ["whisper-large-v3", "whisper-large-v3-turbo", "distil-whisper-large-v3-en"],
@@ -25,6 +28,12 @@ export function getDefaultSttModel(providerId?: string): string | undefined {
   }
 
   return DEFAULT_STT_MODELS[providerId]
+}
+
+export function isParakeetNumThreadsUpdateValue(value: unknown): value is number {
+  return typeof value === "number"
+    && Number.isInteger(value)
+    && PARAKEET_NUM_THREAD_OPTIONS.includes(value as (typeof PARAKEET_NUM_THREAD_OPTIONS)[number])
 }
 
 /** Minimal config shape needed for STT model resolution */

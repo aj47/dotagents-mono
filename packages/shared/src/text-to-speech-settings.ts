@@ -1,4 +1,4 @@
-import type { LocalSpeechModelStatus, TextToSpeechConfig } from "./api-types"
+import type { LocalSpeechModelStatus, OpenAITtsResponseFormat, TextToSpeechConfig } from "./api-types"
 import {
   DEFAULT_EDGE_TTS_VOICE,
   SUPERTONIC_TTS_LANGUAGES,
@@ -46,6 +46,8 @@ export const DEFAULT_SUPERTONIC_TTS_LANGUAGE = "en"
 export const DEFAULT_SUPERTONIC_TTS_STEPS = 5
 export const MIN_SUPERTONIC_TTS_STEPS = 2
 export const MAX_SUPERTONIC_TTS_STEPS = 10
+export const DEFAULT_OPENAI_TTS_RESPONSE_FORMAT: OpenAITtsResponseFormat = "mp3"
+export const OPENAI_TTS_RESPONSE_FORMATS = ["mp3", "opus", "aac", "flac", "wav", "pcm"] as const
 export const GROQ_ARABIC_TTS_MODEL = "canopylabs/orpheus-arabic-saudi"
 export const DEFAULT_GROQ_ARABIC_TTS_VOICE = "fahad"
 
@@ -140,6 +142,11 @@ export function isSupertonicStepsUpdateValue(value: unknown): value is number {
   return Number.isInteger(value)
     && (value as number) >= MIN_SUPERTONIC_TTS_STEPS
     && (value as number) <= MAX_SUPERTONIC_TTS_STEPS
+}
+
+export function isOpenAITtsResponseFormatUpdateValue(value: unknown): value is OpenAITtsResponseFormat {
+  return typeof value === "string"
+    && OPENAI_TTS_RESPONSE_FORMATS.includes(value as OpenAITtsResponseFormat)
 }
 
 export function getTextToSpeechModelValue(settings?: TextToSpeechConfig | null): string | undefined {

@@ -14,6 +14,11 @@ import {
   type McpServerConfigImportResponse,
   type McpServerConfigMutationResponse,
 } from './mcp-api';
+import {
+  DEFAULT_PARAKEET_NUM_THREADS,
+  getDefaultSttModel,
+  isParakeetNumThreadsUpdateValue,
+} from './stt-models';
 import type {
   BundleExportResponse,
   BundleExportableItemsResponse,
@@ -38,6 +43,7 @@ import {
 } from './remote-pairing';
 import { getSensitiveOperatorSettingsKeys } from './operator-actions';
 import {
+  DEFAULT_OPENAI_TTS_RESPONSE_FORMAT,
   DEFAULT_SUPERTONIC_TTS_LANGUAGE,
   DEFAULT_SUPERTONIC_TTS_STEPS,
   TEXT_TO_SPEECH_SPEED_SETTING_KEYS,
@@ -46,6 +52,7 @@ import {
   getTextToSpeechVoiceDefault,
   isSupertonicLanguageUpdateValue,
   isSupertonicStepsUpdateValue,
+  isOpenAITtsResponseFormatUpdateValue,
   isTextToSpeechModelUpdateValue,
   isTextToSpeechSpeedUpdateValue,
   isTextToSpeechVoiceUpdateValue,
@@ -337,11 +344,11 @@ export function buildSettingsResponse(
     streamerModeEnabled: cfg.streamerModeEnabled ?? false,
     sttLanguage: cfg.sttLanguage ?? '',
     transcriptionPreviewEnabled: cfg.transcriptionPreviewEnabled ?? true,
-    parakeetNumThreads: cfg.parakeetNumThreads ?? 2,
+    parakeetNumThreads: cfg.parakeetNumThreads ?? DEFAULT_PARAKEET_NUM_THREADS,
     openaiSttLanguage: cfg.openaiSttLanguage ?? '',
-    openaiSttModel: cfg.openaiSttModel || 'whisper-1',
+    openaiSttModel: cfg.openaiSttModel || getDefaultSttModel('openai')!,
     groqSttLanguage: cfg.groqSttLanguage ?? '',
-    groqSttModel: cfg.groqSttModel || 'whisper-large-v3-turbo',
+    groqSttModel: cfg.groqSttModel || getDefaultSttModel('groq')!,
     groqSttPrompt: cfg.groqSttPrompt ?? '',
     transcriptPostProcessingPrompt: cfg.transcriptPostProcessingPrompt ?? '',
     ttsAutoPlay: cfg.ttsAutoPlay ?? true,
@@ -414,7 +421,7 @@ export function buildSettingsResponse(
     openaiTtsModel: cfg.openaiTtsModel || getTextToSpeechModelDefault('openai')!,
     openaiTtsVoice: cfg.openaiTtsVoice || String(getTextToSpeechVoiceDefault('openai')),
     openaiTtsSpeed: cfg.openaiTtsSpeed ?? getTextToSpeechSpeedDefault('openai'),
-    openaiTtsResponseFormat: cfg.openaiTtsResponseFormat || 'mp3',
+    openaiTtsResponseFormat: cfg.openaiTtsResponseFormat || DEFAULT_OPENAI_TTS_RESPONSE_FORMAT,
     groqTtsModel: cfg.groqTtsModel || getTextToSpeechModelDefault('groq')!,
     groqTtsVoice: cfg.groqTtsVoice || String(getTextToSpeechVoiceDefault('groq', cfg.groqTtsModel)),
     geminiTtsModel: cfg.geminiTtsModel || getTextToSpeechModelDefault('gemini')!,
@@ -898,7 +905,7 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.openaiSttModel === 'string') updates.openaiSttModel = requestBody.openaiSttModel;
   if (typeof requestBody.groqSttModel === 'string') updates.groqSttModel = requestBody.groqSttModel;
   if (typeof requestBody.groqSttPrompt === 'string') updates.groqSttPrompt = requestBody.groqSttPrompt || undefined;
-  if (typeof requestBody.parakeetNumThreads === 'number' && Number.isInteger(requestBody.parakeetNumThreads) && [1, 2, 4, 8].includes(requestBody.parakeetNumThreads)) {
+  if (isParakeetNumThreadsUpdateValue(requestBody.parakeetNumThreads)) {
     updates.parakeetNumThreads = requestBody.parakeetNumThreads;
   }
   if (isTtsProviderId(requestBody.ttsProviderId)) updates.ttsProviderId = requestBody.ttsProviderId;
@@ -928,7 +935,7 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.mainAgentName === 'string') updates.mainAgentName = requestBody.mainAgentName;
   if (isTextToSpeechModelUpdateValue('openai', requestBody.openaiTtsModel)) updates.openaiTtsModel = requestBody.openaiTtsModel;
   if (isTextToSpeechVoiceUpdateValue('openai', requestBody.openaiTtsVoice)) updates.openaiTtsVoice = requestBody.openaiTtsVoice;
-  if (typeof requestBody.openaiTtsResponseFormat === 'string' && ['mp3', 'opus', 'aac', 'flac', 'wav', 'pcm'].includes(requestBody.openaiTtsResponseFormat)) {
+  if (isOpenAITtsResponseFormatUpdateValue(requestBody.openaiTtsResponseFormat)) {
     updates.openaiTtsResponseFormat = requestBody.openaiTtsResponseFormat;
   }
   const groqTtsModel = isTextToSpeechModelUpdateValue('groq', requestBody.groqTtsModel)

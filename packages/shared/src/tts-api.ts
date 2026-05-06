@@ -6,6 +6,7 @@ import {
   type TTSPreprocessingConfigLike,
 } from './tts-preprocessing';
 import {
+  DEFAULT_OPENAI_TTS_RESPONSE_FORMAT,
   GROQ_ARABIC_TTS_MODEL,
   getTextToSpeechModelDefault,
   getTextToSpeechSpeedDefault,
@@ -323,7 +324,7 @@ export async function generateOpenAITTS(
   const model = input.model || config.openaiTtsModel || getTextToSpeechModelDefault('openai')!;
   const voice = input.voice || config.openaiTtsVoice || String(getTextToSpeechVoiceDefault('openai'));
   const speed = input.speed || config.openaiTtsSpeed || getTextToSpeechSpeedDefault('openai');
-  const responseFormat = config.openaiTtsResponseFormat || 'mp3';
+  const responseFormat = config.openaiTtsResponseFormat || DEFAULT_OPENAI_TTS_RESPONSE_FORMAT;
   const baseUrl = config.openaiBaseUrl || 'https://api.openai.com/v1';
   const apiKey = config.openaiApiKey;
 

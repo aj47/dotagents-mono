@@ -54,7 +54,12 @@ import {
   formatRepeatTaskRuntimeTimestamp,
 } from '@dotagents/shared/repeat-task-utils';
 import { parseConfigListInput } from '@dotagents/shared/config-list-input';
-import { getDefaultSttModel, KNOWN_STT_MODEL_IDS } from '@dotagents/shared/stt-models';
+import {
+  DEFAULT_PARAKEET_NUM_THREADS,
+  KNOWN_STT_MODEL_IDS,
+  PARAKEET_NUM_THREAD_OPTIONS,
+  getDefaultSttModel,
+} from '@dotagents/shared/stt-models';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
 import {
   BUNDLE_COMPONENT_OPTIONS,
@@ -3384,18 +3389,18 @@ export default function SettingsScreen({ navigation }: any) {
 
                     <Text style={[styles.label, { marginTop: spacing.sm }]}>CPU Threads</Text>
                     <View style={styles.providerSelector}>
-                      {[1, 2, 4, 8].map((threadCount) => (
+                      {PARAKEET_NUM_THREAD_OPTIONS.map((threadCount) => (
                         <Pressable
                           key={threadCount}
                           style={[
                             styles.providerOption,
-                            (remoteSettings.parakeetNumThreads ?? 2) === threadCount && styles.providerOptionActive,
+                            (remoteSettings.parakeetNumThreads ?? DEFAULT_PARAKEET_NUM_THREADS) === threadCount && styles.providerOptionActive,
                           ]}
                           onPress={() => handleRemoteSettingUpdate('parakeetNumThreads', threadCount)}
                         >
                           <Text style={[
                             styles.providerOptionText,
-                            (remoteSettings.parakeetNumThreads ?? 2) === threadCount && styles.providerOptionTextActive,
+                            (remoteSettings.parakeetNumThreads ?? DEFAULT_PARAKEET_NUM_THREADS) === threadCount && styles.providerOptionTextActive,
                           ]}>
                             {threadCount}
                           </Text>

@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest"
 
 import {
   DEFAULT_GROQ_ARABIC_TTS_VOICE,
+  DEFAULT_OPENAI_TTS_RESPONSE_FORMAT,
   DEFAULT_SUPERTONIC_TTS_LANGUAGE,
   DEFAULT_SUPERTONIC_TTS_STEPS,
   GROQ_ARABIC_TTS_MODEL,
   MAX_SUPERTONIC_TTS_STEPS,
   MIN_SUPERTONIC_TTS_STEPS,
+  OPENAI_TTS_RESPONSE_FORMATS,
   TEXT_TO_SPEECH_SPEED_SETTING_KEYS,
   formatLocalSpeechModelProgress,
   getTextToSpeechModelDefault,
@@ -20,6 +22,7 @@ import {
   getTextToSpeechVoiceValue,
   isSupertonicLanguageUpdateValue,
   isSupertonicStepsUpdateValue,
+  isOpenAITtsResponseFormatUpdateValue,
   isTextToSpeechModelUpdateValue,
   isTextToSpeechSpeedUpdateValue,
   isTextToSpeechVoiceUpdateValue,
@@ -134,6 +137,14 @@ describe("text to speech settings helpers", () => {
     expect(isSupertonicStepsUpdateValue(MAX_SUPERTONIC_TTS_STEPS)).toBe(true)
     expect(isSupertonicStepsUpdateValue(MIN_SUPERTONIC_TTS_STEPS - 1)).toBe(false)
     expect(isSupertonicStepsUpdateValue(MAX_SUPERTONIC_TTS_STEPS + 1)).toBe(false)
+  })
+
+  it("validates OpenAI response format updates", () => {
+    expect(DEFAULT_OPENAI_TTS_RESPONSE_FORMAT).toBe("mp3")
+    expect(OPENAI_TTS_RESPONSE_FORMATS).toEqual(["mp3", "opus", "aac", "flac", "wav", "pcm"])
+    expect(isOpenAITtsResponseFormatUpdateValue("aac")).toBe(true)
+    expect(isOpenAITtsResponseFormatUpdateValue("json")).toBe(false)
+    expect(isOpenAITtsResponseFormatUpdateValue(undefined)).toBe(false)
   })
 
   it("resolves playback rates with provider defaults", () => {

@@ -23,6 +23,10 @@ import {
   getTextToSpeechSpeedDefault,
   getTextToSpeechVoiceDefault,
 } from "@dotagents/shared/text-to-speech-settings"
+import {
+  DEFAULT_PARAKEET_NUM_THREADS,
+  PARAKEET_NUM_THREAD_OPTIONS,
+} from "@dotagents/shared/stt-models"
 import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Cpu, Download, Loader2 } from "lucide-react"
 
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
@@ -225,10 +229,11 @@ function ParakeetProviderSection({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">1 thread</SelectItem>
-                <SelectItem value="2">2 threads</SelectItem>
-                <SelectItem value="4">4 threads</SelectItem>
-                <SelectItem value="8">8 threads</SelectItem>
+                {PARAKEET_NUM_THREAD_OPTIONS.map((threadCount) => (
+                  <SelectItem key={threadCount} value={String(threadCount)}>
+                    {threadCount} {threadCount === 1 ? "thread" : "threads"}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Control>
@@ -1107,7 +1112,7 @@ export function Component() {
             isCollapsed={configQuery.data.providerSectionCollapsedParakeet ?? true}
             onToggleCollapse={() => saveConfig({ providerSectionCollapsedParakeet: !(configQuery.data.providerSectionCollapsedParakeet ?? true) })}
             usageBadges={activeProviders.parakeet}
-            numThreads={configQuery.data.parakeetNumThreads || 2}
+            numThreads={configQuery.data.parakeetNumThreads || DEFAULT_PARAKEET_NUM_THREADS}
             onNumThreadsChange={(value) => saveConfig({ parakeetNumThreads: value })}
           />
         )}
@@ -1300,7 +1305,7 @@ export function Component() {
             isCollapsed={configQuery.data.providerSectionCollapsedParakeet ?? true}
             onToggleCollapse={() => saveConfig({ providerSectionCollapsedParakeet: !(configQuery.data.providerSectionCollapsedParakeet ?? true) })}
             usageBadges={activeProviders.parakeet}
-            numThreads={configQuery.data.parakeetNumThreads || 2}
+            numThreads={configQuery.data.parakeetNumThreads || DEFAULT_PARAKEET_NUM_THREADS}
             onNumThreadsChange={(value) => saveConfig({ parakeetNumThreads: value })}
           />
         )}

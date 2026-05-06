@@ -138,6 +138,8 @@ test('lets mobile configure the local Parakeet STT model', () => {
   assert.match(speechToTextSection, /remoteSettings\.sttProviderId === 'parakeet'/);
   assert.match(speechToTextSection, />Parakeet Model</);
   assert.match(speechToTextSection, /localSpeechModelStatuses\.parakeet/);
+  assert.match(settingsSource, /PARAKEET_NUM_THREAD_OPTIONS/);
+  assert.match(settingsSource, /DEFAULT_PARAKEET_NUM_THREADS/);
   assert.match(speechToTextSection, /handleLocalSpeechModelDownload\('parakeet'\)/);
   assert.match(speechToTextSection, /handleRemoteSettingUpdate\('parakeetNumThreads', threadCount\)/);
   assert.match(settingsSource, /setLocalSpeechModelStatuses\(\(current\) => \(\{/);

@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
+  DEFAULT_PARAKEET_NUM_THREADS,
   DEFAULT_STT_MODELS,
   KNOWN_STT_MODEL_IDS,
+  PARAKEET_NUM_THREAD_OPTIONS,
   isKnownSttModel,
+  isParakeetNumThreadsUpdateValue,
   getDefaultSttModel,
   getConfiguredSttModel,
 } from './stt-models'
@@ -28,6 +31,20 @@ describe('KNOWN_STT_MODEL_IDS', () => {
     expect(KNOWN_STT_MODEL_IDS.groq).toContain('whisper-large-v3')
     expect(KNOWN_STT_MODEL_IDS.groq).toContain('whisper-large-v3-turbo')
     expect(KNOWN_STT_MODEL_IDS.groq).toContain('distil-whisper-large-v3-en')
+  })
+})
+
+describe('Parakeet thread settings', () => {
+  it('describes allowed thread counts and default', () => {
+    expect(DEFAULT_PARAKEET_NUM_THREADS).toBe(2)
+    expect(PARAKEET_NUM_THREAD_OPTIONS).toEqual([1, 2, 4, 8])
+  })
+
+  it('validates Parakeet thread update values', () => {
+    expect(isParakeetNumThreadsUpdateValue(1)).toBe(true)
+    expect(isParakeetNumThreadsUpdateValue(8)).toBe(true)
+    expect(isParakeetNumThreadsUpdateValue(3)).toBe(false)
+    expect(isParakeetNumThreadsUpdateValue('2')).toBe(false)
   })
 })
 
