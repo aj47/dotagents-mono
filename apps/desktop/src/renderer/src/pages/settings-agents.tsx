@@ -13,6 +13,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@renderer/components/u
 import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, ChevronDown, ChevronRight, Wrench, RefreshCw, ExternalLink, Download, Upload, Globe } from "lucide-react"
 import { Facehash } from "facehash"
 import { toast } from "sonner"
+import {
+  AGENT_PROFILE_PRESETS,
+  detectAgentProfilePresetKey,
+  type AgentProfilePresetKey,
+} from "@dotagents/shared/agent-profile-presets"
 
 // Curated palette of vivid colors to pick from deterministically
 const AVATAR_PALETTE = [
@@ -43,7 +48,7 @@ type ConnectionType = AgentProfileConnectionType
 
 interface EditingAgent {
   id?: string
-  presetKey?: AgentPresetKey
+  presetKey?: AgentProfilePresetKey
   displayName: string
   description: string
   systemPrompt: string
@@ -62,18 +67,6 @@ interface EditingAgent {
   avatarDataUrl?: string | null
 }
 
-type AgentPresetKey = "auggie" | "claude-code" | "codex" | "opencode"
-
-interface AgentPresetDefinition extends Partial<EditingAgent> {
-  displayName: string
-  description: string
-  docsUrl?: string
-  installCommand?: string
-  authHint?: string
-  cwdHint?: string
-  verifyArgs?: string[]
-}
-
 interface ExternalAgentCommandVerificationResult {
   ok: boolean
   resolvedCommand?: string
@@ -83,59 +76,6 @@ interface ExternalAgentCommandVerificationResult {
 }
 
 type ServerInfo = { connected: boolean; toolCount: number; runtimeEnabled?: boolean; configDisabled?: boolean }
-
-const AGENT_PRESETS: Record<AgentPresetKey, AgentPresetDefinition> = {
-  auggie: {
-    displayName: "Auggie (Augment Code)",
-    description: "Augment Code's AI coding assistant with native ACP support",
-    connectionType: 'acpx', connectionCommand: 'auggie', connectionArgs: '--acp', enabled: true,
-    docsUrl: "https://www.augmentcode.com/",
-    cwdHint: "Point the working directory at the repo you want Auggie to operate in.",
-    verifyArgs: ["--help"],
-  },
-  "claude-code": {
-    displayName: "Claude Code",
-    description: "Anthropic's Claude for coding tasks via ACP adapter",
-    connectionType: 'acpx', connectionCommand: 'claude-code-acp', connectionArgs: '', enabled: true,
-    docsUrl: "https://github.com/zed-industries/claude-code-acp",
-    installCommand: "npm install -g @zed-industries/claude-code-acp",
-    authHint: "Sign in to Claude Code in your terminal before verifying if this is your first run.",
-    cwdHint: "Use your repo root so Claude Code inherits the right project context.",
-    verifyArgs: ["--help"],
-  },
-  codex: {
-    displayName: "Codex",
-    description: "OpenAI Codex via the official ACP adapter",
-    connectionType: 'acpx', connectionCommand: 'codex-acp', connectionArgs: '', enabled: true,
-    docsUrl: "https://github.com/zed-industries/codex-acp",
-    installCommand: "npm install -g @zed-industries/codex-acp",
-    authHint: "Run codex login first, or set CODEX_API_KEY / OPENAI_API_KEY before verifying.",
-    cwdHint: "Set the working directory to the project Codex should inspect and edit.",
-    verifyArgs: ["--help"],
-  },
-  opencode: {
-    displayName: "OpenCode",
-    description: "OpenCode's native ACP server for terminal-first agent workflows",
-    connectionType: 'acpx', connectionCommand: 'opencode', connectionArgs: 'acp', enabled: true,
-    docsUrl: "https://opencode.ai/docs/acp/",
-    installCommand: "npm install -g opencode-ai",
-    authHint: "OpenCode stores provider auth after you run opencode and complete /connect in the TUI.",
-    cwdHint: "Use your workspace root so opencode acp can load the right project and config.",
-    verifyArgs: ["--help"],
-  },
-}
-
-function detectPresetKey(agent?: Partial<EditingAgent> | null): AgentPresetKey | undefined {
-  if (!agent) return undefined
-  const args = (agent.connectionArgs || "").trim()
-
-  if (agent.connectionType === 'acpx' && agent.connectionCommand === 'auggie' && args === '--acp') return 'auggie'
-  if (agent.connectionType === 'acpx' && agent.connectionCommand === 'claude-code-acp') return 'claude-code'
-  if (agent.connectionType === 'acpx' && agent.connectionCommand === 'codex-acp') return 'codex'
-  if (agent.connectionType === 'acpx' && agent.connectionCommand === 'opencode' && args === 'acp') return 'opencode'
-
-  return undefined
-}
 
 function buildCommandPreview(command?: string, args?: string): string {
   return [command?.trim(), args?.trim()].filter(Boolean).join(" ")
@@ -290,8 +230,8 @@ export function SettingsAgents() {
 
   const refreshAgentProfileQueries = () => invalidateAgentProfileQueries(queryClient)
 
-  const applyPreset = (presetKey: AgentPresetKey) => {
-    const preset = AGENT_PRESETS[presetKey]
+  const applyPreset = (presetKey: AgentProfilePresetKey) => {
+    const preset = AGENT_PROFILE_PRESETS[presetKey]
     setEditing({ ...emptyAgent(), ...preset, presetKey })
     setCommandVerification(null)
   }
@@ -313,7 +253,7 @@ export function SettingsAgents() {
       skillsConfig: agent.skillsConfig ? { ...agent.skillsConfig } : undefined,
       properties: agent.properties ? { ...agent.properties } : {},
       avatarDataUrl: agent.avatarDataUrl ?? null,
-      presetKey: detectPresetKey({
+      presetKey: detectAgentProfilePresetKey({
         connectionType: agent.connection.type,
         connectionCommand: agent.connection.command,
         connectionArgs,
@@ -564,8 +504,8 @@ export function SettingsAgents() {
     }
   }
 
-  const selectedPresetKey = editing ? editing.presetKey || detectPresetKey(editing) : undefined
-  const selectedPreset = selectedPresetKey ? AGENT_PRESETS[selectedPresetKey] : undefined
+  const selectedPresetKey = editing ? editing.presetKey || detectAgentProfilePresetKey(editing) : undefined
+  const selectedPreset = selectedPresetKey ? AGENT_PROFILE_PRESETS[selectedPresetKey] : undefined
 
   const handleVerifyExternalAgent = async () => {
     if (!editing || editing.connectionType !== 'acpx') return
@@ -754,9 +694,9 @@ export function SettingsAgents() {
                     <p className="text-[11px] text-muted-foreground">Start with a preset, or configure manually below.</p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {Object.entries(AGENT_PRESETS).map(([key, preset]) => (
+                    {Object.entries(AGENT_PROFILE_PRESETS).map(([key, preset]) => (
                       <Button key={key} type="button" variant="outline" size="sm" className="h-8 px-2.5 text-xs"
-                        onClick={() => applyPreset(key as AgentPresetKey)}
+                        onClick={() => applyPreset(key as AgentProfilePresetKey)}
                       >{preset.displayName}</Button>
                     ))}
                   </div>

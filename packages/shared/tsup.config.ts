@@ -32,6 +32,7 @@ export default defineConfig({
     'error-utils': 'src/error-utils.ts',
     'tool-activity-grouping': 'src/tool-activity-grouping.ts',
     'main-agent-selection': 'src/main-agent-selection.ts',
+    'agent-profile-presets': 'src/agent-profile-presets.ts',
     'agent-profile-role': 'src/agent-profile-role.ts',
     'agent-profile-connection': 'src/agent-profile-connection.ts',
     'agent-selector-options': 'src/agent-selector-options.ts',

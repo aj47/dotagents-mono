@@ -12,6 +12,11 @@ import {
   buildRuntimeToolDefinitions,
   type RuntimeToolDefinition,
 } from '@dotagents/shared/runtime-tool-utils';
+import {
+  AGENT_PROFILE_PRESETS,
+  detectAgentProfilePresetKey,
+  type AgentProfilePresetKey,
+} from '@dotagents/shared/agent-profile-presets';
 
 const CONNECTION_TYPES = [
   {
@@ -273,6 +278,8 @@ export default function AgentEditScreen({ navigation, route }: any) {
     [displaySkills, formData.skillsConfig],
   );
   const selectedModelProvider = getAgentModelProvider(formData.modelConfig);
+  const selectedPresetKey = detectAgentProfilePresetKey(formData);
+  const selectedPreset = selectedPresetKey ? AGENT_PROFILE_PRESETS[selectedPresetKey] : undefined;
 
   const settingsClient = useMemo(() => {
     if (config.baseUrl && config.apiKey) {
@@ -424,6 +431,21 @@ export default function AgentEditScreen({ navigation, route }: any) {
 
   const handleConnectionTypeSelect = useCallback((connectionType: ConnectionType) => {
     setFormData(prev => applyConnectionTypeChange(prev, connectionType));
+  }, []);
+
+  const applyAgentPreset = useCallback((presetKey: AgentProfilePresetKey) => {
+    const preset = AGENT_PROFILE_PRESETS[presetKey];
+    setFormData(prev => ({
+      ...prev,
+      displayName: preset.displayName,
+      description: preset.description,
+      connectionType: preset.connectionType,
+      connectionCommand: preset.connectionCommand,
+      connectionArgs: preset.connectionArgs,
+      connectionBaseUrl: '',
+      connectionCwd: '',
+      enabled: preset.enabled,
+    }));
   }, []);
 
   const setAgentModelProvider = useCallback((provider: AgentModelProvider | 'global') => {
@@ -644,6 +666,37 @@ export default function AgentEditScreen({ navigation, route }: any) {
         </View>
       )}
 
+      {!isEditing && (
+        <View style={styles.capabilitySection}>
+          <View style={styles.capabilityHeader}>
+            <View style={styles.capabilityTitleBlock}>
+              <Text style={styles.sectionTitle}>Quick Setup</Text>
+            </View>
+          </View>
+          <View style={styles.providerChipGrid}>
+            {Object.entries(AGENT_PROFILE_PRESETS).map(([key, preset]) => {
+              const selected = selectedPresetKey === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.chipButton,
+                    styles.providerChip,
+                    selected && styles.chipButtonActive,
+                  ]}
+                  onPress={() => applyAgentPreset(key as AgentProfilePresetKey)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={createButtonAccessibilityLabel(`Use ${preset.displayName} agent preset`)}
+                >
+                  <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>{preset.displayName}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
       <Text style={styles.label}>Display Name *</Text>
       <TextInput
         style={styles.input}
@@ -733,6 +786,14 @@ export default function AgentEditScreen({ navigation, route }: any) {
             autoCapitalize="none"
             editable={!isBuiltInAgent}
           />
+          {selectedPreset && (
+            <View style={styles.presetHintList}>
+              <Text style={styles.skillDescription}>{selectedPreset.displayName} setup</Text>
+              {selectedPreset.installCommand ? <Text style={styles.presetHintText}>Install: {selectedPreset.installCommand}</Text> : null}
+              {selectedPreset.authHint ? <Text style={styles.presetHintText}>Auth: {selectedPreset.authHint}</Text> : null}
+              {selectedPreset.cwdHint ? <Text style={styles.presetHintText}>Working directory: {selectedPreset.cwdHint}</Text> : null}
+            </View>
+          )}
         </>
       )}
 
@@ -1218,6 +1279,15 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     providerChip: {
       flexGrow: 1,
+    },
+    presetHintList: {
+      gap: spacing.xs,
+      paddingTop: spacing.xs,
+    },
+    presetHintText: {
+      color: theme.colors.mutedForeground,
+      fontSize: 12,
+      lineHeight: 16,
     },
     inlineLoadingRow: {
       flexDirection: 'row',
