@@ -16,7 +16,7 @@ import { emergencyStopAll } from "./emergency-stop"
 import { getErrorMessage } from "./error-utils"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressUpdate, Config } from "@shared/types"
-import { getBranchMessageIndexMap } from "@shared/conversation-progress"
+import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
 
 // ANSI color codes (no external deps)
 const colors = {

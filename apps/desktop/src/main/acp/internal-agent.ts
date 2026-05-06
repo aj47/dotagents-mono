@@ -23,7 +23,7 @@ import { agentProfileService, createSessionSnapshotFromProfile } from '../agent-
 import { getPreferredDelegationOutput } from '../agent-run-utils';
 import { configStore } from '../config';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
-import { stringifySubAgentToolResultContent } from '@shared/delegation-tool-display'
+import { stringifySubAgentToolResultContent } from '@dotagents/shared/delegation-tool-display'
 import type { AgentProfile, SessionProfileSnapshot } from '@dotagents/core';
 import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, ConversationMessage } from '../../shared/types';
 import type { MCPToolCall, MCPToolResult } from '../mcp-service';

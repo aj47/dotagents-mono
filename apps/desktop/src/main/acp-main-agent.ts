@@ -23,7 +23,7 @@ import {
 import { emitAgentProgress } from "./emit-agent-progress"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressUpdate, AgentProgressStep, ACPConfigOption, ToolCall, ToolResult } from "../shared/types"
-import { getBranchMessageIndexMap } from "@shared/conversation-progress"
+import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
 import {
   extractRespondToUserResponseEvents,
   MARK_WORK_COMPLETE_TOOL,

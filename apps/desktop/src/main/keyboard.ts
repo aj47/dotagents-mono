@@ -16,7 +16,7 @@ import { state, agentProcessManager } from "./state"
 import { conversationService } from "./conversation-service"
 import { spawn, ChildProcess } from "child_process"
 import path from "path"
-import { matchesKeyCombo, getEffectiveShortcut } from "../shared/key-utils"
+import { matchesKeyCombo, getEffectiveShortcut } from "@dotagents/shared/key-utils"
 import { isDebugKeybinds, logKeybinds } from "./debug"
 import { captureSelectedScreenRegion } from "./screenshot-capture"
 

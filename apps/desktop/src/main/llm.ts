@@ -19,7 +19,7 @@ import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
 import { getAcpSessionTitleOverride } from "./acp-session-state"
-import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
+import { hasRepeatTaskTitlePrefix } from "@dotagents/shared/repeat-task-utils"
 import { DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT, getCurrentPresetName } from "@dotagents/shared/providers"
 import {
   createAgentTrace,

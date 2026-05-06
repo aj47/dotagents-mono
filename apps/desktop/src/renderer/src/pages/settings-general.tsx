@@ -35,7 +35,7 @@ import { KeyRecorder } from "@renderer/components/key-recorder"
 import {
   getEffectiveShortcut,
   formatKeyComboForDisplay,
-} from "@shared/key-utils"
+} from "@dotagents/shared/key-utils"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 import { useAudioDevices } from "@renderer/hooks/use-audio-devices"
 import { hasResolvedAudioInputDeviceLabel } from "@renderer/hooks/audio-input-device-utils"

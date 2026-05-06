@@ -67,7 +67,7 @@ import type {
 } from "@dotagents/core"
 import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared/stt-models"
 import { buildConversationImageMarkdownMessage } from "@dotagents/shared/conversation-media-assets"
-import { inferTransportType, normalizeMcpConfig } from "../shared/mcp-utils"
+import { inferTransportType, normalizeMcpConfig } from "@dotagents/shared/mcp-utils"
 import { conversationService } from "./conversation-service"
 import { RendererHandlers } from "./renderer-handlers"
 import {
@@ -106,7 +106,7 @@ import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
-import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
+import { hasRepeatTaskTitlePrefix } from "@dotagents/shared/repeat-task-utils"
 import { stopAgentSessionById } from "./agent-session-actions"
 import { describeAgentSessionId } from "./agent-run-utils"
 

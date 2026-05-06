@@ -29,7 +29,7 @@ import {
 } from "../shared/types"
 import { requestElicitation, handleElicitationComplete, cancelAllElicitations } from "./mcp-elicitation"
 import { requestSampling, cancelAllSamplingRequests } from "./mcp-sampling"
-import { inferTransportType, normalizeMcpConfig } from "../shared/mcp-utils"
+import { inferTransportType, normalizeMcpConfig } from "@dotagents/shared/mcp-utils"
 import { spawn } from "child_process"
 import { promisify } from "util"
 import { access, constants, readFileSync, existsSync, mkdirSync } from "fs"

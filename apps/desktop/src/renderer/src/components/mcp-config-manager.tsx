@@ -71,7 +71,7 @@ import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@dotagents/shared/mcp-api"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
-import { OAUTH_MCP_EXAMPLES } from "@shared/oauth-examples"
+import { OAUTH_MCP_EXAMPLES } from "@dotagents/shared/oauth-examples"
 import { parseShellCommand } from "@dotagents/shared/shell-parse"
 
 

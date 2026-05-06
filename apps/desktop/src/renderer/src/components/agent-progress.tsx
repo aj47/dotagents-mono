@@ -50,7 +50,7 @@ import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
 import { LoadingSpinner } from "./ui/loading-spinner"
-import { extractSubAgentToolDisplayContent } from "@shared/delegation-tool-display"
+import { extractSubAgentToolDisplayContent } from "@dotagents/shared/delegation-tool-display"
 import { buildContentTTSKey, buildResponseEventTTSKey, consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import {

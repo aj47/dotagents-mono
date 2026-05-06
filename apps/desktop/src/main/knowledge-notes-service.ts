@@ -21,7 +21,7 @@ import {
   writeKnowledgeNoteFile,
 } from "./agents-files/knowledge-notes"
 import { readTextFileIfExistsSync, safeWriteFileSync } from "./agents-files/safe-file"
-import { inferKnowledgeNoteGrouping } from "@shared/knowledge-note-grouping"
+import { inferKnowledgeNoteGrouping } from "@dotagents/shared/knowledge-note-grouping"
 
 function normalizeSingleLine(text: string): string {
   return text.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim()

@@ -1,5 +1,5 @@
 import type { AgentProgressUpdate, LoadedConversation } from "@shared/types"
-import { getBranchMessageIndexMap } from "@shared/conversation-progress"
+import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
 
 type ConversationForProgressHydration = Pick<
   LoadedConversation,

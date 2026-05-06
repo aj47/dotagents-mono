@@ -1,4 +1,4 @@
-import { getBranchMessageIndexMap } from "@shared/conversation-progress"
+import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
 import { resolveAgentModeMaxIterations } from "@dotagents/shared/agent-run-utils"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressUpdate, Config, ConversationCompactionMetadata } from "../shared/types"

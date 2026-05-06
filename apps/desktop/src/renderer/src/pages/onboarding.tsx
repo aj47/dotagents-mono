@@ -17,7 +17,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { Recorder } from "@renderer/lib/recorder"
 import { useMutation } from "@tanstack/react-query"
 import { KeyRecorder } from "@renderer/components/key-recorder"
-import { getAgentShortcutDisplay } from "@shared/key-utils"
+import { getAgentShortcutDisplay } from "@dotagents/shared/key-utils"
 
 type OnboardingStep = "welcome" | "api-key" | "dictation" | "agent" | "complete"
 

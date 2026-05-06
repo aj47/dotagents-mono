@@ -18,7 +18,7 @@ import { cn } from "@renderer/lib/utils"
 import { useAgentStore } from "@renderer/stores"
 import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
 import { useSavedConversationsQuery } from "@renderer/lib/queries"
-import { formatRepeatTaskTitle } from "@shared/repeat-tasks"
+import { formatRepeatTaskTitle } from "@dotagents/shared/repeat-task-utils"
 import {
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
