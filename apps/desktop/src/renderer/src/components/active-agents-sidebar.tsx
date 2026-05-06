@@ -137,6 +137,7 @@ function formatMinutesAgo(timestamp: number): string | null {
 
 const DEFAULT_VISIBLE_SIDEBAR_SESSIONS = 5
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 5
+const SIDEBAR_TASKS_MIN_VISIBLE = 3
 const FINAL_RESPONSE_RETENTION_MS = 10_000
 
 const IS_MAC = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")
@@ -937,6 +938,13 @@ export function ActiveAgentsSidebar({
     )
   }, [])
 
+  const showLessTaskConversations = useCallback(() => {
+    setVisibleTaskConversationCount((prev) => {
+      const next = prev - SIDEBAR_PAST_SESSIONS_PAGE_SIZE
+      return next > SIDEBAR_TASKS_MIN_VISIBLE ? next : SIDEBAR_TASKS_MIN_VISIBLE
+    })
+  }, [])
+
   const hasLaunchControls =
     !!onStartTextSession || !!onStartVoiceSession || !!onStartPromptSession
 
@@ -1170,8 +1178,12 @@ export function ActiveAgentsSidebar({
             const isInactiveRepeatTask =
               !!repeatTaskLoop &&
               (session.status !== "active" || sessionProgress?.isComplete === true)
-            const canStopSession =
+            const isSessionRunning =
               session.status === "active" && sessionProgress?.isComplete !== true
+            // Always offer a hover X to dismiss active session rows; for running
+            // sessions handleStopSession stops first, otherwise it just clears
+            // the row from the sidebar.
+            const canDismissSession = true
             const statusRailColor = sidebarStatusPresentation.railClassName
             const shouldPulseStatus = sidebarStatusPresentation.shouldPulse
             const isLifecycleNeedsInput = sidebarStatusPresentation.lifecycleState === "needs_input"
@@ -1347,7 +1359,7 @@ export function ActiveAgentsSidebar({
                     <Play className="h-3 w-3" />
                   </button>
                 )}
-                {canStopSession && (
+                {canDismissSession && (
                   <div
                     className={cn(
                       "bg-background/90 absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0 rounded-sm pl-1 opacity-0 transition-opacity",
@@ -1358,8 +1370,8 @@ export function ActiveAgentsSidebar({
                       type="button"
                       onClick={(e) => handleStopSession(session.id, e)}
                       className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-all hover:bg-destructive/20 hover:text-destructive"
-                      title="Stop this agent session"
-                      aria-label="Stop this agent session"
+                      title={isSessionRunning ? "Stop this agent session" : "Remove from sidebar"}
+                      aria-label={isSessionRunning ? "Stop this agent session" : "Remove from sidebar"}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -1401,14 +1413,31 @@ export function ActiveAgentsSidebar({
                   visibleTaskSidebarSessions.map((entry, idx) =>
                     renderSessionRow(entry, tasksOffset + idx, { forceSingleLine: true }),
                   )}
-                {tasksSectionExpanded && hasMoreTaskSessions && (
-                  <button
-                    type="button"
-                    onClick={loadMoreTaskConversations}
-                    className="text-muted-foreground hover:bg-accent/50 hover:text-foreground mt-1 w-full rounded px-1.5 py-1 text-left text-[11px] transition-colors"
-                  >
-                    Load more tasks
-                  </button>
+                {tasksSectionExpanded && (hasMoreTaskSessions || (
+                  visibleTaskConversationCount > SIDEBAR_TASKS_MIN_VISIBLE &&
+                  visibleTaskSidebarSessions.length > SIDEBAR_TASKS_MIN_VISIBLE
+                )) && (
+                  <div className="mt-1 flex items-center gap-1">
+                    {hasMoreTaskSessions && (
+                      <button
+                        type="button"
+                        onClick={loadMoreTaskConversations}
+                        className="text-muted-foreground hover:bg-accent/50 hover:text-foreground flex-1 rounded px-1.5 py-1 text-left text-[11px] transition-colors"
+                      >
+                        Load more tasks
+                      </button>
+                    )}
+                    {visibleTaskConversationCount > SIDEBAR_TASKS_MIN_VISIBLE &&
+                      visibleTaskSidebarSessions.length > SIDEBAR_TASKS_MIN_VISIBLE && (
+                      <button
+                        type="button"
+                        onClick={showLessTaskConversations}
+                        className="text-muted-foreground hover:bg-accent/50 hover:text-foreground flex-1 rounded px-1.5 py-1 text-left text-[11px] transition-colors"
+                      >
+                        Show less
+                      </button>
+                    )}
+                  </div>
                 )}
                 {userSidebarSessions.length > 0 && (
                   <div
