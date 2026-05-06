@@ -45,6 +45,9 @@ import {
   getRemoteServerApiRoutePath,
 } from './remote-server-api';
 import {
+  DEFAULT_STREAMER_MODE_ENABLED,
+} from './remote-pairing';
+import {
   DEFAULT_DISCORD_DM_ENABLED,
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
@@ -480,6 +483,7 @@ describe('SettingsApiClient', () => {
     expect(defaultResponse.textInputEnabled).toBe(DEFAULT_TEXT_INPUT_ENABLED);
     expect(defaultResponse.mcpAutoPasteEnabled).toBe(DEFAULT_MCP_AUTO_PASTE_ENABLED);
     expect(defaultResponse.mcpAutoPasteDelay).toBe(DEFAULT_MCP_AUTO_PASTE_DELAY);
+    expect(defaultResponse.streamerModeEnabled).toBe(DEFAULT_STREAMER_MODE_ENABLED);
   });
 
   it('builds settings update responses and sensitive audit contexts', () => {

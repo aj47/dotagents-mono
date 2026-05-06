@@ -76,6 +76,7 @@ import {
   type ThemePreferenceValue,
 } from "@dotagents/shared/theme-preference"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
+import { DEFAULT_STREAMER_MODE_ENABLED } from "@dotagents/shared/remote-pairing"
 import { useAudioDevices } from "@renderer/hooks/use-audio-devices"
 import { hasResolvedAudioInputDeviceLabel } from "@renderer/hooks/audio-input-device-utils"
 
@@ -593,7 +594,7 @@ export function Component() {
 
           <Control label={<ControlLabel label="Streamer Mode" tooltip="Hide sensitive information (phone numbers, QR codes, API keys) when streaming or sharing your screen" />} className="px-3">
             <Switch
-              defaultChecked={configQuery.data.streamerModeEnabled ?? false}
+              defaultChecked={configQuery.data.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED}
               onCheckedChange={(value) => {
                 saveConfig({
                   streamerModeEnabled: value,
@@ -601,7 +602,7 @@ export function Component() {
               }}
             />
           </Control>
-          {configQuery.data.streamerModeEnabled && (
+          {(configQuery.data.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED) && (
             <div className="px-3 py-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
               <span className="i-mingcute-eye-off-line h-4 w-4" />
               <span>Streamer Mode is active - sensitive information is hidden</span>

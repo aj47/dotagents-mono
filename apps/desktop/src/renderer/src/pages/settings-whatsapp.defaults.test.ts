@@ -3,19 +3,18 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
-function getPageSource(fileName: string): string {
+function getSettingsWhatsappSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
-  return readFileSync(path.join(testDir, fileName), "utf8")
+  return readFileSync(path.join(testDir, "settings-whatsapp.tsx"), "utf8")
 }
 
-describe("settings whatsapp defaults", () => {
-  it("uses shared WhatsApp integration defaults", () => {
-    const whatsappSource = getPageSource("settings-whatsapp.tsx")
-    const generalSource = getPageSource("settings-general.tsx")
+describe("settings WhatsApp defaults", () => {
+  it("uses shared remote server and streamer mode defaults", () => {
+    const source = getSettingsWhatsappSource()
 
-    expect(generalSource).toContain("DEFAULT_WHATSAPP_ENABLED")
-    expect(whatsappSource).toContain("DEFAULT_WHATSAPP_ENABLED")
-    expect(whatsappSource).toContain("DEFAULT_WHATSAPP_AUTO_REPLY")
-    expect(whatsappSource).toContain("DEFAULT_WHATSAPP_LOG_MESSAGES")
+    expect(source).toContain("DEFAULT_REMOTE_SERVER_ENABLED")
+    expect(source).toContain("DEFAULT_STREAMER_MODE_ENABLED")
+    expect(source).toContain("cfg.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED")
+    expect(source).toContain("cfg.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED")
   })
 })

@@ -116,6 +116,7 @@ import {
   REMOTE_SETTINGS_SECRET_MASK as SECRET_MASK,
   buildRemoteSettingsInputDrafts,
 } from '@dotagents/shared/remote-settings-input-drafts';
+import { DEFAULT_STREAMER_MODE_ENABLED } from '@dotagents/shared/remote-pairing';
 import { THEME_PREFERENCE_VALUES } from '@dotagents/shared/theme-preference';
 import {
   DEFAULT_SUPERTONIC_TTS_LANGUAGE,
@@ -3275,10 +3276,10 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Streamer Mode</Text>
                   <Switch
-                    value={remoteSettings.streamerModeEnabled ?? false}
+                    value={remoteSettings.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('streamerModeEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.streamerModeEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
                 <Text style={styles.helperText}>

@@ -14,6 +14,7 @@ import {
   DEFAULT_WHATSAPP_ENABLED,
   DEFAULT_WHATSAPP_LOG_MESSAGES,
 } from "@dotagents/shared/whatsapp-config"
+import { DEFAULT_REMOTE_SERVER_ENABLED, DEFAULT_STREAMER_MODE_ENABLED } from "@dotagents/shared/remote-pairing"
 
 /**
  * Mask a phone number for streamer mode
@@ -177,9 +178,9 @@ export function Component() {
   if (!cfg) return null
 
   const enabled = cfg.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED
-  const remoteServerEnabled = cfg.remoteServerEnabled ?? false
+  const remoteServerEnabled = cfg.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED
   const hasApiKey = !!cfg.remoteServerApiKey
-  const streamerMode = cfg.streamerModeEnabled ?? false
+  const streamerMode = cfg.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED
 
   return (
     <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">

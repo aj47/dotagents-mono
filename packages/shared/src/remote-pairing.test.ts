@@ -21,6 +21,7 @@ import {
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   DEFAULT_REMOTE_SERVER_SECRET_MASK,
   DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED,
+  DEFAULT_STREAMER_MODE_ENABLED,
   ensureRemoteServerV1BaseUrl,
   formatConnectableRemoteHostWarning,
   formatHostForHttpUrl,
@@ -104,6 +105,7 @@ describe('remote server config contracts', () => {
     expect(getDefaultRemoteServerCorsOrigins()).not.toBe(DEFAULT_REMOTE_SERVER_CORS_ORIGINS);
     expect(DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL).toBe(false);
     expect(DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED).toBe(false);
+    expect(DEFAULT_STREAMER_MODE_ENABLED).toBe(false);
     expect(DEFAULT_CLOUDFLARE_TUNNEL_MODE).toBe('quick');
     expect(DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START).toBe(false);
     expect(CLOUDFLARE_TUNNEL_MODE_OPTIONS).toEqual(['quick', 'named']);

@@ -30,6 +30,7 @@ import {
   DEFAULT_REMOTE_SERVER_PORT,
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED,
+  DEFAULT_STREAMER_MODE_ENABLED,
   isLoopbackRemoteHost,
   isUnconnectableRemoteHostForMobilePairing,
   isWildcardRemoteHost,
@@ -123,7 +124,7 @@ export function RemoteServerSettingsGroups({
   const remoteServerPairingApiKeyQuery = useQuery({
     queryKey: ["remote-server-pairing-api-key", cfg?.remoteServerApiKey, cfg?.streamerModeEnabled],
     queryFn: () => tipcClient.getRemoteServerPairingApiKey(),
-    enabled: !!cfg?.remoteServerApiKey && !(cfg?.streamerModeEnabled ?? false),
+    enabled: !!cfg?.remoteServerApiKey && !(cfg?.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED),
   })
 
   const startTunnelMutation = useMutation({
@@ -166,7 +167,7 @@ export function RemoteServerSettingsGroups({
   if (!cfg) return null
 
   const enabled = cfg.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED
-  const streamerMode = cfg.streamerModeEnabled ?? false
+  const streamerMode = cfg.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED
   const remoteServerPairingApiKey = typeof remoteServerPairingApiKeyQuery.data === "string"
     ? remoteServerPairingApiKeyQuery.data
     : ""

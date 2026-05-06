@@ -86,6 +86,17 @@ test('keeps profile/model actions text-first and explicitly labeled', () => {
   assert.match(profileModelSection, />Prompt</);
 });
 
+test('uses the shared streamer mode default in mobile desktop settings', () => {
+  const streamerModeSection = extractBetween(
+    '<CollapsibleSection id="streamerMode" title="Streamer Mode">',
+    '<CollapsibleSection id="speechToText" title="Speech-to-Text">'
+  );
+
+  assert.match(settingsSource, /DEFAULT_STREAMER_MODE_ENABLED/);
+  assert.match(streamerModeSection, /remoteSettings\.streamerModeEnabled \?\? DEFAULT_STREAMER_MODE_ENABLED/);
+  assert.match(streamerModeSection, /handleRemoteSettingToggle\('streamerModeEnabled', v\)/);
+});
+
 test('lets mobile manage OpenAI-compatible desktop endpoints without echoing secrets', () => {
   const profileModelSection = extractBetween(
     '<CollapsibleSection id="profileModel" title="Profile & Model">',

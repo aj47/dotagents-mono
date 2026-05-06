@@ -18,6 +18,7 @@ export const DEFAULT_REMOTE_SERVER_ENABLED = false;
 export const DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL = false;
 export const DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED = false;
 export const DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START = false;
+export const DEFAULT_STREAMER_MODE_ENABLED = false;
 
 export type RemoteServerBindAddress = (typeof REMOTE_SERVER_BIND_ADDRESS_OPTIONS)[number];
 export type RemoteServerLogLevel = (typeof REMOTE_SERVER_LOG_LEVEL_OPTIONS)[number];
@@ -390,7 +391,7 @@ export function getRemoteServerPairingApiKey(
   config: RemoteServerPairingApiKeyConfigLike,
   resolveValue: (value: string) => string | undefined = (value) => value,
 ): string {
-  return config.streamerModeEnabled
+  return (config.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED)
     ? ''
     : resolveRemoteServerApiKey(config, resolveValue);
 }
@@ -443,7 +444,7 @@ export function buildRemoteServerCorsOptions(corsOrigins: readonly string[] = DE
 export function shouldAutoPrintRemoteServerPairingQr(
   options: RemoteServerPairingQrPrintOptions,
 ): boolean {
-  if (options.skipAutoPrintQR || !options.apiKey || options.streamerModeEnabled) {
+  if (options.skipAutoPrintQR || !options.apiKey || (options.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED)) {
     return false;
   }
 

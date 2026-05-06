@@ -25,6 +25,7 @@ describe("remote server settings secret references", () => {
     expect(source).toContain("REMOTE_SERVER_PORT_MAX")
     expect(source).toContain("DEFAULT_REMOTE_SERVER_LOG_LEVEL")
     expect(source).toContain("DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED")
+    expect(source).toContain("DEFAULT_STREAMER_MODE_ENABLED")
     expect(source).toContain("DEFAULT_CLOUDFLARE_TUNNEL_MODE")
   })
 
@@ -32,6 +33,8 @@ describe("remote server settings secret references", () => {
     const source = getRemoteServerSettingsSource()
 
     expect(source).toContain("tipcClient.getRemoteServerPairingApiKey()")
+    expect(source).toContain("cfg.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED")
+    expect(source).toContain("!(cfg?.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED)")
     expect(source).toContain('value={cfg.remoteServerApiKey ? "••••••••" : ""}')
     expect(source).toContain('const shouldShowPairingSurface = streamerMode ? hasConfiguredRemoteServerApiKey : hasRemoteServerApiKey')
     expect(source).toContain("baseUrl && shouldShowPairingSurface")
