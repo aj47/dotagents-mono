@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 const sidebarSource = readFileSync(new URL("./active-agents-sidebar.tsx", import.meta.url), "utf8")
-const presentationSource = readFileSync(new URL("../lib/session-presentation.ts", import.meta.url), "utf8")
+const presentationSource = readFileSync(
+  new URL("../../../../../../packages/shared/src/session-presentation.ts", import.meta.url),
+  "utf8",
+)
 
 describe("active agents sidebar status colors", () => {
   it("centralizes active-session colors through sidebar presentation semantics", () => {

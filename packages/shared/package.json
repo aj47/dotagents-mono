@@ -186,6 +186,11 @@
       "import": "./dist/audio-input-device-utils.mjs",
       "require": "./dist/audio-input-device-utils.js"
     },
+    "./boolean-preference-storage": {
+      "types": "./dist/boolean-preference-storage.d.ts",
+      "import": "./dist/boolean-preference-storage.mjs",
+      "require": "./dist/boolean-preference-storage.js"
+    },
     "./resizable-persistence": {
       "types": "./dist/resizable-persistence.d.ts",
       "import": "./dist/resizable-persistence.mjs",

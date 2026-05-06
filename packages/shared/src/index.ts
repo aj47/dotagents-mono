@@ -61,6 +61,7 @@ export * from './api-key-error-utils';
 export * from './error-utils';
 export * from './config-save-error';
 export * from './audio-input-device-utils';
+export * from './boolean-preference-storage';
 export * from './resizable-persistence';
 export * from './sidebar-persistence';
 export * from './selected-agent-persistence';

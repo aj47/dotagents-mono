@@ -38,6 +38,7 @@ export default defineConfig({
     'error-utils': 'src/error-utils.ts',
     'config-save-error': 'src/config-save-error.ts',
     'audio-input-device-utils': 'src/audio-input-device-utils.ts',
+    'boolean-preference-storage': 'src/boolean-preference-storage.ts',
     'resizable-persistence': 'src/resizable-persistence.ts',
     'sidebar-persistence': 'src/sidebar-persistence.ts',
     'selected-agent-persistence': 'src/selected-agent-persistence.ts',

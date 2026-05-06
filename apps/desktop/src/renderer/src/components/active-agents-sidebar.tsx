@@ -36,6 +36,12 @@ import {
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
 } from "@renderer/lib/sidebar-sessions"
+import {
+  ACTIVE_AGENTS_SIDEBAR_EXPANDED_STORAGE_KEY,
+  SIDEBAR_TASKS_SECTION_EXPANDED_STORAGE_KEY,
+  readBooleanPreference,
+  writeBooleanPreference,
+} from "@dotagents/shared/boolean-preference-storage"
 import { formatSidebarDuration } from "@renderer/lib/sidebar-duration"
 import { useLocation, useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
@@ -102,27 +108,6 @@ const FINAL_RESPONSE_RETENTION_MS = 10_000
 const IS_MAC = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")
 const SHORTCUT_MOD_SYMBOL = IS_MAC ? "⌘" : "Ctrl"
 
-const STORAGE_KEY = "active-agents-sidebar-expanded"
-const TASKS_SECTION_EXPANDED_STORAGE_KEY = "sidebar-tasks-section-expanded"
-
-function readBooleanFromStorage(key: string, fallback: boolean): boolean {
-  try {
-    const stored = localStorage.getItem(key)
-    if (stored === null) return fallback
-    return stored === "true"
-  } catch {
-    return fallback
-  }
-}
-
-function writeBooleanToStorage(key: string, value: boolean): void {
-  try {
-    localStorage.setItem(key, String(value))
-  } catch {
-    // localStorage may be unavailable; ignore.
-  }
-}
-
 function ArchiveSessionButton({
   sessionTitle,
   onArchive,
@@ -170,11 +155,11 @@ export function ActiveAgentsSidebar({
   className?: string
 }) {
   const [isExpanded, setIsExpanded] = useState(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    const initial = stored !== null ? stored === "true" : true
+    const stored = readBooleanPreference(ACTIVE_AGENTS_SIDEBAR_EXPANDED_STORAGE_KEY, true)
+    const initial = stored.value
     logExpand("ActiveAgentsSidebar", "init", {
-      key: STORAGE_KEY,
-      raw: stored,
+      key: ACTIVE_AGENTS_SIDEBAR_EXPANDED_STORAGE_KEY,
+      raw: stored.rawValue,
       parsed: initial,
     })
     return initial
@@ -182,7 +167,7 @@ export function ActiveAgentsSidebar({
   // Default the Tasks subsection to collapsed so user sessions stay
   // foregrounded; respect remembered state once the user has toggled it.
   const [tasksSectionExpanded, setTasksSectionExpanded] = useState(() =>
-    readBooleanFromStorage(TASKS_SECTION_EXPANDED_STORAGE_KEY, false),
+    readBooleanPreference(SIDEBAR_TASKS_SECTION_EXPANDED_STORAGE_KEY, false).value,
   )
 
   const focusedSessionId = useAgentStore((s) => s.focusedSessionId)
@@ -580,28 +565,26 @@ export function ActiveAgentsSidebar({
   useEffect(() => {
     logStateChange("ActiveAgentsSidebar", "isExpanded", !isExpanded, isExpanded)
     logExpand("ActiveAgentsSidebar", "write", {
-      key: STORAGE_KEY,
+      key: ACTIVE_AGENTS_SIDEBAR_EXPANDED_STORAGE_KEY,
       value: isExpanded,
     })
-    try {
-      const valueStr = String(isExpanded)
-      localStorage.setItem(STORAGE_KEY, valueStr)
-      const verify = localStorage.getItem(STORAGE_KEY)
+    const writeResult = writeBooleanPreference(ACTIVE_AGENTS_SIDEBAR_EXPANDED_STORAGE_KEY, isExpanded)
+    if (writeResult.success) {
       logExpand("ActiveAgentsSidebar", "verify", {
-        key: STORAGE_KEY,
-        wrote: valueStr,
-        readBack: verify,
+        key: ACTIVE_AGENTS_SIDEBAR_EXPANDED_STORAGE_KEY,
+        wrote: writeResult.value,
+        readBack: writeResult.readBack,
       })
-    } catch (e) {
+    } else {
       logExpand("ActiveAgentsSidebar", "error", {
-        key: STORAGE_KEY,
-        error: e instanceof Error ? e.message : String(e),
+        key: ACTIVE_AGENTS_SIDEBAR_EXPANDED_STORAGE_KEY,
+        error: writeResult.error ?? "storage unavailable",
       })
     }
   }, [isExpanded])
 
   useEffect(() => {
-    writeBooleanToStorage(TASKS_SECTION_EXPANDED_STORAGE_KEY, tasksSectionExpanded)
+    writeBooleanPreference(SIDEBAR_TASKS_SECTION_EXPANDED_STORAGE_KEY, tasksSectionExpanded)
   }, [tasksSectionExpanded])
 
   const handleActiveSessionSelect = useCallback((sessionId: string) => {
