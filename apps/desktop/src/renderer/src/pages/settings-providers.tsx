@@ -17,12 +17,19 @@ import {
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { Config } from "@shared/types"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
-
+import {
+  DEFAULT_SUPERTONIC_TTS_LANGUAGE,
+  DEFAULT_SUPERTONIC_TTS_STEPS,
+  getTextToSpeechSpeedDefault,
+  getTextToSpeechVoiceDefault,
+} from "@dotagents/shared/text-to-speech-settings"
 import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Cpu, Download, Loader2 } from "lucide-react"
 
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
+const DEFAULT_SUPERTONIC_TTS_VOICE = String(getTextToSpeechVoiceDefault("supertonic"))
+const DEFAULT_SUPERTONIC_TTS_SPEED = getTextToSpeechSpeedDefault("supertonic")
 
 type ProviderDraftKey =
   | "groqApiKey"
@@ -1123,10 +1130,10 @@ export function Component() {
             isCollapsed={configQuery.data.providerSectionCollapsedSupertonic ?? true}
             onToggleCollapse={() => saveConfig({ providerSectionCollapsedSupertonic: !(configQuery.data.providerSectionCollapsedSupertonic ?? true) } as Partial<Config>)}
             usageBadges={activeProviders.supertonic}
-            voice={configQuery.data.supertonicVoice ?? "M1"}
-            language={configQuery.data.supertonicLanguage ?? "en"}
-            speed={configQuery.data.supertonicSpeed ?? 1.05}
-            steps={configQuery.data.supertonicSteps ?? 5}
+            voice={configQuery.data.supertonicVoice ?? DEFAULT_SUPERTONIC_TTS_VOICE}
+            language={configQuery.data.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE}
+            speed={configQuery.data.supertonicSpeed ?? DEFAULT_SUPERTONIC_TTS_SPEED}
+            steps={configQuery.data.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS}
           />
         )}
 
@@ -1316,10 +1323,10 @@ export function Component() {
             isCollapsed={configQuery.data.providerSectionCollapsedSupertonic ?? true}
             onToggleCollapse={() => saveConfig({ providerSectionCollapsedSupertonic: !(configQuery.data.providerSectionCollapsedSupertonic ?? true) } as Partial<Config>)}
             usageBadges={activeProviders.supertonic}
-            voice={configQuery.data.supertonicVoice ?? "M1"}
-            language={configQuery.data.supertonicLanguage ?? "en"}
-            speed={configQuery.data.supertonicSpeed ?? 1.05}
-            steps={configQuery.data.supertonicSteps ?? 5}
+            voice={configQuery.data.supertonicVoice ?? DEFAULT_SUPERTONIC_TTS_VOICE}
+            language={configQuery.data.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE}
+            speed={configQuery.data.supertonicSpeed ?? DEFAULT_SUPERTONIC_TTS_SPEED}
+            steps={configQuery.data.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS}
           />
         )}
 

@@ -80,10 +80,15 @@ import {
   buildRemoteSettingsInputDrafts,
 } from '@dotagents/shared/remote-settings-input-drafts';
 import {
+  DEFAULT_SUPERTONIC_TTS_LANGUAGE,
+  DEFAULT_SUPERTONIC_TTS_STEPS,
+  MAX_SUPERTONIC_TTS_STEPS,
+  MIN_SUPERTONIC_TTS_STEPS,
   formatLocalSpeechModelProgress as formatLocalModelProgress,
   getTextToSpeechModelValue as getRemoteTtsModelValue,
   getTextToSpeechSpeedSetting as getRemoteTtsSpeedSetting,
   getTextToSpeechSpeedValue as getRemoteTtsSpeedValue,
+  getTextToSpeechVoiceDefault as getRemoteTtsVoiceDefault,
   getTextToSpeechVoiceValue as getRemoteTtsVoiceValue,
   normalizeTextToSpeechVoiceUpdateValue as normalizeTtsVoiceUpdateValue,
 } from '@dotagents/shared/text-to-speech-settings';
@@ -3572,13 +3577,13 @@ export default function SettingsScreen({ navigation }: any) {
                               key={language.value}
                               style={[
                                 styles.providerOption,
-                                (remoteSettings.supertonicLanguage ?? 'en') === language.value && styles.providerOptionActive,
+                                (remoteSettings.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE) === language.value && styles.providerOptionActive,
                               ]}
                               onPress={() => handleRemoteSettingUpdate('supertonicLanguage', language.value)}
                             >
                               <Text style={[
                                 styles.providerOptionText,
-                                (remoteSettings.supertonicLanguage ?? 'en') === language.value && styles.providerOptionTextActive,
+                                (remoteSettings.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE) === language.value && styles.providerOptionTextActive,
                               ]}>
                                 {language.label}
                               </Text>
@@ -3615,15 +3620,15 @@ export default function SettingsScreen({ navigation }: any) {
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Text style={styles.label}>Quality Steps</Text>
                           <Text style={[styles.helperText, { marginTop: 0 }]}>
-                            {Math.round(remoteSettings.supertonicSteps ?? 5)}
+                            {Math.round(remoteSettings.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS)}
                           </Text>
                         </View>
                         <Slider
                           style={{ width: '100%', height: 40 }}
-                          minimumValue={2}
-                          maximumValue={10}
+                          minimumValue={MIN_SUPERTONIC_TTS_STEPS}
+                          maximumValue={MAX_SUPERTONIC_TTS_STEPS}
                           step={1}
-                          value={remoteSettings.supertonicSteps ?? 5}
+                          value={remoteSettings.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS}
                           onSlidingComplete={(v) => handleRemoteSettingUpdate('supertonicSteps', Math.round(v))}
                           minimumTrackTintColor={theme.colors.primary}
                           maximumTrackTintColor={theme.colors.muted}
@@ -5689,6 +5694,13 @@ export default function SettingsScreen({ navigation }: any) {
                       const key = getTtsModelSettingKey(remoteTtsProviderId);
                       if (key) {
                         handleRemoteSettingUpdate(key, model.value);
+                        if (remoteTtsProviderId === 'groq') {
+                          const voiceKey = getTtsVoiceSettingKey(remoteTtsProviderId);
+                          const defaultVoice = getRemoteTtsVoiceDefault(remoteTtsProviderId, model.value);
+                          if (voiceKey && defaultVoice !== undefined) {
+                            handleRemoteSettingUpdate(voiceKey, normalizeTtsVoiceUpdateValue(voiceKey, defaultVoice));
+                          }
+                        }
                       }
                       setShowTtsModelPicker(false);
                     }}

@@ -1,6 +1,9 @@
 import type { LocalSpeechModelStatus, TextToSpeechConfig } from "./api-types"
 import {
   DEFAULT_EDGE_TTS_VOICE,
+  SUPERTONIC_TTS_LANGUAGES,
+  getTtsModelsForProvider,
+  getTtsVoicesForProvider,
   getTtsModelSettingKey,
   getTtsVoiceSettingKey,
   type TtsVoiceSettingKey,
@@ -41,6 +44,8 @@ const DEFAULT_TTS_VOICES: Record<string, string | number> = {
 
 export const DEFAULT_SUPERTONIC_TTS_LANGUAGE = "en"
 export const DEFAULT_SUPERTONIC_TTS_STEPS = 5
+export const MIN_SUPERTONIC_TTS_STEPS = 2
+export const MAX_SUPERTONIC_TTS_STEPS = 10
 export const GROQ_ARABIC_TTS_MODEL = "canopylabs/orpheus-arabic-saudi"
 export const DEFAULT_GROQ_ARABIC_TTS_VOICE = "fahad"
 
@@ -109,6 +114,32 @@ export function isTextToSpeechSpeedUpdateValue(
 ): value is number {
   const setting = getTextToSpeechSpeedSettingByKey(key)
   return typeof value === "number" && value >= setting.minimumValue && value <= setting.maximumValue
+}
+
+export function isTextToSpeechModelUpdateValue(
+  providerId: string,
+  value: unknown,
+): value is string {
+  return typeof value === "string" && getTtsModelsForProvider(providerId).some((model) => model.value === value)
+}
+
+export function isTextToSpeechVoiceUpdateValue(
+  providerId: string,
+  value: unknown,
+  model?: string | null,
+): value is string | number {
+  return (typeof value === "string" || typeof value === "number")
+    && getTtsVoicesForProvider(providerId, model ?? undefined).some((voice) => voice.value === value)
+}
+
+export function isSupertonicLanguageUpdateValue(value: unknown): value is string {
+  return typeof value === "string" && SUPERTONIC_TTS_LANGUAGES.some((language) => language.value === value)
+}
+
+export function isSupertonicStepsUpdateValue(value: unknown): value is number {
+  return Number.isInteger(value)
+    && (value as number) >= MIN_SUPERTONIC_TTS_STEPS
+    && (value as number) <= MAX_SUPERTONIC_TTS_STEPS
 }
 
 export function getTextToSpeechModelValue(settings?: TextToSpeechConfig | null): string | undefined {

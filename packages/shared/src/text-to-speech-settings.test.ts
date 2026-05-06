@@ -5,6 +5,8 @@ import {
   DEFAULT_SUPERTONIC_TTS_LANGUAGE,
   DEFAULT_SUPERTONIC_TTS_STEPS,
   GROQ_ARABIC_TTS_MODEL,
+  MAX_SUPERTONIC_TTS_STEPS,
+  MIN_SUPERTONIC_TTS_STEPS,
   TEXT_TO_SPEECH_SPEED_SETTING_KEYS,
   formatLocalSpeechModelProgress,
   getTextToSpeechModelDefault,
@@ -16,7 +18,11 @@ import {
   getTextToSpeechSpeedValue,
   getTextToSpeechVoiceDefault,
   getTextToSpeechVoiceValue,
+  isSupertonicLanguageUpdateValue,
+  isSupertonicStepsUpdateValue,
+  isTextToSpeechModelUpdateValue,
   isTextToSpeechSpeedUpdateValue,
+  isTextToSpeechVoiceUpdateValue,
   normalizeTextToSpeechVoiceUpdateValue,
 } from "./text-to-speech-settings"
 
@@ -112,6 +118,22 @@ describe("text to speech settings helpers", () => {
     expect(isTextToSpeechSpeedUpdateValue("openaiTtsSpeed", 0.24)).toBe(false)
     expect(isTextToSpeechSpeedUpdateValue("edgeTtsRate", 2.1)).toBe(false)
     expect(isTextToSpeechSpeedUpdateValue("supertonicSpeed", "1.0")).toBe(false)
+  })
+
+  it("validates provider model, voice, and Supertonic option updates", () => {
+    expect(isTextToSpeechModelUpdateValue("openai", "gpt-4o-mini-tts")).toBe(true)
+    expect(isTextToSpeechModelUpdateValue("groq", GROQ_ARABIC_TTS_MODEL)).toBe(true)
+    expect(isTextToSpeechModelUpdateValue("groq", "playai-tts")).toBe(false)
+    expect(isTextToSpeechVoiceUpdateValue("groq", DEFAULT_GROQ_ARABIC_TTS_VOICE, GROQ_ARABIC_TTS_MODEL)).toBe(true)
+    expect(isTextToSpeechVoiceUpdateValue("groq", "troy", GROQ_ARABIC_TTS_MODEL)).toBe(false)
+    expect(isTextToSpeechVoiceUpdateValue("kitten", 3)).toBe(true)
+    expect(isTextToSpeechVoiceUpdateValue("kitten", "3")).toBe(false)
+    expect(isSupertonicLanguageUpdateValue(DEFAULT_SUPERTONIC_TTS_LANGUAGE)).toBe(true)
+    expect(isSupertonicLanguageUpdateValue("de")).toBe(false)
+    expect(isSupertonicStepsUpdateValue(MIN_SUPERTONIC_TTS_STEPS)).toBe(true)
+    expect(isSupertonicStepsUpdateValue(MAX_SUPERTONIC_TTS_STEPS)).toBe(true)
+    expect(isSupertonicStepsUpdateValue(MIN_SUPERTONIC_TTS_STEPS - 1)).toBe(false)
+    expect(isSupertonicStepsUpdateValue(MAX_SUPERTONIC_TTS_STEPS + 1)).toBe(false)
   })
 
   it("resolves playback rates with provider defaults", () => {

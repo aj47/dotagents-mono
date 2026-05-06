@@ -207,6 +207,12 @@ describe('SettingsApiClient', () => {
         openaiTtsSpeed: 0.24,
         edgeTtsRate: 2.1,
         supertonicSpeed: '1.1',
+        groqTtsModel: 'playai-tts',
+        groqTtsVoice: 'troy',
+        geminiTtsModel: 'gemini-text-only',
+        supertonicVoice: 'X1',
+        supertonicLanguage: 'de',
+        supertonicSteps: 11,
       },
       {},
       {
@@ -218,6 +224,29 @@ describe('SettingsApiClient', () => {
       openaiTtsSpeed: expect.any(Number),
       edgeTtsRate: expect.any(Number),
       supertonicSpeed: expect.any(Number),
+      groqTtsModel: expect.any(String),
+      groqTtsVoice: expect.any(String),
+      geminiTtsModel: expect.any(String),
+      supertonicVoice: expect.any(String),
+      supertonicLanguage: expect.any(String),
+      supertonicSteps: expect.any(Number),
+    });
+  });
+
+  it('resets Groq TTS voice to the model-specific shared default when changing model families', () => {
+    const updates = buildSettingsUpdatePatch(
+      { groqTtsModel: 'canopylabs/orpheus-arabic-saudi' },
+      { groqTtsModel: 'canopylabs/orpheus-v1-english', groqTtsVoice: 'troy' },
+      {
+        providerSecretMask: '••••••••',
+        remoteServerSecretMask: '••••••••',
+        discordSecretMask: '••••••••',
+      },
+    );
+
+    expect(updates).toMatchObject({
+      groqTtsModel: 'canopylabs/orpheus-arabic-saudi',
+      groqTtsVoice: 'fahad',
     });
   });
 

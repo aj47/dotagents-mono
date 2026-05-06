@@ -44,7 +44,11 @@ import {
   getTextToSpeechModelDefault,
   getTextToSpeechSpeedDefault,
   getTextToSpeechVoiceDefault,
+  isSupertonicLanguageUpdateValue,
+  isSupertonicStepsUpdateValue,
+  isTextToSpeechModelUpdateValue,
   isTextToSpeechSpeedUpdateValue,
+  isTextToSpeechVoiceUpdateValue,
 } from './text-to-speech-settings';
 import type {
   AgentModelSelectionConfig,
@@ -152,6 +156,8 @@ export type SettingsUpdatePatch = Record<string, any>;
 
 export interface SettingsUpdateConfigLike extends Pick<AgentModelSelectionConfig, 'currentModelPresetId'>, Pick<ChatProviderCredentialsConfig, 'openaiApiKey'> {
   modelPresets?: ModelPreset[];
+  groqTtsModel?: Settings['groqTtsModel'];
+  groqTtsVoice?: Settings['groqTtsVoice'];
 }
 
 export type SettingsResponseConfigLike = Partial<Settings> & {
@@ -920,27 +926,36 @@ export function buildSettingsUpdatePatch(
   }
 
   if (typeof requestBody.mainAgentName === 'string') updates.mainAgentName = requestBody.mainAgentName;
-  if (typeof requestBody.openaiTtsModel === 'string') updates.openaiTtsModel = requestBody.openaiTtsModel;
-  if (typeof requestBody.openaiTtsVoice === 'string') updates.openaiTtsVoice = requestBody.openaiTtsVoice;
+  if (isTextToSpeechModelUpdateValue('openai', requestBody.openaiTtsModel)) updates.openaiTtsModel = requestBody.openaiTtsModel;
+  if (isTextToSpeechVoiceUpdateValue('openai', requestBody.openaiTtsVoice)) updates.openaiTtsVoice = requestBody.openaiTtsVoice;
   if (typeof requestBody.openaiTtsResponseFormat === 'string' && ['mp3', 'opus', 'aac', 'flac', 'wav', 'pcm'].includes(requestBody.openaiTtsResponseFormat)) {
     updates.openaiTtsResponseFormat = requestBody.openaiTtsResponseFormat;
   }
-  if (typeof requestBody.groqTtsModel === 'string' && ['canopylabs/orpheus-v1-english', 'canopylabs/orpheus-arabic-saudi'].includes(requestBody.groqTtsModel)) updates.groqTtsModel = requestBody.groqTtsModel;
-  if (typeof requestBody.groqTtsVoice === 'string') updates.groqTtsVoice = requestBody.groqTtsVoice;
-  if (typeof requestBody.geminiTtsModel === 'string' && ['gemini-2.5-flash-preview-tts', 'gemini-2.5-pro-preview-tts'].includes(requestBody.geminiTtsModel)) updates.geminiTtsModel = requestBody.geminiTtsModel;
-  if (typeof requestBody.geminiTtsVoice === 'string') updates.geminiTtsVoice = requestBody.geminiTtsVoice;
-  if (typeof requestBody.edgeTtsModel === 'string') updates.edgeTtsModel = requestBody.edgeTtsModel;
-  if (typeof requestBody.edgeTtsVoice === 'string') updates.edgeTtsVoice = requestBody.edgeTtsVoice;
-  if (Number.isInteger(requestBody.kittenVoiceId) && (requestBody.kittenVoiceId as number) >= 0 && (requestBody.kittenVoiceId as number) <= 7) updates.kittenVoiceId = requestBody.kittenVoiceId;
-  if (typeof requestBody.supertonicVoice === 'string' && ['M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'].includes(requestBody.supertonicVoice)) updates.supertonicVoice = requestBody.supertonicVoice;
-  if (typeof requestBody.supertonicLanguage === 'string' && ['en', 'ko', 'es', 'pt', 'fr'].includes(requestBody.supertonicLanguage)) updates.supertonicLanguage = requestBody.supertonicLanguage;
+  const groqTtsModel = isTextToSpeechModelUpdateValue('groq', requestBody.groqTtsModel)
+    ? requestBody.groqTtsModel
+    : undefined;
+  if (groqTtsModel) updates.groqTtsModel = groqTtsModel;
+  const activeGroqTtsModel = groqTtsModel || cfg.groqTtsModel || getTextToSpeechModelDefault('groq');
+  if (isTextToSpeechVoiceUpdateValue('groq', requestBody.groqTtsVoice, activeGroqTtsModel)) {
+    updates.groqTtsVoice = requestBody.groqTtsVoice;
+  } else if (groqTtsModel && !isTextToSpeechVoiceUpdateValue('groq', cfg.groqTtsVoice, groqTtsModel)) {
+    const defaultGroqVoice = getTextToSpeechVoiceDefault('groq', groqTtsModel);
+    if (typeof defaultGroqVoice === 'string') updates.groqTtsVoice = defaultGroqVoice;
+  }
+  if (isTextToSpeechModelUpdateValue('gemini', requestBody.geminiTtsModel)) updates.geminiTtsModel = requestBody.geminiTtsModel;
+  if (isTextToSpeechVoiceUpdateValue('gemini', requestBody.geminiTtsVoice)) updates.geminiTtsVoice = requestBody.geminiTtsVoice;
+  if (isTextToSpeechModelUpdateValue('edge', requestBody.edgeTtsModel)) updates.edgeTtsModel = requestBody.edgeTtsModel;
+  if (isTextToSpeechVoiceUpdateValue('edge', requestBody.edgeTtsVoice)) updates.edgeTtsVoice = requestBody.edgeTtsVoice;
+  if (isTextToSpeechVoiceUpdateValue('kitten', requestBody.kittenVoiceId)) updates.kittenVoiceId = requestBody.kittenVoiceId;
+  if (isTextToSpeechVoiceUpdateValue('supertonic', requestBody.supertonicVoice)) updates.supertonicVoice = requestBody.supertonicVoice;
+  if (isSupertonicLanguageUpdateValue(requestBody.supertonicLanguage)) updates.supertonicLanguage = requestBody.supertonicLanguage;
   for (const key of TEXT_TO_SPEECH_SPEED_SETTING_KEYS) {
     const value = requestBody[key];
     if (isTextToSpeechSpeedUpdateValue(key, value)) {
       updates[key] = value;
     }
   }
-  if (Number.isInteger(requestBody.supertonicSteps) && (requestBody.supertonicSteps as number) >= 2 && (requestBody.supertonicSteps as number) <= 10) updates.supertonicSteps = requestBody.supertonicSteps;
+  if (isSupertonicStepsUpdateValue(requestBody.supertonicSteps)) updates.supertonicSteps = requestBody.supertonicSteps;
 
   if (Array.isArray(requestBody.pinnedSessionIds) && requestBody.pinnedSessionIds.every((id: unknown) => typeof id === 'string')) updates.pinnedSessionIds = requestBody.pinnedSessionIds;
   if (Array.isArray(requestBody.archivedSessionIds) && requestBody.archivedSessionIds.every((id: unknown) => typeof id === 'string')) updates.archivedSessionIds = requestBody.archivedSessionIds;

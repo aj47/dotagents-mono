@@ -111,11 +111,15 @@ test('lets mobile configure local desktop TTS provider details', () => {
 
   assert.doesNotMatch(ttsSection, /Configure voice in desktop settings/);
   assert.match(settingsSource, /getTtsVoicesForProvider/);
+  assert.match(settingsSource, /DEFAULT_SUPERTONIC_TTS_LANGUAGE/);
+  assert.match(settingsSource, /DEFAULT_SUPERTONIC_TTS_STEPS/);
   assert.match(settingsSource, /handleRemoteSettingUpdate\('supertonicLanguage', language\.value\)/);
   assert.match(settingsSource, /getTextToSpeechSpeedSetting as getRemoteTtsSpeedSetting/);
   assert.match(ttsSection, /remoteTtsSpeedSetting/);
   assert.match(ttsSection, /handleRemoteSettingUpdate\(remoteTtsSpeedSetting\.key, v\)/);
   assert.match(settingsSource, /handleRemoteSettingUpdate\('supertonicSteps', Math\.round\(v\)\)/);
+  assert.match(settingsSource, /getTextToSpeechVoiceDefault as getRemoteTtsVoiceDefault/);
+  assert.match(settingsSource, /handleRemoteSettingUpdate\(voiceKey, normalizeTtsVoiceUpdateValue\(voiceKey, defaultVoice\)\)/);
   assert.match(settingsSource, /normalizeTtsVoiceUpdateValue\(key, voice\.value\)/);
   assert.match(settingsSource, /getLocalSpeechModelStatuses/);
   assert.match(settingsSource, /downloadLocalSpeechModel\(providerId\)/);

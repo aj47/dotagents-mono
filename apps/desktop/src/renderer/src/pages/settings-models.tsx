@@ -37,9 +37,33 @@ import {
   getTranscriptPostProcessingModelSettingKey,
 } from "@dotagents/shared/providers"
 import { getDefaultSttModel } from "@dotagents/shared/stt-models"
+import {
+  DEFAULT_SUPERTONIC_TTS_LANGUAGE,
+  DEFAULT_SUPERTONIC_TTS_STEPS,
+  GROQ_ARABIC_TTS_MODEL,
+  MAX_SUPERTONIC_TTS_STEPS,
+  MIN_SUPERTONIC_TTS_STEPS,
+  getTextToSpeechModelDefault,
+  getTextToSpeechSpeedDefault,
+  getTextToSpeechSpeedSetting,
+  getTextToSpeechVoiceDefault,
+} from "@dotagents/shared/text-to-speech-settings"
 import { Mic, FileText, Volume2, Bot } from "lucide-react"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
+const DEFAULT_OPENAI_TTS_MODEL = getTextToSpeechModelDefault("openai")!
+const DEFAULT_OPENAI_TTS_VOICE = String(getTextToSpeechVoiceDefault("openai"))
+const DEFAULT_GROQ_TTS_MODEL = getTextToSpeechModelDefault("groq")!
+const DEFAULT_GROQ_TTS_VOICE = String(getTextToSpeechVoiceDefault("groq"))
+const DEFAULT_GEMINI_TTS_MODEL = getTextToSpeechModelDefault("gemini")!
+const DEFAULT_GEMINI_TTS_VOICE = String(getTextToSpeechVoiceDefault("gemini"))
+const DEFAULT_EDGE_TTS_MODEL = getTextToSpeechModelDefault("edge")!
+const DEFAULT_EDGE_TTS_VOICE = String(getTextToSpeechVoiceDefault("edge"))
+const DEFAULT_KITTEN_TTS_VOICE_ID = Number(getTextToSpeechVoiceDefault("kitten") ?? 0)
+const DEFAULT_SUPERTONIC_TTS_VOICE = String(getTextToSpeechVoiceDefault("supertonic"))
+const OPENAI_TTS_SPEED_SETTING = getTextToSpeechSpeedSetting("openai")!
+const EDGE_TTS_SPEED_SETTING = getTextToSpeechSpeedSetting("edge")!
+const SUPERTONIC_TTS_SPEED_SETTING = getTextToSpeechSpeedSetting("supertonic")!
 
 function RoleProviderSelector({
   label,
@@ -388,7 +412,7 @@ export function Component() {
             {ttsProviderId === "openai" && (
               <>
                 <Control label={<ControlLabel label="Text-to-Speech model" tooltip="Choose the OpenAI TTS model to use." />}>
-                  <Select value={config.openaiTtsModel || "gpt-4o-mini-tts"} onValueChange={(value) => saveConfig({ openaiTtsModel: value as "gpt-4o-mini-tts" | "tts-1" | "tts-1-hd" })}>
+                  <Select value={config.openaiTtsModel || DEFAULT_OPENAI_TTS_MODEL} onValueChange={(value) => saveConfig({ openaiTtsModel: value as Config["openaiTtsModel"] })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {OPENAI_TTS_MODELS.map((model) => <SelectItem key={model.value} value={model.value}>{model.label}</SelectItem>)}
@@ -397,7 +421,7 @@ export function Component() {
                 </Control>
 
                 <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Choose the voice for OpenAI TTS." />}>
-                  <Select value={config.openaiTtsVoice || "alloy"} onValueChange={(value) => saveConfig({ openaiTtsVoice: value as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" })}>
+                  <Select value={config.openaiTtsVoice || DEFAULT_OPENAI_TTS_VOICE} onValueChange={(value) => saveConfig({ openaiTtsVoice: value as Config["openaiTtsVoice"] })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {OPENAI_TTS_VOICES.map((voice) => <SelectItem key={voice.value} value={voice.value}>{voice.label}</SelectItem>)}
@@ -408,14 +432,14 @@ export function Component() {
                 <Control label={<ControlLabel label="Text-to-Speech speed" tooltip="Speech speed between 0.25 and 4.0." />}>
                   <Input
                     type="number"
-                    min="0.25"
-                    max="4.0"
-                    step="0.25"
+                    min={OPENAI_TTS_SPEED_SETTING.minimumValue}
+                    max={OPENAI_TTS_SPEED_SETTING.maximumValue}
+                    step={OPENAI_TTS_SPEED_SETTING.step}
                     defaultValue={config.openaiTtsSpeed?.toString()}
-                    placeholder="1.0"
+                    placeholder={String(getTextToSpeechSpeedDefault("openai"))}
                     onChange={(e) => {
                       const speed = parseFloat(e.currentTarget.value)
-                      if (!isNaN(speed) && speed >= 0.25 && speed <= 4.0) {
+                      if (!isNaN(speed) && speed >= OPENAI_TTS_SPEED_SETTING.minimumValue && speed <= OPENAI_TTS_SPEED_SETTING.maximumValue) {
                         saveConfig({ openaiTtsSpeed: speed })
                       }
                     }}
@@ -428,10 +452,10 @@ export function Component() {
               <>
                 <Control label={<ControlLabel label="Text-to-Speech model" tooltip="Choose the Groq TTS model to use." />}>
                   <Select
-                    value={config.groqTtsModel || "canopylabs/orpheus-v1-english"}
+                    value={config.groqTtsModel || DEFAULT_GROQ_TTS_MODEL}
                     onValueChange={(value) => {
-                      const defaultVoice = value === "canopylabs/orpheus-arabic-saudi" ? "fahad" : "troy"
-                      saveConfig({ groqTtsModel: value as "canopylabs/orpheus-v1-english" | "canopylabs/orpheus-arabic-saudi", groqTtsVoice: defaultVoice })
+                      const defaultVoice = String(getTextToSpeechVoiceDefault("groq", value))
+                      saveConfig({ groqTtsModel: value as Config["groqTtsModel"], groqTtsVoice: defaultVoice })
                     }}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -443,12 +467,12 @@ export function Component() {
 
                 <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Choose the voice for Groq TTS." />}>
                   <Select
-                    value={config.groqTtsVoice || (config.groqTtsModel === "canopylabs/orpheus-arabic-saudi" ? "fahad" : "troy")}
+                    value={config.groqTtsVoice || String(getTextToSpeechVoiceDefault("groq", config.groqTtsModel || DEFAULT_GROQ_TTS_MODEL) ?? DEFAULT_GROQ_TTS_VOICE)}
                     onValueChange={(value) => saveConfig({ groqTtsVoice: value })}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {(config.groqTtsModel === "canopylabs/orpheus-arabic-saudi" ? GROQ_TTS_VOICES_ARABIC : GROQ_TTS_VOICES_ENGLISH).map((voice) => (
+                      {((config.groqTtsModel || DEFAULT_GROQ_TTS_MODEL) === GROQ_ARABIC_TTS_MODEL ? GROQ_TTS_VOICES_ARABIC : GROQ_TTS_VOICES_ENGLISH).map((voice) => (
                         <SelectItem key={voice.value} value={voice.value}>{voice.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -460,7 +484,7 @@ export function Component() {
             {ttsProviderId === "gemini" && (
               <>
                 <Control label={<ControlLabel label="Text-to-Speech model" tooltip="Choose the Gemini TTS model to use." />}>
-                  <Select value={config.geminiTtsModel || "gemini-2.5-flash-preview-tts"} onValueChange={(value) => saveConfig({ geminiTtsModel: value as "gemini-2.5-flash-preview-tts" | "gemini-2.5-pro-preview-tts" })}>
+                  <Select value={config.geminiTtsModel || DEFAULT_GEMINI_TTS_MODEL} onValueChange={(value) => saveConfig({ geminiTtsModel: value as Config["geminiTtsModel"] })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {GEMINI_TTS_MODELS.map((model) => <SelectItem key={model.value} value={model.value}>{model.label}</SelectItem>)}
@@ -469,7 +493,7 @@ export function Component() {
                 </Control>
 
                 <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Choose the voice for Gemini TTS." />}>
-                  <Select value={config.geminiTtsVoice || "Kore"} onValueChange={(value) => saveConfig({ geminiTtsVoice: value })}>
+                  <Select value={config.geminiTtsVoice || DEFAULT_GEMINI_TTS_VOICE} onValueChange={(value) => saveConfig({ geminiTtsVoice: value })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {GEMINI_TTS_VOICES.map((voice) => <SelectItem key={voice.value} value={voice.value}>{voice.label}</SelectItem>)}
@@ -482,7 +506,7 @@ export function Component() {
             {ttsProviderId === "edge" && (
               <>
                 <Control label={<ControlLabel label="Text-to-Speech model" tooltip="Choose the Edge TTS model to use." />}>
-                  <Select value={config.edgeTtsModel || "edge-tts"} onValueChange={(value) => saveConfig({ edgeTtsModel: value as "edge-tts" })}>
+                  <Select value={config.edgeTtsModel || DEFAULT_EDGE_TTS_MODEL} onValueChange={(value) => saveConfig({ edgeTtsModel: value as Config["edgeTtsModel"] })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {EDGE_TTS_MODELS.map((model) => <SelectItem key={model.value} value={model.value}>{model.label}</SelectItem>)}
@@ -491,7 +515,7 @@ export function Component() {
                 </Control>
 
                 <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Choose the voice for Edge TTS." />}>
-                  <Select value={config.edgeTtsVoice || "en-US-AriaNeural"} onValueChange={(value) => saveConfig({ edgeTtsVoice: value })}>
+                  <Select value={config.edgeTtsVoice || DEFAULT_EDGE_TTS_VOICE} onValueChange={(value) => saveConfig({ edgeTtsVoice: value })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {EDGE_TTS_VOICES.map((voice) => <SelectItem key={voice.value} value={voice.value}>{voice.label}</SelectItem>)}
@@ -502,14 +526,14 @@ export function Component() {
                 <Control label={<ControlLabel label="Text-to-Speech speed" tooltip="Speech speed between 0.5 and 2.0." />}>
                   <Input
                     type="number"
-                    min="0.5"
-                    max="2.0"
-                    step="0.1"
+                    min={EDGE_TTS_SPEED_SETTING.minimumValue}
+                    max={EDGE_TTS_SPEED_SETTING.maximumValue}
+                    step={EDGE_TTS_SPEED_SETTING.step}
                     defaultValue={config.edgeTtsRate?.toString()}
-                    placeholder="1.0"
+                    placeholder={String(getTextToSpeechSpeedDefault("edge"))}
                     onChange={(e) => {
                       const speed = parseFloat(e.currentTarget.value)
-                      if (!isNaN(speed) && speed >= 0.5 && speed <= 2.0) {
+                      if (!isNaN(speed) && speed >= EDGE_TTS_SPEED_SETTING.minimumValue && speed <= EDGE_TTS_SPEED_SETTING.maximumValue) {
                         saveConfig({ edgeTtsRate: speed })
                       }
                     }}
@@ -522,7 +546,7 @@ export function Component() {
             {ttsProviderId === "kitten" && (
               <>
                 <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Choose the local Kitten voice to use." />}>
-                  <Select value={String(config.kittenVoiceId ?? 0)} onValueChange={(value) => saveConfig({ kittenVoiceId: parseInt(value) })}>
+                  <Select value={String(config.kittenVoiceId ?? DEFAULT_KITTEN_TTS_VOICE_ID)} onValueChange={(value) => saveConfig({ kittenVoiceId: parseInt(value) })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {KITTEN_TTS_VOICES.map((voice) => <SelectItem key={voice.value} value={String(voice.value)}>{voice.label}</SelectItem>)}
@@ -536,7 +560,7 @@ export function Component() {
             {ttsProviderId === "supertonic" && (
               <>
                 <Control label={<ControlLabel label="Text-to-Speech voice" tooltip="Select the Supertonic voice style." />}>
-                  <Select value={config.supertonicVoice ?? "M1"} onValueChange={(value) => saveConfig({ supertonicVoice: value })}>
+                  <Select value={config.supertonicVoice ?? DEFAULT_SUPERTONIC_TTS_VOICE} onValueChange={(value) => saveConfig({ supertonicVoice: value })}>
                     <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {SUPERTONIC_TTS_VOICES.map((voice) => <SelectItem key={voice.value} value={voice.value}>{voice.label}</SelectItem>)}
@@ -545,7 +569,7 @@ export function Component() {
                 </Control>
 
                 <Control label={<ControlLabel label="Language" tooltip="Select the language for speech synthesis." />}>
-                  <Select value={config.supertonicLanguage ?? "en"} onValueChange={(value) => saveConfig({ supertonicLanguage: value })}>
+                  <Select value={config.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE} onValueChange={(value) => saveConfig({ supertonicLanguage: value })}>
                     <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {SUPERTONIC_TTS_LANGUAGES.map((language) => <SelectItem key={language.value} value={language.value}>{language.label}</SelectItem>)}
@@ -556,14 +580,14 @@ export function Component() {
                 <Control label={<ControlLabel label="Speed" tooltip="Speech speed multiplier." />}>
                   <Input
                     type="number"
-                    min={0.5}
-                    max={2.0}
-                    step={0.05}
+                    min={SUPERTONIC_TTS_SPEED_SETTING.minimumValue}
+                    max={SUPERTONIC_TTS_SPEED_SETTING.maximumValue}
+                    step={SUPERTONIC_TTS_SPEED_SETTING.step}
                     className="w-full sm:w-[100px]"
-                    value={config.supertonicSpeed ?? 1.05}
+                    value={config.supertonicSpeed ?? SUPERTONIC_TTS_SPEED_SETTING.defaultValue}
                     onChange={(e) => {
                       const val = parseFloat(e.currentTarget.value)
-                      if (!isNaN(val) && val >= 0.5 && val <= 2.0) {
+                      if (!isNaN(val) && val >= SUPERTONIC_TTS_SPEED_SETTING.minimumValue && val <= SUPERTONIC_TTS_SPEED_SETTING.maximumValue) {
                         saveConfig({ supertonicSpeed: val })
                       }
                     }}
@@ -573,14 +597,14 @@ export function Component() {
                 <Control label={<ControlLabel label="Quality Steps" tooltip="Higher values improve quality but slow synthesis." />}>
                   <Input
                     type="number"
-                    min={2}
-                    max={10}
+                    min={MIN_SUPERTONIC_TTS_STEPS}
+                    max={MAX_SUPERTONIC_TTS_STEPS}
                     step={1}
                     className="w-full sm:w-[100px]"
-                    value={config.supertonicSteps ?? 5}
+                    value={config.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS}
                     onChange={(e) => {
                       const val = parseInt(e.currentTarget.value)
-                      if (!isNaN(val) && val >= 2 && val <= 10) {
+                      if (!isNaN(val) && val >= MIN_SUPERTONIC_TTS_STEPS && val <= MAX_SUPERTONIC_TTS_STEPS) {
                         saveConfig({ supertonicSteps: val })
                       }
                     }}
