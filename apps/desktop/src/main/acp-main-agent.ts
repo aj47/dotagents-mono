@@ -22,7 +22,8 @@ import {
 } from "./acp-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
 import type { SessionProfileSnapshot } from "@dotagents/core"
-import type { AgentProgressUpdate, AgentProgressStep, ACPConfigOption, ToolCall, ToolResult } from "../shared/types"
+import type { ACPConfigOption, AgentProgressStep, AgentProgressUpdate } from "@dotagents/shared/agent-progress"
+import type { ToolCall, ToolResult } from "@dotagents/shared/types"
 import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
 import {
   extractRespondToUserResponseEvents,

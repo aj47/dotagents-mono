@@ -14,7 +14,8 @@ import { acpService, ACPContentBlock, ACPToolCallUpdate } from '../acp-service';
 import { buildProfileContext, getPreferredDelegationOutput } from '../agent-run-utils';
 import { emitAgentProgress } from '../emit-agent-progress';
 import { agentSessionStateManager } from '../state';
-import type { ACPDelegationProgress, ACPSubAgentMessage } from '../../shared/types';
+import type { ACPDelegationProgress, ACPSubAgentMessage } from '@dotagents/shared/agent-progress';
+import type { LegacyAcpAgentConfig } from '@dotagents/shared/agent-profile-legacy-converters';
 import type { AgentProfile } from '@dotagents/core';
 import { RESPOND_TO_USER_TOOL } from '@dotagents/shared/chat-utils';
 import { extractRespondToUserContentFromArgs } from '../respond-to-user-utils';
@@ -607,7 +608,7 @@ export { acpRouterToolDefinitions } from './acp-router-tool-definitions';
 /**
  * Get the internal agent config, merged with enabled state from user config if present.
  */
-export function getInternalAgentConfig(): import('../../shared/types').ACPAgentConfig {
+export function getInternalAgentConfig(): LegacyAcpAgentConfig {
   const internalInfo = getInternalAgentInfo();
   const config = configStore.get();
 

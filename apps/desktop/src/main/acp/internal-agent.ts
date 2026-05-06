@@ -29,7 +29,8 @@ import { configStore } from '../config';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
 import { stringifySubAgentToolResultContent } from '@dotagents/shared/delegation-tool-display'
 import type { AgentProfile, SessionProfileSnapshot } from '@dotagents/core';
-import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, ConversationMessage } from '../../shared/types';
+import type { ACPDelegationProgress, ACPSubAgentMessage, AgentProgressUpdate } from '@dotagents/shared/agent-progress';
+import type { ConversationMessage } from '@dotagents/shared/conversation-domain';
 import type { MCPToolCall, MCPToolResult } from '../mcp-service';
 
 const logSubSession = (...args: unknown[]) => {

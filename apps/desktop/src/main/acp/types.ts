@@ -178,7 +178,6 @@ export interface ACPSubAgentState {
   parentResumeQueued?: boolean;
 }
 
-// NOTE: ACPAgentConfig is defined in shared/types.ts and should be imported from there.
-// This avoids duplication and ensures consistency across the codebase.
-// Re-export for backward compatibility within the ACP module.
-export type { ACPAgentConfig } from '../../shared/types';
+// NOTE: ACPAgentConfig is the legacy ACP agent profile config shape.
+// Re-export it under the historical desktop ACP name for compatibility.
+export type { LegacyAcpAgentConfig as ACPAgentConfig } from '@dotagents/shared/agent-profile-legacy-converters';
