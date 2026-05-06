@@ -13,7 +13,7 @@ import type {
 } from '@dotagents/shared/conversation-state'
 import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
 import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
-import type { AgentExecutionConfig, AgentModelSelectionConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
+import type { AgentExecutionConfig, AgentModelSelectionConfig, AudioDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
 import type { MainAgentConfig } from '@dotagents/shared/main-agent-selection'
 import type { CloudflareTunnelConfig, RemoteServerConfig, StreamerModeConfig } from '@dotagents/shared/remote-pairing'
 import type { ObservabilityConfig } from '@dotagents/shared/observability-config'
@@ -34,7 +34,7 @@ import {
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, RecordingHistoryItem, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
 export type { SessionHistoryConfig } from '@dotagents/shared/session'
-export type { AgentExecutionConfig, AgentModelSelectionConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
+export type { AgentExecutionConfig, AgentModelSelectionConfig, AudioDeviceConfig, AudioInputDeviceConfig, ChatGptWebAuthConfig, ChatProviderCredentialsConfig, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
@@ -136,7 +136,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & AgentModelSelectionConfig & ChatProviderCredentialsConfig & ChatGptWebAuthConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & TextToSpeechConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & AgentModelSelectionConfig & ChatProviderCredentialsConfig & ChatGptWebAuthConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & TextToSpeechConfig & AudioDeviceConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -179,11 +179,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
 
   // LLM-based TTS Preprocessing (for more natural speech output)
   ttsLLMPreprocessingProviderId?: CHAT_PROVIDER_ID
-
-  // Audio Device Selection
-  audioInputDeviceId?: string   // Microphone device ID (from enumerateDevices)
-  audioInputDeviceLabel?: string // Last resolved microphone label (used to remap rotated IDs)
-  audioOutputDeviceId?: string  // Speaker device ID (from enumerateDevices / setSinkId)
 
   // Text Input Configuration
   textInputEnabled?: boolean

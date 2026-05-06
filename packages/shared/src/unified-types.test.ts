@@ -17,6 +17,8 @@ import type {
   ModelsDevModel,
   AgentExecutionConfig,
   AgentModelSelectionConfig,
+  AudioDeviceConfig,
+  AudioInputDeviceConfig,
   ChatGptWebAuthConfig,
   ChatProviderCredentialsConfig,
   PredefinedPrompt,
@@ -495,6 +497,21 @@ describe('settings API request/response contracts', () => {
 
     assertType<TextToSpeechConfig>(config)
     expect(config.ttsProviderId).toBe('supertonic')
+  })
+
+  it('accepts audio device config shared by desktop and mobile surfaces', () => {
+    const inputConfig: AudioInputDeviceConfig = {
+      audioInputDeviceId: 'microphone-1',
+    }
+    const desktopConfig: AudioDeviceConfig = {
+      ...inputConfig,
+      audioInputDeviceLabel: 'Studio Microphone',
+      audioOutputDeviceId: 'speaker-1',
+    }
+
+    assertType<AudioInputDeviceConfig>(inputConfig)
+    assertType<AudioDeviceConfig>(desktopConfig)
+    expect(desktopConfig.audioInputDeviceLabel).toBe('Studio Microphone')
   })
 
   it('accepts operator integration settings shared by desktop and mobile settings', () => {

@@ -78,4 +78,13 @@ describe('normalizeMobileStoredConfig', () => {
       ttsProvider: 'edge',
     }).ttsProvider).toBe('native');
   });
+
+  it('preserves the shared audio input device selection', () => {
+    const normalized = normalizeMobileStoredConfig({
+      ...DEFAULT_MOBILE_APP_CONFIG,
+      audioInputDeviceId: 'microphone-1',
+    });
+
+    expect(normalized.audioInputDeviceId).toBe('microphone-1');
+  });
 });

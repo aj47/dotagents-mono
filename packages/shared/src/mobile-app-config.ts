@@ -3,8 +3,9 @@ import {
   migrateDeprecatedEdgeTtsVoice,
 } from './providers';
 import { normalizeApiBaseUrl } from './connection-recovery';
+import type { AudioInputDeviceConfig } from './api-types';
 
-export type MobileAppConfig = {
+export type MobileAppConfig = AudioInputDeviceConfig & {
   apiKey: string;
   baseUrl: string;
   model: string;
@@ -21,7 +22,6 @@ export type MobileAppConfig = {
   ttsRate?: number;
   ttsPitch?: number;
   edgeTtsVoice?: string;
-  audioInputDeviceId?: string;
 };
 
 export const DEFAULT_HANDS_FREE_WAKE_PHRASE = 'hey dot agents';

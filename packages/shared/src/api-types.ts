@@ -651,6 +651,15 @@ export interface TextToSpeechConfig {
   supertonicSteps?: number;
 }
 
+export interface AudioInputDeviceConfig {
+  audioInputDeviceId?: string;
+}
+
+export interface AudioDeviceConfig extends AudioInputDeviceConfig {
+  audioInputDeviceLabel?: string;
+  audioOutputDeviceId?: string;
+}
+
 export interface AgentModelSelectionConfig {
   agentProviderId?: CHAT_PROVIDER_ID;
   agentOpenaiModel?: string;
