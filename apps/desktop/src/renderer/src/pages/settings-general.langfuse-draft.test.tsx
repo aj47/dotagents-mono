@@ -198,7 +198,6 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
   }))
   vi.doMock("@renderer/lib/query-client", () => queryClientMock)
   vi.doMock("../lib/query-client", () => queryClientMock)
-  vi.doMock("./settings-general-main-agent-options", () => ({ getSelectableMainAcpAgents: () => [] }))
   vi.doMock("@renderer/lib/tts-manager", () => ttsManagerMock)
   vi.doMock("../lib/tts-manager", () => ttsManagerMock)
   vi.doMock("@renderer/lib/tipc-client", () => tipcClientMock)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
+import { getSelectableMainAcpAgents } from "@dotagents/shared/main-agent-selection"
 
 describe("getSelectableMainAcpAgents", () => {
   it("includes enabled ACP and stdio profile agents before legacy ACP config entries", () => {

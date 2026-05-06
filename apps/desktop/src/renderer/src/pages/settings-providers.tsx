@@ -33,9 +33,8 @@ import {
   DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID,
   DEFAULT_TTS_PROVIDER_ID,
 } from "@dotagents/shared/providers"
+import { getSelectableMainAcpAgents } from "@dotagents/shared/main-agent-selection"
 import { Mic, Bot, Volume2, FileText, CheckCircle2, ChevronDown, ChevronRight, Cpu, Download, Loader2 } from "lucide-react"
-
-import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 const DEFAULT_SUPERTONIC_TTS_VOICE = String(getTextToSpeechVoiceDefault("supertonic"))

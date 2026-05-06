@@ -20,6 +20,7 @@ import {
 } from "@dotagents/shared/mcp-api"
 import {
   DEFAULT_MAIN_AGENT_MODE,
+  getSelectableMainAcpAgents,
   MAIN_AGENT_MODE_OPTIONS,
   type MainAgentMode,
 } from "@dotagents/shared/main-agent-selection"
@@ -61,7 +62,6 @@ import {
   useConfigQuery,
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
-import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { ExternalLink, FolderOpen, FolderUp, FileText, Search, X } from "lucide-react"
