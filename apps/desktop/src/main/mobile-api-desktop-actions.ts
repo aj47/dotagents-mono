@@ -24,11 +24,22 @@ import {
   type PushTokenRecord,
 } from "@dotagents/shared/push-notifications"
 import {
+  createAgentProfileAction,
+  deleteAgentProfileAction,
   exportProfileAction,
+  getAgentProfileAction,
+  getAgentProfilesAction,
   getCurrentProfileAction,
   getProfilesAction,
   importProfileAction,
+  reloadAgentProfilesAction,
   setCurrentProfileAction,
+  toggleAgentProfileAction,
+  updateAgentProfileAction,
+  verifyExternalAgentCommandAction,
+  type AgentProfileActionOptions,
+  type AgentProfileReloadActionOptions,
+  type ExternalAgentCommandVerificationActionOptions,
   type ProfileActionOptions,
 } from "@dotagents/shared/profile-api"
 import type { Config } from "../shared/types"
@@ -39,16 +50,6 @@ import {
   previewBundleImport,
 } from "./bundle-actions"
 import { handleChatCompletionRequest } from "./chat-completion-actions"
-import {
-  createAgentProfile,
-  deleteAgentProfile,
-  getAgentProfile,
-  getAgentProfiles,
-  reloadAgentProfiles,
-  toggleAgentProfile,
-  updateAgentProfile,
-  verifyExternalAgentCommand,
-} from "./agent-profile-actions"
 import {
   createConversation,
   getConversation,
@@ -105,6 +106,7 @@ import {
 } from "./skill-actions"
 import { agentProfileService, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { agentSessionTracker } from "./agent-session-tracker"
+import { verifyExternalAgentCommand as verifyExternalAgentCommandService } from "./command-verification-service"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
 import { emergencyStopAll } from "./emergency-stop"
@@ -113,6 +115,7 @@ import { clearBadgeCount } from "./push-notification-service"
 import { generateTTS } from "./tts-service"
 
 type DesktopProfileActionProfile = ReturnType<typeof agentProfileService.setCurrentProfileStrict>
+type DesktopAgentProfileActionProfile = NonNullable<ReturnType<typeof agentProfileService.getById>>
 
 const modelActionOptions: ModelActionOptions = {
   getConfig: () => configStore.get(),
@@ -179,6 +182,32 @@ const profileActionOptions: ProfileActionOptions<DesktopProfileActionProfile> = 
   },
 }
 
+const agentProfileActionOptions: AgentProfileActionOptions<DesktopAgentProfileActionProfile> = {
+  service: {
+    getAll: () => agentProfileService.getAll(),
+    getById: (profileId) => agentProfileService.getById(profileId),
+    create: (profile) => agentProfileService.create(profile),
+    update: (profileId, updates) => agentProfileService.update(profileId, updates),
+    deleteProfile: (profileId) => agentProfileService.delete(profileId),
+  },
+  diagnostics: diagnosticsService,
+}
+
+const agentProfileReloadActionOptions: AgentProfileReloadActionOptions<DesktopAgentProfileActionProfile> = {
+  service: {
+    ...agentProfileActionOptions.service,
+    reload: () => agentProfileService.reload(),
+  },
+  diagnostics: diagnosticsService,
+}
+
+const externalAgentCommandVerificationActionOptions: ExternalAgentCommandVerificationActionOptions = {
+  service: {
+    verifyExternalAgentCommand: verifyExternalAgentCommandService,
+  },
+  diagnostics: diagnosticsService,
+}
+
 function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
@@ -233,6 +262,38 @@ function exportProfile(id: string | undefined) {
 
 function importProfile(body: unknown) {
   return importProfileAction(body, profileActionOptions)
+}
+
+function getAgentProfiles(role: string | undefined) {
+  return getAgentProfilesAction(role, agentProfileActionOptions)
+}
+
+function reloadAgentProfiles() {
+  return reloadAgentProfilesAction(agentProfileReloadActionOptions)
+}
+
+function toggleAgentProfile(id: string | undefined) {
+  return toggleAgentProfileAction(id, agentProfileActionOptions)
+}
+
+function getAgentProfile(id: string | undefined) {
+  return getAgentProfileAction(id, agentProfileActionOptions)
+}
+
+function createAgentProfile(body: unknown) {
+  return createAgentProfileAction(body, agentProfileActionOptions)
+}
+
+function updateAgentProfile(id: string | undefined, body: unknown) {
+  return updateAgentProfileAction(id, body, agentProfileActionOptions)
+}
+
+function deleteAgentProfile(id: string | undefined) {
+  return deleteAgentProfileAction(id, agentProfileActionOptions)
+}
+
+function verifyExternalAgentCommand(body: unknown) {
+  return verifyExternalAgentCommandAction(body, externalAgentCommandVerificationActionOptions)
 }
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {

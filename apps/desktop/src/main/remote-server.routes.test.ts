@@ -299,12 +299,6 @@ function getBundleActionsSource(): string {
   return readFileSync(bundleActionsPath, "utf8")
 }
 
-function getAgentProfileActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const agentProfileActionsPath = path.join(testDir, "agent-profile-actions.ts")
-  return readFileSync(agentProfileActionsPath, "utf8")
-}
-
 function getKnowledgeNoteActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const knowledgeNoteActionsPath = path.join(testDir, "knowledge-note-actions.ts")
@@ -724,7 +718,6 @@ describe("remote-server route registration", () => {
 
   it("keeps remote route action result contracts shared", () => {
     const mobileActionSources = [
-      getAgentProfileActionsSource(),
       getConversationActionsSource(),
       getKnowledgeNoteActionsSource(),
       getMcpServerActionsSource(),
@@ -1048,7 +1041,7 @@ describe("remote-server route registration", () => {
   it("delegates agent profile route behavior to agent profile actions", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
-    const agentProfileActionsSource = getAgentProfileActionsSource()
+    const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedProfileApiSource = getSharedProfileApiSource()
 
     expectRegisteredApiRoute(source, "GET", "agentProfiles")
@@ -1067,16 +1060,18 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.createAgentProfile(req.body)")
     expect(mobileApiRoutesSource).toContain("actions.updateAgentProfile(params.id, req.body)")
     expect(mobileApiRoutesSource).toContain("actions.deleteAgentProfile(params.id)")
-    expect(agentProfileActionsSource).toContain("getAgentProfilesAction(role, agentProfileActionOptions)")
-    expect(agentProfileActionsSource).toContain("verifyExternalAgentCommandAction(body, externalAgentCommandVerificationActionOptions)")
-    expect(agentProfileActionsSource).toContain("verifyExternalAgentCommand: verifyExternalAgentCommandService")
-    expect(agentProfileActionsSource).toContain("reloadAgentProfilesAction(agentProfileReloadActionOptions)")
-    expect(agentProfileActionsSource).toContain("reload: () => agentProfileService.reload()")
-    expect(agentProfileActionsSource).toContain("toggleAgentProfileAction(id, agentProfileActionOptions)")
-    expect(agentProfileActionsSource).toContain("getAgentProfileAction(id, agentProfileActionOptions)")
-    expect(agentProfileActionsSource).toContain("createAgentProfileAction(body, agentProfileActionOptions)")
-    expect(agentProfileActionsSource).toContain("updateAgentProfileAction(id, body, agentProfileActionOptions)")
-    expect(agentProfileActionsSource).toContain("deleteAgentProfileAction(id, agentProfileActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getAgentProfilesAction(role, agentProfileActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain(
+      "verifyExternalAgentCommandAction(body, externalAgentCommandVerificationActionOptions)",
+    )
+    expect(mobileApiDesktopActionsSource).toContain("verifyExternalAgentCommand: verifyExternalAgentCommandService")
+    expect(mobileApiDesktopActionsSource).toContain("reloadAgentProfilesAction(agentProfileReloadActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("reload: () => agentProfileService.reload()")
+    expect(mobileApiDesktopActionsSource).toContain("toggleAgentProfileAction(id, agentProfileActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getAgentProfileAction(id, agentProfileActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("createAgentProfileAction(body, agentProfileActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("updateAgentProfileAction(id, body, agentProfileActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("deleteAgentProfileAction(id, agentProfileActionOptions)")
     expect(sharedProfileApiSource).toContain("export interface AgentProfileActionOptions")
     expect(sharedProfileApiSource).toContain("export function getAgentProfilesAction")
     expect(sharedProfileApiSource).toContain("export async function verifyExternalAgentCommandAction")
