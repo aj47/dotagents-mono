@@ -22,6 +22,29 @@ export * from './bundle-api';
 export * from './hub';
 export * from './conversation-state';
 export * from './session-presentation';
+export {
+  type SidebarActivityKind,
+  type SidebarActivityPresentation,
+  type SidebarSessionNesting,
+  dedupeTaskEntriesByTitle,
+  filterPastSessionsAgainstActiveSessions,
+  getLatestAgentResponseTimestamp,
+  getLatestUserFacingResponse,
+  getSessionIdsWithActiveChildProgress,
+  getSidebarActivityPresentation,
+  getSidebarProgressTitle,
+  getSubagentParentSessionIdMap as getSidebarSubagentParentSessionIdMap,
+  getSubagentTitleBySessionIdMap as getSidebarSubagentTitleBySessionIdMap,
+  hasUnreadAgentResponse,
+  isProgressLiveForSidebar,
+  isSidebarSessionCurrentlyViewed,
+  isTaskSession,
+  nestSubagentSessionEntries,
+  orderActiveSessionsByPinnedFirst,
+  paginateSidebarEntries,
+  partitionPinnedAndUnpinnedTaskEntries,
+  partitionTaskAndUserEntries,
+} from './sidebar-sessions';
 export * from './conversation-progress';
 export * from './agent-progress';
 export * from './agent-user-response-store';

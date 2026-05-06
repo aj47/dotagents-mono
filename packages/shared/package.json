@@ -101,6 +101,11 @@
       "import": "./dist/session-presentation.mjs",
       "require": "./dist/session-presentation.js"
     },
+    "./sidebar-sessions": {
+      "types": "./dist/sidebar-sessions.d.ts",
+      "import": "./dist/sidebar-sessions.mjs",
+      "require": "./dist/sidebar-sessions.js"
+    },
     "./conversation-progress": {
       "types": "./dist/conversation-progress.d.ts",
       "import": "./dist/conversation-progress.mjs",
