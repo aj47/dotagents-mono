@@ -1,6 +1,7 @@
 import type { AgentProgressUpdate } from "@shared/types"
 import { TASK_SESSION_TITLE_PREFIX, hasRepeatTaskTitlePrefix } from "@shared/repeat-tasks"
 import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
+import { orderSessionsByPinnedConversationFirst } from "@dotagents/shared/session"
 
 type SessionLike = {
   id: string
@@ -249,25 +250,7 @@ export function orderActiveSessionsByPinnedFirst<T extends SessionLike>(
   sessions: T[],
   pinnedSessionIds: ReadonlySet<string>,
 ): T[] {
-  if (sessions.length <= 1 || pinnedSessionIds.size === 0) {
-    return sessions
-  }
-
-  const pinnedSessions: T[] = []
-  const unpinnedSessions: T[] = []
-
-  for (const session of sessions) {
-    if (
-      session.conversationId &&
-      pinnedSessionIds.has(session.conversationId)
-    ) {
-      pinnedSessions.push(session)
-    } else {
-      unpinnedSessions.push(session)
-    }
-  }
-
-  return [...pinnedSessions, ...unpinnedSessions]
+  return orderSessionsByPinnedConversationFirst(sessions, pinnedSessionIds)
 }
 
 export function getSubagentParentSessionIdMap(

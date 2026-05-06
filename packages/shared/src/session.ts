@@ -121,6 +121,28 @@ export function orderConversationHistoryByPinnedFirst<T extends { id: string }>(
   return [...pinnedSessions, ...unpinnedSessions];
 }
 
+export function orderSessionsByPinnedConversationFirst<T extends { conversationId?: string | null }>(
+  sessions: T[],
+  pinnedSessionIds: ReadonlySet<string>,
+): T[] {
+  if (sessions.length <= 1 || pinnedSessionIds.size === 0) {
+    return sessions;
+  }
+
+  const pinnedSessions: T[] = [];
+  const unpinnedSessions: T[] = [];
+
+  for (const session of sessions) {
+    if (session.conversationId && pinnedSessionIds.has(session.conversationId)) {
+      pinnedSessions.push(session);
+    } else {
+      unpinnedSessions.push(session);
+    }
+  }
+
+  return [...pinnedSessions, ...unpinnedSessions];
+}
+
 /**
  * Generate a unique session ID
  */
