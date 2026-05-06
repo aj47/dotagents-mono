@@ -572,17 +572,16 @@ export function ActiveAgentsSidebar({
     ],
     [pinnedTaskSidebarSessions, unpinnedTaskSidebarSessions],
   )
-  const {
-    visibleEntries: paginatedTaskSidebarSessions,
-    hasMoreEntries: hasMoreTaskSessions,
-  } = useMemo(
-    () => paginateSidebarEntries(
-      taskSidebarSessions,
-      pinnedSessionIds,
-      visibleTaskConversationCount,
-    ),
-    [pinnedSessionIds, taskSidebarSessions, visibleTaskConversationCount],
+  // Tasks list uses a flat slice so "Show less" can shrink the list past
+  // active rows. paginateSidebarEntries pins active rows in place, which
+  // would prevent the visible count from ever dropping below the running
+  // task count.
+  const paginatedTaskSidebarSessions = useMemo(
+    () => taskSidebarSessions.slice(0, Math.max(visibleTaskConversationCount, 0)),
+    [taskSidebarSessions, visibleTaskConversationCount],
   )
+  const hasMoreTaskSessions =
+    taskSidebarSessions.length > paginatedTaskSidebarSessions.length
   const activeTaskSidebarSessions = useMemo(
     () => taskSidebarSessions.filter((entry) => {
       const progress = agentProgressById.get(entry.session.id)
