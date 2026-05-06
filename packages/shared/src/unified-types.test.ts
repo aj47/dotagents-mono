@@ -15,6 +15,9 @@ import {
   DEFAULT_PANEL_DRAG_ENABLED,
   DEFAULT_PANEL_POSITION,
 } from './api-types'
+import {
+  DEFAULT_DUAL_MODEL_ENABLED,
+} from './mcp-api'
 import type {
   KnowledgeNoteCreateRequest,
   KnowledgeNoteResponse,
@@ -397,11 +400,12 @@ describe('settings API request/response contracts', () => {
       mcpToolResponseProcessingEnabled: true,
       mcpParallelToolExecution: true,
       mcpMessageQueueEnabled: true,
-      dualModelEnabled: false,
+      dualModelEnabled: DEFAULT_DUAL_MODEL_ENABLED,
     }
 
     assertType<AgentExecutionConfig>(config)
     expect(config.mcpMaxIterations).toBe(12)
+    expect(config.dualModelEnabled).toBe(false)
   })
 
   it('accepts provider model and credential config shared by desktop and mobile settings', () => {

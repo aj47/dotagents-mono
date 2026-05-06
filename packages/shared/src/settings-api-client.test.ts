@@ -33,6 +33,7 @@ import {
   DEFAULT_TEXT_INPUT_ENABLED,
 } from './key-utils';
 import {
+  DEFAULT_DUAL_MODEL_ENABLED,
   DEFAULT_MCP_AUTO_PASTE_DELAY,
   DEFAULT_MCP_AUTO_PASTE_ENABLED,
 } from './mcp-api';
@@ -503,6 +504,7 @@ describe('SettingsApiClient', () => {
     expect(defaultResponse.conversationsEnabled).toBe(DEFAULT_CONVERSATIONS_ENABLED);
     expect(defaultResponse.maxConversationsToKeep).toBe(DEFAULT_MAX_CONVERSATIONS_TO_KEEP);
     expect(defaultResponse.autoSaveConversations).toBe(DEFAULT_AUTO_SAVE_CONVERSATIONS);
+    expect(defaultResponse.dualModelEnabled).toBe(DEFAULT_DUAL_MODEL_ENABLED);
     expect(defaultResponse.mcpAutoPasteEnabled).toBe(DEFAULT_MCP_AUTO_PASTE_ENABLED);
     expect(defaultResponse.mcpAutoPasteDelay).toBe(DEFAULT_MCP_AUTO_PASTE_DELAY);
     expect(defaultResponse.streamerModeEnabled).toBe(DEFAULT_STREAMER_MODE_ENABLED);

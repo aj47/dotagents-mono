@@ -32,6 +32,7 @@ import {
 } from './agent-generation-options';
 import {
   DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED,
+  DEFAULT_DUAL_MODEL_ENABLED,
   DEFAULT_MCP_AUTO_PASTE_DELAY,
   DEFAULT_MCP_AUTO_PASTE_ENABLED,
   DEFAULT_MCP_FINAL_SUMMARY_ENABLED,
@@ -446,7 +447,7 @@ export function buildSettingsResponse(
     mcpMessageQueueEnabled: cfg.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
     mcpVerifyCompletionEnabled: cfg.mcpVerifyCompletionEnabled ?? DEFAULT_MCP_VERIFY_COMPLETION_ENABLED,
     mcpFinalSummaryEnabled: cfg.mcpFinalSummaryEnabled ?? DEFAULT_MCP_FINAL_SUMMARY_ENABLED,
-    dualModelEnabled: cfg.dualModelEnabled ?? false,
+    dualModelEnabled: cfg.dualModelEnabled ?? DEFAULT_DUAL_MODEL_ENABLED,
     mcpUnlimitedIterations: cfg.mcpUnlimitedIterations ?? DEFAULT_MCP_UNLIMITED_ITERATIONS,
     mcpContextReductionEnabled: cfg.mcpContextReductionEnabled ?? DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED,
     mcpToolResponseProcessingEnabled: cfg.mcpToolResponseProcessingEnabled ?? DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED,
