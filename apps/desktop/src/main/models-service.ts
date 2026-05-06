@@ -4,9 +4,6 @@ import { fetchModelsDevData, getModelFromModelsDevByProviderId } from "./models-
 import { isKnownSttModel, KNOWN_STT_MODEL_IDS } from "@dotagents/shared/stt-models"
 import type { EnhancedModelInfo, ModelInfo, ModelsDevModel } from "@dotagents/shared/api-types"
 
-// Re-export ModelInfo for backward compatibility
-export type { EnhancedModelInfo, ModelInfo } from "@dotagents/shared/api-types"
-
 interface ModelsResponse {
   data: ModelInfo[]
   object: string

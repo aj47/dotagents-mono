@@ -20,7 +20,6 @@ import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
 
 export type ProviderType = CHAT_PROVIDER_ID
-export type { PromptCachingConfig } from "@dotagents/shared/providers"
 
 interface ProviderConfig {
   apiKey: string
