@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 import {
+  DEFAULT_THEME_PREFERENCE,
   DESKTOP_THEME_PREFERENCE_STORAGE_KEY,
+  THEME_PREFERENCE_VALUES,
   isThemePreference,
   loadThemePreference,
   normalizeThemePreference,
@@ -20,6 +22,8 @@ function createStorage(seed: Record<string, string> = {}) {
 
 describe("theme preference", () => {
   it("validates known theme preference values", () => {
+    expect(DEFAULT_THEME_PREFERENCE).toBe("system")
+    expect(THEME_PREFERENCE_VALUES).toEqual(["system", "light", "dark"])
     expect(isThemePreference("system")).toBe(true)
     expect(isThemePreference("light")).toBe(true)
     expect(isThemePreference("dark")).toBe(true)

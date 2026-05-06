@@ -42,9 +42,12 @@ import {
   formatKeyComboForDisplay,
 } from "@dotagents/shared/key-utils"
 import {
+  DEFAULT_THEME_PREFERENCE,
   THEME_PREFERENCE_CHANGED_EVENT,
+  THEME_PREFERENCE_VALUES,
   isThemePreference,
   saveThemePreference,
+  type ThemePreferenceValue,
 } from "@dotagents/shared/theme-preference"
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 import { useAudioDevices } from "@renderer/hooks/use-audio-devices"
@@ -579,17 +582,18 @@ export function Component() {
           )}
           <Control label="Theme" className="px-3">
             <Select
-              value={configQuery.data.themePreference || "system"}
-              onValueChange={(value: "system" | "light" | "dark") => {
+              value={configQuery.data.themePreference || DEFAULT_THEME_PREFERENCE}
+              onValueChange={(value) => {
+                const themePreference = value as ThemePreferenceValue
                 saveConfig({
-                  themePreference: value,
+                  themePreference,
                 })
                 // Update localStorage immediately to sync with ThemeProvider
-                saveThemePreference(value)
+                saveThemePreference(themePreference)
                 // Apply theme immediately
                 window.dispatchEvent(
                   new CustomEvent(THEME_PREFERENCE_CHANGED_EVENT, {
-                    detail: value,
+                    detail: themePreference,
                   }),
                 )
               }}
@@ -598,9 +602,11 @@ export function Component() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="system">System</SelectItem>
-                <SelectItem value="light">Light</SelectItem>
-                <SelectItem value="dark">Dark</SelectItem>
+                {THEME_PREFERENCE_VALUES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value === "system" ? "System" : value === "light" ? "Light" : "Dark"}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Control>

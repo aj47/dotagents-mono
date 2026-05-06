@@ -3,6 +3,7 @@ import { Appearance, ColorSchemeName, useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightTheme, darkTheme, Theme } from './theme';
 import {
+  DEFAULT_THEME_PREFERENCE,
   MOBILE_THEME_PREFERENCE_STORAGE_KEY,
   isThemePreference,
   resolveThemePreference,
@@ -36,7 +37,7 @@ interface ThemeProviderProps {
   initialMode?: ThemeMode;
 }
 
-export function ThemeProvider({ children, initialMode = 'system' }: ThemeProviderProps) {
+export function ThemeProvider({ children, initialMode = DEFAULT_THEME_PREFERENCE }: ThemeProviderProps) {
   const systemColorScheme = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>(initialMode);
   const [isLoaded, setIsLoaded] = useState(false);

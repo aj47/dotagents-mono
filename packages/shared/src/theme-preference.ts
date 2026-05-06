@@ -4,6 +4,7 @@ export type ThemePreferenceValue = ThemePreference
 export type ResolvedThemePreference = "light" | "dark"
 
 export const THEME_PREFERENCE_VALUES: readonly ThemePreferenceValue[] = ["system", "light", "dark"]
+export const DEFAULT_THEME_PREFERENCE: ThemePreferenceValue = "system"
 export const DESKTOP_THEME_PREFERENCE_STORAGE_KEY = "theme-preference"
 export const MOBILE_THEME_PREFERENCE_STORAGE_KEY = "dotagents-theme-preference"
 export const THEME_PREFERENCE_CHANGED_EVENT = "theme-preference-changed"
@@ -23,7 +24,7 @@ export function isThemePreference(value: unknown): value is ThemePreferenceValue
 
 export function normalizeThemePreference(
   value: unknown,
-  fallback: ThemePreferenceValue = "system",
+  fallback: ThemePreferenceValue = DEFAULT_THEME_PREFERENCE,
 ): ThemePreferenceValue {
   return isThemePreference(value) ? value : fallback
 }
@@ -41,12 +42,12 @@ export function loadThemePreference(
   storage: ThemePreferenceStorageLike | undefined = getDefaultThemePreferenceStorage(),
   storageKey = DESKTOP_THEME_PREFERENCE_STORAGE_KEY,
 ): ThemePreferenceValue {
-  if (!storage) return "system"
+  if (!storage) return DEFAULT_THEME_PREFERENCE
 
   try {
     return normalizeThemePreference(storage.getItem(storageKey))
   } catch {
-    return "system"
+    return DEFAULT_THEME_PREFERENCE
   }
 }
 

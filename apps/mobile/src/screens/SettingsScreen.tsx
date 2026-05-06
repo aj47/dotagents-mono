@@ -89,6 +89,7 @@ import {
   REMOTE_SETTINGS_SECRET_MASK as SECRET_MASK,
   buildRemoteSettingsInputDrafts,
 } from '@dotagents/shared/remote-settings-input-drafts';
+import { THEME_PREFERENCE_VALUES } from '@dotagents/shared/theme-preference';
 import {
   DEFAULT_SUPERTONIC_TTS_LANGUAGE,
   DEFAULT_SUPERTONIC_TTS_STEPS,
@@ -279,11 +280,16 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const THEME_OPTIONS: { label: string; value: ThemeMode }[] = [
-  { label: '☀️ Light', value: 'light' },
-  { label: '🌙 Dark', value: 'dark' },
-  { label: '⚙️ System', value: 'system' },
-];
+const THEME_OPTION_LABELS: Record<ThemeMode, string> = {
+  light: 'Light',
+  dark: 'Dark',
+  system: 'System',
+};
+
+const THEME_OPTIONS: { label: string; value: ThemeMode }[] = THEME_PREFERENCE_VALUES.map((value) => ({
+  label: THEME_OPTION_LABELS[value],
+  value,
+}));
 
 export default function SettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();

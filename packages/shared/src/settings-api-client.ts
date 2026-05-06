@@ -12,6 +12,10 @@ import {
   isMainAgentModeUpdateValue,
 } from './main-agent-selection';
 import {
+  DEFAULT_THEME_PREFERENCE,
+  isThemePreference,
+} from './theme-preference';
+import {
   MCP_MAX_ITERATIONS_DEFAULT,
   normalizeMcpMaxIterationsValue,
   type McpServerConfigExportResponse,
@@ -329,7 +333,7 @@ export function buildSettingsResponse(
     geminiBaseUrl: cfg.geminiBaseUrl ?? '',
     openaiReasoningEffort: cfg.openaiReasoningEffort,
     codexTextVerbosity: cfg.codexTextVerbosity,
-    themePreference: cfg.themePreference ?? 'system',
+    themePreference: cfg.themePreference ?? DEFAULT_THEME_PREFERENCE,
     floatingPanelAutoShow: cfg.floatingPanelAutoShow ?? true,
     hidePanelWhenMainFocused: cfg.hidePanelWhenMainFocused ?? true,
     hideDockIcon: cfg.hideDockIcon ?? false,
@@ -770,7 +774,7 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.codexTextVerbosity === 'string' && ['low', 'medium', 'high'].includes(requestBody.codexTextVerbosity)) {
     updates.codexTextVerbosity = requestBody.codexTextVerbosity;
   }
-  if (typeof requestBody.themePreference === 'string' && ['system', 'light', 'dark'].includes(requestBody.themePreference)) {
+  if (isThemePreference(requestBody.themePreference)) {
     updates.themePreference = requestBody.themePreference;
   }
   if (typeof requestBody.floatingPanelAutoShow === 'boolean') updates.floatingPanelAutoShow = requestBody.floatingPanelAutoShow;
