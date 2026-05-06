@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { Session } from '@dotagents/shared/session';
 
-import { syncConversations } from './syncService';
+import { syncConversations } from '@dotagents/shared/conversation-sync';
 
 function createLocalSession(overrides: Partial<Session> = {}): Session {
   return {

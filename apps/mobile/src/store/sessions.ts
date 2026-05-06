@@ -11,7 +11,7 @@ import {
 } from '@dotagents/shared/session';
 import { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
-import { syncConversations, SyncResult, fetchFullConversation } from '../lib/syncService';
+import { fetchFullConversation, syncConversations, type SyncResult } from '@dotagents/shared/conversation-sync';
 
 const SESSIONS_KEY = 'chat_sessions_v1';
 const CURRENT_SESSION_KEY = 'current_session_id_v1';
