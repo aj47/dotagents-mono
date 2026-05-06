@@ -81,6 +81,22 @@ test('keeps model override controls compact and accessible', () => {
   assert.match(screenSource, /placeholder=\{getAgentModelPlaceholder\(selectedModelProvider\)\}/);
 });
 
+test('lets mobile edit per-agent properties through the shared profile payload', () => {
+  assert.match(screenSource, /properties: normalizeAgentProperties\(profile\.properties\)/);
+  assert.match(screenSource, /properties: formatPropertiesForRequest\(formData\.properties\)/);
+  assert.match(screenSource, /const \[newPropertyKey, setNewPropertyKey\]/);
+  assert.match(screenSource, /const \[newPropertyValue, setNewPropertyValue\]/);
+  assert.match(screenSource, /updatePropertyValue\(key, v\)/);
+});
+
+test('keeps property controls accessible and touch-friendly', () => {
+  assert.match(screenSource, /<Text style=\{styles\.sectionTitle\}>Properties<\/Text>/);
+  assert.match(screenSource, /Object\.entries\(formData\.properties\)\.map/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\(`Remove \$\{key\} property`\)/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\('Add agent property'\)/);
+  assert.match(screenSource, /minSize:\s*44/);
+});
+
 test('shared agent profile request types expose persisted profile config fields', () => {
   assert.match(sharedApiTypesSource, /modelConfig\?: Record<string, unknown>;/);
   assert.match(sharedApiTypesSource, /toolConfig\?: Record<string, unknown>;/);

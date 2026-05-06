@@ -51,6 +51,7 @@ interface AgentFormData extends AgentConnectionFormFields {
   guidelines: string;
   enabled: boolean;
   autoSpawn: boolean;
+  properties: Record<string, string>;
   modelConfig?: AgentModelConfig;
   toolConfig?: AgentToolConfig;
   skillsConfig?: AgentSkillsConfig;
@@ -94,6 +95,7 @@ const defaultFormData: AgentFormData = {
   connectionCwd: '',
   enabled: true,
   autoSpawn: false,
+  properties: {},
 };
 
 const normalizeConnectionType = (value?: string): ConnectionType => {
@@ -133,6 +135,13 @@ const normalizeAgentModelConfig = (value?: Record<string, unknown>): AgentModelC
     agentGeminiModel: typeof value.agentGeminiModel === 'string' ? value.agentGeminiModel : typeof value.mcpToolsGeminiModel === 'string' ? value.mcpToolsGeminiModel : undefined,
     agentChatgptWebModel: typeof value.agentChatgptWebModel === 'string' ? value.agentChatgptWebModel : typeof value.mcpToolsChatgptWebModel === 'string' ? value.mcpToolsChatgptWebModel : undefined,
   };
+};
+
+const normalizeAgentProperties = (value?: Record<string, unknown>): Record<string, string> => {
+  if (!value) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+  );
 };
 
 const normalizeAgentToolConfig = (value?: Record<string, unknown>): AgentToolConfig | undefined => {
@@ -202,6 +211,13 @@ const formatModelConfigForRequest = (modelConfig?: AgentModelConfig): Record<str
   return { ...modelConfig };
 };
 
+const formatPropertiesForRequest = (properties: Record<string, string>): Record<string, string> | undefined => {
+  const entries = Object.entries(properties)
+    .map(([key, value]) => [key.trim(), value] as const)
+    .filter(([key]) => key.length > 0);
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+};
+
 const formatToolConfigForRequest = (toolConfig?: AgentToolConfig): Record<string, unknown> | undefined => {
   if (!toolConfig) return undefined;
   return {
@@ -237,6 +253,8 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
   const [isSkillsLoading, setIsSkillsLoading] = useState(false);
   const [isMcpServersLoading, setIsMcpServersLoading] = useState(false);
+  const [newPropertyKey, setNewPropertyKey] = useState('');
+  const [newPropertyValue, setNewPropertyValue] = useState('');
 
   const styles = useMemo(() => createStyles(theme), [theme]);
   const runtimeTools = useMemo(() => RUNTIME_TOOLS, []);
@@ -284,6 +302,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             connectionCwd: profile.connection?.cwd || '',
             enabled: profile.enabled,
             autoSpawn: profile.autoSpawn || false,
+            properties: normalizeAgentProperties(profile.properties),
             modelConfig: normalizeAgentModelConfig(profile.modelConfig),
             toolConfig: normalizeAgentToolConfig(profile.toolConfig),
             skillsConfig: normalizeAgentSkillsConfig(profile.skillsConfig),
@@ -368,6 +387,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
             ...connectionFields,
             enabled: formData.enabled,
             autoSpawn: formData.autoSpawn,
+            properties: formatPropertiesForRequest(formData.properties),
             modelConfig: formatModelConfigForRequest(formData.modelConfig),
             toolConfig: formatToolConfigForRequest(formData.toolConfig),
             skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),
@@ -382,6 +402,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           ...connectionFields,
           enabled: formData.enabled,
           autoSpawn: formData.autoSpawn,
+          properties: formatPropertiesForRequest(formData.properties),
           modelConfig: formatModelConfigForRequest(formData.modelConfig),
           toolConfig: formatToolConfigForRequest(formData.toolConfig),
           skillsConfig: formatSkillsConfigForRequest(formData.skillsConfig),
@@ -427,6 +448,40 @@ export default function AgentEditScreen({ navigation, route }: any) {
         [modelField]: model,
       },
     }));
+  }, []);
+
+  const addProperty = useCallback(() => {
+    const key = newPropertyKey.trim();
+    if (!key) return;
+    setFormData(prev => ({
+      ...prev,
+      properties: {
+        ...prev.properties,
+        [key]: newPropertyValue,
+      },
+    }));
+    setNewPropertyKey('');
+    setNewPropertyValue('');
+  }, [newPropertyKey, newPropertyValue]);
+
+  const updatePropertyValue = useCallback((key: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      properties: {
+        ...prev.properties,
+        [key]: value,
+      },
+    }));
+  }, []);
+
+  const removeProperty = useCallback((key: string) => {
+    setFormData(prev => {
+      const { [key]: _removed, ...properties } = prev.properties;
+      return {
+        ...prev,
+        properties,
+      };
+    });
   }, []);
 
   const setAllRuntimeToolsEnabled = useCallback((enabled: boolean) => {
@@ -931,6 +986,75 @@ export default function AgentEditScreen({ navigation, route }: any) {
         })}
       </View>
 
+      <View style={styles.capabilitySection}>
+        <View style={styles.capabilityHeader}>
+          <View style={styles.capabilityTitleBlock}>
+            <Text style={styles.sectionTitle}>Properties</Text>
+            <Text style={styles.sectionHelperText}>{Object.keys(formData.properties).length} configured</Text>
+          </View>
+        </View>
+        {Object.entries(formData.properties).length === 0 ? (
+          <Text style={styles.sectionHelperText}>No properties configured.</Text>
+        ) : Object.entries(formData.properties).map(([key, value]) => (
+          <View key={key} style={styles.propertyRow}>
+            <View style={styles.propertyKeyBadge}>
+              <Text style={styles.propertyKeyText} numberOfLines={1}>{key}</Text>
+            </View>
+            <TextInput
+              style={[styles.input, styles.propertyValueInput]}
+              value={value}
+              onChangeText={v => updatePropertyValue(key, v)}
+              placeholder="Value"
+              placeholderTextColor={theme.colors.mutedForeground}
+              editable={!isBuiltInAgent}
+            />
+            <TouchableOpacity
+              style={[styles.propertyRemoveButton, isBuiltInAgent && styles.chipButtonDisabled]}
+              onPress={() => removeProperty(key)}
+              disabled={isBuiltInAgent}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel(`Remove ${key} property`)}
+            >
+              <Text style={styles.propertyRemoveText}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+        <View style={styles.propertyAddRow}>
+          <View style={styles.propertyInputGroup}>
+            <Text style={styles.label}>Key</Text>
+            <TextInput
+              style={styles.input}
+              value={newPropertyKey}
+              onChangeText={setNewPropertyKey}
+              placeholder="language"
+              placeholderTextColor={theme.colors.mutedForeground}
+              autoCapitalize="none"
+              editable={!isBuiltInAgent}
+            />
+          </View>
+          <View style={styles.propertyInputGroup}>
+            <Text style={styles.label}>Value</Text>
+            <TextInput
+              style={styles.input}
+              value={newPropertyValue}
+              onChangeText={setNewPropertyValue}
+              placeholder="TypeScript"
+              placeholderTextColor={theme.colors.mutedForeground}
+              editable={!isBuiltInAgent}
+            />
+          </View>
+          <TouchableOpacity
+            style={[styles.propertyAddButton, (!newPropertyKey.trim() || isBuiltInAgent) && styles.chipButtonDisabled]}
+            onPress={addProperty}
+            disabled={!newPropertyKey.trim() || isBuiltInAgent}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Add agent property')}
+          >
+            <Text style={styles.propertyAddText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <View style={styles.switchRow}>
         <Text style={styles.switchLabel}>Enabled</Text>
         <Switch
@@ -1124,6 +1248,75 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.mutedForeground,
       fontSize: 12,
       marginTop: 2,
+    },
+    propertyRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: spacing.sm,
+    },
+    propertyKeyBadge: {
+      minWidth: 84,
+      maxWidth: 120,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.sm,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      backgroundColor: theme.colors.muted,
+    },
+    propertyKeyText: {
+      color: theme.colors.foreground,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    propertyValueInput: {
+      flex: 1,
+      minWidth: 0,
+    },
+    propertyRemoveButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    propertyRemoveText: {
+      color: theme.colors.destructive,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    propertyAddRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: spacing.sm,
+      flexWrap: 'wrap',
+    },
+    propertyInputGroup: {
+      flex: 1,
+      minWidth: 120,
+    },
+    propertyAddButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.sm,
+      backgroundColor: theme.colors.primary,
+    },
+    propertyAddText: {
+      color: theme.colors.primaryForeground,
+      fontSize: 13,
+      fontWeight: '700',
     },
     connectionTypeOptions: {
       width: '100%' as const,
