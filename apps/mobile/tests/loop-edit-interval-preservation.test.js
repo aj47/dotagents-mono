@@ -9,12 +9,12 @@ const screenSource = fs.readFileSync(
 );
 
 test('preserves an existing loop interval when hidden interval text is invalid while editing', () => {
-  assert.match(screenSource, /const DEFAULT_INTERVAL_MINUTES = 60;/);
+  assert.match(screenSource, /DEFAULT_REPEAT_TASK_INTERVAL_MINUTES/);
   assert.match(screenSource, /existingLoopIntervalMinutes, setExistingLoopIntervalMinutes/);
   assert.match(screenSource, /setExistingLoopIntervalMinutes\(loop\.intervalMinutes\);/);
   assert.match(
     screenSource,
-    /resolveRepeatTaskIntervalMinutesDraft\(formData\.intervalMinutes, \{[\s\S]*?existingIntervalMinutes: isEditing \? existingLoopIntervalMinutes : null,[\s\S]*?fallbackIntervalMinutes: DEFAULT_INTERVAL_MINUTES,[\s\S]*?\}\)/
+    /resolveRepeatTaskIntervalMinutesDraft\(formData\.intervalMinutes, \{[\s\S]*?existingIntervalMinutes: isEditing \? existingLoopIntervalMinutes : null,[\s\S]*?fallbackIntervalMinutes: DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,[\s\S]*?\}\)/
   );
   assert.match(screenSource, /intervalMinutes: intervalResolution\.intervalMinutes/);
   assert.doesNotMatch(screenSource, /const savedIntervalMinutes = hasValidInterval \? intervalMinutes : 60;/);

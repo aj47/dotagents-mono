@@ -29,9 +29,10 @@ test('keeps LoopEdit profile options full-width and touch-friendly for narrow sc
 });
 
 test('exposes desktop repeat task execution options on mobile', () => {
-  assert.match(screenSource, /runOnStartup:\s*loop\.runOnStartup \?\? false/);
-  assert.match(screenSource, /speakOnTrigger:\s*loop\.speakOnTrigger \?\? false/);
-  assert.match(screenSource, /continueInSession:\s*loop\.continueInSession \?\? false/);
+  assert.match(screenSource, /DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS/);
+  assert.match(screenSource, /runOnStartup:\s*loop\.runOnStartup \?\? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS\.runOnStartup/);
+  assert.match(screenSource, /speakOnTrigger:\s*loop\.speakOnTrigger \?\? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS\.speakOnTrigger/);
+  assert.match(screenSource, /continueInSession:\s*loop\.continueInSession \?\? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS\.continueInSession/);
   assert.match(screenSource, /lastSessionId:\s*loop\.lastSessionId \|\| ''/);
   assert.match(screenSource, /maxIterations:\s*loop\.maxIterations \? String\(loop\.maxIterations\) : ''/);
   assert.match(screenSource, /runOnStartup:\s*formData\.runOnStartup/);

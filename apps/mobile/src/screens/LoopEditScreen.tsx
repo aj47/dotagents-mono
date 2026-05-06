@@ -32,6 +32,8 @@ import {
 } from '@dotagents/shared/agent-session-candidates';
 import {
   buildRepeatTaskScheduleFromDraft,
+  DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
+  DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
   DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
   DEFAULT_REPEAT_TASK_WEEKDAYS,
   REPEAT_TASK_DAY_LABELS,
@@ -59,17 +61,15 @@ type LoopFormData = {
   scheduleDaysOfWeek: number[];
 };
 
-const DEFAULT_INTERVAL_MINUTES = 60;
-
 const defaultFormData: LoopFormData = {
   name: '',
   prompt: '',
-  intervalMinutes: String(DEFAULT_INTERVAL_MINUTES),
-  enabled: true,
+  intervalMinutes: String(DEFAULT_REPEAT_TASK_INTERVAL_MINUTES),
+  enabled: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled,
   profileId: '',
-  runOnStartup: false,
-  speakOnTrigger: false,
-  continueInSession: false,
+  runOnStartup: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runOnStartup,
+  speakOnTrigger: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.speakOnTrigger,
+  continueInSession: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.continueInSession,
   lastSessionId: '',
   maxIterations: '',
   scheduleMode: 'interval',
@@ -87,9 +87,9 @@ function loopToFormData(loop: Loop): LoopFormData {
     intervalMinutes: String(loop.intervalMinutes),
     enabled: loop.enabled,
     profileId: loop.profileId || '',
-    runOnStartup: loop.runOnStartup ?? false,
-    speakOnTrigger: loop.speakOnTrigger ?? false,
-    continueInSession: loop.continueInSession ?? false,
+    runOnStartup: loop.runOnStartup ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runOnStartup,
+    speakOnTrigger: loop.speakOnTrigger ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.speakOnTrigger,
+    continueInSession: loop.continueInSession ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.continueInSession,
     lastSessionId: loop.lastSessionId || '',
     maxIterations: loop.maxIterations ? String(loop.maxIterations) : '',
     scheduleMode,
@@ -251,7 +251,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
     }
     const intervalResolution = resolveRepeatTaskIntervalMinutesDraft(formData.intervalMinutes, {
       existingIntervalMinutes: isEditing ? existingLoopIntervalMinutes : null,
-      fallbackIntervalMinutes: DEFAULT_INTERVAL_MINUTES,
+      fallbackIntervalMinutes: DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
     });
     if (formData.scheduleMode === 'interval' && !intervalResolution.isValid) {
       setError('Interval must be a positive whole number of minutes');

@@ -9,4 +9,11 @@ describe("settings loops schedule drafts", () => {
     expect(settingsLoopsSource).not.toContain("sanitizeScheduleTimes")
     expect(settingsLoopsSource).not.toContain("let schedule: LoopSchedule")
   })
+
+  it("uses shared repeat task execution defaults in the edit form", () => {
+    expect(settingsLoopsSource).toContain("DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS")
+    expect(settingsLoopsSource).toContain("runOnStartup: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runOnStartup")
+    expect(settingsLoopsSource).toContain("speakOnTrigger: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.speakOnTrigger")
+    expect(settingsLoopsSource).toContain("continueInSession: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.continueInSession")
+  })
 })

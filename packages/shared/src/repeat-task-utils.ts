@@ -231,8 +231,16 @@ export interface RepeatTaskActionOptions<
 }
 
 export const REPEAT_TASK_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const
+export const DEFAULT_REPEAT_TASK_INTERVAL_MINUTES = 60
 export const DEFAULT_REPEAT_TASK_SCHEDULE_TIMES = ["09:00"] as const
 export const DEFAULT_REPEAT_TASK_WEEKDAYS = [1, 2, 3, 4, 5] as const
+export const DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS = {
+  enabled: true,
+  runOnStartup: false,
+  speakOnTrigger: false,
+  continueInSession: false,
+  runContinuously: false,
+} as const
 export const TASK_SESSION_TITLE_PREFIX = "[Repeat] "
 const REPEAT_TASK_NAME_CONNECTOR_WORDS = new Set(["a", "an", "and", "for", "of", "the", "to"])
 
@@ -590,8 +598,12 @@ export function parseRepeatTaskCreateRequestBody(
     return { ok: false, statusCode: 400, error: scheduleResult.error }
   }
 
-  const runContinuously = requestBody.runContinuously === true
-  const continueInSession = requestBody.continueInSession === true
+  const runContinuously = typeof requestBody.runContinuously === "boolean"
+    ? requestBody.runContinuously
+    : DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runContinuously
+  const continueInSession = typeof requestBody.continueInSession === "boolean"
+    ? requestBody.continueInSession
+    : DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.continueInSession
   const lastSessionId = typeof requestBody.lastSessionId === "string"
     ? requestBody.lastSessionId.trim() || undefined
     : undefined
@@ -600,11 +612,15 @@ export function parseRepeatTaskCreateRequestBody(
     request: {
       name,
       prompt,
-      intervalMinutes: typeof requestBody.intervalMinutes === "number" ? requestBody.intervalMinutes : 60,
-      enabled: typeof requestBody.enabled === "boolean" ? requestBody.enabled : true,
+      intervalMinutes: typeof requestBody.intervalMinutes === "number" ? requestBody.intervalMinutes : DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
+      enabled: typeof requestBody.enabled === "boolean" ? requestBody.enabled : DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled,
       profileId: typeof requestBody.profileId === "string" ? requestBody.profileId.trim() || undefined : undefined,
-      runOnStartup: requestBody.runOnStartup === true,
-      speakOnTrigger: requestBody.speakOnTrigger === true,
+      runOnStartup: typeof requestBody.runOnStartup === "boolean"
+        ? requestBody.runOnStartup
+        : DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runOnStartup,
+      speakOnTrigger: typeof requestBody.speakOnTrigger === "boolean"
+        ? requestBody.speakOnTrigger
+        : DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.speakOnTrigger,
       continueInSession,
       ...(continueInSession && lastSessionId ? { lastSessionId } : {}),
       runContinuously,
