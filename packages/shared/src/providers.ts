@@ -139,6 +139,32 @@ export function normalizeModelIdentifierForMatching(model: string): string {
   return normalized;
 }
 
+export function calculateModelIdentifierMatchScore(
+  normalizedQuery: string,
+  normalizedCandidate: string,
+  options: { bidirectional?: boolean } = {},
+): number {
+  if (normalizedQuery === normalizedCandidate) return 1000;
+
+  if (normalizedQuery.includes(normalizedCandidate)) {
+    const position = normalizedQuery.indexOf(normalizedCandidate);
+    const lengthScore = normalizedCandidate.length * 10;
+    const positionScore = normalizedQuery.length - position;
+    const boundaryBonus = (position === 0 || normalizedQuery[position - 1] === "-") ? 50 : 0;
+    return lengthScore + positionScore + boundaryBonus;
+  }
+
+  if (options.bidirectional && normalizedCandidate.includes(normalizedQuery)) {
+    const position = normalizedCandidate.indexOf(normalizedQuery);
+    const lengthScore = normalizedQuery.length * 10;
+    const positionScore = normalizedCandidate.length - position;
+    const boundaryBonus = (position === 0 || normalizedCandidate[position - 1] === "-") ? 50 : 0;
+    return lengthScore + positionScore + boundaryBonus;
+  }
+
+  return 0;
+}
+
 export function isTranscriptionOnlyChatModel(providerId: CHAT_PROVIDER_ID, model: string): boolean {
   const patterns = TRANSCRIPTION_ONLY_MODEL_PATTERNS[providerId];
   if (!patterns) {

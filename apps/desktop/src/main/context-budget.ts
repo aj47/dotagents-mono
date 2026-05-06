@@ -6,7 +6,10 @@ import { constructMinimalSystemPrompt } from "./system-prompts"
 import { agentSessionStateManager } from "./state"
 import { summarizationService } from "./summarization-service"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared/message-display-utils"
-import { normalizeModelIdentifierForMatching } from "@dotagents/shared/providers"
+import {
+  calculateModelIdentifierMatchScore,
+  normalizeModelIdentifierForMatching,
+} from "@dotagents/shared/providers"
 import {
   collectRecentRealUserRequestIndices,
   hasMappedToolResultPrefix,
@@ -283,30 +286,6 @@ const MODEL_REGISTRY: Record<string, ModelSpec> = {
 }
 
 /**
- * Calculate a match score between a normalized model name and a registry pattern.
- * Higher score = better match.
- * Returns 0 if no match.
- */
-function calculateMatchScore(normalizedModel: string, pattern: string): number {
-  // Exact match is best
-  if (normalizedModel === pattern) return 1000
-
-  // Check if model contains the pattern
-  if (!normalizedModel.includes(pattern)) return 0
-
-  // Score based on:
-  // 1. Pattern length (longer = more specific = better)
-  // 2. Position in model name (earlier = better)
-  // 3. Whether it's a word boundary match
-  const position = normalizedModel.indexOf(pattern)
-  const lengthScore = pattern.length * 10
-  const positionScore = (normalizedModel.length - position) // Earlier is better
-  const boundaryBonus = (position === 0 || normalizedModel[position - 1] === "-") ? 50 : 0
-
-  return lengthScore + positionScore + boundaryBonus
-}
-
-/**
  * Look up context window for a model using fuzzy matching.
  * Returns the best matching spec or undefined if no match.
  */
@@ -316,7 +295,7 @@ function lookupModelSpec(model: string): ModelSpec | undefined {
   let bestMatch: { pattern: string; spec: ModelSpec; score: number } | undefined
 
   for (const [pattern, spec] of Object.entries(MODEL_REGISTRY)) {
-    const score = calculateMatchScore(normalized, pattern)
+    const score = calculateModelIdentifierMatchScore(normalized, pattern)
     if (score > 0 && (!bestMatch || score > bestMatch.score)) {
       bestMatch = { pattern, spec, score }
     }

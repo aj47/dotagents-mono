@@ -15,7 +15,10 @@ import type {
   ModelsDevModel,
   ModelsDevProvider,
 } from "@dotagents/shared/api-types"
-import { normalizeModelIdentifierForMatching } from "@dotagents/shared/providers"
+import {
+  calculateModelIdentifierMatchScore,
+  normalizeModelIdentifierForMatching,
+} from "@dotagents/shared/providers"
 
 /** Cache file structure */
 interface ModelsDevCache {
@@ -126,37 +129,6 @@ function isCacheValid(timestamp: number): boolean {
 const FUZZY_MATCH_MIN_SCORE = 50
 
 /**
- * Calculate a match score between a normalized model name and a candidate model ID.
- * Higher score = better match.
- * Returns 0 if no match.
- */
-function calculateMatchScore(normalizedQuery: string, normalizedCandidate: string): number {
-  // Exact match is best
-  if (normalizedQuery === normalizedCandidate) return 1000
-
-  // Check if query contains the candidate or candidate contains query
-  if (normalizedQuery.includes(normalizedCandidate)) {
-    // Query is more specific than candidate
-    const position = normalizedQuery.indexOf(normalizedCandidate)
-    const lengthScore = normalizedCandidate.length * 10
-    const positionScore = normalizedQuery.length - position
-    const boundaryBonus = (position === 0 || normalizedQuery[position - 1] === "-") ? 50 : 0
-    return lengthScore + positionScore + boundaryBonus
-  }
-
-  if (normalizedCandidate.includes(normalizedQuery)) {
-    // Candidate is more specific than query
-    const position = normalizedCandidate.indexOf(normalizedQuery)
-    const lengthScore = normalizedQuery.length * 10
-    const positionScore = normalizedCandidate.length - position
-    const boundaryBonus = (position === 0 || normalizedCandidate[position - 1] === "-") ? 50 : 0
-    return lengthScore + positionScore + boundaryBonus
-  }
-
-  return 0
-}
-
-/**
  * Find the best matching model using fuzzy matching.
  *
  * @param modelId - The model ID to search for
@@ -199,7 +171,11 @@ export function findBestModelMatch(
 
       // Calculate fuzzy match score
       const normalizedCandidate = normalizeModelIdentifierForMatching(candidateId)
-      const score = calculateMatchScore(normalizedQuery, normalizedCandidate)
+      const score = calculateModelIdentifierMatchScore(
+        normalizedQuery,
+        normalizedCandidate,
+        { bidirectional: true },
+      )
 
       if (score >= FUZZY_MATCH_MIN_SCORE && (!bestMatch || score > bestMatch.score)) {
         bestMatch = {

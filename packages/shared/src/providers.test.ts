@@ -20,6 +20,7 @@ import {
   SUPERTONIC_TTS_LANGUAGES,
   OPENAI_COMPATIBLE_PRESETS,
   DEFAULT_MODEL_PRESET_ID,
+  calculateModelIdentifierMatchScore,
   getTtsModelSettingKey,
   getTtsModelsForProvider,
   getTtsVoiceSettingKey,
@@ -107,6 +108,14 @@ describe('CHAT_PROVIDERS', () => {
     expect(normalizeModelIdentifierForMatching('accounts/fireworks/models/llama-v3p1-70b')).toBe('llama-3.1-70b')
     expect(normalizeModelIdentifierForMatching('openai/gpt4o-2024-05-13')).toBe('gpt-4o')
     expect(normalizeModelIdentifierForMatching('qwen3:free')).toBe('qwen-3')
+  })
+
+  it('scores normalized provider model identifiers for shared fuzzy matching', () => {
+    expect(calculateModelIdentifierMatchScore('gpt-4.1-mini', 'gpt-4.1-mini')).toBe(1000)
+    expect(calculateModelIdentifierMatchScore('openai-gpt-4.1-mini', 'gpt-4.1')).toBeGreaterThan(0)
+    expect(calculateModelIdentifierMatchScore('gpt-4.1', 'gpt-4.1-mini')).toBe(0)
+    expect(calculateModelIdentifierMatchScore('gpt-4.1', 'gpt-4.1-mini', { bidirectional: true })).toBeGreaterThan(0)
+    expect(calculateModelIdentifierMatchScore('claude-haiku', 'gpt-4.1')).toBe(0)
   })
 
   it('resolves shared prompt caching strategies by provider, model, and base URL', () => {
