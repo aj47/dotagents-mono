@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest"
 
 import type { AgentProfile } from "@shared/types"
 
-import { sortAgentsWithDefaultFirst } from "./agent-order"
+import {
+  sortAgentProfilesWithDefaultFirst as sortAgentsWithDefaultFirst,
+} from "@dotagents/shared/agent-selector-options"
 
 function makeAgent(id: string, overrides: Partial<AgentProfile> = {}): AgentProfile {
   return {

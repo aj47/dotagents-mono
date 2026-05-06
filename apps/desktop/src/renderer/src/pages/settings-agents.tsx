@@ -75,8 +75,10 @@ import {
   toggleAgentProfileSkillConfig,
 } from "@dotagents/shared/agent-profile-config-updates"
 import { getAgentAvatarColors } from "@dotagents/shared/agent-avatar-colors"
+import {
+  sortAgentProfilesWithDefaultFirst as sortAgentsWithDefaultFirst,
+} from "@dotagents/shared/agent-selector-options"
 import { tipcClient } from "@renderer/lib/tipc-client"
-import { sortAgentsWithDefaultFirst } from "@renderer/lib/agent-order"
 import { ModelSelector } from "@renderer/components/model-selector"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { BundleExportDialog } from "@renderer/components/bundle-export-dialog"
