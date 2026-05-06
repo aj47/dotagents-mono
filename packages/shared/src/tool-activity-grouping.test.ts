@@ -104,7 +104,7 @@ describe('groupToolActivity', () => {
     ]
     const { groups } = groupToolActivity(msgs)
     expect(groups).toHaveLength(1)
-    expect(groups[0].previewLines).toEqual(['step2, step3'])
+    expect(groups[0].previewLines).toEqual(['step1, step2, step3'])
   })
 
   it('keeps preview lines once a later assistant response exists', () => {
@@ -149,7 +149,7 @@ describe('groupToolActivity', () => {
   })
 
   it('constants have expected values', () => {
-    expect(TOOL_GROUP_PREVIEW_COUNT).toBe(3)
+    expect(TOOL_GROUP_PREVIEW_COUNT).toBe(8)
     expect(TOOL_GROUP_MIN_SIZE).toBe(2)
   })
 

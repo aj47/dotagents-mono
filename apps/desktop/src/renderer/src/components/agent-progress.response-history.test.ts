@@ -294,7 +294,7 @@ async function loadAgentProgress(
     normalizeAgentConversationState: (state: string | null | undefined, fallback: string) => state ?? fallback,
     getBuiltInModelPresets: () => [{ id: "default", name: "OpenAI", baseUrl: "https://api.openai.com/v1", agentModel: "gpt-4.1-mini", isBuiltIn: true }],
     DEFAULT_MODEL_PRESET_ID: "default",
-    TOOL_GROUP_PREVIEW_COUNT: 3,
+    TOOL_GROUP_PREVIEW_COUNT: 8,
     TOOL_GROUP_MIN_SIZE: 2,
   }))
   vi.doMock("./tool-execution-stats", () => ({ ToolExecutionStats: Null }))
