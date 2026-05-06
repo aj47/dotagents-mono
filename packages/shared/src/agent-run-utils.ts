@@ -98,6 +98,37 @@ export type AgentModeIterationConfigLike = {
   mcpMaxIterations?: number
 }
 
+export interface ApiRetryConfig {
+  apiRetryCount?: number
+  apiRetryBaseDelay?: number
+  apiRetryMaxDelay?: number
+}
+
+export interface AgentContextBudgetConfig {
+  mcpContextTargetRatio?: number
+  mcpContextLastNMessages?: number
+  mcpContextSummarizeCharThreshold?: number
+  mcpMaxContextTokensOverride?: number
+}
+
+export interface ToolResponseProcessingConfig {
+  mcpToolResponseLargeThreshold?: number
+  mcpToolResponseCriticalThreshold?: number
+  mcpToolResponseChunkSize?: number
+  mcpToolResponseProgressUpdates?: boolean
+}
+
+export interface CompletionVerificationTuningConfig {
+  mcpVerifyContextMaxItems?: number
+  mcpVerifyRetryCount?: number
+}
+
+export interface AgentRuntimeTuningConfig
+  extends ApiRetryConfig,
+    AgentContextBudgetConfig,
+    ToolResponseProcessingConfig,
+    CompletionVerificationTuningConfig {}
+
 export type AgentSessionIdKind = "missing" | "pending" | "subsession" | "session" | "unknown"
 
 export interface AgentIterationLimits {

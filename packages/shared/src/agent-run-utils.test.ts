@@ -12,9 +12,14 @@ import {
   resolveAgentModeMaxIterations,
   resolveAgentIterationLimits,
   runRemoteAgentAction,
+  type AgentRuntimeTuningConfig,
   type RemoteAgentConversationLike,
   type RemoteAgentRunActionService,
 } from './agent-run-utils';
+
+function assertType<T>(_value: T): void {
+  // Compile-time assertion only.
+}
 
 describe('resolveAgentIterationLimits', () => {
   it('keeps infinite loop iterations but caps the guardrail budget', () => {
@@ -54,6 +59,29 @@ describe('resolveAgentModeMaxIterations', () => {
     expect(resolveAgentModeMaxIterations({ mcpUnlimitedIterations: true, mcpMaxIterations: 3 })).toBe(Number.POSITIVE_INFINITY);
     expect(resolveAgentModeMaxIterations({ mcpMaxIterations: 12 })).toBe(12);
     expect(resolveAgentModeMaxIterations({})).toBe(10);
+  });
+});
+
+describe('agent runtime tuning config contracts', () => {
+  it('accepts shared retry, context budget, tool response, and verification tuning settings', () => {
+    const config: AgentRuntimeTuningConfig = {
+      apiRetryCount: 3,
+      apiRetryBaseDelay: 1000,
+      apiRetryMaxDelay: 30000,
+      mcpContextTargetRatio: 0.4,
+      mcpContextLastNMessages: 3,
+      mcpContextSummarizeCharThreshold: 2000,
+      mcpMaxContextTokensOverride: 120000,
+      mcpToolResponseLargeThreshold: 20000,
+      mcpToolResponseCriticalThreshold: 50000,
+      mcpToolResponseChunkSize: 15000,
+      mcpToolResponseProgressUpdates: true,
+      mcpVerifyContextMaxItems: 10,
+      mcpVerifyRetryCount: 1,
+    };
+
+    assertType<AgentRuntimeTuningConfig>(config);
+    expect(config.mcpToolResponseProgressUpdates).toBe(true);
   });
 });
 

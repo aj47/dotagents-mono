@@ -17,6 +17,7 @@ import type { AgentExecutionConfig, AgentModelSelectionConfig, AudioDeviceConfig
 import type { MainAgentConfig } from '@dotagents/shared/main-agent-selection'
 import type { CloudflareTunnelConfig, RemoteServerConfig, StreamerModeConfig } from '@dotagents/shared/remote-pairing'
 import type { ObservabilityConfig } from '@dotagents/shared/observability-config'
+import type { AgentRuntimeTuningConfig } from '@dotagents/shared/agent-run-utils'
 import type {
   LegacyAcpAgentConfig,
   LegacyPersonaRecord,
@@ -49,6 +50,7 @@ export type { PushNotificationToken } from '@dotagents/shared/push-notifications
 export type { EnhancedModelInfo, ModelInfo, ModelsDevCost, ModelsDevData, ModelsDevLimit, ModelsDevModalities, ModelsDevModel, ModelsDevProvider } from '@dotagents/shared/api-types'
 export type { CloudflareTunnelConfig, RemoteServerBindAddress, RemoteServerConfig, RemoteServerLogLevel, StreamerModeConfig } from '@dotagents/shared/remote-pairing'
 export type { LangfuseObservabilityConfig, LocalTraceLoggingConfig, ObservabilityConfig } from '@dotagents/shared/observability-config'
+export type { AgentContextBudgetConfig, AgentRuntimeTuningConfig, ApiRetryConfig, CompletionVerificationTuningConfig, ToolResponseProcessingConfig } from '@dotagents/shared/agent-run-utils'
 export type { MainAgentConfig, MainAgentMode } from '@dotagents/shared/main-agent-selection'
 export type { LegacyAcpAgentConfig, LegacyPersonaRecord, LegacyPersonasData, LegacyProfileRecord, LegacyProfilesData } from '@dotagents/shared/agent-profile-legacy-converters'
 export type { DiscordIntegrationConfig } from '@dotagents/shared/discord-config'
@@ -136,7 +138,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & AgentModelSelectionConfig & ChatProviderCredentialsConfig & ChatGptWebAuthConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & TextToSpeechConfig & AudioDeviceConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & AgentModelSelectionConfig & ChatProviderCredentialsConfig & ChatGptWebAuthConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & TextToSpeechConfig & AudioDeviceConfig & AgentRuntimeTuningConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -286,27 +288,6 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   // When true (default), the floating panel will automatically hide when the main DotAgents window is focused
   // The panel will reappear when the main window loses focus (if auto-show conditions are met)
   hidePanelWhenMainFocused?: boolean
-
-  // API Retry Configuration
-  apiRetryCount?: number
-  apiRetryBaseDelay?: number
-  apiRetryMaxDelay?: number
-
-  // Context Reduction Configuration
-  mcpContextTargetRatio?: number
-  mcpContextLastNMessages?: number
-  mcpContextSummarizeCharThreshold?: number
-  mcpMaxContextTokensOverride?: number
-
-  // Tool Response Processing Configuration
-  mcpToolResponseLargeThreshold?: number
-  mcpToolResponseCriticalThreshold?: number
-  mcpToolResponseChunkSize?: number
-  mcpToolResponseProgressUpdates?: boolean
-
-  // Completion Verification Configuration
-  mcpVerifyContextMaxItems?: number
-  mcpVerifyRetryCount?: number
 
   // Stream Status Watcher Configuration
   streamStatusWatcherEnabled?: boolean
