@@ -47,7 +47,8 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
-import type { AgentProgressUpdate, LoopConfig } from "@shared/types"
+import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
+import type { LoopConfig } from "@dotagents/shared/types"
 import { getSidebarStatusPresentation } from "@dotagents/shared/session-presentation"
 
 interface SidebarSessionRecord {

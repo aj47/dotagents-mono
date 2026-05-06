@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
-import { QueuedMessage } from "@shared/types"
+import type { QueuedMessage } from "@dotagents/shared/message-queue-utils"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 

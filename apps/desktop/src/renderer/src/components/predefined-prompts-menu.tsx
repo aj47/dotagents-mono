@@ -22,7 +22,8 @@ import {
 } from "@renderer/components/ui/dialog"
 import { BookMarked, Plus, Pencil, Trash2, Sparkles, Clock3, Search } from "lucide-react"
 import { queryClient, useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
-import { PredefinedPrompt, LoopConfig } from "../../../shared/types"
+import type { PredefinedPrompt } from "@dotagents/shared/api-types"
+import type { LoopConfig } from "@dotagents/shared/types"
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,

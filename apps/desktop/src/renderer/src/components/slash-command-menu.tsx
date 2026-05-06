@@ -5,7 +5,7 @@ import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useQuery } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
-import { LoopConfig } from "@shared/types"
+import type { LoopConfig } from "@dotagents/shared/types"
 import { getRepeatTaskRunNowDescription } from "@dotagents/shared/repeat-task-utils"
 import {
   getPromptLibraryPromptContent,

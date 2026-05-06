@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { KnowledgeNote } from "@shared/types"
+import type { KnowledgeNote } from "@dotagents/shared/knowledge-note-domain"
 
 import { buildKnowledgeNoteSections, getKnowledgeNoteGrouping } from "@dotagents/shared/knowledge-note-grouping"
 

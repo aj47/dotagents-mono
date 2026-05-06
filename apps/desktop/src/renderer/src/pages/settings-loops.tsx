@@ -18,7 +18,7 @@ import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-reac
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { LoopConfig } from "@shared/types"
+import type { LoopConfig } from "@dotagents/shared/types"
 import { toast } from "sonner"
 import {
   buildAgentSessionCandidateOptions,
