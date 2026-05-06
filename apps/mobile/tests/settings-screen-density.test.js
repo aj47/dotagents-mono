@@ -71,3 +71,12 @@ test('lets mobile replace existing MCP server configs without reading secrets', 
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Replace MCP server \$\{server\.name\} config`\)/);
   assert.match(settingsSource, /mcpServerEditorMode === 'create' && mcpServers\.some/);
 });
+
+test('lets mobile import pasted MCP server configs through the shared client', () => {
+  assert.match(settingsSource, /showMcpImportModal/);
+  assert.match(settingsSource, /Import MCP Servers/);
+  assert.match(settingsSource, /parseMcpServerConfigImportRequestBody\(parsedJson\)/);
+  assert.match(settingsSource, /settingsClient\.importMCPServerConfigs\(parsedRequest\.request\.config\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Import MCP server JSON'\)/);
+  assert.match(settingsSource, /setMcpImportJsonText\(''\)/);
+});

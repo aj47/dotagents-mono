@@ -55,6 +55,7 @@ import {
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   formatMcpMaxIterationsValidationMessage,
   MCP_MAX_ITERATIONS_DEFAULT,
+  parseMcpServerConfigImportRequestBody,
   parseMcpMaxIterationsDraft,
 } from '@dotagents/shared/mcp-api';
 import { isReservedMcpServerName, type MCPServerConfig, type MCPTransportType } from '@dotagents/shared/mcp-utils';
@@ -375,6 +376,9 @@ export default function SettingsScreen({ navigation }: any) {
   const [mcpServerEditorMode, setMcpServerEditorMode] = useState<McpServerEditorMode>('create');
   const [mcpServerDraft, setMcpServerDraft] = useState<McpServerDraft>(EMPTY_MCP_SERVER_DRAFT);
   const [isSavingMcpServer, setIsSavingMcpServer] = useState(false);
+  const [showMcpImportModal, setShowMcpImportModal] = useState(false);
+  const [mcpImportJsonText, setMcpImportJsonText] = useState('');
+  const [isImportingMcpServers, setIsImportingMcpServers] = useState(false);
 
   // TTS voice/model picker state
   const [showTtsVoicePicker, setShowTtsVoicePicker] = useState(false);
@@ -1066,6 +1070,12 @@ export default function SettingsScreen({ navigation }: any) {
     setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
   }, [isSavingMcpServer]);
 
+  const closeMcpImportModal = useCallback(() => {
+    if (isImportingMcpServers) return;
+    setShowMcpImportModal(false);
+    setMcpImportJsonText('');
+  }, [isImportingMcpServers]);
+
   const handleMcpServerDraftChange = useCallback(<K extends keyof McpServerDraft>(
     key: K,
     value: McpServerDraft[K],
@@ -1172,6 +1182,54 @@ export default function SettingsScreen({ navigation }: any) {
       setRemoteError(error.message || 'Failed to save MCP server');
     } finally {
       setIsSavingMcpServer(false);
+    }
+  };
+
+  const handleMcpServerImport = async () => {
+    if (!settingsClient || !mcpImportJsonText.trim()) return;
+
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(mcpImportJsonText.trim());
+    } catch {
+      setRemoteError('MCP server JSON is invalid');
+      Alert.alert('Import Failed', 'MCP server JSON is invalid');
+      return;
+    }
+
+    const parsedRequest = parseMcpServerConfigImportRequestBody(parsedJson);
+    if (parsedRequest.ok === false) {
+      setRemoteError(parsedRequest.error);
+      Alert.alert('Import Failed', parsedRequest.error);
+      return;
+    }
+
+    setIsImportingMcpServers(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importMCPServerConfigs(parsedRequest.request.config);
+      setShowMcpImportModal(false);
+      setMcpImportJsonText('');
+      setSaveStatusMessage('Saved');
+
+      try {
+        const serversRes = await settingsClient.getMCPServers();
+        setMcpServers(serversRes.servers);
+      } catch (refreshError: any) {
+        console.error('[Settings] Failed to refresh MCP servers after import:', refreshError);
+      }
+
+      const importedLabel = `${result.importedCount} MCP server${result.importedCount === 1 ? '' : 's'}`;
+      const skippedLabel = result.skippedReservedServerNames.length > 0
+        ? ` Skipped reserved names: ${result.skippedReservedServerNames.join(', ')}.`
+        : '';
+      Alert.alert('Import Complete', `Imported ${importedLabel}.${skippedLabel}`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to import MCP servers:', error);
+      setRemoteError(error.message || 'Failed to import MCP servers');
+      Alert.alert('Import Failed', error.message || 'Failed to import MCP servers');
+    } finally {
+      setIsImportingMcpServers(false);
     }
   };
 
@@ -3352,14 +3410,27 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   );
                 })}
-                <TouchableOpacity
-                  style={styles.createAgentButton}
-                  onPress={openMcpServerEditor}
-                  accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Create MCP server')}
-                >
-                  <Text style={styles.createAgentButtonText}>+ Create MCP Server</Text>
-                </TouchableOpacity>
+                <View style={styles.profileActions}>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, isImportingMcpServers && styles.profileActionButtonDisabled]}
+                    onPress={() => setShowMcpImportModal(true)}
+                    disabled={isImportingMcpServers}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import MCP server JSON')}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isImportingMcpServers ? 'Importing...' : 'Import JSON'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.profileActionButton}
+                    onPress={openMcpServerEditor}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Create MCP server')}
+                  >
+                    <Text style={styles.profileActionButtonText}>Create MCP Server</Text>
+                  </TouchableOpacity>
+                </View>
               </CollapsibleSection>
             )}
 
@@ -4394,6 +4465,70 @@ export default function SettingsScreen({ navigation }: any) {
               >
                 <Text style={styles.importModalImportText}>
                   {isSavingMcpServer ? 'Saving...' : mcpServerEditorMode === 'create' ? 'Save' : 'Replace'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MCP Server Import Modal */}
+      <Modal
+        visible={showMcpImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeMcpImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import MCP Servers</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeMcpImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close MCP server import modal"
+                disabled={isImportingMcpServers}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.importJsonInput}
+              value={mcpImportJsonText}
+              onChangeText={setMcpImportJsonText}
+              placeholder={'{"mcpServers":{"github":{"command":"github-mcp"}}}'}
+              placeholderTextColor={theme.colors.mutedForeground}
+              multiline
+              numberOfLines={8}
+              textAlignVertical="top"
+              autoCorrect={false}
+              autoCapitalize="none"
+              spellCheck={false}
+              editable={!isImportingMcpServers}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeMcpImportModal}
+                disabled={isImportingMcpServers}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!mcpImportJsonText.trim() || isImportingMcpServers) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={handleMcpServerImport}
+                disabled={!mcpImportJsonText.trim() || isImportingMcpServers}
+                accessibilityRole="button"
+                accessibilityLabel="Import MCP servers"
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingMcpServers ? 'Importing...' : 'Import'}
                 </Text>
               </TouchableOpacity>
             </View>
