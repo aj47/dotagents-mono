@@ -1,6 +1,7 @@
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+import { isAllowedMarkdownLinkUrl } from '@dotagents/shared/conversation-media-assets';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
 import { VideoAttachmentCard } from './VideoAttachmentCard';
@@ -34,7 +35,9 @@ const ThinkSection: React.FC<{
       </Pressable>
       {!collapsed && content.trim().length > 0 && (
         <View style={styles.content}>
-          <Markdown style={markdownStyles}>{content}</Markdown>
+          <Markdown style={markdownStyles} onLinkPress={isAllowedMarkdownLinkUrl}>
+            {content}
+          </Markdown>
         </View>
       )}
     </View>
@@ -264,7 +267,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
         if (!part.content?.trim()) return null;
         return (
-          <Markdown key={`markdown-${index}`} style={markdownStyles}>
+          <Markdown
+            key={`markdown-${index}`}
+            style={markdownStyles}
+            onLinkPress={isAllowedMarkdownLinkUrl}
+          >
             {part.content}
           </Markdown>
         );
@@ -274,4 +281,3 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 };
 
 export default MarkdownRenderer;
-

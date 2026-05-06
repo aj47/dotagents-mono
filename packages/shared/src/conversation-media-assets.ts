@@ -10,6 +10,9 @@ const CONVERSATION_IMAGE_ASSET_URL_REGEX = /^assets:\/\/conversation-image\/([^/
 const VIDEO_EXTENSION_REGEX = /\.(?:mp4|m4v|webm|mov|ogv)(?:[?#].*)?$/i;
 const SAFE_VIDEO_ASSET_FILE_REGEX = /^[a-f0-9]{16,64}\.(?:mp4|m4v|webm|mov|ogv)$/u;
 const SAFE_IMAGE_ASSET_FILE_REGEX = /^[a-f0-9]{16,64}\.(?:png|apng|gif|jpe?g|webp|bmp|avif)$/u;
+const MARKDOWN_DATA_IMAGE_URL_REGEX =
+  /^data:image\/(?:png|apng|gif|jpe?g|webp|bmp|avif)(?:;|,)/i;
+const RECORDING_ASSET_URL_REGEX = /^assets:\/\/recording\//i;
 
 const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
   '.mp4': 'video/mp4',
@@ -142,6 +145,10 @@ export type RespondToUserMaterializationResult =
   | RespondToUserMaterializedResponse
   | RespondToUserMaterializationFailure;
 
+export type MarkdownUrlGuardOptions = {
+  allowRecordingAssetUrls?: boolean;
+};
+
 export function parseConversationVideoAssetUrl(rawUrl: string): ConversationVideoAssetRef | null {
   const match = rawUrl.trim().match(CONVERSATION_VIDEO_ASSET_URL_REGEX);
   if (!match) return null;
@@ -210,6 +217,51 @@ export function isAllowedRespondToUserImageUrl(rawUrl: string): boolean {
 
 export function isAllowedRespondToUserVideoUrl(rawUrl: string): boolean {
   return isRenderableVideoUrl(rawUrl);
+}
+
+export function isAllowedMarkdownLinkUrl(rawUrl?: string, options: MarkdownUrlGuardOptions = {}): boolean {
+  if (!rawUrl) return false;
+
+  const url = rawUrl.trim();
+  const lower = url.toLowerCase();
+
+  if (
+    lower.startsWith('#') ||
+    lower.startsWith('http://') ||
+    lower.startsWith('https://') ||
+    lower.startsWith('mailto:') ||
+    isConversationVideoAssetUrl(url)
+  ) {
+    return true;
+  }
+
+  return options.allowRecordingAssetUrls === true && RECORDING_ASSET_URL_REGEX.test(url);
+}
+
+export function isAllowedMarkdownImageUrl(rawUrl?: string): boolean {
+  if (!rawUrl) return false;
+
+  const url = rawUrl.trim();
+  const lower = url.toLowerCase();
+
+  return (
+    lower.startsWith('http://') ||
+    lower.startsWith('https://') ||
+    isConversationImageAssetUrl(url) ||
+    MARKDOWN_DATA_IMAGE_URL_REGEX.test(url)
+  );
+}
+
+export function transformMarkdownUrl(
+  url: string,
+  key?: string,
+  options: MarkdownUrlGuardOptions = {},
+): string {
+  const isImageSrc = key === 'src';
+  const isAllowed = isImageSrc
+    ? isAllowedMarkdownImageUrl(url)
+    : isAllowedMarkdownLinkUrl(url, options);
+  return isAllowed ? url : '';
 }
 
 export function getConversationImageMimeTypeFromFileName(fileName: string): string | undefined {

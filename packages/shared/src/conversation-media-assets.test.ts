@@ -15,6 +15,8 @@ import {
   getVideoAssetLabel,
   isAllowedRespondToUserImageUrl,
   isAllowedRespondToUserVideoUrl,
+  isAllowedMarkdownImageUrl,
+  isAllowedMarkdownLinkUrl,
   isSafeConversationVideoAssetFileName,
   isSafeConversationImageAssetFileName,
   isConversationImageAssetUrl,
@@ -28,6 +30,7 @@ import {
   MAX_RESPOND_TO_USER_VIDEO_FILE_BYTES,
   parseConversationImageAssetUrl,
   parseConversationVideoAssetUrl,
+  transformMarkdownUrl,
   type RespondToUserAssetHandlers,
   validateRespondToUserImageFile,
   validateRespondToUserImagePath,
@@ -134,6 +137,32 @@ describe('conversation video asset utilities', () => {
     expect(isAllowedRespondToUserVideoUrl('assets://conversation-video/conv_1/abcdef1234567890.mp4')).toBe(true);
     expect(isAllowedRespondToUserVideoUrl('https://example.com/demo.mp4')).toBe(true);
     expect(isAllowedRespondToUserVideoUrl('https://example.com/demo.png')).toBe(false);
+  });
+
+  it('validates markdown link urls', () => {
+    expect(isAllowedMarkdownLinkUrl('https://dotagents.app/docs')).toBe(true);
+    expect(isAllowedMarkdownLinkUrl('mailto:hello@dotagents.app')).toBe(true);
+    expect(isAllowedMarkdownLinkUrl('#usage')).toBe(true);
+    expect(isAllowedMarkdownLinkUrl('assets://conversation-video/conv_1/abcdef1234567890.mp4')).toBe(true);
+    expect(isAllowedMarkdownLinkUrl('assets://recording/recording_1/demo.mp4')).toBe(false);
+    expect(isAllowedMarkdownLinkUrl('assets://recording/recording_1/demo.mp4', { allowRecordingAssetUrls: true })).toBe(true);
+    expect(isAllowedMarkdownLinkUrl('javascript:alert(1)')).toBe(false);
+    expect(isAllowedMarkdownLinkUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
+  });
+
+  it('validates markdown image urls and transforms blocked urls', () => {
+    expect(isAllowedMarkdownImageUrl('https://example.com/image.png')).toBe(true);
+    expect(isAllowedMarkdownImageUrl('data:image/png;base64,AAAA')).toBe(true);
+    expect(isAllowedMarkdownImageUrl('data:image/jpeg;base64,BBBB')).toBe(true);
+    expect(isAllowedMarkdownImageUrl('assets://conversation-image/conv_1/abcd1234abcd1234.png')).toBe(true);
+    expect(isAllowedMarkdownImageUrl('data:image/svg+xml;base64,PHN2Zz4=')).toBe(false);
+    expect(isAllowedMarkdownImageUrl('assets://file?path=/tmp/secret.png')).toBe(false);
+    expect(isAllowedMarkdownImageUrl('javascript:alert(1)')).toBe(false);
+    expect(transformMarkdownUrl('javascript:alert(1)', 'href')).toBe('');
+    expect(transformMarkdownUrl('data:image/svg+xml;base64,PHN2Zz4=', 'src')).toBe('');
+    expect(transformMarkdownUrl('data:image/webp;base64,UklGRg==', 'src')).toBe(
+      'data:image/webp;base64,UklGRg==',
+    );
   });
 
   it('measures respond_to_user payload sizes and escapes labels', () => {

@@ -85,7 +85,7 @@ export async function handleChatCompletionRequest(
     const validatedRequest = validateChatCompletionRequestBody(body, {
       validateConversationId: getConversationIdValidationError,
     })
-    if (!validatedRequest.ok) {
+    if (validatedRequest.ok === false) {
       return reply.code(validatedRequest.statusCode).send(validatedRequest.body)
     }
 
