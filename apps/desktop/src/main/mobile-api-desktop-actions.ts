@@ -4,6 +4,17 @@ import {
   type AgentSessionCandidateActionOptions,
 } from "@dotagents/shared/agent-session-candidates"
 import {
+  createKnowledgeNoteAction,
+  deleteAllKnowledgeNotesAction,
+  deleteKnowledgeNoteAction,
+  deleteMultipleKnowledgeNotesAction,
+  getKnowledgeNoteAction,
+  getKnowledgeNotesAction,
+  searchKnowledgeNotesAction,
+  updateKnowledgeNoteAction,
+  type KnowledgeNoteActionOptions,
+} from "@dotagents/shared/knowledge-note-form"
+import {
   getModelsAction,
   getProviderModelsAction,
   type ModelActionOptions,
@@ -58,16 +69,6 @@ import {
   updateConversation,
 } from "./conversation-actions"
 import {
-  createKnowledgeNote,
-  deleteAllKnowledgeNotes,
-  deleteKnowledgeNote,
-  deleteMultipleKnowledgeNotes,
-  getKnowledgeNote,
-  getKnowledgeNotes,
-  searchKnowledgeNotes,
-  updateKnowledgeNote,
-} from "./knowledge-note-actions"
-import {
   deleteMcpServerConfig,
   exportMcpServerConfigs,
   getMcpServers,
@@ -110,6 +111,7 @@ import { verifyExternalAgentCommand as verifyExternalAgentCommandService } from 
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
 import { emergencyStopAll } from "./emergency-stop"
+import { knowledgeNotesService } from "./knowledge-notes-service"
 import { mcpService } from "./mcp-service"
 import { clearBadgeCount } from "./push-notification-service"
 import { generateTTS } from "./tts-service"
@@ -208,6 +210,21 @@ const externalAgentCommandVerificationActionOptions: ExternalAgentCommandVerific
   diagnostics: diagnosticsService,
 }
 
+const knowledgeNoteActionOptions: KnowledgeNoteActionOptions = {
+  service: {
+    getAllNotes: (filter) => knowledgeNotesService.getAllNotes(filter),
+    getNote: (id) => knowledgeNotesService.getNote(id),
+    searchNotes: (query, filter) => knowledgeNotesService.searchNotes(query, filter),
+    deleteNote: (id) => knowledgeNotesService.deleteNote(id),
+    deleteMultipleNotes: (ids) => knowledgeNotesService.deleteMultipleNotes(ids),
+    deleteAllNotes: () => knowledgeNotesService.deleteAllNotes(),
+    createNote: (request) => knowledgeNotesService.createNote(request),
+    saveNote: (note) => knowledgeNotesService.saveNote(note),
+    updateNote: (id, request) => knowledgeNotesService.updateNote(id, request),
+  },
+  diagnostics: diagnosticsService,
+}
+
 function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
@@ -294,6 +311,38 @@ function deleteAgentProfile(id: string | undefined) {
 
 function verifyExternalAgentCommand(body: unknown) {
   return verifyExternalAgentCommandAction(body, externalAgentCommandVerificationActionOptions)
+}
+
+async function getKnowledgeNotes(query?: unknown) {
+  return getKnowledgeNotesAction(query, knowledgeNoteActionOptions)
+}
+
+async function getKnowledgeNote(id: string | undefined) {
+  return getKnowledgeNoteAction(id, knowledgeNoteActionOptions)
+}
+
+async function searchKnowledgeNotes(body: unknown) {
+  return searchKnowledgeNotesAction(body, knowledgeNoteActionOptions)
+}
+
+async function deleteKnowledgeNote(id: string | undefined) {
+  return deleteKnowledgeNoteAction(id, knowledgeNoteActionOptions)
+}
+
+async function deleteMultipleKnowledgeNotes(body: unknown) {
+  return deleteMultipleKnowledgeNotesAction(body, knowledgeNoteActionOptions)
+}
+
+async function deleteAllKnowledgeNotes() {
+  return deleteAllKnowledgeNotesAction(knowledgeNoteActionOptions)
+}
+
+async function createKnowledgeNote(body: unknown) {
+  return createKnowledgeNoteAction(body, knowledgeNoteActionOptions)
+}
+
+async function updateKnowledgeNote(id: string | undefined, body: unknown) {
+  return updateKnowledgeNoteAction(id, body, knowledgeNoteActionOptions)
 }
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {

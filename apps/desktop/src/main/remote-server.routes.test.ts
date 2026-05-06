@@ -299,12 +299,6 @@ function getBundleActionsSource(): string {
   return readFileSync(bundleActionsPath, "utf8")
 }
 
-function getKnowledgeNoteActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const knowledgeNoteActionsPath = path.join(testDir, "knowledge-note-actions.ts")
-  return readFileSync(knowledgeNoteActionsPath, "utf8")
-}
-
 function getSharedKnowledgeNoteFormSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedKnowledgeNoteFormPath = path.join(testDir, "../../../../packages/shared/src/knowledge-note-form.ts")
@@ -719,7 +713,6 @@ describe("remote-server route registration", () => {
   it("keeps remote route action result contracts shared", () => {
     const mobileActionSources = [
       getConversationActionsSource(),
-      getKnowledgeNoteActionsSource(),
       getMcpServerActionsSource(),
       getRepeatTaskActionsSource(),
       getSettingsActionsSource(),
@@ -1817,7 +1810,7 @@ describe("remote-server route registration", () => {
   it("registers note-only knowledge routes", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
-    const knowledgeNoteActionsSource = getKnowledgeNoteActionsSource()
+    const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedKnowledgeNoteFormSource = getSharedKnowledgeNoteFormSource()
 
     expectRegisteredApiRoute(source, "GET", "knowledgeNotes")
@@ -1836,14 +1829,14 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.createKnowledgeNote(req.body)")
     expect(mobileApiRoutesSource).toContain("actions.updateKnowledgeNote(params.id, req.body)")
     expect(mobileApiRoutesSource).toContain("actions.deleteKnowledgeNote(params.id)")
-    expect(knowledgeNoteActionsSource).toContain("getKnowledgeNotesAction(query, knowledgeNoteActionOptions)")
-    expect(knowledgeNoteActionsSource).toContain("getKnowledgeNoteAction(id, knowledgeNoteActionOptions)")
-    expect(knowledgeNoteActionsSource).toContain("searchKnowledgeNotesAction(body, knowledgeNoteActionOptions)")
-    expect(knowledgeNoteActionsSource).toContain("deleteMultipleKnowledgeNotesAction(body, knowledgeNoteActionOptions)")
-    expect(knowledgeNoteActionsSource).toContain("deleteAllKnowledgeNotesAction(knowledgeNoteActionOptions)")
-    expect(knowledgeNoteActionsSource).toContain("createKnowledgeNoteAction(body, knowledgeNoteActionOptions)")
-    expect(knowledgeNoteActionsSource).toContain("updateKnowledgeNoteAction(id, body, knowledgeNoteActionOptions)")
-    expect(knowledgeNoteActionsSource).toContain("deleteKnowledgeNoteAction(id, knowledgeNoteActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getKnowledgeNotesAction(query, knowledgeNoteActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("getKnowledgeNoteAction(id, knowledgeNoteActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("searchKnowledgeNotesAction(body, knowledgeNoteActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("deleteMultipleKnowledgeNotesAction(body, knowledgeNoteActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("deleteAllKnowledgeNotesAction(knowledgeNoteActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("createKnowledgeNoteAction(body, knowledgeNoteActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("updateKnowledgeNoteAction(id, body, knowledgeNoteActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("deleteKnowledgeNoteAction(id, knowledgeNoteActionOptions)")
     expect(sharedKnowledgeNoteFormSource).toContain("export interface KnowledgeNoteActionOptions")
     expect(sharedKnowledgeNoteFormSource).toContain("export async function getKnowledgeNotesAction")
     expect(sharedKnowledgeNoteFormSource).toContain("export async function getKnowledgeNoteAction")
