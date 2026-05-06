@@ -23,6 +23,7 @@ describe("settings agents capability config", () => {
   })
 
   it("uses shared skill enablement semantics in the desktop agent editor", () => {
+    expect(settingsAgentsSource).toContain("countEnabledAgentProfileSkills(agent.skillsConfig, availableSkillIds)")
     expect(settingsAgentsSource).toContain("isAgentProfileSkillEnabled(editing?.skillsConfig, skillId)")
     expect(settingsAgentsSource).toContain("toggleAgentProfileSkillConfig(editing.skillsConfig, skillId, skills.map(s => s.id))")
     expect(settingsAgentsSource).toContain("getAgentProfileSkillsConfigAfterSetAllEnabled(true)")
@@ -31,6 +32,13 @@ describe("settings agents capability config", () => {
     expect(settingsAgentsSource).toContain("hasNoAgentProfileSkillsEnabled(editing?.skillsConfig, skills.map(s => s.id))")
     expect(settingsAgentsSource).not.toContain("skillsConfig: { enabledSkillIds: [], allSkillsDisabledByDefault")
     expect(settingsAgentsSource).not.toContain("editing?.skillsConfig?.enabledSkillIds?.length === skills.length")
+    expect(settingsAgentsSource).not.toContain("agent.skillsConfig.allSkillsDisabledByDefault")
+  })
+
+  it("uses shared runtime tool counts in desktop agent card summaries", () => {
+    expect(settingsAgentsSource).toContain("countEnabledAgentProfileRuntimeTools(agent.toolConfig, runtimeToolNames)")
+    expect(settingsAgentsSource).not.toContain("const runtimeList = agent.toolConfig?.enabledRuntimeTools")
+    expect(settingsAgentsSource).not.toContain("runtimeList.length")
   })
 
   it("uses shared per-agent model field helpers in the desktop agent editor", () => {

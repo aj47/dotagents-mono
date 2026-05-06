@@ -37,6 +37,8 @@ import {
 import {
   AGENT_PROFILE_AGENT_MODEL_PROVIDER_OPTIONS,
   buildAgentProfileAgentModelUpdate,
+  countEnabledAgentProfileRuntimeTools,
+  countEnabledAgentProfileSkills,
   hasAllAgentProfileMcpServersEnabled,
   hasAllAgentProfileRuntimeToolsEnabled,
   hasAllAgentProfileSkillsEnabled,
@@ -136,7 +138,7 @@ function emptyAgent(): EditingAgent {
   }
 }
 
-function getAgentCardSummaryItems(agent: AgentProfile, availableSkillCount: number, availableRuntimeToolCount: number): string[] {
+function getAgentCardSummaryItems(agent: AgentProfile, availableSkillIds: readonly string[], runtimeToolNames: readonly string[]): string[] {
   const items: string[] = [agent.connection.type]
 
   const agentProviderId = agent.modelConfig?.agentProviderId || agent.modelConfig?.mcpToolsProviderId
@@ -149,18 +151,13 @@ function getAgentCardSummaryItems(agent: AgentProfile, availableSkillCount: numb
     items.push(`${enabledServerCount} server${enabledServerCount === 1 ? "" : "s"}`)
   }
 
-  if (availableSkillCount > 0) {
-    const enabledSkillCount = (!agent.skillsConfig || !agent.skillsConfig.allSkillsDisabledByDefault)
-      ? availableSkillCount
-      : (agent.skillsConfig.enabledSkillIds?.length ?? 0)
+  if (availableSkillIds.length > 0) {
+    const enabledSkillCount = countEnabledAgentProfileSkills(agent.skillsConfig, availableSkillIds)
     items.push(`${enabledSkillCount} skill${enabledSkillCount === 1 ? "" : "s"}`)
   }
 
-  if (availableRuntimeToolCount > 0) {
-    const runtimeList = agent.toolConfig?.enabledRuntimeTools
-    const enabledRuntimeCount = (!runtimeList || runtimeList.length === 0)
-      ? availableRuntimeToolCount
-      : runtimeList.length
+  if (runtimeToolNames.length > 0) {
+    const enabledRuntimeCount = countEnabledAgentProfileRuntimeTools(agent.toolConfig, runtimeToolNames)
     items.push(`${enabledRuntimeCount} runtime tool${enabledRuntimeCount === 1 ? "" : "s"}`)
   }
 
@@ -585,7 +582,11 @@ export function SettingsAgents() {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-12">
         {sortedAgents.map(agent => {
-          const summaryItems = getAgentCardSummaryItems(agent, skills.length, runtimeTools.length)
+          const summaryItems = getAgentCardSummaryItems(
+            agent,
+            skills.map(skill => skill.id),
+            runtimeTools.map(tool => tool.name),
+          )
 
           return (
             <Card key={agent.id} className={`overflow-hidden flex flex-col transition-all hover:shadow-md ${!agent.enabled ? "opacity-60 grayscale-[0.5]" : ""}`}>
