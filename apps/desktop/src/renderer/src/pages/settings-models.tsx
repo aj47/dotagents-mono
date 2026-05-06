@@ -22,6 +22,7 @@ import {
   DEFAULT_AGENT_PROVIDER_ID,
   DEFAULT_STT_PROVIDER_ID,
   DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED,
   DEFAULT_TTS_PROVIDER_ID,
   STT_PROVIDER_ID,
   CHAT_PROVIDER_ID,
@@ -162,7 +163,7 @@ export function Component() {
   const transcriptProcessingProviderId = config.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID
   const ttsProviderId = config.ttsProviderId || DEFAULT_TTS_PROVIDER_ID
   const agentProviderId = config.agentProviderId || config.mcpToolsProviderId || DEFAULT_AGENT_PROVIDER_ID
-  const transcriptProcessingEnabled = config.transcriptPostProcessingEnabled ?? false
+  const transcriptProcessingEnabled = config.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED
   const transcriptProcessingModelKey = getTranscriptPostProcessingModelSettingKey(transcriptProcessingProviderId)
   const usesOpenAiCompatiblePreset =
     agentProviderId === "openai" ||
