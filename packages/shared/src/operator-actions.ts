@@ -162,6 +162,40 @@ export interface OperatorUpdaterActionOptions {
   service: OperatorUpdaterActionService
 }
 
+export type OperatorTunnelActionResult = {
+  statusCode: number
+  body: unknown
+  auditContext?: OperatorActionAuditContext
+}
+
+export interface OperatorTunnelActionConfigStore {
+  get(): OperatorTunnelSetupConfigLike
+}
+
+export interface OperatorTunnelActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void
+}
+
+export interface OperatorTunnelActionService {
+  getStatus(): OperatorTunnelStatusLike
+  checkCloudflaredInstalled(): Promise<boolean>
+  checkCloudflaredLoggedIn(): Promise<boolean>
+  listCloudflareTunnels(): Promise<OperatorTunnelSetupListResultLike>
+  startQuickTunnel(): Promise<OperatorActionResultLike & { url?: string }>
+  startNamedTunnel(options: {
+    tunnelId: string
+    hostname: string
+    credentialsPath?: string
+  }): Promise<OperatorActionResultLike & { url?: string }>
+  stopTunnel(): Promise<void>
+}
+
+export interface OperatorTunnelActionOptions {
+  config: OperatorTunnelActionConfigStore
+  diagnostics: OperatorTunnelActionDiagnostics
+  service: OperatorTunnelActionService
+}
+
 export type RunAgentResultLike = AgentRunResult
 
 export type OperatorHealthLike = Pick<OperatorHealthSnapshot, "overall" | "checks">
@@ -1836,6 +1870,131 @@ export function buildOperatorTunnelStopActionResponse(): OperatorActionResponse 
     success: true,
     action: "tunnel-stop",
     message: "Cloudflare tunnel stopped",
+  }
+}
+
+function operatorTunnelActionResult(
+  statusCode: number,
+  body: unknown,
+  auditContext?: OperatorActionAuditContext,
+): OperatorTunnelActionResult {
+  return {
+    statusCode,
+    body,
+    ...(auditContext ? { auditContext } : {}),
+  }
+}
+
+function operatorTunnelActionError(
+  statusCode: number,
+  message: string,
+  auditContext?: OperatorActionAuditContext,
+): OperatorTunnelActionResult {
+  return operatorTunnelActionResult(statusCode, { error: message }, auditContext)
+}
+
+export function getOperatorTunnelAction(options: OperatorTunnelActionOptions): OperatorTunnelActionResult {
+  return operatorTunnelActionResult(200, buildOperatorTunnelStatus(options.service.getStatus()))
+}
+
+export async function getOperatorTunnelSetupAction(
+  options: OperatorTunnelActionOptions,
+): Promise<OperatorTunnelActionResult> {
+  try {
+    const cfg = options.config.get()
+    const installed = await options.service.checkCloudflaredInstalled()
+    const loggedIn = installed ? await options.service.checkCloudflaredLoggedIn() : false
+    const listResult = installed && loggedIn
+      ? await options.service.listCloudflareTunnels()
+      : undefined
+
+    return operatorTunnelActionResult(200, buildOperatorTunnelSetupSummary({
+      config: cfg,
+      installed,
+      loggedIn,
+      listResult,
+    }))
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-tunnel-actions", "Failed to build tunnel setup summary", caughtError)
+    return operatorTunnelActionError(500, "Failed to build tunnel setup summary")
+  }
+}
+
+async function startConfiguredOperatorTunnel(
+  options: OperatorTunnelActionOptions,
+): Promise<OperatorTunnelStartResultLike> {
+  const cfg = options.config.get()
+  const startPlan = getConfiguredCloudflareTunnelStartPlan(cfg)
+
+  if (startPlan.ok === false) {
+    return {
+      success: false,
+      mode: startPlan.mode,
+      error: startPlan.error,
+    }
+  }
+
+  if (startPlan.mode === "named") {
+    const result = await options.service.startNamedTunnel({
+      tunnelId: startPlan.tunnelId,
+      hostname: startPlan.hostname,
+      credentialsPath: startPlan.credentialsPath,
+    })
+
+    return {
+      ...result,
+      mode: startPlan.mode,
+    }
+  }
+
+  const result = await options.service.startQuickTunnel()
+  return {
+    ...result,
+    mode: startPlan.mode,
+  }
+}
+
+export async function startOperatorTunnelAction(
+  remoteServerRunning: boolean,
+  options: OperatorTunnelActionOptions,
+): Promise<OperatorTunnelActionResult> {
+  try {
+    if (!remoteServerRunning) {
+      const response = buildOperatorTunnelStartRemoteServerRequiredResponse()
+      return operatorTunnelActionResult(200, response, {
+        action: response.action,
+        success: false,
+        failureReason: "remote-server-not-running",
+      })
+    }
+
+    const result = await startConfiguredOperatorTunnel(options)
+    const response = buildOperatorTunnelStartActionResponse(result)
+    return operatorTunnelActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-tunnel-actions", "Failed to start tunnel from operator route", caughtError)
+    return operatorTunnelActionError(500, "Failed to start tunnel", {
+      action: "tunnel-start",
+      success: false,
+      failureReason: "tunnel-start-route-error",
+    })
+  }
+}
+
+export async function stopOperatorTunnelAction(
+  options: OperatorTunnelActionOptions,
+): Promise<OperatorTunnelActionResult> {
+  try {
+    await options.service.stopTunnel()
+    const response = buildOperatorTunnelStopActionResponse()
+    return operatorTunnelActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-tunnel-actions", "Failed to stop tunnel from operator route", caughtError)
+    return operatorTunnelActionError(500, "Failed to stop tunnel", {
+      action: "tunnel-stop",
+      success: false,
+      failureReason: "tunnel-stop-route-error",
+    })
   }
 }
 

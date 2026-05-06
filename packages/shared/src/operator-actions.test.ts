@@ -77,6 +77,8 @@ import {
   getOperatorAuditPath,
   getOperatorAuditSource,
   getOperatorMcpToolResultText,
+  getOperatorTunnelAction,
+  getOperatorTunnelSetupAction,
   getOperatorUpdaterAction,
   getSanitizedWhatsAppOperatorDetails,
   getSensitiveOperatorSettingsKeys,
@@ -112,7 +114,10 @@ import {
   updateOperatorQueuedMessageAction,
   type OperatorApiKeyActionOptions,
   type OperatorMessageQueueActionOptions,
+  type OperatorTunnelActionOptions,
   type OperatorUpdaterActionOptions,
+  startOperatorTunnelAction,
+  stopOperatorTunnelAction,
 } from "./operator-actions"
 
 describe("operator action API helpers", () => {
@@ -768,6 +773,144 @@ describe("operator action API helpers", () => {
       mode: "named",
       error: "Named tunnel requires cloudflareTunnelId and cloudflareTunnelHostname",
     })
+  })
+
+  it("runs tunnel route actions through a shared service adapter", async () => {
+    const calls: string[] = []
+    const options: OperatorTunnelActionOptions = {
+      config: {
+        get: () => ({
+          cloudflareTunnelMode: "named",
+          cloudflareTunnelId: " tunnel-1 ",
+          cloudflareTunnelHostname: " agent.example.com ",
+          cloudflareTunnelCredentialsPath: " /tmp/creds.json ",
+        }),
+      },
+      diagnostics: {
+        logError: (_source, message) => { calls.push(`error:${message}`) },
+      },
+      service: {
+        getStatus: () => ({
+          running: true,
+          starting: false,
+          mode: "named",
+          url: "https://agent.example.com",
+        }),
+        checkCloudflaredInstalled: async () => {
+          calls.push("installed")
+          return true
+        },
+        checkCloudflaredLoggedIn: async () => {
+          calls.push("logged-in")
+          return true
+        },
+        listCloudflareTunnels: async () => {
+          calls.push("list")
+          return {
+            success: true,
+            tunnels: [{ id: "tunnel-1", name: "agent", created_at: "2026-01-01T00:00:00Z" }],
+          }
+        },
+        startQuickTunnel: async () => {
+          calls.push("quick")
+          return { success: true, url: "https://quick.example.com" }
+        },
+        startNamedTunnel: async (startOptions) => {
+          calls.push(`named:${startOptions.tunnelId}:${startOptions.hostname}:${startOptions.credentialsPath}`)
+          return { success: true, url: "https://agent.example.com" }
+        },
+        stopTunnel: async () => {
+          calls.push("stop")
+        },
+      },
+    }
+
+    expect(getOperatorTunnelAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        running: true,
+        mode: "named",
+        url: "https://agent.example.com",
+      },
+    })
+    expect(await getOperatorTunnelSetupAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        installed: true,
+        loggedIn: true,
+        namedTunnelConfigured: true,
+        configuredTunnelId: " tunnel-1 ",
+        tunnelCount: 1,
+      },
+    })
+    expect(await startOperatorTunnelAction(false, options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: false,
+        action: "tunnel-start",
+        error: "Remote server is not running",
+      },
+      auditContext: {
+        action: "tunnel-start",
+        success: false,
+        failureReason: "remote-server-not-running",
+      },
+    })
+    expect(await startOperatorTunnelAction(true, options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "tunnel-start",
+        details: {
+          mode: "named",
+          url: "https://agent.example.com",
+        },
+      },
+      auditContext: {
+        action: "tunnel-start",
+        success: true,
+        details: {
+          mode: "named",
+          url: "https://agent.example.com",
+        },
+      },
+    })
+    expect(await stopOperatorTunnelAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "tunnel-stop",
+      },
+      auditContext: {
+        action: "tunnel-stop",
+        success: true,
+      },
+    })
+    expect(calls).toEqual([
+      "installed",
+      "logged-in",
+      "list",
+      "named:tunnel-1:agent.example.com:/tmp/creds.json",
+      "stop",
+    ])
+
+    const failingOptions: OperatorTunnelActionOptions = {
+      ...options,
+      service: {
+        ...options.service,
+        stopTunnel: async () => { throw new Error("stop denied") },
+      },
+    }
+    expect(await stopOperatorTunnelAction(failingOptions)).toMatchObject({
+      statusCode: 500,
+      body: { error: "Failed to stop tunnel" },
+      auditContext: {
+        action: "tunnel-stop",
+        success: false,
+        failureReason: "tunnel-stop-route-error",
+      },
+    })
+    expect(calls).toContain("error:Failed to stop tunnel from operator route")
   })
 
   it("builds audit, conversation, and Discord log responses", () => {
