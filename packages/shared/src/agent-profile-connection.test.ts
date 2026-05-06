@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   AGENT_EDIT_CONNECTION_TYPE_OPTIONS,
+  DEFAULT_AGENT_CONNECTION_FORM_FIELDS,
   applyConnectionTypeChange,
   buildAgentConnectionCommandPreview,
   buildAgentConnectionRequestFields,
@@ -185,6 +186,15 @@ describe("agent connection request helpers", () => {
   })
 
   it("normalizes persisted connection records into editable form fields", () => {
+    expect(DEFAULT_AGENT_CONNECTION_FORM_FIELDS).toEqual({
+      connectionType: "internal",
+      connectionCommand: "",
+      connectionArgs: "",
+      connectionBaseUrl: "",
+      connectionCwd: "",
+    })
+    expect(normalizeAgentConnectionFormFieldsForEdit(undefined)).toEqual(DEFAULT_AGENT_CONNECTION_FORM_FIELDS)
+
     expect(normalizeAgentConnectionFormFieldsForEdit({
       type: "stdio",
       agent: "default",

@@ -61,6 +61,8 @@ describe("settings agents capability config", () => {
 
   it("uses shared connection normalization before saving desktop agents", () => {
     expect(settingsAgentsSource).toContain("AGENT_EDIT_CONNECTION_TYPE_OPTIONS")
+    expect(settingsAgentsSource).toContain("DEFAULT_AGENT_CONNECTION_FORM_FIELDS")
+    expect(settingsAgentsSource).toContain("...DEFAULT_AGENT_CONNECTION_FORM_FIELDS")
     expect(settingsAgentsSource).toContain("applyConnectionTypeChange")
     expect(settingsAgentsSource).toContain("buildAgentConnectionCommandPreview")
     expect(settingsAgentsSource).toContain("getAgentConnectionFormValidationError")

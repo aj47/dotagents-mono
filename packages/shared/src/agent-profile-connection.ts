@@ -79,6 +79,14 @@ export interface AgentConnectionRequestFields {
 
 const LOCAL_AGENT_PROFILE_CONNECTION_TYPES = new Set<AgentProfileConnectionTypeValue>(["acpx", "acp", "stdio"])
 
+export const DEFAULT_AGENT_CONNECTION_FORM_FIELDS: AgentConnectionFormFields = {
+  connectionType: "internal",
+  connectionCommand: "",
+  connectionArgs: "",
+  connectionBaseUrl: "",
+  connectionCwd: "",
+}
+
 function normalizeText(value: string | undefined): string | undefined {
   const trimmed = value?.trim()
   return trimmed ? trimmed : undefined
@@ -124,6 +132,7 @@ export function normalizeAgentConnectionFormFieldsForEdit(
   fallbackConnectionType?: string | null,
 ): AgentConnectionFormFields {
   return {
+    ...DEFAULT_AGENT_CONNECTION_FORM_FIELDS,
     connectionType: normalizeAgentEditConnectionType(connection?.type ?? fallbackConnectionType),
     ...(connection?.agent ? { connectionAgent: connection.agent } : {}),
     connectionCommand: connection?.command ?? "",

@@ -78,6 +78,8 @@ test('uses shared enabled-count helpers in the mobile agent editor', () => {
 
 test('uses shared connection type normalization in the mobile agent editor', () => {
   assert.match(screenSource, /from '@dotagents\/shared\/agent-profile-connection'/);
+  assert.match(screenSource, /DEFAULT_AGENT_CONNECTION_FORM_FIELDS/);
+  assert.match(screenSource, /\.\.\.DEFAULT_AGENT_CONNECTION_FORM_FIELDS/);
   assert.match(screenSource, /normalizeAgentConnectionFormFieldsForEdit/);
   assert.match(screenSource, /getAgentConnectionFormValidationError/);
   assert.doesNotMatch(screenSource, /from '\.\/agent-edit-connection-utils'/);

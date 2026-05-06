@@ -17,6 +17,7 @@ import {
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
 import {
   AGENT_EDIT_CONNECTION_TYPE_OPTIONS,
+  DEFAULT_AGENT_CONNECTION_FORM_FIELDS,
   applyConnectionTypeChange,
   buildAgentConnectionRequestFields,
   getAgentConnectionFormValidationError,
@@ -105,11 +106,7 @@ const defaultFormData: AgentFormData = {
   avatarDataUrl: null,
   systemPrompt: '',
   guidelines: '',
-  connectionType: 'internal',
-  connectionCommand: '',
-  connectionArgs: '',
-  connectionBaseUrl: '',
-  connectionCwd: '',
+  ...DEFAULT_AGENT_CONNECTION_FORM_FIELDS,
   enabled: true,
   autoSpawn: false,
   properties: {},

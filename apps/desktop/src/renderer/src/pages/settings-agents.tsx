@@ -21,6 +21,7 @@ import {
 } from "@dotagents/shared/agent-profile-presets"
 import {
   AGENT_EDIT_CONNECTION_TYPE_OPTIONS,
+  DEFAULT_AGENT_CONNECTION_FORM_FIELDS,
   type AgentEditConnectionType,
   applyConnectionTypeChange,
   buildAgentConnectionCommandPreview,
@@ -121,7 +122,8 @@ type ServerInfo = { connected: boolean; toolCount: number; runtimeEnabled?: bool
 function emptyAgent(): EditingAgent {
   return {
     displayName: "", description: "", systemPrompt: "", guidelines: "",
-    connectionType: "internal", enabled: true,
+    ...DEFAULT_AGENT_CONNECTION_FORM_FIELDS,
+    enabled: true,
     modelConfig: undefined, toolConfig: undefined,
     skillsConfig: undefined, properties: {},
   }
