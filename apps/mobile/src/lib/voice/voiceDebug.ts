@@ -1,30 +1,18 @@
 import { useCallback, useState } from 'react';
-import type { HandsFreeDebugEventType } from '@dotagents/shared/types';
+import {
+  formatVoiceDebugEntry,
+  MAX_VOICE_DEBUG_EVENTS,
+  prependVoiceDebugEntry,
+  type VoiceDebugEntry,
+  type VoiceDebugLog,
+} from '@dotagents/shared/voice-debug-log';
 
-export type VoiceDebugEntry = {
-  id: string;
-  at: number;
-  type: HandsFreeDebugEventType;
-  summary: string;
-  detail?: Record<string, unknown>;
+export {
+  formatVoiceDebugEntry,
+  MAX_VOICE_DEBUG_EVENTS,
+  prependVoiceDebugEntry,
 };
-
-export type VoiceDebugLog = (
-  type: HandsFreeDebugEventType,
-  summary: string,
-  detail?: Record<string, unknown>,
-) => void;
-
-const MAX_VOICE_DEBUG_EVENTS = 20;
-
-export function formatVoiceDebugEntry(entry: VoiceDebugEntry): string {
-  const timestamp = new Date(entry.at).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-  return `${timestamp} · ${entry.summary}`;
-}
+export type { VoiceDebugEntry, VoiceDebugLog } from '@dotagents/shared/voice-debug-log';
 
 export function useVoiceDebug(enabled: boolean) {
   const [events, setEvents] = useState<VoiceDebugEntry[]>([]);
@@ -50,7 +38,7 @@ export function useVoiceDebug(enabled: boolean) {
         summary,
         detail,
       };
-      return [next, ...prev].slice(0, MAX_VOICE_DEBUG_EVENTS);
+      return prependVoiceDebugEntry(prev, next);
     });
   }, [enabled]);
 
