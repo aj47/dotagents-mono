@@ -11,7 +11,14 @@ import { Badge } from "@renderer/components/ui/badge"
 import { Loader2, Copy, Download, Globe, User, Tag, Info, AlertTriangle, FileJson } from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
-import { buildHubBundleArtifactUrl, slugifyHubCatalogId, type HubPublishSubmission } from "@dotagents/shared/hub"
+import {
+  buildHubBundlePublicMetadata,
+  buildHubPublishSubmission,
+  getHubDraftArtifactUrl,
+  getHubDraftCatalogId,
+  type HubPublishMetadataDraft,
+} from "@dotagents/shared/hub"
+import { DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION } from "@dotagents/shared/bundle-api"
 import { toast } from "sonner"
 import {
   BundleDetailedSelectionCard,
@@ -22,32 +29,15 @@ import {
 } from "@renderer/components/bundle-selection"
 
 interface PublishDialogProps { open: boolean; onOpenChange: (open: boolean) => void }
-interface PublishForm { name: string; catalogId: string; artifactUrl: string; description: string; summary: string; authorName: string; authorHandle: string; authorUrl: string; tags: string }
+interface PublishForm extends HubPublishMetadataDraft { name: string; catalogId: string; artifactUrl: string; description: string; summary: string; authorName: string; authorHandle: string; authorUrl: string; tags: string }
 interface PublishComponents extends BundleComponentSelectionState {}
 interface PublishPreviewState { payloadJson: string; bundleJson: string; installUrl: string; submissionJson: string; catalogId: string }
 const EMPTY: PublishForm = { name: "", catalogId: "", artifactUrl: "", description: "", summary: "", authorName: "", authorHandle: "", authorUrl: "", tags: "" }
-const DEFAULT_PUBLISH_COMPONENTS: PublishComponents = { agentProfiles: true, mcpServers: true, skills: true, repeatTasks: false, knowledgeNotes: false }
-
-function buildMeta(f: PublishForm) {
-  return {
-    summary: f.summary.trim(),
-    author: { displayName: f.authorName.trim(), ...(f.authorHandle.trim() ? { handle: f.authorHandle.trim() } : {}), ...(f.authorUrl.trim() ? { url: f.authorUrl.trim() } : {}) },
-    tags: f.tags.split(",").map(t => t.trim()).filter(Boolean),
-  }
-}
-
-function getDraftCatalogId(f: PublishForm): string {
-  return slugifyHubCatalogId(f.catalogId.trim() || f.name.trim())
-}
-
-function getDraftArtifactUrl(f: PublishForm): string {
-  return f.artifactUrl.trim() || buildHubBundleArtifactUrl(getDraftCatalogId(f))
-}
 
 export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) {
   const [step, setStep] = useState<"metadata" | "preview">("metadata")
   const [form, setForm] = useState<PublishForm>({ ...EMPTY })
-  const [components, setComponents] = useState<PublishComponents>({ ...DEFAULT_PUBLISH_COMPONENTS })
+  const [components, setComponents] = useState<PublishComponents>({ ...DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION })
   const [selection, setSelection] = useState<BundleDetailedSelectionState>({ ...EMPTY_BUNDLE_SELECTION })
   const [selectionInitialized, setSelectionInitialized] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -68,7 +58,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
     if (!v) {
       setStep("metadata")
       setForm({ ...EMPTY })
-      setComponents({ ...DEFAULT_PUBLISH_COMPONENTS })
+      setComponents({ ...DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION })
       setSelection({ ...EMPTY_BUNDLE_SELECTION })
       setSelectionInitialized(false)
       setPreview(null)
@@ -85,7 +75,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
         catalogId: form.catalogId.trim() || undefined,
         artifactUrl: form.artifactUrl.trim() || undefined,
         description: form.description.trim() || undefined,
-        publicMetadata: buildMeta(form),
+        publicMetadata: buildHubBundlePublicMetadata(form),
         components,
         agentProfileIds: selection.agentProfileIds,
         mcpServerNames: selection.mcpServerNames,
@@ -93,11 +83,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
         repeatTaskIds: selection.repeatTaskIds,
         knowledgeNoteIds: selection.knowledgeNoteIds,
       })
-      const submission: HubPublishSubmission = {
-        source: "dotagents-desktop",
-        version: 1,
-        payload: r,
-      }
+      const submission = buildHubPublishSubmission(r)
       setPreview({
         payloadJson: JSON.stringify(r.catalogItem, null, 2),
         bundleJson: r.bundleJson,
@@ -112,7 +98,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
       const r = await tipcClient.exportBundle({
         name: form.name.trim(),
         description: form.description.trim() || undefined,
-        publicMetadata: buildMeta(form),
+        publicMetadata: buildHubBundlePublicMetadata(form),
         components,
         agentProfileIds: selection.agentProfileIds,
         mcpServerNames: selection.mcpServerNames,
@@ -260,8 +246,8 @@ function PreviewLinkRow({ label, value, onCopy, copyLabel }: { label: string; va
 }
 
 function Fields({ form, set }: { form: PublishForm; set: (f: PublishForm) => void }) {
-  const derivedCatalogId = getDraftCatalogId(form)
-  const derivedArtifactUrl = getDraftArtifactUrl(form)
+  const derivedCatalogId = getHubDraftCatalogId(form)
+  const derivedArtifactUrl = getHubDraftArtifactUrl(form)
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">

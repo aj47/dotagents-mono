@@ -5,6 +5,7 @@ import {
   BUNDLE_COMPONENT_OPTIONS,
   BUNDLE_IMPORT_CONFLICT_STRATEGY_OPTIONS,
   DEFAULT_BUNDLE_COMPONENT_SELECTION,
+  DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
   EMPTY_BUNDLE_ITEM_SELECTION,
   buildBundleExportResponse,
   buildBundleExportableItemsResponse,
@@ -200,6 +201,13 @@ describe("bundle API helpers", () => {
       skills: true,
       repeatTasks: true,
       knowledgeNotes: true,
+    })
+    expect(DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION).toEqual({
+      agentProfiles: true,
+      mcpServers: true,
+      skills: true,
+      repeatTasks: false,
+      knowledgeNotes: false,
     })
     expect(EMPTY_BUNDLE_ITEM_SELECTION).toEqual({
       agentProfileIds: [],

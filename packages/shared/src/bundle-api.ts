@@ -206,6 +206,14 @@ export const DEFAULT_BUNDLE_COMPONENT_SELECTION: RequiredBundleComponentSelectio
   knowledgeNotes: true,
 }
 
+export const DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION: RequiredBundleComponentSelection = {
+  agentProfiles: true,
+  mcpServers: true,
+  skills: true,
+  repeatTasks: false,
+  knowledgeNotes: false,
+}
+
 export const EMPTY_BUNDLE_ITEM_SELECTION: DetailedBundleItemSelection = {
   agentProfileIds: [],
   mcpServerNames: [],

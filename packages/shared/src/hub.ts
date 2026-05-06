@@ -1,3 +1,5 @@
+import type { BundlePublicMetadata } from "./bundle-api"
+
 export interface HubCatalogAuthor {
   displayName: string
   handle?: string
@@ -50,6 +52,17 @@ export interface HubPublishSubmission {
   payload: HubPublishPayload
 }
 
+export interface HubPublishMetadataDraft {
+  name?: string
+  catalogId?: string
+  artifactUrl?: string
+  summary?: string
+  authorName?: string
+  authorHandle?: string
+  authorUrl?: string
+  tags?: string
+}
+
 const DEFAULT_HUB_BASE_URL = "https://hub.dotagentsprotocol.com"
 
 export function slugifyHubCatalogId(value: string): string {
@@ -74,4 +87,32 @@ export function buildHubBundleArtifactUrl(
 
 export function buildHubBundleInstallUrl(bundleUrl: string): string {
   return `dotagents://install?bundle=${encodeURIComponent(bundleUrl)}`
+}
+
+export function buildHubBundlePublicMetadata(draft: HubPublishMetadataDraft): BundlePublicMetadata {
+  return {
+    summary: draft.summary?.trim() ?? "",
+    author: {
+      displayName: draft.authorName?.trim() ?? "",
+      ...(draft.authorHandle?.trim() ? { handle: draft.authorHandle.trim() } : {}),
+      ...(draft.authorUrl?.trim() ? { url: draft.authorUrl.trim() } : {}),
+    },
+    tags: draft.tags?.split(",").map((tag) => tag.trim()).filter(Boolean) ?? [],
+  }
+}
+
+export function getHubDraftCatalogId(draft: HubPublishMetadataDraft): string {
+  return slugifyHubCatalogId(draft.catalogId?.trim() || draft.name?.trim() || "")
+}
+
+export function getHubDraftArtifactUrl(draft: HubPublishMetadataDraft): string {
+  return draft.artifactUrl?.trim() || buildHubBundleArtifactUrl(getHubDraftCatalogId(draft))
+}
+
+export function buildHubPublishSubmission(payload: HubPublishPayload): HubPublishSubmission {
+  return {
+    source: "dotagents-desktop",
+    version: 1,
+    payload,
+  }
 }

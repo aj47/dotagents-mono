@@ -26,6 +26,7 @@ import {
   type HubCatalogCompatibility,
   type HubPublishPayload,
 } from "@dotagents/shared/hub"
+import { DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION } from "@dotagents/shared/bundle-api"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./agents-files/modular-config"
 import { loadAgentProfilesLayer, writeAgentsProfileFiles } from "./agents-files/agent-profiles"
 import { loadAgentsSkillsLayer, writeAgentsSkillFile, skillIdToDirPath } from "./agents-files/skills"
@@ -635,14 +636,6 @@ const DEFAULT_EXPORT_COMPONENTS: Required<BundleComponentSelection> = {
   skills: true,
   repeatTasks: true,
   knowledgeNotes: true,
-}
-
-const DEFAULT_PUBLISH_COMPONENTS: Required<BundleComponentSelection> = {
-  agentProfiles: true,
-  mcpServers: true,
-  skills: true,
-  repeatTasks: false,
-  knowledgeNotes: false,
 }
 
 function loadSkillsForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleSkill[] {
@@ -1842,7 +1835,7 @@ export async function generatePublishPayload(
   const publishOptions: ExportBundleOptions = {
     ...exportOptions,
     components: {
-      ...DEFAULT_PUBLISH_COMPONENTS,
+      ...DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
       ...options.components,
     },
   }
