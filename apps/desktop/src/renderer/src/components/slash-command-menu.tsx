@@ -8,6 +8,8 @@ import { toast } from "sonner"
 import { LoopConfig } from "@shared/types"
 import { getRepeatTaskRunNowDescription } from "@dotagents/shared/repeat-task-utils"
 import {
+  getPromptLibraryPromptContent,
+  getPromptLibraryPromptDescription,
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
 } from "@dotagents/shared/predefined-prompts"
@@ -61,8 +63,8 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
     const prompts = (configQuery.data?.predefinedPrompts || []).map((p) => ({
       id: p.id,
       name: p.name,
-      description: p.content.slice(0, 80),
-      content: p.content,
+      description: getPromptLibraryPromptDescription(p, 80),
+      content: getPromptLibraryPromptContent(p),
       type: "prompt" as const,
     }))
     const skills = (skillsQuery.data ?? []).map((s) => ({

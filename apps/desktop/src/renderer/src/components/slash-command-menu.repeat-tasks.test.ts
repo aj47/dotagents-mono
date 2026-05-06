@@ -8,6 +8,8 @@ const slashCommandMenuSource = readFileSync(
 
 describe("slash command menu repeat-task support", () => {
   it("loads repeat tasks into the shared slash-command list", () => {
+    expect(slashCommandMenuSource).toContain("getPromptLibraryPromptContent(p)")
+    expect(slashCommandMenuSource).toContain("getPromptLibraryPromptDescription(p, 80)")
     expect(slashCommandMenuSource).toContain("getPromptLibrarySkillContent(s)")
     expect(slashCommandMenuSource).toContain("getPromptLibrarySkillDescription(s)")
     expect(slashCommandMenuSource).toContain("getRepeatTaskRunNowDescription(loop)")

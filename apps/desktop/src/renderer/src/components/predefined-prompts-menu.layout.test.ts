@@ -15,7 +15,7 @@ describe("predefined prompts menu layout", () => {
   })
 
   it("shows prompt and skill previews instead of relying on single-line truncation", () => {
-    expect(predefinedPromptsMenuSource).toContain('<p className={secondaryTextClassName}>{prompt.content}</p>')
+    expect(predefinedPromptsMenuSource).toContain("{getPromptLibraryPromptDescription(prompt)}")
     expect(predefinedPromptsMenuSource).toContain("{getPromptLibrarySkillDescription(skill)}")
     expect(predefinedPromptsMenuSource).toContain('className="truncate font-medium" title={prompt.name}')
     expect(predefinedPromptsMenuSource).toContain('className="truncate font-medium" title={skill.name}')
@@ -35,6 +35,8 @@ describe("predefined prompts menu layout", () => {
 
   it("uses shared predefined prompt mutation helpers", () => {
     expect(predefinedPromptsMenuSource).toContain("createPredefinedPromptRecord")
+    expect(predefinedPromptsMenuSource).toContain("getPromptLibraryPromptContent")
+    expect(predefinedPromptsMenuSource).toContain("getPromptLibraryPromptDescription")
     expect(predefinedPromptsMenuSource).toContain("getPromptLibrarySkillContent")
     expect(predefinedPromptsMenuSource).toContain("getPromptLibrarySkillDescription")
     expect(predefinedPromptsMenuSource).toContain("getPromptLibraryTaskDescription")

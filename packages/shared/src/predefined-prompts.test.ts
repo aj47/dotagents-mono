@@ -4,6 +4,8 @@ import {
   createPredefinedPromptId,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  getPromptLibraryPromptContent,
+  getPromptLibraryPromptDescription,
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
   getPromptLibraryTaskContent,
@@ -26,6 +28,13 @@ describe("predefined prompt helpers", () => {
     expect(isSlashCommandPromptName("/")).toBe(false)
     expect(isSlashCommandPromptName("standup")).toBe(false)
     expect(isSlashCommandPrompt({ name: "/ship" })).toBe(true)
+  })
+
+  it("builds shared prompt-library prompt labels and content", () => {
+    const prompt = { content: "Review the latest implementation notes." }
+    expect(getPromptLibraryPromptContent(prompt)).toBe("Review the latest implementation notes.")
+    expect(getPromptLibraryPromptDescription(prompt)).toBe("Review the latest implementation notes.")
+    expect(getPromptLibraryPromptDescription(prompt, 11)).toBe("Review the ")
   })
 
   it("builds shared prompt-library skill labels and content", () => {

@@ -88,6 +88,8 @@ import type {
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  getPromptLibraryPromptContent,
+  getPromptLibraryPromptDescription,
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
   getPromptLibraryTaskContent,
@@ -2869,8 +2871,8 @@ export default function ChatScreen({ route, navigation }: any) {
         .map((prompt) => ({
           id: prompt.id,
           title: prompt.name,
-          content: prompt.content,
-          description: prompt.content,
+          content: getPromptLibraryPromptContent(prompt),
+          description: getPromptLibraryPromptDescription(prompt),
           source: isSlashCommandPrompt(prompt) ? 'command' as const : 'saved-prompt' as const,
           prompt,
         }));

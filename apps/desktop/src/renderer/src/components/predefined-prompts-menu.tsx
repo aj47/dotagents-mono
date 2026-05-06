@@ -26,6 +26,8 @@ import { PredefinedPrompt, LoopConfig } from "../../../shared/types"
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  getPromptLibraryPromptContent,
+  getPromptLibraryPromptDescription,
   getPromptLibrarySkillContent,
   getPromptLibrarySkillDescription,
   getPromptLibraryTaskDescription,
@@ -98,7 +100,7 @@ export function PredefinedPromptsMenu({
   const filteredTasks = availableTasks.filter((task) => matchesSearch(task.name, task.prompt))
 
   const handleSelectPrompt = (prompt: PredefinedPrompt) => {
-    onSelectPrompt(prompt.content)
+    onSelectPrompt(getPromptLibraryPromptContent(prompt))
   }
 
   const handleTriggerTask = async (task: LoopConfig) => {
@@ -221,7 +223,7 @@ export function PredefinedPromptsMenu({
               >
                 <div className={entryTextClassName}>
                   <div className="truncate font-medium" title={prompt.name}>{prompt.name}</div>
-                  <p className={secondaryTextClassName}>{prompt.content}</p>
+                  <p className={secondaryTextClassName}>{getPromptLibraryPromptDescription(prompt)}</p>
                 </div>
                 <div
                   className="mt-0.5 flex shrink-0 items-center gap-1 self-start"
