@@ -87,6 +87,7 @@ export * from './repeat-task-markdown';
 export * from './knowledge-note-grouping';
 export * from './knowledge-note-form';
 export * from './settings-api-client';
+export * from './remote-settings-input-drafts';
 export * from './conversation-sync';
 export * from './config-list-input';
 export * from './remote-pairing';

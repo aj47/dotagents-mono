@@ -326,6 +326,11 @@
       "import": "./dist/settings-api-client.mjs",
       "require": "./dist/settings-api-client.js"
     },
+    "./remote-settings-input-drafts": {
+      "types": "./dist/remote-settings-input-drafts.d.ts",
+      "import": "./dist/remote-settings-input-drafts.mjs",
+      "require": "./dist/remote-settings-input-drafts.js"
+    },
     "./conversation-sync": {
       "types": "./dist/conversation-sync.d.ts",
       "import": "./dist/conversation-sync.mjs",

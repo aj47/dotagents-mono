@@ -7,6 +7,10 @@ const settingsSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'screens', 'SettingsScreen.tsx'),
   'utf8'
 );
+const remoteSettingsDraftsSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'remote-settings-input-drafts.ts'),
+  'utf8'
+);
 
 function extractBetween(startMarker, endMarker) {
   const start = settingsSource.indexOf(startMarker);
@@ -68,7 +72,8 @@ test('keeps profile/model actions text-first and explicitly labeled', () => {
   assert.match(profileModelSection, />Enabled</);
   assert.match(profileModelSection, />Provider</);
   assert.match(settingsSource, /getTranscriptPostProcessingModelSettingKey/);
-  assert.match(settingsSource, /transcriptPostProcessingOpenaiModel: settings\.transcriptPostProcessingOpenaiModel \|\| ''/);
+  assert.match(settingsSource, /buildRemoteSettingsInputDrafts/);
+  assert.match(remoteSettingsDraftsSource, /transcriptPostProcessingOpenaiModel: settings\.transcriptPostProcessingOpenaiModel \|\| ""/);
   assert.match(settingsSource, /updates\.transcriptPostProcessingGroqModel = inputDrafts\.transcriptPostProcessingGroqModel \?\? ''/);
   assert.match(profileModelSection, /const modelKey = getTranscriptPostProcessingModelSettingKey\(providerId\)/);
   assert.match(profileModelSection, /handleRemoteSettingUpdate\(modelKey, v\)/);
@@ -140,7 +145,7 @@ test('lets mobile configure cloud desktop STT model details', () => {
 
   assert.match(settingsSource, /KNOWN_STT_MODEL_IDS/);
   assert.match(settingsSource, /getDefaultSttModel/);
-  assert.match(settingsSource, /openaiSttLanguage: settings\.openaiSttLanguage \|\| ''/);
+  assert.match(remoteSettingsDraftsSource, /openaiSttLanguage: settings\.openaiSttLanguage \|\| ""/);
   assert.match(settingsSource, /updates\.openaiSttLanguage = inputDrafts\.openaiSttLanguage \?\? ''/);
   assert.match(settingsSource, /updates\.groqSttLanguage = inputDrafts\.groqSttLanguage \?\? ''/);
   assert.match(speechToTextSection, /remoteSettings\.sttProviderId === 'openai' \|\| remoteSettings\.sttProviderId === 'groq'/);
@@ -158,7 +163,7 @@ test('lets mobile configure desktop local trace logging', () => {
     '<CollapsibleSection id="skills" title="Skills">'
   );
 
-  assert.match(settingsSource, /localTraceLogPath: settings\.localTraceLogPath \|\| ''/);
+  assert.match(remoteSettingsDraftsSource, /localTraceLogPath: settings\.localTraceLogPath \|\| ""/);
   assert.match(settingsSource, /updates\.localTraceLogPath = inputDrafts\.localTraceLogPath \?\? ''/);
   assert.match(langfuseSection, /value=\{remoteSettings\.localTraceLoggingEnabled \?\? false\}/);
   assert.match(langfuseSection, /handleRemoteSettingToggle\('localTraceLoggingEnabled', v\)/);
@@ -174,7 +179,7 @@ test('lets mobile configure desktop Discord integration settings without echoing
   );
 
   assert.match(settingsSource, /DISCORD_LIST_SETTING_SECTIONS/);
-  assert.match(settingsSource, /discordBotToken: settings\.discordBotToken === SECRET_MASK \? '' : \(settings\.discordBotToken \|\| ''\)/);
+  assert.match(remoteSettingsDraftsSource, /discordBotToken: getRemoteSettingsSecretInputDraft\(settings\.discordBotToken, secretMask\)/);
   assert.match(settingsSource, /updates\.discordBotToken = inputDrafts\.discordBotToken \?\? ''/);
   assert.match(settingsSource, /updates\[key\] = parseConfigListInput\(inputDrafts\[key\] \?\? '', \{ unique: true \}\)/);
   assert.match(discordSection, /handleRemoteSettingToggle\('discordEnabled', v\)/);

@@ -53,7 +53,7 @@ import {
   describeRepeatTaskRuntime,
   formatRepeatTaskRuntimeTimestamp,
 } from '@dotagents/shared/repeat-task-utils';
-import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
+import { parseConfigListInput } from '@dotagents/shared/config-list-input';
 import { getDefaultSttModel, KNOWN_STT_MODEL_IDS } from '@dotagents/shared/stt-models';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
 import {
@@ -75,6 +75,10 @@ import {
   parseMcpMaxIterationsDraft,
 } from '@dotagents/shared/mcp-api';
 import { isReservedMcpServerName, parseMcpKeyValueDraft, type MCPServerConfig, type MCPTransportType } from '@dotagents/shared/mcp-utils';
+import {
+  REMOTE_SETTINGS_SECRET_MASK as SECRET_MASK,
+  buildRemoteSettingsInputDrafts,
+} from '@dotagents/shared/remote-settings-input-drafts';
 
 const getRemoteTtsModelValue = (settings?: Settings | null): string | undefined => {
   if (!settings) return undefined;
@@ -91,8 +95,6 @@ const getRemoteTtsVoiceValue = (settings?: Settings | null): string | number | u
 const normalizeTtsVoiceUpdateValue = (key: keyof SettingsUpdate, value: string | number): string | number => {
   return key === 'kittenVoiceId' ? Number(value) : String(value);
 };
-
-const SECRET_MASK = '••••••••';
 
 type ProviderSecretSettingKey = 'openaiApiKey' | 'groqApiKey' | 'geminiApiKey';
 type ProviderBaseUrlSettingKey = 'openaiBaseUrl' | 'groqBaseUrl' | 'geminiBaseUrl';
@@ -264,38 +266,6 @@ const EMPTY_MODEL_PRESET_DRAFT: ModelPresetDraft = {
   isBuiltIn: false,
   hasApiKey: false,
 };
-
-function buildRemoteSettingsInputDrafts(settings: Settings): Record<string, string> {
-  return {
-    sttLanguage: settings.sttLanguage || '',
-    openaiSttLanguage: settings.openaiSttLanguage || '',
-    groqSttLanguage: settings.groqSttLanguage || '',
-    groqSttPrompt: settings.groqSttPrompt || '',
-    transcriptPostProcessingPrompt: settings.transcriptPostProcessingPrompt || '',
-    transcriptPostProcessingOpenaiModel: settings.transcriptPostProcessingOpenaiModel || '',
-    transcriptPostProcessingGroqModel: settings.transcriptPostProcessingGroqModel || '',
-    transcriptPostProcessingGeminiModel: settings.transcriptPostProcessingGeminiModel || '',
-    transcriptPostProcessingChatgptWebModel: settings.transcriptPostProcessingChatgptWebModel || '',
-    mcpMaxIterations: String(settings.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
-    whatsappAllowFrom: formatConfigListInput(settings.whatsappAllowFrom),
-    discordBotToken: settings.discordBotToken === SECRET_MASK ? '' : (settings.discordBotToken || ''),
-    discordAllowUserIds: formatConfigListInput(settings.discordAllowUserIds, { separator: 'newline' }),
-    discordAllowGuildIds: formatConfigListInput(settings.discordAllowGuildIds, { separator: 'newline' }),
-    discordAllowChannelIds: formatConfigListInput(settings.discordAllowChannelIds, { separator: 'newline' }),
-    discordAllowRoleIds: formatConfigListInput(settings.discordAllowRoleIds, { separator: 'newline' }),
-    discordDmAllowUserIds: formatConfigListInput(settings.discordDmAllowUserIds, { separator: 'newline' }),
-    openaiApiKey: settings.openaiApiKey === SECRET_MASK ? '' : (settings.openaiApiKey || ''),
-    openaiBaseUrl: settings.openaiBaseUrl || '',
-    groqApiKey: settings.groqApiKey === SECRET_MASK ? '' : (settings.groqApiKey || ''),
-    groqBaseUrl: settings.groqBaseUrl || '',
-    geminiApiKey: settings.geminiApiKey === SECRET_MASK ? '' : (settings.geminiApiKey || ''),
-    geminiBaseUrl: settings.geminiBaseUrl || '',
-    langfusePublicKey: settings.langfusePublicKey || '',
-    langfuseSecretKey: settings.langfuseSecretKey === SECRET_MASK ? '' : (settings.langfuseSecretKey || ''),
-    langfuseBaseUrl: settings.langfuseBaseUrl || '',
-    localTraceLogPath: settings.localTraceLogPath || '',
-  };
-}
 
 const getRemoteTtsSpeedValue = (settings?: Settings | null): number | undefined => {
   if (!settings) return undefined;

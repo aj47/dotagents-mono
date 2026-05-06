@@ -66,6 +66,7 @@ export default defineConfig({
     'knowledge-note-domain': 'src/knowledge-note-domain.ts',
     'knowledge-note-form': 'src/knowledge-note-form.ts',
     'settings-api-client': 'src/settings-api-client.ts',
+    'remote-settings-input-drafts': 'src/remote-settings-input-drafts.ts',
     'conversation-sync': 'src/conversation-sync.ts',
     'config-list-input': 'src/config-list-input.ts',
     'remote-pairing': 'src/remote-pairing.ts',
