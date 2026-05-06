@@ -143,6 +143,30 @@ export function orderSessionsByPinnedConversationFirst<T extends { conversationI
   return [...pinnedSessions, ...unpinnedSessions];
 }
 
+export function paginateSavedSessionEntries<T extends { isSavedConversation: boolean }>(
+  entries: T[],
+  visibleSavedEntryCount: number,
+): { visibleEntries: T[]; hasMoreEntries: boolean } {
+  const alwaysVisibleEntries: T[] = [];
+  const pageableEntries: T[] = [];
+  for (const entry of entries) {
+    if (!entry.isSavedConversation) {
+      alwaysVisibleEntries.push(entry);
+    } else {
+      pageableEntries.push(entry);
+    }
+  }
+
+  const sliceCount = Math.max(visibleSavedEntryCount, 0);
+  return {
+    visibleEntries: [
+      ...alwaysVisibleEntries,
+      ...pageableEntries.slice(0, sliceCount),
+    ],
+    hasMoreEntries: pageableEntries.length > sliceCount,
+  };
+}
+
 /**
  * Generate a unique session ID
  */

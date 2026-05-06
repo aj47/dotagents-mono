@@ -1,6 +1,9 @@
 import type { AgentProgressUpdate } from "@shared/types"
 import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
-import { orderSessionsByPinnedConversationFirst } from "@dotagents/shared/session"
+import {
+  orderSessionsByPinnedConversationFirst,
+  paginateSavedSessionEntries,
+} from "@dotagents/shared/session"
 import {
   dedupeRepeatTaskEntriesByTitle,
   isRepeatTaskSession,
@@ -133,24 +136,7 @@ export function paginateSidebarEntries<
   _pinnedSessionIds: ReadonlySet<string>,
   visibleSavedEntryCount: number,
 ): { visibleEntries: T[]; hasMoreEntries: boolean } {
-  const alwaysVisibleEntries: T[] = []
-  const pageableEntries: T[] = []
-  for (const entry of entries) {
-    if (!entry.isSavedConversation) {
-      alwaysVisibleEntries.push(entry)
-    } else {
-      pageableEntries.push(entry)
-    }
-  }
-
-  const sliceCount = Math.max(visibleSavedEntryCount, 0)
-  return {
-    visibleEntries: [
-      ...alwaysVisibleEntries,
-      ...pageableEntries.slice(0, sliceCount),
-    ],
-    hasMoreEntries: pageableEntries.length > sliceCount,
-  }
+  return paginateSavedSessionEntries(entries, visibleSavedEntryCount)
 }
 
 interface SidebarSessionViewState {

@@ -8,6 +8,7 @@ import {
   sortSessionsByPinnedFirst,
   orderConversationHistoryByPinnedFirst,
   orderSessionsByPinnedConversationFirst,
+  paginateSavedSessionEntries,
   sanitizeSessionText,
   sessionToListItem,
   createSessionSearchSnippet,
@@ -219,6 +220,34 @@ describe('orderSessionsByPinnedConversationFirst', () => {
     const sessions = [{ id: 'session-1', conversationId: 'conversation-1' }]
 
     expect(orderSessionsByPinnedConversationFirst(sessions, new Set())).toBe(sessions)
+  })
+})
+
+// ── paginateSavedSessionEntries ──────────────────────────────────────────────
+
+describe('paginateSavedSessionEntries', () => {
+  it('always keeps active entries visible while paginating saved entries', () => {
+    const entries = [
+      { id: 'active-1', isSavedConversation: false },
+      { id: 'saved-1', isSavedConversation: true },
+      { id: 'saved-2', isSavedConversation: true },
+      { id: 'active-2', isSavedConversation: false },
+    ]
+
+    const result = paginateSavedSessionEntries(entries, 1)
+
+    expect(result.visibleEntries.map((entry) => entry.id)).toEqual(['active-1', 'active-2', 'saved-1'])
+    expect(result.hasMoreEntries).toBe(true)
+  })
+
+  it('clamps negative saved entry counts to zero', () => {
+    const result = paginateSavedSessionEntries([
+      { id: 'active-1', isSavedConversation: false },
+      { id: 'saved-1', isSavedConversation: true },
+    ], -1)
+
+    expect(result.visibleEntries.map((entry) => entry.id)).toEqual(['active-1'])
+    expect(result.hasMoreEntries).toBe(true)
   })
 })
 
