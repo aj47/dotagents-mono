@@ -755,8 +755,9 @@ describe("agent progress response history", () => {
     expect(text).not.toMatch(/2 step(?:\s*s)?/)
     expect(text).not.toContain("First tool thought")
     expect(text).not.toContain("Second tool thought")
-    expect(text).toContain("search_repo")
-    expect(text.indexOf("search_repo")).toBeLessThan(text.indexOf("Now here is the answer"))
+    // Collapsed groups now preview the output of the most recent tool execution.
+    expect(text).toContain("second result")
+    expect(text.indexOf("second result")).toBeLessThan(text.indexOf("Now here is the answer"))
   })
 
   it("lets expanded tool groups collapse from the bottom", async () => {

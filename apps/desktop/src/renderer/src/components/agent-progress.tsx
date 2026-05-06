@@ -28,7 +28,6 @@ import {
   getToolArgumentEntries,
   getIndividualToolCallPreview,
   getToolResultsSummary,
-  TOOL_GROUP_PREVIEW_COUNT,
   TOOL_GROUP_MIN_SIZE,
   getToolActivitySummaryLine,
   getBuiltInModelPresets,
@@ -4192,22 +4191,33 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         return
       }
       const runItems = sortedItems.slice(runStart, runEnd + 1)
-      const previewLines: string[] = []
-      const previewStart = Math.max(0, runItems.length - TOOL_GROUP_PREVIEW_COUNT)
-      for (let j = previewStart; j < runItems.length; j++) {
+      // Collapsed preview shows the output of the most recent tool execution in
+      // the run. If no result has arrived yet (still running), fall back to a
+      // tool-name summary of the latest call so something is rendered.
+      let previewLine = ""
+      for (let j = runItems.length - 1; j >= 0; j--) {
         const it = runItems[j]
-        if (it.kind === "assistant_with_tools") {
-          const line = getToolActivitySummaryLine({
-            role: "assistant",
-            toolCalls: it.data.calls,
-          })
-          if (line) previewLines.push(line)
-        } else if (it.kind === "tool_execution") {
-          const line = getToolActivitySummaryLine({
-            role: "tool",
-            toolResults: it.data.results,
-          })
-          if (line) previewLines.push(line)
+        const results =
+          it.kind === "tool_execution"
+            ? it.data.results
+            : it.kind === "assistant_with_tools"
+              ? it.data.results
+              : null
+        if (results && results.length > 0 && results.some((r) => r)) {
+          previewLine = getToolResultsSummary(results.filter((r): r is NonNullable<typeof r> => !!r))
+          if (previewLine) break
+        }
+      }
+      if (!previewLine) {
+        for (let j = runItems.length - 1; j >= 0; j--) {
+          const it = runItems[j]
+          if (it.kind === "assistant_with_tools") {
+            const line = getToolActivitySummaryLine({ role: "assistant", toolCalls: it.data.calls })
+            if (line) { previewLine = line; break }
+          } else if (it.kind === "tool_execution") {
+            const line = getToolActivitySummaryLine({ role: "tool", toolResults: it.data.results })
+            if (line) { previewLine = line; break }
+          }
         }
       }
       // Prefix the first child ID so the group stays stable as the run grows
@@ -4216,7 +4226,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       grouped.push({
         kind: "tool_activity_group",
         id: groupId,
-        data: { items: runItems, previewLines: previewLines.length > 0 ? [previewLines.join(', ')] : [] },
+        data: { items: runItems, previewLines: previewLine ? [previewLine] : [] },
       })
       runStart = null
     }
