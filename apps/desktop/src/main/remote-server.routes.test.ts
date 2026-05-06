@@ -401,12 +401,6 @@ function getSharedAgentSessionCandidatesSource(): string {
   return readFileSync(sharedAgentSessionCandidatesPath, "utf8")
 }
 
-function getEmergencyStopActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const emergencyStopActionsPath = path.join(testDir, "emergency-stop-actions.ts")
-  return readFileSync(emergencyStopActionsPath, "utf8")
-}
-
 function getInjectedMcpActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const injectedMcpActionsPath = path.join(testDir, "injected-mcp-actions.ts")
@@ -744,7 +738,6 @@ describe("remote-server route registration", () => {
     const mobileActionSources = [
       getAgentProfileActionsSource(),
       getConversationActionsSource(),
-      getEmergencyStopActionsSource(),
       getKnowledgeNoteActionsSource(),
       getMcpServerActionsSource(),
       getProfileActionsSource(),
@@ -972,12 +965,13 @@ describe("remote-server route registration", () => {
   it("delegates emergency stop route behavior to emergency stop actions", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
-    const emergencyStopActionsSource = getEmergencyStopActionsSource()
+    const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedSettingsApiClientSource = getSharedSettingsApiClientSource()
 
     expectRegisteredApiRoute(source, "POST", "emergencyStop")
     expect(mobileApiRoutesSource).toContain("actions.triggerEmergencyStop()")
-    expect(emergencyStopActionsSource).toContain("triggerEmergencyStopAction(emergencyStopActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("triggerEmergencyStopAction(emergencyStopActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("stopAll: emergencyStopAll")
     expect(sharedSettingsApiClientSource).toContain("export interface EmergencyStopActionOptions")
     expect(sharedSettingsApiClientSource).toContain("export async function triggerEmergencyStopAction")
     expect(sharedSettingsApiClientSource).toContain("await options.stopAll()")

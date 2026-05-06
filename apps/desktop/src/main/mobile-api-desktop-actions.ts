@@ -12,6 +12,10 @@ import {
   synthesizeSpeechAction,
   type TtsActionOptions,
 } from "@dotagents/shared/tts-api"
+import {
+  triggerEmergencyStopAction,
+  type EmergencyStopActionOptions,
+} from "@dotagents/shared/settings-api-client"
 import type { Config } from "../shared/types"
 import {
   exportBundle,
@@ -37,7 +41,6 @@ import {
   getConversationVideoAsset,
   updateConversation,
 } from "./conversation-actions"
-import { triggerEmergencyStop } from "./emergency-stop-actions"
 import {
   createKnowledgeNote,
   deleteAllKnowledgeNotes,
@@ -101,6 +104,7 @@ import {
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
+import { emergencyStopAll } from "./emergency-stop"
 import { generateTTS } from "./tts-service"
 
 const modelActionOptions: ModelActionOptions = {
@@ -127,6 +131,12 @@ const ttsActionOptions: TtsActionOptions<Config> = {
   diagnostics: diagnosticsService,
 }
 
+const emergencyStopActionOptions: EmergencyStopActionOptions = {
+  stopAll: emergencyStopAll,
+  diagnostics: diagnosticsService,
+  logger: console,
+}
+
 function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
@@ -141,6 +151,10 @@ async function getProviderModels(providerId: string | undefined) {
 
 async function synthesizeSpeech(body: unknown) {
   return synthesizeSpeechAction(body, ttsActionOptions)
+}
+
+async function triggerEmergencyStop() {
+  return triggerEmergencyStopAction(emergencyStopActionOptions)
 }
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {
