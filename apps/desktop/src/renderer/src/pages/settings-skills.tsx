@@ -22,6 +22,7 @@ import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AgentProfile, AgentSkill, Profile } from "@shared/types"
+import { isSkillEnabledForProfile } from "@dotagents/shared/skills-api"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package, MoreHorizontal, AlertTriangle } from "lucide-react"
 
@@ -77,8 +78,7 @@ export function Component() {
     : "this agent"
   const isSkillEnabledForCurrentProfile = (skillId: string): boolean | null => {
     if (!currentProfile) return null
-    if (!currentProfile.skillsConfig || !currentProfile.skillsConfig.allSkillsDisabledByDefault) return true
-    return (currentProfile.skillsConfig.enabledSkillIds ?? []).includes(skillId)
+    return isSkillEnabledForProfile(skillId, currentProfile)
   }
   const displaySkills = [...skills].sort((a, b) => {
     const enabledDiff = Number(isSkillEnabledForCurrentProfile(b.id)) - Number(isSkillEnabledForCurrentProfile(a.id))
