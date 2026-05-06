@@ -1,7 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { createMessageQueueStore } from './message-queue-store';
+import {
+  buildMessageQueuePauseResult,
+  buildMessageQueueResumeResult,
+  buildQueuedMessageActionResult,
+  createMessageQueueStore,
+} from './message-queue-store';
 
 describe('message-queue-store', () => {
+  it('builds shared message queue action result payloads', () => {
+    expect(buildMessageQueuePauseResult('conversation-1')).toEqual({
+      success: true,
+      conversationId: 'conversation-1',
+    });
+    expect(buildMessageQueueResumeResult('conversation-1', true)).toEqual({
+      success: true,
+      conversationId: 'conversation-1',
+      processingStarted: true,
+    });
+    expect(buildQueuedMessageActionResult('conversation-1', 'message-1', false, false)).toEqual({
+      success: false,
+      conversationId: 'conversation-1',
+      messageId: 'message-1',
+      processingStarted: false,
+    });
+  });
+
   it('manages queue state and emits external change notifications', () => {
     const changes: string[] = [];
     const store = createMessageQueueStore({

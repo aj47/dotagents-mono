@@ -31,6 +31,24 @@ export interface MessageQueueStoreMutationActionResult {
   resetFailedToPending?: boolean;
 }
 
+export type MessageQueueResumeResult = {
+  success: true;
+  conversationId: string;
+  processingStarted: boolean;
+};
+
+export type MessageQueuePauseResult = {
+  success: true;
+  conversationId: string;
+};
+
+export type QueuedMessageActionResult = {
+  success: boolean;
+  conversationId: string;
+  messageId: string;
+  processingStarted: boolean;
+};
+
 export interface MessageQueueStoreOptions {
   now?: () => number;
   idFactory?: (createdAt: number) => string;
@@ -74,6 +92,38 @@ function toActionResult(result: MessageQueueMutationResult, changed: boolean): M
     ...(typeof result.resetFailedToPending === 'boolean'
       ? { resetFailedToPending: result.resetFailedToPending }
       : {}),
+  };
+}
+
+export function buildMessageQueuePauseResult(conversationId: string): MessageQueuePauseResult {
+  return {
+    success: true,
+    conversationId,
+  };
+}
+
+export function buildMessageQueueResumeResult(
+  conversationId: string,
+  processingStarted: boolean,
+): MessageQueueResumeResult {
+  return {
+    success: true,
+    conversationId,
+    processingStarted,
+  };
+}
+
+export function buildQueuedMessageActionResult(
+  conversationId: string,
+  messageId: string,
+  success: boolean,
+  processingStarted: boolean,
+): QueuedMessageActionResult {
+  return {
+    success,
+    conversationId,
+    messageId,
+    processingStarted,
   };
 }
 

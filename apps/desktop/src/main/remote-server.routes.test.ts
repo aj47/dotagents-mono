@@ -780,7 +780,12 @@ describe("remote-server route registration", () => {
       expect(source).not.toMatch(/export type \w+ActionResult = \{/)
     }
 
-    expect(getMessageQueueActionsSource()).toContain("export type QueuedMessageActionResult = {")
+    const messageQueueActionsSource = getMessageQueueActionsSource()
+    expect(messageQueueActionsSource).toContain('from "@dotagents/shared/message-queue-store"')
+    expect(messageQueueActionsSource).toContain("buildMessageQueuePauseResult(conversationId)")
+    expect(messageQueueActionsSource).toContain("buildMessageQueueResumeResult(")
+    expect(messageQueueActionsSource).toContain("buildQueuedMessageActionResult(")
+    expect(messageQueueActionsSource).not.toContain("export type QueuedMessageActionResult = {")
   })
 
   it("routes mobile chat requests through the shared agent runner", () => {
@@ -1464,6 +1469,7 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("buildOperatorQueuedMessageUpdateResponse(")
     const messageQueueServiceSource = getMessageQueueServiceSource()
     const sharedMessageQueueStoreSource = getSharedMessageQueueStoreSource()
+    const messageQueueActionsSource = getMessageQueueActionsSource()
     expect(messageQueueServiceSource).toContain('from "@dotagents/shared/message-queue-store"')
     expect(messageQueueServiceSource).toContain("createMessageQueueStore({")
     expect(messageQueueServiceSource).toContain("onQueueChanged: (conversationId) => this.emitQueueUpdate(conversationId)")
@@ -1471,6 +1477,12 @@ describe("remote-server route registration", () => {
     expect(messageQueueServiceSource).not.toContain("processingConversations")
     expect(messageQueueServiceSource).not.toContain("pausedConversations")
     expect(sharedMessageQueueStoreSource).toContain("export function createMessageQueueStore")
+    expect(sharedMessageQueueStoreSource).toContain("export function buildMessageQueuePauseResult(")
+    expect(sharedMessageQueueStoreSource).toContain("export function buildMessageQueueResumeResult(")
+    expect(sharedMessageQueueStoreSource).toContain("export function buildQueuedMessageActionResult(")
+    expect(messageQueueActionsSource).toContain("buildMessageQueuePauseResult(conversationId)")
+    expect(messageQueueActionsSource).toContain("buildMessageQueueResumeResult(")
+    expect(messageQueueActionsSource).toContain("buildQueuedMessageActionResult(")
     expect(sharedMessageQueueStoreSource).toContain("tryAcquireProcessingLock")
     expect(sharedMessageQueueStoreSource).toContain("pauseQueue")
     expect(sharedMessageQueueStoreSource).not.toContain("@egoist/tipc")

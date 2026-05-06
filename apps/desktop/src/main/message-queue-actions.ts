@@ -1,3 +1,11 @@
+import {
+  buildMessageQueuePauseResult,
+  buildMessageQueueResumeResult,
+  buildQueuedMessageActionResult,
+  type MessageQueuePauseResult,
+  type MessageQueueResumeResult,
+  type QueuedMessageActionResult,
+} from "@dotagents/shared/message-queue-store"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { processWithAgentMode } from "./agent-loop-runner"
 import { conversationService } from "./conversation-service"
@@ -6,17 +14,10 @@ import { getErrorMessage } from "./error-utils"
 import { messageQueueService } from "./message-queue-service"
 import { WINDOWS } from "./window"
 
-export type MessageQueueResumeResult = {
-  success: true
-  conversationId: string
-  processingStarted: boolean
-}
-
-export type QueuedMessageActionResult = {
-  success: boolean
-  conversationId: string
-  messageId: string
-  processingStarted: boolean
+export type {
+  MessageQueuePauseResult,
+  MessageQueueResumeResult,
+  QueuedMessageActionResult,
 }
 
 /**
@@ -132,28 +133,27 @@ export function processQueuedMessagesIfConversationIdle(
 export function resumeMessageQueueByConversationId(conversationId: string): MessageQueueResumeResult {
   messageQueueService.resumeQueue(conversationId)
 
-  return {
-    success: true,
+  return buildMessageQueueResumeResult(
     conversationId,
-    processingStarted: processQueuedMessagesIfConversationIdle(conversationId, "resumeMessageQueue"),
-  }
+    processQueuedMessagesIfConversationIdle(conversationId, "resumeMessageQueue"),
+  )
 }
 
-export function pauseMessageQueueByConversationId(conversationId: string): { success: true; conversationId: string } {
+export function pauseMessageQueueByConversationId(conversationId: string): MessageQueuePauseResult {
   messageQueueService.pauseQueue(conversationId)
-  return { success: true, conversationId }
+  return buildMessageQueuePauseResult(conversationId)
 }
 
 export function removeQueuedMessageById(
   conversationId: string,
   messageId: string,
 ): QueuedMessageActionResult {
-  return {
-    success: messageQueueService.removeFromQueue(conversationId, messageId),
+  return buildQueuedMessageActionResult(
     conversationId,
     messageId,
-    processingStarted: false,
-  }
+    messageQueueService.removeFromQueue(conversationId, messageId),
+    false,
+  )
 }
 
 export function retryQueuedMessageById(
@@ -161,14 +161,14 @@ export function retryQueuedMessageById(
   messageId: string,
 ): QueuedMessageActionResult {
   const success = messageQueueService.resetToPending(conversationId, messageId)
-  return {
-    success,
+  return buildQueuedMessageActionResult(
     conversationId,
     messageId,
-    processingStarted: success
+    success,
+    success
       ? processQueuedMessagesIfConversationIdle(conversationId, "retryQueuedMessage")
       : false,
-  }
+  )
 }
 
 export function updateQueuedMessageTextById(
@@ -180,12 +180,12 @@ export function updateQueuedMessageTextById(
     .find((message) => message.id === messageId)?.status === "failed"
 
   const success = messageQueueService.updateMessageText(conversationId, messageId, text)
-  return {
-    success,
+  return buildQueuedMessageActionResult(
     conversationId,
     messageId,
-    processingStarted: success && wasFailed
+    success,
+    success && wasFailed
       ? processQueuedMessagesIfConversationIdle(conversationId, "updateQueuedMessageText")
       : false,
-  }
+  )
 }
