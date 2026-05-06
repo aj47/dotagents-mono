@@ -5,7 +5,7 @@ import { isAllowedMarkdownLinkUrl } from '@dotagents/shared/conversation-media-a
 import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
 import { VideoAttachmentCard } from './VideoAttachmentCard';
-import { splitMarkdownContent } from './markdownParts';
+import { splitMarkdownContent } from '@dotagents/shared/markdown-render-parts';
 
 interface MarkdownRendererProps {
   content: string;

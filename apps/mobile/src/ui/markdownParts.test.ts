@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { splitMarkdownContent } from './markdownParts';
+import { splitMarkdownContent } from '@dotagents/shared/markdown-render-parts';
 
 describe('splitMarkdownContent', () => {
   it('extracts Codex thinking blocks from regular markdown', () => {
