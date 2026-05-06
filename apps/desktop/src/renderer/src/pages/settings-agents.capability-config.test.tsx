@@ -18,4 +18,11 @@ describe("settings agents capability config", () => {
     expect(settingsAgentsSource).toContain("isAgentProfileSkillEnabled(editing?.skillsConfig, skillId)")
     expect(settingsAgentsSource).toContain("toggleAgentProfileSkillConfig(editing.skillsConfig, skillId, skills.map(s => s.id))")
   })
+
+  it("uses shared per-agent model field helpers in the desktop agent editor", () => {
+    expect(settingsAgentsSource).toContain("getAgentProfileAgentModelProvider")
+    expect(settingsAgentsSource).toContain("getAgentProfileAgentModelValue")
+    expect(settingsAgentsSource).toContain("buildAgentProfileAgentModelUpdate")
+    expect(settingsAgentsSource).not.toContain("editing.modelConfig.agentOpenaiModel || editing.modelConfig.mcpToolsOpenaiModel")
+  })
 })

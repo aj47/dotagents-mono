@@ -28,6 +28,9 @@ import {
   type AgentProfilePresetKey,
 } from '@dotagents/shared/agent-profile-presets';
 import {
+  buildAgentProfileAgentModelUpdate,
+  getAgentProfileAgentModelProvider,
+  getAgentProfileAgentModelValue,
   getAgentProfileMcpConfigAfterServerToggle,
   getAgentProfileMcpConfigAfterSetAllServersEnabled,
   getAgentProfileMcpConfigAfterToolToggle,
@@ -39,6 +42,7 @@ import {
   isAgentProfileSkillEnabled,
   toggleAgentProfileSkillConfig,
 } from '@dotagents/shared/agent-profile-config-updates';
+import { isChatProviderId, type CHAT_PROVIDER_ID } from '@dotagents/shared/providers';
 
 const CONNECTION_TYPES = [
   {
@@ -66,7 +70,7 @@ const AGENT_MODEL_PROVIDERS = [
   { label: 'ChatGPT Web', value: 'chatgpt-web' },
 ] as const;
 
-type AgentModelProvider = Exclude<(typeof AGENT_MODEL_PROVIDERS)[number]['value'], 'global'>;
+type AgentModelProvider = CHAT_PROVIDER_ID;
 
 const ESSENTIAL_RUNTIME_TOOL_NAME = 'mark_work_complete';
 const RUNTIME_TOOLS = buildRuntimeToolDefinitions(acpRouterToolDefinitions);
@@ -140,10 +144,6 @@ const normalizeConnectionType = (value?: string): ConnectionType => {
   return 'internal';
 };
 
-const isAgentModelProvider = (value: unknown): value is AgentModelProvider => {
-  return value === 'openai' || value === 'groq' || value === 'gemini' || value === 'chatgpt-web';
-};
-
 const normalizeSkillIds = (value: unknown): string[] => {
   return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
 };
@@ -158,9 +158,9 @@ const normalizeAgentSkillsConfig = (value?: Record<string, unknown>): AgentSkill
 
 const normalizeAgentModelConfig = (value?: Record<string, unknown>): AgentModelConfig | undefined => {
   if (!value) return undefined;
-  const agentProviderId = isAgentModelProvider(value.agentProviderId)
+  const agentProviderId = isChatProviderId(value.agentProviderId)
     ? value.agentProviderId
-    : isAgentModelProvider(value.mcpToolsProviderId)
+    : isChatProviderId(value.mcpToolsProviderId)
       ? value.mcpToolsProviderId
       : undefined;
 
@@ -221,21 +221,6 @@ const countEnabledRuntimeTools = (tools: RuntimeToolDefinition[], toolConfig?: A
 
 const countEnabledSkills = (skills: Skill[], skillsConfig?: AgentSkillsConfig): number => {
   return skills.filter((skill) => isSkillEnabledByConfig(skill.id, skillsConfig)).length;
-};
-
-const getAgentModelProvider = (modelConfig?: AgentModelConfig): AgentModelProvider | undefined => {
-  return modelConfig?.agentProviderId ?? modelConfig?.mcpToolsProviderId;
-};
-
-const getAgentModelField = (provider: AgentModelProvider): keyof AgentModelConfig => {
-  if (provider === 'openai') return 'agentOpenaiModel';
-  if (provider === 'groq') return 'agentGroqModel';
-  if (provider === 'gemini') return 'agentGeminiModel';
-  return 'agentChatgptWebModel';
-};
-
-const getAgentModelValue = (modelConfig: AgentModelConfig | undefined, provider: AgentModelProvider): string => {
-  return String(modelConfig?.[getAgentModelField(provider)] ?? '');
 };
 
 const getAgentModelPlaceholder = (provider: AgentModelProvider): string => {
@@ -315,7 +300,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
     () => countEnabledSkills(displaySkills, formData.skillsConfig),
     [displaySkills, formData.skillsConfig],
   );
-  const selectedModelProvider = getAgentModelProvider(formData.modelConfig);
+  const selectedModelProvider = getAgentProfileAgentModelProvider(formData.modelConfig);
   const selectedPresetKey = detectAgentProfilePresetKey(formData);
   const selectedPreset = selectedPresetKey ? AGENT_PROFILE_PRESETS[selectedPresetKey] : undefined;
   const isBuiltInAgent = originalProfile?.isBuiltIn === true;
@@ -617,13 +602,11 @@ export default function AgentEditScreen({ navigation, route }: any) {
   }, []);
 
   const updateAgentModel = useCallback((provider: AgentModelProvider, model: string) => {
-    const modelField = getAgentModelField(provider);
     setFormData(prev => ({
       ...prev,
       modelConfig: {
         ...prev.modelConfig,
-        agentProviderId: provider,
-        [modelField]: model,
+        ...buildAgentProfileAgentModelUpdate(provider, model),
       },
     }));
   }, []);
@@ -1050,7 +1033,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
               <Text style={styles.label}>Agent Model</Text>
               <TextInput
                 style={styles.input}
-                value={getAgentModelValue(formData.modelConfig, selectedModelProvider)}
+                value={getAgentProfileAgentModelValue(formData.modelConfig, selectedModelProvider)}
                 onChangeText={v => updateAgentModel(selectedModelProvider, v)}
                 placeholder={getAgentModelPlaceholder(selectedModelProvider)}
                 placeholderTextColor={theme.colors.mutedForeground}

@@ -7,6 +7,12 @@ import type {
 export type AgentProfileMcpConfigUpdateLike = AgentProfileMcpServerValidationConfigLike
 export type AgentProfileModelConfigUpdateLike = AgentProfileModelConfigLike
 export type AgentProfileSkillsConfigUpdateLike = AgentProfileSkillsConfigLike
+export type AgentProfileAgentModelProvider = NonNullable<AgentProfileModelConfigUpdateLike["agentProviderId"]>
+export type AgentProfileAgentModelField =
+  | "agentOpenaiModel"
+  | "agentGroqModel"
+  | "agentGeminiModel"
+  | "agentChatgptWebModel"
 
 const DEFAULT_AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES = ["mark_work_complete"]
 
@@ -192,6 +198,42 @@ export function mergeAgentProfileModelConfig(
     ...(updates.transcriptPostProcessingGeminiModel !== undefined && { transcriptPostProcessingGeminiModel: updates.transcriptPostProcessingGeminiModel }),
     ...(updates.transcriptPostProcessingChatgptWebModel !== undefined && { transcriptPostProcessingChatgptWebModel: updates.transcriptPostProcessingChatgptWebModel }),
     ...(updates.ttsProviderId !== undefined && { ttsProviderId: updates.ttsProviderId }),
+  }
+}
+
+export function getAgentProfileAgentModelProvider(
+  modelConfig: AgentProfileModelConfigUpdateLike | undefined,
+): AgentProfileAgentModelProvider | undefined {
+  return modelConfig?.agentProviderId ?? modelConfig?.mcpToolsProviderId
+}
+
+export function getAgentProfileAgentModelField(
+  provider: AgentProfileAgentModelProvider,
+): AgentProfileAgentModelField {
+  if (provider === "openai") return "agentOpenaiModel"
+  if (provider === "groq") return "agentGroqModel"
+  if (provider === "gemini") return "agentGeminiModel"
+  return "agentChatgptWebModel"
+}
+
+export function getAgentProfileAgentModelValue(
+  modelConfig: AgentProfileModelConfigUpdateLike | undefined,
+  provider: AgentProfileAgentModelProvider,
+): string {
+  if (!modelConfig) return ""
+  if (provider === "openai") return modelConfig.agentOpenaiModel ?? modelConfig.mcpToolsOpenaiModel ?? ""
+  if (provider === "groq") return modelConfig.agentGroqModel ?? modelConfig.mcpToolsGroqModel ?? ""
+  if (provider === "gemini") return modelConfig.agentGeminiModel ?? modelConfig.mcpToolsGeminiModel ?? ""
+  return modelConfig.agentChatgptWebModel ?? modelConfig.mcpToolsChatgptWebModel ?? ""
+}
+
+export function buildAgentProfileAgentModelUpdate(
+  provider: AgentProfileAgentModelProvider,
+  model: string,
+): Partial<AgentProfileModelConfigUpdateLike> {
+  return {
+    agentProviderId: provider,
+    [getAgentProfileAgentModelField(provider)]: model,
   }
 }
 

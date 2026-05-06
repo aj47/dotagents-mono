@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  buildAgentProfileAgentModelUpdate,
+  getAgentProfileAgentModelField,
+  getAgentProfileAgentModelProvider,
+  getAgentProfileAgentModelValue,
   getAgentProfileMcpConfigAfterServerToggle,
   getAgentProfileMcpConfigAfterSetAllServersEnabled,
   getAgentProfileMcpConfigAfterToolToggle,
@@ -154,6 +158,25 @@ describe("agent profile config updates", () => {
       mcpToolsProviderId: "groq",
       agentGroqModel: "llama-3.3",
       mcpToolsGroqModel: "llama-3.3",
+    })
+  })
+
+  it("resolves per-agent model providers, fields, values, and update payloads", () => {
+    expect(getAgentProfileAgentModelProvider({
+      mcpToolsProviderId: "gemini",
+    })).toBe("gemini")
+    expect(getAgentProfileAgentModelProvider({
+      agentProviderId: "openai",
+      mcpToolsProviderId: "gemini",
+    })).toBe("openai")
+    expect(getAgentProfileAgentModelField("groq")).toBe("agentGroqModel")
+    expect(getAgentProfileAgentModelValue({
+      agentProviderId: "gemini",
+      mcpToolsGeminiModel: "gemini-2.5-flash",
+    }, "gemini")).toBe("gemini-2.5-flash")
+    expect(buildAgentProfileAgentModelUpdate("chatgpt-web", "gpt-5.4-mini")).toEqual({
+      agentProviderId: "chatgpt-web",
+      agentChatgptWebModel: "gpt-5.4-mini",
     })
   })
 

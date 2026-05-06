@@ -19,6 +19,9 @@ import {
   type AgentProfilePresetKey,
 } from "@dotagents/shared/agent-profile-presets"
 import {
+  buildAgentProfileAgentModelUpdate,
+  getAgentProfileAgentModelProvider,
+  getAgentProfileAgentModelValue,
   getAgentProfileMcpConfigAfterServerToggle,
   getAgentProfileMcpConfigAfterSetAllServersEnabled,
   getAgentProfileMcpConfigAfterToolToggle,
@@ -162,6 +165,9 @@ export function SettingsAgents() {
   const [commandVerification, setCommandVerification] = useState<ExternalAgentCommandVerificationResult | null>(null)
   const [isVerifyingCommand, setIsVerifyingCommand] = useState(false)
   const sortedAgents = useMemo(() => sortAgentsWithDefaultFirst(agents), [agents])
+  const selectedAgentModelProvider = editing
+    ? getAgentProfileAgentModelProvider(editing.modelConfig)
+    : undefined
 
   useEffect(() => {
     loadAgents()
@@ -845,7 +851,7 @@ export function SettingsAgents() {
                 <div className="space-y-2">
                   <Label>LLM Provider</Label>
                   <Select
-                    value={editing.modelConfig?.agentProviderId ?? editing.modelConfig?.mcpToolsProviderId ?? "__global__"}
+                    value={selectedAgentModelProvider ?? "__global__"}
                     onValueChange={v => {
                       if (v === "__global__") {
                         setEditing({ ...editing, modelConfig: undefined })
@@ -864,21 +870,12 @@ export function SettingsAgents() {
                     </SelectContent>
                   </Select>
                 </div>
-                {(editing.modelConfig?.agentProviderId || editing.modelConfig?.mcpToolsProviderId) && (
+                {selectedAgentModelProvider && (
                   <ModelSelector
-                    providerId={editing.modelConfig.agentProviderId || editing.modelConfig.mcpToolsProviderId}
-                    value={
-                      (editing.modelConfig.agentProviderId || editing.modelConfig.mcpToolsProviderId) === "openai" ? editing.modelConfig.agentOpenaiModel || editing.modelConfig.mcpToolsOpenaiModel :
-                      (editing.modelConfig.agentProviderId || editing.modelConfig.mcpToolsProviderId) === "groq" ? editing.modelConfig.agentGroqModel || editing.modelConfig.mcpToolsGroqModel :
-                      (editing.modelConfig.agentProviderId || editing.modelConfig.mcpToolsProviderId) === "gemini" ? editing.modelConfig.agentGeminiModel || editing.modelConfig.mcpToolsGeminiModel :
-                      editing.modelConfig.agentChatgptWebModel || editing.modelConfig.mcpToolsChatgptWebModel
-                    }
+                    providerId={selectedAgentModelProvider}
+                    value={getAgentProfileAgentModelValue(editing.modelConfig, selectedAgentModelProvider)}
                     onValueChange={model => {
-                      const p = editing.modelConfig?.agentProviderId || editing.modelConfig?.mcpToolsProviderId
-                      if (p === "openai") updateModelConfig({ agentOpenaiModel: model })
-                      else if (p === "groq") updateModelConfig({ agentGroqModel: model })
-                      else if (p === "gemini") updateModelConfig({ agentGeminiModel: model })
-                      else if (p === "chatgpt-web") updateModelConfig({ agentChatgptWebModel: model })
+                      updateModelConfig(buildAgentProfileAgentModelUpdate(selectedAgentModelProvider, model))
                     }}
                     label="Agent Model"
                     placeholder="Select model for this agent"

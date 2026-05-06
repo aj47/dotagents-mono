@@ -17,3 +17,11 @@ test('keeps mobile agent edit errors text-first after removing banner emoji', ()
   assert.match(screenSource, /<Text style=\{styles\.errorText\}>\{error\}<\/Text>/);
   assert.match(screenSource, /setError\(err\.message \|\| 'Failed to (load|save) agent'\);/);
 });
+
+test('uses shared per-agent model field helpers in the mobile agent editor', () => {
+  assert.match(screenSource, /getAgentProfileAgentModelProvider/);
+  assert.match(screenSource, /getAgentProfileAgentModelValue/);
+  assert.match(screenSource, /buildAgentProfileAgentModelUpdate/);
+  assert.doesNotMatch(screenSource, /const getAgentModelField/);
+  assert.doesNotMatch(screenSource, /const getAgentModelValue/);
+});
