@@ -16,6 +16,7 @@ import type {
   AgentExecutionConfig,
   PredefinedPrompt,
   PredefinedPromptsConfig,
+  SpeechToTextConfig,
   EmergencyStopResponse,
   OperatorDiscordLogsResponse,
   OperatorTunnelSetupSummary,
@@ -381,6 +382,23 @@ describe('settings API request/response contracts', () => {
 
     assertType<StreamerModeConfig>(config)
     expect(config.streamerModeEnabled).toBe(true)
+  })
+
+  it('accepts speech-to-text config shared by desktop and mobile settings', () => {
+    const config: SpeechToTextConfig = {
+      sttProviderId: 'groq',
+      sttLanguage: 'en',
+      openaiSttLanguage: 'en',
+      openaiSttModel: 'whisper-1',
+      groqSttLanguage: 'en',
+      groqSttModel: 'whisper-large-v3-turbo',
+      groqSttPrompt: 'Prefer product names verbatim.',
+      transcriptionPreviewEnabled: true,
+      parakeetNumThreads: 2,
+    }
+
+    assertType<SpeechToTextConfig>(config)
+    expect(config.sttProviderId).toBe('groq')
   })
 
   it('accepts repeat task create/update payloads with nullable schedules', () => {
