@@ -61,9 +61,9 @@ import {
 import { preprocessTextForTTS } from '@dotagents/shared/tts-preprocessing';
 import {
   getAgentConversationStateLabel,
-  normalizeAgentConversationState,
   type AgentConversationState,
 } from '@dotagents/shared/conversation-state';
+import { resolveAgentProgressConversationState } from '@dotagents/shared/agent-progress';
 import {
   DEFAULT_EDGE_TTS_VOICE,
   getTtsModelSettingKey,
@@ -243,14 +243,7 @@ const resolveConversationStateFromProgress = (
   update: AgentProgressUpdate,
   lifecycleState: 'running' | 'complete' = update.isComplete ? 'complete' : 'running'
 ): AgentConversationState => {
-  if (update.conversationState) {
-    return normalizeAgentConversationState(update.conversationState, lifecycleState);
-  }
-  const hasPendingApproval = update.steps.some((step) => step.type === 'pending_approval');
-  if (hasPendingApproval) {
-    return 'needs_input';
-  }
-  return lifecycleState;
+  return resolveAgentProgressConversationState(update, lifecycleState);
 };
 
 type RespondToUserHistorySourceMessage = {

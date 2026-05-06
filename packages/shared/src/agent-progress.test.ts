@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   getAgentDelegationChildSessionIds,
   getAgentDelegationDisplayTitle,
+  resolveAgentProgressConversationState,
   getSubagentParentSessionIdMap,
   getSubagentTitleBySessionIdMap,
 } from './agent-progress'
@@ -137,6 +138,43 @@ describe('AgentProgressUpdate', () => {
   it('accepts a minimal update (shared required fields only)', () => {
     assertType<AgentProgressUpdate>(minimalUpdate)
     expect(minimalUpdate.sessionId).toBe('sess-1')
+  })
+
+  it('resolves conversation state consistently for desktop and mobile progress payloads', () => {
+    expect(resolveAgentProgressConversationState(minimalUpdate)).toBe('running')
+    expect(resolveAgentProgressConversationState({ ...minimalUpdate, isComplete: true })).toBe('complete')
+    expect(resolveAgentProgressConversationState({
+      ...minimalUpdate,
+      conversationState: 'blocked',
+    })).toBe('blocked')
+    expect(resolveAgentProgressConversationState({
+      ...minimalUpdate,
+      conversationState: 'invalid' as any,
+      isComplete: true,
+    })).toBe('complete')
+    expect(resolveAgentProgressConversationState({
+      ...minimalUpdate,
+      pendingToolApproval: {
+        approvalId: 'approval-1',
+        toolName: 'shell',
+        arguments: { cmd: 'rm -rf tmp' },
+      },
+    })).toBe('needs_input')
+    expect(resolveAgentProgressConversationState({
+      ...minimalUpdate,
+      steps: [{
+        id: 'approval-step',
+        type: 'pending_approval',
+        title: 'Approve tool',
+        status: 'awaiting_approval',
+        timestamp: 1234,
+      }],
+    })).toBe('needs_input')
+    expect(resolveAgentProgressConversationState({
+      ...minimalUpdate,
+      isComplete: true,
+      finalContent: 'Stopped by emergency kill switch.',
+    })).toBe('blocked')
   })
 
   it('accepts desktop-specific fields', () => {

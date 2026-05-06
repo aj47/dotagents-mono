@@ -7,7 +7,10 @@ import {
 } from "./mcp-service"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressStep, AgentProgressUpdate } from "../shared/types"
-import type { AgentRetryProgressCallback } from "@dotagents/shared/agent-progress"
+import {
+  resolveAgentProgressConversationState,
+  type AgentRetryProgressCallback,
+} from "@dotagents/shared/agent-progress"
 import type { ConversationCompactionMetadata } from "../shared/types"
 import { diagnosticsService } from "./diagnostics"
 
@@ -135,30 +138,6 @@ function cleanErrorMessage(errorText: string): string {
   }
 
   return cleaned
-}
-
-function resolveProgressConversationState(update: Pick<AgentProgressUpdate, "conversationState" | "isComplete" | "pendingToolApproval" | "finalContent">): AgentConversationState {
-  const isKillSwitchCompletion =
-    update.isComplete &&
-    typeof update.finalContent === "string" &&
-    update.finalContent.includes("emergency kill switch")
-
-  if (update.conversationState) {
-    return normalizeAgentConversationState(
-      update.conversationState,
-      update.isComplete ? "complete" : "running",
-    )
-  }
-
-  if (update.pendingToolApproval) {
-    return "needs_input"
-  }
-
-  if (isKillSwitchCompletion) {
-    return "blocked"
-  }
-
-  return update.isComplete ? "complete" : "running"
 }
 
 function getExpectedStopReason(error: unknown, sessionId?: string): string | null {
@@ -766,7 +745,7 @@ export async function processTranscriptWithAgentMode(
       storedResponse: storedUserResponse,
       responseEvents,
     })
-    const conversationState = resolveProgressConversationState({
+    const conversationState = resolveAgentProgressConversationState({
       conversationState: update.conversationState,
       isComplete: update.isComplete,
       pendingToolApproval: update.pendingToolApproval,

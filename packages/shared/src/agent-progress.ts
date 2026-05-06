@@ -6,7 +6,10 @@
  */
 
 import type { ToolCall, ToolResult, ConversationHistoryMessage } from './types'
-import type { AgentConversationState } from './conversation-state'
+import {
+  normalizeAgentConversationState,
+  type AgentConversationState,
+} from './conversation-state'
 
 // ---------------------------------------------------------------------------
 // ACP (Agent Communication Protocol) related types
@@ -320,6 +323,37 @@ export interface AgentProgressUpdate {
  * Callback type for progress updates.
  */
 export type OnProgressCallback = (update: AgentProgressUpdate) => void
+
+export type AgentProgressConversationStateInput =
+  Pick<AgentProgressUpdate, 'conversationState' | 'isComplete' | 'pendingToolApproval' | 'finalContent'> &
+  Partial<Pick<AgentProgressUpdate, 'steps'>>
+
+export function resolveAgentProgressConversationState(
+  update: AgentProgressConversationStateInput,
+  lifecycleState: AgentConversationState = update.isComplete ? 'complete' : 'running',
+): AgentConversationState {
+  if (update.conversationState) {
+    return normalizeAgentConversationState(update.conversationState, lifecycleState)
+  }
+
+  if (
+    update.pendingToolApproval ||
+    update.steps?.some((step) => step.type === 'pending_approval')
+  ) {
+    return 'needs_input'
+  }
+
+  const isKillSwitchCompletion =
+    update.isComplete &&
+    typeof update.finalContent === 'string' &&
+    update.finalContent.includes('emergency kill switch')
+
+  if (isKillSwitchCompletion) {
+    return 'blocked'
+  }
+
+  return lifecycleState
+}
 
 export function getAgentDelegationChildSessionIds(delegation: ACPDelegationProgress): string[] {
   return [
