@@ -11,7 +11,20 @@ import type {
   LoopsResponse,
   LoopToggleResponse,
 } from "./api-types"
+import {
+  DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
+  DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
+  DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
+  DEFAULT_REPEAT_TASK_WEEKDAYS,
+} from "./repeat-task-defaults"
 import { parseTaskMarkdown, stringifyTaskMarkdown } from "./repeat-task-markdown"
+
+export {
+  DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
+  DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
+  DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
+  DEFAULT_REPEAT_TASK_WEEKDAYS,
+} from "./repeat-task-defaults"
 
 export type RepeatTaskScheduleMode = "continuous" | "interval" | "daily" | "weekly"
 
@@ -231,16 +244,6 @@ export interface RepeatTaskActionOptions<
 }
 
 export const REPEAT_TASK_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const
-export const DEFAULT_REPEAT_TASK_INTERVAL_MINUTES = 60
-export const DEFAULT_REPEAT_TASK_SCHEDULE_TIMES = ["09:00"] as const
-export const DEFAULT_REPEAT_TASK_WEEKDAYS = [1, 2, 3, 4, 5] as const
-export const DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS = {
-  enabled: true,
-  runOnStartup: false,
-  speakOnTrigger: false,
-  continueInSession: false,
-  runContinuously: false,
-} as const
 export const TASK_SESSION_TITLE_PREFIX = "[Repeat] "
 const REPEAT_TASK_NAME_CONNECTOR_WORDS = new Set(["a", "an", "and", "for", "of", "the", "to"])
 

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { parseTaskMarkdown, stringifyTaskMarkdown } from './repeat-task-markdown'
+import {
+  DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
+  DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
+} from './repeat-task-defaults'
 import type { RepeatTaskApiRecord } from './repeat-task-utils'
 
 describe('repeat-task-markdown', () => {
@@ -54,7 +58,7 @@ Review the week.
       id: 'weekly-review',
       name: 'Weekly review',
       prompt: 'Review the week.',
-      intervalMinutes: 60,
+      intervalMinutes: DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
       enabled: false,
       profileId: undefined,
       runOnStartup: undefined,
@@ -65,6 +69,28 @@ Review the week.
       maxIterations: undefined,
       lastRunAt: undefined,
       schedule: { type: 'weekly', times: ['17:00'], daysOfWeek: [1, 5] },
+    })
+  })
+
+  it('uses shared defaults when optional frontmatter is absent', () => {
+    const parsed = parseTaskMarkdown(`---
+kind: task
+name: Defaulted task
+---
+
+Run with defaults.
+`, { fallbackId: 'defaulted-task' })
+
+    expect(parsed).toMatchObject({
+      id: 'defaulted-task',
+      name: 'Defaulted task',
+      prompt: 'Run with defaults.',
+      intervalMinutes: DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
+      enabled: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled,
+      runOnStartup: undefined,
+      speakOnTrigger: undefined,
+      continueInSession: undefined,
+      runContinuously: undefined,
     })
   })
 })

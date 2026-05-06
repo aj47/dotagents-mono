@@ -161,6 +161,9 @@ test('lets mobile import and export loop Markdown through the shared client', ()
   assert.match(settingsSource, /settingsClient\.importLoopFromMarkdown\(loopImportMarkdownText\.trim\(\)\)/);
   assert.match(settingsSource, /settingsClient\.exportLoopToMarkdown\(loop\.id\)/);
   assert.match(settingsSource, /Share\.share\(\{[\s\S]*?message: result\.markdown/);
+  assert.match(settingsSource, /DEFAULT_LOOP_IMPORT_MARKDOWN_PLACEHOLDER/);
+  assert.match(settingsSource, /DEFAULT_REPEAT_TASK_INTERVAL_MINUTES/);
+  assert.match(settingsSource, /DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS\.enabled/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\('Import loop Markdown'\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Export \$\{loop\.name\} loop as Markdown`\)/);
 });

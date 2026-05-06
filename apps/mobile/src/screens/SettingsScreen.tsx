@@ -56,6 +56,8 @@ import {
 } from '@dotagents/shared/providers';
 import {
   applyRepeatTaskRuntimeStatus,
+  DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
+  DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
   describeLoopCadence,
   describeRepeatTaskRuntime,
   formatRepeatTaskRuntimeTimestamp,
@@ -200,6 +202,14 @@ type LoopRuntimeAction = {
 const MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT = {
   dateTimeFormatOptions: { hour: 'numeric', minute: '2-digit' },
 } as const;
+
+const DEFAULT_LOOP_IMPORT_MARKDOWN_PLACEHOLDER = `---
+kind: task
+name: morning-check
+intervalMinutes: ${DEFAULT_REPEAT_TASK_INTERVAL_MINUTES}
+enabled: ${DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled}
+---
+Summarize overnight work.`;
 
 const KNOWLEDGE_CONTEXT_FILTER_OPTIONS: Array<{ label: string; value: 'all' | KnowledgeNoteContext }> = [
   { label: 'All', value: 'all' },
@@ -5617,7 +5627,7 @@ export default function SettingsScreen({ navigation }: any) {
               style={styles.importJsonInput}
               value={loopImportMarkdownText}
               onChangeText={setLoopImportMarkdownText}
-              placeholder={'---\nkind: task\nname: morning-check\nintervalMinutes: 60\nenabled: true\n---\nSummarize overnight work.'}
+              placeholder={DEFAULT_LOOP_IMPORT_MARKDOWN_PLACEHOLDER}
               placeholderTextColor={theme.colors.mutedForeground}
               multiline
               numberOfLines={8}

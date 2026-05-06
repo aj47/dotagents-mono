@@ -306,6 +306,11 @@
       "import": "./dist/repeat-task-utils.mjs",
       "require": "./dist/repeat-task-utils.js"
     },
+    "./repeat-task-defaults": {
+      "types": "./dist/repeat-task-defaults.d.ts",
+      "import": "./dist/repeat-task-defaults.mjs",
+      "require": "./dist/repeat-task-defaults.js"
+    },
     "./repeat-task-markdown": {
       "types": "./dist/repeat-task-markdown.d.ts",
       "import": "./dist/repeat-task-markdown.mjs",

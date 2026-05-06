@@ -1,5 +1,9 @@
 import { parseFrontmatterOrBody, stringifyFrontmatterDocument } from './frontmatter'
 import type { RepeatTaskApiRecord, RepeatTaskSchedule } from './repeat-task-utils'
+import {
+  DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
+  DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
+} from './repeat-task-defaults'
 
 export type RepeatTaskMarkdownParseOptions = {
   fallbackId?: string
@@ -109,7 +113,7 @@ export function parseTaskMarkdown(
   if (!id) return null
 
   const name = (fm.name ?? '').trim() || id
-  const intervalMinutes = parseNumber(fm.intervalMinutes, 60)
+  const intervalMinutes = parseNumber(fm.intervalMinutes, DEFAULT_REPEAT_TASK_INTERVAL_MINUTES)
   const schedule = parseSchedule(fm.schedule)
 
   return {
@@ -117,13 +121,13 @@ export function parseTaskMarkdown(
     name,
     prompt: body.trim(),
     intervalMinutes: Math.max(1, intervalMinutes),
-    enabled: parseBoolean(fm.enabled, true),
+    enabled: parseBoolean(fm.enabled, DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled),
     profileId: (fm.profileId ?? '').trim() || undefined,
-    runOnStartup: parseBoolean(fm.runOnStartup, false) || undefined,
-    speakOnTrigger: parseBoolean(fm.speakOnTrigger, false) || undefined,
-    continueInSession: parseBoolean(fm.continueInSession, false) || undefined,
+    runOnStartup: parseBoolean(fm.runOnStartup, DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runOnStartup) || undefined,
+    speakOnTrigger: parseBoolean(fm.speakOnTrigger, DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.speakOnTrigger) || undefined,
+    continueInSession: parseBoolean(fm.continueInSession, DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.continueInSession) || undefined,
     lastSessionId: (fm.lastSessionId ?? '').trim() || undefined,
-    runContinuously: parseBoolean(fm.runContinuously, false) || undefined,
+    runContinuously: parseBoolean(fm.runContinuously, DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runContinuously) || undefined,
     maxIterations: fm.maxIterations ? Math.max(1, Math.floor(parseNumber(fm.maxIterations, 0))) || undefined : undefined,
     lastRunAt: fm.lastRunAt ? parseNumber(fm.lastRunAt, 0) || undefined : undefined,
     schedule,
