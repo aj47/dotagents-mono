@@ -24,11 +24,13 @@ const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
+  '.apng': 'image/apng',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.gif': 'image/gif',
   '.webp': 'image/webp',
   '.bmp': 'image/bmp',
+  '.avif': 'image/avif',
 };
 
 const DATA_IMAGE_BASE64_PREFIX_REGEX = /^data:image\/[a-z0-9.+-]+;base64,/i;

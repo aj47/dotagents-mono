@@ -126,7 +126,9 @@ describe('conversation video asset utilities', () => {
 
   it('resolves respond_to_user image MIME types from filenames', () => {
     expect(getConversationImageMimeTypeFromFileName('/tmp/demo.PNG')).toBe('image/png');
+    expect(getConversationImageMimeTypeFromFileName('demo.apng')).toBe('image/apng');
     expect(getConversationImageMimeTypeFromFileName('demo.jpeg')).toBe('image/jpeg');
+    expect(getConversationImageMimeTypeFromFileName('demo.avif')).toBe('image/avif');
     expect(getConversationImageMimeTypeFromFileName('demo.svg')).toBeUndefined();
   });
 

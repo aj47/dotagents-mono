@@ -3,10 +3,14 @@ import fs from "fs"
 import os from "os"
 import path from "path"
 import type { OAuthTokens } from "@shared/types"
+import {
+  getConversationImageMimeTypeFromFileName,
+  parseConversationImageAssetUrl,
+} from "@dotagents/shared/conversation-media-assets"
 import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
 import { oauthStorage } from "./oauth-storage"
-import { CONVERSATION_IMAGE_ASSET_HOST, getConversationImageAssetPath } from "./conversation-image-assets"
+import { getConversationImageAssetPath } from "./conversation-image-assets"
 
 const DEFAULT_CHATGPT_WEB_BASE_URL = "https://chatgpt.com"
 const DEFAULT_CHATGPT_WEB_MODEL = "gpt-5.4-mini"
@@ -75,17 +79,6 @@ interface PreparedCodexTools {
 }
 
 const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi
-
-const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
-  png: "image/png",
-  apng: "image/apng",
-  gif: "image/gif",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  webp: "image/webp",
-  bmp: "image/bmp",
-  avif: "image/avif",
-}
 
 const MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES = 8 * 1024 * 1024
 
@@ -602,19 +595,11 @@ function buildCodexInstructions(messages: ChatGptWebMessage[]): string {
 
 function resolveConversationAssetImageUrl(imageUrl: string): string | null {
   try {
-    const parsed = new URL(imageUrl)
-    if (parsed.protocol !== "assets:" || parsed.hostname !== CONVERSATION_IMAGE_ASSET_HOST) {
-      return null
-    }
+    const assetRef = parseConversationImageAssetUrl(imageUrl)
+    if (!assetRef) return null
 
-    const [, encodedConversationId, encodedFileName] = parsed.pathname.split("/")
-    if (!encodedConversationId || !encodedFileName) return null
-
-    const conversationId = decodeURIComponent(encodedConversationId)
-    const fileName = decodeURIComponent(encodedFileName)
-    const assetPath = getConversationImageAssetPath(conversationId, fileName)
-    const extension = fileName.split(".").pop()?.toLowerCase() || "png"
-    const mimeType = IMAGE_MIME_BY_EXTENSION[extension] || "image/png"
+    const assetPath = getConversationImageAssetPath(assetRef.conversationId, assetRef.fileName)
+    const mimeType = getConversationImageMimeTypeFromFileName(assetRef.fileName) || "image/png"
     const buffer = fs.readFileSync(assetPath)
     if (buffer.length > MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES) {
       return null

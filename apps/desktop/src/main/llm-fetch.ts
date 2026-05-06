@@ -35,13 +35,17 @@ import { state, agentSessionStateManager, llmRequestAbortManager } from "./state
 import type { AgentConversationState } from "@dotagents/shared/conversation-state"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
 import {
+  getConversationImageMimeTypeFromFileName,
+  parseConversationImageAssetUrl,
+} from "@dotagents/shared/conversation-media-assets"
+import {
   createLLMGeneration,
   endLLMGeneration,
   isLangfuseEnabled,
 } from "./langfuse-service"
 import { recordActualTokenUsage } from "./context-budget"
 import { getCurrentChatGptWebModelName, isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
-import { CONVERSATION_IMAGE_ASSET_HOST, getConversationImageAssetPath } from "./conversation-image-assets"
+import { getConversationImageAssetPath } from "./conversation-image-assets"
 
 /**
  * Extended usage type that includes cache token details from AI SDK providers.
@@ -674,17 +678,6 @@ type MarkdownImageForModel = { image: string | URL; mediaType?: string }
 
 const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((data:image\/[a-z0-9.+-]+;base64,[^)]+|assets:\/\/conversation-image\/[^)]+)\)/gi
 
-const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
-  png: "image/png",
-  apng: "image/apng",
-  gif: "image/gif",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  webp: "image/webp",
-  bmp: "image/bmp",
-  avif: "image/avif",
-}
-
 function parseDataImageUrl(imageUrl: string): MarkdownImageForModel | null {
   const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(imageUrl)
   if (!match) return null
@@ -695,19 +688,11 @@ const MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES = 8 * 1024 * 1024
 
 function resolveAssetsImageUrlForModel(imageUrl: string): MarkdownImageForModel | null {
   try {
-    const parsed = new URL(imageUrl)
-    if (parsed.protocol !== "assets:" || parsed.hostname !== CONVERSATION_IMAGE_ASSET_HOST) {
-      return null
-    }
+    const assetRef = parseConversationImageAssetUrl(imageUrl)
+    if (!assetRef) return null
 
-    const [, encodedConversationId, encodedFileName] = parsed.pathname.split("/")
-    if (!encodedConversationId || !encodedFileName) return null
-
-    const conversationId = decodeURIComponent(encodedConversationId)
-    const fileName = decodeURIComponent(encodedFileName)
-    const assetPath = getConversationImageAssetPath(conversationId, fileName)
-    const extension = fileName.split(".").pop()?.toLowerCase() || "png"
-    const mimeType = IMAGE_MIME_BY_EXTENSION[extension] || "image/png"
+    const assetPath = getConversationImageAssetPath(assetRef.conversationId, assetRef.fileName)
+    const mimeType = getConversationImageMimeTypeFromFileName(assetRef.fileName) || "image/png"
     const buffer = fs.readFileSync(assetPath)
     if (buffer.length > MAX_CONVERSATION_IMAGE_ASSET_SIZE_BYTES) {
       if (isDebugLLM()) {
