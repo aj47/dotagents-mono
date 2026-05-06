@@ -1,6 +1,5 @@
 import type {
   CHAT_PROVIDER_ID,
-  TTS_PROVIDER_ID,
   OPENAI_COMPATIBLE_PRESET_ID,
   ModelPreset,
 } from '@dotagents/shared/providers'
@@ -14,7 +13,7 @@ import type {
 } from '@dotagents/shared/conversation-state'
 import type { MCPConfig as SharedMCPConfig } from '@dotagents/shared/mcp-utils'
 import type { PushNotificationToken as SharedPushNotificationToken } from '@dotagents/shared/push-notifications'
-import type { AgentExecutionConfig, PredefinedPromptsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
+import type { AgentExecutionConfig, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
 import type { MainAgentConfig } from '@dotagents/shared/main-agent-selection'
 import type { CloudflareTunnelConfig, RemoteServerConfig, StreamerModeConfig } from '@dotagents/shared/remote-pairing'
 import type { ObservabilityConfig } from '@dotagents/shared/observability-config'
@@ -35,7 +34,7 @@ import {
 
 export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, LoopConfig, LoopSchedule, AgentSkill, AgentSkillsData, RecordingHistoryItem, AgentProfileRole, LegacyAgentProfileRole, PreferredAgentProfileRole } from '@dotagents/shared/types'
 export type { SessionHistoryConfig } from '@dotagents/shared/session'
-export type { AgentExecutionConfig, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
+export type { AgentExecutionConfig, PredefinedPrompt, PredefinedPromptsConfig, SpeechToTextConfig, TextToSpeechConfig, TranscriptPostProcessingConfig } from '@dotagents/shared/api-types'
 export { normalizeAgentProfileRole } from '@dotagents/shared/types'
 export type { AgentProfile, AgentProfileConnection, AgentProfileConnectionType, AgentProfilesData, AgentProfileToolConfig } from '@dotagents/shared/agent-profile-domain'
 export type { ProfileMcpServerConfig, ProfileModelConfig, ProfileSkillsConfig, SessionProfileSnapshot } from '@dotagents/shared/agent-profile-session-snapshot'
@@ -137,7 +136,7 @@ export type { ModelPreset } from '@dotagents/shared/providers'
 
 export type ACPAgentConfig = LegacyAcpAgentConfig
 
-export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
+export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTunnelConfig & StreamerModeConfig & ObservabilityConfig & SessionHistoryConfig & MainAgentConfig & PredefinedPromptsConfig & AgentExecutionConfig & SpeechToTextConfig & TranscriptPostProcessingConfig & TextToSpeechConfig & DiscordIntegrationConfig & WhatsAppIntegrationConfig & {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
   customShortcutMode?: "hold" | "toggle" // Mode for custom recording shortcut
@@ -185,49 +184,19 @@ export type Config = Record<string, unknown> & RemoteServerConfig & CloudflareTu
   parakeetModelPath?: string // Optional custom model path
   parakeetModelDownloaded?: boolean // Whether model has been downloaded
 
-  // Text-to-Speech Configuration
-  ttsEnabled?: boolean
-  ttsAutoPlay?: boolean
-  ttsProviderId?: TTS_PROVIDER_ID
-
   // OpenAI TTS Configuration
-  openaiTtsModel?: "gpt-4o-mini-tts" | "tts-1" | "tts-1-hd"
-  openaiTtsVoice?: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer"
-  openaiTtsSpeed?: number // 0.25 to 4.0
   openaiTtsResponseFormat?: "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm"
 
-  // Groq TTS Configuration
-  groqTtsModel?: "canopylabs/orpheus-v1-english" | "canopylabs/orpheus-arabic-saudi"
-  groqTtsVoice?: string
-
   // Gemini TTS Configuration
-  geminiTtsModel?: "gemini-2.5-flash-preview-tts" | "gemini-2.5-pro-preview-tts"
-  geminiTtsVoice?: string
   geminiTtsLanguage?: string
-
-  // Edge TTS Configuration
-  edgeTtsModel?: "edge-tts"
-  edgeTtsVoice?: string
-  edgeTtsRate?: number // 0.5 to 2.0
 
   // Kitten (Local) TTS Configuration
   kittenModelDownloaded?: boolean // Whether model has been downloaded
-  kittenVoiceId?: number // Voice ID 0-7 (default: 0 for Voice 2 - Male)
 
   // Supertonic (Local) TTS Configuration
   supertonicModelDownloaded?: boolean // Whether model has been downloaded
-  supertonicVoice?: string // Voice style ID (e.g., "M1", "F1") - default "M1"
-  supertonicLanguage?: string // Language code (en, ko, es, pt, fr) - default "en"
-  supertonicSpeed?: number // Speech speed (default: 1.05)
-  supertonicSteps?: number // Denoising steps (default: 5, higher = better quality)
 
-  // TTS Text Preprocessing Configuration
-  ttsPreprocessingEnabled?: boolean
-  ttsRemoveCodeBlocks?: boolean
-  ttsRemoveUrls?: boolean
-  ttsConvertMarkdown?: boolean
   // LLM-based TTS Preprocessing (for more natural speech output)
-  ttsUseLLMPreprocessing?: boolean
   ttsLLMPreprocessingProviderId?: CHAT_PROVIDER_ID
 
   // Audio Device Selection

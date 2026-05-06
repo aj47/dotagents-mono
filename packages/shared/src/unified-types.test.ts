@@ -17,6 +17,7 @@ import type {
   PredefinedPrompt,
   PredefinedPromptsConfig,
   SpeechToTextConfig,
+  TextToSpeechConfig,
   TranscriptPostProcessingConfig,
   EmergencyStopResponse,
   OperatorDiscordLogsResponse,
@@ -415,6 +416,37 @@ describe('settings API request/response contracts', () => {
 
     assertType<TranscriptPostProcessingConfig>(config)
     expect(config.transcriptPostProcessingProviderId).toBe('gemini')
+  })
+
+  it('accepts text-to-speech config shared by desktop and mobile settings', () => {
+    const config: TextToSpeechConfig = {
+      ttsEnabled: true,
+      ttsAutoPlay: false,
+      ttsProviderId: 'supertonic',
+      ttsPreprocessingEnabled: true,
+      ttsRemoveCodeBlocks: true,
+      ttsRemoveUrls: true,
+      ttsConvertMarkdown: true,
+      ttsUseLLMPreprocessing: false,
+      openaiTtsModel: 'gpt-4o-mini-tts',
+      openaiTtsVoice: 'alloy',
+      openaiTtsSpeed: 1,
+      groqTtsModel: 'canopylabs/orpheus-v1-english',
+      groqTtsVoice: 'troy',
+      geminiTtsModel: 'gemini-2.5-flash-preview-tts',
+      geminiTtsVoice: 'Kore',
+      edgeTtsModel: 'edge-tts',
+      edgeTtsVoice: 'en-US-AriaNeural',
+      edgeTtsRate: 1,
+      kittenVoiceId: 0,
+      supertonicVoice: 'M1',
+      supertonicLanguage: 'en',
+      supertonicSpeed: 1.05,
+      supertonicSteps: 5,
+    }
+
+    assertType<TextToSpeechConfig>(config)
+    expect(config.ttsProviderId).toBe('supertonic')
   })
 
   it('accepts repeat task create/update payloads with nullable schedules', () => {

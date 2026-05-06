@@ -5,7 +5,7 @@
 
 import type { QueuedMessage, ToolCall, ToolResult, LoopSchedule } from './types';
 import type { SessionHistoryConfig } from './session';
-import type { CHAT_PROVIDER_ID, ModelPreset, STT_PROVIDER_ID } from './providers';
+import type { CHAT_PROVIDER_ID, ModelPreset, STT_PROVIDER_ID, TTS_PROVIDER_ID } from './providers';
 import type { MainAgentConfig } from './main-agent-selection';
 import type {
   KnowledgeNote,
@@ -623,7 +623,33 @@ export interface TranscriptPostProcessingConfig {
   transcriptPostProcessingPrompt?: string;
 }
 
-export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig {
+export interface TextToSpeechConfig {
+  ttsEnabled?: boolean;
+  ttsAutoPlay?: boolean;
+  ttsProviderId?: TTS_PROVIDER_ID;
+  ttsPreprocessingEnabled?: boolean;
+  ttsRemoveCodeBlocks?: boolean;
+  ttsRemoveUrls?: boolean;
+  ttsConvertMarkdown?: boolean;
+  ttsUseLLMPreprocessing?: boolean;
+  openaiTtsModel?: string;
+  openaiTtsVoice?: string;
+  openaiTtsSpeed?: number;
+  groqTtsModel?: string;
+  groqTtsVoice?: string;
+  geminiTtsModel?: string;
+  geminiTtsVoice?: string;
+  edgeTtsModel?: string;
+  edgeTtsVoice?: string;
+  edgeTtsRate?: number;
+  kittenVoiceId?: number;
+  supertonicVoice?: string;
+  supertonicLanguage?: string;
+  supertonicSpeed?: number;
+  supertonicSteps?: number;
+}
+
+export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -643,33 +669,6 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, St
   groqBaseUrl?: string;
   geminiApiKey?: string;
   geminiBaseUrl?: string;
-
-  // Text-to-Speech Configuration
-  ttsEnabled?: boolean;
-  ttsAutoPlay?: boolean;
-  ttsProviderId?: 'openai' | 'groq' | 'gemini' | 'edge' | 'kitten' | 'supertonic';
-  ttsPreprocessingEnabled?: boolean;
-  ttsRemoveCodeBlocks?: boolean;
-  ttsRemoveUrls?: boolean;
-  ttsConvertMarkdown?: boolean;
-  ttsUseLLMPreprocessing?: boolean;
-
-  // TTS Voice/Model per Provider
-  openaiTtsModel?: string;
-  openaiTtsVoice?: string;
-  openaiTtsSpeed?: number;
-  groqTtsModel?: string;
-  groqTtsVoice?: string;
-  geminiTtsModel?: string;
-  geminiTtsVoice?: string;
-  edgeTtsModel?: string;
-  edgeTtsVoice?: string;
-  edgeTtsRate?: number;
-  kittenVoiceId?: number;
-  supertonicVoice?: string;
-  supertonicLanguage?: string;
-  supertonicSpeed?: number;
-  supertonicSteps?: number;
 
   // WhatsApp Integration
   whatsappEnabled?: boolean;
@@ -699,7 +698,7 @@ export interface Settings extends RemoteServerConfig, CloudflareTunnelConfig, St
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
 
-export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig {
+export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConfig, StreamerModeConfig, ObservabilityConfig, SessionHistoryConfig, MainAgentConfig, PredefinedPromptsConfig, AgentExecutionConfig, SpeechToTextConfig, TranscriptPostProcessingConfig, TextToSpeechConfig {
   // Agent model configuration (mcpTools* fields are legacy compatibility aliases)
   agentProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
   agentOpenaiModel?: string;
@@ -718,33 +717,6 @@ export interface SettingsUpdate extends RemoteServerConfig, CloudflareTunnelConf
   groqBaseUrl?: string;
   geminiApiKey?: string;
   geminiBaseUrl?: string;
-
-  // Text-to-Speech Configuration
-  ttsEnabled?: boolean;
-  ttsAutoPlay?: boolean;
-  ttsProviderId?: 'openai' | 'groq' | 'gemini' | 'edge' | 'kitten' | 'supertonic';
-  ttsPreprocessingEnabled?: boolean;
-  ttsRemoveCodeBlocks?: boolean;
-  ttsRemoveUrls?: boolean;
-  ttsConvertMarkdown?: boolean;
-  ttsUseLLMPreprocessing?: boolean;
-
-  // TTS Voice/Model per Provider
-  openaiTtsModel?: string;
-  openaiTtsVoice?: string;
-  openaiTtsSpeed?: number;
-  groqTtsModel?: string;
-  groqTtsVoice?: string;
-  geminiTtsModel?: string;
-  geminiTtsVoice?: string;
-  edgeTtsModel?: string;
-  edgeTtsVoice?: string;
-  edgeTtsRate?: number;
-  kittenVoiceId?: number;
-  supertonicVoice?: string;
-  supertonicLanguage?: string;
-  supertonicSpeed?: number;
-  supertonicSteps?: number;
 
   // WhatsApp Integration
   whatsappEnabled?: boolean;
