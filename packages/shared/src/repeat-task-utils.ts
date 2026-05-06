@@ -88,6 +88,22 @@ export type RepeatTaskStatusLike = {
   nextRunAt?: number
 }
 
+export type RepeatTaskSessionLike = {
+  id: string
+  conversationId?: string | null
+  parentSessionId?: string | null
+  conversationTitle?: string | null
+  isRepeatTask?: boolean
+}
+
+export type RepeatTaskSessionDedupeLike = RepeatTaskSessionLike & {
+  status?: string
+  startTime?: number
+  endTime?: number
+}
+
+export type RepeatTaskTitleHints = ReadonlySet<string>
+
 export type RepeatTaskApiFormatOptions = {
   profileName?: string
   status?: RepeatTaskStatusLike
@@ -161,6 +177,121 @@ export function formatRepeatTaskTitle(taskName: string): string {
 
 export function hasRepeatTaskTitlePrefix(title: string | undefined | null): boolean {
   return typeof title === "string" && title.startsWith(TASK_SESSION_TITLE_PREFIX)
+}
+
+export function isRepeatTaskSession(
+  session: RepeatTaskSessionLike,
+  repeatTaskTitleHints?: RepeatTaskTitleHints,
+): boolean {
+  if (session.isRepeatTask) return true
+  if (hasRepeatTaskTitlePrefix(session.conversationTitle)) return true
+  const title = session.conversationTitle?.trim()
+  return !!title && !!repeatTaskTitleHints?.has(title)
+}
+
+export function partitionRepeatTaskAndUserEntries<
+  T extends { session: RepeatTaskSessionLike },
+>(
+  entries: T[],
+  repeatTaskTitleHints?: RepeatTaskTitleHints,
+): { userEntries: T[]; taskEntries: T[] } {
+  const taskSessionIds = new Set(
+    entries
+      .filter((entry) => isRepeatTaskSession(entry.session, repeatTaskTitleHints))
+      .map((entry) => entry.session.id),
+  )
+  const userEntries: T[] = []
+  const taskEntries: T[] = []
+  for (const entry of entries) {
+    const parentSessionId = entry.session.parentSessionId?.trim()
+    if (
+      isRepeatTaskSession(entry.session, repeatTaskTitleHints) ||
+      (parentSessionId && taskSessionIds.has(parentSessionId))
+    ) {
+      taskEntries.push(entry)
+    } else {
+      userEntries.push(entry)
+    }
+  }
+  return { userEntries, taskEntries }
+}
+
+function getRepeatTaskEntryDedupeKey(session: RepeatTaskSessionLike): string | null {
+  const title = session.conversationTitle?.trim()
+  if (!title) return null
+  return title.startsWith(TASK_SESSION_TITLE_PREFIX)
+    ? title.slice(TASK_SESSION_TITLE_PREFIX.length).trim().toLowerCase()
+    : title.toLowerCase()
+}
+
+function getRepeatTaskEntryTimestamp(session: RepeatTaskSessionDedupeLike): number {
+  return Math.max(session.endTime ?? 0, session.startTime ?? 0)
+}
+
+function isBetterRepeatTaskEntry<T extends { session: RepeatTaskSessionDedupeLike }>(
+  candidate: T,
+  current: T,
+): boolean {
+  const candidateIsActive = candidate.session.status === "active"
+  const currentIsActive = current.session.status === "active"
+  if (candidateIsActive !== currentIsActive) return candidateIsActive
+  return getRepeatTaskEntryTimestamp(candidate.session) > getRepeatTaskEntryTimestamp(current.session)
+}
+
+export function dedupeRepeatTaskEntriesByTitle<
+  T extends { session: RepeatTaskSessionDedupeLike },
+>(taskEntries: T[]): T[] {
+  if (taskEntries.length <= 1) return taskEntries
+
+  const selectedByTitle = new Map<string, T>()
+  for (const entry of taskEntries) {
+    const key = getRepeatTaskEntryDedupeKey(entry.session)
+    if (!key) continue
+    const current = selectedByTitle.get(key)
+    if (!current || isBetterRepeatTaskEntry(entry, current)) {
+      selectedByTitle.set(key, entry)
+    }
+  }
+
+  return taskEntries.filter((entry) => {
+    const key = getRepeatTaskEntryDedupeKey(entry.session)
+    return !key || selectedByTitle.get(key) === entry
+  })
+}
+
+export function partitionPinnedAndUnpinnedRepeatTaskEntries<
+  T extends { session: Pick<RepeatTaskSessionLike, "id" | "conversationId" | "parentSessionId"> },
+>(
+  taskEntries: T[],
+  pinnedSessionIds: ReadonlySet<string>,
+): { pinnedTaskEntries: T[]; unpinnedTaskEntries: T[] } {
+  if (taskEntries.length === 0 || pinnedSessionIds.size === 0) {
+    return { pinnedTaskEntries: [], unpinnedTaskEntries: taskEntries }
+  }
+
+  const pinnedTaskSessionIds = new Set(
+    taskEntries
+      .filter((entry) => {
+        const conversationId = entry.session.conversationId
+        return !!conversationId && pinnedSessionIds.has(conversationId)
+      })
+      .map((entry) => entry.session.id),
+  )
+  const pinnedTaskEntries: T[] = []
+  const unpinnedTaskEntries: T[] = []
+  for (const entry of taskEntries) {
+    const conversationId = entry.session.conversationId
+    const parentSessionId = entry.session.parentSessionId?.trim()
+    if (
+      (conversationId && pinnedSessionIds.has(conversationId)) ||
+      (parentSessionId && pinnedTaskSessionIds.has(parentSessionId))
+    ) {
+      pinnedTaskEntries.push(entry)
+    } else {
+      unpinnedTaskEntries.push(entry)
+    }
+  }
+  return { pinnedTaskEntries, unpinnedTaskEntries }
 }
 
 export function mergeRepeatTaskLayers<TTask extends RepeatTaskLayerRecord>(

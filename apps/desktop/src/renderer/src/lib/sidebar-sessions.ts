@@ -1,7 +1,12 @@
 import type { AgentProgressUpdate } from "@shared/types"
-import { TASK_SESSION_TITLE_PREFIX, hasRepeatTaskTitlePrefix } from "@shared/repeat-tasks"
 import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
 import { orderSessionsByPinnedConversationFirst } from "@dotagents/shared/session"
+import {
+  dedupeRepeatTaskEntriesByTitle,
+  isRepeatTaskSession,
+  partitionPinnedAndUnpinnedRepeatTaskEntries,
+  partitionRepeatTaskAndUserEntries,
+} from "@dotagents/shared/repeat-task-utils"
 
 type SessionLike = {
   id: string
@@ -89,22 +94,12 @@ const SIDEBAR_ACTIVITY_BADGE_CLASSES: Record<SidebarActivityKind, string> = {
 
 /**
  * Sessions started by the repeat-task loop service get the shared
- * `TASK_SESSION_TITLE_PREFIX` (see apps/desktop/src/shared/repeat-tasks.ts).
+ * `TASK_SESSION_TITLE_PREFIX` from `@dotagents/shared/repeat-task-utils`.
  * We use that prefix as the canonical signal for "task" entries in the
  * sidebar so they can be grouped separately from user-driven sessions.
  */
 export function isTaskSession(session: TitledSessionLike): boolean {
-  return isTaskSessionWithHints(session)
-}
-
-function isTaskSessionWithHints(
-  session: TitledSessionLike,
-  repeatTaskTitleHints?: RepeatTaskTitleHints,
-): boolean {
-  if (session.isRepeatTask) return true
-  if (hasRepeatTaskTitlePrefix(session.conversationTitle)) return true
-  const title = session.conversationTitle?.trim()
-  return !!title && !!repeatTaskTitleHints?.has(title)
+  return isRepeatTaskSession(session)
 }
 
 export function partitionTaskAndUserEntries<
@@ -113,68 +108,13 @@ export function partitionTaskAndUserEntries<
   entries: T[],
   repeatTaskTitleHints?: RepeatTaskTitleHints,
 ): { userEntries: T[]; taskEntries: T[] } {
-  const taskSessionIds = new Set(
-    entries
-      .filter((entry) => isTaskSessionWithHints(entry.session, repeatTaskTitleHints))
-      .map((entry) => entry.session.id),
-  )
-  const userEntries: T[] = []
-  const taskEntries: T[] = []
-  for (const entry of entries) {
-    const parentSessionId = entry.session.parentSessionId?.trim()
-    if (
-      isTaskSessionWithHints(entry.session, repeatTaskTitleHints) ||
-      (parentSessionId && taskSessionIds.has(parentSessionId))
-    ) {
-      taskEntries.push(entry)
-    } else {
-      userEntries.push(entry)
-    }
-  }
-  return { userEntries, taskEntries }
-}
-
-function getTaskEntryDedupeKey(session: TitledSessionLike): string | null {
-  const title = session.conversationTitle?.trim()
-  if (!title) return null
-  return title.startsWith(TASK_SESSION_TITLE_PREFIX)
-    ? title.slice(TASK_SESSION_TITLE_PREFIX.length).trim().toLowerCase()
-    : title.toLowerCase()
-}
-
-function getTaskEntryTimestamp(session: TitledSessionLike & { startTime?: number; endTime?: number }): number {
-  return Math.max(session.endTime ?? 0, session.startTime ?? 0)
-}
-
-function isBetterTaskEntry<T extends { session: TitledSessionLike & { status?: string; startTime?: number; endTime?: number } }>(
-  candidate: T,
-  current: T,
-): boolean {
-  const candidateIsActive = candidate.session.status === "active"
-  const currentIsActive = current.session.status === "active"
-  if (candidateIsActive !== currentIsActive) return candidateIsActive
-  return getTaskEntryTimestamp(candidate.session) > getTaskEntryTimestamp(current.session)
+  return partitionRepeatTaskAndUserEntries(entries, repeatTaskTitleHints)
 }
 
 export function dedupeTaskEntriesByTitle<
   T extends { session: TitledSessionLike & { status?: string; startTime?: number; endTime?: number } },
 >(taskEntries: T[]): T[] {
-  if (taskEntries.length <= 1) return taskEntries
-
-  const selectedByTitle = new Map<string, T>()
-  for (const entry of taskEntries) {
-    const key = getTaskEntryDedupeKey(entry.session)
-    if (!key) continue
-    const current = selectedByTitle.get(key)
-    if (!current || isBetterTaskEntry(entry, current)) {
-      selectedByTitle.set(key, entry)
-    }
-  }
-
-  return taskEntries.filter((entry) => {
-    const key = getTaskEntryDedupeKey(entry.session)
-    return !key || selectedByTitle.get(key) === entry
-  })
+  return dedupeRepeatTaskEntriesByTitle(taskEntries)
 }
 
 export function partitionPinnedAndUnpinnedTaskEntries<
@@ -183,33 +123,7 @@ export function partitionPinnedAndUnpinnedTaskEntries<
   taskEntries: T[],
   pinnedSessionIds: ReadonlySet<string>,
 ): { pinnedTaskEntries: T[]; unpinnedTaskEntries: T[] } {
-  if (taskEntries.length === 0 || pinnedSessionIds.size === 0) {
-    return { pinnedTaskEntries: [], unpinnedTaskEntries: taskEntries }
-  }
-
-  const pinnedTaskSessionIds = new Set(
-    taskEntries
-      .filter((entry) => {
-        const conversationId = entry.session.conversationId
-        return !!conversationId && pinnedSessionIds.has(conversationId)
-      })
-      .map((entry) => entry.session.id),
-  )
-  const pinnedTaskEntries: T[] = []
-  const unpinnedTaskEntries: T[] = []
-  for (const entry of taskEntries) {
-    const conversationId = entry.session.conversationId
-    const parentSessionId = entry.session.parentSessionId?.trim()
-    if (
-      (conversationId && pinnedSessionIds.has(conversationId)) ||
-      (parentSessionId && pinnedTaskSessionIds.has(parentSessionId))
-    ) {
-      pinnedTaskEntries.push(entry)
-    } else {
-      unpinnedTaskEntries.push(entry)
-    }
-  }
-  return { pinnedTaskEntries, unpinnedTaskEntries }
+  return partitionPinnedAndUnpinnedRepeatTaskEntries(taskEntries, pinnedSessionIds)
 }
 
 export function paginateSidebarEntries<

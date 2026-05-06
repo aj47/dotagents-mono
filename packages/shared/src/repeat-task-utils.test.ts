@@ -11,6 +11,7 @@ import {
   buildRepeatTasksResponse,
   buildRepeatTaskToggleResponse,
   computeNextScheduledRun,
+  dedupeRepeatTaskEntriesByTitle,
   deleteRepeatTaskAction,
   describeLoopCadence,
   describeRepeatTaskScheduleForLog,
@@ -32,6 +33,9 @@ import {
   parseRepeatTaskUpdateRequestBody,
   formatRepeatTaskForApi,
   hasRepeatTaskTitlePrefix,
+  isRepeatTaskSession,
+  partitionPinnedAndUnpinnedRepeatTaskEntries,
+  partitionRepeatTaskAndUserEntries,
   runRepeatTaskAction,
   sanitizeScheduleTimes,
   TASK_SESSION_TITLE_PREFIX,
@@ -46,6 +50,56 @@ describe("repeat task schedule helpers", () => {
     expect(hasRepeatTaskTitlePrefix("[Repeat] Daily standup")).toBe(true)
     expect(hasRepeatTaskTitlePrefix("Daily standup")).toBe(false)
     expect(hasRepeatTaskTitlePrefix(undefined)).toBe(false)
+  })
+
+  it("detects repeat-task sessions from title prefixes, title hints, or backend flags", () => {
+    expect(isRepeatTaskSession({ id: "s", conversationTitle: "[Repeat] Daily standup" })).toBe(true)
+    expect(isRepeatTaskSession({ id: "s", conversationTitle: "Daily standup" })).toBe(false)
+    expect(isRepeatTaskSession({ id: "s", isRepeatTask: true })).toBe(true)
+    expect(isRepeatTaskSession(
+      { id: "s", conversationTitle: "Conversation Knowledge Review" },
+      new Set(["Conversation Knowledge Review"]),
+    )).toBe(true)
+  })
+
+  it("partitions repeat-task entries and keeps child subagents with task parents", () => {
+    const entries = [
+      { session: { id: "u1", conversationTitle: "Hello" } },
+      { session: { id: "parent-task", conversationTitle: "[Repeat] Cron" } },
+      { session: { id: "task-subagent", parentSessionId: "parent-task" } },
+      { session: { id: "u2", conversationTitle: "Quick question" } },
+    ]
+
+    const { userEntries, taskEntries } = partitionRepeatTaskAndUserEntries(entries)
+
+    expect(userEntries.map((entry) => entry.session.id)).toEqual(["u1", "u2"])
+    expect(taskEntries.map((entry) => entry.session.id)).toEqual(["parent-task", "task-subagent"])
+  })
+
+  it("dedupes repeat-task entries by normalized title while preferring active or newest runs", () => {
+    expect(dedupeRepeatTaskEntriesByTitle([
+      { session: { id: "active", conversationTitle: "[Repeat] Chess Trainer", status: "active", startTime: 300 } },
+      { session: { id: "stopped", conversationTitle: "[Repeat] Chess Trainer", status: "stopped", startTime: 200, endTime: 250 } },
+    ]).map((entry) => entry.session.id)).toEqual(["active"])
+
+    expect(dedupeRepeatTaskEntriesByTitle([
+      { session: { id: "older", conversationTitle: "Knowledge Review", status: "completed", startTime: 100, endTime: 150 } },
+      { session: { id: "newer", conversationTitle: "Knowledge Review", status: "completed", startTime: 200, endTime: 250 } },
+    ]).map((entry) => entry.session.id)).toEqual(["newer"])
+  })
+
+  it("partitions pinned repeat-task entries and keeps child subagents with pinned task parents", () => {
+    const entries = [
+      { session: { id: "parent-task", conversationId: "c1" } },
+      { session: { id: "task-subagent", conversationId: "c2", parentSessionId: "parent-task" } },
+      { session: { id: "other-task", conversationId: "c3" } },
+    ]
+
+    const { pinnedTaskEntries, unpinnedTaskEntries } =
+      partitionPinnedAndUnpinnedRepeatTaskEntries(entries, new Set(["c1"]))
+
+    expect(pinnedTaskEntries.map((entry) => entry.session.id)).toEqual(["parent-task", "task-subagent"])
+    expect(unpinnedTaskEntries.map((entry) => entry.session.id)).toEqual(["other-task"])
   })
 
   it("merges global and workspace task layers by id with workspace overrides", () => {
