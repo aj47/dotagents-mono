@@ -299,9 +299,15 @@ async function loadAgentProgress(
     hasTTSPlayed: () => false,
     markTTSPlayed: vi.fn(),
     removeTTSKey: vi.fn(),
-    buildResponseEventTTSKey: vi.fn(() => null),
-    buildContentTTSKey: vi.fn(() => null),
   }))
+  vi.doMock("@dotagents/shared/tts-tracking", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@dotagents/shared/tts-tracking")>()
+    return {
+      ...actual,
+      buildResponseEventTTSKey: vi.fn(() => null),
+      buildContentTTSKey: vi.fn(() => null),
+    }
+  })
   vi.doMock("@renderer/lib/tts-manager", () => ttsManagerMock)
   vi.doMock("@dotagents/shared/message-display-utils", () => ({
     hasMarkdownMediaPayload: (text: string) =>

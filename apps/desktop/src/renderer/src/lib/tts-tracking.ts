@@ -9,8 +9,6 @@
  */
 
 import {
-  buildContentTTSKey,
-  buildResponseEventTTSKey,
   clearSessionTTSTracking as clearSessionTTSTrackingForState,
   consumeSessionForcedAutoPlay as consumeSessionForcedAutoPlayForState,
   createTTSTrackingState,
@@ -19,8 +17,6 @@ import {
   markTTSPlayed as markTTSPlayedInState,
   removeTTSKey as removeTTSKeyFromState,
 } from "@dotagents/shared/tts-tracking"
-
-export { buildContentTTSKey, buildResponseEventTTSKey }
 
 const ttsTrackingState = createTTSTrackingState()
 

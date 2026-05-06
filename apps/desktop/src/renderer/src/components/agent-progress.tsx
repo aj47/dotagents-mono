@@ -75,7 +75,8 @@ import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
 import { LoadingSpinner } from "./ui/loading-spinner"
 import { extractSubAgentToolDisplayContent } from "@dotagents/shared/delegation-tool-display"
-import { buildContentTTSKey, buildResponseEventTTSKey, consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
+import { buildContentTTSKey, buildResponseEventTTSKey } from "@dotagents/shared/tts-tracking"
+import { consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import {
   hasMarkdownMediaPayload,

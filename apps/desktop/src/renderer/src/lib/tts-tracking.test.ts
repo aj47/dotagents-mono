@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
-
 import {
   buildContentTTSKey,
   buildResponseEventTTSKey,
+} from "@dotagents/shared/tts-tracking"
+
+import {
   clearSessionTTSTracking,
   consumeSessionForcedAutoPlay,
   hasTTSPlayed,
