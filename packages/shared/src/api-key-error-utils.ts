@@ -4,6 +4,20 @@ export function isMissingApiKeyErrorMessage(message: string): boolean {
   return MISSING_API_KEY_ERROR_REGEX.test(message)
 }
 
+export function isEmptyResponseErrorMessage(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes("empty response") ||
+    normalized.includes("empty content") ||
+    normalized.includes("no text") ||
+    normalized.includes("no content")
+  )
+}
+
+export function isEmptyResponseError(error: unknown): boolean {
+  return error instanceof Error && isEmptyResponseErrorMessage(error.message)
+}
+
 export function isLocalConfigurationErrorMessage(message: string): boolean {
   if (isMissingApiKeyErrorMessage(message)) {
     return true

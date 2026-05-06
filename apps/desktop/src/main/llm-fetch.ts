@@ -33,7 +33,10 @@ import { getErrorMessage, normalizeError } from "./error-utils"
 import { normalizeVerificationResultForCompletion } from "./llm-continuation-guards"
 import { state, agentSessionStateManager, llmRequestAbortManager } from "./state"
 import type { AgentConversationState } from "@dotagents/shared/conversation-state"
-import { isLocalConfigurationErrorMessage } from "@dotagents/shared/api-key-error-utils"
+import {
+  isEmptyResponseError,
+  isLocalConfigurationErrorMessage,
+} from "@dotagents/shared/api-key-error-utils"
 import { hasRawToolCallMarkerTokens, stripRawToolMarkerTokens } from "@dotagents/shared/chat-utils"
 import {
   extractConversationImageMarkdownReferences,
@@ -371,28 +374,6 @@ async function interruptibleDelay(delay: number, sessionId?: string): Promise<vo
     const remaining = delay - (Date.now() - startTime)
     await new Promise(resolve => setTimeout(resolve, Math.min(100, Math.max(0, remaining))))
   }
-}
-
-/**
- * Check if an error is an empty response error.
- * Empty responses should fail fast without backoff since they typically indicate:
- * - API endpoint issues
- * - Authentication problems
- * - Malformed requests
- * These won't resolve by waiting, so exponential backoff wastes time.
- * See: https://github.com/aj47/dotagents-mono/issues/964
- */
-function isEmptyResponseError(error: unknown): boolean {
-  if (error instanceof Error) {
-    const message = error.message.toLowerCase()
-    return (
-      message.includes("empty response") ||
-      message.includes("empty content") ||
-      message.includes("no text") ||
-      message.includes("no content")
-    )
-  }
-  return false
 }
 
 /**

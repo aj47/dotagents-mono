@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
+  isEmptyResponseError,
+  isEmptyResponseErrorMessage,
   isLocalConfigurationErrorMessage,
   isMissingApiKeyErrorMessage,
 } from './api-key-error-utils'
@@ -51,5 +53,29 @@ describe('isLocalConfigurationErrorMessage', () => {
     expect(isLocalConfigurationErrorMessage('Connection timed out')).toBe(false)
     expect(isLocalConfigurationErrorMessage('Rate limit exceeded')).toBe(false)
     expect(isLocalConfigurationErrorMessage('Empty response')).toBe(false)
+  })
+})
+
+describe('isEmptyResponseErrorMessage', () => {
+  it('detects empty provider response messages', () => {
+    expect(isEmptyResponseErrorMessage('LLM returned empty response')).toBe(true)
+    expect(isEmptyResponseErrorMessage('empty content from provider')).toBe(true)
+    expect(isEmptyResponseErrorMessage('Provider returned no text')).toBe(true)
+    expect(isEmptyResponseErrorMessage('Provider returned no content')).toBe(true)
+  })
+
+  it('leaves unrelated transient errors to other classifiers', () => {
+    expect(isEmptyResponseErrorMessage('Connection timed out')).toBe(false)
+    expect(isEmptyResponseErrorMessage('Rate limit exceeded')).toBe(false)
+  })
+})
+
+describe('isEmptyResponseError', () => {
+  it('detects Error objects with empty response messages', () => {
+    expect(isEmptyResponseError(new Error('LLM returned empty response'))).toBe(true)
+  })
+
+  it('ignores non-Error values', () => {
+    expect(isEmptyResponseError('LLM returned empty response')).toBe(false)
   })
 })
