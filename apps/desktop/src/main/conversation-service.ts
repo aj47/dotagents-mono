@@ -18,6 +18,7 @@ import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "./conversation-context-builder"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
 import { filterVisibleChatMessages } from "@dotagents/shared/chat-utils"
+import { buildConversationPreview } from "@dotagents/shared/session"
 import {
   extractDataImageMarkdownReferences,
   getConversationImageExtensionForMimeType,
@@ -409,7 +410,9 @@ export class ConversationService {
         lastMessage?.content || "",
         MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
       ),
-      preview: this.generatePreview(visibleMessages),
+      preview: buildConversationPreview(visibleMessages, {
+        maxPreviewChars: MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
+      }),
     }
   }
 
@@ -812,23 +815,6 @@ export class ConversationService {
     // Persist the latest cache snapshot after waiting so stale writes
     // cannot overwrite destructive operations (delete/reset).
     await this.writeIndexToDisk()
-  }
-
-  private generatePreview(messages: ConversationMessage[]): string {
-    const sanitizePreviewText = (value: string) =>
-      value
-        .replace(/!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi, "[Image]")
-        .replace(/\s+/g, " ")
-        .trim()
-
-    // Generate a preview from the first few messages
-    const previewMessages = messages.slice(0, 3)
-    const preview = previewMessages
-      .map((msg) => `${msg.role}: ${sanitizePreviewText(msg.content || "").slice(0, 100)}`)
-      .join(" | ")
-    return preview.length > MAX_CONVERSATION_HISTORY_PREVIEW_CHARS
-      ? `${preview.slice(0, MAX_CONVERSATION_HISTORY_PREVIEW_CHARS)}...`
-      : preview
   }
 
   private hasSummaryMessages(messages: ConversationMessage[]): boolean {

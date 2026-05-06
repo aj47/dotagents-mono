@@ -6,6 +6,7 @@ import {
   sortSessionsByPinnedFirst,
   sanitizeSessionText,
   sessionToListItem,
+  buildConversationPreview,
   isStubSession,
 } from './session'
 import type { Session } from './session'
@@ -193,6 +194,36 @@ describe('sessionToListItem', () => {
     expect(item.messageCount).toBe(5)
     expect(item.lastMessage).toBe('Last message')
     expect(item.preview).toBe('Preview text')
+  })
+})
+
+// ── buildConversationPreview ────────────────────────────────────────────────
+
+describe('buildConversationPreview', () => {
+  it('builds a role-prefixed preview from the first three messages', () => {
+    expect(buildConversationPreview([
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi there' },
+      { role: 'user', content: 'Tell me more' },
+      { role: 'assistant', content: 'Hidden fourth message' },
+    ])).toBe('user: Hello | assistant: Hi there | user: Tell me more')
+  })
+
+  it('sanitizes media payloads before truncating message snippets', () => {
+    expect(buildConversationPreview([
+      { role: 'user', content: 'Look ![pic](data:image/png;base64,abc)' },
+      { role: 'assistant', content: 'Watch [clip](assets://conversation-video/conv_1/demo.mp4)' },
+    ])).toBe('user: Look [Image] | assistant: Watch [Video]')
+  })
+
+  it('honors message and preview length limits', () => {
+    expect(buildConversationPreview([
+      { role: 'user', content: 'abcdef' },
+      { role: 'assistant', content: 'ghijkl' },
+    ], {
+      maxMessageChars: 3,
+      maxPreviewChars: 20,
+    })).toBe('user: abc | assistan...')
   })
 })
 

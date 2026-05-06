@@ -54,6 +54,17 @@ export interface SessionListItem {
   preview: string;
 }
 
+export interface ConversationPreviewMessage {
+  role: string;
+  content?: string | null;
+}
+
+export interface BuildConversationPreviewOptions {
+  maxMessages?: number;
+  maxMessageChars?: number;
+  maxPreviewChars?: number;
+}
+
 export function sortSessionsByPinnedFirst<T extends Pick<Session, 'updatedAt' | 'isPinned'>>(sessions: T[]): T[] {
   return [...sessions].sort((a, b) => {
     const pinOrder = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
@@ -128,6 +139,24 @@ export function sessionToListItem(session: Session): SessionListItem {
     lastMessage: preview.substring(0, 100),
     preview: preview.substring(0, 200),
   };
+}
+
+export function buildConversationPreview(
+  messages: ConversationPreviewMessage[],
+  options: BuildConversationPreviewOptions = {},
+): string {
+  const maxMessages = options.maxMessages ?? 3;
+  const maxMessageChars = options.maxMessageChars ?? 100;
+  const maxPreviewChars = options.maxPreviewChars ?? 200;
+
+  const preview = messages
+    .slice(0, maxMessages)
+    .map((message) => `${message.role}: ${sanitizeSessionText(message.content || '').slice(0, maxMessageChars)}`)
+    .join(' | ');
+
+  return preview.length > maxPreviewChars
+    ? `${preview.slice(0, maxPreviewChars)}...`
+    : preview;
 }
 
 /**
