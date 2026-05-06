@@ -41,6 +41,13 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.avif': 'image/avif',
 };
 
+const CHAT_IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  ...IMAGE_MIME_BY_EXTENSION,
+  '.svg': 'image/svg+xml',
+  '.heic': 'image/heic',
+  '.heif': 'image/heif',
+};
+
 const IMAGE_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
   png: 'png',
   apng: 'apng',
@@ -69,6 +76,9 @@ export const MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES = 12 * 1024 * 1024;
 export const MAX_RESPOND_TO_USER_VIDEO_FILE_BYTES = 250 * 1024 * 1024;
 export const MAX_RESPOND_TO_USER_TOTAL_VIDEO_BYTES = 500 * 1024 * 1024;
 export const MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES = 12 * 1024 * 1024;
+export const MAX_CHAT_IMAGE_ATTACHMENTS = 4;
+export const MAX_CHAT_IMAGE_FILE_BYTES = 4 * 1024 * 1024;
+export const MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES = 900 * 1024;
 
 export interface ConversationVideoAssetRef {
   conversationId: string;
@@ -96,6 +106,12 @@ export interface ConversationImageMarkdownInput {
   url: string;
   altText?: string | null;
   fallbackAltText?: string | null;
+}
+
+export interface ImageMimeTypeSource {
+  mimeType?: string | null;
+  fileName?: string | null;
+  uri?: string | null;
 }
 
 export interface StripMarkdownImageReferencesOptions {
@@ -479,6 +495,21 @@ export function getConversationImageMimeTypeFromFileName(fileName: string): stri
   return IMAGE_MIME_BY_EXTENSION[extension];
 }
 
+export function inferImageMimeTypeFromSource(source: ImageMimeTypeSource): string | null {
+  const mimeType = source.mimeType?.trim().toLowerCase();
+  if (mimeType?.startsWith('image/')) {
+    return mimeType;
+  }
+
+  const pathLike = (source.fileName || source.uri || '').split('?')[0].split('#')[0];
+  const extensionMatch = pathLike.match(/\.([a-z0-9]+)$/i);
+  if (!extensionMatch) {
+    return null;
+  }
+
+  return CHAT_IMAGE_MIME_BY_EXTENSION[`.${extensionMatch[1].toLowerCase()}`] || null;
+}
+
 export function getConversationImageExtensionForMimeType(mimeType: string): string | undefined {
   const normalized = mimeType.toLowerCase().replace(/^image\//u, '');
   return IMAGE_EXTENSION_BY_MIME_SUBTYPE[normalized];
@@ -537,6 +568,10 @@ export function getDataImageBytesFromUrl(rawUrl: string): number | null {
   }
   const base64Payload = trimmed.slice(commaIndex + 1);
   return getDecodedBase64ByteLength(base64Payload);
+}
+
+export function formatMediaBytesMb(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
 }
 
 export function getUtf8ByteLength(value: string): number {

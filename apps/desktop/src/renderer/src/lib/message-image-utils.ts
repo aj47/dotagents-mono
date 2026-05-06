@@ -1,4 +1,12 @@
 import { logUI } from "@renderer/lib/debug"
+import {
+  buildConversationImageMarkdownMessage,
+  formatMediaBytesMb,
+  getDataImageBytesFromUrl,
+  MAX_CHAT_IMAGE_ATTACHMENTS,
+  MAX_CHAT_IMAGE_FILE_BYTES,
+  MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
+} from "@dotagents/shared/conversation-media-assets"
 
 export interface MessageImageAttachment {
   id: string
@@ -7,21 +15,16 @@ export interface MessageImageAttachment {
   sizeBytes: number
 }
 
-export const MAX_IMAGE_ATTACHMENTS = 4
-export const MAX_IMAGE_SIZE_BYTES = 4 * 1024 * 1024
-export const MAX_TOTAL_EMBEDDED_IMAGE_BYTES = 900 * 1024
+export const MAX_IMAGE_ATTACHMENTS = MAX_CHAT_IMAGE_ATTACHMENTS
+export const MAX_IMAGE_SIZE_BYTES = MAX_CHAT_IMAGE_FILE_BYTES
+export const MAX_TOTAL_EMBEDDED_IMAGE_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES
 const MAX_IMAGE_DIMENSION_PX = 1280
 const TARGET_EMBEDDED_IMAGE_BYTES = 220 * 1024
 const MIN_JPEG_QUALITY = 0.45
 const INITIAL_JPEG_QUALITY = 0.82
 
-const formatMb = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(2)}MB`
-
 const estimateDataUrlSizeBytes = (dataUrl: string) => {
-  const base64 = dataUrl.split(",", 2)[1] ?? ""
-  if (!base64) return 0
-  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0
-  return Math.max(0, Math.floor((base64.length * 3) / 4) - padding)
+  return getDataImageBytesFromUrl(dataUrl) ?? 0
 }
 
 const loadImage = (src: string) =>
@@ -128,22 +131,12 @@ const toOptimizedDataUrl = async (file: File) => {
   }
 }
 
-const escapeMarkdownAlt = (value: string) =>
-  value.replace(/[[\]\\]/g, "").trim()
-
 export const buildMessageWithImages = (
   text: string,
   attachments: MessageImageAttachment[]
 ) => {
   const trimmed = text.trim()
   const totalBytes = attachments.reduce((sum, attachment) => sum + attachment.sizeBytes, 0)
-  const imageMarkdown = attachments
-    .map((attachment, index) => {
-      const fallbackName = `Image ${index + 1}`
-      const safeName = escapeMarkdownAlt(attachment.name || fallbackName) || fallbackName
-      return `![${safeName}](${attachment.dataUrl})`
-    })
-    .join("\n\n")
 
   if (attachments.length > 0) {
     logUI("[Images] compose message", {
@@ -153,7 +146,14 @@ export const buildMessageWithImages = (
     })
   }
 
-  return [trimmed, imageMarkdown].filter(Boolean).join("\n\n")
+  return buildConversationImageMarkdownMessage(
+    trimmed,
+    attachments.map((attachment, index) => ({
+      url: attachment.dataUrl,
+      altText: attachment.name,
+      fallbackAltText: `Image ${index + 1}`,
+    }))
+  )
 }
 
 export type ImageAttachmentInputFiles = FileList | File[]
@@ -203,7 +203,7 @@ export const readImageAttachments = async (
     return {
       attachments: [],
       errors: [
-        `This message already reached the image budget (${formatMb(MAX_TOTAL_EMBEDDED_IMAGE_BYTES)}).`,
+        `This message already reached the image budget (${formatMediaBytesMb(MAX_TOTAL_EMBEDDED_IMAGE_BYTES)}).`,
       ],
     }
   }
@@ -248,7 +248,7 @@ export const readImageAttachments = async (
   for (const attachment of processedAttachments) {
     if (runningBytes + attachment.sizeBytes > MAX_TOTAL_EMBEDDED_IMAGE_BYTES) {
       errors.push(
-        `${attachment.name} exceeds the per-message image budget (${formatMb(MAX_TOTAL_EMBEDDED_IMAGE_BYTES)}).`
+        `${attachment.name} exceeds the per-message image budget (${formatMediaBytesMb(MAX_TOTAL_EMBEDDED_IMAGE_BYTES)}).`
       )
       continue
     }
@@ -258,7 +258,7 @@ export const readImageAttachments = async (
 
   if (processedAttachments.length > 0 && attachments.length === 0) {
     errors.push(
-      `Try fewer or smaller images. Total embedded image budget is ${formatMb(MAX_TOTAL_EMBEDDED_IMAGE_BYTES)}.`
+      `Try fewer or smaller images. Total embedded image budget is ${formatMediaBytesMb(MAX_TOTAL_EMBEDDED_IMAGE_BYTES)}.`
     )
   }
 

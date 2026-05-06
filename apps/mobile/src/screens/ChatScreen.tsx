@@ -80,6 +80,13 @@ import {
 import {
   buildConversationImageMarkdownMessage,
   extractDataImageMarkdownReferences,
+  formatMediaBytesMb,
+  getDataImageBytesFromUrl,
+  getDecodedBase64ByteLength,
+  inferImageMimeTypeFromSource,
+  MAX_CHAT_IMAGE_ATTACHMENTS,
+  MAX_CHAT_IMAGE_FILE_BYTES,
+  MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
 } from '@dotagents/shared/conversation-media-assets';
 import type { AgentUserResponseEvent } from '@dotagents/shared/agent-progress';
 import type { HandsFreePhase } from '@dotagents/shared/types';
@@ -131,59 +138,19 @@ interface PendingImageAttachment {
   dataUrl: string;
 }
 
-const MAX_PENDING_IMAGES = 4;
-const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = 4 * 1024 * 1024;
-const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = 900 * 1024;
+const MAX_PENDING_IMAGES = MAX_CHAT_IMAGE_ATTACHMENTS;
+const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = MAX_CHAT_IMAGE_FILE_BYTES;
+const MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES = MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES;
 const INITIAL_VISIBLE_CHAT_MESSAGES = 80;
 const VISIBLE_CHAT_MESSAGES_INCREMENT = 60;
 const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
 const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 
-const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.webp': 'image/webp',
-  '.bmp': 'image/bmp',
-  '.svg': 'image/svg+xml',
-  '.heic': 'image/heic',
-  '.heif': 'image/heif',
-};
-
 const normalizeAutoTtsTextKey = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase();
 
-const getApproxBase64Bytes = (base64: string) => {
-  const normalized = base64.replace(/\s+/g, '');
-  if (!normalized) return 0;
-  const padding = normalized.endsWith('==') ? 2 : normalized.endsWith('=') ? 1 : 0;
-  return Math.max(0, Math.floor((normalized.length * 3) / 4) - padding);
-};
-
 const getApproxDataUrlBytes = (dataUrl: string) => {
-  const [, base64 = ''] = dataUrl.split(',', 2);
-  return getApproxBase64Bytes(base64);
-};
-
-const formatMb = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
-
-const inferImageMimeType = (asset: {
-  mimeType?: string | null;
-  fileName?: string | null;
-  uri?: string | null;
-}) => {
-  const mimeType = asset.mimeType?.trim().toLowerCase();
-  if (mimeType?.startsWith('image/')) {
-    return mimeType;
-  }
-
-  const pathLike = (asset.fileName || asset.uri || '').split('?')[0].split('#')[0];
-  const extensionMatch = pathLike.match(/\.([a-z0-9]+)$/i);
-  if (!extensionMatch) {
-    return null;
-  }
-  return IMAGE_MIME_BY_EXTENSION[`.${extensionMatch[1].toLowerCase()}`] || null;
+  return getDataImageBytesFromUrl(dataUrl) ?? 0;
 };
 
 const buildMessageWithPendingImages = (text: string, images: PendingImageAttachment[]) => {
@@ -1935,7 +1902,7 @@ export default function ChatScreen({ route, navigation }: any) {
     if (existingEmbeddedBytes >= MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
       Alert.alert(
         'Image budget reached',
-        `This message already reached the image budget (${formatMb(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES)}).`
+        `This message already reached the image budget (${formatMediaBytesMb(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES)}).`
       );
       return;
     }
@@ -1967,7 +1934,7 @@ export default function ChatScreen({ route, navigation }: any) {
           return;
         }
 
-        const inferredBytes = getApproxBase64Bytes(asset.base64);
+        const inferredBytes = getDecodedBase64ByteLength(asset.base64);
         const fileSizeBytes = typeof asset.fileSize === 'number' && asset.fileSize > 0
           ? asset.fileSize
           : inferredBytes;
@@ -1976,7 +1943,7 @@ export default function ChatScreen({ route, navigation }: any) {
           return;
         }
 
-        const mimeType = inferImageMimeType(asset);
+        const mimeType = inferImageMimeTypeFromSource(asset);
         if (!mimeType) {
           unknownMimeNames.push(displayName);
           return;
@@ -2027,7 +1994,7 @@ export default function ChatScreen({ route, navigation }: any) {
       if (budgetExceededNames.length > 0) {
         Alert.alert(
           'Image budget reached',
-          `${budgetExceededNames.join(', ')} exceed the per-message image budget (${formatMb(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES)}).`
+          `${budgetExceededNames.join(', ')} exceed the per-message image budget (${formatMediaBytesMb(MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES)}).`
         );
       }
     } catch (error: any) {

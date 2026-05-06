@@ -20,9 +20,11 @@ import {
   getDecodedBase64ByteLength,
   getRenderableVideoMimeTypeFromFileName,
   getUtf8ByteLength,
+  formatMediaBytesMb,
   getVideoAssetLabel,
   hasMarkdownMediaImageReference,
   hasMarkdownVideoLink,
+  inferImageMimeTypeFromSource,
   isAllowedRespondToUserImageUrl,
   isAllowedRespondToUserVideoUrl,
   isAllowedMarkdownImageUrl,
@@ -36,6 +38,9 @@ import {
   isRenderableVideoUrl,
   parseRespondToUserArgs,
   materializeRespondToUserResponse,
+  MAX_CHAT_IMAGE_ATTACHMENTS,
+  MAX_CHAT_IMAGE_FILE_BYTES,
+  MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES,
   MAX_RESPOND_TO_USER_IMAGES,
   MAX_RESPOND_TO_USER_IMAGE_FILE_BYTES,
   MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES,
@@ -155,6 +160,14 @@ describe('conversation video asset utilities', () => {
     expect(getConversationImageExtensionForMimeType('image/svg+xml')).toBeUndefined();
   });
 
+  it('infers chat image MIME types from picker metadata and paths', () => {
+    expect(inferImageMimeTypeFromSource({ mimeType: ' Image/PNG ' })).toBe('image/png');
+    expect(inferImageMimeTypeFromSource({ fileName: 'photo.HEIC' })).toBe('image/heic');
+    expect(inferImageMimeTypeFromSource({ uri: 'file:///tmp/capture.webp?size=preview' })).toBe('image/webp');
+    expect(inferImageMimeTypeFromSource({ mimeType: 'application/json', fileName: 'demo.svg' })).toBe('image/svg+xml');
+    expect(inferImageMimeTypeFromSource({ fileName: 'demo.txt' })).toBeNull();
+  });
+
   it('validates respond_to_user media urls', () => {
     expect(isAllowedRespondToUserImageUrl('https://example.com/image.svg')).toBe(true);
     expect(isAllowedRespondToUserImageUrl('data:image/png;base64,AAAA')).toBe(true);
@@ -205,7 +218,11 @@ describe('conversation video asset utilities', () => {
     expect(getDataImageBytesFromUrl('data:image/png;base64,AAAA')).toBe(3);
     expect(getDataImageBytesFromUrl('https://example.com/image.png')).toBeNull();
     expect(getUtf8ByteLength('hello')).toBe(5);
+    expect(formatMediaBytesMb(900 * 1024)).toBe('0.88MB');
     expect(escapeMarkdownAltText(' [demo]\\ ')).toBe('demo');
+    expect(MAX_CHAT_IMAGE_ATTACHMENTS).toBe(4);
+    expect(MAX_CHAT_IMAGE_FILE_BYTES).toBe(4 * 1024 * 1024);
+    expect(MAX_CHAT_TOTAL_EMBEDDED_IMAGE_BYTES).toBe(900 * 1024);
     expect(MAX_RESPOND_TO_USER_IMAGES).toBe(4);
     expect(MAX_RESPOND_TO_USER_TOTAL_EMBEDDED_IMAGE_BYTES).toBe(12 * 1024 * 1024);
   });
