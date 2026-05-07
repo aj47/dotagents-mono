@@ -214,6 +214,11 @@ type McpServerDraft = {
   headers: string;
   timeout: string;
   disabled: boolean;
+  oauthEnabled: boolean;
+  oauthScope: string;
+  oauthClientId: string;
+  oauthUseDiscovery: boolean;
+  oauthUseDynamicRegistration: boolean;
 };
 
 const EMPTY_MCP_SERVER_DRAFT: McpServerDraft = {
@@ -226,6 +231,11 @@ const EMPTY_MCP_SERVER_DRAFT: McpServerDraft = {
   headers: '',
   timeout: '',
   disabled: false,
+  oauthEnabled: false,
+  oauthScope: '',
+  oauthClientId: '',
+  oauthUseDiscovery: true,
+  oauthUseDynamicRegistration: true,
 };
 
 type LoopRuntimeAction = {
@@ -1643,6 +1653,17 @@ export default function SettingsScreen({ navigation }: any) {
       }
       if (headersResult.value && Object.keys(headersResult.value).length > 0) {
         config.headers = headersResult.value;
+      }
+
+      if (mcpServerDraft.transport === 'streamableHttp' && mcpServerDraft.oauthEnabled) {
+        const scope = mcpServerDraft.oauthScope.trim();
+        const clientId = mcpServerDraft.oauthClientId.trim();
+        config.oauth = {
+          ...(scope ? { scope } : {}),
+          ...(clientId ? { clientId } : {}),
+          useDiscovery: mcpServerDraft.oauthUseDiscovery,
+          useDynamicRegistration: mcpServerDraft.oauthUseDynamicRegistration,
+        };
       }
     }
 
@@ -5572,6 +5593,71 @@ export default function SettingsScreen({ navigation }: any) {
                     autoCorrect={false}
                     editable={!isSavingMcpServer}
                   />
+
+                  {mcpServerDraft.transport === 'streamableHttp' && (
+                    <View style={styles.localSpeechModelBlock}>
+                      <View style={styles.row}>
+                        <Text style={styles.label}>OAuth</Text>
+                        <Switch
+                          value={mcpServerDraft.oauthEnabled}
+                          onValueChange={(v) => handleMcpServerDraftChange('oauthEnabled', v)}
+                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                          thumbColor={mcpServerDraft.oauthEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                          disabled={isSavingMcpServer}
+                        />
+                      </View>
+
+                      {mcpServerDraft.oauthEnabled && (
+                        <>
+                          <Text style={styles.label}>OAuth Scope</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={mcpServerDraft.oauthScope}
+                            onChangeText={(v) => handleMcpServerDraftChange('oauthScope', v)}
+                            placeholder="user"
+                            placeholderTextColor={theme.colors.mutedForeground}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            editable={!isSavingMcpServer}
+                          />
+
+                          <Text style={styles.label}>OAuth Client ID</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={mcpServerDraft.oauthClientId}
+                            onChangeText={(v) => handleMcpServerDraftChange('oauthClientId', v)}
+                            placeholder="Auto-registered"
+                            placeholderTextColor={theme.colors.mutedForeground}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            editable={!isSavingMcpServer}
+                          />
+
+                          <View style={styles.row}>
+                            <Text style={styles.label}>Metadata Discovery</Text>
+                            <Switch
+                              value={mcpServerDraft.oauthUseDiscovery}
+                              onValueChange={(v) => handleMcpServerDraftChange('oauthUseDiscovery', v)}
+                              trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                              thumbColor={mcpServerDraft.oauthUseDiscovery ? theme.colors.primaryForeground : theme.colors.background}
+                              disabled={isSavingMcpServer}
+                            />
+                          </View>
+
+                          <View style={styles.row}>
+                            <Text style={styles.label}>Dynamic Registration</Text>
+                            <Switch
+                              value={mcpServerDraft.oauthUseDynamicRegistration}
+                              onValueChange={(v) => handleMcpServerDraftChange('oauthUseDynamicRegistration', v)}
+                              trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                              thumbColor={mcpServerDraft.oauthUseDynamicRegistration ? theme.colors.primaryForeground : theme.colors.background}
+                              disabled={isSavingMcpServer}
+                            />
+                          </View>
+                        </>
+                      )}
+                    </View>
+                  )}
                 </>
               )}
 

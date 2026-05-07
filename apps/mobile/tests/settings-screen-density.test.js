@@ -64,6 +64,20 @@ test('lets mobile create desktop MCP server configs through the shared client', 
   assert.match(settingsSource, /setMcpServerDraft\(EMPTY_MCP_SERVER_DRAFT\)/);
 });
 
+test('lets mobile configure OAuth for streamable HTTP MCP servers', () => {
+  assert.match(settingsSource, /oauthEnabled: false/);
+  assert.match(settingsSource, /mcpServerDraft\.transport === 'streamableHttp' && mcpServerDraft\.oauthEnabled/);
+  assert.match(settingsSource, /config\.oauth = \{/);
+  assert.match(settingsSource, /\.\.\.\(scope \? \{ scope \} : \{\}\)/);
+  assert.match(settingsSource, /\.\.\.\(clientId \? \{ clientId \} : \{\}\)/);
+  assert.match(settingsSource, /useDiscovery: mcpServerDraft\.oauthUseDiscovery/);
+  assert.match(settingsSource, /useDynamicRegistration: mcpServerDraft\.oauthUseDynamicRegistration/);
+  assert.match(settingsSource, />OAuth Scope</);
+  assert.match(settingsSource, />OAuth Client ID</);
+  assert.match(settingsSource, />Metadata Discovery</);
+  assert.match(settingsSource, />Dynamic Registration</);
+});
+
 test('lets mobile replace existing MCP server configs without reading secrets', () => {
   assert.match(settingsSource, /openMcpServerReplaceEditor/);
   assert.match(settingsSource, /mcpServerEditorMode === 'replace'/);
