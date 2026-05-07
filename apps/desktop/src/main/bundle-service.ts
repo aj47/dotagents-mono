@@ -33,7 +33,6 @@ import {
   buildBundleAgentProfilesFromProfiles,
   buildBundleImportPreviewConflicts,
   buildBundleKnowledgeNotesFromNotes,
-  buildBundleImportItemErrorResult,
   buildBundleImportItemResult,
   buildBundleMcpServersFromConfig,
   buildBundleRepeatTasksFromTasks,
@@ -50,8 +49,8 @@ import {
   buildSkillFromBundleSkill,
   createBundleImportResult,
   finalizeBundleImportResult,
-  formatBundleImportItemError,
   getBundleBuildItems,
+  importBundleItemCollection,
   isHubBundleHandoffFilePath,
   isSupportedBundleFilePath,
   mergeBundleBuildItems,
@@ -537,27 +536,22 @@ export async function importBundle(
     const existingProfiles = loadAgentProfilesLayer(layer)
     const existingIds = new Set(existingProfiles.profiles.map(p => p.id))
 
-    for (const bundleProfile of bundle.agentProfiles) {
-      try {
-        const importAction = resolveBundleImportItemAction(bundleProfile.id, existingIds, conflictStrategy)
-
-        if (!importAction.shouldImport) {
-          result.agentProfiles.push(buildBundleImportItemResult(bundleProfile.id, bundleProfile.name, importAction))
-          continue
-        }
-
+    await importBundleItemCollection({
+      result,
+      resultItems: result.agentProfiles,
+      items: bundle.agentProfiles,
+      existingIds,
+      conflictStrategy,
+      componentLabel: "Agent profile",
+      getId: (bundleProfile) => bundleProfile.id,
+      getName: (bundleProfile) => bundleProfile.name,
+      importItem: (bundleProfile, importAction) => {
         const now = Date.now()
         const fullProfile = buildAgentProfileFromBundleProfile(bundleProfile, { id: importAction.finalId, now })
 
         writeAgentsProfileFiles(layer, fullProfile)
-        existingIds.add(importAction.finalId)
-
-        result.agentProfiles.push(buildBundleImportItemResult(bundleProfile.id, bundleProfile.name, importAction))
-      } catch (error) {
-        result.agentProfiles.push(buildBundleImportItemErrorResult(bundleProfile.id, bundleProfile.name, error))
-        result.errors.push(formatBundleImportItemError("Agent profile", bundleProfile.name, error))
-      }
-    }
+      },
+    })
   }
 
   // Import MCP servers
@@ -604,15 +598,16 @@ export async function importBundle(
     const existingSkills = loadAgentsSkillsLayer(layer)
     const existingIds = new Set(existingSkills.skills.map(s => s.id))
 
-    for (const bundleSkill of bundle.skills) {
-      try {
-        const importAction = resolveBundleImportItemAction(bundleSkill.id, existingIds, conflictStrategy)
-
-        if (!importAction.shouldImport) {
-          result.skills.push(buildBundleImportItemResult(bundleSkill.id, bundleSkill.name, importAction))
-          continue
-        }
-
+    await importBundleItemCollection({
+      result,
+      resultItems: result.skills,
+      items: bundle.skills,
+      existingIds,
+      conflictStrategy,
+      componentLabel: "Skill",
+      getId: (bundleSkill) => bundleSkill.id,
+      getName: (bundleSkill) => bundleSkill.name,
+      importItem: (bundleSkill, importAction) => {
         const now = Date.now()
         const fullSkill = buildSkillFromBundleSkill(bundleSkill, { id: importAction.finalId, now })
 
@@ -620,14 +615,8 @@ export async function importBundle(
         const skillDir = skillIdToDirPath(layer, importAction.finalId)
         fs.mkdirSync(skillDir, { recursive: true })
         writeAgentsSkillFile(layer, fullSkill)
-        existingIds.add(importAction.finalId)
-
-        result.skills.push(buildBundleImportItemResult(bundleSkill.id, bundleSkill.name, importAction))
-      } catch (error) {
-        result.skills.push(buildBundleImportItemErrorResult(bundleSkill.id, bundleSkill.name, error))
-        result.errors.push(formatBundleImportItemError("Skill", bundleSkill.name, error))
-      }
-    }
+      },
+    })
   }
 
   // Import repeat tasks
@@ -635,26 +624,21 @@ export async function importBundle(
     const existingTasks = loadTasksLayer(layer)
     const existingIds = new Set(existingTasks.tasks.map(t => t.id))
 
-    for (const bundleTask of bundle.repeatTasks) {
-      try {
-        const importAction = resolveBundleImportItemAction(bundleTask.id, existingIds, conflictStrategy)
-
-        if (!importAction.shouldImport) {
-          result.repeatTasks.push(buildBundleImportItemResult(bundleTask.id, bundleTask.name, importAction))
-          continue
-        }
-
+    await importBundleItemCollection({
+      result,
+      resultItems: result.repeatTasks,
+      items: bundle.repeatTasks,
+      existingIds,
+      conflictStrategy,
+      componentLabel: "Repeat task",
+      getId: (bundleTask) => bundleTask.id,
+      getName: (bundleTask) => bundleTask.name,
+      importItem: (bundleTask, importAction) => {
         const fullTask = buildRepeatTaskFromBundleTask(bundleTask, { id: importAction.finalId })
 
         writeTaskFile(layer, fullTask)
-        existingIds.add(importAction.finalId)
-
-        result.repeatTasks.push(buildBundleImportItemResult(bundleTask.id, bundleTask.name, importAction))
-      } catch (error) {
-        result.repeatTasks.push(buildBundleImportItemErrorResult(bundleTask.id, bundleTask.name, error))
-        result.errors.push(formatBundleImportItemError("Repeat task", bundleTask.name, error))
-      }
-    }
+      },
+    })
   }
 
   // Import knowledge notes
@@ -662,39 +646,22 @@ export async function importBundle(
     const existingKnowledgeNotes = loadAgentsKnowledgeNotesLayer(layer)
     const existingIds = new Set(existingKnowledgeNotes.notes.map(note => note.id))
 
-    for (const bundleKnowledgeNote of bundle.knowledgeNotes) {
-      try {
-        const importAction = resolveBundleImportItemAction(bundleKnowledgeNote.id, existingIds, conflictStrategy)
-
-        if (!importAction.shouldImport) {
-          result.knowledgeNotes.push(buildBundleImportItemResult(
-            bundleKnowledgeNote.id,
-            bundleKnowledgeNote.title,
-            importAction,
-          ))
-          continue
-        }
-
+    await importBundleItemCollection({
+      result,
+      resultItems: result.knowledgeNotes,
+      items: bundle.knowledgeNotes,
+      existingIds,
+      conflictStrategy,
+      componentLabel: "Knowledge note",
+      getId: (bundleKnowledgeNote) => bundleKnowledgeNote.id,
+      getName: (bundleKnowledgeNote) => bundleKnowledgeNote.title,
+      importItem: (bundleKnowledgeNote, importAction) => {
         const now = Date.now()
         const fullNote = buildKnowledgeNoteFromBundleNote(bundleKnowledgeNote, { id: importAction.finalId, now })
 
         writeKnowledgeNoteFile(layer, fullNote, { slug: importAction.finalId })
-        existingIds.add(importAction.finalId)
-
-        result.knowledgeNotes.push(buildBundleImportItemResult(
-          bundleKnowledgeNote.id,
-          bundleKnowledgeNote.title,
-          importAction,
-        ))
-      } catch (error) {
-        result.knowledgeNotes.push(buildBundleImportItemErrorResult(
-          bundleKnowledgeNote.id,
-          bundleKnowledgeNote.title,
-          error,
-        ))
-        result.errors.push(formatBundleImportItemError("Knowledge note", bundleKnowledgeNote.title, error))
-      }
-    }
+      },
+    })
   }
 
   const finalResult = finalizeBundleImportResult(result)

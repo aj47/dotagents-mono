@@ -1394,6 +1394,44 @@ export function finalizeBundleImportResult(result: BundleImportResult): BundleIm
   }
 }
 
+export interface BundleImportItemCollectionOptions<TItem> {
+  result: BundleImportResult
+  resultItems: BundleImportItemResult[]
+  items: readonly TItem[]
+  existingIds: Set<string>
+  conflictStrategy: BundleImportConflictStrategy
+  componentLabel: string
+  getId(item: TItem): string
+  getName(item: TItem): string
+  importItem(item: TItem, action: BundleImportItemActionResolution): void | Promise<void>
+}
+
+export async function importBundleItemCollection<TItem>(
+  options: BundleImportItemCollectionOptions<TItem>,
+): Promise<void> {
+  for (const item of options.items) {
+    const id = options.getId(item)
+    const name = options.getName(item)
+
+    try {
+      const importAction = resolveBundleImportItemAction(id, options.existingIds, options.conflictStrategy)
+
+      if (!importAction.shouldImport) {
+        options.resultItems.push(buildBundleImportItemResult(id, name, importAction))
+        continue
+      }
+
+      await options.importItem(item, importAction)
+      options.existingIds.add(importAction.finalId)
+
+      options.resultItems.push(buildBundleImportItemResult(id, name, importAction))
+    } catch (error) {
+      options.resultItems.push(buildBundleImportItemErrorResult(id, name, error))
+      options.result.errors.push(formatBundleImportItemError(options.componentLabel, name, error))
+    }
+  }
+}
+
 export function hasBundleImportConflicts(
   conflicts: BundleImportPreviewConflicts | undefined,
   components: BundleComponentSelection,

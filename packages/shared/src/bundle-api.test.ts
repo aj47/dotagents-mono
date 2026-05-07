@@ -47,6 +47,7 @@ import {
   hasSelectedBundleComponent,
   importBundleAction,
   importBundleFromTemporaryFile,
+  importBundleItemCollection,
   isHubBundleHandoffFilePath,
   isSupportedBundleFilePath,
   mergeBundleBuildItems,
@@ -624,7 +625,7 @@ describe("bundle API helpers", () => {
     }])
   })
 
-  it("builds imported app records from bundle items", () => {
+  it("builds imported app records from bundle items", async () => {
     expect(generateBundleImportUniqueId("agent", new Set(["agent", "agent_imported"]))).toBe("agent_imported_2")
     expect(createBundleImportResult()).toEqual({
       success: false,
@@ -685,6 +686,53 @@ describe("bundle API helpers", () => {
       ...createBundleImportResult(),
       errors: ["boom"],
     }).success).toBe(false)
+    const collectionResult = createBundleImportResult()
+    const importedIds: string[] = []
+    await importBundleItemCollection({
+      result: collectionResult,
+      resultItems: collectionResult.skills,
+      items: [
+        { id: "skill", name: "Skill" },
+        { id: "skill", name: "Skill Again" },
+        { id: "bad", name: "Bad Skill" },
+      ],
+      existingIds: new Set(["existing"]),
+      conflictStrategy: "rename",
+      componentLabel: "Skill",
+      getId: (item) => item.id,
+      getName: (item) => item.name,
+      importItem: (item, action) => {
+        if (item.id === "bad") {
+          throw new Error("bad import")
+        }
+        importedIds.push(action.finalId)
+      },
+    })
+    expect(importedIds).toEqual(["skill", "skill_imported"])
+    expect(collectionResult.skills).toEqual([
+      { id: "skill", name: "Skill", action: "imported" },
+      { id: "skill", name: "Skill Again", action: "renamed", newId: "skill_imported" },
+      { id: "bad", name: "Bad Skill", action: "skipped", error: "bad import" },
+    ])
+    expect(collectionResult.errors).toEqual(['Skill "Bad Skill": bad import'])
+
+    const skipResult = createBundleImportResult()
+    let importCalls = 0
+    await importBundleItemCollection({
+      result: skipResult,
+      resultItems: skipResult.agentProfiles,
+      items: [{ id: "agent", name: "Agent" }],
+      existingIds: new Set(["agent"]),
+      conflictStrategy: "skip",
+      componentLabel: "Agent profile",
+      getId: (item) => item.id,
+      getName: (item) => item.name,
+      importItem: () => {
+        importCalls += 1
+      },
+    })
+    expect(importCalls).toBe(0)
+    expect(skipResult.agentProfiles).toEqual([{ id: "agent", name: "Agent", action: "skipped" }])
 
     expect(buildAgentProfileFromBundleProfile({
       id: "agent",
