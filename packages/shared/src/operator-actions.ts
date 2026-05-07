@@ -592,6 +592,10 @@ export interface OperatorAgentActionService {
     sessionId: string
     conversationId?: string
   }>
+  setAgentSessionSnoozed(sessionId: string, isSnoozed: boolean): {
+    sessionId: string
+    isSnoozed: boolean
+  }
 }
 
 export interface OperatorAgentActionServiceOptions {
@@ -599,6 +603,10 @@ export interface OperatorAgentActionServiceOptions {
     sessionId: string
     conversationId?: string
   }>
+  setAgentSessionSnoozed(sessionId: string, isSnoozed: boolean): {
+    sessionId: string
+    isSnoozed: boolean
+  }
 }
 
 export function createOperatorAgentActionService(
@@ -606,6 +614,7 @@ export function createOperatorAgentActionService(
 ): OperatorAgentActionService {
   return {
     stopAgentSessionById: (sessionId) => options.stopAgentSessionById(sessionId),
+    setAgentSessionSnoozed: (sessionId, isSnoozed) => options.setAgentSessionSnoozed(sessionId, isSnoozed),
   }
 }
 
@@ -617,6 +626,8 @@ export interface OperatorAgentActionOptions {
 export interface OperatorAgentRouteActions {
   runOperatorAgent(body: unknown, runAgent: AgentRunExecutor): Promise<OperatorAgentActionResult>
   stopOperatorAgentSession(sessionIdParam: string | undefined): Promise<OperatorAgentActionResult>
+  snoozeOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
+  unsnoozeOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
 }
 
 export type RunAgentResultLike = AgentRunResult
@@ -829,6 +840,7 @@ export type OperatorSessionSummaryLike = {
   startTime: number
   currentIteration?: number
   maxIterations?: number
+  isSnoozed?: boolean
 }
 
 export type OperatorWhatsAppActionResponseOptions = {
@@ -2145,6 +2157,22 @@ export function buildOperatorAgentSessionStopResponse(
   }
 }
 
+export function buildOperatorAgentSessionSnoozedResponse(
+  sessionId: string,
+  isSnoozed: boolean,
+): OperatorActionResponse {
+  const action = isSnoozed ? "agent-session-snooze" : "agent-session-unsnooze"
+  return {
+    success: true,
+    action,
+    message: `${isSnoozed ? "Snoozed" : "Unsnoozed"} agent session ${sessionId}`,
+    details: {
+      sessionId,
+      isSnoozed,
+    },
+  }
+}
+
 export function buildOperatorMessageQueueClearResponse(
   conversationId: string,
   success: boolean,
@@ -2340,12 +2368,40 @@ export async function stopOperatorAgentSessionAction(
   }
 }
 
+export function setOperatorAgentSessionSnoozedAction(
+  sessionIdParam: string | undefined,
+  isSnoozed: boolean,
+  options: OperatorAgentActionOptions,
+): OperatorAgentActionResult {
+  const action = isSnoozed ? "agent-session-snooze" : "agent-session-unsnooze"
+  const sessionId = normalizeOperatorPathParam(sessionIdParam)
+  if (!sessionId) {
+    const response = buildOperatorActionErrorResponse(action, "Missing session ID")
+    return operatorAgentActionResult(400, response, buildOperatorActionAuditContext(response))
+  }
+
+  try {
+    const result = options.service.setAgentSessionSnoozed(sessionId, isSnoozed)
+    const response = buildOperatorAgentSessionSnoozedResponse(result.sessionId, result.isSnoozed)
+    return operatorAgentActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    const response = buildOperatorActionErrorResponse(action, `Failed to update agent session: ${errorMessage}`)
+    options.diagnostics.logError("operator-agent-actions", `Failed to update agent session ${sessionId}: ${errorMessage}`, caughtError)
+    return operatorAgentActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
 export function createOperatorAgentRouteActions(
   options: OperatorAgentActionOptions,
 ): OperatorAgentRouteActions {
   return {
     runOperatorAgent: (body, runAgent) => runOperatorAgentAction(body, runAgent, options),
     stopOperatorAgentSession: (sessionIdParam) => stopOperatorAgentSessionAction(sessionIdParam, options),
+    snoozeOperatorAgentSession: (sessionIdParam) =>
+      setOperatorAgentSessionSnoozedAction(sessionIdParam, true, options),
+    unsnoozeOperatorAgentSession: (sessionIdParam) =>
+      setOperatorAgentSessionSnoozedAction(sessionIdParam, false, options),
   }
 }
 
@@ -3405,6 +3461,7 @@ export function buildOperatorSessionsSummary(
       startTime: session.startTime,
       currentIteration: session.currentIteration,
       maxIterations: session.maxIterations,
+      ...(typeof session.isSnoozed === "boolean" ? { isSnoozed: session.isSnoozed } : {}),
     })),
   }
 }

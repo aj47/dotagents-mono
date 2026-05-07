@@ -470,6 +470,7 @@ export interface OperatorSessionsSummary {
     startTime: number;
     currentIteration?: number;
     maxIterations?: number;
+    isSnoozed?: boolean;
   }>;
 }
 

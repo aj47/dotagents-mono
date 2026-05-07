@@ -80,7 +80,9 @@ describe('SettingsApiClient operator endpoints', () => {
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-download-latest', message: 'downloaded' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-reveal-download', message: 'revealed' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-open-download', message: 'opened installer' }))
-      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-open-releases', message: 'opened' }));
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'updater-open-releases', message: 'opened' }))
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-snooze', message: 'snoozed' }))
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-unsnooze', message: 'unsnoozed' }));
     vi.stubGlobal('fetch', fetchMock);
 
     const client = new SettingsApiClient('https://example.com/v1', 'secret-token');
@@ -96,6 +98,8 @@ describe('SettingsApiClient operator endpoints', () => {
     await client.revealOperatorUpdateAsset();
     await client.openOperatorUpdateAsset();
     await client.openOperatorReleasesPage();
+    await client.snoozeOperatorAgentSession('session/1');
+    await client.unsnoozeOperatorAgentSession('session/1');
 
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
       'https://example.com/v1/operator/errors?count=12',
@@ -109,6 +113,8 @@ describe('SettingsApiClient operator endpoints', () => {
       'https://example.com/v1/operator/updater/reveal-download',
       'https://example.com/v1/operator/updater/open-download',
       'https://example.com/v1/operator/updater/open-releases',
+      'https://example.com/v1/operator/sessions/session%2F1/snooze',
+      'https://example.com/v1/operator/sessions/session%2F1/unsnooze',
     ]);
 
     expect(fetchMock.mock.calls[2]?.[1]?.method).toBe('POST');
@@ -120,6 +126,8 @@ describe('SettingsApiClient operator endpoints', () => {
     expect(fetchMock.mock.calls[8]?.[1]?.method).toBe('POST');
     expect(fetchMock.mock.calls[9]?.[1]?.method).toBe('POST');
     expect(fetchMock.mock.calls[10]?.[1]?.method).toBe('POST');
+    expect(fetchMock.mock.calls[11]?.[1]?.method).toBe('POST');
+    expect(fetchMock.mock.calls[12]?.[1]?.method).toBe('POST');
   });
 
   it('targets tunnel, Discord, and WhatsApp operator endpoints with the expected HTTP methods', async () => {

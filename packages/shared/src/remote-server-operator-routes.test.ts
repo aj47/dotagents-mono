@@ -128,6 +128,8 @@ describe('remote server operator routes', () => {
         auditContext: rotateAuditContext,
       })),
       runOperatorAgent: vi.fn(() => ({ statusCode: 202, body: { sessionId: 'session-1' } })),
+      snoozeOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-snooze' } })),
+      unsnoozeOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-unsnooze' } })),
       getOperatorMcpServerLogs: vi.fn(() => ({ statusCode: 200, body: { logs: [] } })),
       setOperatorAuditContext: vi.fn(),
     };
@@ -178,6 +180,18 @@ describe('remote server operator routes', () => {
       createReply(),
     );
     expect(actions.runOperatorAgent).toHaveBeenCalledWith(runBody, options.runAgent);
+
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionSnooze}`)!(
+      createRequest({ params: { sessionId: 'session-1' } }),
+      createReply(),
+    );
+    expect(actions.snoozeOperatorAgentSession).toHaveBeenCalledWith('session-1');
+
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionUnsnooze}`)!(
+      createRequest({ params: { sessionId: 'session-1' } }),
+      createReply(),
+    );
+    expect(actions.unsnoozeOperatorAgentSession).toHaveBeenCalledWith('session-1');
 
     await routes.get(`GET ${REMOTE_SERVER_API_ROUTE_PATHS.operatorMcpServerLogs}`)!(
       createRequest({

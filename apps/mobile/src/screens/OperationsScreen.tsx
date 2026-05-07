@@ -724,14 +724,36 @@ export default function OperationsScreen({ navigation }: any) {
               </Text>
               {status.sessions.activeSessionDetails.map((s) => {
                 const stopAction = `agent-session-stop:${s.id}`;
+                const snoozeAction = `agent-session-snooze:${s.id}`;
+                const isSnoozed = s.isSnoozed === true;
                 return (
                   <View key={s.id} style={styles.agentSessionRow}>
                     <View style={styles.agentSessionCopy}>
                       <Text style={styles.detailText}>
-                        {s.title ?? s.id} — {s.status} ({s.currentIteration ?? 0}/{s.maxIterations ?? '?'})
+                        {s.title ?? s.id} — {s.status}{isSnoozed ? ' · background' : ''} ({s.currentIteration ?? 0}/{s.maxIterations ?? '?'})
                       </Text>
                       <Text style={styles.mutedText}>Since {formatTimestamp(s.startTime)}</Text>
                     </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.sessionStopButton,
+                        styles.secondaryActionButton,
+                        controlsDisabled && styles.actionButtonDisabled,
+                      ]}
+                      onPress={() => void runAction(
+                        snoozeAction,
+                        () => isSnoozed
+                          ? settingsClient.unsnoozeOperatorAgentSession(s.id)
+                          : settingsClient.snoozeOperatorAgentSession(s.id),
+                      )}
+                      disabled={controlsDisabled}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`${isSnoozed ? 'Restore' : 'Hide'} ${s.title ?? s.id} agent session`)}
+                    >
+                      <Text style={styles.secondaryActionText}>
+                        {pendingAction === snoozeAction ? (isSnoozed ? 'Restoring...' : 'Hiding...') : (isSnoozed ? 'Restore' : 'Hide')}
+                      </Text>
+                    </TouchableOpacity>
                     <TouchableOpacity
                       style={[
                         styles.sessionStopButton,

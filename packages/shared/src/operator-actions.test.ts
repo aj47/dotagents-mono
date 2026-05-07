@@ -7,6 +7,7 @@ import {
   buildOperatorActionErrorResponse,
   buildOperatorActionAuditContext,
   buildOperatorAgentSessionStopResponse,
+  buildOperatorAgentSessionSnoozedResponse,
   buildOperatorApiKeyRotationAuditContext,
   buildOperatorApiKeyRotationFailureAuditContext,
   buildOperatorApiKeyRotationResponse,
@@ -152,6 +153,7 @@ import {
   sanitizeOperatorAuditDetails,
   sanitizeOperatorAuditText,
   serializeOperatorAuditLogEntries,
+  setOperatorAgentSessionSnoozedAction,
   stopOperatorAgentSessionAction,
   SENSITIVE_OPERATOR_SETTINGS_KEYS,
   updateOperatorQueuedMessageAction,
@@ -210,13 +212,21 @@ describe("operator action API helpers", () => {
         calls.push(`stop:${sessionId}`)
         return { sessionId, conversationId: "conv-1" }
       },
+      setAgentSessionSnoozed: (sessionId, isSnoozed) => {
+        calls.push(`${isSnoozed ? "snooze" : "unsnooze"}:${sessionId}`)
+        return { sessionId, isSnoozed }
+      },
     })
 
     await expect(service.stopAgentSessionById("session-1")).resolves.toEqual({
       sessionId: "session-1",
       conversationId: "conv-1",
     })
-    expect(calls).toEqual(["stop:session-1"])
+    expect(service.setAgentSessionSnoozed("session-1", true)).toEqual({
+      sessionId: "session-1",
+      isSnoozed: true,
+    })
+    expect(calls).toEqual(["stop:session-1", "snooze:session-1"])
   })
 
   it("runs agent route actions through a shared service adapter", async () => {
@@ -231,6 +241,10 @@ describe("operator action API helpers", () => {
         stopAgentSessionById: async (sessionId) => {
           calls.push(`stop:${sessionId}`)
           return { sessionId, conversationId: "conv-1" }
+        },
+        setAgentSessionSnoozed: (sessionId, isSnoozed) => {
+          calls.push(`${isSnoozed ? "snooze" : "unsnooze"}:${sessionId}`)
+          return { sessionId, isSnoozed }
         },
       },
     }
@@ -312,6 +326,34 @@ describe("operator action API helpers", () => {
         failureReason: "Missing session ID",
       },
     })
+    expect(setOperatorAgentSessionSnoozedAction(" session-1 ", true, options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "agent-session-snooze",
+        details: {
+          sessionId: "session-1",
+          isSnoozed: true,
+        },
+      },
+      auditContext: {
+        action: "agent-session-snooze",
+        success: true,
+      },
+    })
+    expect(setOperatorAgentSessionSnoozedAction(" ", false, options)).toMatchObject({
+      statusCode: 400,
+      body: {
+        success: false,
+        action: "agent-session-unsnooze",
+        error: "Missing session ID",
+      },
+      auditContext: {
+        action: "agent-session-unsnooze",
+        success: false,
+        failureReason: "Missing session ID",
+      },
+    })
 
     const routeActions = createOperatorAgentRouteActions(options)
     expect(await routeActions.runOperatorAgent({ prompt: "Route run" }, runAgent)).toMatchObject({
@@ -329,11 +371,19 @@ describe("operator action API helpers", () => {
         action: "agent-session-stop",
       },
     })
+    expect(routeActions.unsnoozeOperatorAgentSession("session-1")).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "agent-session-unsnooze",
+      },
+    })
 
     const failingStopOptions: OperatorAgentActionOptions = {
       ...options,
       service: {
         stopAgentSessionById: async () => { throw new Error("missing session") },
+        setAgentSessionSnoozed: () => { throw new Error("missing session") },
       },
     }
     expect(await stopOperatorAgentSessionAction("session-404", failingStopOptions)).toMatchObject({
@@ -354,6 +404,8 @@ describe("operator action API helpers", () => {
       "run:Do it:conv-1:profile-1",
       "error:Operator run-agent failed: runner denied",
       "stop:session-1",
+      "snooze:session-1",
+      "unsnooze:session-1",
       "error:Failed to stop agent session session-404: missing session",
     ]))
   })
@@ -2545,6 +2597,16 @@ describe("operator action API helpers", () => {
       },
     })
 
+    expect(buildOperatorAgentSessionSnoozedResponse("session-1", false)).toEqual({
+      success: true,
+      action: "agent-session-unsnooze",
+      message: "Unsnoozed agent session session-1",
+      details: {
+        sessionId: "session-1",
+        isSnoozed: false,
+      },
+    })
+
     expect(buildOperatorMessageQueueClearResponse("conv-1", true)).toEqual({
       success: true,
       action: "message-queue-clear",
@@ -3177,6 +3239,7 @@ describe("operator action API helpers", () => {
         startTime: 1,
         currentIteration: 2,
         maxIterations: 5,
+        isSnoozed: true,
       },
     ], [
       {
@@ -3199,6 +3262,7 @@ describe("operator action API helpers", () => {
         startTime: 1,
         currentIteration: 2,
         maxIterations: 5,
+        isSnoozed: true,
       }],
     })
   })

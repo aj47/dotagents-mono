@@ -1503,6 +1503,18 @@ export class SettingsApiClient {
     });
   }
 
+  async snoozeOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorAgentSessionSnooze(sessionId), {
+      method: 'POST',
+    });
+  }
+
+  async unsnoozeOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorAgentSessionUnsnooze(sessionId), {
+      method: 'POST',
+    });
+  }
+
   async getOperatorMessageQueues(): Promise<OperatorMessageQueuesResponse> {
     return this.request<OperatorMessageQueuesResponse>(API_PATHS.operatorMessageQueues);
   }

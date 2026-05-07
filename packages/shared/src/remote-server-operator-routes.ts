@@ -326,6 +326,24 @@ export function registerOperatorRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  fastify.post(API_ROUTES.operatorAgentSessionSnooze, async (req, reply) => {
+    const params = req.params as { sessionId?: string };
+    const result = await actions.snoozeOperatorAgentSession(params.sessionId);
+    if (result.auditContext) {
+      actions.setOperatorAuditContext(req, result.auditContext);
+    }
+    return reply.code(result.statusCode).send(result.body);
+  });
+
+  fastify.post(API_ROUTES.operatorAgentSessionUnsnooze, async (req, reply) => {
+    const params = req.params as { sessionId?: string };
+    const result = await actions.unsnoozeOperatorAgentSession(params.sessionId);
+    if (result.auditContext) {
+      actions.setOperatorAuditContext(req, result.auditContext);
+    }
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   fastify.get(API_ROUTES.operatorMessageQueues, async (_req, reply) => {
     const result = await actions.getOperatorMessageQueues();
     return reply.code(result.statusCode).send(result.body);

@@ -105,6 +105,10 @@ test('displays system metrics and agent sessions from operator status', () => {
   assert.match(operationsSource, /Agent sessions/);
   assert.match(operationsSource, /status\.sessions\.activeSessions/);
   assert.match(operationsSource, /status\.sessions\.activeSessionDetails/);
+  assert.match(operationsSource, /s\.isSnoozed === true/);
+  assert.match(operationsSource, /snoozeOperatorAgentSession\(s\.id\)/);
+  assert.match(operationsSource, /unsnoozeOperatorAgentSession\(s\.id\)/);
+  assert.match(operationsSource, /isSnoozed \? 'Restore' : 'Hide'/);
   assert.match(operationsSource, /stopOperatorAgentSession\(s\.id\)/);
   assert.match(operationsSource, /Stop \$\{s\.title \?\? s\.id\} agent session/);
   assert.match(operationsSource, /No active agent sessions/);

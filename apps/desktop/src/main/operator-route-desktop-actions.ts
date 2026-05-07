@@ -81,6 +81,7 @@ import { configStore } from "./config"
 import { conversationService } from "./conversation-service"
 import { diagnosticsService } from "./diagnostics"
 import { discordService } from "./discord-service"
+import { setTrackedAgentSessionSnoozed } from "./floating-panel-session-state"
 import {
   pauseMessageQueueByConversationId,
   removeQueuedMessageById,
@@ -154,6 +155,10 @@ const agentActionOptions: OperatorAgentActionOptions = {
   },
   service: createOperatorAgentActionService({
     stopAgentSessionById,
+    setAgentSessionSnoozed: (sessionId, isSnoozed) => {
+      setTrackedAgentSessionSnoozed(sessionId, isSnoozed)
+      return { sessionId, isSnoozed }
+    },
   }),
 }
 

@@ -97,6 +97,8 @@ const actionKeys = [
 const operatorActionKeys = [
   'runOperatorAgent',
   'stopOperatorAgentSession',
+  'snoozeOperatorAgentSession',
+  'unsnoozeOperatorAgentSession',
   'clearOperatorMcpServerLogs',
   'getOperatorMcpServerLogs',
   'getOperatorMcpStatus',
@@ -270,7 +272,12 @@ describe('remote server route contracts', () => {
       Object.fromEntries(keys.map((key) => [key, actions[key]])) as Pick<TestOperatorRouteActions, K>;
 
     const routeActions = createOperatorRouteActions<TestRequest>({
-      agent: pick('runOperatorAgent', 'stopOperatorAgentSession'),
+      agent: pick(
+        'runOperatorAgent',
+        'stopOperatorAgentSession',
+        'snoozeOperatorAgentSession',
+        'unsnoozeOperatorAgentSession',
+      ),
       apiKey: pick('rotateOperatorRemoteServerApiKey'),
       mcp: pick(
         'clearOperatorMcpServerLogs',
