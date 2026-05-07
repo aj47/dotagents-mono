@@ -62,6 +62,7 @@ import {
   THEME_PREFERENCE_OPTIONS,
 } from '@dotagents/shared/theme-preference';
 import {
+  OPERATOR_CONVERSATIONS_PANEL_METADATA,
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_ERRORS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
@@ -1548,7 +1549,7 @@ export default function OperationsScreen({ navigation }: any) {
 
           {conversations.length > 0 && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Recent conversations</Text>
+              <Text style={styles.panelTitle}>{OPERATOR_CONVERSATIONS_PANEL_METADATA.panelTitle}</Text>
               {conversations.map((c) => (
                 <View key={c.id} style={{ marginBottom: 6 }}>
                   <Text style={styles.detailText}>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  OPERATOR_CONVERSATIONS_PANEL_METADATA,
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_EMPTY_VALUE_LABEL,
   OPERATOR_ERRORS_PANEL_METADATA,
@@ -52,6 +53,12 @@ describe("operator display utils", () => {
     expect(OPERATOR_ERRORS_PANEL_METADATA).toEqual({
       panelTitle: "Recent errors",
       emptyText: "No recent errors returned by the desktop server.",
+    })
+  })
+
+  it("exports operator conversations panel metadata", () => {
+    expect(OPERATOR_CONVERSATIONS_PANEL_METADATA).toEqual({
+      panelTitle: "Recent conversations",
     })
   })
 
