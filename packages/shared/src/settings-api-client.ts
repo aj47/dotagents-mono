@@ -153,6 +153,7 @@ import type {
   AgentModelSelectionConfig,
   ChatProviderCredentialsConfig,
   AgentSessionCandidatesResponse,
+  ToolApprovalResponse,
   AgentProfileCreateRequest,
   AgentProfileDeleteResponse,
   AgentProfilesReloadResponse,
@@ -1373,6 +1374,13 @@ export class SettingsApiClient {
     return this.request<AgentSessionCandidatesResponse>(
       buildRemoteServerApiQueryPath(API_PATHS.agentSessionCandidates, { limit }),
     );
+  }
+
+  async respondToToolApproval(approvalId: string, approved: boolean): Promise<ToolApprovalResponse> {
+    return this.request<ToolApprovalResponse>(API_BUILDERS.agentSessionToolApprovalResponse(approvalId), {
+      method: 'POST',
+      body: JSON.stringify({ approved }),
+    });
   }
 
   // Models Management

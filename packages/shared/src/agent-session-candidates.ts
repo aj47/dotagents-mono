@@ -1,6 +1,7 @@
 import type {
   AgentSessionCandidate,
   AgentSessionCandidatesResponse,
+  ToolApprovalResponse,
 } from "./api-types"
 
 export type AgentSessionCandidateLike = {
@@ -39,6 +40,10 @@ export interface AgentSessionCandidateService {
   getRecentSessions(limit: number): AgentSessionCandidateLike[]
 }
 
+export interface ToolApprovalResponseService {
+  respondToApproval(approvalId: string, approved: boolean): boolean
+}
+
 export interface AgentSessionCandidateTrackerLike {
   getActiveSessions(): AgentSessionCandidateLike[]
   getRecentSessions(limit: number): AgentSessionCandidateLike[]
@@ -60,8 +65,19 @@ export interface AgentSessionCandidateActionOptions {
   }
 }
 
+export interface ToolApprovalResponseActionOptions {
+  service: ToolApprovalResponseService
+  diagnostics: {
+    logError(source: string, message: string, error: unknown): void
+  }
+}
+
 export interface AgentSessionCandidateRouteActions {
   getAgentSessionCandidates(query?: unknown): AgentSessionCandidateActionResult
+}
+
+export interface AgentSessionRouteActions extends AgentSessionCandidateRouteActions {
+  respondToToolApproval(approvalId: string | undefined, body: unknown): AgentSessionCandidateActionResult
 }
 
 function actionOk(body: unknown): AgentSessionCandidateActionResult {
@@ -197,5 +213,62 @@ export function createAgentSessionCandidateRouteActions(
 ): AgentSessionCandidateRouteActions {
   return {
     getAgentSessionCandidates: (query) => getAgentSessionCandidatesAction(query, options),
+  }
+}
+
+export function buildToolApprovalResponse(
+  approvalId: string,
+  approved: boolean,
+  success: boolean,
+): ToolApprovalResponse {
+  return {
+    success,
+    approvalId,
+    approved,
+  }
+}
+
+export function parseToolApprovalResponseBody(body: unknown):
+  | { ok: true; approved: boolean }
+  | { ok: false; statusCode: 400; error: string } {
+  const record = body && typeof body === "object" ? body as Record<string, unknown> : {}
+  if (typeof record.approved !== "boolean") {
+    return { ok: false, statusCode: 400, error: "Tool approval response must include boolean approved" }
+  }
+  return { ok: true, approved: record.approved }
+}
+
+export function respondToToolApprovalAction(
+  approvalId: string | undefined,
+  body: unknown,
+  options: ToolApprovalResponseActionOptions,
+): AgentSessionCandidateActionResult {
+  const normalizedApprovalId = approvalId?.trim()
+  if (!normalizedApprovalId) {
+    return actionError(400, "Missing approval id")
+  }
+
+  const parsedBody = parseToolApprovalResponseBody(body)
+  if (parsedBody.ok === false) {
+    return actionError(parsedBody.statusCode, parsedBody.error)
+  }
+
+  try {
+    const success = options.service.respondToApproval(normalizedApprovalId, parsedBody.approved)
+    return actionOk(buildToolApprovalResponse(normalizedApprovalId, parsedBody.approved, success))
+  } catch (caughtError) {
+    options.diagnostics.logError("agent-session-tool-approval", "Failed to respond to tool approval", caughtError)
+    return actionError(500, "Failed to respond to tool approval")
+  }
+}
+
+export function createAgentSessionRouteActions(options: {
+  candidates: AgentSessionCandidateActionOptions
+  toolApproval: ToolApprovalResponseActionOptions
+}): AgentSessionRouteActions {
+  return {
+    ...createAgentSessionCandidateRouteActions(options.candidates),
+    respondToToolApproval: (approvalId, body) =>
+      respondToToolApprovalAction(approvalId, body, options.toolApproval),
   }
 }

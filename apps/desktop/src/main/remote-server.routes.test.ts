@@ -1098,19 +1098,22 @@ describe("remote-server route registration", () => {
     expect(sharedSettingsApiClientSource).not.toContain('from "./config"')
   })
 
-  it("delegates agent session candidate route behavior to shared session candidate actions", () => {
+  it("delegates agent session route behavior to shared session actions", () => {
     const source = getRemoteServerSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedAgentSessionCandidatesSource = getSharedAgentSessionCandidatesSource()
 
     expectRegisteredApiRoute(source, "GET", "agentSessionCandidates")
+    expectRegisteredApiRoute(source, "POST", "agentSessionToolApprovalResponse")
     expect(mobileApiRoutesSource).toContain("actions.getAgentSessionCandidates(req.query)")
+    expect(mobileApiRoutesSource).toContain("actions.respondToToolApproval(params.approvalId, req.body)")
     expect(mobileApiDesktopActionsSource).toContain(
-      "const agentSessionCandidateRouteActions = createAgentSessionCandidateRouteActions(agentSessionCandidateActionOptions)",
+      "const agentSessionRouteActions = createAgentSessionRouteActions({",
     )
-    expect(mobileApiDesktopActionsSource).toContain("agentSessionCandidates: agentSessionCandidateRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("agentSessionCandidates: agentSessionRouteActions")
     expect(mobileApiDesktopActionsSource).toContain("service: createAgentSessionCandidateService(agentSessionTracker)")
+    expect(mobileApiDesktopActionsSource).toContain("toolApprovalManager.respondToApproval(approvalId, approved)")
     expect(mobileApiDesktopActionsSource).not.toContain(
       "getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)",
     )
@@ -1127,6 +1130,11 @@ describe("remote-server route registration", () => {
     )
     expect(sharedAgentSessionCandidatesSource).toContain("parseAgentSessionCandidateLimit(query)")
     expect(sharedAgentSessionCandidatesSource).toContain("buildAgentSessionCandidatesResponse(")
+    expect(sharedAgentSessionCandidatesSource).toContain("export function respondToToolApprovalAction")
+    expect(sharedAgentSessionCandidatesSource).toContain("export function createAgentSessionRouteActions")
+    expect(sharedAgentSessionCandidatesSource).toContain(
+      "respondToToolApproval: (approvalId, body) =>",
+    )
     expect(sharedAgentSessionCandidatesSource).not.toContain('from "./agent-session-tracker"')
   })
 

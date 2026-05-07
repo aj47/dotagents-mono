@@ -229,6 +229,13 @@ export function registerMobileApiRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  // POST /v1/agent-sessions/tool-approvals/:approvalId/respond - Approve or deny a pending tool call
+  fastify.post(API_ROUTES.agentSessionToolApprovalResponse, async (req, reply) => {
+    const params = req.params as { approvalId?: string };
+    const result = actions.respondToToolApproval(params.approvalId, req.body);
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   // GET /v1/conversations/:id - Fetch conversation state for recovery
   fastify.get(API_ROUTES.conversation, async (req, reply) => {
     const params = req.params as { id?: string };

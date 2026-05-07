@@ -3,13 +3,17 @@ import { describe, expect, it } from "vitest"
 import {
   buildAgentSessionCandidateOptions,
   buildAgentSessionCandidatesResponse,
+  buildToolApprovalResponse,
   createAgentSessionCandidateService,
   createAgentSessionCandidateRouteActions,
+  createAgentSessionRouteActions,
   formatAgentSessionCandidateLabel,
   formatAgentSessionCandidateTime,
   formatAgentSessionCandidateTitle,
   getAgentSessionCandidatesAction,
   parseAgentSessionCandidateLimit,
+  parseToolApprovalResponseBody,
+  respondToToolApprovalAction,
 } from "./agent-session-candidates"
 
 describe("agent session candidates", () => {
@@ -212,5 +216,98 @@ describe("agent session candidates", () => {
       message: "Failed to list agent session candidates",
       caughtError: caughtFailure,
     }])
+  })
+
+  it("responds to pending tool approvals through a shared route action", () => {
+    const approvalCalls: Array<{ approvalId: string; approved: boolean }> = []
+    const diagnostics = {
+      logError: () => {
+        throw new Error("unexpected diagnostics log")
+      },
+    }
+
+    expect(parseToolApprovalResponseBody({ approved: true })).toEqual({ ok: true, approved: true })
+    expect(parseToolApprovalResponseBody({ approved: "yes" })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "Tool approval response must include boolean approved",
+    })
+    expect(buildToolApprovalResponse("approval-1", true, true)).toEqual({
+      success: true,
+      approvalId: "approval-1",
+      approved: true,
+    })
+
+    const result = respondToToolApprovalAction(" approval-1 ", { approved: false }, {
+      service: {
+        respondToApproval: (approvalId, approved) => {
+          approvalCalls.push({ approvalId, approved })
+          return true
+        },
+      },
+      diagnostics,
+    })
+
+    expect(result).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        approvalId: "approval-1",
+        approved: false,
+      },
+    })
+    expect(approvalCalls).toEqual([{ approvalId: "approval-1", approved: false }])
+
+    expect(respondToToolApprovalAction("", { approved: true }, {
+      service: { respondToApproval: () => true },
+      diagnostics,
+    })).toEqual({
+      statusCode: 400,
+      body: { error: "Missing approval id" },
+    })
+  })
+
+  it("combines candidate and approval route actions for mobile routes", () => {
+    const approvalCalls: Array<{ approvalId: string; approved: boolean }> = []
+    const diagnostics = {
+      logError: () => {
+        throw new Error("unexpected diagnostics log")
+      },
+    }
+    const routeActions = createAgentSessionRouteActions({
+      candidates: {
+        service: {
+          getActiveSessions: () => [],
+          getRecentSessions: () => [],
+        },
+        diagnostics,
+      },
+      toolApproval: {
+        service: {
+          respondToApproval: (approvalId, approved) => {
+            approvalCalls.push({ approvalId, approved })
+            return false
+          },
+        },
+        diagnostics,
+      },
+    })
+
+    expect(routeActions.getAgentSessionCandidates()).toEqual({
+      statusCode: 200,
+      body: {
+        activeSessions: [],
+        completedSessions: [],
+      },
+    })
+    expect(routeActions.respondToToolApproval("approval-2", { approved: true })).toEqual({
+      statusCode: 200,
+      body: {
+        success: false,
+        approvalId: "approval-2",
+        approved: true,
+      },
+    })
+    expect(approvalCalls).toEqual([{ approvalId: "approval-2", approved: true }])
   })
 })

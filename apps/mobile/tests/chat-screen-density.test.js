@@ -22,6 +22,17 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.match(screenSource, /styles\.headerConversationChipText/);
 });
 
+test('lets mobile respond to desktop tool approval requests from progress updates', () => {
+  assert.match(screenSource, /settingsClient\.respondToToolApproval\(approvalId, approved\)/);
+  assert.match(screenSource, /variant: 'approval'/);
+  assert.match(screenSource, /toolApproval: update\.pendingToolApproval/);
+  assert.match(screenSource, />Tool Approval Required</);
+  assert.match(screenSource, /respondToToolApproval\(m\.toolApproval!\.approvalId, false\)/);
+  assert.match(screenSource, /respondToToolApproval\(m\.toolApproval!\.approvalId, true\)/);
+  assert.match(screenSource, /accessibilityLabel=\{`Approve tool call \$\{m\.toolApproval\.toolName\}`\}/);
+  assert.match(screenSource, /accessibilityLabel=\{`Deny tool call \$\{m\.toolApproval\.toolName\}`\}/);
+});
+
 test('removes the redundant Chat title from the mobile conversation header', () => {
   assert.doesNotMatch(screenSource, />Chat<\/Text>/);
 });

@@ -3,11 +3,12 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { createMobileApiRouteActions } from "@dotagents/shared/remote-server-route-contracts"
-import { getAgentsLayerPaths, type LoopConfig } from "@dotagents/core"
+import { getAgentsLayerPaths, toolApprovalManager, type LoopConfig } from "@dotagents/core"
 import {
   createAgentSessionCandidateService,
-  createAgentSessionCandidateRouteActions,
+  createAgentSessionRouteActions,
   type AgentSessionCandidateActionOptions,
+  type ToolApprovalResponseActionOptions,
 } from "@dotagents/shared/agent-session-candidates"
 import { getEnabledAcpxAgentProfiles } from "@dotagents/shared/agent-profile-queries"
 import {
@@ -170,7 +171,18 @@ const agentSessionCandidateActionOptions: AgentSessionCandidateActionOptions = {
   diagnostics: diagnosticsService,
 }
 
-const agentSessionCandidateRouteActions = createAgentSessionCandidateRouteActions(agentSessionCandidateActionOptions)
+const toolApprovalResponseActionOptions: ToolApprovalResponseActionOptions = {
+  service: {
+    respondToApproval: (approvalId, approved) =>
+      toolApprovalManager.respondToApproval(approvalId, approved),
+  },
+  diagnostics: diagnosticsService,
+}
+
+const agentSessionRouteActions = createAgentSessionRouteActions({
+  candidates: agentSessionCandidateActionOptions,
+  toolApproval: toolApprovalResponseActionOptions,
+})
 
 const ttsActionOptions: TtsActionOptions = {
   service: createTtsActionService<Config>({
@@ -454,7 +466,7 @@ export const mobileApiDesktopActions = createMobileApiRouteActions({
   bundle: bundleRouteActions,
   mcp: mcpRouteActions,
   settings: settingsRouteActionBundle.settings,
-  agentSessionCandidates: agentSessionCandidateRouteActions,
+  agentSessionCandidates: agentSessionRouteActions,
   audit: operatorAuditEventRouteActions,
   conversations: conversationRouteActions,
   conversationImageAssets: conversationImageAssetRouteActions,

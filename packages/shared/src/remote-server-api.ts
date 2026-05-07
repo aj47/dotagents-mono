@@ -81,6 +81,7 @@ export const REMOTE_SERVER_API_PATHS = {
   mcpOAuthRevoke: "/mcp/servers/:name/oauth/revoke",
   settings: "/settings",
   agentSessionCandidates: "/agent-sessions/candidates",
+  agentSessionToolApprovalResponse: "/agent-sessions/tool-approvals/:approvalId/respond",
   conversation: "/conversations/:id",
   conversationImageAsset: "/conversations/:id/assets/images/:fileName",
   conversationVideoAsset: "/conversations/:id/assets/videos/:fileName",
@@ -198,6 +199,7 @@ export const REMOTE_SERVER_API_ROUTES = [
   { method: "GET", path: REMOTE_SERVER_API_PATHS.settings },
   { method: "PATCH", path: REMOTE_SERVER_API_PATHS.settings },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.agentSessionCandidates },
+  { method: "POST", path: REMOTE_SERVER_API_PATHS.agentSessionToolApprovalResponse },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.conversation },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.conversationImageAsset },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.conversationVideoAsset },
@@ -415,6 +417,9 @@ export const REMOTE_SERVER_API_BUILDERS = {
   },
   mcpOAuthRevoke(serverName: string): string {
     return `/mcp/servers/${encodePathParam(serverName)}/oauth/revoke`;
+  },
+  agentSessionToolApprovalResponse(approvalId: string): string {
+    return `/agent-sessions/tool-approvals/${encodePathParam(approvalId)}/respond`;
   },
   conversation(id: string): string {
     return `/conversations/${encodePathParam(id)}`;

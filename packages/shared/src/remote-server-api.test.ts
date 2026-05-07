@@ -35,6 +35,7 @@ describe('remote server API contract', () => {
     expect(getRemoteServerApiRoutePath(REMOTE_SERVER_API_PATHS.settings)).toBe('/v1/settings');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.settings).toBe('/v1/settings');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.agentSessionCandidates).toBe('/v1/agent-sessions/candidates');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.agentSessionToolApprovalResponse).toBe('/v1/agent-sessions/tool-approvals/:approvalId/respond');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.conversation).toBe('/v1/conversations/:id');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.bundleExportableItems).toBe('/v1/bundles/exportable-items');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.bundleExport).toBe('/v1/bundles/export');
@@ -77,6 +78,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_BUILDERS.mcpOAuthStatus('filesystem/local')).toBe('/mcp/servers/filesystem%2Flocal/oauth');
     expect(REMOTE_SERVER_API_BUILDERS.mcpOAuthStart('filesystem/local')).toBe('/mcp/servers/filesystem%2Flocal/oauth/start');
     expect(REMOTE_SERVER_API_BUILDERS.mcpOAuthRevoke('filesystem/local')).toBe('/mcp/servers/filesystem%2Flocal/oauth/revoke');
+    expect(REMOTE_SERVER_API_BUILDERS.agentSessionToolApprovalResponse('approval/1')).toBe('/agent-sessions/tool-approvals/approval%2F1/respond');
     expect(REMOTE_SERVER_API_BUILDERS.modelsByProvider('openai')).toBe('/models/openai');
     expect(REMOTE_SERVER_API_BUILDERS.conversationImageAsset('conv 1', 'image/name.png')).toBe('/conversations/conv%201/assets/images/image%2Fname.png');
     expect(REMOTE_SERVER_API_BUILDERS.conversationVideoAsset('conv 1', 'clip/name.mp4')).toBe('/conversations/conv%201/assets/videos/clip%2Fname.mp4');

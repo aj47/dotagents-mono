@@ -136,6 +136,7 @@ describe('remote server mobile API routes', () => {
       getMcpOAuthStatus: vi.fn(() => ({ statusCode: 200, body: { configured: true, authenticated: false } })),
       initiateMcpOAuthFlow: vi.fn(() => ({ statusCode: 200, body: { authorizationUrl: 'https://auth.example', state: 'state-1' } })),
       revokeMcpOAuthTokens: vi.fn(() => ({ statusCode: 200, body: { success: true } })),
+      respondToToolApproval: vi.fn(() => ({ statusCode: 200, body: { success: true, approvalId: 'approval-1', approved: true } })),
       recordOperatorAuditEvent: vi.fn(),
       getConversationImageAsset: vi.fn(() => ({
         statusCode: 200,
@@ -223,6 +224,14 @@ describe('remote server mobile API routes', () => {
     );
     expect(actions.revokeMcpOAuthTokens).toHaveBeenCalledWith('notion');
     expect(oauthRevokeReply.body).toEqual({ success: true });
+
+    const approvalReply = createReply();
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.agentSessionToolApprovalResponse}`)!(
+      createRequest({ params: { approvalId: 'approval-1' }, body: { approved: true } }),
+      approvalReply,
+    );
+    expect(actions.respondToToolApproval).toHaveBeenCalledWith('approval-1', { approved: true });
+    expect(approvalReply.body).toEqual({ success: true, approvalId: 'approval-1', approved: true });
 
     const imageReply = createReply();
     await routes.get(`GET ${REMOTE_SERVER_API_ROUTE_PATHS.conversationImageAsset}`)!(

@@ -80,6 +80,7 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
     },
   ) => RemoteServerMaybePromise<MobileApiActionResult>;
   getAgentSessionCandidates: (query?: unknown) => MobileApiActionResult;
+  respondToToolApproval: (approvalId: string | undefined, body: unknown) => MobileApiActionResult;
   recordOperatorAuditEvent: (
     request: Request,
     context: NonNullable<MobileApiActionResult['auditContext']>,
@@ -179,7 +180,10 @@ export interface MobileApiRouteActionGroups<Request = unknown, Reply = unknown> 
     | 'revokeMcpOAuthTokens'
   >;
   settings: Pick<MobileApiRouteActions<Request, Reply>, 'getSettings' | 'updateSettings'>;
-  agentSessionCandidates: Pick<MobileApiRouteActions<Request, Reply>, 'getAgentSessionCandidates'>;
+  agentSessionCandidates: Pick<
+    MobileApiRouteActions<Request, Reply>,
+    'getAgentSessionCandidates' | 'respondToToolApproval'
+  >;
   audit: Pick<MobileApiRouteActions<Request, Reply>, 'recordOperatorAuditEvent'>;
   conversations: Pick<
     MobileApiRouteActions<Request, Reply>,
