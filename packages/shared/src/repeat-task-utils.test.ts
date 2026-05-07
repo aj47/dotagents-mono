@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   applyRepeatTaskUpdate,
   applyRepeatTaskRuntimeStatus,
+  applyRepeatTaskRuntimeStatuses,
   createRepeatTaskAction,
   createRepeatTaskActionService,
   createRepeatTaskRuntimeId,
@@ -261,6 +262,7 @@ describe("repeat task schedule helpers", () => {
 
   it("applies repeat task runtime status updates without app-specific merge logic", () => {
     const loop = {
+      id: "daily-review",
       name: "Daily Review",
       enabled: true,
       isRunning: false,
@@ -272,6 +274,7 @@ describe("repeat task schedule helpers", () => {
 
     expect(applyRepeatTaskRuntimeStatus(loop)).toBe(loop)
     expect(applyRepeatTaskRuntimeStatus(loop, {
+      id: "daily-review",
       name: "Daily Review Updated",
       enabled: false,
       isRunning: true,
@@ -280,6 +283,7 @@ describe("repeat task schedule helpers", () => {
       intervalMinutes: 60,
       schedule: { type: "daily", times: ["09:00"] },
     })).toEqual({
+      id: "daily-review",
       name: "Daily Review Updated",
       enabled: false,
       isRunning: true,
@@ -288,6 +292,36 @@ describe("repeat task schedule helpers", () => {
       intervalMinutes: 60,
       schedule: { type: "daily", times: ["09:00"] },
     })
+
+    expect(applyRepeatTaskRuntimeStatuses([
+      loop,
+      {
+        id: "weekly-report",
+        name: "Weekly Report",
+        enabled: true,
+        isRunning: false,
+        intervalMinutes: 120,
+      },
+    ], [
+      {
+        id: "weekly-report",
+        enabled: false,
+        isRunning: true,
+        nextRunAt: 50,
+      },
+    ])).toEqual([
+      loop,
+      {
+        id: "weekly-report",
+        name: "Weekly Report",
+        enabled: false,
+        isRunning: true,
+        lastRunAt: undefined,
+        nextRunAt: 50,
+        intervalMinutes: 120,
+        schedule: undefined,
+      },
+    ])
   })
 
   it("computes local repeat task scheduling timestamps and delay fallbacks", () => {

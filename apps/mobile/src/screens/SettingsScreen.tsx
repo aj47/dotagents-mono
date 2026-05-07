@@ -39,7 +39,6 @@ import {
   type LocalSpeechModelProviderId,
   type LocalSpeechModelStatus,
   type Loop,
-  type LoopRuntimeStatus,
   type MCPServer,
   type ModelInfo,
   type ModelPresetSummary,
@@ -82,6 +81,7 @@ import {
   type CHAT_PROVIDER_ID,
 } from '@dotagents/shared/providers';
 import {
+  applyRepeatTaskRuntimeStatuses,
   applyRepeatTaskRuntimeStatus,
   DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
   DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
@@ -254,11 +254,6 @@ type LoopRuntimeAction = {
   loopId: string;
   action: 'start' | 'stop';
 };
-
-function applyRepeatTaskRuntimeStatuses(loops: Loop[], statuses: LoopRuntimeStatus[]): Loop[] {
-  const statusesById = new Map(statuses.map(status => [status.id, status]));
-  return loops.map(loop => applyRepeatTaskRuntimeStatus(loop, statusesById.get(loop.id)));
-}
 
 const MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT = {
   dateTimeFormatOptions: { hour: 'numeric', minute: '2-digit' },

@@ -1612,6 +1612,14 @@ export function applyRepeatTaskRuntimeStatus<TLoop extends RepeatTaskRuntimeMerg
   }
 }
 
+export function applyRepeatTaskRuntimeStatuses<TLoop extends RepeatTaskRuntimeMergeTarget & { id: string }>(
+  loops: readonly TLoop[],
+  statuses: readonly RepeatTaskStatusLike[] = [],
+): TLoop[] {
+  const statusesById = new Map(statuses.map((status) => [status.id, status]))
+  return loops.map((loop) => applyRepeatTaskRuntimeStatus(loop, statusesById.get(loop.id)))
+}
+
 export function formatLoopIntervalDraft(minutes?: number): string {
   const normalizedMinutes = typeof minutes === "number" && Number.isFinite(minutes)
     ? Math.floor(minutes)
