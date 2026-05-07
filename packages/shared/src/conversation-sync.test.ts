@@ -42,6 +42,7 @@ import {
   isValidServerConversationRecordShape,
   materializeAppendServerConversationMessageRequest,
   materializeServerConversationCreateRequest,
+  materializeServerConversationRecordContent,
   normalizeServerConversationHistoryIndex,
   normalizeServerConversationSummarizedMessageCount,
   parseCreateConversationRequestBody,
@@ -231,6 +232,40 @@ describe('server conversation API helpers', () => {
       toolCalls: undefined,
       toolResults: undefined,
     });
+  });
+
+  it('materializes persisted conversation record content across displayed and raw histories', async () => {
+    const sharedMessage = {
+      id: 'msg-shared',
+      role: 'assistant' as const,
+      content: 'stored data:image/png;base64,abc',
+      displayContent: 'shown data:image/png;base64,abc',
+      timestamp: 2,
+    };
+    const conversation = {
+      id: 'conv-materialize-record',
+      title: 'Materialize',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [
+        { id: 'summary', role: 'assistant' as const, content: 'summary', timestamp: 1 },
+        sharedMessage,
+      ],
+      rawMessages: [
+        { id: 'raw-1', role: 'user' as const, content: 'raw data:image/png;base64,abc', timestamp: 1 },
+        sharedMessage,
+      ],
+    };
+    const materializeContent = vi.fn((content: string) => content.replace('data:image/png;base64,abc', 'assets://image.png'));
+
+    await expect(materializeServerConversationRecordContent(conversation, { materializeContent })).resolves.toBe(true);
+
+    expect(conversation.messages[1].content).toBe('stored assets://image.png');
+    expect(conversation.messages[1].displayContent).toBe('shown assets://image.png');
+    expect(conversation.rawMessages[0].content).toBe('raw assets://image.png');
+    expect(conversation.rawMessages[1]).toBe(conversation.messages[1]);
+    expect(materializeContent).toHaveBeenCalledTimes(4);
+    await expect(materializeServerConversationRecordContent(conversation, { materializeContent })).resolves.toBe(false);
   });
 
   it('selects auto-title seeds from stored raw conversation history', () => {

@@ -32,6 +32,7 @@ import {
   isValidServerConversationRecordShape,
   materializeAppendServerConversationMessageRequest,
   materializeServerConversationCreateRequest,
+  materializeServerConversationRecordContent,
   normalizeServerConversationHistoryIndex,
   renameServerConversationTitle,
   removeServerConversationHistoryIndexItem,
@@ -250,30 +251,9 @@ export class ConversationService {
   }
 
   private async materializeConversationInlineImages(conversation: Conversation): Promise<boolean> {
-    let changed = false
-    const seenMessages = new Set<ConversationMessage>()
-    const messageGroups = [conversation.messages, conversation.rawMessages].filter(Array.isArray) as ConversationMessage[][]
-
-    for (const messages of messageGroups) {
-      for (const message of messages) {
-        if (seenMessages.has(message)) continue
-        seenMessages.add(message)
-        const nextContent = await this.materializeInlineDataImagesInContent(conversation.id, message.content)
-        if (nextContent !== message.content) {
-          message.content = nextContent
-          changed = true
-        }
-        if (typeof message.displayContent === "string") {
-          const nextDisplayContent = await this.materializeInlineDataImagesInContent(conversation.id, message.displayContent)
-          if (nextDisplayContent !== message.displayContent) {
-            message.displayContent = nextDisplayContent
-            changed = true
-          }
-        }
-      }
-    }
-
-    return changed
+    return materializeServerConversationRecordContent(conversation, {
+      materializeContent: (content) => this.materializeInlineDataImagesInContent(conversation.id, content),
+    })
   }
 
   /**

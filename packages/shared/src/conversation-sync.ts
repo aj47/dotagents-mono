@@ -612,6 +612,40 @@ export async function materializeAppendServerConversationMessageRequest(
   };
 }
 
+export async function materializeServerConversationRecordContent<
+  TConversation extends ServerConversationRecord<any>,
+>(
+  conversation: TConversation,
+  options: MaterializeServerConversationContentOptions = {},
+): Promise<boolean> {
+  let changed = false;
+  const seenMessages = new Set<ServerConversationRecordMessage>();
+  const messageGroups = [conversation.messages, conversation.rawMessages].filter(Array.isArray) as ServerConversationRecordMessage[][];
+
+  for (const messages of messageGroups) {
+    for (const message of messages) {
+      if (seenMessages.has(message)) continue;
+      seenMessages.add(message);
+
+      const nextContent = await materializeServerConversationContent(message.content, options.materializeContent);
+      if (nextContent !== message.content) {
+        message.content = nextContent;
+        changed = true;
+      }
+
+      if (typeof message.displayContent === 'string') {
+        const nextDisplayContent = await materializeServerConversationContent(message.displayContent, options.materializeContent);
+        if (nextDisplayContent !== message.displayContent) {
+          message.displayContent = nextDisplayContent;
+          changed = true;
+        }
+      }
+    }
+  }
+
+  return changed;
+}
+
 export function getStoredServerConversationMessages<TConversation extends ServerConversationRecord<any>>(
   conversation: TConversation,
 ): ServerConversationRecordMessage[] {
