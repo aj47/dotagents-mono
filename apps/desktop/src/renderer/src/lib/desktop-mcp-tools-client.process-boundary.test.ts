@@ -6,6 +6,10 @@ const mcpToolManagerSource = readFileSync(
   new URL("../components/mcp-tool-manager.tsx", import.meta.url),
   "utf8",
 )
+const mcpConfigManagerSource = readFileSync(
+  new URL("../components/mcp-config-manager.tsx", import.meta.url),
+  "utf8",
+)
 
 describe("desktop MCP tools renderer client", () => {
   it("centralizes MCP tool list and toggle IPC channels", () => {
@@ -14,11 +18,16 @@ describe("desktop MCP tools renderer client", () => {
     expect(clientSource).not.toContain("window.electron.ipcRenderer")
   })
 
-  it("keeps MCP tool manager off direct tool IPC channels", () => {
+  it("keeps MCP tool UIs off direct tool IPC channels", () => {
+    const combinedSource = [mcpToolManagerSource, mcpConfigManagerSource].join("\n")
+
     expect(mcpToolManagerSource).toContain("desktopMcpToolsClient.getDetailedToolList()")
     expect(mcpToolManagerSource).toContain("desktopMcpToolsClient.setToolEnabled(toolName, enabled)")
     expect(mcpToolManagerSource).toContain("desktopMcpToolsClient.setToolEnabled(tool.name, enable)")
-    expect(mcpToolManagerSource).not.toContain("tipcClient.getMcpDetailedToolList(")
-    expect(mcpToolManagerSource).not.toContain("tipcClient.setMcpToolEnabled(")
+    expect(mcpConfigManagerSource).toContain("desktopMcpToolsClient.getDetailedToolList()")
+    expect(mcpConfigManagerSource).toContain("desktopMcpToolsClient.setToolEnabled(toolName, enabled)")
+    expect(mcpConfigManagerSource).toContain("desktopMcpToolsClient.setToolEnabled(tool.name, enable)")
+    expect(combinedSource).not.toContain("tipcClient.getMcpDetailedToolList(")
+    expect(combinedSource).not.toContain("tipcClient.setMcpToolEnabled(")
   })
 })

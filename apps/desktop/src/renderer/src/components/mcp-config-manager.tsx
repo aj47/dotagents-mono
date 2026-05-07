@@ -79,6 +79,7 @@ import {
 } from "@dotagents/shared/mcp-utils"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { desktopMcpOAuthClient } from "@renderer/lib/desktop-mcp-oauth-client"
+import { desktopMcpToolsClient } from "@renderer/lib/desktop-mcp-tools-client"
 import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
 import { OAUTH_MCP_EXAMPLES } from "@dotagents/shared/oauth-examples"
@@ -1073,7 +1074,7 @@ export function MCPConfigManager({
   // Fetch tools function - defined as useCallback so it can be reused
   const fetchTools = useCallback(async () => {
     try {
-      const toolList = await tipcClient.getMcpDetailedToolList({})
+      const toolList = await desktopMcpToolsClient.getDetailedToolList()
       setTools(toolList as DetailedTool[])
     } catch (error) {}
   }, [])
@@ -1181,7 +1182,7 @@ export function MCPConfigManager({
       )
 
       // Call the backend API
-      const result = await tipcClient.setMcpToolEnabled({ toolName, enabled })
+      const result = await desktopMcpToolsClient.setToolEnabled(toolName, enabled)
 
       if ((result as any).success) {
         toast.success(`Tool ${toolName} ${enabled ? "enabled" : "disabled"}`)
@@ -1223,7 +1224,7 @@ export function MCPConfigManager({
 
     // Track promises for all backend calls
     const promises = serverTools.map((tool) =>
-      tipcClient.setMcpToolEnabled({ toolName: tool.name, enabled: enable }),
+      desktopMcpToolsClient.setToolEnabled(tool.name, enable),
     )
 
     try {
@@ -1668,7 +1669,7 @@ export function MCPConfigManager({
 
     // Track promises for all backend calls
     const promises = filteredTools.map((tool) =>
-      tipcClient.setMcpToolEnabled({ toolName: tool.name, enabled: enable }),
+      desktopMcpToolsClient.setToolEnabled(tool.name, enable),
     )
 
     try {
