@@ -622,7 +622,6 @@ describe("remote-server route registration", () => {
 
   it("keeps remote route action result contracts shared", () => {
     const operatorActionSources = [
-      getOperatorApiKeyActionsSource(),
       getOperatorAuditActionsSource(),
     ]
 
@@ -1396,9 +1395,11 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("auditContext: buildOperatorActionAuditContext(body)")
     expect(operatorSection).toContain("actions.rotateOperatorRemoteServerApiKey()")
     expect(operatorSection).toContain("scheduleRemoteServerRestartAfterReply(reply)")
-    expect(operatorApiKeyActionsSource).toContain("rotateOperatorRemoteServerApiKeyAction(apiKeyActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("rotateOperatorRemoteServerApiKeyAction(apiKeyActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain('generateApiKey: () => crypto.randomBytes(32).toString("hex")')
+    expect(operatorApiKeyActionsSource).not.toContain("rotateOperatorRemoteServerApiKeyAction")
     expect(operatorApiKeyActionsSource).toContain("generateRemoteServerApiKey()")
-    expect(operatorApiKeyActionsSource).toContain("generateApiKey: generateRemoteServerApiKey")
+    expect(desktopAdaptersSource).toContain("generateApiKey: generateRemoteServerApiKey")
     expect(sharedOperatorActionsSource).toContain("buildOperatorApiKeyRotationResponse(apiKey)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorApiKeyRotationAuditContext()")
     expect(sharedOperatorActionsSource).toContain("buildOperatorApiKeyRotationFailureAuditContext()")

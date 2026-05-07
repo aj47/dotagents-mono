@@ -87,11 +87,13 @@ import {
   runOperatorAgentAction,
   restartOperatorAppAction as restartOperatorApp,
   restartOperatorRemoteServerAction as restartOperatorRemoteServer,
+  rotateOperatorRemoteServerApiKeyAction,
   startOperatorTunnelAction,
   stopOperatorAgentSessionAction,
   stopOperatorTunnelAction,
   updateOperatorQueuedMessageAction,
   type OperatorActionAuditContext,
+  type OperatorApiKeyActionOptions,
   type OperatorAgentActionOptions,
   type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
@@ -101,7 +103,6 @@ import {
   type OperatorTunnelActionOptions,
   type OperatorUpdaterActionOptions,
 } from "@dotagents/shared/operator-actions"
-import { rotateOperatorRemoteServerApiKey } from "./operator-api-key-actions"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { stopAgentSessionById } from "./agent-session-actions"
 import {
@@ -165,6 +166,15 @@ const modelPresetActionOptions: ModelPresetActionOptions<Config> = {
   diagnostics: diagnosticsService,
   createPresetId: () => `custom-${crypto.randomUUID()}`,
   now: () => Date.now(),
+}
+
+const apiKeyActionOptions: OperatorApiKeyActionOptions<Config> = {
+  config: {
+    get: () => configStore.get(),
+    save: (config) => configStore.save(config),
+  },
+  diagnostics: diagnosticsService,
+  generateApiKey: () => crypto.randomBytes(32).toString("hex"),
 }
 
 const agentActionOptions: OperatorAgentActionOptions = {
@@ -547,6 +557,10 @@ async function updateOperatorModelPreset(
 
 async function deleteOperatorModelPreset(presetId: string | undefined, secretMask: string) {
   return deleteOperatorModelPresetAction(presetId, secretMask, modelPresetActionOptions)
+}
+
+function rotateOperatorRemoteServerApiKey() {
+  return rotateOperatorRemoteServerApiKeyAction(apiKeyActionOptions)
 }
 
 function getOperatorTunnel() {
