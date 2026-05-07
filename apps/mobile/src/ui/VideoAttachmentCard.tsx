@@ -5,9 +5,10 @@ import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import {
   buildConversationVideoAssetHttpUrl,
   getVideoAssetLabel,
-  isConversationVideoAssetUrl,
   isRenderableVideoUrl,
+  parseConversationVideoAssetUrl,
 } from '@dotagents/shared/conversation-media-assets';
+import { SettingsApiClient } from '../lib/settingsApi';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing } from './theme';
 
@@ -36,6 +37,14 @@ function getVideoCacheExtension(uri: string): string {
   }
 }
 
+function getHeaderRecord(headers: Headers): Record<string, string> {
+  const record: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    record[key] = value;
+  });
+  return record;
+}
+
 export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
   sourceUrl,
   label,
@@ -50,8 +59,13 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
   const objectUrlRef = useRef<string | null>(null);
   const displayLabel = getVideoAssetLabel(label, sourceUrl);
   const resolvedUri = resolveVideoUri(sourceUrl, assetBaseUrl);
-  const isConversationAsset = isConversationVideoAssetUrl(sourceUrl);
-  const shouldFetchWithAuth = isConversationAsset && !!authToken;
+  const conversationAssetRef = useMemo(() => parseConversationVideoAssetUrl(sourceUrl), [sourceUrl]);
+  const isConversationAsset = !!conversationAssetRef;
+  const assetApiClient = useMemo(
+    () => (assetBaseUrl && authToken ? new SettingsApiClient(assetBaseUrl, authToken) : null),
+    [assetBaseUrl, authToken],
+  );
+  const shouldFetchWithAuth = isConversationAsset && !!assetApiClient;
   const canRender = (() => {
     // Asset URLs (assets://) can't be played directly on mobile — they must be
     // resolved to an HTTP URL via buildConversationVideoAssetHttpUrl (which
@@ -95,10 +109,15 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
         setPlaybackUri(resolvedUri);
         return;
       }
+      if (!assetApiClient || !conversationAssetRef) {
+        throw new Error('Missing video asset credentials.');
+      }
 
-      const headers = { Authorization: `Bearer ${authToken}` };
       if (Platform.OS === 'web') {
-        const response = await fetch(resolvedUri, { headers });
+        const response = await assetApiClient.getConversationVideoAssetResponse(
+          conversationAssetRef.conversationId,
+          conversationAssetRef.fileName,
+        );
         if (!response.ok) {
           throw new Error(`Video request failed (${response.status})`);
         }
@@ -114,6 +133,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
         Paths.cache,
         `chat-video-${Date.now()}-${Math.floor(Math.random() * 1e6)}.${extension}`,
       );
+      const headers = getHeaderRecord(await assetApiClient.buildRequestHeaders());
       const file = await File.downloadFileAsync(resolvedUri, destination, {
         headers,
         idempotent: true,
@@ -125,7 +145,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [authToken, canRender, loading, playbackUri, resolvedUri, shouldFetchWithAuth]);
+  }, [assetApiClient, canRender, conversationAssetRef, loading, playbackUri, resolvedUri, shouldFetchWithAuth]);
 
   const styles = useMemo(() => StyleSheet.create({
     card: {

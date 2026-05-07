@@ -125,6 +125,12 @@ describe('SettingsApiClient', () => {
     expect(headers.get('Authorization')).toBe('Bearer secret-token');
     expect(headers.get(DOTAGENTS_DEVICE_ID_HEADER)).toBe('device-123');
     expect(headers.get('Content-Type')).toBeNull();
+
+    const downloadHeaders = await client.buildRequestHeaders({ headers: { Range: 'bytes=0-99' } });
+    expect(downloadHeaders.get('Authorization')).toBe('Bearer secret-token');
+    expect(downloadHeaders.get(DOTAGENTS_DEVICE_ID_HEADER)).toBe('device-123');
+    expect(downloadHeaders.get('Range')).toBe('bytes=0-99');
+    expect(downloadHeaders.get('Content-Type')).toBeNull();
   });
 
   it('sets JSON content type only when a request body exists', async () => {

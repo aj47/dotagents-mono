@@ -1179,8 +1179,7 @@ export class SettingsApiClient {
     this.options = options;
   }
 
-  protected async requestResponse(endpoint: string, options: RequestInit = {}): Promise<Response> {
-    const url = `${this.baseUrl}${endpoint}`;
+  async buildRequestHeaders(options: Pick<RequestInit, 'headers' | 'body'> = {}): Promise<Headers> {
     const headers = new Headers(options.headers);
     headers.set('Authorization', `Bearer ${this.apiKey}`);
 
@@ -1194,6 +1193,13 @@ export class SettingsApiClient {
     if (options.body !== undefined && options.body !== null && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
+
+    return headers;
+  }
+
+  protected async requestResponse(endpoint: string, options: RequestInit = {}): Promise<Response> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const headers = await this.buildRequestHeaders(options);
 
     return fetch(url, {
       ...options,
