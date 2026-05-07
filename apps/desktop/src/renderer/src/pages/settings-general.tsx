@@ -30,6 +30,7 @@ import {
   buildLangfuseDrafts,
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
+  LANGFUSE_CREDENTIAL_FIELD_METADATA,
   type LangfuseDraftKey,
 } from "@dotagents/shared/observability-config"
 import {
@@ -1463,7 +1464,7 @@ export function Component() {
                   value={langfuseDrafts.langfusePublicKey}
                   onChange={(e) => updateLangfuseDraft("langfusePublicKey", e.currentTarget.value)}
                   onBlur={(e) => flushLangfuseSave("langfusePublicKey", e.currentTarget.value)}
-                  placeholder="pk-lf-..."
+                  placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfusePublicKey.placeholder}
                   className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                 />
               </Control>
@@ -1474,7 +1475,7 @@ export function Component() {
                   value={langfuseDrafts.langfuseSecretKey}
                   onChange={(e) => updateLangfuseDraft("langfuseSecretKey", e.currentTarget.value)}
                   onBlur={(e) => flushLangfuseSave("langfuseSecretKey", e.currentTarget.value)}
-                  placeholder="sk-lf-..."
+                  placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfuseSecretKey.placeholder}
                   className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                 />
               </Control>
@@ -1485,7 +1486,7 @@ export function Component() {
                   value={langfuseDrafts.langfuseBaseUrl}
                   onChange={(e) => updateLangfuseDraft("langfuseBaseUrl", e.currentTarget.value)}
                   onBlur={(e) => flushLangfuseSave("langfuseBaseUrl", e.currentTarget.value)}
-                  placeholder="https://cloud.langfuse.com (default)"
+                  placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfuseBaseUrl.placeholder}
                   className="w-full sm:w-[360px] max-w-full min-w-0"
                 />
                 <div className="mt-1 text-xs text-muted-foreground">

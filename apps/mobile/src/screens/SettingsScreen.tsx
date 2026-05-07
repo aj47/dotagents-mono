@@ -135,6 +135,7 @@ import {
 import {
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
+  LANGFUSE_CREDENTIAL_FIELD_METADATA,
 } from '@dotagents/shared/observability-config';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
 import {
@@ -4608,7 +4609,7 @@ export default function SettingsScreen({ navigation }: any) {
                       style={styles.input}
                       value={inputDrafts.langfusePublicKey ?? ''}
                       onChangeText={(v) => handleRemoteSettingUpdate('langfusePublicKey', v)}
-                      placeholder="pk-..."
+                      placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfusePublicKey.placeholder}
                       placeholderTextColor={theme.colors.mutedForeground}
                       autoCapitalize='none'
                     />
@@ -4635,7 +4636,7 @@ export default function SettingsScreen({ navigation }: any) {
                           });
                         }
                       }}
-                      placeholder="sk-..."
+                      placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfuseSecretKey.placeholder}
                       placeholderTextColor={theme.colors.mutedForeground}
                       autoCapitalize='none'
                       secureTextEntry
@@ -4646,7 +4647,7 @@ export default function SettingsScreen({ navigation }: any) {
                       style={styles.input}
                       value={inputDrafts.langfuseBaseUrl ?? ''}
                       onChangeText={(v) => handleRemoteSettingUpdate('langfuseBaseUrl', v)}
-                      placeholder="https://cloud.langfuse.com (default)"
+                      placeholder={LANGFUSE_CREDENTIAL_FIELD_METADATA.langfuseBaseUrl.placeholder}
                       placeholderTextColor={theme.colors.mutedForeground}
                       autoCapitalize='none'
                       keyboardType="url"

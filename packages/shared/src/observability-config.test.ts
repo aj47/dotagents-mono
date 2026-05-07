@@ -4,6 +4,7 @@ import {
   buildLangfuseDrafts,
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
+  LANGFUSE_CREDENTIAL_FIELD_METADATA,
 } from './observability-config';
 import type {
   LangfuseObservabilityConfig,
@@ -58,6 +59,23 @@ describe('observability config contracts', () => {
       langfusePublicKey: 'pk-lf',
       langfuseSecretKey: 'sk-lf',
       langfuseBaseUrl: 'https://langfuse.example',
+    });
+  });
+
+  it('exposes shared Langfuse credential field placeholders', () => {
+    expect(LANGFUSE_CREDENTIAL_FIELD_METADATA).toEqual({
+      langfusePublicKey: {
+        key: 'langfusePublicKey',
+        placeholder: 'pk-lf-...',
+      },
+      langfuseSecretKey: {
+        key: 'langfuseSecretKey',
+        placeholder: 'sk-lf-...',
+      },
+      langfuseBaseUrl: {
+        key: 'langfuseBaseUrl',
+        placeholder: 'https://cloud.langfuse.com (default)',
+      },
     });
   });
 });
