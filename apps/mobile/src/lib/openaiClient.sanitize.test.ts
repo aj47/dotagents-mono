@@ -41,6 +41,13 @@ vi.mock('react-native-sse', () => ({
   },
 }));
 
+vi.mock('./deviceIdentity', () => ({
+  getDeviceIdentity: vi.fn().mockResolvedValue({
+    deviceId: 'mobile-device-123',
+    createdAt: 0,
+  }),
+}));
+
 import { sanitizeMessagesForRequest } from '@dotagents/shared/chat-utils';
 import { OpenAIClient, type ChatMessage } from './openaiClient';
 
@@ -216,5 +223,10 @@ describe('OpenAIClient remote API routes', () => {
       ['https://example.com/v1/conversations/conv%2Fwith%20slash', 'GET'],
       ['https://example.com/v1/emergency-stop', 'POST'],
     ]);
+
+    const recoveryHeaders = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    const emergencyStopHeaders = new Headers(fetchMock.mock.calls[1]?.[1]?.headers);
+    expect(recoveryHeaders.get('x-dotagents-device-id')).toBe('mobile-device-123');
+    expect(emergencyStopHeaders.get('x-dotagents-device-id')).toBe('mobile-device-123');
   });
 });

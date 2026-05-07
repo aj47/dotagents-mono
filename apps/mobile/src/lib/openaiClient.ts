@@ -26,10 +26,10 @@ import {
   type ConnectionRecoveryConfig,
 } from '@dotagents/shared/connection-recovery';
 import { REMOTE_SERVER_API_PATHS } from '@dotagents/shared/remote-server-api';
-import { SettingsApiClient as SharedSettingsApiClient } from '@dotagents/shared/settings-api-client';
 import { Platform } from 'react-native';
 import EventSource from 'react-native-sse';
 import { ConnectionRecoveryManager } from './connectionRecovery';
+import { SettingsApiClient } from './settingsApi';
 
 export type OpenAIConfig = {
   baseUrl: string;    // OpenAI-compatible API base URL e.g., https://api.openai.com/v1
@@ -60,7 +60,7 @@ export type ChatResponse = ChatApiResponse;
 export class OpenAIClient {
   private cfg: OpenAIConfig;
   private baseUrl: string;
-  private remoteApiClient: SharedSettingsApiClient;
+  private remoteApiClient: SettingsApiClient;
   private recoveryManager: ConnectionRecoveryManager | null = null;
   private onConnectionStatusChange?: OnConnectionStatusChange;
   private activeEventSource: EventSource | null = null;
@@ -70,7 +70,7 @@ export class OpenAIClient {
   constructor(cfg: OpenAIConfig) {
     this.cfg = { ...cfg, baseUrl: cfg.baseUrl?.trim?.() ?? '' };
     this.baseUrl = this.normalizeBaseUrl(this.cfg.baseUrl);
-    this.remoteApiClient = new SharedSettingsApiClient(this.baseUrl, this.cfg.apiKey);
+    this.remoteApiClient = new SettingsApiClient(this.baseUrl, this.cfg.apiKey);
   }
 
   private normalizeBaseUrl(raw: string): string {
