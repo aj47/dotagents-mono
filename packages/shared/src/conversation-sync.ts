@@ -61,6 +61,29 @@ export interface ConversationActionService<TConversation extends ServerConversat
   saveConversation(conversation: TConversation, preserveTimestamp: boolean): ConversationMaybePromise<void>;
 }
 
+export interface ConversationActionPersistenceService<TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>> {
+  loadConversation(conversationId: string): ConversationMaybePromise<TConversation | null | undefined>;
+  getConversationHistory(): ConversationMaybePromise<ServerConversation[]>;
+  saveConversation(conversation: TConversation, preserveTimestamp: boolean): ConversationMaybePromise<void>;
+}
+
+export interface ConversationActionServiceAdapterOptions<TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>> {
+  service: ConversationActionPersistenceService<TConversation>;
+  generateConversationId(): string;
+}
+
+export function createConversationActionService<TConversation extends ServerConversationRecord<any>>(
+  options: ConversationActionServiceAdapterOptions<TConversation>,
+): ConversationActionService<TConversation> {
+  const { service } = options;
+  return {
+    loadConversation: (conversationId) => service.loadConversation(conversationId),
+    getConversationHistory: () => service.getConversationHistory(),
+    generateConversationId: () => options.generateConversationId(),
+    saveConversation: (conversation, preserveTimestamp) => service.saveConversation(conversation, preserveTimestamp),
+  };
+}
+
 export interface ConversationActionOptions<TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>> {
   service: ConversationActionService<TConversation>;
   diagnostics: ConversationActionDiagnostics;

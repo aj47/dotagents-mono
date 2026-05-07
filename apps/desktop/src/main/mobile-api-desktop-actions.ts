@@ -30,6 +30,7 @@ import {
   type ModelActionOptions,
 } from "@dotagents/shared/chat-utils"
 import {
+  createConversationActionService,
   createConversationRouteActions,
   type ConversationActionOptions,
 } from "@dotagents/shared/conversation-sync"
@@ -240,13 +241,10 @@ const bundleActionOptions = {
 const bundleRouteActions = createBundleRouteActions(bundleActionOptions)
 
 const conversationActionOptions: ConversationActionOptions<DesktopConversationActionConversation> = {
-  service: {
-    loadConversation: (conversationId) => conversationService.loadConversation(conversationId),
-    getConversationHistory: () => conversationService.getConversationHistory(),
+  service: createConversationActionService({
+    service: conversationService,
     generateConversationId: () => conversationService.generateConversationIdPublic(),
-    saveConversation: (conversation, preserveTimestamp) =>
-      conversationService.saveConversation(conversation, preserveTimestamp),
-  },
+  }),
   diagnostics: diagnosticsService,
   validateConversationId: getConversationIdValidationError,
   now: () => Date.now(),

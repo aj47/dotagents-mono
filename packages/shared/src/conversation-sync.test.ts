@@ -7,6 +7,7 @@ import {
   buildServerConversationFullResponse,
   buildServerConversationsResponse,
   createConversationAction,
+  createConversationActionService,
   createConversationRouteActions,
   fetchFullConversation,
   fromServerConversationMessage,
@@ -201,6 +202,42 @@ describe('server conversation API helpers', () => {
     expect(buildServerConversationsResponse(conversations)).toEqual({
       conversations,
     });
+  });
+
+  it('creates conversation action services from persistence adapters', async () => {
+    const conversation = {
+      id: 'conv-1',
+      title: 'Server Chat',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'msg-1', role: 'user' as const, content: 'hello', timestamp: 2 }],
+    };
+    const conversations = [{
+      id: 'conv-1',
+      title: 'Server Chat',
+      createdAt: 1,
+      updatedAt: 2,
+      messageCount: 1,
+      lastMessage: 'hello',
+      preview: 'hello',
+    }];
+    const saved: Array<{ conversationId: string; preserveTimestamp: boolean }> = [];
+    const service = createConversationActionService({
+      service: {
+        loadConversation: async (conversationId: string) => conversationId === conversation.id ? conversation : null,
+        getConversationHistory: async () => conversations,
+        saveConversation: async (nextConversation: typeof conversation, preserveTimestamp: boolean) => {
+          saved.push({ conversationId: nextConversation.id, preserveTimestamp });
+        },
+      },
+      generateConversationId: () => 'conv-new',
+    });
+
+    await expect(service.loadConversation('conv-1')).resolves.toBe(conversation);
+    await expect(service.getConversationHistory()).resolves.toBe(conversations);
+    expect(service.generateConversationId()).toBe('conv-new');
+    await service.saveConversation(conversation, true);
+    expect(saved).toEqual([{ conversationId: 'conv-1', preserveTimestamp: true }]);
   });
 
   it('runs shared conversation sync actions through service adapters', async () => {

@@ -1500,6 +1500,12 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.updateConversation(params.id, req.body, notifyConversationHistoryChanged)")
     expect(mobileApiDesktopActionsSource).toContain("const conversationRouteActions = createConversationRouteActions(conversationActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain("conversations: conversationRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("service: createConversationActionService({")
+    expect(mobileApiDesktopActionsSource).toContain("service: conversationService")
+    expect(mobileApiDesktopActionsSource).toContain("generateConversationId: () => conversationService.generateConversationIdPublic()")
+    expect(mobileApiDesktopActionsSource).not.toContain("conversationService.loadConversation(conversationId)")
+    expect(mobileApiDesktopActionsSource).not.toContain("conversationService.getConversationHistory()")
+    expect(mobileApiDesktopActionsSource).not.toContain("conversationService.saveConversation(conversation, preserveTimestamp)")
     expect(mobileApiDesktopActionsSource).not.toContain("getConversationAction(id, conversationActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("getConversationsAction(conversationActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain(
@@ -1509,6 +1515,9 @@ describe("remote-server route registration", () => {
       "updateConversationAction(id, body, onChanged, conversationActionOptions)",
     )
     expect(sharedConversationSyncSource).toContain("export interface ConversationActionOptions")
+    expect(sharedConversationSyncSource).toContain("export function createConversationActionService")
+    expect(sharedConversationSyncSource).toContain("loadConversation: (conversationId) => service.loadConversation(conversationId)")
+    expect(sharedConversationSyncSource).toContain("saveConversation: (conversation, preserveTimestamp) => service.saveConversation(conversation, preserveTimestamp)")
     expect(sharedConversationSyncSource).toContain("export interface ConversationRouteActions")
     expect(sharedConversationSyncSource).toContain("export function createConversationRouteActions")
     expect(sharedConversationSyncSource).toContain("export async function getConversationAction")
