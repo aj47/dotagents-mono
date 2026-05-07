@@ -1823,7 +1823,7 @@ export default function OperationsScreen({ navigation }: any) {
                       ]}
                       onPress={() => void applySettingsUpdate(
                         { remoteServerBindAddress: option.value },
-                        'bind address',
+                        REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.pendingLabel,
                         option.successMessage,
                       )}
                       disabled={controlsDisabled}
@@ -1854,7 +1854,7 @@ export default function OperationsScreen({ navigation }: any) {
                       ]}
                       onPress={() => void applySettingsUpdate(
                         { remoteServerLogLevel: option.value },
-                        'remote server log level',
+                        REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA.pendingLabel,
                         option.successMessage,
                       )}
                       disabled={controlsDisabled}

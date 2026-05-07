@@ -132,6 +132,7 @@ describe('remote server config contracts', () => {
       tooltip: '127.0.0.1 for local-only access; 0.0.0.0 to allow LAN access (requires API key).',
       helperText: 'Use 0.0.0.0 for LAN/mobile access. 127.0.0.1 keeps the server on the desktop only.',
       lanWarningText: 'Warning: Exposes the server on your local network. Keep your API key secure.',
+      pendingLabel: 'bind address',
       accessibilityLabel: 'remote server bind address',
     });
     expect(REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS).toEqual([
@@ -169,6 +170,7 @@ describe('remote server config contracts', () => {
       key: 'remoteServerLogLevel',
       label: 'Log Level',
       tooltip: 'Fastify logger level.',
+      pendingLabel: 'remote server log level',
       accessibilityLabel: 'remote server log level',
     });
     expect(REMOTE_SERVER_API_KEY_FIELD_METADATA).toEqual({
