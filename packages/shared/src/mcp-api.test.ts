@@ -33,6 +33,7 @@ import {
   buildMcpServerToggleResponse,
   buildOperatorMcpStatusResponse,
   callInjectedMcpToolAction,
+  createInjectedMcpActionService,
   createInjectedMcpProtocolRouteAction,
   clearOperatorMcpServerLogsAction,
   createInjectedMcpToolRouteActions,
@@ -1748,7 +1749,7 @@ describe("MCP API helpers", () => {
     const context = { appSessionId: "app-1" }
     const options = {
       invalidSessionContextError: DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR,
-      service: {
+      service: createInjectedMcpActionService({
         getInjectedRuntimeTools: (token: string | undefined) => token === "valid"
           ? {
             requestContext: context,
@@ -1778,7 +1779,7 @@ describe("MCP API helpers", () => {
             ? null
             : { content: [{ type: "text", text: "ok" }], isError: false }
         },
-      },
+      }),
       diagnostics: {
         logWarning: (_source: string, message: string) => { logs.push(message) },
         logError: (_source: string, message: string) => { logs.push(message) },

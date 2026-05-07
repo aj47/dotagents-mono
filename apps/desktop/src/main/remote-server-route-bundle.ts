@@ -12,6 +12,7 @@ import {
   buildInjectedMcpToolCallErrorResponse,
   buildInjectedMcpToolCallResponse,
   buildInjectedMcpToolsListResponse,
+  createInjectedMcpActionService,
   createInjectedMcpProtocolRouteAction,
   createInjectedMcpToolRouteActions,
   DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR,
@@ -124,7 +125,7 @@ const injectedMcpActionOptions: InjectedMcpActionOptions<AcpMcpRequestContext> =
     logError: (source, message, error) => diagnosticsService.logError(source, message, error),
     getErrorMessage: (error) => error instanceof Error ? error.message : String(error),
   },
-  service: {
+  service: createInjectedMcpActionService({
     getInjectedRuntimeTools: (acpSessionToken) => getInjectedRuntimeToolsForAcpSession(acpSessionToken),
     executeInjectedRuntimeTool: (toolCall, requestContext) => mcpService.executeToolCall(
       { name: toolCall.name, arguments: toolCall.arguments } as any,
@@ -133,7 +134,7 @@ const injectedMcpActionOptions: InjectedMcpActionOptions<AcpMcpRequestContext> =
       requestContext.appSessionId,
       requestContext.profileSnapshot.mcpServerConfig,
     ),
-  },
+  }),
 }
 
 const injectedMcpToolRouteActions = createInjectedMcpToolRouteActions<

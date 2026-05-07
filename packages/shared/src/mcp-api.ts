@@ -143,6 +143,24 @@ export interface InjectedMcpActionService<TRequestContext = unknown> {
   ): Promise<InjectedMcpToolExecutionResult | null>
 }
 
+export interface InjectedMcpActionServiceOptions<TRequestContext = unknown> {
+  getInjectedRuntimeTools(acpSessionToken: string | undefined): InjectedMcpRuntimeToolsContext<TRequestContext> | undefined
+  executeInjectedRuntimeTool(
+    toolCall: InjectedMcpToolCallRequest,
+    requestContext: TRequestContext,
+  ): Promise<InjectedMcpToolExecutionResult | null>
+}
+
+export function createInjectedMcpActionService<TRequestContext = unknown>(
+  options: InjectedMcpActionServiceOptions<TRequestContext>,
+): InjectedMcpActionService<TRequestContext> {
+  return {
+    getInjectedRuntimeTools: (acpSessionToken) => options.getInjectedRuntimeTools(acpSessionToken),
+    executeInjectedRuntimeTool: (toolCall, requestContext) =>
+      options.executeInjectedRuntimeTool(toolCall, requestContext),
+  }
+}
+
 export interface InjectedMcpActionDiagnostics {
   logWarning(source: string, message: string): void
   logError(source: string, message: string, error: unknown): void
