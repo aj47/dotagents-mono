@@ -16,10 +16,15 @@ import type {
 } from "@dotagents/shared/conversation-domain"
 import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "@dotagents/shared/conversation-context-builder"
-import { assertSafeConversationId, validateAndSanitizeConversationId } from "@dotagents/shared/conversation-id"
+import {
+  assertSafeConversationId,
+  generateConversationId,
+  validateAndSanitizeConversationId,
+} from "@dotagents/shared/conversation-id"
 import { filterVisibleChatMessages } from "@dotagents/shared/chat-utils"
 import {
   buildConversationPreview,
+  generateMessageId,
   generateConversationTitleFromMessage,
   normalizeConversationTitleText,
 } from "@dotagents/shared/session"
@@ -258,20 +263,12 @@ export class ConversationService {
     return changed
   }
 
-  private generateConversationId(): string {
-    return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  }
-
   /**
    * Public method to generate a conversation ID.
    * Used by remote-server when creating new conversations without a provided ID.
    */
   generateConversationIdPublic(): string {
-    return this.generateConversationId()
-  }
-
-  private generateMessageId(): string {
-    return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    return generateConversationId()
   }
 
   private getAutoTitleSeed(conversation: Conversation): {
@@ -1133,7 +1130,7 @@ export class ConversationService {
     firstMessage: string,
     role: "user" | "assistant" = "user",
   ): Promise<Conversation> {
-    const conversationId = this.generateConversationId()
+    const conversationId = generateConversationId()
     return this.createConversationWithId(conversationId, firstMessage, role)
   }
 
@@ -1173,7 +1170,7 @@ export class ConversationService {
   ): Promise<Conversation> {
     // Validate and sanitize the externally-provided conversation ID
     const validatedId = this.validateConversationId(conversationId)
-    const messageId = this.generateMessageId()
+    const messageId = generateMessageId()
     const now = Date.now()
     const storedFirstMessage = await this.materializeInlineDataImagesInContent(validatedId, firstMessage)
 
@@ -1241,7 +1238,7 @@ export class ConversationService {
           return conversation
         }
 
-        const messageId = this.generateMessageId()
+        const messageId = generateMessageId()
         const message: ConversationMessage = {
           id: messageId,
           role,
@@ -1309,13 +1306,13 @@ export class ConversationService {
     }
 
     const branchedMessages = sourceMessages.slice(0, messageIndex + 1)
-    const newConversationId = this.generateConversationId()
+    const newConversationId = generateConversationId()
     const now = Date.now()
 
     // Re-generate message IDs for the cloned messages to avoid collisions
     const clonedMessages: ConversationMessage[] = branchedMessages.map((msg) => ({
       ...msg,
-      id: this.generateMessageId(),
+      id: generateMessageId(),
     }))
 
     const branchSource: ConversationBranchSource = {
@@ -1471,7 +1468,7 @@ export class ConversationService {
 
     // Create summary message
     const summaryMessage: ConversationMessage = {
-      id: this.generateMessageId(),
+      id: generateMessageId(),
       role: "assistant",
       content: summaryContent,
       timestamp: messagesToSummarize[0]?.timestamp || Date.now(),

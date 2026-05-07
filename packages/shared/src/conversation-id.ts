@@ -33,6 +33,13 @@ const WINDOWS_DEVICE_NAMES = new Set([
   "lpt9",
 ])
 
+export function generateConversationId(
+  now: number = Date.now(),
+  random: () => number = Math.random,
+): string {
+  return `conv_${now}_${random().toString(36).substr(2, 9)}`
+}
+
 function getConversationIdStorageError(conversationId: string): string | null {
   if (!conversationId || conversationId.trim().length === 0) {
     return "Invalid conversation ID: empty value not allowed"

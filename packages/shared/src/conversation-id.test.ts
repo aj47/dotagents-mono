@@ -2,12 +2,20 @@ import { describe, expect, it } from 'vitest'
 
 import {
   assertSafeConversationId,
+  generateConversationId,
   getConversationIdValidationError,
   sanitizeConversationId,
   validateAndSanitizeConversationId,
 } from './conversation-id'
 
 describe('conversation-id', () => {
+  it('generates storage-safe server conversation IDs', () => {
+    const id = generateConversationId(123456, () => 0.123456789)
+
+    expect(id).toMatch(/^conv_123456_[a-z0-9]+$/)
+    expect(getConversationIdValidationError(id)).toBeNull()
+  })
+
   it('accepts conversation IDs used by external integrations', () => {
     expect(getConversationIdValidationError('whatsapp_61406142826@s.whatsapp.net')).toBeNull()
     expect(validateAndSanitizeConversationId('whatsapp_61406142826@s.whatsapp.net')).toBe(

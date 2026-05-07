@@ -7,6 +7,7 @@
  */
 
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { generateMessageId } from '@dotagents/shared/session';
 import {
   buildQueuedMessage,
   clearQueuedMessages,
@@ -23,11 +24,6 @@ import {
   type MessageQueueMap,
   type QueuedMessage,
 } from '@dotagents/shared/message-queue-utils';
-
-// Generate unique message ID
-function generateMessageId(): string {
-  return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-}
 
 export interface MessageQueueStore {
   /** Map of conversation ID to queued messages */
