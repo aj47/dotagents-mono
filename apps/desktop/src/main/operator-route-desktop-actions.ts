@@ -18,6 +18,7 @@ import {
   createOperatorMcpMutationActionService,
   createOperatorMcpReadActionService,
   createOperatorMcpRouteActions,
+  createOperatorMcpTestActionService,
   type OperatorMcpLifecycleActionOptions,
   type OperatorMcpMutationActionOptions,
   type OperatorMcpReadActionOptions,
@@ -237,10 +238,10 @@ const operatorMcpTestActionOptions: OperatorMcpTestActionOptions<MCPServerConfig
     logError: (...args) => diagnosticsService.logError(...args),
     getErrorMessage,
   },
-  service: {
+  service: createOperatorMcpTestActionService<MCPServerConfig>({
     getServerConfig: (serverName) => configStore.get().mcpConfig?.mcpServers?.[serverName] as MCPServerConfig | undefined,
     testServerConnection: (serverName, serverConfig) => mcpService.testServerConnection(serverName, serverConfig),
-  },
+  }),
   audit: {
     buildTestAuditContext: (response) => buildOperatorMcpTestAuditContext(response),
     buildTestFailureAuditContext: (failureReason) => buildOperatorMcpTestFailureAuditContext(failureReason),

@@ -41,6 +41,7 @@ import {
   createOperatorMcpMutationActionService,
   createOperatorMcpReadActionService,
   createOperatorMcpRouteActions,
+  createOperatorMcpTestActionService,
   formatMcpMaxIterationsValidationMessage,
   getMcpServersAction,
   getOperatorMcpServerLogsAction,
@@ -637,6 +638,28 @@ describe("MCP API helpers", () => {
     service.clearServerLogs("filesystem")
     expect(service.setToolEnabled("filesystem:read", false)).toBe(true)
     expect(calls).toEqual(["status", "clear:filesystem", "toggle:filesystem:read:false"])
+  })
+
+  it("creates operator MCP test action services from MCP adapters", async () => {
+    const calls: string[] = []
+    const service = createOperatorMcpTestActionService<MCPServerConfig>({
+      getServerConfig: (serverName) => {
+        calls.push(`config:${serverName}`)
+        return serverName === "filesystem" ? { command: "filesystem-mcp" } : undefined
+      },
+      testServerConnection: async (serverName, serverConfig) => {
+        calls.push(`test:${serverName}:${serverConfig.command}`)
+        return { success: true, toolCount: 2 }
+      },
+    })
+
+    expect(service.getServerConfig("filesystem")).toEqual({ command: "filesystem-mcp" })
+    expect(service.getServerConfig("missing")).toBeUndefined()
+    await expect(service.testServerConnection("filesystem", { command: "filesystem-mcp" })).resolves.toEqual({
+      success: true,
+      toolCount: 2,
+    })
+    expect(calls).toEqual(["config:filesystem", "config:missing", "test:filesystem:filesystem-mcp"])
   })
 
   it("creates mobile MCP route actions that delegate through service adapters", () => {

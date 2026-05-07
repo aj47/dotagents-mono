@@ -2167,8 +2167,12 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "const operatorMcpMutationActionOptions: OperatorMcpMutationActionOptions<OperatorActionAuditContext> = {\n  diagnostics: {\n    logError: (...args) => diagnosticsService.logError(...args),\n    getErrorMessage,\n  },\n  service: {\n    getServerStatus: () => mcpService.getServerStatus(),",
     )
+    expect(operatorRouteDesktopActionsSource).toContain("service: createOperatorMcpTestActionService<MCPServerConfig>({")
     expect(operatorRouteDesktopActionsSource).toContain("getServerConfig: (serverName) => configStore.get().mcpConfig?.mcpServers?.[serverName]")
     expect(operatorRouteDesktopActionsSource).toContain("testServerConnection: (serverName, serverConfig) => mcpService.testServerConnection(serverName, serverConfig)")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "const operatorMcpTestActionOptions: OperatorMcpTestActionOptions<MCPServerConfig, OperatorActionAuditContext> = {\n  diagnostics: {\n    logError: (...args) => diagnosticsService.logError(...args),\n    getErrorMessage,\n  },\n  service: {\n    getServerConfig: (serverName) => configStore.get().mcpConfig?.mcpServers?.[serverName]",
+    )
     expect(operatorRouteDesktopActionsSource).toContain("setServerRuntimeEnabled: (serverName, enabled) => mcpService.setServerRuntimeEnabled(serverName, enabled)")
     expect(operatorRouteDesktopActionsSource).toContain("restartServer: (serverName) => mcpService.restartServer(serverName)")
     expect(operatorRouteDesktopActionsSource).toContain("stopServer: (serverName) => mcpService.stopServer(serverName)")
@@ -2182,6 +2186,11 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain("clearServerLogs: (serverName) => options.clearServerLogs(serverName)")
     expect(sharedMcpApiSource).toContain(
       "setToolEnabled: (toolName, enabled) => options.setToolEnabled(toolName, enabled)",
+    )
+    expect(sharedMcpApiSource).toContain("export function createOperatorMcpTestActionService")
+    expect(sharedMcpApiSource).toContain("getServerConfig: (serverName) => options.getServerConfig(serverName)")
+    expect(sharedMcpApiSource).toContain(
+      "testServerConnection: (serverName, serverConfig) => options.testServerConnection(serverName, serverConfig)",
     )
     expect(sharedMcpApiSource).toContain("export function clearOperatorMcpServerLogsAction<")
     expect(sharedMcpApiSource).toContain("export function setOperatorMcpToolEnabledAction<")

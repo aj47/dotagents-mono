@@ -415,6 +415,20 @@ export interface OperatorMcpTestActionService<TServerConfig = unknown> {
   testServerConnection(serverName: string, serverConfig: TServerConfig): Promise<McpConnectionTestResultLike>
 }
 
+export interface OperatorMcpTestActionServiceOptions<TServerConfig = unknown> {
+  getServerConfig(serverName: string): TServerConfig | undefined
+  testServerConnection(serverName: string, serverConfig: TServerConfig): Promise<McpConnectionTestResultLike>
+}
+
+export function createOperatorMcpTestActionService<TServerConfig = unknown>(
+  options: OperatorMcpTestActionServiceOptions<TServerConfig>,
+): OperatorMcpTestActionService<TServerConfig> {
+  return {
+    getServerConfig: (serverName) => options.getServerConfig(serverName),
+    testServerConnection: (serverName, serverConfig) => options.testServerConnection(serverName, serverConfig),
+  }
+}
+
 export interface OperatorMcpTestActionAudit<TAuditContext> {
   buildTestAuditContext(response: OperatorMCPServerTestResponse): TAuditContext
   buildTestFailureAuditContext(failureReason: string): TAuditContext
