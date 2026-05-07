@@ -78,6 +78,7 @@ import {
   createOperatorAgentRouteActions,
   createOperatorAuditRecorder,
   createOperatorAuditRouteActions,
+  createOperatorIntegrationActionService,
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueActionService,
   createOperatorMessageQueueRouteActions,
@@ -1798,6 +1799,91 @@ describe("operator action API helpers", () => {
         platforms: ["android", "ios"],
       },
     })
+  })
+
+  it("creates operator integration action services from Discord and WhatsApp adapters", async () => {
+    const calls: string[] = []
+    const discordLogs = [{ id: "log-1", level: "info", message: "one", timestamp: 1 }]
+    const whatsappSummary = {
+      enabled: true,
+      available: true,
+      connected: false,
+      serverConfigured: true,
+      serverConnected: true,
+      autoReplyEnabled: false,
+      logMessagesEnabled: true,
+      allowedSenderCount: 1,
+      logs: { total: 0 },
+    }
+    const integrationsSummary = {
+      discord: {
+        available: true,
+        enabled: true,
+        connected: false,
+        connecting: false,
+        logs: { total: 1 },
+      },
+      whatsapp: whatsappSummary,
+      pushNotifications: {
+        enabled: false,
+        tokenCount: 0,
+        platforms: [],
+      },
+    }
+    let whatsappConnected = false
+    const service = createOperatorIntegrationActionService({
+      getIntegrationsSummary: async () => integrationsSummary,
+      discord: {
+        getStatus: () => ({
+          available: true,
+          enabled: true,
+          connected: false,
+          connecting: false,
+          tokenConfigured: true,
+        }),
+        getLogs: () => discordLogs,
+        start: async () => {
+          calls.push("discord:start")
+          return { success: true }
+        },
+        stop: async () => {
+          calls.push("discord:stop")
+          return { success: true }
+        },
+        clearLogs: () => { calls.push("discord:clear") },
+      },
+      getWhatsAppSummary: async () => whatsappSummary,
+      whatsapp: {
+        serverName: "whatsapp",
+        mcp: {
+          getServerStatus: () => ({ whatsapp: { connected: whatsappConnected } }),
+          executeToolCall: async (toolCall, sessionId, allowBackground) => {
+            calls.push(`whatsapp:${toolCall.name}:${String(sessionId)}:${String(allowBackground)}`)
+            return { content: [{ type: "text", text: "ok" }] }
+          },
+        },
+      },
+    })
+
+    expect(await service.getIntegrationsSummary()).toBe(integrationsSummary)
+    expect(service.getDiscordStatus()).toMatchObject({ enabled: true, tokenConfigured: true })
+    expect(service.getDiscordLogs()).toBe(discordLogs)
+    expect(await service.startDiscord()).toEqual({ success: true })
+    expect(await service.stopDiscord()).toEqual({ success: true })
+    service.clearDiscordLogs()
+    expect(await service.getWhatsAppSummary()).toBe(whatsappSummary)
+    expect(service.isWhatsAppServerConnected()).toBe(false)
+    whatsappConnected = true
+    expect(service.isWhatsAppServerConnected()).toBe(true)
+    await expect(service.executeWhatsAppTool("whatsapp_connect")).resolves.toEqual({
+      content: [{ type: "text", text: "ok" }],
+    })
+    expect(calls).toEqual([
+      "discord:start",
+      "discord:stop",
+      "discord:clear",
+      "whatsapp:whatsapp_connect:undefined:true",
+    ])
   })
 
   it("runs integration route actions through a shared service adapter", async () => {

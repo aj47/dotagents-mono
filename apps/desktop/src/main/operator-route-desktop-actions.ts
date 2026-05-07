@@ -41,6 +41,7 @@ import {
   buildOperatorMcpTestFailureAuditContext,
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
+  createOperatorIntegrationActionService,
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueActionService,
   createOperatorMessageQueueRouteActions,
@@ -274,21 +275,15 @@ const integrationActionOptions: OperatorIntegrationActionOptions = {
     logError: (...args) => diagnosticsService.logError(...args),
     getErrorMessage,
   },
-  service: {
+  service: createOperatorIntegrationActionService({
     getIntegrationsSummary: buildOperatorIntegrationsSummary,
-    getDiscordStatus: () => discordService.getStatus(),
-    getDiscordLogs: () => discordService.getLogs(),
-    startDiscord: () => discordService.start(),
-    stopDiscord: () => discordService.stop(),
-    clearDiscordLogs: () => discordService.clearLogs(),
+    discord: discordService,
     getWhatsAppSummary: getOperatorWhatsAppIntegrationSummary,
-    isWhatsAppServerConnected: () => !!mcpService.getServerStatus()[WHATSAPP_SERVER_NAME]?.connected,
-    executeWhatsAppTool: (toolName) => mcpService.executeToolCall(
-      { name: toolName, arguments: {} },
-      undefined,
-      true,
-    ),
-  },
+    whatsapp: {
+      serverName: WHATSAPP_SERVER_NAME,
+      mcp: mcpService,
+    },
+  }),
 }
 
 const operatorIntegrationRouteActions = createOperatorIntegrationRouteActions(integrationActionOptions)

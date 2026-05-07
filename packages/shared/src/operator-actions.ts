@@ -370,6 +370,59 @@ export interface OperatorIntegrationActionService {
   executeWhatsAppTool(toolName: OperatorWhatsAppActionToolName): Promise<OperatorWhatsAppActionToolResultLike>
 }
 
+export interface OperatorDiscordIntegrationServiceAdapter {
+  getStatus(): OperatorDiscordStatusLike
+  getLogs(): OperatorDiscordLogLike[]
+  start(): Promise<OperatorActionResultLike>
+  stop(): Promise<OperatorActionResultLike>
+  clearLogs(): void
+}
+
+export interface OperatorIntegrationMcpToolCall {
+  name: OperatorWhatsAppActionToolName
+  arguments: Record<string, unknown>
+}
+
+export interface OperatorWhatsAppMcpServiceAdapter {
+  getServerStatus(): Record<string, { connected?: boolean } | undefined>
+  executeToolCall(
+    toolCall: OperatorIntegrationMcpToolCall,
+    sessionId?: string,
+    allowBackground?: boolean,
+  ): Promise<OperatorWhatsAppActionToolResultLike>
+}
+
+export interface OperatorIntegrationActionServiceOptions {
+  getIntegrationsSummary(): Promise<OperatorIntegrationsSummary>
+  discord: OperatorDiscordIntegrationServiceAdapter
+  getWhatsAppSummary(): Promise<OperatorWhatsAppIntegrationSummary>
+  whatsapp: {
+    serverName: string
+    mcp: OperatorWhatsAppMcpServiceAdapter
+  }
+}
+
+export function createOperatorIntegrationActionService(
+  options: OperatorIntegrationActionServiceOptions,
+): OperatorIntegrationActionService {
+  return {
+    getIntegrationsSummary: () => options.getIntegrationsSummary(),
+    getDiscordStatus: () => options.discord.getStatus(),
+    getDiscordLogs: () => options.discord.getLogs(),
+    startDiscord: () => options.discord.start(),
+    stopDiscord: () => options.discord.stop(),
+    clearDiscordLogs: () => options.discord.clearLogs(),
+    getWhatsAppSummary: () => options.getWhatsAppSummary(),
+    isWhatsAppServerConnected: () =>
+      !!options.whatsapp.mcp.getServerStatus()[options.whatsapp.serverName]?.connected,
+    executeWhatsAppTool: (toolName) => options.whatsapp.mcp.executeToolCall(
+      { name: toolName, arguments: {} },
+      undefined,
+      true,
+    ),
+  }
+}
+
 export interface OperatorIntegrationActionOptions {
   diagnostics: OperatorIntegrationActionDiagnostics
   service: OperatorIntegrationActionService
