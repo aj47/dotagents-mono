@@ -76,23 +76,11 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
     description: string,
     task: () => Promise<void> | void,
   ): void {
-    let hasRun = false
-
-    const run = () => {
-      if (hasRun) {
-        return
-      }
-      hasRun = true
-
-      setTimeout(() => {
-        void Promise.resolve(task()).catch((error) => {
-          diagnosticsService.logError("remote-server", `Failed to ${description}`, error)
-        })
-      }, 25)
-    }
-
-    reply.raw.once("finish", run)
-    reply.raw.once("close", run)
+    adapters.scheduleTaskAfterReply(reply, () => {
+      void Promise.resolve(task()).catch((error) => {
+        diagnosticsService.logError("remote-server", `Failed to ${description}`, error)
+      })
+    })
   }
 
   function scheduleRemoteServerLifecycleActionAfterReply(

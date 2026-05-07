@@ -79,6 +79,22 @@ function writeTerminalWarning(message: string): void {
   console.warn(message)
 }
 
+function scheduleTaskAfterReply(reply: FastifyReply, task: () => void): void {
+  let hasRun = false
+
+  const run = () => {
+    if (hasRun) {
+      return
+    }
+    hasRun = true
+
+    setTimeout(task, 25)
+  }
+
+  reply.raw.once("finish", run)
+  reply.raw.once("close", run)
+}
+
 interface PairingBaseUrlOptions {
   warn?: boolean
 }
@@ -106,6 +122,7 @@ export const remoteServerDesktopAdapters: RemoteServerControllerAdapters<Fastify
   getNetworkAddresses: getRemoteNetworkAddresses,
   getConnectableBaseUrlForMobilePairing,
   printTerminalQRCode,
+  scheduleTaskAfterReply,
   writeTerminalInfo,
   writeTerminalWarning,
   recordRejectedOperatorDeviceAttempt,
