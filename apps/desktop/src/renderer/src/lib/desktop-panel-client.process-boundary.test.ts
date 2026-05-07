@@ -10,10 +10,12 @@ const overlayFollowUpInputSource = readFileSync(
   new URL("../components/overlay-follow-up-input.tsx", import.meta.url),
   "utf8",
 )
+const useStoreSyncSource = readFileSync(new URL("../hooks/use-store-sync.ts", import.meta.url), "utf8")
 
 describe("desktop panel renderer client", () => {
-  it("centralizes panel focusability IPC channels", () => {
+  it("centralizes panel IPC channels", () => {
     expect(clientSource).toContain("tipcClient.setPanelFocusable(request)")
+    expect(clientSource).toContain("tipcClient.getFloatingPanelVisibility()")
     expect(clientSource).not.toContain("window.electron.ipcRenderer")
   })
 
@@ -23,5 +25,10 @@ describe("desktop panel renderer client", () => {
     expect(textInputPanelSource).toContain("desktopPanelClient.setPanelFocusable({")
     expect(overlayFollowUpInputSource).toContain("desktopPanelClient.setPanelFocusable({")
     expect(combinedSource).not.toContain("tipcClient.setPanelFocusable(")
+  })
+
+  it("keeps store sync off direct floating panel visibility IPC", () => {
+    expect(useStoreSyncSource).toContain("desktopPanelClient.getFloatingPanelVisibility()")
+    expect(useStoreSyncSource).not.toContain("tipcClient.getFloatingPanelVisibility(")
   })
 })

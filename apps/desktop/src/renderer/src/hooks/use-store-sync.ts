@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { reportConfigSaveError } from '@renderer/lib/config-save-error'
-import { rendererHandlers, tipcClient } from '@renderer/lib/tipc-client'
+import { rendererHandlers } from '@renderer/lib/tipc-client'
 import { desktopConfigClient } from '@renderer/lib/desktop-config-client'
 import { desktopMessageQueueClient } from '@renderer/lib/desktop-message-queue-client'
+import { desktopPanelClient } from '@renderer/lib/desktop-panel-client'
 import { useAgentStore, useConversationStore } from '@renderer/stores'
 import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress'
 import type { QueuedMessage } from '@dotagents/shared/message-queue-utils'
@@ -133,7 +134,7 @@ export function useStoreSync() {
   // Hydrate initial floating panel visibility on mount in case the panel is
   // already visible before this renderer started listening.
   useEffect(() => {
-    tipcClient.getFloatingPanelVisibility().then((result: { visible: boolean }) => {
+    desktopPanelClient.getFloatingPanelVisibility().then((result: { visible: boolean }) => {
       setFloatingPanelVisible(result.visible)
     }).catch(() => {
       // Best-effort hydration; default remains false.
