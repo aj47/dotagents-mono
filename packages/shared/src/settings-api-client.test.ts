@@ -8,6 +8,7 @@ import {
   buildSettingsSensitiveUpdateFailureAuditContext,
   buildSettingsUpdatePatch,
   buildSettingsUpdateResponse,
+  createEmergencyStopActionService,
   createEmergencyStopRouteActions,
   createSettingsActionService,
   createSettingsRouteActionBundle,
@@ -888,8 +889,11 @@ describe('SettingsApiClient', () => {
   it('runs shared emergency stop actions through adapters', async () => {
     const diagnosticsCalls: unknown[] = [];
     const loggerCalls: unknown[] = [];
-    const result = await triggerEmergencyStopAction({
+    const service = createEmergencyStopActionService({
       stopAll: async () => ({ before: 3, after: 1 }),
+    });
+    const result = await triggerEmergencyStopAction({
+      service,
       diagnostics: {
         logInfo: (source, message) => diagnosticsCalls.push({ level: 'info', source, message }),
         logError: (source, message, error) => diagnosticsCalls.push({ level: 'error', source, message, error }),
@@ -931,7 +935,9 @@ describe('SettingsApiClient', () => {
 
   it('creates emergency stop route actions that delegate through adapters', async () => {
     const routeActions = createEmergencyStopRouteActions({
-      stopAll: async () => ({ before: 2, after: 0 }),
+      service: createEmergencyStopActionService({
+        stopAll: async () => ({ before: 2, after: 0 }),
+      }),
       diagnostics: {
         logInfo: () => undefined,
         logError: () => {
@@ -982,7 +988,9 @@ describe('SettingsApiClient', () => {
         },
       },
       emergencyStop: {
-        stopAll: async () => ({ before: 2, after: 0 }),
+        service: createEmergencyStopActionService({
+          stopAll: async () => ({ before: 2, after: 0 }),
+        }),
         diagnostics: {
           logInfo: () => undefined,
           logError: () => {
@@ -1016,9 +1024,11 @@ describe('SettingsApiClient', () => {
     const diagnosticsCalls: unknown[] = [];
     const loggerCalls: unknown[] = [];
     const result = await triggerEmergencyStopAction({
-      stopAll: async () => {
-        throw error;
-      },
+      service: createEmergencyStopActionService({
+        stopAll: async () => {
+          throw error;
+        },
+      }),
       diagnostics: {
         logInfo: (source, message) => diagnosticsCalls.push({ level: 'info', source, message }),
         logError: (source, message, caughtError) => {

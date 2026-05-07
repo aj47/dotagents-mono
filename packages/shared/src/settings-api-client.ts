@@ -793,8 +793,24 @@ export interface EmergencyStopActionLogger {
   error(message: string, error: unknown): void;
 }
 
-export interface EmergencyStopActionOptions {
+export interface EmergencyStopActionService {
   stopAll(): Promise<EmergencyStopAllResult>;
+}
+
+export interface EmergencyStopActionServiceAdapterOptions {
+  stopAll(): Promise<EmergencyStopAllResult>;
+}
+
+export function createEmergencyStopActionService(
+  options: EmergencyStopActionServiceAdapterOptions,
+): EmergencyStopActionService {
+  return {
+    stopAll: () => options.stopAll(),
+  };
+}
+
+export interface EmergencyStopActionOptions {
+  service: EmergencyStopActionService;
   diagnostics: EmergencyStopActionDiagnostics;
   logger?: EmergencyStopActionLogger;
 }
@@ -836,7 +852,7 @@ export async function triggerEmergencyStopAction(
     options.diagnostics.logInfo('remote-server', 'Emergency stop triggered via API');
 
     options.logger?.log('[KILLSWITCH] Calling emergency stop handler...');
-    const { before, after } = await options.stopAll();
+    const { before, after } = await options.service.stopAll();
 
     options.logger?.log(`[KILLSWITCH] Emergency stop completed. Killed ${before} processes. Remaining: ${after}`);
     options.diagnostics.logInfo(

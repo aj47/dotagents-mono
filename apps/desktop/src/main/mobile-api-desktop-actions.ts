@@ -61,6 +61,7 @@ import {
   type TtsActionOptions,
 } from "@dotagents/shared/tts-api"
 import {
+  createEmergencyStopActionService,
   createSettingsActionService,
   createSettingsRouteActionBundle,
   type EmergencyStopActionOptions,
@@ -173,7 +174,9 @@ const ttsActionOptions: TtsActionOptions = {
 const ttsRouteActions = createTtsRouteActions(ttsActionOptions)
 
 const emergencyStopActionOptions: EmergencyStopActionOptions = {
-  stopAll: emergencyStopAll,
+  service: createEmergencyStopActionService({
+    stopAll: emergencyStopAll,
+  }),
   diagnostics: diagnosticsService,
   logger: console,
 }
