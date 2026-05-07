@@ -108,6 +108,7 @@ test('displays system metrics and agent sessions from operator status', () => {
   assert.match(operationsSource, /status\.sessions\.activeSessions/);
   assert.match(operationsSource, /status\.sessions\.activeSessionDetails/);
   assert.match(operationsSource, /status\.sessions\.recentSessionDetails/);
+  assert.match(operationsSource, /s\.profileName/);
   assert.match(operationsSource, /s\.isSnoozed === true/);
   assert.match(operationsSource, /showOperatorAgentSession\(s\.id\)/);
   assert.match(operationsSource, /snoozeOperatorAgentSession\(s\.id\)/);

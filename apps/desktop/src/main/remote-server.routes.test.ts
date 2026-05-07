@@ -2202,6 +2202,7 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("export function createOperatorSystemMetricsCollector(")
     expect(sharedOperatorActionsSource).toContain("buildOperatorRuntimeStatus({")
     expect(sharedOperatorActionsSource).toContain("system: options.service.getSystemMetrics()")
+    expect(sharedOperatorActionsSource).toContain("profileName: session.profileSnapshot.profileName")
     expect(sharedOperatorActionsSource).toContain("export function createOperatorObservabilityActionService")
     expect(sharedOperatorActionsSource).toContain("generateDiagnosticReport: () => options.diagnostics.generateDiagnosticReport()")
     expect(sharedOperatorActionsSource).toContain("saveDiagnosticReport: (filePath) => options.diagnostics.saveDiagnosticReport(filePath)")

@@ -3516,6 +3516,10 @@ describe("operator action API helpers", () => {
         currentIteration: 2,
         maxIterations: 5,
         isSnoozed: true,
+        profileSnapshot: {
+          profileId: "profile-1",
+          profileName: "Research Agent",
+        },
       },
     ], [
       {
@@ -3524,6 +3528,10 @@ describe("operator action API helpers", () => {
         status: "completed",
         startTime: 0,
         endTime: 4,
+        profileSnapshot: {
+          profileId: "profile-2",
+          profileName: "Review Agent",
+        },
       },
       {
         id: "session-3",
@@ -3541,6 +3549,8 @@ describe("operator action API helpers", () => {
         currentIteration: 2,
         maxIterations: 5,
         isSnoozed: true,
+        profileId: "profile-1",
+        profileName: "Research Agent",
       }],
       recentSessionDetails: [
         {
@@ -3549,6 +3559,8 @@ describe("operator action API helpers", () => {
           status: "completed",
           startTime: 0,
           endTime: 4,
+          profileId: "profile-2",
+          profileName: "Review Agent",
         },
         {
           id: "session-3",

@@ -984,6 +984,10 @@ export type OperatorSessionSummaryLike = {
   currentIteration?: number
   maxIterations?: number
   isSnoozed?: boolean
+  profileSnapshot?: {
+    profileId?: string
+    profileName?: string
+  }
 }
 
 export type OperatorWhatsAppActionResponseOptions = {
@@ -4014,6 +4018,8 @@ export function buildOperatorSessionsSummary(
       currentIteration: session.currentIteration,
       maxIterations: session.maxIterations,
       ...(typeof session.isSnoozed === "boolean" ? { isSnoozed: session.isSnoozed } : {}),
+      ...(session.profileSnapshot?.profileId ? { profileId: session.profileSnapshot.profileId } : {}),
+      ...(session.profileSnapshot?.profileName ? { profileName: session.profileSnapshot.profileName } : {}),
     })),
     recentSessionDetails: recentSessions.map((session) => ({
       id: session.id,
@@ -4021,6 +4027,8 @@ export function buildOperatorSessionsSummary(
       status: session.status,
       startTime: session.startTime,
       ...(typeof session.endTime === "number" ? { endTime: session.endTime } : {}),
+      ...(session.profileSnapshot?.profileId ? { profileId: session.profileSnapshot.profileId } : {}),
+      ...(session.profileSnapshot?.profileName ? { profileName: session.profileSnapshot.profileName } : {}),
     })),
   }
 }

@@ -497,6 +497,8 @@ export interface OperatorSessionsSummary {
     currentIteration?: number;
     maxIterations?: number;
     isSnoozed?: boolean;
+    profileId?: string;
+    profileName?: string;
   }>;
   recentSessionDetails: Array<{
     id: string;
@@ -504,6 +506,8 @@ export interface OperatorSessionsSummary {
     status: string;
     startTime: number;
     endTime?: number;
+    profileId?: string;
+    profileName?: string;
   }>;
 }
 

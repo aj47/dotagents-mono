@@ -827,7 +827,7 @@ export default function OperationsScreen({ navigation }: any) {
                   <View key={s.id} style={styles.agentSessionRow}>
                     <View style={styles.agentSessionCopy}>
                       <Text style={styles.detailText}>
-                        {s.title ?? s.id} — {s.status}{isSnoozed ? ' · background' : ''} ({s.currentIteration ?? 0}/{s.maxIterations ?? '?'})
+                        {s.title ?? s.id} — {s.status}{s.profileName ? ` · ${s.profileName}` : ''}{isSnoozed ? ' · background' : ''} ({s.currentIteration ?? 0}/{s.maxIterations ?? '?'})
                       </Text>
                       <Text style={styles.mutedText}>Since {formatTimestamp(s.startTime)}</Text>
                     </View>
@@ -901,7 +901,7 @@ export default function OperationsScreen({ navigation }: any) {
                       <View key={s.id} style={styles.agentSessionRow}>
                         <View style={styles.agentSessionCopy}>
                           <Text style={styles.detailText}>
-                            {s.title ?? s.id} — {s.status}
+                            {s.title ?? s.id} — {s.status}{s.profileName ? ` · ${s.profileName}` : ''}
                           </Text>
                           <Text style={styles.mutedText}>
                             {s.endTime ? `Ended ${formatTimestamp(s.endTime)}` : `Started ${formatTimestamp(s.startTime)}`}
