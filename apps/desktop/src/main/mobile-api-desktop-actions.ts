@@ -12,10 +12,7 @@ import {
 } from "@dotagents/shared/agent-session-candidates"
 import { getEnabledAcpxAgentProfiles } from "@dotagents/shared/agent-profile-queries"
 import {
-  exportBundleAction,
-  getBundleExportableItemsAction,
-  importBundleAction,
-  previewBundleImportAction,
+  createBundleRouteActions,
   type BundleActionOptions,
   type BundleImportPreview,
   type ExportBundleRequest,
@@ -310,6 +307,8 @@ const bundleActionOptions: BundleActionOptions = {
   diagnostics: diagnosticsService,
 }
 
+const bundleRouteActions = createBundleRouteActions(bundleActionOptions)
+
 const conversationActionOptions: ConversationActionOptions<DesktopConversationActionConversation> = {
   service: {
     loadConversation: (conversationId) => conversationService.loadConversation(conversationId),
@@ -519,22 +518,6 @@ function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
 
-function getBundleExportableItems() {
-  return getBundleExportableItemsAction(bundleActionOptions)
-}
-
-function exportBundle(body: unknown) {
-  return exportBundleAction(body, bundleActionOptions)
-}
-
-function previewBundleImport(body: unknown) {
-  return previewBundleImportAction(body, bundleActionOptions)
-}
-
-function importBundle(body: unknown) {
-  return importBundleAction(body, bundleActionOptions)
-}
-
 async function getConversation(id: string | undefined) {
   return getConversationAction(id, conversationActionOptions)
 }
@@ -592,10 +575,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   handleChatCompletionRequest,
   ...modelRouteActions,
   ...profileRouteActions,
-  getBundleExportableItems,
-  exportBundle,
-  previewBundleImport,
-  importBundle,
+  ...bundleRouteActions,
   getMcpServers,
   toggleMcpServer,
   exportMcpServerConfigs,

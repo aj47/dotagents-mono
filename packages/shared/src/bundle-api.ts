@@ -405,6 +405,13 @@ export interface BundleActionOptions {
   diagnostics: BundleActionDiagnostics
 }
 
+export interface BundleRouteActions {
+  getBundleExportableItems(): BundleActionResult
+  exportBundle(body: unknown): Promise<BundleActionResult>
+  previewBundleImport(body: unknown): Promise<BundleActionResult>
+  importBundle(body: unknown): Promise<BundleActionResult>
+}
+
 function bundleActionOk(body: unknown): BundleActionResult {
   return {
     statusCode: 200,
@@ -698,5 +705,14 @@ export async function importBundleAction(
   } catch (caughtError) {
     options.diagnostics.logError("bundle-actions", "Failed to import bundle", caughtError)
     return bundleActionError(500, getUnknownErrorMessage(caughtError, "Failed to import bundle"))
+  }
+}
+
+export function createBundleRouteActions(options: BundleActionOptions): BundleRouteActions {
+  return {
+    getBundleExportableItems: () => getBundleExportableItemsAction(options),
+    exportBundle: (body) => exportBundleAction(body, options),
+    previewBundleImport: (body) => previewBundleImportAction(body, options),
+    importBundle: (body) => importBundleAction(body, options),
   }
 }

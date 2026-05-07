@@ -11,6 +11,7 @@ import {
   buildBundleExportableItemsResponse,
   buildBundleImportPreviewResponse,
   createBundleItemSelection,
+  createBundleRouteActions,
   exportBundleAction,
   getAvailableBundleComponentSelection,
   getBundleDependencyWarnings,
@@ -326,5 +327,23 @@ describe("bundle API helpers", () => {
       body: { error: "conflictStrategy must be skip, overwrite, or rename" },
     })
     expect(logs).toEqual([])
+
+    const routeActions = createBundleRouteActions(options)
+    expect(routeActions.getBundleExportableItems()).toEqual({
+      statusCode: 200,
+      body: buildBundleExportableItemsResponse(exportableItems),
+    })
+    await expect(routeActions.exportBundle({ skillIds: ["skill-1"] })).resolves.toEqual({
+      statusCode: 200,
+      body: buildBundleExportResponse(bundle),
+    })
+    await expect(routeActions.previewBundleImport({ bundleJson })).resolves.toEqual({
+      statusCode: 200,
+      body: buildBundleImportPreviewResponse(importPreview),
+    })
+    await expect(routeActions.importBundle({ bundleJson, conflictStrategy: "overwrite" })).resolves.toEqual({
+      statusCode: 200,
+      body: importResult,
+    })
   })
 })
