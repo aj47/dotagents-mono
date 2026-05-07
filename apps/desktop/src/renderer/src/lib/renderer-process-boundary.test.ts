@@ -9,6 +9,14 @@ const rendererUiDirectories = ["components", "contexts", "hooks", "pages", "stor
   (directory) => path.join(rendererRoot, directory),
 )
 
+function isRendererTipcClientBoundary(filePath: string): boolean {
+  const relativePath = path.relative(rendererRoot, filePath)
+  return (
+    relativePath === path.join("lib", "tipc-client.ts") ||
+    (path.dirname(relativePath) === "lib" && path.basename(relativePath).endsWith("-client.ts"))
+  )
+}
+
 function collectSourceFiles(root: string): string[] {
   const entries = readdirSync(root)
   const files: string[] = []
@@ -52,6 +60,41 @@ describe("renderer process boundary", () => {
       }
       if (rawElectronApiPattern.test(source)) {
         fileViolations.push(`${relativePath}: legacy electronAPI bridge usage`)
+      }
+
+      return fileViolations
+    })
+
+    expect(violations).toEqual([])
+  })
+
+  it("keeps direct TIPC client access isolated to renderer client wrappers", () => {
+    const sourceFiles = collectSourceFiles(rendererRoot)
+    const tipcClientNamedImportPattern =
+      /import\s*\{[^}]*\btipcClient\b[^}]*\}\s*from\s*["'][^"']*tipc-client["']/
+    const tipcClientNamespaceImportPattern =
+      /import\s+\*\s+as\s+\w+\s+from\s*["'][^"']*tipc-client["']/
+    const tipcClientDynamicImportPattern = /import\(\s*["'][^"']*tipc-client["']\s*\)/
+    const tipcClientReferencePattern = /\btipcClient\b/
+
+    const violations = sourceFiles.flatMap((filePath) => {
+      if (isRendererTipcClientBoundary(filePath)) return []
+
+      const source = readFileSync(filePath, "utf8")
+      const relativePath = path.relative(rendererRoot, filePath)
+      const fileViolations: string[] = []
+
+      if (tipcClientNamedImportPattern.test(source)) {
+        fileViolations.push(`${relativePath}: direct tipcClient import`)
+      }
+      if (tipcClientNamespaceImportPattern.test(source)) {
+        fileViolations.push(`${relativePath}: tipc-client namespace import`)
+      }
+      if (
+        tipcClientDynamicImportPattern.test(source) &&
+        tipcClientReferencePattern.test(source)
+      ) {
+        fileViolations.push(`${relativePath}: dynamic tipcClient import`)
       }
 
       return fileViolations
