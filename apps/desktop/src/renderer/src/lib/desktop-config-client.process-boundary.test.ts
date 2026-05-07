@@ -8,6 +8,10 @@ const agentProgressSource = readFileSync(
   new URL("../components/agent-progress.tsx", import.meta.url),
   "utf8",
 )
+const sessionActionDialogSource = readFileSync(
+  new URL("../components/session-action-dialog.tsx", import.meta.url),
+  "utf8",
+)
 
 describe("desktop config renderer client", () => {
   it("centralizes config IPC channels", () => {
@@ -17,13 +21,14 @@ describe("desktop config renderer client", () => {
   })
 
   it("keeps shared config hooks and agent controls off direct config IPC channels", () => {
-    const combinedSource = [queriesSource, useStoreSyncSource, agentProgressSource].join("\n")
+    const combinedSource = [queriesSource, useStoreSyncSource, agentProgressSource, sessionActionDialogSource].join("\n")
 
     expect(queriesSource).toContain("desktopConfigClient.getConfig()")
     expect(queriesSource).toContain("desktopConfigClient.saveConfig(config)")
     expect(useStoreSyncSource).toContain("desktopConfigClient.getConfig()")
     expect(useStoreSyncSource).toContain("desktopConfigClient.saveConfig({")
     expect(agentProgressSource).toContain("desktopConfigClient.saveConfig({")
+    expect(sessionActionDialogSource).toContain("desktopConfigClient.getConfig()")
     expect(combinedSource).not.toContain("tipcClient.getConfig(")
     expect(combinedSource).not.toContain("tipcClient.saveConfig(")
   })

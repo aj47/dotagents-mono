@@ -5,8 +5,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { TextInputPanel } from "./text-input-panel"
 import { Recorder } from "@renderer/lib/recorder"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
+import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
 import { desktopMcpSessionActionsClient } from "@renderer/lib/desktop-mcp-session-actions-client"
-import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient } from "@renderer/lib/queries"
 import { cn } from "@renderer/lib/utils"
 import { playSound } from "@renderer/lib/sound"
@@ -160,7 +160,7 @@ export function SessionActionDialog({
           playSound("end_record")
           if (!canHandleRecorderCallback(recorder, true)) return
           setStatusMessage("Starting session…")
-          const config = await tipcClient.getConfig()
+          const config = await desktopConfigClient.getConfig()
           const pcmRecording = config?.sttProviderId === "parakeet"
             ? await decodeBlobToPcm(blob)
             : undefined
@@ -198,7 +198,7 @@ export function SessionActionDialog({
     try {
       if (!canUpdateDialogState()) return
       setRecording(true)
-      const config = await tipcClient.getConfig()
+      const config = await desktopConfigClient.getConfig()
       await recorder.startRecording(config?.audioInputDeviceId)
     } catch (error) {
       stopRecorder()
