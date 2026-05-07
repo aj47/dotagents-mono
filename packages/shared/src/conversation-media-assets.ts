@@ -1,3 +1,4 @@
+import { assertSafeConversationId } from './conversation-id';
 import { REMOTE_SERVER_API_BUILDERS } from './remote-server-api';
 
 export const CONVERSATION_VIDEO_ASSET_HOST = 'conversation-video';
@@ -88,6 +89,18 @@ export interface ConversationVideoAssetRef {
 export interface ConversationImageAssetRef {
   conversationId: string;
   fileName: string;
+}
+
+export interface ConversationMediaAssetPathAdapter {
+  join(...segments: string[]): string;
+  resolve(...segments: string[]): string;
+  basename(filePath: string): string;
+  sep: string;
+}
+
+export interface ConversationMediaAssetPathOptions {
+  conversationsFolder: string;
+  pathAdapter: ConversationMediaAssetPathAdapter;
 }
 
 export interface ParsedDataImageUrl {
@@ -920,6 +933,116 @@ export function buildConversationVideoAssetUrl(conversationId: string, fileName:
 
 export function buildConversationImageAssetUrl(conversationId: string, fileName: string): string {
   return `assets://${CONVERSATION_IMAGE_ASSET_HOST}/${encodeURIComponent(conversationId)}/${encodeURIComponent(fileName)}`;
+}
+
+function isResolvedChildPath(root: string, resolvedPath: string, sep: string): boolean {
+  const normalizedRoot = root.endsWith(sep) ? root : `${root}${sep}`;
+  return resolvedPath.startsWith(normalizedRoot);
+}
+
+function getConversationMediaAssetsRoot(
+  options: ConversationMediaAssetPathOptions,
+  assetDirName: string,
+): string {
+  return options.pathAdapter.join(options.conversationsFolder, assetDirName);
+}
+
+function getConversationMediaAssetDir(
+  conversationId: string,
+  options: ConversationMediaAssetPathOptions,
+  assetDirName: string,
+  assetType: 'image' | 'video',
+): string {
+  assertSafeConversationId(conversationId);
+  const root = options.pathAdapter.resolve(getConversationMediaAssetsRoot(options, assetDirName));
+  const resolved = options.pathAdapter.resolve(root, conversationId);
+  if (!isResolvedChildPath(root, resolved, options.pathAdapter.sep)) {
+    throw new Error(`Invalid conversation ${assetType} asset directory`);
+  }
+  return resolved;
+}
+
+function getConversationMediaAssetPath(
+  conversationId: string,
+  fileName: string,
+  options: ConversationMediaAssetPathOptions,
+  assetDirName: string,
+  assetType: 'image' | 'video',
+  isSafeFileName: (fileName: string) => boolean,
+): string {
+  assertSafeConversationId(conversationId);
+  if (options.pathAdapter.basename(fileName) !== fileName || !isSafeFileName(fileName)) {
+    throw new Error(`Invalid conversation ${assetType} asset filename`);
+  }
+
+  const dir = getConversationMediaAssetDir(conversationId, options, assetDirName, assetType);
+  const resolved = options.pathAdapter.resolve(dir, fileName);
+  if (!isResolvedChildPath(dir, resolved, options.pathAdapter.sep)) {
+    throw new Error(`Invalid conversation ${assetType} asset path`);
+  }
+  return resolved;
+}
+
+export function getConversationImageAssetsRoot(options: ConversationMediaAssetPathOptions): string {
+  return getConversationMediaAssetsRoot(options, CONVERSATION_IMAGE_ASSETS_DIR_NAME);
+}
+
+export function getConversationImageAssetDir(
+  conversationId: string,
+  options: ConversationMediaAssetPathOptions,
+): string {
+  return getConversationMediaAssetDir(
+    conversationId,
+    options,
+    CONVERSATION_IMAGE_ASSETS_DIR_NAME,
+    'image',
+  );
+}
+
+export function getConversationImageAssetPath(
+  conversationId: string,
+  fileName: string,
+  options: ConversationMediaAssetPathOptions,
+): string {
+  return getConversationMediaAssetPath(
+    conversationId,
+    fileName,
+    options,
+    CONVERSATION_IMAGE_ASSETS_DIR_NAME,
+    'image',
+    isSafeConversationImageAssetFileName,
+  );
+}
+
+export function getConversationVideoAssetsRoot(options: ConversationMediaAssetPathOptions): string {
+  return getConversationMediaAssetsRoot(options, CONVERSATION_VIDEO_ASSETS_DIR_NAME);
+}
+
+export function getConversationVideoAssetDir(
+  conversationId: string,
+  options: ConversationMediaAssetPathOptions,
+): string {
+  return getConversationMediaAssetDir(
+    conversationId,
+    options,
+    CONVERSATION_VIDEO_ASSETS_DIR_NAME,
+    'video',
+  );
+}
+
+export function getConversationVideoAssetPath(
+  conversationId: string,
+  fileName: string,
+  options: ConversationMediaAssetPathOptions,
+): string {
+  return getConversationMediaAssetPath(
+    conversationId,
+    fileName,
+    options,
+    CONVERSATION_VIDEO_ASSETS_DIR_NAME,
+    'video',
+    isSafeConversationVideoAssetFileName,
+  );
 }
 
 export function isSafeConversationVideoAssetFileName(fileName: string): boolean {

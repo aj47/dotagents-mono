@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   buildConversationVideoAssetStreamPlan,
@@ -13,9 +14,15 @@ import {
   extractMarkdownImageReferences,
   extractMarkdownLinkReferences,
   getConversationImageExtensionForMimeType,
+  getConversationImageAssetDir,
+  getConversationImageAssetPath,
+  getConversationImageAssetsRoot,
   getConversationImageMimeTypeFromFileName,
   getConversationVideoByteRange,
   getConversationVideoAssetAction,
+  getConversationVideoAssetDir,
+  getConversationVideoAssetPath,
+  getConversationVideoAssetsRoot,
   getConversationVideoExtensionForMimeType,
   getConversationVideoMimeTypeFromFileName,
   getDataImageBytesFromUrl,
@@ -135,6 +142,29 @@ describe('conversation video asset utilities', () => {
     expect(isSafeConversationImageAssetFileName('../abcdef1234567890.png')).toBe(false);
     expect(isSafeConversationImageAssetFileName('not-a-hash.png')).toBe(false);
     expect(isSafeConversationImageAssetFileName('abcdef1234567890.svg')).toBe(false);
+  });
+
+  it('resolves persisted media asset paths through a host path adapter', () => {
+    const pathOptions = {
+      conversationsFolder: '/var/dotagents/conversations',
+      pathAdapter: path.posix,
+    };
+
+    expect(getConversationImageAssetsRoot(pathOptions)).toBe('/var/dotagents/conversations/_images');
+    expect(getConversationVideoAssetsRoot(pathOptions)).toBe('/var/dotagents/conversations/_videos');
+    expect(getConversationImageAssetDir('conv_1', pathOptions)).toBe('/var/dotagents/conversations/_images/conv_1');
+    expect(getConversationVideoAssetDir('conv_1', pathOptions)).toBe('/var/dotagents/conversations/_videos/conv_1');
+    expect(getConversationImageAssetPath('conv_1', 'abcdef1234567890.png', pathOptions))
+      .toBe('/var/dotagents/conversations/_images/conv_1/abcdef1234567890.png');
+    expect(getConversationVideoAssetPath('conv_1', 'abcdef1234567890.mp4', pathOptions))
+      .toBe('/var/dotagents/conversations/_videos/conv_1/abcdef1234567890.mp4');
+
+    expect(() => getConversationImageAssetDir('../secret', pathOptions))
+      .toThrow('Invalid conversation ID: path traversal characters not allowed');
+    expect(() => getConversationImageAssetPath('conv_1', '../abcdef1234567890.png', pathOptions))
+      .toThrow('Invalid conversation image asset filename');
+    expect(() => getConversationVideoAssetPath('conv_1', 'abcdef1234567890.png', pathOptions))
+      .toThrow('Invalid conversation video asset filename');
   });
 
   it('resolves video MIME types from filenames', () => {

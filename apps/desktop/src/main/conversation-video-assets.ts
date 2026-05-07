@@ -1,10 +1,11 @@
 import path from "path"
 import {
-  CONVERSATION_VIDEO_ASSETS_DIR_NAME as SHARED_CONVERSATION_VIDEO_ASSETS_DIR_NAME,
-  isSafeConversationVideoAssetFileName,
+  getConversationVideoAssetDir as getSharedConversationVideoAssetDir,
+  getConversationVideoAssetPath as getSharedConversationVideoAssetPath,
+  getConversationVideoAssetsRoot as getSharedConversationVideoAssetsRoot,
+  type ConversationMediaAssetPathOptions,
 } from "@dotagents/shared/conversation-media-assets"
 import { conversationsFolder } from "./config"
-import { assertSafeConversationId } from "@dotagents/shared/conversation-id"
 
 export {
   CONVERSATION_VIDEO_ASSET_HOST,
@@ -13,30 +14,19 @@ export {
   getConversationVideoMimeTypeFromFileName,
 } from "@dotagents/shared/conversation-media-assets"
 
+const conversationVideoAssetPathOptions: ConversationMediaAssetPathOptions = {
+  conversationsFolder,
+  pathAdapter: path,
+}
+
 export function getConversationVideoAssetsRoot(): string {
-  return path.join(conversationsFolder, SHARED_CONVERSATION_VIDEO_ASSETS_DIR_NAME)
+  return getSharedConversationVideoAssetsRoot(conversationVideoAssetPathOptions)
 }
 
 export function getConversationVideoAssetDir(conversationId: string): string {
-  assertSafeConversationId(conversationId)
-  const root = path.resolve(getConversationVideoAssetsRoot())
-  const resolved = path.resolve(root, conversationId)
-  if (!resolved.startsWith(root + path.sep)) {
-    throw new Error("Invalid conversation video asset directory")
-  }
-  return resolved
+  return getSharedConversationVideoAssetDir(conversationId, conversationVideoAssetPathOptions)
 }
 
 export function getConversationVideoAssetPath(conversationId: string, fileName: string): string {
-  assertSafeConversationId(conversationId)
-  if (path.basename(fileName) !== fileName || !isSafeConversationVideoAssetFileName(fileName)) {
-    throw new Error("Invalid conversation video asset filename")
-  }
-
-  const dir = getConversationVideoAssetDir(conversationId)
-  const resolved = path.resolve(dir, fileName)
-  if (!resolved.startsWith(dir + path.sep)) {
-    throw new Error("Invalid conversation video asset path")
-  }
-  return resolved
+  return getSharedConversationVideoAssetPath(conversationId, fileName, conversationVideoAssetPathOptions)
 }
