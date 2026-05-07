@@ -14,6 +14,7 @@ import type {
   LoadedConversation,
 } from "@dotagents/shared/conversation-domain"
 import {
+  appendServerConversationMessage,
   buildBranchedServerConversation,
   buildNewServerConversation,
   buildServerConversationTitle,
@@ -911,16 +912,6 @@ export class ConversationService {
     return changed
   }
 
-  private isConsecutiveDuplicate(
-    last: ConversationMessage | undefined,
-    role: ConversationMessage["role"],
-    content: string,
-  ): boolean {
-    const incomingContent = (content || "").trim()
-    const lastContent = (last?.content || "").trim()
-    return !!last && last.role === role && lastContent === incomingContent
-  }
-
   private estimateCompactionTokensFromText(text: string): number {
     return Math.max(1, Math.ceil(text.length / 4))
   }
@@ -1201,49 +1192,20 @@ export class ConversationService {
           return null
         }
 
-        const storedMessages = this.getStoredRawMessages(conversation)
-
         const storedContent = await this.materializeInlineDataImagesInContent(conversationId, content)
         const storedDisplayContent = typeof options?.displayContent === "string" && options.displayContent.trim().length > 0
           ? await this.materializeInlineDataImagesInContent(conversationId, options.displayContent)
           : undefined
 
-        // Idempotency guard: avoid pushing consecutive duplicate messages
-        const last = storedMessages[storedMessages.length - 1]
-        if (this.isConsecutiveDuplicate(last, role, storedContent)) {
-          if (storedDisplayContent && last.displayContent !== storedDisplayContent) {
-            last.displayContent = storedDisplayContent
-          }
-          const displayedLast = conversation.messages[conversation.messages.length - 1]
-          if (
-            displayedLast &&
-            displayedLast !== last &&
-            this.isConsecutiveDuplicate(displayedLast, role, storedContent) &&
-            storedDisplayContent &&
-            displayedLast.displayContent !== storedDisplayContent
-          ) {
-            displayedLast.displayContent = storedDisplayContent
-          }
-          conversation.updatedAt = Date.now()
-          await this.saveConversationUnlocked(conversation)
-          return conversation
-        }
-
-        const messageId = generateMessageId()
-        const message: ConversationMessage = {
-          id: messageId,
+        appendServerConversationMessage(conversation, {
+          id: generateMessageId(),
           role,
           content: storedContent,
           timestamp: Date.now(),
           toolCalls,
           toolResults,
           ...(storedDisplayContent ? { displayContent: storedDisplayContent } : {}),
-        }
-
-        conversation.messages.push(message)
-        if (Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0) {
-          conversation.rawMessages.push(message)
-        }
+        })
         await this.saveConversationUnlocked(conversation)
 
         return conversation

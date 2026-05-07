@@ -1696,6 +1696,7 @@ describe("remote-server route registration", () => {
     expect(sharedConversationSyncSource).toContain("buildNewServerConversation(conversationId, parsedRequest.request, timestamp)")
     expect(sharedConversationSyncSource).toContain("parseUpdateConversationRequestBody(body)")
     expect(sharedConversationSyncSource).toContain("applyServerConversationUpdate(conversation, parsedRequest.request, timestamp)")
+    expect(sharedConversationSyncSource).toContain("export function appendServerConversationMessage")
     expect(sharedConversationSyncSource).toContain("options.service.deleteConversation(conversationId)")
     expect(sharedConversationSyncSource).toContain("options.service.deleteAllConversations()")
     expect(sharedConversationSyncSource).toContain("buildServerConversationDeleteResponse(conversationId)")
@@ -1704,7 +1705,9 @@ describe("remote-server route registration", () => {
     expect(conversationServiceSource).toContain("buildNewServerConversation(")
     expect(conversationServiceSource).toContain("buildServerConversationTitle(undefined")
     expect(conversationServiceSource).toContain("getStoredServerConversationMessages(conversation)")
+    expect(conversationServiceSource).toContain("appendServerConversationMessage(conversation")
     expect(conversationServiceSource).not.toContain("title: generateConversationTitleFromMessage")
+    expect(conversationServiceSource).not.toContain("private isConsecutiveDuplicate")
     expect(mobileApiDesktopActionsSource).toContain("const conversationImageAssetActionOptions: ConversationImageAssetActionOptions")
     expect(mobileApiDesktopActionsSource).toContain(
       "const conversationImageAssetRouteActions = createConversationImageAssetRouteActions(conversationImageAssetActionOptions)",

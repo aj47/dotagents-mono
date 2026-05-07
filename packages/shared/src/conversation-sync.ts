@@ -135,6 +135,7 @@ const VALID_ROLES = ['user', 'assistant', 'tool'] as const;
 export interface ServerConversationRecordMessage extends ServerConversationMessage {
   id: string;
   timestamp: number;
+  displayContent?: string;
 }
 
 export interface ServerConversationRecord<TMetadata = unknown> {
@@ -165,6 +166,22 @@ export type BranchConversationBuildResult<TConversation extends ServerConversati
   | { ok: false; statusCode: 400; error: string; messageCount: number };
 
 export type ServerConversationMessageIdFactory = (timestamp: number, index: number) => string;
+
+export interface AppendServerConversationMessageRequest {
+  id: string;
+  role: ServerConversationRecordMessage['role'];
+  content: string;
+  timestamp: number;
+  toolCalls?: ServerConversationRecordMessage['toolCalls'];
+  toolResults?: ServerConversationRecordMessage['toolResults'];
+  displayContent?: string;
+}
+
+export interface AppendServerConversationMessageResult<TConversation extends ServerConversationRecord<any>> {
+  conversation: TConversation;
+  message: ServerConversationRecordMessage;
+  appended: boolean;
+}
 
 export function createServerConversationMessageId(timestamp: number, index: number): string {
   return `msg_${timestamp}_${index}_${Math.random().toString(36).substr(2, 9)}`;
@@ -332,6 +349,70 @@ export function getBranchableServerConversationMessages<TConversation extends Se
   conversation: TConversation,
 ): ServerConversationRecordMessage[] {
   return getStoredServerConversationMessages(conversation);
+}
+
+export function isConsecutiveServerConversationMessageDuplicate(
+  lastMessage: ServerConversationRecordMessage | undefined,
+  role: ServerConversationRecordMessage['role'],
+  content: string,
+): boolean {
+  const incomingContent = (content || '').trim();
+  const lastContent = (lastMessage?.content || '').trim();
+  return !!lastMessage && lastMessage.role === role && lastContent === incomingContent;
+}
+
+export function appendServerConversationMessage<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+  request: AppendServerConversationMessageRequest,
+): AppendServerConversationMessageResult<TConversation> {
+  const storedMessages = getStoredServerConversationMessages(conversation);
+  const lastStoredMessage = storedMessages[storedMessages.length - 1];
+
+  if (isConsecutiveServerConversationMessageDuplicate(lastStoredMessage, request.role, request.content)) {
+    if (request.displayContent && lastStoredMessage.displayContent !== request.displayContent) {
+      lastStoredMessage.displayContent = request.displayContent;
+    }
+
+    const displayedLastMessage = conversation.messages[conversation.messages.length - 1];
+    if (
+      displayedLastMessage &&
+      displayedLastMessage !== lastStoredMessage &&
+      isConsecutiveServerConversationMessageDuplicate(displayedLastMessage, request.role, request.content) &&
+      request.displayContent &&
+      displayedLastMessage.displayContent !== request.displayContent
+    ) {
+      displayedLastMessage.displayContent = request.displayContent;
+    }
+
+    conversation.updatedAt = request.timestamp;
+    return {
+      conversation,
+      message: lastStoredMessage,
+      appended: false,
+    };
+  }
+
+  const message: ServerConversationRecordMessage = {
+    id: request.id,
+    role: request.role,
+    content: request.content,
+    timestamp: request.timestamp,
+    toolCalls: request.toolCalls,
+    toolResults: request.toolResults,
+    ...(request.displayContent ? { displayContent: request.displayContent } : {}),
+  };
+
+  conversation.messages.push(message);
+  if (Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0) {
+    conversation.rawMessages.push(message);
+  }
+  conversation.updatedAt = request.timestamp;
+
+  return {
+    conversation,
+    message,
+    appended: true,
+  };
 }
 
 export function buildBranchedServerConversation<TConversation extends ServerConversationRecord<any>>(

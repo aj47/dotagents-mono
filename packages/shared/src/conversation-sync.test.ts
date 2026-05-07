@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Session } from './session';
 import {
   applyServerConversationUpdate,
+  appendServerConversationMessage,
   buildNewServerConversation,
   buildBranchedServerConversation,
   buildNewServerConversationFromUpdateRequest,
@@ -221,6 +222,59 @@ describe('server conversation API helpers', () => {
       ],
       metadata: { model: 'test' },
     });
+  });
+
+  it('appends messages and updates compacted raw history consistently', () => {
+    const conversation = {
+      id: 'conv-append',
+      title: 'Append',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'summary-1', role: 'assistant' as const, content: 'Summary', timestamp: 2 }],
+      rawMessages: [{ id: 'raw-1', role: 'user' as const, content: 'first', timestamp: 1 }],
+    };
+
+    const result = appendServerConversationMessage(conversation, {
+      id: 'msg-new',
+      role: 'assistant',
+      content: 'answer',
+      displayContent: '<think>hidden</think>\n\nanswer',
+      timestamp: 5,
+    });
+
+    expect(result.appended).toBe(true);
+    expect(conversation.updatedAt).toBe(5);
+    expect(conversation.messages.map((message) => message.id)).toEqual(['summary-1', 'msg-new']);
+    expect(conversation.rawMessages?.map((message) => message.id)).toEqual(['raw-1', 'msg-new']);
+    expect(conversation.rawMessages?.[1]).toBe(conversation.messages[1]);
+    expect(conversation.messages[1].displayContent).toBe('<think>hidden</think>\n\nanswer');
+  });
+
+  it('deduplicates consecutive appended messages while refreshing display content', () => {
+    const conversation = {
+      id: 'conv-duplicate',
+      title: 'Duplicate',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'display-last', role: 'assistant' as const, content: 'answer', timestamp: 2 }],
+      rawMessages: [{ id: 'raw-last', role: 'assistant' as const, content: 'answer', timestamp: 2 }],
+    };
+
+    const result = appendServerConversationMessage(conversation, {
+      id: 'ignored-new-id',
+      role: 'assistant',
+      content: ' answer ',
+      displayContent: 'visible answer',
+      timestamp: 8,
+    });
+
+    expect(result.appended).toBe(false);
+    expect(result.message.id).toBe('raw-last');
+    expect(conversation.updatedAt).toBe(8);
+    expect(conversation.messages).toHaveLength(1);
+    expect(conversation.rawMessages).toHaveLength(1);
+    expect(conversation.messages[0].displayContent).toBe('visible answer');
+    expect(conversation.rawMessages?.[0].displayContent).toBe('visible answer');
   });
 
   it('builds server conversation list responses', () => {
