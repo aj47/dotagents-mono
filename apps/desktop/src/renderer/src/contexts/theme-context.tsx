@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react"
-import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { rendererHandlers } from "@renderer/lib/tipc-client"
+import { desktopAppShellClient } from "@renderer/lib/desktop-app-shell-client"
 import {
   THEME_PREFERENCE_CHANGED_EVENT,
   isThemePreference,
@@ -60,7 +61,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     )
 
     // Broadcast to all windows via IPC so the panel window stays in sync
-    tipcClient.broadcastThemeChange?.({ themeMode }).catch(() => {})
+    desktopAppShellClient.broadcastThemeChange(themeMode).catch(() => {})
   }, [themeMode])
 
   // Listen for system theme changes when in system mode

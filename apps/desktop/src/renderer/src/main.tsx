@@ -3,7 +3,7 @@ import "./css/spinner.css"
 import React from "react"
 import ReactDOM from "react-dom/client"
 import App from "./App"
-import { tipcClient } from "./lib/tipc-client"
+import { desktopAppShellClient } from "./lib/desktop-app-shell-client"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { queryClient } from "./lib/queries"
 import { initDebugFlags } from "./lib/debug"
@@ -27,7 +27,7 @@ document.addEventListener("contextmenu", (e) => {
 
   const selectedText = window.getSelection()?.toString()
 
-  tipcClient.showContextMenu({
+  desktopAppShellClient.showContextMenu({
     x: e.clientX,
     y: e.clientY,
     selectedText,
