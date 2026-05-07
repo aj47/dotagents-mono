@@ -107,7 +107,7 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
   }
 
   function scheduleRemoteServerRestartFromOperator(): void {
-    setTimeout(() => {
+    adapters.scheduleDelayedTask(50, () => {
       void restartRemoteServer().catch((error) => {
         diagnosticsService.logError(
           "remote-server",
@@ -119,7 +119,7 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
   }
 
   function scheduleAppRestartFromOperator(): void {
-    setTimeout(() => {
+    adapters.scheduleDelayedTask(100, () => {
       try {
         relaunchApp()
         quitApp()

@@ -79,6 +79,10 @@ function writeTerminalWarning(message: string): void {
   console.warn(message)
 }
 
+function scheduleDelayedTask(delayMs: number, task: () => void): void {
+  setTimeout(task, delayMs)
+}
+
 function scheduleTaskAfterReply(reply: FastifyReply, task: () => void): void {
   let hasRun = false
 
@@ -88,7 +92,7 @@ function scheduleTaskAfterReply(reply: FastifyReply, task: () => void): void {
     }
     hasRun = true
 
-    setTimeout(task, 25)
+    scheduleDelayedTask(25, task)
   }
 
   reply.raw.once("finish", run)
@@ -122,6 +126,7 @@ export const remoteServerDesktopAdapters: RemoteServerControllerAdapters<Fastify
   getNetworkAddresses: getRemoteNetworkAddresses,
   getConnectableBaseUrlForMobilePairing,
   printTerminalQRCode,
+  scheduleDelayedTask,
   scheduleTaskAfterReply,
   writeTerminalInfo,
   writeTerminalWarning,
