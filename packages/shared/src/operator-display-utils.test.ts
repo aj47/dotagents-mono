@@ -3,12 +3,14 @@ import { describe, expect, it } from "vitest"
 import {
   OPERATOR_ACTIONS_PANEL_METADATA,
   OPERATOR_AGENT_SESSIONS_PANEL_METADATA,
+  OPERATOR_AUDIT_PANEL_METADATA,
   OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA,
   OPERATOR_CONVERSATIONS_PANEL_METADATA,
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_DISCORD_PANEL_METADATA,
   OPERATOR_EMPTY_VALUE_LABEL,
   OPERATOR_ERRORS_PANEL_METADATA,
+  OPERATOR_HEALTH_CHECKS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
   OPERATOR_MCP_SERVERS_PANEL_METADATA,
   OPERATOR_MESSAGE_QUEUES_PANEL_METADATA,
@@ -236,6 +238,14 @@ describe("operator display utils", () => {
     expect(OPERATOR_UPDATER_PANEL_METADATA.formatManualReleases("https://example.com/releases")).toBe(
       "Manual releases: https://example.com/releases",
     )
+  })
+
+  it("exports operator audit panel metadata", () => {
+    expect(OPERATOR_AUDIT_PANEL_METADATA).toEqual({
+      panelTitle: "Recent operator audit",
+      helperText: "Recent operator actions from the desktop audit log, including the stable device ID attached by this mobile client.",
+      emptyText: "No recent operator audit entries returned by the desktop server.",
+    })
   })
 
   it("exports diagnostic report action metadata", () => {
@@ -551,6 +561,12 @@ describe("operator display utils", () => {
     expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatCredentialsPresent()).toBe(`Credentials present: ${OPERATOR_EMPTY_VALUE_LABEL}`)
     expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatLogs({ total: 2, infoCount: 2 })).toBe("Logs: 2 total • 2 info")
     expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatLastError("not paired")).toBe("Last error: not paired")
+  })
+
+  it("exports operator health checks panel metadata", () => {
+    expect(OPERATOR_HEALTH_CHECKS_PANEL_METADATA).toEqual({
+      panelTitle: "Health checks",
+    })
   })
 
   it("exports operator MCP server panel metadata", () => {

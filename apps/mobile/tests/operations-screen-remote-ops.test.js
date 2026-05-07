@@ -284,7 +284,11 @@ test('includes tunnel, Discord, and WhatsApp operator controls and summaries', (
 });
 
 test('surfaces recent operator audit entries and rotates the API key using the saved mobile config', () => {
-  assert.match(operationsSource, /Recent operator audit/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.panelTitle/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.helperText/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.emptyText/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Recent operator audit<\/Text>/);
+  assert.doesNotMatch(operationsSource, /No recent operator audit entries returned by the desktop server\./);
   assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA/);
   assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotateConfirmTitle/);
   assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotateConfirmMessage/);
@@ -390,6 +394,8 @@ test('displays system metrics and agent sessions from operator status', () => {
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Operator status<\/Text>/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>System<\/Text>/);
   assert.doesNotMatch(operationsSource, /Waiting for operator status…/);
+  assert.match(operationsSource, /OPERATOR_HEALTH_CHECKS_PANEL_METADATA\.panelTitle/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Health checks<\/Text>/);
   assert.match(operationsSource, /OPERATOR_AGENT_SESSIONS_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_AGENT_SESSIONS_PANEL_METADATA\.formatSummary/);
   assert.match(operationsSource, /status\.sessions\.activeSessions/);

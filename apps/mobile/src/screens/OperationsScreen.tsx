@@ -64,11 +64,13 @@ import {
 import {
   OPERATOR_ACTIONS_PANEL_METADATA,
   OPERATOR_AGENT_SESSIONS_PANEL_METADATA,
+  OPERATOR_AUDIT_PANEL_METADATA,
   OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA,
   OPERATOR_CONVERSATIONS_PANEL_METADATA,
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_DISCORD_PANEL_METADATA,
   OPERATOR_ERRORS_PANEL_METADATA,
+  OPERATOR_HEALTH_CHECKS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
   OPERATOR_MCP_SERVERS_PANEL_METADATA,
   OPERATOR_MESSAGE_QUEUES_PANEL_METADATA,
@@ -1842,10 +1844,10 @@ export default function OperationsScreen({ navigation }: any) {
           </View>
 
           <View style={styles.panel}>
-            <Text style={styles.panelTitle}>Recent operator audit</Text>
-            <Text style={styles.helperText}>Recent operator actions from the desktop audit log, including the stable device ID attached by this mobile client.</Text>
+            <Text style={styles.panelTitle}>{OPERATOR_AUDIT_PANEL_METADATA.panelTitle}</Text>
+            <Text style={styles.helperText}>{OPERATOR_AUDIT_PANEL_METADATA.helperText}</Text>
             {auditEntries.length === 0 ? (
-              <Text style={styles.mutedText}>No recent operator audit entries returned by the desktop server.</Text>
+              <Text style={styles.mutedText}>{OPERATOR_AUDIT_PANEL_METADATA.emptyText}</Text>
             ) : (
               auditEntries.map((entry) => {
                 const sourceText = formatAuditSource(entry);
@@ -2693,7 +2695,7 @@ export default function OperationsScreen({ navigation }: any) {
 
           {status && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Health checks</Text>
+              <Text style={styles.panelTitle}>{OPERATOR_HEALTH_CHECKS_PANEL_METADATA.panelTitle}</Text>
               {Object.entries(status.health.checks).map(([name, check]) => (
                 <View key={name} style={styles.listRow}>
                   <Text style={styles.listLabel}>{name}</Text>

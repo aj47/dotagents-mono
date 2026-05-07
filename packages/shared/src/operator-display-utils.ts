@@ -246,6 +246,18 @@ export const OPERATOR_UPDATER_PANEL_METADATA: OperatorUpdaterPanelMetadata = {
   },
 }
 
+export type OperatorAuditPanelMetadata = {
+  panelTitle: string
+  helperText: string
+  emptyText: string
+}
+
+export const OPERATOR_AUDIT_PANEL_METADATA: OperatorAuditPanelMetadata = {
+  panelTitle: "Recent operator audit",
+  helperText: "Recent operator actions from the desktop audit log, including the stable device ID attached by this mobile client.",
+  emptyText: "No recent operator audit entries returned by the desktop server.",
+}
+
 export type OperatorDiagnosticReportActionMetadata = {
   sectionTitle: string
   generateAccessibilityLabel: string
@@ -640,6 +652,14 @@ export const OPERATOR_WHATSAPP_PANEL_METADATA: OperatorWhatsAppPanelMetadata = {
     accessibilityLabel: "Log out of WhatsApp",
     buttonLabel: "Log out",
   },
+}
+
+export type OperatorHealthChecksPanelMetadata = {
+  panelTitle: string
+}
+
+export const OPERATOR_HEALTH_CHECKS_PANEL_METADATA: OperatorHealthChecksPanelMetadata = {
+  panelTitle: "Health checks",
 }
 
 export type OperatorMcpServersPanelMetadata = {
