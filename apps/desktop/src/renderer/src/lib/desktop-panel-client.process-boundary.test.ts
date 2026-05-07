@@ -12,11 +12,25 @@ const overlayFollowUpInputSource = readFileSync(
 )
 const agentProgressSource = readFileSync(new URL("../components/agent-progress.tsx", import.meta.url), "utf8")
 const useStoreSyncSource = readFileSync(new URL("../hooks/use-store-sync.ts", import.meta.url), "utf8")
+const panelDragBarSource = readFileSync(new URL("../components/panel-drag-bar.tsx", import.meta.url), "utf8")
+const panelResizeWrapperSource = readFileSync(
+  new URL("../components/panel-resize-wrapper.tsx", import.meta.url),
+  "utf8",
+)
+const resizeHandleSource = readFileSync(new URL("../components/resize-handle.tsx", import.meta.url), "utf8")
 
 describe("desktop panel renderer client", () => {
   it("centralizes panel IPC channels", () => {
     expect(clientSource).toContain("tipcClient.setPanelFocusable(request)")
     expect(clientSource).toContain("tipcClient.getFloatingPanelVisibility()")
+    expect(clientSource).toContain("tipcClient.getPanelPosition()")
+    expect(clientSource).toContain("tipcClient.updatePanelPosition(position)")
+    expect(clientSource).toContain("tipcClient.savePanelCustomPosition(position)")
+    expect(clientSource).toContain("tipcClient.getPanelSize()")
+    expect(clientSource).toContain("tipcClient.updatePanelSize(size)")
+    expect(clientSource).toContain("tipcClient.savePanelCustomSize(size)")
+    expect(clientSource).toContain("tipcClient.getPanelMode()")
+    expect(clientSource).toContain("tipcClient.savePanelModeSize(request)")
     expect(clientSource).not.toContain("window.electron.ipcRenderer")
   })
 
@@ -32,5 +46,27 @@ describe("desktop panel renderer client", () => {
   it("keeps store sync off direct floating panel visibility IPC", () => {
     expect(useStoreSyncSource).toContain("desktopPanelClient.getFloatingPanelVisibility()")
     expect(useStoreSyncSource).not.toContain("tipcClient.getFloatingPanelVisibility(")
+  })
+
+  it("keeps drag and resize surfaces off direct panel geometry IPC", () => {
+    const combinedSource = [panelDragBarSource, panelResizeWrapperSource, resizeHandleSource].join("\n")
+
+    expect(panelDragBarSource).toContain("desktopPanelClient.updatePanelPosition({")
+    expect(panelDragBarSource).toContain("desktopPanelClient.savePanelCustomPosition({")
+    expect(panelDragBarSource).toContain("desktopPanelClient.getPanelPosition()")
+    expect(panelResizeWrapperSource).toContain("desktopPanelClient.getPanelSize()")
+    expect(panelResizeWrapperSource).toContain("desktopPanelClient.updatePanelSize(")
+    expect(panelResizeWrapperSource).toContain("desktopPanelClient.getPanelMode()")
+    expect(panelResizeWrapperSource).toContain("desktopPanelClient.savePanelModeSize({")
+    expect(panelResizeWrapperSource).toContain("desktopPanelClient.savePanelCustomSize(")
+    expect(resizeHandleSource).toContain("desktopPanelClient.getPanelSize()")
+    expect(combinedSource).not.toContain("tipcClient.getPanelPosition(")
+    expect(combinedSource).not.toContain("tipcClient.updatePanelPosition(")
+    expect(combinedSource).not.toContain("tipcClient.savePanelCustomPosition(")
+    expect(combinedSource).not.toContain("tipcClient.getPanelSize(")
+    expect(combinedSource).not.toContain("tipcClient.updatePanelSize(")
+    expect(combinedSource).not.toContain("tipcClient.getPanelMode(")
+    expect(combinedSource).not.toContain("tipcClient.savePanelModeSize(")
+    expect(combinedSource).not.toContain("tipcClient.savePanelCustomSize(")
   })
 })

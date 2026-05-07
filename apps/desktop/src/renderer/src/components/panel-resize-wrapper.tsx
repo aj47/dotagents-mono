@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { ResizeHandle } from "@renderer/components/resize-handle"
-import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
+import { rendererHandlers } from "@renderer/lib/tipc-client"
 import { getNativePanelResizeSize, isPanelSize, type PanelSize } from "./panel-resize-utils"
 
 export { getNativePanelResizeSize } from "./panel-resize-utils"
@@ -44,7 +45,7 @@ export function PanelResizeWrapper({
     // Initialize local size state from current window bounds; do not change size on mount
     const init = async () => {
       try {
-        const size = await tipcClient.getPanelSize()
+        const size = await desktopPanelClient.getPanelSize()
         if (isPanelSize(size)) {
           setCurrentSize(size)
         }
@@ -98,9 +99,11 @@ export function PanelResizeWrapper({
 
     // Update local size immediately; send IPC without awaiting to avoid resize lag.
     setCurrentSize({ width: newWidth, height: newHeight })
-    const updatePromise = tipcClient.updatePanelSize({ width: newWidth, height: newHeight }).catch((error: unknown) => {
-      console.error("Failed to update panel size:", error)
-    })
+    const updatePromise = desktopPanelClient
+      .updatePanelSize({ width: newWidth, height: newHeight })
+      .catch((error: unknown) => {
+        console.error("Failed to update panel size:", error)
+      })
     inFlightResizeUpdatesRef.current.add(updatePromise)
     void updatePromise.finally(() => {
       inFlightResizeUpdatesRef.current.delete(updatePromise)
@@ -123,7 +126,7 @@ export function PanelResizeWrapper({
       safeViewportScale,
     )
 
-    const rawMode = await tipcClient.getPanelMode().catch(() => null)
+    const rawMode = await desktopPanelClient.getPanelMode().catch(() => null)
     const mode: PanelMode = isPanelMode(rawMode) ? rawMode : fallbackMode
     let finalSize = requestedFinalSize
 
@@ -135,12 +138,12 @@ export function PanelResizeWrapper({
         await Promise.allSettled(pendingUpdates)
       }
 
-      const updatedSize = await tipcClient.updatePanelSize(requestedFinalSize)
+      const updatedSize = await desktopPanelClient.updatePanelSize(requestedFinalSize)
       finalSize = isPanelSize(updatedSize) ? updatedSize : requestedFinalSize
       setCurrentSize(finalSize)
 
       // Save the final size by mode so waveform and progress views don't override each other.
-      await tipcClient.savePanelModeSize({
+      await desktopPanelClient.savePanelModeSize({
         mode,
         width: finalSize.width,
         height: finalSize.height,
@@ -150,7 +153,7 @@ export function PanelResizeWrapper({
         // Fallback only for legacy waveform persistence. Non-waveform modes have
         // dedicated buckets and must not clobber the shared legacy size.
         if (mode === "normal") {
-          const savedSize = await tipcClient.savePanelCustomSize(finalSize)
+          const savedSize = await desktopPanelClient.savePanelCustomSize(finalSize)
           if (isPanelSize(savedSize)) {
             finalSize = savedSize
           }

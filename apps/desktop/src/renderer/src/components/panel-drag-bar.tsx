@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
 import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
 
 interface PanelDragBarProps {
@@ -43,7 +43,7 @@ export function PanelDragBar({
       }
       lastDragUpdateRef.current = now
 
-      void tipcClient.updatePanelPosition({
+      void desktopPanelClient.updatePanelPosition({
         x: newX,
         y: newY,
       })
@@ -60,7 +60,7 @@ export function PanelDragBar({
       const finalY = dragStart.windowY + deltaY
 
       // Save the final position as custom position
-      void tipcClient.savePanelCustomPosition({
+      void desktopPanelClient.savePanelCustomPosition({
         x: finalX,
         y: finalY,
       })
@@ -90,7 +90,7 @@ export function PanelDragBar({
     e.stopPropagation()
 
     // Get current window position
-    const windowPos = await tipcClient.getPanelPosition()
+    const windowPos = await desktopPanelClient.getPanelPosition()
 
     setIsDragging(true)
     lastDragUpdateRef.current = 0

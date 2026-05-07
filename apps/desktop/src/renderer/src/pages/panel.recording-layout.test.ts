@@ -191,7 +191,7 @@ describe("panel recording layout", () => {
     expect(resizeEndSection).toContain('if (mode === "normal")')
     expect(resizeEndSection).toContain("let finalSize = requestedFinalSize")
     expect(resizeEndSection).toContain("const mode: PanelMode = isPanelMode(rawMode) ? rawMode : fallbackMode")
-    expect(resizeEndSection).toContain("await tipcClient.savePanelCustomSize(finalSize)")
+    expect(resizeEndSection).toContain("await desktopPanelClient.savePanelCustomSize(finalSize)")
     expect(resizeEndSection).toContain("dedicated buckets and must not clobber the shared legacy size")
   })
 

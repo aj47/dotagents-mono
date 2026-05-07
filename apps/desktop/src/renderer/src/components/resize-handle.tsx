@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
 
 interface ResizeHandleProps {
   className?: string
@@ -127,7 +127,7 @@ export function ResizeHandle({
 
     try {
       // Get current window size
-      const windowSize = await tipcClient.getPanelSize()
+      const windowSize = await desktopPanelClient.getPanelSize()
       if (!isPanelSize(windowSize)) {
         console.error("Invalid window size response:", windowSize)
         return
