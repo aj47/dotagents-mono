@@ -5,12 +5,18 @@ const clientSource = readFileSync(new URL("./desktop-agent-sessions-client.ts", 
 const activeAgentsSidebarSource = readFileSync(new URL("../components/active-agents-sidebar.tsx", import.meta.url), "utf8")
 const appLayoutSource = readFileSync(new URL("../components/app-layout.tsx", import.meta.url), "utf8")
 const pastSessionsDialogSource = readFileSync(new URL("../components/past-sessions-dialog.tsx", import.meta.url), "utf8")
+const agentProcessingViewSource = readFileSync(new URL("../components/agent-processing-view.tsx", import.meta.url), "utf8")
 const sessionsPageSource = readFileSync(new URL("../pages/sessions.tsx", import.meta.url), "utf8")
 
 describe("desktop agent sessions renderer client", () => {
   it("centralizes agent-session list and cleanup IPC channels", () => {
     expect(clientSource).toContain("tipcClient.getAgentSessions()")
     expect(clientSource).toContain("tipcClient.clearInactiveSessions()")
+    expect(clientSource).toContain("tipcClient.stopAgentSession({ sessionId })")
+    expect(clientSource).toContain("tipcClient.clearAgentSessionProgress({ sessionId })")
+    expect(clientSource).toContain("tipcClient.focusAgentSession({ sessionId })")
+    expect(clientSource).toContain('tipcClient.setPanelMode({ mode: "agent" })')
+    expect(clientSource).toContain("tipcClient.showPanelWindow({})")
     expect(clientSource).not.toContain("window.electron.ipcRenderer")
   })
 
@@ -19,6 +25,7 @@ describe("desktop agent sessions renderer client", () => {
       activeAgentsSidebarSource,
       appLayoutSource,
       pastSessionsDialogSource,
+      agentProcessingViewSource,
       sessionsPageSource,
     ].join("\n")
 
@@ -27,7 +34,15 @@ describe("desktop agent sessions renderer client", () => {
     expect(pastSessionsDialogSource).toContain("desktopAgentSessionsClient.getAgentSessions()")
     expect(sessionsPageSource).toContain("desktopAgentSessionsClient.getAgentSessions()")
     expect(sessionsPageSource).toContain("desktopAgentSessionsClient.clearInactiveSessions()")
+    expect(activeAgentsSidebarSource).toContain("desktopAgentSessionsClient.stopAgentSession(sessionId)")
+    expect(activeAgentsSidebarSource).toContain("desktopAgentSessionsClient.clearAgentSessionProgress(sessionId)")
+    expect(agentProcessingViewSource).toContain("desktopAgentSessionsClient.stopAgentSession(agentProgress.sessionId)")
+    expect(sessionsPageSource).toContain("desktopAgentSessionsClient.focusAgentSessionInPanel(sessionId)")
+    expect(sessionsPageSource).toContain("desktopAgentSessionsClient.clearAgentSessionProgress(sessionId)")
     expect(combinedSource).not.toContain("tipcClient.getAgentSessions(")
     expect(combinedSource).not.toContain("tipcClient.clearInactiveSessions(")
+    expect(combinedSource).not.toContain("tipcClient.stopAgentSession(")
+    expect(combinedSource).not.toContain("tipcClient.clearAgentSessionProgress(")
+    expect(combinedSource).not.toContain("tipcClient.focusAgentSession(")
   })
 })

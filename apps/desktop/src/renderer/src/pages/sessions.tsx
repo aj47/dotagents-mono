@@ -219,9 +219,7 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   const handleFocusSession = useCallback(async () => {
     setFocusedSessionId(sessionId)
     try {
-      await tipcClient.focusAgentSession({ sessionId })
-      await tipcClient.setPanelMode({ mode: "agent" })
-      await tipcClient.showPanelWindow({})
+      await desktopAgentSessionsClient.focusAgentSessionInPanel(sessionId)
     } catch (error) {
       console.error("Failed to show panel window:", error)
     }
@@ -235,7 +233,7 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
       conversationTitle: currentProgress?.conversationHistory?.[0]?.content?.substring(0, 50),
       conversationId: currentProgress?.conversationId,
     })
-    await tipcClient.clearAgentSessionProgress({ sessionId })
+    await desktopAgentSessionsClient.clearAgentSessionProgress(sessionId)
     queryClient.invalidateQueries({ queryKey: ["agentSessions"] })
   }, [queryClient, sessionId])
 

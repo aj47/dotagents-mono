@@ -6,7 +6,7 @@ import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { Button } from "@renderer/components/ui/button"
 import { X, AlertTriangle } from "lucide-react"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 
 interface AgentProcessingViewProps {
   agentProgress: AgentProgressUpdate | null
@@ -37,7 +37,7 @@ export function AgentProcessingView({
     setIsKilling(true)
     try {
       if (agentProgress?.sessionId) {
-        await tipcClient.stopAgentSession({ sessionId: agentProgress.sessionId })
+        await desktopAgentSessionsClient.stopAgentSession(agentProgress.sessionId)
       }
       setShowKillConfirmation(false)
     } catch (error) {

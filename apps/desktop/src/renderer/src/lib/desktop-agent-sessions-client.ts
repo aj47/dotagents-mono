@@ -22,6 +22,11 @@ export interface DesktopAgentSessionsResponse {
   recentSessions?: DesktopAgentSessionRecord[]
 }
 
+export interface DesktopStopAgentSessionResult {
+  success?: boolean
+  error?: string
+}
+
 export const desktopAgentSessionsClient = {
   getAgentSessions(): Promise<DesktopAgentSessionsResponse> {
     return tipcClient.getAgentSessions() as Promise<DesktopAgentSessionsResponse>
@@ -29,5 +34,19 @@ export const desktopAgentSessionsClient = {
 
   clearInactiveSessions(): Promise<void> {
     return tipcClient.clearInactiveSessions() as Promise<void>
+  },
+
+  stopAgentSession(sessionId: string): Promise<DesktopStopAgentSessionResult> {
+    return tipcClient.stopAgentSession({ sessionId }) as Promise<DesktopStopAgentSessionResult>
+  },
+
+  clearAgentSessionProgress(sessionId: string): Promise<void> {
+    return tipcClient.clearAgentSessionProgress({ sessionId }) as Promise<void>
+  },
+
+  async focusAgentSessionInPanel(sessionId: string): Promise<void> {
+    await tipcClient.focusAgentSession({ sessionId })
+    await tipcClient.setPanelMode({ mode: "agent" })
+    await tipcClient.showPanelWindow({})
   },
 }

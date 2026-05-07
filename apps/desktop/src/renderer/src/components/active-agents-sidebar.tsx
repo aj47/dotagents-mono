@@ -698,7 +698,7 @@ export function ActiveAgentsSidebar({
     const sessionProgress = agentProgressById.get(sessionId)
     if (!sessionProgress?.isComplete) {
       try {
-        await tipcClient.stopAgentSession({ sessionId })
+        await desktopAgentSessionsClient.stopAgentSession(sessionId)
       } catch (error) {
         console.error("Failed to stop session:", error)
       }
@@ -707,7 +707,7 @@ export function ActiveAgentsSidebar({
       setFocusedSessionId(null)
     }
     try {
-      await tipcClient.clearAgentSessionProgress({ sessionId })
+      await desktopAgentSessionsClient.clearAgentSessionProgress(sessionId)
     } catch (error) {
       console.error("Failed to dismiss session:", error)
     }
