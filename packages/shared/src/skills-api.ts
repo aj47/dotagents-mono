@@ -69,6 +69,63 @@ export interface SkillActionService {
   toggleProfileSkill(profileId: string, skillId: string, allSkillIds: string[]): SkillActionProfileLike | null | undefined
 }
 
+export interface SkillActionSkillsServiceLike<TSkill extends SkillApiLike = SkillApiLike> {
+  getSkills(): TSkill[]
+  getSkill(id: string): TSkill | undefined
+  createSkill(name: string, description: string, instructions: string): TSkill
+  importSkillFromMarkdown(content: string): TSkill
+  importSkillFromGitHub?(repoIdentifier: string): Promise<{ imported: TSkill[]; errors: string[] }>
+  exportSkillToMarkdown(id: string): string
+  updateSkill(
+    id: string,
+    updates: Partial<Pick<SkillApiLike, "name" | "description" | "instructions">>,
+  ): TSkill
+  deleteSkill(id: string): boolean
+}
+
+export interface SkillActionProfileServiceLike<TProfile extends SkillActionProfileLike = SkillActionProfileLike> {
+  getCurrentProfile(): TProfile | null | undefined
+  enableSkillForCurrentProfile?(skillId: string): TProfile | null | undefined
+  toggleProfileSkill(profileId: string, skillId: string, allSkillIds: string[]): TProfile | null | undefined
+}
+
+export interface SkillActionServiceAdapterOptions<
+  TSkill extends SkillApiLike = SkillApiLike,
+  TProfile extends SkillActionProfileLike = SkillActionProfileLike,
+> {
+  skills: SkillActionSkillsServiceLike<TSkill>
+  profile: SkillActionProfileServiceLike<TProfile>
+}
+
+export function createSkillActionService<
+  TSkill extends SkillApiLike = SkillApiLike,
+  TProfile extends SkillActionProfileLike = SkillActionProfileLike,
+>(
+  options: SkillActionServiceAdapterOptions<TSkill, TProfile>,
+): SkillActionService {
+  const { skills, profile } = options
+  const service: SkillActionService = {
+    getSkills: () => skills.getSkills(),
+    getSkill: (id) => skills.getSkill(id),
+    createSkill: (name, description, instructions) => skills.createSkill(name, description, instructions),
+    importSkillFromMarkdown: (content) => skills.importSkillFromMarkdown(content),
+    exportSkillToMarkdown: (id) => skills.exportSkillToMarkdown(id),
+    updateSkill: (id, updates) => skills.updateSkill(id, updates),
+    deleteSkill: (id) => skills.deleteSkill(id),
+    getCurrentProfile: () => profile.getCurrentProfile(),
+    enableSkillForCurrentProfile: (skillId) => profile.enableSkillForCurrentProfile?.(skillId),
+    toggleProfileSkill: (profileId, skillId, allSkillIds) =>
+      profile.toggleProfileSkill(profileId, skillId, allSkillIds),
+  }
+
+  const importSkillFromGitHub = skills.importSkillFromGitHub
+  if (importSkillFromGitHub) {
+    service.importSkillFromGitHub = (repoIdentifier) => importSkillFromGitHub.call(skills, repoIdentifier)
+  }
+
+  return service
+}
+
 export interface SkillActionOptions {
   service: SkillActionService
   diagnostics: SkillActionDiagnostics

@@ -59,6 +59,7 @@ import {
   type SettingsActionOptions,
 } from "@dotagents/shared/settings-api-client"
 import {
+  createSkillActionService,
   createSkillRouteActions,
   type SkillActionOptions,
 } from "@dotagents/shared/skills-api"
@@ -400,20 +401,10 @@ function cleanupDeletedSkillReferences(validSkillIds: string[]): void {
 }
 
 const skillActionOptions: SkillActionOptions = {
-  service: {
-    getSkills: () => skillsService.getSkills(),
-    getSkill: (id) => skillsService.getSkill(id),
-    createSkill: (name, description, instructions) => skillsService.createSkill(name, description, instructions),
-    importSkillFromMarkdown: (content) => skillsService.importSkillFromMarkdown(content),
-    importSkillFromGitHub: (repoIdentifier) => skillsService.importSkillFromGitHub(repoIdentifier),
-    exportSkillToMarkdown: (id) => skillsService.exportSkillToMarkdown(id),
-    updateSkill: (id, updates) => skillsService.updateSkill(id, updates),
-    deleteSkill: (id) => skillsService.deleteSkill(id),
-    getCurrentProfile: () => agentProfileService.getCurrentProfile(),
-    enableSkillForCurrentProfile: (skillId) => agentProfileService.enableSkillForCurrentProfile(skillId),
-    toggleProfileSkill: (profileId, skillId, allSkillIds) =>
-      agentProfileService.toggleProfileSkill(profileId, skillId, allSkillIds),
-  },
+  service: createSkillActionService({
+    skills: skillsService,
+    profile: agentProfileService,
+  }),
   diagnostics: diagnosticsService,
   onSkillDeleted: ({ availableSkillIds }) => {
     cleanupDeletedSkillReferences(availableSkillIds)

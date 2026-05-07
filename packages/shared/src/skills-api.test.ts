@@ -11,6 +11,7 @@ import {
   buildSkillsResponse,
   buildSkillToggleResponse,
   createSkillAction,
+  createSkillActionService,
   createSkillIdFromName,
   createSkillRouteActions,
   deleteSkillAction,
@@ -66,7 +67,7 @@ describe("skills API helpers", () => {
     },
   ]
 
-  function createSkillActionService(overrides: Partial<SkillActionService> = {}): SkillActionService {
+  function createTestSkillActionService(overrides: Partial<SkillActionService> = {}): SkillActionService {
     return {
       getSkills: () => skills,
       getSkill: (id: string) => skills.find((skill) => skill.id === id),
@@ -229,6 +230,98 @@ describe("skills API helpers", () => {
     })
   })
 
+  it("creates skill action services from skills and profile adapters", async () => {
+    const profile = {
+      id: "profile-1",
+      skillsConfig: {
+        allSkillsDisabledByDefault: true,
+        enabledSkillIds: ["research"],
+      },
+    }
+    const created = {
+      id: "created",
+      name: "Created",
+      description: "New skill",
+      instructions: "Do it",
+      source: "local" as const,
+      createdAt: 5,
+      updatedAt: 5,
+    }
+    const updated = {
+      ...skills[0],
+      description: "Updated",
+      updatedAt: 6,
+    }
+    const calls: string[] = []
+    const service = createSkillActionService({
+      skills: {
+        getSkills: () => skills,
+        getSkill: (id) => skills.find((skill) => skill.id === id),
+        createSkill: (name, description, instructions) => {
+          calls.push(`create:${name}:${description}:${instructions}`)
+          return created
+        },
+        importSkillFromMarkdown: (content) => {
+          calls.push(`markdown:${content}`)
+          return created
+        },
+        importSkillFromGitHub: async (repoIdentifier) => {
+          calls.push(`github:${repoIdentifier}`)
+          return { imported: [created], errors: ["skipped duplicate"] }
+        },
+        exportSkillToMarkdown: (id) => {
+          calls.push(`export:${id}`)
+          return "---\nname: Research\n---\nUse sources"
+        },
+        updateSkill: (id, updates) => {
+          calls.push(`update:${id}:${updates.description}`)
+          return updated
+        },
+        deleteSkill: (id) => {
+          calls.push(`delete:${id}`)
+          return id === "research"
+        },
+      },
+      profile: {
+        getCurrentProfile: () => profile,
+        enableSkillForCurrentProfile: (skillId) => {
+          calls.push(`enable:${skillId}`)
+          return profile
+        },
+        toggleProfileSkill: (profileId, skillId, allSkillIds) => {
+          calls.push(`toggle:${profileId}:${skillId}:${allSkillIds.join(",")}`)
+          return profile
+        },
+      },
+    })
+
+    expect(service.getSkills()).toBe(skills)
+    expect(service.getSkill("research")).toBe(skills[0])
+    expect(service.createSkill("Created", "New skill", "Do it")).toBe(created)
+    expect(service.importSkillFromMarkdown("markdown")).toBe(created)
+    if (!service.importSkillFromGitHub) throw new Error("expected GitHub import adapter")
+    await expect(service.importSkillFromGitHub("owner/repo")).resolves.toEqual({
+      imported: [created],
+      errors: ["skipped duplicate"],
+    })
+    expect(service.exportSkillToMarkdown("research")).toBe("---\nname: Research\n---\nUse sources")
+    expect(service.updateSkill("research", { description: "Updated" })).toBe(updated)
+    expect(service.deleteSkill("research")).toBe(true)
+    expect(service.getCurrentProfile()).toBe(profile)
+    expect(service.enableSkillForCurrentProfile?.("created")).toBe(profile)
+    expect(service.toggleProfileSkill("profile-1", "research", ["research", "writing"])).toBe(profile)
+    expect(calls).toEqual([
+      "create:Created:New skill:Do it",
+      "markdown:markdown",
+      "github:owner/repo",
+      "export:research",
+      "update:research:Updated",
+      "delete:research",
+      "enable:created",
+      "toggle:profile-1:research:research,writing",
+    ])
+  })
+
   it("runs shared skill list and toggle actions through service adapters", () => {
     const profile = {
       id: "profile-1",
@@ -237,7 +330,7 @@ describe("skills API helpers", () => {
         enabledSkillIds: ["writing"],
       },
     }
-    const service = createSkillActionService({
+    const service = createTestSkillActionService({
       getCurrentProfile: () => profile,
       toggleProfileSkill: (profileId: string, skillId: string, allSkillIds: string[]) => {
         expect(profileId).toBe("profile-1")
@@ -309,7 +402,7 @@ describe("skills API helpers", () => {
       updatedAt: 6,
     }
     const deletedContexts: SkillDeletedContext[] = []
-    const service = createSkillActionService({
+    const service = createTestSkillActionService({
       getCurrentProfile: () => profile,
       createSkill: (name: string, description: string, instructions: string) => {
         expect({ name, description, instructions }).toEqual({
@@ -443,7 +536,7 @@ describe("skills API helpers", () => {
   })
 
   it("returns shared skill action validation errors before mutating profile state", async () => {
-    const service = createSkillActionService({
+    const service = createTestSkillActionService({
       getCurrentProfile: () => null,
       deleteSkill: () => false,
       toggleProfileSkill: () => {
@@ -521,7 +614,7 @@ describe("skills API helpers", () => {
   it("logs shared skill action failures and returns route errors", () => {
     const error = new Error("toggle failed")
     const loggedErrors: unknown[] = []
-    const service = createSkillActionService({
+    const service = createTestSkillActionService({
       getCurrentProfile: () => ({ id: "profile-1" }),
       toggleProfileSkill: () => {
         throw error
