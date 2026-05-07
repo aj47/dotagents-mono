@@ -38,6 +38,7 @@ import {
   createInjectedMcpToolRouteActions,
   createMcpConfigActionService,
   createMcpRouteActions,
+  createOperatorMcpReadActionService,
   createOperatorMcpRouteActions,
   formatMcpMaxIterationsValidationMessage,
   getMcpServersAction,
@@ -556,6 +557,53 @@ describe("MCP API helpers", () => {
     })
 
     expect(emptyService.getMcpConfig()).toEqual({ mcpServers: {} })
+  })
+
+  it("creates operator MCP read action services from MCP adapters", () => {
+    const calls: string[] = []
+    const service = createOperatorMcpReadActionService({
+      getServerStatus: () => {
+        calls.push("status")
+        return {
+          filesystem: {
+            connected: true,
+            toolCount: 1,
+          },
+        }
+      },
+      getServerLogs: (serverName) => {
+        calls.push(`logs:${serverName}`)
+        return [{ timestamp: 1, message: "ready" }]
+      },
+      getDetailedToolList: () => {
+        calls.push("tools")
+        return [{
+          name: "filesystem:read",
+          description: "Read files",
+          sourceKind: "mcp",
+          sourceName: "filesystem",
+          enabled: true,
+          serverEnabled: true,
+        }]
+      },
+    })
+
+    expect(service.getServerStatus()).toEqual({
+      filesystem: {
+        connected: true,
+        toolCount: 1,
+      },
+    })
+    expect(service.getServerLogs("filesystem")).toEqual([{ timestamp: 1, message: "ready" }])
+    expect(service.getDetailedToolList()).toEqual([{
+      name: "filesystem:read",
+      description: "Read files",
+      sourceKind: "mcp",
+      sourceName: "filesystem",
+      enabled: true,
+      serverEnabled: true,
+    }])
+    expect(calls).toEqual(["status", "logs:filesystem", "tools"])
   })
 
   it("creates mobile MCP route actions that delegate through service adapters", () => {

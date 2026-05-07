@@ -2155,8 +2155,12 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "restartOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)",
     )
+    expect(operatorRouteDesktopActionsSource).toContain("service: createOperatorMcpReadActionService({")
     expect(operatorRouteDesktopActionsSource).toContain("getServerLogs: (serverName) => mcpService.getServerLogs(serverName)")
     expect(operatorRouteDesktopActionsSource).toContain("getDetailedToolList: () => mcpService.getDetailedToolList()")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "const operatorMcpReadActionOptions: OperatorMcpReadActionOptions = {\n  diagnostics: {\n    logError: (...args) => diagnosticsService.logError(...args),\n    getErrorMessage,\n  },\n  service: {\n    getServerStatus: () => mcpService.getServerStatus(),",
+    )
     expect(operatorRouteDesktopActionsSource).toContain("clearServerLogs: (serverName) => mcpService.clearServerLogs(serverName)")
     expect(operatorRouteDesktopActionsSource).toContain("setToolEnabled: (toolName, enabled) => mcpService.setToolEnabled(toolName, enabled)")
     expect(operatorRouteDesktopActionsSource).toContain("getServerConfig: (serverName) => configStore.get().mcpConfig?.mcpServers?.[serverName]")
@@ -2167,6 +2171,9 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain("export function getOperatorMcpStatusAction(")
     expect(sharedMcpApiSource).toContain("export function getOperatorMcpServerLogsAction(")
     expect(sharedMcpApiSource).toContain("export function getOperatorMcpToolsAction(")
+    expect(sharedMcpApiSource).toContain("export function createOperatorMcpReadActionService")
+    expect(sharedMcpApiSource).toContain("getServerLogs: (serverName) => options.getServerLogs(serverName)")
+    expect(sharedMcpApiSource).toContain("getDetailedToolList: () => options.getDetailedToolList()")
     expect(sharedMcpApiSource).toContain("export function clearOperatorMcpServerLogsAction<")
     expect(sharedMcpApiSource).toContain("export function setOperatorMcpToolEnabledAction<")
     expect(sharedMcpApiSource).toContain("export async function testOperatorMcpServerAction<")

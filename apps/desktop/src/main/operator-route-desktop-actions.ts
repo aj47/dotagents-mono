@@ -15,6 +15,7 @@ import {
   type ModelPresetActionOptions,
 } from "@dotagents/shared/model-presets"
 import {
+  createOperatorMcpReadActionService,
   createOperatorMcpRouteActions,
   type OperatorMcpLifecycleActionOptions,
   type OperatorMcpMutationActionOptions,
@@ -206,11 +207,11 @@ const operatorMcpReadActionOptions: OperatorMcpReadActionOptions = {
     logError: (...args) => diagnosticsService.logError(...args),
     getErrorMessage,
   },
-  service: {
+  service: createOperatorMcpReadActionService({
     getServerStatus: () => mcpService.getServerStatus(),
     getServerLogs: (serverName) => mcpService.getServerLogs(serverName),
     getDetailedToolList: () => mcpService.getDetailedToolList(),
-  },
+  }),
 }
 
 const operatorMcpMutationActionOptions: OperatorMcpMutationActionOptions<OperatorActionAuditContext> = {

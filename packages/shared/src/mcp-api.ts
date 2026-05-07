@@ -336,6 +336,22 @@ export interface OperatorMcpReadActionService {
   getDetailedToolList(): McpToolSummaryLike[]
 }
 
+export interface OperatorMcpReadActionServiceOptions {
+  getServerStatus(): McpServerStatusMapLike
+  getServerLogs(serverName: string): McpServerLogEntryLike[]
+  getDetailedToolList(): McpToolSummaryLike[]
+}
+
+export function createOperatorMcpReadActionService(
+  options: OperatorMcpReadActionServiceOptions,
+): OperatorMcpReadActionService {
+  return {
+    getServerStatus: () => options.getServerStatus(),
+    getServerLogs: (serverName) => options.getServerLogs(serverName),
+    getDetailedToolList: () => options.getDetailedToolList(),
+  }
+}
+
 export interface OperatorMcpReadActionDiagnostics {
   logError(source: string, message: string, error: unknown): void
   getErrorMessage(error: unknown): string
