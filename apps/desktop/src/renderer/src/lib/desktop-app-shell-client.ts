@@ -17,6 +17,15 @@ export interface DesktopDisplayErrorRequest {
   message: string
 }
 
+export interface DesktopDebugFlags {
+  llm: boolean
+  tools: boolean
+  keybinds: boolean
+  app: boolean
+  ui: boolean
+  all: boolean
+}
+
 export const desktopAppShellClient = {
   showContextMenu(request: DesktopContextMenuRequest): Promise<void> {
     return tipcClient.showContextMenu(request) as Promise<void>
@@ -28,5 +37,13 @@ export const desktopAppShellClient = {
 
   displayError(request: DesktopDisplayErrorRequest): Promise<void> {
     return tipcClient.displayError(request) as Promise<void>
+  },
+
+  writeClipboard(text: string): Promise<void> {
+    return tipcClient.writeClipboard({ text }) as Promise<void>
+  },
+
+  getDebugFlags(): Promise<DesktopDebugFlags> {
+    return tipcClient.getDebugFlags() as Promise<DesktopDebugFlags>
   },
 }

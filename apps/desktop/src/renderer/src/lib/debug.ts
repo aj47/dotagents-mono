@@ -1,11 +1,9 @@
-interface DebugFlags {
-  llm: boolean
-  tools: boolean
-  keybinds: boolean
-  app: boolean
-  ui: boolean
-  all: boolean
-}
+import {
+  desktopAppShellClient,
+  type DesktopDebugFlags,
+} from "@renderer/lib/desktop-app-shell-client"
+
+type DebugFlags = DesktopDebugFlags
 
 let cachedFlags: DebugFlags | null = null
 let flagsFetchPromise: Promise<DebugFlags> | null = null
@@ -14,8 +12,7 @@ export async function initDebugFlags(): Promise<void> {
   if (cachedFlags) return
 
   try {
-    const { tipcClient } = await import('./tipc-client')
-    cachedFlags = await tipcClient.getDebugFlags()
+    cachedFlags = await desktopAppShellClient.getDebugFlags()
   } catch (error) {
     console.warn('[DEBUG] Failed to fetch debug flags from main, using fallback:', error)
     cachedFlags = {
@@ -107,4 +104,3 @@ export function logExpand(component: string, event: string, data?: any) {
 export function logRender(componentName: string, reason?: string, props?: any) {
   logUI(`[RENDER] ${componentName}`, reason ? `(${reason})` : '', props)
 }
-

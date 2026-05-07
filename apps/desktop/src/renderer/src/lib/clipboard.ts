@@ -1,4 +1,4 @@
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopAppShellClient } from "@renderer/lib/desktop-app-shell-client"
 
 /**
  * Clipboard writes via the renderer API can fail on some Wayland setups.
@@ -17,9 +17,8 @@ export async function copyTextToClipboard(text: string): Promise<void> {
   }
 
   try {
-    await tipcClient.writeClipboard({ text })
+    await desktopAppShellClient.writeClipboard(text)
   } catch (error) {
     throw error ?? rendererError ?? new Error("Failed to copy text to clipboard")
   }
 }
-
