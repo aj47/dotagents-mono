@@ -55,6 +55,7 @@ import {
 } from "@dotagents/shared/mcp-api"
 import { getMaskedRemoteServerApiKey } from "@dotagents/shared/remote-pairing"
 import {
+  createTtsActionService,
   createTtsRouteActions,
   type TtsActionOptions,
 } from "@dotagents/shared/tts-api"
@@ -154,10 +155,12 @@ const agentSessionCandidateActionOptions: AgentSessionCandidateActionOptions = {
 
 const agentSessionCandidateRouteActions = createAgentSessionCandidateRouteActions(agentSessionCandidateActionOptions)
 
-const ttsActionOptions: TtsActionOptions<Config> = {
-  getConfig: () => configStore.get(),
-  generateSpeech: generateTTS,
-  encodeAudioBody: (audio) => Buffer.from(audio),
+const ttsActionOptions: TtsActionOptions = {
+  service: createTtsActionService<Config>({
+    getConfig: () => configStore.get(),
+    generateSpeech: generateTTS,
+    encodeAudioBody: (audio) => Buffer.from(audio),
+  }),
   diagnostics: diagnosticsService,
 }
 

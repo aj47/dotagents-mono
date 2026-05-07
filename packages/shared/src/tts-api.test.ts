@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   TTS_SPEAK_MAX_TEXT_BYTES,
+  createTtsActionService,
   createTtsRouteActions,
   generateGeminiTTS,
   generateGroqTTS,
@@ -103,27 +104,64 @@ describe('getTtsSpeakFailureStatusCode', () => {
 });
 
 describe('synthesizeSpeechAction', () => {
+  it('creates TTS action services from generation adapters', async () => {
+    const config = { ttsProviderId: 'custom' };
+    const encodedBody = { encoded: true };
+    const calls: unknown[] = [];
+    const service = createTtsActionService({
+      getConfig: () => config,
+      generateSpeech: async (request, actionConfig) => {
+        calls.push({ request, actionConfig });
+        return {
+          audio: arrayBufferFromBytes([9, 8, 7]),
+          mimeType: 'audio/wav',
+          processedText: request.text,
+          provider: request.providerId ?? 'fallback',
+        };
+      },
+      encodeAudioBody: (audio) => {
+        expect(Array.from(new Uint8Array(audio))).toEqual([9, 8, 7]);
+        return encodedBody;
+      },
+    });
+
+    const output = await service.generateSpeech({ text: 'Hello', providerId: 'edge' });
+
+    expect(output).toMatchObject({
+      mimeType: 'audio/wav',
+      provider: 'edge',
+    });
+    expect(service.encodeAudioBody(output.audio)).toBe(encodedBody);
+    expect(calls).toEqual([{
+      request: { text: 'Hello', providerId: 'edge' },
+      actionConfig: config,
+    }]);
+  });
+
   it('uses shared parsing and adapters to produce TTS route responses', async () => {
     const config = { ttsProviderId: 'custom' };
     const encodedBody = { encoded: true };
     const calls: unknown[] = [];
+    const service = createTtsActionService({
+      getConfig: () => config,
+      generateSpeech: async (request, actionConfig) => {
+        calls.push({ request, actionConfig });
+        return {
+          audio: arrayBufferFromBytes([1, 2, 3]),
+          mimeType: 'audio/wav',
+          processedText: 'Hello.',
+          provider: request.providerId ?? 'fallback',
+        };
+      },
+      encodeAudioBody: (audio) => {
+        expect(Array.from(new Uint8Array(audio))).toEqual([1, 2, 3]);
+        return encodedBody;
+      },
+    });
     const result = await synthesizeSpeechAction(
       { text: 'Hello', providerId: 'edge', voice: 'nova', speed: 1.2 },
       {
-        getConfig: () => config,
-        generateSpeech: async (request, actionConfig) => {
-          calls.push({ request, actionConfig });
-          return {
-            audio: arrayBufferFromBytes([1, 2, 3]),
-            mimeType: 'audio/wav',
-            processedText: 'Hello.',
-            provider: request.providerId ?? 'fallback',
-          };
-        },
-        encodeAudioBody: (audio) => {
-          expect(Array.from(new Uint8Array(audio))).toEqual([1, 2, 3]);
-          return encodedBody;
-        },
+        service,
         diagnostics: {
           logError: () => {
             throw new Error('unexpected diagnostics log');
@@ -156,12 +194,13 @@ describe('synthesizeSpeechAction', () => {
     const result = await synthesizeSpeechAction(
       { text: '' },
       {
-        getConfig: () => ({}),
-        generateSpeech: async () => {
-          throw new Error('unexpected generation');
-        },
-        encodeAudioBody: () => {
-          throw new Error('unexpected encoding');
+        service: {
+          generateSpeech: async () => {
+            throw new Error('unexpected generation');
+          },
+          encodeAudioBody: () => {
+            throw new Error('unexpected encoding');
+          },
         },
         diagnostics: {
           logError: () => {
@@ -183,12 +222,13 @@ describe('synthesizeSpeechAction', () => {
     const result = await synthesizeSpeechAction(
       { text: 'Hello' },
       {
-        getConfig: () => ({}),
-        generateSpeech: async () => {
-          throw error;
-        },
-        encodeAudioBody: () => {
-          throw new Error('unexpected encoding');
+        service: {
+          generateSpeech: async () => {
+            throw error;
+          },
+          encodeAudioBody: () => {
+            throw new Error('unexpected encoding');
+          },
         },
         diagnostics: {
           logError: (source, message, caughtError) => {
@@ -213,7 +253,7 @@ describe('synthesizeSpeechAction', () => {
     const config = { ttsProviderId: 'custom' };
     const encodedBody = { encoded: true };
     const calls: unknown[] = [];
-    const routeActions = createTtsRouteActions({
+    const service = createTtsActionService({
       getConfig: () => config,
       generateSpeech: async (request, actionConfig) => {
         calls.push({ request, actionConfig });
@@ -228,6 +268,9 @@ describe('synthesizeSpeechAction', () => {
         expect(Array.from(new Uint8Array(audio))).toEqual([4, 5, 6]);
         return encodedBody;
       },
+    });
+    const routeActions = createTtsRouteActions({
+      service,
       diagnostics: {
         logError: () => {
           throw new Error('unexpected diagnostics log');

@@ -131,10 +131,28 @@ export interface TtsActionDiagnostics {
   logError(source: string, message: string, error: unknown): void;
 }
 
-export interface TtsActionOptions<TConfig extends GenerateTtsConfigLike = GenerateTtsConfigLike> {
+export interface TtsActionService {
+  generateSpeech(request: TtsSpeakRequest): Promise<GenerateTtsOutput>;
+  encodeAudioBody(audio: ArrayBuffer): unknown;
+}
+
+export interface TtsActionServiceOptions<TConfig extends GenerateTtsConfigLike = GenerateTtsConfigLike> {
   getConfig(): TConfig;
   generateSpeech(request: TtsSpeakRequest, config: TConfig): Promise<GenerateTtsOutput>;
   encodeAudioBody(audio: ArrayBuffer): unknown;
+}
+
+export function createTtsActionService<TConfig extends GenerateTtsConfigLike>(
+  options: TtsActionServiceOptions<TConfig>,
+): TtsActionService {
+  return {
+    generateSpeech: (request) => options.generateSpeech(request, options.getConfig()),
+    encodeAudioBody: (audio) => options.encodeAudioBody(audio),
+  };
+}
+
+export interface TtsActionOptions {
+  service: TtsActionService;
   diagnostics: TtsActionDiagnostics;
 }
 
@@ -216,9 +234,9 @@ function getUnknownErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-export async function synthesizeSpeechAction<TConfig extends GenerateTtsConfigLike>(
+export async function synthesizeSpeechAction(
   body: unknown,
-  options: TtsActionOptions<TConfig>,
+  options: TtsActionOptions,
 ): Promise<TtsActionResult> {
   try {
     const parsedRequest = parseTtsSpeakRequestBody(body);
@@ -226,14 +244,14 @@ export async function synthesizeSpeechAction<TConfig extends GenerateTtsConfigLi
       return ttsActionError(parsedRequest.statusCode, parsedRequest.error);
     }
 
-    const result = await options.generateSpeech(parsedRequest.request, options.getConfig());
+    const result = await options.service.generateSpeech(parsedRequest.request);
     return {
       statusCode: 200,
       headers: {
         'Content-Type': result.mimeType,
         'X-TTS-Provider': result.provider,
       },
-      body: options.encodeAudioBody(result.audio),
+      body: options.service.encodeAudioBody(result.audio),
     };
   } catch (caughtError) {
     options.diagnostics.logError('tts-actions', 'TTS request failed', caughtError);
@@ -242,9 +260,7 @@ export async function synthesizeSpeechAction<TConfig extends GenerateTtsConfigLi
   }
 }
 
-export function createTtsRouteActions<TConfig extends GenerateTtsConfigLike>(
-  options: TtsActionOptions<TConfig>,
-): TtsRouteActions {
+export function createTtsRouteActions(options: TtsActionOptions): TtsRouteActions {
   return {
     synthesizeSpeech: (body) => synthesizeSpeechAction(body, options),
   };
