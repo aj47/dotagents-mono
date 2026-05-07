@@ -31,6 +31,7 @@ import {
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
   LANGFUSE_CREDENTIAL_FIELD_METADATA,
+  LOCAL_TRACE_LOGGING_SETTING_METADATA,
   type LangfuseDraftKey,
 } from "@dotagents/shared/observability-config"
 import {
@@ -1418,8 +1419,8 @@ export function Component() {
           <Control
             label={(
               <ControlLabel
-                label="Local trace logging"
-                tooltip="Write each agent session trace to its own local JSONL file on this device. Independent of Langfuse Cloud."
+                label={LOCAL_TRACE_LOGGING_SETTING_METADATA.label}
+                tooltip={LOCAL_TRACE_LOGGING_SETTING_METADATA.tooltip}
               />
             )}
             className="px-3"

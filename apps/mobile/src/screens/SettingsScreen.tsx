@@ -136,6 +136,8 @@ import {
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
   LANGFUSE_CREDENTIAL_FIELD_METADATA,
+  LOCAL_TRACE_LOG_PATH_FIELD_METADATA,
+  LOCAL_TRACE_LOGGING_SETTING_METADATA,
 } from '@dotagents/shared/observability-config';
 import { getLocalSpeechModelLabel, getLocalTtsSpeechModelProviderId } from '@dotagents/shared/local-speech-models';
 import {
@@ -4563,7 +4565,7 @@ export default function SettingsScreen({ navigation }: any) {
             {remoteSettings && (
               <CollapsibleSection id="langfuse" title="Langfuse">
                 <View style={styles.row}>
-                  <Text style={styles.label}>Local trace logging</Text>
+                  <Text style={styles.label}>{LOCAL_TRACE_LOGGING_SETTING_METADATA.label}</Text>
                   <Switch
                     value={remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('localTraceLoggingEnabled', v)}
@@ -4572,22 +4574,22 @@ export default function SettingsScreen({ navigation }: any) {
                   />
                 </View>
                 <Text style={styles.helperText}>
-                  Write agent session traces to JSONL files on the desktop machine.
+                  {LOCAL_TRACE_LOGGING_SETTING_METADATA.helperText}
                 </Text>
 
                 {(remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) && (
                   <>
-                    <Text style={styles.label}>Trace Folder</Text>
+                    <Text style={styles.label}>{LOCAL_TRACE_LOG_PATH_FIELD_METADATA.label}</Text>
                     <TextInput
                       style={styles.input}
                       value={inputDrafts.localTraceLogPath ?? ''}
                       onChangeText={(v) => handleRemoteSettingUpdate('localTraceLogPath', v)}
-                      placeholder="Use default traces folder"
+                      placeholder={LOCAL_TRACE_LOG_PATH_FIELD_METADATA.placeholder}
                       placeholderTextColor={theme.colors.mutedForeground}
                       autoCapitalize='none'
                     />
                     <Text style={styles.helperText}>
-                      Optional desktop filesystem path for trace files.
+                      {LOCAL_TRACE_LOG_PATH_FIELD_METADATA.helperText}
                     </Text>
                   </>
                 )}

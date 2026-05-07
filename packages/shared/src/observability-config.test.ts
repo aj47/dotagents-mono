@@ -5,6 +5,8 @@ import {
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
   LANGFUSE_CREDENTIAL_FIELD_METADATA,
+  LOCAL_TRACE_LOG_PATH_FIELD_METADATA,
+  LOCAL_TRACE_LOGGING_SETTING_METADATA,
 } from './observability-config';
 import type {
   LangfuseObservabilityConfig,
@@ -76,6 +78,21 @@ describe('observability config contracts', () => {
         key: 'langfuseBaseUrl',
         placeholder: 'https://cloud.langfuse.com (default)',
       },
+    });
+  });
+
+  it('exposes shared local trace logging setting metadata', () => {
+    expect(LOCAL_TRACE_LOGGING_SETTING_METADATA).toEqual({
+      key: 'localTraceLoggingEnabled',
+      label: 'Local trace logging',
+      tooltip: 'Write each agent session trace to its own local JSONL file on this device. Independent of Langfuse Cloud.',
+      helperText: 'Write agent session traces to JSONL files on the desktop machine.',
+    });
+    expect(LOCAL_TRACE_LOG_PATH_FIELD_METADATA).toEqual({
+      key: 'localTraceLogPath',
+      label: 'Trace Folder',
+      placeholder: 'Use default traces folder',
+      helperText: 'Optional desktop filesystem path for trace files.',
     });
   });
 });
