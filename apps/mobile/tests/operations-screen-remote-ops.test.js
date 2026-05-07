@@ -334,11 +334,22 @@ test('displays recent conversations from operator API', () => {
 });
 
 test('exposes desktop diagnostic report controls', () => {
-  assert.match(operationsSource, /Diagnostics/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.sectionTitle/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.formatGeneratedMessage\(report\.errors\.length\)/);
   assert.match(operationsSource, /getOperatorDiagnosticReport\(\)/);
   assert.match(operationsSource, /saveOperatorDiagnosticReport\(\)/);
-  assert.match(operationsSource, /Generate desktop diagnostic report/);
-  assert.match(operationsSource, /Save diagnostic report on desktop/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.generateAccessibilityLabel/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.generatePendingLabel/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.generateButtonLabel/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.saveConfirmTitle/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.saveConfirmMessage/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.saveConfirmButtonLabel/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.saveAccessibilityLabel/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.savePendingLabel/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.saveButtonLabel/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.emptyReportText/);
+  assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Generate desktop diagnostic report'\)/);
+  assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Save diagnostic report on desktop'\)/);
   assert.match(operationsSource, /diagnosticReport\.mcp\.availableTools/);
 });
 

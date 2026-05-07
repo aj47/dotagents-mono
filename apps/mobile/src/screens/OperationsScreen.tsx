@@ -62,6 +62,7 @@ import {
   THEME_PREFERENCE_OPTIONS,
 } from '@dotagents/shared/theme-preference';
 import {
+  OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   formatOperatorAuditDetails as formatAuditDetails,
   formatOperatorAuditSource as formatAuditSource,
   formatOperatorDurationSeconds as formatDuration,
@@ -475,7 +476,7 @@ export default function OperationsScreen({ navigation }: any) {
     try {
       const report = await settingsClient.getOperatorDiagnosticReport();
       setDiagnosticReport(report);
-      setActionFeedback(`Diagnostic report generated with ${report.errors.length} log entries.`);
+      setActionFeedback(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatGeneratedMessage(report.errors.length));
     } catch (actionError) {
       Alert.alert('Action Failed', getErrorMessage(actionError));
     } finally {
@@ -788,34 +789,38 @@ export default function OperationsScreen({ navigation }: any) {
           )}
 
           <View style={styles.panel}>
-            <Text style={styles.panelTitle}>Diagnostics</Text>
+            <Text style={styles.panelTitle}>{OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.sectionTitle}</Text>
             <View style={styles.actionGrid}>
               <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                 onPress={() => void loadDiagnosticReport()}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Generate desktop diagnostic report')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.generateAccessibilityLabel)}
               >
                 <Text style={styles.secondaryActionText}>
-                  {pendingAction === 'diagnostic-report' ? 'Generating report…' : 'Generate report'}
+                  {pendingAction === 'diagnostic-report'
+                    ? OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.generatePendingLabel
+                    : OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.generateButtonLabel}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                 onPress={() => confirmAction(
-                  'Save Diagnostic Report',
-                  'Save a diagnostic report JSON file on the desktop machine now?',
-                  'Save Report',
+                  OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.saveConfirmTitle,
+                  OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.saveConfirmMessage,
+                  OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.saveConfirmButtonLabel,
                   false,
                   () => runAction('diagnostic-report-save', () => settingsClient.saveOperatorDiagnosticReport(), false),
                 )}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Save diagnostic report on desktop')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.saveAccessibilityLabel)}
               >
                 <Text style={styles.secondaryActionText}>
-                  {pendingAction === 'diagnostic-report-save' ? 'Saving report…' : 'Save report'}
+                  {pendingAction === 'diagnostic-report-save'
+                    ? OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.savePendingLabel
+                    : OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.saveButtonLabel}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -831,7 +836,7 @@ export default function OperationsScreen({ navigation }: any) {
                 ) : null}
               </>
             ) : (
-              <Text style={styles.mutedText}>No diagnostic report generated in this mobile session.</Text>
+              <Text style={styles.mutedText}>{OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.emptyReportText}</Text>
             )}
           </View>
 

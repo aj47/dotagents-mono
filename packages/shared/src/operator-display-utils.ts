@@ -2,6 +2,36 @@ import type { OperatorAuditEntry, OperatorRuntimeStatus } from "./api-types"
 
 export const OPERATOR_EMPTY_VALUE_LABEL = "—"
 
+export type OperatorDiagnosticReportActionMetadata = {
+  sectionTitle: string
+  generateAccessibilityLabel: string
+  generatePendingLabel: string
+  generateButtonLabel: string
+  saveConfirmTitle: string
+  saveConfirmMessage: string
+  saveConfirmButtonLabel: string
+  saveAccessibilityLabel: string
+  savePendingLabel: string
+  saveButtonLabel: string
+  emptyReportText: string
+  formatGeneratedMessage: (logEntryCount: number) => string
+}
+
+export const OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA: OperatorDiagnosticReportActionMetadata = {
+  sectionTitle: "Diagnostics",
+  generateAccessibilityLabel: "Generate desktop diagnostic report",
+  generatePendingLabel: "Generating report…",
+  generateButtonLabel: "Generate report",
+  saveConfirmTitle: "Save Diagnostic Report",
+  saveConfirmMessage: "Save a diagnostic report JSON file on the desktop machine now?",
+  saveConfirmButtonLabel: "Save Report",
+  saveAccessibilityLabel: "Save diagnostic report on desktop",
+  savePendingLabel: "Saving report…",
+  saveButtonLabel: "Save report",
+  emptyReportText: "No diagnostic report generated in this mobile session.",
+  formatGeneratedMessage: (logEntryCount) => `Diagnostic report generated with ${logEntryCount} log entries.`,
+}
+
 export function formatOperatorTimestamp(timestamp?: number): string {
   if (!timestamp) return OPERATOR_EMPTY_VALUE_LABEL
   return new Date(timestamp).toLocaleString()

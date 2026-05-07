@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_EMPTY_VALUE_LABEL,
   formatOperatorAuditDetails,
   formatOperatorAuditSource,
@@ -12,6 +13,26 @@ import {
 } from "./operator-display-utils"
 
 describe("operator display utils", () => {
+  it("exports diagnostic report action metadata", () => {
+    expect(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA).toEqual({
+      sectionTitle: "Diagnostics",
+      generateAccessibilityLabel: "Generate desktop diagnostic report",
+      generatePendingLabel: "Generating report…",
+      generateButtonLabel: "Generate report",
+      saveConfirmTitle: "Save Diagnostic Report",
+      saveConfirmMessage: "Save a diagnostic report JSON file on the desktop machine now?",
+      saveConfirmButtonLabel: "Save Report",
+      saveAccessibilityLabel: "Save diagnostic report on desktop",
+      savePendingLabel: "Saving report…",
+      saveButtonLabel: "Save report",
+      emptyReportText: "No diagnostic report generated in this mobile session.",
+      formatGeneratedMessage: expect.any(Function),
+    })
+    expect(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatGeneratedMessage(3)).toBe(
+      "Diagnostic report generated with 3 log entries.",
+    )
+  })
+
   it("formats timestamps with the empty fallback", () => {
     expect(formatOperatorTimestamp()).toBe(OPERATOR_EMPTY_VALUE_LABEL)
     expect(formatOperatorTimestamp(0)).toBe(OPERATOR_EMPTY_VALUE_LABEL)
