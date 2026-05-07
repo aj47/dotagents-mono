@@ -50,6 +50,7 @@ import { useTheme } from '../ui/ThemeProvider';
 import { radius, spacing } from '../ui/theme';
 import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
 import { getErrorMessage } from '@dotagents/shared/error-utils';
+import { DEFAULT_TEXT_INPUT_ENABLED } from '@dotagents/shared/key-utils';
 import {
   formatOperatorAuditDetails as formatAuditDetails,
   formatOperatorAuditSource as formatAuditSource,
@@ -1953,6 +1954,25 @@ export default function OperationsScreen({ navigation }: any) {
                   accessibilityLabel={createSwitchAccessibilityLabel('Launch at Login')}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                   thumbColor={(settings.launchAtLogin ?? DEFAULT_LAUNCH_AT_LOGIN) ? theme.colors.primaryForeground : theme.colors.background}
+                />
+              </View>
+
+              <View style={styles.row}>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.label}>Text Input</Text>
+                  <Text style={styles.helperText}>Enable desktop panel text prompts. Keyboard shortcuts stay configured on desktop.</Text>
+                </View>
+                <Switch
+                  value={settings.textInputEnabled ?? DEFAULT_TEXT_INPUT_ENABLED}
+                  onValueChange={(value) => void applySettingsUpdate(
+                    { textInputEnabled: value },
+                    'text input',
+                    'Desktop text input preference updated.',
+                  )}
+                  disabled={controlsDisabled}
+                  accessibilityLabel={createSwitchAccessibilityLabel('Desktop Text Input')}
+                  trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                  thumbColor={(settings.textInputEnabled ?? DEFAULT_TEXT_INPUT_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                 />
               </View>
 
