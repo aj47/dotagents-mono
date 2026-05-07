@@ -35,7 +35,7 @@ import {
   materializeAppendServerConversationMessageRequest,
   materializeServerConversationCreateRequest,
   materializeServerConversationRecordContent,
-  normalizeServerConversationHistoryIndex,
+  parseServerConversationHistoryIndexData,
   parseServerConversationStorageData,
   renameServerConversationTitle,
   removeServerConversationHistoryIndexItem,
@@ -311,11 +311,13 @@ export class ConversationService {
     try {
       const indexPath = this.getConversationIndexPath()
       const data = await fsPromises.readFile(indexPath, "utf8")
-      const parsed = JSON.parse(data)
-      if (Array.isArray(parsed)) {
-        const normalized = this.normalizeConversationHistoryIndex(parsed as ConversationHistoryItem[])
-        loadedIndex = normalized.index
-        indexWasNormalized = normalized.changed
+      const parsedIndex = parseServerConversationHistoryIndexData<ConversationHistoryItem>(data, {
+        maxLastMessageChars: MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
+        maxPreviewChars: MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
+      })
+      if (parsedIndex.ok) {
+        loadedIndex = parsedIndex.index
+        indexWasNormalized = parsedIndex.changed
       }
     } catch {
       // File doesn't exist or is corrupted — start fresh
@@ -349,16 +351,6 @@ export class ConversationService {
       maxLastMessageChars: MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
       maxPreviewChars: MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
     }) as ConversationHistoryItem
-  }
-
-  private normalizeConversationHistoryIndex(index: ConversationHistoryItem[]): {
-    index: ConversationHistoryItem[]
-    changed: boolean
-  } {
-    return normalizeServerConversationHistoryIndex(index, {
-      maxLastMessageChars: MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
-      maxPreviewChars: MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
-    })
   }
 
   private async parseConversationData(

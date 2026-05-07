@@ -50,6 +50,7 @@ import {
   materializeServerConversationRecordContent,
   normalizeServerConversationHistoryIndex,
   normalizeServerConversationSummarizedMessageCount,
+  parseServerConversationHistoryIndexData,
   parseServerConversationStorageData,
   parseCreateConversationRequestBody,
   parseBranchConversationRequestBody,
@@ -659,6 +660,25 @@ describe('server conversation API helpers', () => {
       maxLastMessageChars: 8,
       maxPreviewChars: 10,
     }).changed).toBe(false);
+
+    expect(parseServerConversationHistoryIndexData(JSON.stringify(index), {
+      maxLastMessageChars: 8,
+      maxPreviewChars: 10,
+    })).toEqual({
+      ok: true,
+      index: normalized.index,
+      changed: true,
+    });
+
+    expect(parseServerConversationHistoryIndexData(JSON.stringify({ index }))).toEqual({
+      ok: false,
+      reason: 'invalid_shape',
+    });
+
+    expect(parseServerConversationHistoryIndexData('not json')).toMatchObject({
+      ok: false,
+      reason: 'invalid_json',
+    });
   });
 
   it('sorts conversation history by most recent update without mutating input', () => {

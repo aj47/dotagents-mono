@@ -42,7 +42,9 @@ test('conversation service preserves raw messages during compaction and marks le
 
 test('conversation indexing and append flow follow represented full-history counts', () => {
   assert.match(sharedConversationSyncSource, /export function getStoredServerConversationMessages/)
+  assert.match(sharedConversationSyncSource, /export function parseServerConversationHistoryIndexData/)
   assert.match(serviceSource, /buildServerConversationHistoryItem\(conversation/)
+  assert.match(serviceSource, /parseServerConversationHistoryIndexData<ConversationHistoryItem>\(data/)
   assert.match(sharedConversationSyncSource, /messageCount: getRepresentedServerConversationMessageCount\(conversation\)/)
   assert.match(sharedConversationSyncSource, /const storedMessages = getStoredServerConversationMessages\(conversation\)/)
   assert.match(sharedConversationSyncSource, /if \(Array\.isArray\(conversation\.rawMessages\) && conversation\.rawMessages\.length > 0\) \{/)

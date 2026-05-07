@@ -201,6 +201,13 @@ export type ParseServerConversationStorageDataResult<TConversation extends Serve
 export type ParseServerConversationStorageDataOptions<TConversation extends ServerConversationRecord<any>> =
   RepairServerConversationJsonOptions<TConversation>;
 
+export type ParseServerConversationHistoryIndexDataResult<TItem> =
+  | { ok: true; index: TItem[]; changed: boolean }
+  | { ok: false; reason: 'invalid_shape' }
+  | { ok: false; reason: 'invalid_json'; parseError: unknown };
+
+export type ParseServerConversationHistoryIndexDataOptions = NormalizeServerConversationHistoryIndexOptions;
+
 export type ConversationRequestParseResult<T> =
   | { ok: true; request: T }
   | { ok: false; statusCode: 400; error: string };
@@ -453,6 +460,25 @@ export function parseServerConversationStorageData<
       bytes: repaired.bytes,
       parseError,
     };
+  }
+}
+
+export function parseServerConversationHistoryIndexData<TItem extends { lastMessage?: string; preview?: string }>(
+  raw: string,
+  options: ParseServerConversationHistoryIndexDataOptions = {},
+): ParseServerConversationHistoryIndexDataResult<TItem> {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return { ok: false, reason: 'invalid_shape' };
+    }
+
+    return {
+      ok: true,
+      ...normalizeServerConversationHistoryIndex(parsed as TItem[], options),
+    };
+  } catch (parseError) {
+    return { ok: false, reason: 'invalid_json', parseError };
   }
 }
 
