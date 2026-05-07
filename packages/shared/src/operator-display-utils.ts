@@ -2,6 +2,55 @@ import type { OperatorAuditEntry, OperatorRuntimeStatus } from "./api-types"
 
 export const OPERATOR_EMPTY_VALUE_LABEL = "—"
 
+export type OperatorConnectionRequiredPanelMetadata = {
+  panelTitle: string
+  bodyText: string
+  openSettingsAccessibilityLabel: string
+  openSettingsButtonLabel: string
+}
+
+export const OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA: OperatorConnectionRequiredPanelMetadata = {
+  panelTitle: "Connection required",
+  bodyText: "Connect the mobile app to a DotAgents desktop server before using operator controls.",
+  openSettingsAccessibilityLabel: "Open connection settings",
+  openSettingsButtonLabel: "Open connection settings",
+}
+
+export type OperatorStatusPanelMetadata = {
+  panelTitle: string
+  waitingText: string
+  formatUpdatedText: (overall: string, timestamp: number) => string
+  formatIntegrationSummary: (pushTokenCount: number, recentErrorCount: number) => string
+  formatPendingSettingText: (settingName: string) => string
+}
+
+export const OPERATOR_STATUS_PANEL_METADATA: OperatorStatusPanelMetadata = {
+  panelTitle: "Operator status",
+  waitingText: "Waiting for operator status…",
+  formatUpdatedText: (overall, timestamp) => `${overall} • Updated ${formatOperatorTimestamp(timestamp)}`,
+  formatIntegrationSummary: (pushTokenCount, recentErrorCount) => `Push tokens: ${pushTokenCount} • Recent errors: ${recentErrorCount}`,
+  formatPendingSettingText: (settingName) => `Saving ${settingName}…`,
+}
+
+export type OperatorSystemPanelMetadata = {
+  panelTitle: string
+  formatPlatformSummary: (system: OperatorRuntimeStatus["system"]) => string
+  formatRuntimeSummary: (system: OperatorRuntimeStatus["system"]) => string
+  formatMemorySummary: (system: OperatorRuntimeStatus["system"]) => string
+  formatUptimeSummary: (system: OperatorRuntimeStatus["system"]) => string
+}
+
+export const OPERATOR_SYSTEM_PANEL_METADATA: OperatorSystemPanelMetadata = {
+  panelTitle: "System",
+  formatPlatformSummary: (system) => `${system.hostname} • ${system.platform}/${system.arch}`,
+  formatRuntimeSummary: (system) =>
+    `App ${system.appVersion ?? "?"} • Electron ${system.electronVersion ?? "?"} • Node ${system.nodeVersion}`,
+  formatMemorySummary: (system) =>
+    `Memory: ${system.memoryUsage.rssMB} MB RSS • ${system.freeMemoryMB}/${system.totalMemoryMB} MB free • ${system.cpuCount} CPUs`,
+  formatUptimeSummary: (system) =>
+    `Process uptime: ${formatOperatorDurationSeconds(system.processUptimeSeconds)} • System uptime: ${formatOperatorDurationSeconds(system.uptimeSeconds)}`,
+}
+
 export type OperatorDiagnosticReportActionMetadata = {
   sectionTitle: string
   generateAccessibilityLabel: string

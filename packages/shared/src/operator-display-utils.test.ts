@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   OPERATOR_AGENT_SESSIONS_PANEL_METADATA,
+  OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA,
   OPERATOR_CONVERSATIONS_PANEL_METADATA,
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_EMPTY_VALUE_LABEL,
@@ -10,6 +11,8 @@ import {
   OPERATOR_MCP_SERVERS_PANEL_METADATA,
   OPERATOR_MESSAGE_QUEUES_PANEL_METADATA,
   OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
+  OPERATOR_STATUS_PANEL_METADATA,
+  OPERATOR_SYSTEM_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
   formatOperatorActiveAgentSessionSummary,
   formatOperatorAuditDetails,
@@ -24,6 +27,60 @@ import {
 } from "./operator-display-utils"
 
 describe("operator display utils", () => {
+  it("exports operator connection, status, and system panel metadata", () => {
+    expect(OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA).toEqual({
+      panelTitle: "Connection required",
+      bodyText: "Connect the mobile app to a DotAgents desktop server before using operator controls.",
+      openSettingsAccessibilityLabel: "Open connection settings",
+      openSettingsButtonLabel: "Open connection settings",
+    })
+    expect(OPERATOR_STATUS_PANEL_METADATA).toEqual({
+      panelTitle: "Operator status",
+      waitingText: "Waiting for operator status…",
+      formatUpdatedText: expect.any(Function),
+      formatIntegrationSummary: expect.any(Function),
+      formatPendingSettingText: expect.any(Function),
+    })
+    expect(OPERATOR_STATUS_PANEL_METADATA.formatUpdatedText("healthy", Date.UTC(2026, 4, 6, 16, 30, 0))).toContain(
+      "healthy • Updated ",
+    )
+    expect(OPERATOR_STATUS_PANEL_METADATA.formatIntegrationSummary(2, 3)).toBe("Push tokens: 2 • Recent errors: 3")
+    expect(OPERATOR_STATUS_PANEL_METADATA.formatPendingSettingText("remote server")).toBe("Saving remote server…")
+
+    const system = {
+      platform: "darwin",
+      arch: "arm64",
+      nodeVersion: "22.0.0",
+      electronVersion: "35.0.0",
+      appVersion: "1.2.3",
+      uptimeSeconds: 3720,
+      processUptimeSeconds: 120,
+      memoryUsage: {
+        heapUsedMB: 100,
+        heapTotalMB: 200,
+        rssMB: 300,
+      },
+      cpuCount: 10,
+      totalMemoryMB: 16000,
+      freeMemoryMB: 8000,
+      hostname: "aj-mac",
+    }
+    expect(OPERATOR_SYSTEM_PANEL_METADATA).toEqual({
+      panelTitle: "System",
+      formatPlatformSummary: expect.any(Function),
+      formatRuntimeSummary: expect.any(Function),
+      formatMemorySummary: expect.any(Function),
+      formatUptimeSummary: expect.any(Function),
+    })
+    expect(OPERATOR_SYSTEM_PANEL_METADATA.formatPlatformSummary(system)).toBe("aj-mac • darwin/arm64")
+    expect(OPERATOR_SYSTEM_PANEL_METADATA.formatRuntimeSummary(system)).toBe("App 1.2.3 • Electron 35.0.0 • Node 22.0.0")
+    expect(OPERATOR_SYSTEM_PANEL_METADATA.formatRuntimeSummary({ ...system, appVersion: undefined, electronVersion: undefined })).toBe(
+      "App ? • Electron ? • Node 22.0.0",
+    )
+    expect(OPERATOR_SYSTEM_PANEL_METADATA.formatMemorySummary(system)).toBe("Memory: 300 MB RSS • 8000/16000 MB free • 10 CPUs")
+    expect(OPERATOR_SYSTEM_PANEL_METADATA.formatUptimeSummary(system)).toBe("Process uptime: 2m • System uptime: 1h 2m")
+  })
+
   it("exports diagnostic report action metadata", () => {
     expect(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA).toEqual({
       sectionTitle: "Diagnostics",

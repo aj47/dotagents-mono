@@ -63,6 +63,7 @@ import {
 } from '@dotagents/shared/theme-preference';
 import {
   OPERATOR_AGENT_SESSIONS_PANEL_METADATA,
+  OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA,
   OPERATOR_CONVERSATIONS_PANEL_METADATA,
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_ERRORS_PANEL_METADATA,
@@ -70,11 +71,12 @@ import {
   OPERATOR_MCP_SERVERS_PANEL_METADATA,
   OPERATOR_MESSAGE_QUEUES_PANEL_METADATA,
   OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
+  OPERATOR_STATUS_PANEL_METADATA,
+  OPERATOR_SYSTEM_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
   formatOperatorActiveAgentSessionSummary as formatActiveAgentSessionSummary,
   formatOperatorAuditDetails as formatAuditDetails,
   formatOperatorAuditSource as formatAuditSource,
-  formatOperatorDurationSeconds as formatDuration,
   formatOperatorLogSummary as formatLogSummary,
   formatOperatorRecentAgentSessionSummary as formatRecentAgentSessionSummary,
   formatOperatorTimestamp as formatTimestamp,
@@ -746,15 +748,15 @@ export default function OperationsScreen({ navigation }: any) {
     >
       {!settingsClient && (
         <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Connection required</Text>
-          <Text style={styles.bodyText}>Connect the mobile app to a DotAgents desktop server before using operator controls.</Text>
+          <Text style={styles.panelTitle}>{OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA.panelTitle}</Text>
+          <Text style={styles.bodyText}>{OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA.bodyText}</Text>
           <TouchableOpacity
             style={[styles.actionButton, styles.primaryActionButton]}
             onPress={() => navigation.navigate('ConnectionSettings')}
             accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel('Open connection settings')}
+            accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA.openSettingsAccessibilityLabel)}
           >
-            <Text style={styles.primaryActionText}>Open connection settings</Text>
+            <Text style={styles.primaryActionText}>{OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA.openSettingsButtonLabel}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -765,36 +767,36 @@ export default function OperationsScreen({ navigation }: any) {
             <View style={styles.headerRow}>
               <View style={[styles.healthDot, { backgroundColor: healthColor }]} />
               <View style={styles.headerCopy}>
-                <Text style={styles.panelTitle}>Operator status</Text>
+                <Text style={styles.panelTitle}>{OPERATOR_STATUS_PANEL_METADATA.panelTitle}</Text>
                 <Text style={styles.mutedText}>
-                  {status ? `${status.health.overall} • Updated ${formatTimestamp(status.timestamp)}` : 'Waiting for operator status…'}
+                  {status ? OPERATOR_STATUS_PANEL_METADATA.formatUpdatedText(status.health.overall, status.timestamp) : OPERATOR_STATUS_PANEL_METADATA.waitingText}
                 </Text>
               </View>
             </View>
             {status && (
               <Text style={styles.detailText}>
-                Push tokens: {status.integrations.pushNotifications.tokenCount} • Recent errors: {status.recentErrors.total}
+                {OPERATOR_STATUS_PANEL_METADATA.formatIntegrationSummary(status.integrations.pushNotifications.tokenCount, status.recentErrors.total)}
               </Text>
             )}
             {actionFeedback && <Text style={styles.successText}>{actionFeedback}</Text>}
             {error && <Text style={styles.warningText}>{error}</Text>}
-            {pendingSetting && <Text style={styles.mutedText}>Saving {pendingSetting}…</Text>}
+            {pendingSetting && <Text style={styles.mutedText}>{OPERATOR_STATUS_PANEL_METADATA.formatPendingSettingText(pendingSetting)}</Text>}
           </View>
 
           {status?.system && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>System</Text>
+              <Text style={styles.panelTitle}>{OPERATOR_SYSTEM_PANEL_METADATA.panelTitle}</Text>
               <Text style={styles.detailText}>
-                {status.system.hostname} • {status.system.platform}/{status.system.arch}
+                {OPERATOR_SYSTEM_PANEL_METADATA.formatPlatformSummary(status.system)}
               </Text>
               <Text style={styles.detailText}>
-                App {status.system.appVersion ?? '?'} • Electron {status.system.electronVersion ?? '?'} • Node {status.system.nodeVersion}
+                {OPERATOR_SYSTEM_PANEL_METADATA.formatRuntimeSummary(status.system)}
               </Text>
               <Text style={styles.detailText}>
-                Memory: {status.system.memoryUsage.rssMB} MB RSS • {status.system.freeMemoryMB}/{status.system.totalMemoryMB} MB free • {status.system.cpuCount} CPUs
+                {OPERATOR_SYSTEM_PANEL_METADATA.formatMemorySummary(status.system)}
               </Text>
               <Text style={styles.mutedText}>
-                Process uptime: {formatDuration(status.system.processUptimeSeconds)} • System uptime: {formatDuration(status.system.uptimeSeconds)}
+                {OPERATOR_SYSTEM_PANEL_METADATA.formatUptimeSummary(status.system)}
               </Text>
             </View>
           )}

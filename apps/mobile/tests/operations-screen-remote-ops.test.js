@@ -13,6 +13,12 @@ const remoteAccessDraftsSource = fs.readFileSync(
 );
 
 test('exposes compact remote access settings for mobile remote ops', () => {
+  assert.match(operationsSource, /OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA\.panelTitle/);
+  assert.match(operationsSource, /OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA\.bodyText/);
+  assert.match(operationsSource, /OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA\.openSettingsAccessibilityLabel/);
+  assert.match(operationsSource, /OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA\.openSettingsButtonLabel/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Connection required<\/Text>/);
+  assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Open connection settings'\)/);
   assert.match(operationsSource, /Remote access settings/);
   assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA/);
   assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA/);
@@ -281,11 +287,20 @@ test('surfaces recent operator audit entries and rotates the API key using the s
 });
 
 test('displays system metrics and agent sessions from operator status', () => {
-  assert.match(operationsSource, /status\.system\.hostname/);
-  assert.match(operationsSource, /status\.system\.platform/);
-  assert.match(operationsSource, /status\.system\.memoryUsage\.rssMB/);
-  assert.match(operationsSource, /status\.system\.processUptimeSeconds/);
-  assert.match(operationsSource, /formatDuration/);
+  assert.match(operationsSource, /OPERATOR_STATUS_PANEL_METADATA\.panelTitle/);
+  assert.match(operationsSource, /OPERATOR_STATUS_PANEL_METADATA\.formatUpdatedText\(status\.health\.overall, status\.timestamp\)/);
+  assert.match(operationsSource, /OPERATOR_STATUS_PANEL_METADATA\.waitingText/);
+  assert.match(operationsSource, /OPERATOR_STATUS_PANEL_METADATA\.formatIntegrationSummary/);
+  assert.match(operationsSource, /OPERATOR_STATUS_PANEL_METADATA\.formatPendingSettingText\(pendingSetting\)/);
+  assert.match(operationsSource, /OPERATOR_SYSTEM_PANEL_METADATA\.panelTitle/);
+  assert.match(operationsSource, /OPERATOR_SYSTEM_PANEL_METADATA\.formatPlatformSummary\(status\.system\)/);
+  assert.match(operationsSource, /OPERATOR_SYSTEM_PANEL_METADATA\.formatRuntimeSummary\(status\.system\)/);
+  assert.match(operationsSource, /OPERATOR_SYSTEM_PANEL_METADATA\.formatMemorySummary\(status\.system\)/);
+  assert.match(operationsSource, /OPERATOR_SYSTEM_PANEL_METADATA\.formatUptimeSummary\(status\.system\)/);
+  assert.match(operationsSource, /status\?\.system/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Operator status<\/Text>/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>System<\/Text>/);
+  assert.doesNotMatch(operationsSource, /Waiting for operator status…/);
   assert.match(operationsSource, /OPERATOR_AGENT_SESSIONS_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_AGENT_SESSIONS_PANEL_METADATA\.formatSummary/);
   assert.match(operationsSource, /status\.sessions\.activeSessions/);
