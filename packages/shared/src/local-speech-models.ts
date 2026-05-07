@@ -41,6 +41,26 @@ export interface LocalSpeechModelActionService {
   startDownload(providerId: LocalSpeechModelProviderId): void;
 }
 
+export interface LocalSpeechModelProviderRuntime {
+  getStatus(): LocalSpeechModelStatus | Promise<LocalSpeechModelStatus>;
+  download(): void | Promise<void>;
+}
+
+export type LocalSpeechModelProviderRuntimeRegistry = Record<
+  LocalSpeechModelProviderId,
+  LocalSpeechModelProviderRuntime
+>;
+
+export interface LocalSpeechModelRuntimeService extends LocalSpeechModelActionService {
+  download(providerId: LocalSpeechModelProviderId): Promise<void>;
+}
+
+export interface LocalSpeechModelRuntimeServiceOptions {
+  diagnostics: Pick<LocalSpeechModelActionDiagnostics, 'logError'>;
+  providers: LocalSpeechModelProviderRuntimeRegistry;
+  logSource?: string;
+}
+
 export interface LocalSpeechModelActionOptions {
   diagnostics: LocalSpeechModelActionDiagnostics;
   service: LocalSpeechModelActionService;
@@ -143,6 +163,29 @@ export function buildLocalSpeechModelDownloadErrorResponse(
     error: message,
     details: {
       providerId,
+    },
+  };
+}
+
+export function createLocalSpeechModelActionService(
+  options: LocalSpeechModelRuntimeServiceOptions,
+): LocalSpeechModelRuntimeService {
+  const logSource = options.logSource ?? 'local-speech-model-service';
+  const download = async (providerId: LocalSpeechModelProviderId): Promise<void> => {
+    await options.providers[providerId].download();
+  };
+
+  return {
+    getStatus: async (providerId) => options.providers[providerId].getStatus(),
+    download,
+    startDownload: (providerId) => {
+      void download(providerId).catch((caughtError) => {
+        options.diagnostics.logError(
+          logSource,
+          `Failed to download ${providerId} local speech model`,
+          caughtError,
+        );
+      });
     },
   };
 }

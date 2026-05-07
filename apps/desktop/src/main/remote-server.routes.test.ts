@@ -2029,10 +2029,12 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "downloadOperatorLocalSpeechModelAction(providerId, localSpeechModelActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("service: {")
-    expect(operatorRouteDesktopActionsSource).toContain("getStatus: getLocalSpeechModelStatus")
-    expect(operatorRouteDesktopActionsSource).toContain("startDownload: startLocalSpeechModelDownload")
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "const localSpeechModelService = createLocalSpeechModelActionService({",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain("service: localSpeechModelService")
     expect(sharedLocalSpeechModelsSource).toContain("export interface OperatorLocalSpeechModelRouteActions")
+    expect(sharedLocalSpeechModelsSource).toContain("export function createLocalSpeechModelActionService")
     expect(sharedLocalSpeechModelsSource).toContain("export function createOperatorLocalSpeechModelRouteActions")
     expect(sharedLocalSpeechModelsSource).toContain(
       "getOperatorLocalSpeechModelStatuses: () => getOperatorLocalSpeechModelStatusesAction(options)",

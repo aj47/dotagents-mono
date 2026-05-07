@@ -7,6 +7,7 @@ import {
   buildLocalSpeechModelDownloadErrorResponse,
   buildLocalSpeechModelDownloadResponse,
   buildLocalSpeechModelStatusesResponse,
+  createLocalSpeechModelActionService,
   createOperatorLocalSpeechModelRouteActions,
   downloadOperatorLocalSpeechModelAction,
   formatLocalSpeechModelStatusesResponse,
@@ -130,6 +131,49 @@ describe('local speech model metadata', () => {
         providerId: 'kitten',
       },
     });
+  });
+
+  it('creates a local speech model service from provider runtimes', async () => {
+    const calls: string[] = [];
+    const errors: Array<{ source: string; message: string; error: unknown }> = [];
+    const service = createLocalSpeechModelActionService({
+      logSource: 'desktop-local-speech',
+      diagnostics: {
+        logError: (source, message, error) => {
+          errors.push({ source, message, error });
+        },
+      },
+      providers: {
+        parakeet: {
+          getStatus: () => ({ downloaded: true, downloading: false, progress: 1 }),
+          download: () => { calls.push('download:parakeet'); },
+        },
+        kitten: {
+          getStatus: () => ({ downloaded: false, downloading: true, progress: 0.3 }),
+          download: () => { calls.push('download:kitten'); },
+        },
+        supertonic: {
+          getStatus: () => ({ downloaded: false, downloading: false, progress: 0 }),
+          download: () => { throw new Error('download failed'); },
+        },
+      },
+    });
+
+    await expect(service.getStatus('kitten')).resolves.toEqual({
+      downloaded: false,
+      downloading: true,
+      progress: 0.3,
+    });
+    await service.download('parakeet');
+    service.startDownload('kitten');
+    service.startDownload('supertonic');
+    await Promise.resolve();
+
+    expect(calls).toEqual(['download:parakeet', 'download:kitten']);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].source).toBe('desktop-local-speech');
+    expect(errors[0].message).toBe('Failed to download supertonic local speech model');
+    expect(errors[0].error).toBeInstanceOf(Error);
   });
 
   it('runs local speech route actions through a shared service adapter', async () => {
