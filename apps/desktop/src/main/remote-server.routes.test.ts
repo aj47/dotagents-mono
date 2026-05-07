@@ -1367,7 +1367,17 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain("models: chatRouteActionBundle.models")
     expect(mobileApiDesktopActionsSource).not.toContain("getModelsAction(modelActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("getProviderModelsAction(providerId, modelActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("service: createModelActionService({")
     expect(mobileApiDesktopActionsSource).toContain("fetchAvailableModels: async (providerId) =>")
+    expect(mobileApiDesktopActionsSource).not.toContain(
+      "const modelActionOptions: ModelActionOptions = {\n  getConfig: () => configStore.get(),",
+    )
+    expect(sharedChatUtilsSource).toContain("export interface ModelActionService")
+    expect(sharedChatUtilsSource).toContain("export function createModelActionService")
+    expect(sharedChatUtilsSource).toContain("getConfig: () => options.getConfig()")
+    expect(sharedChatUtilsSource).toContain(
+      "fetchAvailableModels: (providerId) => options.fetchAvailableModels(providerId)",
+    )
     expect(sharedChatUtilsSource).toContain("export interface ModelActionOptions")
     expect(sharedChatUtilsSource).toContain("export interface ModelRouteActions")
     expect(sharedChatUtilsSource).toContain("export function createModelRouteActions")
@@ -1376,8 +1386,8 @@ describe("remote-server route registration", () => {
     expect(sharedChatUtilsSource).toContain("getProviderModels: (providerId) => getProviderModelsAction(providerId, options)")
     expect(sharedChatUtilsSource).toContain("export function getModelsAction")
     expect(sharedChatUtilsSource).toContain("export async function getProviderModelsAction")
-    expect(sharedChatUtilsSource).toContain("resolveActiveModelId(options.getConfig())")
-    expect(sharedChatUtilsSource).toContain("options.fetchAvailableModels(providerId)")
+    expect(sharedChatUtilsSource).toContain("resolveActiveModelId(options.service.getConfig())")
+    expect(sharedChatUtilsSource).toContain("options.service.fetchAvailableModels(providerId)")
     expect(sharedChatUtilsSource).not.toContain("models-service")
     expect(sharedChatUtilsSource).not.toContain("configStore")
     expect(mobileApiDesktopActionsSource).toContain("const mcpRouteActions = createMcpRouteActions({")

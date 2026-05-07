@@ -131,9 +131,25 @@ export interface ModelActionDiagnostics {
   logError(source: string, message: string, error: unknown): void;
 }
 
-export interface ModelActionOptions {
+export interface ModelActionService {
   getConfig(): ActiveModelConfigLike;
   fetchAvailableModels(providerId: CHAT_PROVIDER_ID): Promise<ProviderModelInfoInput[]>;
+}
+
+export interface ModelActionServiceOptions {
+  getConfig(): ActiveModelConfigLike;
+  fetchAvailableModels(providerId: CHAT_PROVIDER_ID): Promise<ProviderModelInfoInput[]>;
+}
+
+export function createModelActionService(options: ModelActionServiceOptions): ModelActionService {
+  return {
+    getConfig: () => options.getConfig(),
+    fetchAvailableModels: (providerId) => options.fetchAvailableModels(providerId),
+  };
+}
+
+export interface ModelActionOptions {
+  service: ModelActionService;
   diagnostics: ModelActionDiagnostics;
 }
 
@@ -675,8 +691,8 @@ function getUnknownErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-export function getModelsAction(options: Pick<ModelActionOptions, 'getConfig'>): ModelActionResult {
-  const model = resolveActiveModelId(options.getConfig());
+export function getModelsAction(options: Pick<ModelActionOptions, 'service'>): ModelActionResult {
+  const model = resolveActiveModelId(options.service.getConfig());
   return modelActionOk(buildOpenAICompatibleModelsResponse([model]));
 }
 
@@ -692,7 +708,7 @@ export async function getProviderModelsAction(
       );
     }
 
-    const models = await options.fetchAvailableModels(providerId);
+    const models = await options.service.fetchAvailableModels(providerId);
     return modelActionOk(buildProviderModelsResponse(providerId, models));
   } catch (caughtError) {
     options.diagnostics.logError('model-actions', 'Failed to fetch models', caughtError);

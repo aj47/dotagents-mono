@@ -25,6 +25,7 @@ import {
   buildProviderModelsResponse,
   createChatCompletionRouteActions,
   createChatRouteActionBundle,
+  createModelActionService,
   createModelRouteActions,
   getModelsAction,
   getProviderModelsAction,
@@ -398,14 +399,16 @@ describe('model actions', () => {
       },
     }
     const options = {
-      getConfig: () => ({
-        agentProviderId: 'openai',
-        agentOpenaiModel: 'gpt-active',
+      service: createModelActionService({
+        getConfig: () => ({
+          agentProviderId: 'openai',
+          agentOpenaiModel: 'gpt-active',
+        }),
+        fetchAvailableModels: async (providerId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web') => {
+          expect(providerId).toBe('openai')
+          return providerModels
+        },
       }),
-      fetchAvailableModels: async (providerId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web') => {
-        expect(providerId).toBe('openai')
-        return providerModels
-      },
       diagnostics,
     }
 
@@ -431,10 +434,12 @@ describe('model actions', () => {
 
   it('rejects invalid provider ids before fetching provider models', async () => {
     const options = {
-      getConfig: () => ({}),
-      fetchAvailableModels: async () => {
-        throw new Error('unexpected provider fetch')
-      },
+      service: createModelActionService({
+        getConfig: () => ({}),
+        fetchAvailableModels: async () => {
+          throw new Error('unexpected provider fetch')
+        },
+      }),
       diagnostics: {
         logError: () => {
           throw new Error('unexpected diagnostics log')
@@ -454,10 +459,12 @@ describe('model actions', () => {
     const error = new Error('provider unavailable')
     const loggedErrors: unknown[] = []
     const options = {
-      getConfig: () => ({}),
-      fetchAvailableModels: async () => {
-        throw error
-      },
+      service: createModelActionService({
+        getConfig: () => ({}),
+        fetchAvailableModels: async () => {
+          throw error
+        },
+      }),
       diagnostics: {
         logError: (source: string, message: string, caughtError: unknown) => {
           loggedErrors.push({ source, message, caughtError })
@@ -905,8 +912,10 @@ describe('handleChatCompletionRequestAction', () => {
     const actionOptions = createActionOptions()
     const routeActionBundle = createChatRouteActionBundle({
       models: {
-        getConfig: actionOptions.getActiveModelConfig,
-        fetchAvailableModels: vi.fn(async () => []),
+        service: createModelActionService({
+          getConfig: actionOptions.getActiveModelConfig,
+          fetchAvailableModels: vi.fn(async () => []),
+        }),
         diagnostics: {
           logError: vi.fn(),
         },

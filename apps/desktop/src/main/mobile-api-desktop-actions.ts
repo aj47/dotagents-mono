@@ -26,6 +26,7 @@ import {
 import {
   createChatTranscriptHistoryRecorder,
   createChatRouteActionBundle,
+  createModelActionService,
   type ChatCompletionActionOptions,
   type ModelActionOptions,
 } from "@dotagents/shared/chat-utils"
@@ -111,11 +112,13 @@ import { generateTTS } from "./tts-service"
 type DesktopConversationActionConversation = NonNullable<Awaited<ReturnType<typeof conversationService.loadConversation>>>
 
 const modelActionOptions: ModelActionOptions = {
-  getConfig: () => configStore.get(),
-  fetchAvailableModels: async (providerId) => {
-    const { fetchAvailableModels } = await import("./models-service")
-    return fetchAvailableModels(providerId)
-  },
+  service: createModelActionService({
+    getConfig: () => configStore.get(),
+    fetchAvailableModels: async (providerId) => {
+      const { fetchAvailableModels } = await import("./models-service")
+      return fetchAvailableModels(providerId)
+    },
+  }),
   diagnostics: diagnosticsService,
 }
 
