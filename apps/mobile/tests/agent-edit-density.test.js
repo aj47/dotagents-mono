@@ -17,3 +17,10 @@ test('keeps mobile agent edit errors text-first after removing banner emoji', ()
   assert.match(screenSource, /<Text style=\{styles\.errorText\}>\{error\}<\/Text>/);
   assert.match(screenSource, /setError\(err\.message \|\| 'Failed to (load|save) agent'\);/);
 });
+
+test('makes custom mobile agent system prompts obvious before default updates are blocked', () => {
+  assert.match(screenSource, /const customSystemPromptActive = formData\.systemPrompt\.trim\(\)\.length > 0;/);
+  assert.match(screenSource, /Custom system prompt active/);
+  assert.match(screenSource, /will not receive DotAgents default system prompt updates until you reset it/);
+  assert.match(screenSource, /Reset to default/);
+});

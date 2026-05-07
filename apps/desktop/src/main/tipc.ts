@@ -2592,6 +2592,8 @@ export const router = {
     return {
       global: {
         agentsDir: globalLayer.agentsDir,
+        systemPromptPath: globalLayer.systemPromptMdPath,
+        systemPromptExists: fs.existsSync(globalLayer.systemPromptMdPath),
         skillsDir: getAgentsSkillsDir(globalLayer),
         knowledgeDir: getAgentsKnowledgeDir(globalLayer),
         memoriesDir: getAgentsKnowledgeDir(globalLayer),
@@ -2599,6 +2601,8 @@ export const router = {
       workspace: workspaceLayer
         ? {
             agentsDir: workspaceLayer.agentsDir,
+            systemPromptPath: workspaceLayer.systemPromptMdPath,
+            systemPromptExists: fs.existsSync(workspaceLayer.systemPromptMdPath),
             skillsDir: getAgentsSkillsDir(workspaceLayer),
             knowledgeDir: getAgentsKnowledgeDir(workspaceLayer),
             memoriesDir: getAgentsKnowledgeDir(workspaceLayer),

@@ -61,7 +61,7 @@ PAST CONVERSATIONS:
 - Common locations are ~/Library/Application Support/<appId>/conversations/ on macOS, %APPDATA%/<appId>/conversations/ on Windows, and ~/.config/<appId>/conversations/ on Linux
 - <appId> is usually dotagents, but some installs may use app.dotagents; infer the real local folder when needed instead of assuming one OS-specific path
 - Use index.json to discover relevant conversations, then open matching conv_*.json files for full message history when prior chat context would help
-- Before asking the user for facts that may already be known, check relevant knowledge notes and prior conversations first
+- Before asking the user for facts that may already be known, or whenever the current task likely relates to prior work, search relevant knowledge notes first and prior conversations second; always prefer knowledge notes over recalled conversation context when they conflict
 
 DOTAGENTS CONFIG:
 - DotAgents configuration lives in the layered ~/.agents/ and ./.agents/ filesystem

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@renderer/components/ui/tabs"
-import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, ChevronDown, ChevronRight, Wrench, RefreshCw, ExternalLink, Download, Upload, Globe } from "lucide-react"
+import { Trash2, Plus, Edit2, Save, X, Server, Sparkles, Brain, Settings2, ChevronDown, ChevronRight, Wrench, RefreshCw, ExternalLink, Download, Upload, Globe, AlertTriangle } from "lucide-react"
 import { Facehash } from "facehash"
 import { toast } from "sonner"
 
@@ -148,6 +148,10 @@ function emptyAgent(): EditingAgent {
     modelConfig: undefined, toolConfig: undefined,
     skillsConfig: undefined, properties: {},
   }
+}
+
+function hasCustomSystemPrompt(systemPrompt?: string | null): boolean {
+  return Boolean(systemPrompt?.trim())
 }
 
 function getAgentCardSummaryItems(agent: AgentProfile, availableSkillCount: number, availableRuntimeToolCount: number): string[] {
@@ -642,6 +646,7 @@ export function SettingsAgents() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-12">
         {sortedAgents.map(agent => {
           const summaryItems = getAgentCardSummaryItems(agent, skills.length, runtimeTools.length)
+          const customSystemPromptActive = hasCustomSystemPrompt(agent.systemPrompt)
 
           return (
             <Card key={agent.id} className={`overflow-hidden flex flex-col transition-all hover:shadow-md ${!agent.enabled ? "opacity-60 grayscale-[0.5]" : ""}`}>
@@ -663,11 +668,12 @@ export function SettingsAgents() {
               </CardHeader>
               <CardContent className="flex-grow flex flex-col justify-end pt-1 pb-2 px-3">
                 <div className="space-y-1.5 mb-2">
-                  {(agent.isBuiltIn || agent.isDefault || !agent.enabled) && (
+                  {(agent.isBuiltIn || agent.isDefault || !agent.enabled || customSystemPromptActive) && (
                     <div className="flex gap-1 flex-wrap">
                       {agent.isBuiltIn && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Built-in</Badge>}
                       {agent.isDefault && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-3.5 shadow-sm font-medium">Default</Badge>}
                       {!agent.enabled && <Badge variant="outline" className="text-[10px] px-1 py-0 h-3.5 bg-background/50 shadow-sm font-medium">Disabled</Badge>}
+                      {customSystemPromptActive && <Badge variant="outline" className="h-3.5 border-amber-500/50 bg-amber-500/10 px-1 py-0 text-[10px] font-medium text-amber-700 shadow-sm dark:text-amber-300">Custom prompt</Badge>}
                     </div>
                   )}
                   <p className="text-[11px] leading-tight text-muted-foreground">
@@ -705,6 +711,7 @@ export function SettingsAgents() {
     if (!editing) return null
     const isInternal = editing.connectionType === "internal"
     const externalCommandPreview = buildCommandPreview(editing.connectionCommand, editing.connectionArgs)
+    const customSystemPromptActive = hasCustomSystemPrompt(editing.systemPrompt)
 
     return (
       <Card className="max-w-5xl">
@@ -780,19 +787,36 @@ export function SettingsAgents() {
                       Additional instructions for this agent. These are appended to the core tool-calling system prompt.
                     </p>
                   </div>
+                  {customSystemPromptActive && (
+                    <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+                      <div className="flex min-w-0 gap-2">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                        <div className="min-w-0 space-y-1">
+                          <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Custom base system prompt active</p>
+                          <p className="text-xs leading-5 text-muted-foreground">
+                            This agent is using a saved system prompt snapshot, so it will not receive DotAgents default system prompt updates until you reset it.
+                          </p>
+                        </div>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" className="h-7 border-amber-500/50 bg-background/70 px-2 text-xs" onClick={() => setEditing({ ...editing, systemPrompt: "" })}>
+                        Reset to Default
+                      </Button>
+                    </div>
+                  )}
                   <div className="space-y-2 pt-2 border-t">
                     <div
-                      className="flex items-center gap-2 cursor-pointer select-none"
+                      className="flex flex-wrap items-center gap-2 cursor-pointer select-none"
                       onClick={() => setShowSystemPrompt(!showSystemPrompt)}
                     >
                       {showSystemPrompt ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                       <Label className="cursor-pointer font-semibold">Base System Prompt (Advanced)</Label>
+                      {customSystemPromptActive && <Badge variant="outline" className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300">Custom prompt active</Badge>}
                     </div>
                     {showSystemPrompt && (
                       <div className="space-y-3 pt-2">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <p className="text-xs text-muted-foreground text-amber-600 dark:text-amber-500">
-                            Not recommended to change. This replaces the core tool-calling instructions. Leave empty to use the default.
+                            Not recommended to change. A custom base prompt replaces core tool-calling instructions and blocks future default prompt updates. Leave empty to use the default.
                           </p>
                           <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setEditing({ ...editing, systemPrompt: "" })} disabled={!editing.systemPrompt}>
                             Reset to Default
