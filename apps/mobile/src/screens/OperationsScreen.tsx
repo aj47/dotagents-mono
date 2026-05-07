@@ -63,6 +63,7 @@ import {
 } from '@dotagents/shared/theme-preference';
 import {
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
+  OPERATOR_ERRORS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
   formatOperatorAuditDetails as formatAuditDetails,
   formatOperatorAuditSource as formatAuditSource,
@@ -2782,9 +2783,9 @@ export default function OperationsScreen({ navigation }: any) {
           </View>
 
           <View style={styles.panel}>
-            <Text style={styles.panelTitle}>Recent errors</Text>
+            <Text style={styles.panelTitle}>{OPERATOR_ERRORS_PANEL_METADATA.panelTitle}</Text>
             {recentErrors.length === 0 ? (
-              <Text style={styles.mutedText}>No recent errors returned by the desktop server.</Text>
+              <Text style={styles.mutedText}>{OPERATOR_ERRORS_PANEL_METADATA.emptyText}</Text>
             ) : (
               recentErrors.map((entry) => (
                 <View key={`${entry.timestamp}-${entry.component}-${entry.message}`} style={styles.errorItem}>

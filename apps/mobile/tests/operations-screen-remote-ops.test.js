@@ -355,8 +355,11 @@ test('exposes desktop diagnostic report controls', () => {
 
 test('displays recent operator logs from operator API', () => {
   assert.match(operationsSource, /RECENT_LOG_COUNT/);
+  assert.match(operationsSource, /RECENT_ERROR_COUNT/);
   assert.match(operationsSource, /getOperatorLogs\(RECENT_LOG_COUNT\)/);
+  assert.match(operationsSource, /getOperatorErrors\(RECENT_ERROR_COUNT\)/);
   assert.match(operationsSource, /setOperatorLogs/);
+  assert.match(operationsSource, /setRecentErrors/);
   assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /operatorLogs\.map/);
   assert.match(operationsSource, /settingsClient\.clearOperatorErrors\(\)/);
@@ -369,6 +372,10 @@ test('displays recent operator logs from operator API', () => {
   assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.emptyText/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Recent operator logs<\/Text>/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Clear desktop operator error log'\)/);
+  assert.match(operationsSource, /OPERATOR_ERRORS_PANEL_METADATA\.panelTitle/);
+  assert.match(operationsSource, /OPERATOR_ERRORS_PANEL_METADATA\.emptyText/);
+  assert.match(operationsSource, /recentErrors\.map/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Recent errors<\/Text>/);
 });
 
 test('displays MCP servers from operator API', () => {

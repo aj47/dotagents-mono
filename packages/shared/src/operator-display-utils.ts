@@ -54,6 +54,16 @@ export const OPERATOR_LOGS_PANEL_METADATA: OperatorLogsPanelMetadata = {
   emptyText: "No recent operator log entries returned by the desktop server.",
 }
 
+export type OperatorErrorsPanelMetadata = {
+  panelTitle: string
+  emptyText: string
+}
+
+export const OPERATOR_ERRORS_PANEL_METADATA: OperatorErrorsPanelMetadata = {
+  panelTitle: "Recent errors",
+  emptyText: "No recent errors returned by the desktop server.",
+}
+
 export function formatOperatorTimestamp(timestamp?: number): string {
   if (!timestamp) return OPERATOR_EMPTY_VALUE_LABEL
   return new Date(timestamp).toLocaleString()

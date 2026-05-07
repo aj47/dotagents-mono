@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_EMPTY_VALUE_LABEL,
+  OPERATOR_ERRORS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
   formatOperatorAuditDetails,
   formatOperatorAuditSource,
@@ -44,6 +45,13 @@ describe("operator display utils", () => {
       clearPendingLabel: "Clearing log…",
       clearButtonLabel: "Clear log",
       emptyText: "No recent operator log entries returned by the desktop server.",
+    })
+  })
+
+  it("exports operator errors panel metadata", () => {
+    expect(OPERATOR_ERRORS_PANEL_METADATA).toEqual({
+      panelTitle: "Recent errors",
+      emptyText: "No recent errors returned by the desktop server.",
     })
   })
 
