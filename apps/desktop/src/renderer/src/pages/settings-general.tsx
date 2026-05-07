@@ -130,7 +130,7 @@ export function Component() {
   const langfuseInstalledQuery = useQuery({
     queryKey: ["langfuseInstalled"],
     queryFn: async () => {
-      return window.electron.ipcRenderer.invoke("isLangfuseInstalled")
+      return tipcClient.isLangfuseInstalled()
     },
     staleTime: Infinity, // Only check once per session
   })
