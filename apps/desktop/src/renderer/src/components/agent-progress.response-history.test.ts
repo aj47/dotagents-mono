@@ -190,7 +190,8 @@ async function loadAgentProgress(
 
   const Null = () => null
   const icon = (name: string) => (props: any) => ({ type: name, props })
-  const tipcMock = { tipcClient: new Proxy({ generateSpeech: vi.fn(), setPanelFocusable: vi.fn() }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
+  const tipcMock = { tipcClient: new Proxy({ setPanelFocusable: vi.fn() }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
+  const desktopTtsClientMock = { desktopTtsClient: { generateSpeech: vi.fn() } }
   const queriesMock = {
     useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: options?.ttsAutoPlay ?? false, dualModelEnabled: false } }),
     useAvailableModelsQuery: () => ({ data: [{ id: "gpt-4.1-mini", name: "GPT 4.1 Mini" }], isLoading: false }),
@@ -259,6 +260,8 @@ async function loadAgentProgress(
   vi.doMock("./ui/select", () => ({ Select: (props: any) => ({ type: "Select", props }), SelectContent: (props: any) => ({ type: "SelectContent", props }), SelectItem: (props: any) => ({ type: "SelectItem", props }), SelectTrigger: (props: any) => ({ type: "SelectTrigger", props }), SelectValue: (props: any) => ({ type: "SelectValue", props }) }))
   vi.doMock("../lib/tipc-client", () => tipcMock)
   vi.doMock("@renderer/lib/tipc-client", () => tipcMock)
+  vi.doMock("../lib/desktop-tts-client", () => desktopTtsClientMock)
+  vi.doMock("@renderer/lib/desktop-tts-client", () => desktopTtsClientMock)
   vi.doMock("@renderer/lib/clipboard", () => ({ copyTextToClipboard: vi.fn() }))
   vi.doMock("react-router-dom", () => ({ useNavigate: () => vi.fn() }))
   vi.doMock("../stores", () => storesMock)
@@ -324,7 +327,7 @@ async function loadAgentProgress(
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
   const mod = await import("./agent-progress")
-  return { AgentProgress: mod.AgentProgress, captured, tipcMock, ttsManagerMock, audioRefs: runtime.audioRefs }
+  return { AgentProgress: mod.AgentProgress, captured, desktopTtsClientMock, tipcMock, ttsManagerMock, audioRefs: runtime.audioRefs }
 }
 
 afterEach(() => {
@@ -1020,8 +1023,11 @@ describe("agent progress response history", () => {
 
   it("smartly auto-speaks response-linked assistant messages and keeps replay available before completion", async () => {
     const runtime = createHookRuntime()
-    const { AgentProgress, tipcMock } = await loadAgentProgress(runtime, { ttsEnabled: true, ttsAutoPlay: true })
-    ;(tipcMock.tipcClient.generateSpeech as any).mockResolvedValue({ audio: new Uint8Array([1, 2, 3]), mimeType: "audio/wav" })
+    const { AgentProgress, desktopTtsClientMock } = await loadAgentProgress(runtime, { ttsEnabled: true, ttsAutoPlay: true })
+    desktopTtsClientMock.desktopTtsClient.generateSpeech.mockResolvedValue({
+      audio: new Uint8Array([1, 2, 3]),
+      mimeType: "audio/wav",
+    })
 
     const progress = {
       sessionId: "session-response-tts",
@@ -1049,7 +1055,9 @@ describe("agent progress response history", () => {
     runtime.commitEffects()
     await Promise.resolve()
 
-    expect(tipcMock.tipcClient.generateSpeech).toHaveBeenCalledWith({ text: "Mid-conversation answer" })
+    expect(desktopTtsClientMock.desktopTtsClient.generateSpeech).toHaveBeenCalledWith({
+      text: "Mid-conversation answer",
+    })
   })
 
   it("removes tile maximize controls from the simplified session layout", async () => {

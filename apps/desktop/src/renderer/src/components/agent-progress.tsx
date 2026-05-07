@@ -18,6 +18,7 @@ import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
 import { desktopConversationsClient } from "@renderer/lib/desktop-conversations-client"
+import { desktopTtsClient } from "@renderer/lib/desktop-tts-client"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
 import { useAvailableModelsQuery, useConfigQuery, queryClient } from "@renderer/lib/queries"
@@ -845,7 +846,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     setTtsError(null)
 
     try {
-      const result = await tipcClient.generateSpeech({
+      const result = await desktopTtsClient.generateSpeech({
         text: generationSource,
       })
 
