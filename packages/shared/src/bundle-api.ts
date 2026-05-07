@@ -1312,6 +1312,60 @@ export type BundleImportResult = {
   errors: string[]
 }
 
+export function createBundleImportResult(): BundleImportResult {
+  return {
+    success: false,
+    agentProfiles: [],
+    mcpServers: [],
+    skills: [],
+    repeatTasks: [],
+    knowledgeNotes: [],
+    errors: [],
+  }
+}
+
+export function buildBundleImportItemResult(
+  id: string,
+  name: string,
+  action: BundleImportItemActionResolution,
+): BundleImportItemResult {
+  return {
+    id,
+    name,
+    action: action.action,
+    ...(action.newId ? { newId: action.newId } : {}),
+  }
+}
+
+export function buildBundleImportItemErrorResult(
+  id: string,
+  name: string,
+  error: unknown,
+): BundleImportItemResult {
+  return {
+    id,
+    name,
+    action: "skipped",
+    error: error instanceof Error ? error.message : String(error),
+  }
+}
+
+export function formatBundleImportItemError(
+  componentLabel: string,
+  itemName: string,
+  error: unknown,
+): string {
+  const message = error instanceof Error ? error.message : String(error)
+  return `${componentLabel} "${itemName}": ${message}`
+}
+
+export function finalizeBundleImportResult(result: BundleImportResult): BundleImportResult {
+  return {
+    ...result,
+    success: result.errors.length === 0,
+  }
+}
+
 export function hasBundleImportConflicts(
   conflicts: BundleImportPreviewConflicts | undefined,
   components: BundleComponentSelection,

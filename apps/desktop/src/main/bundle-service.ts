@@ -33,6 +33,8 @@ import {
   buildBundleAgentProfilesFromProfiles,
   buildBundleImportPreviewConflicts,
   buildBundleKnowledgeNotesFromNotes,
+  buildBundleImportItemErrorResult,
+  buildBundleImportItemResult,
   buildBundleMcpServersFromConfig,
   buildBundleRepeatTasksFromTasks,
   buildBundleSkillsFromSkills,
@@ -46,6 +48,9 @@ import {
   buildMcpServerConfigFromBundleServer,
   buildRepeatTaskFromBundleTask,
   buildSkillFromBundleSkill,
+  createBundleImportResult,
+  finalizeBundleImportResult,
+  formatBundleImportItemError,
   getBundleBuildItems,
   mergeBundleBuildItems,
   mergeExportableBundleItems,
@@ -521,21 +526,13 @@ export async function importBundle(
   targetAgentsDir: string,
   options: ImportOptions
 ): Promise<ImportBundleResult> {
-  const result: ImportBundleResult = {
-    success: false,
-    agentProfiles: [],
-    mcpServers: [],
-    skills: [],
-    repeatTasks: [],
-    knowledgeNotes: [],
-    errors: [],
-  }
+  const result = createBundleImportResult()
 
   // Parse bundle
   const bundle = previewBundle(filePath)
   if (!bundle) {
     result.errors.push("Failed to parse bundle file")
-    return result
+    return finalizeBundleImportResult(result)
   }
 
   const layer = getAgentsLayerPaths(targetAgentsDir)
@@ -555,11 +552,7 @@ export async function importBundle(
         const importAction = resolveBundleImportItemAction(bundleProfile.id, existingIds, conflictStrategy)
 
         if (!importAction.shouldImport) {
-          result.agentProfiles.push({
-            id: bundleProfile.id,
-            name: bundleProfile.name,
-            action: importAction.action,
-          })
+          result.agentProfiles.push(buildBundleImportItemResult(bundleProfile.id, bundleProfile.name, importAction))
           continue
         }
 
@@ -569,21 +562,10 @@ export async function importBundle(
         writeAgentsProfileFiles(layer, fullProfile)
         existingIds.add(importAction.finalId)
 
-        result.agentProfiles.push({
-          id: bundleProfile.id,
-          name: bundleProfile.name,
-          action: importAction.action,
-          newId: importAction.newId,
-        })
+        result.agentProfiles.push(buildBundleImportItemResult(bundleProfile.id, bundleProfile.name, importAction))
       } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        result.agentProfiles.push({
-          id: bundleProfile.id,
-          name: bundleProfile.name,
-          action: "skipped",
-          error: msg,
-        })
-        result.errors.push(`Agent profile "${bundleProfile.name}": ${msg}`)
+        result.agentProfiles.push(buildBundleImportItemErrorResult(bundleProfile.id, bundleProfile.name, error))
+        result.errors.push(formatBundleImportItemError("Agent profile", bundleProfile.name, error))
       }
     }
   }
@@ -602,11 +584,7 @@ export async function importBundle(
         const importAction = resolveBundleImportItemAction(bundleServer.name, existingNames, conflictStrategy)
 
         if (!importAction.shouldImport) {
-          result.mcpServers.push({
-            id: bundleServer.name,
-            name: bundleServer.name,
-            action: importAction.action,
-          })
+          result.mcpServers.push(buildBundleImportItemResult(bundleServer.name, bundleServer.name, importAction))
           continue
         }
 
@@ -614,12 +592,7 @@ export async function importBundle(
         existingNames.add(importAction.finalId)
         modified = true
 
-        result.mcpServers.push({
-          id: bundleServer.name,
-          name: bundleServer.name,
-          action: importAction.action,
-          newId: importAction.newId,
-        })
+        result.mcpServers.push(buildBundleImportItemResult(bundleServer.name, bundleServer.name, importAction))
       }
 
       if (modified) {
@@ -646,11 +619,7 @@ export async function importBundle(
         const importAction = resolveBundleImportItemAction(bundleSkill.id, existingIds, conflictStrategy)
 
         if (!importAction.shouldImport) {
-          result.skills.push({
-            id: bundleSkill.id,
-            name: bundleSkill.name,
-            action: importAction.action,
-          })
+          result.skills.push(buildBundleImportItemResult(bundleSkill.id, bundleSkill.name, importAction))
           continue
         }
 
@@ -663,21 +632,10 @@ export async function importBundle(
         writeAgentsSkillFile(layer, fullSkill)
         existingIds.add(importAction.finalId)
 
-        result.skills.push({
-          id: bundleSkill.id,
-          name: bundleSkill.name,
-          action: importAction.action,
-          newId: importAction.newId,
-        })
+        result.skills.push(buildBundleImportItemResult(bundleSkill.id, bundleSkill.name, importAction))
       } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        result.skills.push({
-          id: bundleSkill.id,
-          name: bundleSkill.name,
-          action: "skipped",
-          error: msg,
-        })
-        result.errors.push(`Skill "${bundleSkill.name}": ${msg}`)
+        result.skills.push(buildBundleImportItemErrorResult(bundleSkill.id, bundleSkill.name, error))
+        result.errors.push(formatBundleImportItemError("Skill", bundleSkill.name, error))
       }
     }
   }
@@ -692,11 +650,7 @@ export async function importBundle(
         const importAction = resolveBundleImportItemAction(bundleTask.id, existingIds, conflictStrategy)
 
         if (!importAction.shouldImport) {
-          result.repeatTasks.push({
-            id: bundleTask.id,
-            name: bundleTask.name,
-            action: importAction.action,
-          })
+          result.repeatTasks.push(buildBundleImportItemResult(bundleTask.id, bundleTask.name, importAction))
           continue
         }
 
@@ -705,21 +659,10 @@ export async function importBundle(
         writeTaskFile(layer, fullTask)
         existingIds.add(importAction.finalId)
 
-        result.repeatTasks.push({
-          id: bundleTask.id,
-          name: bundleTask.name,
-          action: importAction.action,
-          newId: importAction.newId,
-        })
+        result.repeatTasks.push(buildBundleImportItemResult(bundleTask.id, bundleTask.name, importAction))
       } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        result.repeatTasks.push({
-          id: bundleTask.id,
-          name: bundleTask.name,
-          action: "skipped",
-          error: msg,
-        })
-        result.errors.push(`Repeat task "${bundleTask.name}": ${msg}`)
+        result.repeatTasks.push(buildBundleImportItemErrorResult(bundleTask.id, bundleTask.name, error))
+        result.errors.push(formatBundleImportItemError("Repeat task", bundleTask.name, error))
       }
     }
   }
@@ -734,11 +677,11 @@ export async function importBundle(
         const importAction = resolveBundleImportItemAction(bundleKnowledgeNote.id, existingIds, conflictStrategy)
 
         if (!importAction.shouldImport) {
-          result.knowledgeNotes.push({
-            id: bundleKnowledgeNote.id,
-            name: bundleKnowledgeNote.title,
-            action: importAction.action,
-          })
+          result.knowledgeNotes.push(buildBundleImportItemResult(
+            bundleKnowledgeNote.id,
+            bundleKnowledgeNote.title,
+            importAction,
+          ))
           continue
         }
 
@@ -748,38 +691,35 @@ export async function importBundle(
         writeKnowledgeNoteFile(layer, fullNote, { slug: importAction.finalId })
         existingIds.add(importAction.finalId)
 
-        result.knowledgeNotes.push({
-          id: bundleKnowledgeNote.id,
-          name: bundleKnowledgeNote.title,
-          action: importAction.action,
-          newId: importAction.newId,
-        })
+        result.knowledgeNotes.push(buildBundleImportItemResult(
+          bundleKnowledgeNote.id,
+          bundleKnowledgeNote.title,
+          importAction,
+        ))
       } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error)
-        result.knowledgeNotes.push({
-          id: bundleKnowledgeNote.id,
-          name: bundleKnowledgeNote.title,
-          action: "skipped",
-          error: msg,
-        })
-        result.errors.push(`Knowledge note "${bundleKnowledgeNote.title}": ${msg}`)
+        result.knowledgeNotes.push(buildBundleImportItemErrorResult(
+          bundleKnowledgeNote.id,
+          bundleKnowledgeNote.title,
+          error,
+        ))
+        result.errors.push(formatBundleImportItemError("Knowledge note", bundleKnowledgeNote.title, error))
       }
     }
   }
 
-  result.success = result.errors.length === 0
+  const finalResult = finalizeBundleImportResult(result)
 
   logApp("[bundle-service] Import completed", {
-    success: result.success,
-    profiles: result.agentProfiles.length,
-    mcpServers: result.mcpServers.length,
-    skills: result.skills.length,
-    repeatTasks: result.repeatTasks.length,
-    knowledgeNotes: result.knowledgeNotes.length,
-    errors: result.errors.length,
+    success: finalResult.success,
+    profiles: finalResult.agentProfiles.length,
+    mcpServers: finalResult.mcpServers.length,
+    skills: finalResult.skills.length,
+    repeatTasks: finalResult.repeatTasks.length,
+    knowledgeNotes: finalResult.knowledgeNotes.length,
+    errors: finalResult.errors.length,
   })
 
-  return result
+  return finalResult
 }
 
 /**

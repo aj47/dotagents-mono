@@ -17,6 +17,8 @@ import {
   buildBundleMcpServersFromConfig,
   buildBundleRepeatTasksFromTasks,
   buildBundleSkillsFromSkills,
+  buildBundleImportItemErrorResult,
+  buildBundleImportItemResult,
   buildDotAgentsBundle,
   buildExportableBundleAgentProfiles,
   buildExportableBundleKnowledgeNotes,
@@ -28,10 +30,13 @@ import {
   buildRepeatTaskFromBundleTask,
   buildSkillFromBundleSkill,
   createBundleItemSelection,
+  createBundleImportResult,
   createBundleRouteActions,
   createTemporaryBundleFileImportService,
   createTemporaryBundleFileName,
   exportBundleAction,
+  finalizeBundleImportResult,
+  formatBundleImportItemError,
   generateBundleImportUniqueId,
   getAvailableBundleComponentSelection,
   getBundleDependencyWarnings,
@@ -614,6 +619,15 @@ describe("bundle API helpers", () => {
 
   it("builds imported app records from bundle items", () => {
     expect(generateBundleImportUniqueId("agent", new Set(["agent", "agent_imported"]))).toBe("agent_imported_2")
+    expect(createBundleImportResult()).toEqual({
+      success: false,
+      agentProfiles: [],
+      mcpServers: [],
+      skills: [],
+      repeatTasks: [],
+      knowledgeNotes: [],
+      errors: [],
+    })
     expect(resolveBundleImportItemAction("agent", new Set(["other"]), "skip")).toEqual({
       action: "imported",
       finalId: "agent",
@@ -635,6 +649,35 @@ describe("bundle API helpers", () => {
       newId: "agent_imported_2",
       shouldImport: true,
     })
+    expect(buildBundleImportItemResult("agent", "Agent", {
+      action: "renamed",
+      finalId: "agent_imported",
+      newId: "agent_imported",
+      shouldImport: true,
+    })).toEqual({
+      id: "agent",
+      name: "Agent",
+      action: "renamed",
+      newId: "agent_imported",
+    })
+    expect(buildBundleImportItemErrorResult("agent", "Agent", new Error("boom"))).toEqual({
+      id: "agent",
+      name: "Agent",
+      action: "skipped",
+      error: "boom",
+    })
+    expect(formatBundleImportItemError("Agent profile", "Agent", new Error("boom"))).toBe('Agent profile "Agent": boom')
+    expect(finalizeBundleImportResult({
+      ...createBundleImportResult(),
+      agentProfiles: [{ id: "agent", name: "Agent", action: "imported" }],
+    })).toMatchObject({
+      success: true,
+      agentProfiles: [{ id: "agent", name: "Agent", action: "imported" }],
+    })
+    expect(finalizeBundleImportResult({
+      ...createBundleImportResult(),
+      errors: ["boom"],
+    }).success).toBe(false)
 
     expect(buildAgentProfileFromBundleProfile({
       id: "agent",
