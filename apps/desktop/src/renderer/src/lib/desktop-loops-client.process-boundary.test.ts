@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 
 const clientSource = readFileSync(new URL("./desktop-loops-client.ts", import.meta.url), "utf8")
 const settingsLoopsSource = readFileSync(new URL("../pages/settings-loops.tsx", import.meta.url), "utf8")
+const activeAgentsSidebarSource = readFileSync(new URL("../components/active-agents-sidebar.tsx", import.meta.url), "utf8")
 
 describe("desktop loops renderer client", () => {
   it("centralizes repeat-task IPC channels behind shared loop types", () => {
@@ -40,5 +41,12 @@ describe("desktop loops renderer client", () => {
     expect(settingsLoopsSource).not.toContain("tipcClient.stopLoop")
     expect(settingsLoopsSource).not.toContain("tipcClient.triggerLoop")
     expect(settingsLoopsSource).not.toContain("tipcClient.openLoopTaskFile(")
+  })
+
+  it("keeps sidebar repeat-task shortcuts off direct repeat-task IPC channels", () => {
+    expect(activeAgentsSidebarSource).toContain("desktopLoopsClient.getLoops()")
+    expect(activeAgentsSidebarSource).toContain("desktopLoopsClient.triggerLoop(loop.id)")
+    expect(activeAgentsSidebarSource).not.toContain("tipcClient.getLoops(")
+    expect(activeAgentsSidebarSource).not.toContain("tipcClient.triggerLoop")
   })
 })

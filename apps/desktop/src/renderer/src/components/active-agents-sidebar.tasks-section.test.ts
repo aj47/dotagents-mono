@@ -6,6 +6,7 @@ const sidebarSource = readFileSync(new URL("./active-agents-sidebar.tsx", import
 describe("active agents sidebar task section", () => {
   it("renders repeat-task sessions in one collapsible Tasks section", () => {
     expect(sidebarSource).toContain('queryKey: ["loops"]')
+    expect(sidebarSource).toContain("desktopLoopsClient.getLoops()")
     expect(sidebarSource).toContain("getRepeatTaskTitleHints")
     expect(sidebarSource).toContain("@dotagents/shared/repeat-task-utils")
     expect(sidebarSource).not.toContain("function getRepeatTaskTitleHints")

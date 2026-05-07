@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { desktopLoopsClient } from "@renderer/lib/desktop-loops-client"
 import {
   CheckCircle2,
   ChevronDown,
@@ -204,7 +205,7 @@ export function ActiveAgentsSidebar({
   const savedConversationsQuery = useSavedConversationsQuery(isExpanded)
   const repeatTasksQuery = useQuery<LoopConfig[]>({
     queryKey: ["loops"],
-    queryFn: async () => await tipcClient.getLoops(),
+    queryFn: () => desktopLoopsClient.getLoops(),
   })
 
   useEffect(() => {
@@ -677,7 +678,7 @@ export function ActiveAgentsSidebar({
     async (loop: LoopConfig, e: React.MouseEvent) => {
       e.stopPropagation()
       try {
-        const result = await tipcClient.triggerLoop?.({ loopId: loop.id })
+        const result = await desktopLoopsClient.triggerLoop(loop.id)
         if (result && !result.success) {
           toast.error(`Could not trigger "${loop.name}" right now`)
           return
