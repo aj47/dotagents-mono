@@ -26,8 +26,10 @@ import {
   buildServerConversationCompactionSummaryInput,
   buildServerConversationAutoTitleSeed,
   buildServerConversationHistoryItem,
-  resolveServerConversationGeneratedTitle,
+  countServerConversationDataFileNames,
   getMostRecentServerConversationHistoryItem,
+  getServerConversationIdFromDataFileName,
+  getSortedServerConversationDataFileNames,
   getStoredServerConversationMessages,
   isValidServerConversationRecordShape,
   materializeAppendServerConversationMessageRequest,
@@ -37,6 +39,8 @@ import {
   renameServerConversationTitle,
   removeServerConversationHistoryIndexItem,
   repairServerConversationJsonData,
+  resolveServerConversationGeneratedTitle,
+  SERVER_CONVERSATION_INDEX_FILE_NAME,
   sortServerConversationHistoryByUpdatedAt,
   syncServerConversationStorageMetadata,
   upsertServerConversationHistoryIndex,
@@ -126,7 +130,7 @@ export class ConversationService {
   }
 
   private getConversationIndexPath(): string {
-    return path.join(conversationsFolder, "index.json")
+    return path.join(conversationsFolder, SERVER_CONVERSATION_INDEX_FILE_NAME)
   }
 
   private async storeConversationImageBuffer(
@@ -332,7 +336,7 @@ export class ConversationService {
   private async getConversationFileCount(): Promise<number> {
     try {
       const entries = await fsPromises.readdir(conversationsFolder)
-      return entries.filter((entry) => entry.endsWith(".json") && entry !== "index.json").length
+      return countServerConversationDataFileNames(entries)
     } catch {
       return 0
     }
@@ -402,13 +406,14 @@ export class ConversationService {
     try {
       this.ensureConversationsFolder()
       const entries = await fsPromises.readdir(conversationsFolder)
-      const conversationFiles = entries
-        .filter((entry) => entry.endsWith(".json") && entry !== "index.json")
-        .sort()
+      const conversationFiles = getSortedServerConversationDataFileNames(entries)
 
       const rebuiltIndex: ConversationHistoryItem[] = []
       for (const entry of conversationFiles) {
-        const conversationId = entry.replace(/\.json$/u, "")
+        const conversationId = getServerConversationIdFromDataFileName(entry)
+        if (!conversationId) {
+          continue
+        }
         const conversationPath = this.getConversationPath(conversationId)
 
         let conversationData: string

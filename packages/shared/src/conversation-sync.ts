@@ -137,6 +137,8 @@ export interface ConversationRouteActions {
 }
 
 const VALID_ROLES = ['user', 'assistant', 'tool'] as const;
+export const SERVER_CONVERSATION_INDEX_FILE_NAME = 'index.json';
+export const SERVER_CONVERSATION_DATA_FILE_EXTENSION = '.json';
 export const DEFAULT_SERVER_CONVERSATION_REPAIR_MAX_PARSE_ATTEMPTS = 50;
 export const DEFAULT_SERVER_CONVERSATION_REPAIR_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -386,6 +388,25 @@ export function repairServerConversationJsonData<
   }
 
   return { ok: false, reason: 'no_valid_candidate', attempts, bytes };
+}
+
+export function isServerConversationDataFileName(fileName: string): boolean {
+  return fileName.endsWith(SERVER_CONVERSATION_DATA_FILE_EXTENSION) && fileName !== SERVER_CONVERSATION_INDEX_FILE_NAME;
+}
+
+export function getServerConversationIdFromDataFileName(fileName: string): string | null {
+  if (!isServerConversationDataFileName(fileName)) {
+    return null;
+  }
+  return fileName.slice(0, -SERVER_CONVERSATION_DATA_FILE_EXTENSION.length);
+}
+
+export function getSortedServerConversationDataFileNames(fileNames: readonly string[]): string[] {
+  return fileNames.filter(isServerConversationDataFileName).sort();
+}
+
+export function countServerConversationDataFileNames(fileNames: readonly string[]): number {
+  return fileNames.filter(isServerConversationDataFileName).length;
 }
 
 function isRequestObject(body: unknown): body is Record<string, unknown> {

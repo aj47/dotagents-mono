@@ -23,6 +23,7 @@ import {
   buildServerConversationsDeleteAllResponse,
   buildServerConversationsResponse,
   branchConversationAction,
+  countServerConversationDataFileNames,
   createConversationAction,
   createConversationActionService,
   createConversationRouteActions,
@@ -36,9 +37,12 @@ import {
   getMostRecentServerConversationHistoryItem,
   getRepresentedServerConversationMessageCount,
   getRepresentedServerConversationMessageSliceCount,
+  getServerConversationIdFromDataFileName,
+  getSortedServerConversationDataFileNames,
   getStoredServerConversationMessages,
   getValidServerConversationCompactionTimestamp,
   hasPersistedServerConversationCompactionCheckpoint,
+  isServerConversationDataFileName,
   isValidServerConversationRecordShape,
   materializeAppendServerConversationMessageRequest,
   materializeServerConversationCreateRequest,
@@ -52,6 +56,8 @@ import {
   removeServerConversationHistoryIndexItem,
   repairServerConversationJsonData,
   resolveServerConversationGeneratedTitle,
+  SERVER_CONVERSATION_DATA_FILE_EXTENSION,
+  SERVER_CONVERSATION_INDEX_FILE_NAME,
   serverConversationToStubSession,
   sortServerConversationHistoryByUpdatedAt,
   syncConversations,
@@ -124,6 +130,24 @@ describe('conversation sync mapping', () => {
 
 describe('server conversation API helpers', () => {
   const messageIdFactory = (timestamp: number, index: number) => `msg-${timestamp}-${index}`;
+
+  it('identifies portable server conversation storage file names', () => {
+    const fileNames = [
+      'conv-b.json',
+      SERVER_CONVERSATION_INDEX_FILE_NAME,
+      'notes.md',
+      `conv-a${SERVER_CONVERSATION_DATA_FILE_EXTENSION}`,
+      'conv-c.json.tmp',
+    ];
+
+    expect(isServerConversationDataFileName('conv-a.json')).toBe(true);
+    expect(isServerConversationDataFileName(SERVER_CONVERSATION_INDEX_FILE_NAME)).toBe(false);
+    expect(isServerConversationDataFileName('conv-c.json.tmp')).toBe(false);
+    expect(getServerConversationIdFromDataFileName('conv-a.json')).toBe('conv-a');
+    expect(getServerConversationIdFromDataFileName(SERVER_CONVERSATION_INDEX_FILE_NAME)).toBeNull();
+    expect(getSortedServerConversationDataFileNames(fileNames)).toEqual(['conv-a.json', 'conv-b.json']);
+    expect(countServerConversationDataFileNames(fileNames)).toBe(2);
+  });
 
   it('parses and builds a new server conversation consistently', () => {
     const parsed = parseCreateConversationRequestBody({
