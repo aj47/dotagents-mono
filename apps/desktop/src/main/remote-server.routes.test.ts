@@ -1697,7 +1697,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorLogsAction(count, level, observabilityActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorConversationsAction(count, observabilityActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorRemoteServerAction(remoteServerStatus)")
-    expect(operatorRouteDesktopActionsSource).toContain("service: {")
+    expect(operatorRouteDesktopActionsSource).toContain("service: createOperatorObservabilityActionService({")
     expect(operatorRouteDesktopActionsSource).toContain("getTunnelStatus: getCloudflareTunnelStatus")
     expect(operatorRouteDesktopActionsSource).toContain("getSystemMetrics: getOperatorSystemMetrics")
     expect(sharedOperatorActionsSource).toContain("export interface OperatorObservabilityRouteActions")
@@ -2173,9 +2173,13 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "const operatorMcpTestActionOptions: OperatorMcpTestActionOptions<MCPServerConfig, OperatorActionAuditContext> = {\n  diagnostics: {\n    logError: (...args) => diagnosticsService.logError(...args),\n    getErrorMessage,\n  },\n  service: {\n    getServerConfig: (serverName) => configStore.get().mcpConfig?.mcpServers?.[serverName]",
     )
+    expect(operatorRouteDesktopActionsSource).toContain("service: createOperatorMcpLifecycleActionService({")
     expect(operatorRouteDesktopActionsSource).toContain("setServerRuntimeEnabled: (serverName, enabled) => mcpService.setServerRuntimeEnabled(serverName, enabled)")
     expect(operatorRouteDesktopActionsSource).toContain("restartServer: (serverName) => mcpService.restartServer(serverName)")
     expect(operatorRouteDesktopActionsSource).toContain("stopServer: (serverName) => mcpService.stopServer(serverName)")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "const operatorMcpLifecycleActionOptions: OperatorMcpLifecycleActionOptions<OperatorActionAuditContext> = {\n  diagnostics: {\n    logError: (...args) => diagnosticsService.logError(...args),\n    logInfo: (...args) => diagnosticsService.logInfo(...args),\n    getErrorMessage,\n  },\n  service: {\n    getServerStatus: () => mcpService.getServerStatus(),",
+    )
     expect(sharedMcpApiSource).toContain("export function getOperatorMcpStatusAction(")
     expect(sharedMcpApiSource).toContain("export function getOperatorMcpServerLogsAction(")
     expect(sharedMcpApiSource).toContain("export function getOperatorMcpToolsAction(")
@@ -2192,6 +2196,12 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain(
       "testServerConnection: (serverName, serverConfig) => options.testServerConnection(serverName, serverConfig)",
     )
+    expect(sharedMcpApiSource).toContain("export function createOperatorMcpLifecycleActionService")
+    expect(sharedMcpApiSource).toContain(
+      "setServerRuntimeEnabled: (serverName, enabled) => options.setServerRuntimeEnabled(serverName, enabled)",
+    )
+    expect(sharedMcpApiSource).toContain("restartServer: (serverName) => options.restartServer(serverName)")
+    expect(sharedMcpApiSource).toContain("stopServer: (serverName) => options.stopServer(serverName)")
     expect(sharedMcpApiSource).toContain("export function clearOperatorMcpServerLogsAction<")
     expect(sharedMcpApiSource).toContain("export function setOperatorMcpToolEnabledAction<")
     expect(sharedMcpApiSource).toContain("export async function testOperatorMcpServerAction<")

@@ -38,6 +38,7 @@ import {
   createInjectedMcpToolRouteActions,
   createMcpConfigActionService,
   createMcpRouteActions,
+  createOperatorMcpLifecycleActionService,
   createOperatorMcpMutationActionService,
   createOperatorMcpReadActionService,
   createOperatorMcpRouteActions,
@@ -660,6 +661,44 @@ describe("MCP API helpers", () => {
       toolCount: 2,
     })
     expect(calls).toEqual(["config:filesystem", "config:missing", "test:filesystem:filesystem-mcp"])
+  })
+
+  it("creates operator MCP lifecycle action services from MCP adapters", async () => {
+    const calls: string[] = []
+    const service = createOperatorMcpLifecycleActionService({
+      getServerStatus: () => {
+        calls.push("status")
+        return {
+          filesystem: {
+            connected: true,
+            toolCount: 1,
+          },
+        }
+      },
+      setServerRuntimeEnabled: (serverName, enabled) => {
+        calls.push(`runtime:${serverName}:${enabled}`)
+        return true
+      },
+      restartServer: async (serverName) => {
+        calls.push(`restart:${serverName}`)
+        return { success: true }
+      },
+      stopServer: async (serverName) => {
+        calls.push(`stop:${serverName}`)
+        return { success: true }
+      },
+    })
+
+    expect(service.getServerStatus()).toEqual({
+      filesystem: {
+        connected: true,
+        toolCount: 1,
+      },
+    })
+    expect(service.setServerRuntimeEnabled("filesystem", true)).toBe(true)
+    await expect(service.restartServer("filesystem")).resolves.toEqual({ success: true })
+    await expect(service.stopServer("filesystem")).resolves.toEqual({ success: true })
+    expect(calls).toEqual(["status", "runtime:filesystem:true", "restart:filesystem", "stop:filesystem"])
   })
 
   it("creates mobile MCP route actions that delegate through service adapters", () => {

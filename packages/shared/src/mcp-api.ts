@@ -454,6 +454,24 @@ export interface OperatorMcpLifecycleActionService {
   stopServer(serverName: string): Promise<McpLifecycleActionResultLike>
 }
 
+export interface OperatorMcpLifecycleActionServiceOptions {
+  getServerStatus(): McpServerStatusMapLike
+  setServerRuntimeEnabled(serverName: string, enabled: boolean): boolean
+  restartServer(serverName: string): Promise<McpLifecycleActionResultLike>
+  stopServer(serverName: string): Promise<McpLifecycleActionResultLike>
+}
+
+export function createOperatorMcpLifecycleActionService(
+  options: OperatorMcpLifecycleActionServiceOptions,
+): OperatorMcpLifecycleActionService {
+  return {
+    getServerStatus: () => options.getServerStatus(),
+    setServerRuntimeEnabled: (serverName, enabled) => options.setServerRuntimeEnabled(serverName, enabled),
+    restartServer: (serverName) => options.restartServer(serverName),
+    stopServer: (serverName) => options.stopServer(serverName),
+  }
+}
+
 export interface OperatorMcpLifecycleActionDiagnostics extends OperatorMcpReadActionDiagnostics {
   logInfo(source: string, message: string): void
 }
