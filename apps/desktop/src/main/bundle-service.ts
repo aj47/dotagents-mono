@@ -48,18 +48,17 @@ import {
   buildMcpServerConfigFromBundleServer,
   buildRepeatTaskFromBundleTask,
   buildSkillFromBundleSkill,
-  generateBundleImportUniqueId,
   getBundleBuildItems,
   mergeBundleBuildItems,
   mergeExportableBundleItems,
   parseDotAgentsBundle,
   readBundleMcpServersFromConfig,
+  resolveBundleImportItemAction,
   sortExportableBundleItems,
   writeCanonicalBundleMcpConfig,
   type BundleAgentProfile,
   type BundleComponentSelection,
   type BundleImportConflictStrategy,
-  type BundleImportItemResult,
   type BundleImportPreviewConflict,
   type BundleImportPreviewConflicts,
   type BundleImportResult,
@@ -543,13 +542,7 @@ export async function importBundle(
 
   const layer = getAgentsLayerPaths(targetAgentsDir)
   const { conflictStrategy } = options
-  const components = options.components ?? {
-    agentProfiles: true,
-    mcpServers: true,
-    skills: true,
-    repeatTasks: true,
-    knowledgeNotes: true,
-  }
+  const components = options.components ?? DEFAULT_BUNDLE_COMPONENT_SELECTION
 
   // Ensure directories exist
   fs.mkdirSync(targetAgentsDir, { recursive: true })
@@ -561,38 +554,28 @@ export async function importBundle(
 
     for (const bundleProfile of bundle.agentProfiles) {
       try {
-        const exists = existingIds.has(bundleProfile.id)
+        const importAction = resolveBundleImportItemAction(bundleProfile.id, existingIds, conflictStrategy)
 
-        if (exists && conflictStrategy === "skip") {
+        if (!importAction.shouldImport) {
           result.agentProfiles.push({
             id: bundleProfile.id,
             name: bundleProfile.name,
-            action: "skipped",
+            action: importAction.action,
           })
           continue
         }
 
-        let finalId = bundleProfile.id
-        let action: ImportItemResult["action"] = "imported"
-
-        if (exists && conflictStrategy === "rename") {
-          finalId = generateBundleImportUniqueId(bundleProfile.id, existingIds)
-          action = "renamed"
-        } else if (exists && conflictStrategy === "overwrite") {
-          action = "overwritten"
-        }
-
         const now = Date.now()
-        const fullProfile = buildAgentProfileFromBundleProfile(bundleProfile, { id: finalId, now })
+        const fullProfile = buildAgentProfileFromBundleProfile(bundleProfile, { id: importAction.finalId, now })
 
         writeAgentsProfileFiles(layer, fullProfile)
-        existingIds.add(finalId)
+        existingIds.add(importAction.finalId)
 
         result.agentProfiles.push({
           id: bundleProfile.id,
           name: bundleProfile.name,
-          action,
-          newId: action === "renamed" ? finalId : undefined,
+          action: importAction.action,
+          newId: importAction.newId,
         })
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
@@ -618,36 +601,26 @@ export async function importBundle(
       let modified = false
 
       for (const bundleServer of bundle.mcpServers) {
-        const exists = existingNames.has(bundleServer.name)
+        const importAction = resolveBundleImportItemAction(bundleServer.name, existingNames, conflictStrategy)
 
-        if (exists && conflictStrategy === "skip") {
+        if (!importAction.shouldImport) {
           result.mcpServers.push({
             id: bundleServer.name,
             name: bundleServer.name,
-            action: "skipped",
+            action: importAction.action,
           })
           continue
         }
 
-        let finalName = bundleServer.name
-        let action: ImportItemResult["action"] = "imported"
-
-        if (exists && conflictStrategy === "rename") {
-          finalName = generateBundleImportUniqueId(bundleServer.name, existingNames)
-          action = "renamed"
-        } else if (exists && conflictStrategy === "overwrite") {
-          action = "overwritten"
-        }
-
-        mcpServers[finalName] = buildMcpServerConfigFromBundleServer(bundleServer)
-        existingNames.add(finalName)
+        mcpServers[importAction.finalId] = buildMcpServerConfigFromBundleServer(bundleServer)
+        existingNames.add(importAction.finalId)
         modified = true
 
         result.mcpServers.push({
           id: bundleServer.name,
           name: bundleServer.name,
-          action,
-          newId: action === "renamed" ? finalName : undefined,
+          action: importAction.action,
+          newId: importAction.newId,
         })
       }
 
@@ -672,41 +645,31 @@ export async function importBundle(
 
     for (const bundleSkill of bundle.skills) {
       try {
-        const exists = existingIds.has(bundleSkill.id)
+        const importAction = resolveBundleImportItemAction(bundleSkill.id, existingIds, conflictStrategy)
 
-        if (exists && conflictStrategy === "skip") {
+        if (!importAction.shouldImport) {
           result.skills.push({
             id: bundleSkill.id,
             name: bundleSkill.name,
-            action: "skipped",
+            action: importAction.action,
           })
           continue
         }
 
-        let finalId = bundleSkill.id
-        let action: ImportItemResult["action"] = "imported"
-
-        if (exists && conflictStrategy === "rename") {
-          finalId = generateBundleImportUniqueId(bundleSkill.id, existingIds)
-          action = "renamed"
-        } else if (exists && conflictStrategy === "overwrite") {
-          action = "overwritten"
-        }
-
         const now = Date.now()
-        const fullSkill = buildSkillFromBundleSkill(bundleSkill, { id: finalId, now })
+        const fullSkill = buildSkillFromBundleSkill(bundleSkill, { id: importAction.finalId, now })
 
         // Create skill directory and write file
-        const skillDir = skillIdToDirPath(layer, finalId)
+        const skillDir = skillIdToDirPath(layer, importAction.finalId)
         fs.mkdirSync(skillDir, { recursive: true })
         writeAgentsSkillFile(layer, fullSkill)
-        existingIds.add(finalId)
+        existingIds.add(importAction.finalId)
 
         result.skills.push({
           id: bundleSkill.id,
           name: bundleSkill.name,
-          action,
-          newId: action === "renamed" ? finalId : undefined,
+          action: importAction.action,
+          newId: importAction.newId,
         })
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
@@ -728,37 +691,27 @@ export async function importBundle(
 
     for (const bundleTask of bundle.repeatTasks) {
       try {
-        const exists = existingIds.has(bundleTask.id)
+        const importAction = resolveBundleImportItemAction(bundleTask.id, existingIds, conflictStrategy)
 
-        if (exists && conflictStrategy === "skip") {
+        if (!importAction.shouldImport) {
           result.repeatTasks.push({
             id: bundleTask.id,
             name: bundleTask.name,
-            action: "skipped",
+            action: importAction.action,
           })
           continue
         }
 
-        let finalId = bundleTask.id
-        let action: ImportItemResult["action"] = "imported"
-
-        if (exists && conflictStrategy === "rename") {
-          finalId = generateBundleImportUniqueId(bundleTask.id, existingIds)
-          action = "renamed"
-        } else if (exists && conflictStrategy === "overwrite") {
-          action = "overwritten"
-        }
-
-        const fullTask = buildRepeatTaskFromBundleTask(bundleTask, { id: finalId })
+        const fullTask = buildRepeatTaskFromBundleTask(bundleTask, { id: importAction.finalId })
 
         writeTaskFile(layer, fullTask)
-        existingIds.add(finalId)
+        existingIds.add(importAction.finalId)
 
         result.repeatTasks.push({
           id: bundleTask.id,
           name: bundleTask.name,
-          action,
-          newId: action === "renamed" ? finalId : undefined,
+          action: importAction.action,
+          newId: importAction.newId,
         })
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
@@ -780,38 +733,28 @@ export async function importBundle(
 
     for (const bundleKnowledgeNote of bundle.knowledgeNotes) {
       try {
-        const exists = existingIds.has(bundleKnowledgeNote.id)
+        const importAction = resolveBundleImportItemAction(bundleKnowledgeNote.id, existingIds, conflictStrategy)
 
-        if (exists && conflictStrategy === "skip") {
+        if (!importAction.shouldImport) {
           result.knowledgeNotes.push({
             id: bundleKnowledgeNote.id,
             name: bundleKnowledgeNote.title,
-            action: "skipped",
+            action: importAction.action,
           })
           continue
         }
 
-        let finalId = bundleKnowledgeNote.id
-        let action: ImportItemResult["action"] = "imported"
-
-        if (exists && conflictStrategy === "rename") {
-          finalId = generateBundleImportUniqueId(bundleKnowledgeNote.id, existingIds)
-          action = "renamed"
-        } else if (exists && conflictStrategy === "overwrite") {
-          action = "overwritten"
-        }
-
         const now = Date.now()
-        const fullNote = buildKnowledgeNoteFromBundleNote(bundleKnowledgeNote, { id: finalId, now })
+        const fullNote = buildKnowledgeNoteFromBundleNote(bundleKnowledgeNote, { id: importAction.finalId, now })
 
-        writeKnowledgeNoteFile(layer, fullNote, { slug: finalId })
-        existingIds.add(finalId)
+        writeKnowledgeNoteFile(layer, fullNote, { slug: importAction.finalId })
+        existingIds.add(importAction.finalId)
 
         result.knowledgeNotes.push({
           id: bundleKnowledgeNote.id,
           name: bundleKnowledgeNote.title,
-          action,
-          newId: action === "renamed" ? finalId : undefined,
+          action: importAction.action,
+          newId: importAction.newId,
         })
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)

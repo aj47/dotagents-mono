@@ -51,6 +51,7 @@ import {
   previewBundleImportFromTemporaryFile,
   readBundleMcpServersFromConfig,
   resolveBundleExportLayerDirs,
+  resolveBundleImportItemAction,
   resolveBundleComponentSelection,
   resolveBundleImportTargetDir,
   sanitizeBundlePublicMetadata,
@@ -613,6 +614,27 @@ describe("bundle API helpers", () => {
 
   it("builds imported app records from bundle items", () => {
     expect(generateBundleImportUniqueId("agent", new Set(["agent", "agent_imported"]))).toBe("agent_imported_2")
+    expect(resolveBundleImportItemAction("agent", new Set(["other"]), "skip")).toEqual({
+      action: "imported",
+      finalId: "agent",
+      shouldImport: true,
+    })
+    expect(resolveBundleImportItemAction("agent", new Set(["agent"]), "skip")).toEqual({
+      action: "skipped",
+      finalId: "agent",
+      shouldImport: false,
+    })
+    expect(resolveBundleImportItemAction("agent", new Set(["agent"]), "overwrite")).toEqual({
+      action: "overwritten",
+      finalId: "agent",
+      shouldImport: true,
+    })
+    expect(resolveBundleImportItemAction("agent", new Set(["agent", "agent_imported"]), "rename")).toEqual({
+      action: "renamed",
+      finalId: "agent_imported_2",
+      newId: "agent_imported_2",
+      shouldImport: true,
+    })
 
     expect(buildAgentProfileFromBundleProfile({
       id: "agent",

@@ -51,6 +51,8 @@ export type ExportBundleRequest = BundleItemSelectionOptions & {
 
 export type BundleImportConflictStrategy = "skip" | "overwrite" | "rename"
 
+export type BundleImportItemAction = "imported" | "skipped" | "overwritten" | "renamed"
+
 export type PreviewBundleImportRequest = {
   bundleJson: string
 }
@@ -590,6 +592,51 @@ export function generateBundleImportUniqueId(baseId: string, existingIds: Readon
     newId = `${baseId}_imported_${counter}`
   }
   return newId
+}
+
+export type BundleImportItemActionResolution = {
+  action: BundleImportItemAction
+  finalId: string
+  newId?: string
+  shouldImport: boolean
+}
+
+export function resolveBundleImportItemAction(
+  id: string,
+  existingIds: ReadonlySet<string>,
+  conflictStrategy: BundleImportConflictStrategy,
+): BundleImportItemActionResolution {
+  if (!existingIds.has(id)) {
+    return {
+      action: "imported",
+      finalId: id,
+      shouldImport: true,
+    }
+  }
+
+  if (conflictStrategy === "skip") {
+    return {
+      action: "skipped",
+      finalId: id,
+      shouldImport: false,
+    }
+  }
+
+  if (conflictStrategy === "rename") {
+    const finalId = generateBundleImportUniqueId(id, existingIds)
+    return {
+      action: "renamed",
+      finalId,
+      newId: finalId,
+      shouldImport: true,
+    }
+  }
+
+  return {
+    action: "overwritten",
+    finalId: id,
+    shouldImport: true,
+  }
 }
 
 export type BuildBundleImportedRecordOptions = {
@@ -1250,7 +1297,7 @@ export type BundleImportPreviewResponse = {
 export type BundleImportItemResult = {
   id: string
   name: string
-  action: "imported" | "skipped" | "renamed" | "overwritten"
+  action: BundleImportItemAction
   newId?: string
   error?: string
 }
