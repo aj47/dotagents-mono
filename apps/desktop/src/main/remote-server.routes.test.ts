@@ -233,12 +233,6 @@ function getMessageQueueServiceSource(): string {
   return readFileSync(messageQueueServicePath, "utf8")
 }
 
-function getOperatorObservabilityActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const operatorObservabilityActionsPath = path.join(testDir, "operator-observability-actions.ts")
-  return readFileSync(operatorObservabilityActionsPath, "utf8")
-}
-
 function getOperatorAuditActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const operatorAuditActionsPath = path.join(testDir, "operator-audit-actions.ts")
@@ -637,7 +631,6 @@ describe("remote-server route registration", () => {
       getOperatorApiKeyActionsSource(),
       getOperatorAuditActionsSource(),
       getOperatorMcpActionsSource(),
-      getOperatorObservabilityActionsSource(),
     ]
 
     for (const source of operatorActionSources) {
@@ -1245,7 +1238,6 @@ describe("remote-server route registration", () => {
       "  // GET /v1/operator/mcp - Operator-level MCP summary",
     )
     const operatorIntegrationSummarySource = getOperatorIntegrationSummarySource()
-    const operatorObservabilityActionsSource = getOperatorObservabilityActionsSource()
     const operatorAuditActionsSource = getOperatorAuditActionsSource()
     const sharedOperatorAuditStoreSource = getSharedOperatorAuditStoreSource()
     const sharedOperatorActionsSource = getSharedOperatorActionsSource()
@@ -1258,15 +1250,15 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.getOperatorLogs(query.count, query.level)")
     expect(operatorRoutesSource).toContain("actions.getOperatorConversations(query.count)")
     expect(operatorRoutesSource).toContain("actions.getOperatorRemoteServer(getRemoteServerStatus())")
-    expect(operatorObservabilityActionsSource).toContain("getOperatorStatusAction(remoteServerStatus, observabilityActionOptions)")
-    expect(operatorObservabilityActionsSource).toContain("getOperatorHealthAction(observabilityActionOptions)")
-    expect(operatorObservabilityActionsSource).toContain("getOperatorErrorsAction(count, observabilityActionOptions)")
-    expect(operatorObservabilityActionsSource).toContain("getOperatorLogsAction(count, level, observabilityActionOptions)")
-    expect(operatorObservabilityActionsSource).toContain("getOperatorConversationsAction(count, observabilityActionOptions)")
-    expect(operatorObservabilityActionsSource).toContain("getOperatorRemoteServerAction(remoteServerStatus)")
-    expect(operatorObservabilityActionsSource).toContain("service: {")
-    expect(operatorObservabilityActionsSource).toContain("getTunnelStatus: getCloudflareTunnelStatus")
-    expect(operatorObservabilityActionsSource).toContain("getSystemMetrics: getOperatorSystemMetrics")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorStatusAction(remoteServerStatus, observabilityActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorHealthAction(observabilityActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorErrorsAction(count, observabilityActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorLogsAction(count, level, observabilityActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorConversationsAction(count, observabilityActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorRemoteServerAction(remoteServerStatus)")
+    expect(operatorRouteDesktopActionsSource).toContain("service: {")
+    expect(operatorRouteDesktopActionsSource).toContain("getTunnelStatus: getCloudflareTunnelStatus")
+    expect(operatorRouteDesktopActionsSource).toContain("getSystemMetrics: getOperatorSystemMetrics")
     expect(sharedOperatorActionsSource).toContain("export async function getOperatorStatusAction(")
     expect(sharedOperatorActionsSource).toContain("export async function getOperatorHealthAction(")
     expect(sharedOperatorActionsSource).toContain("export function getOperatorErrorsAction(")
@@ -1314,8 +1306,8 @@ describe("remote-server route registration", () => {
     expect(operatorIntegrationSummarySource).toContain("getOperatorWhatsAppIntegrationSummary")
     expect(operatorIntegrationSummarySource).toContain("buildOperatorWhatsAppIntegrationSummary")
     expect(operatorIntegrationSummarySource).toContain("mergeOperatorWhatsAppStatusPayload")
-    expect(operatorObservabilityActionsSource).toContain('from "./operator-integration-summary"')
-    expect(operatorObservabilityActionsSource).not.toContain('from "./operator-integration-actions"')
+    expect(operatorRouteDesktopActionsSource).toContain('from "./operator-integration-summary"')
+    expect(operatorRouteDesktopActionsSource).not.toContain('from "./operator-integration-actions"')
     expect(operatorLifecycleSection).toContain("scheduleRemoteServerRestartFromOperator")
     expect(operatorLifecycleSection).toContain("scheduleAppRestartFromOperator")
     expect(operatorLifecycleSection).toContain("scheduleRemoteServerLifecycleActionAfterReply")
@@ -1420,15 +1412,15 @@ describe("remote-server route registration", () => {
     // Runtime status shaping stays shared while desktop supplies process and service state.
     expect(sharedOperatorActionsSource).toContain("buildOperatorRuntimeStatus({")
     expect(sharedOperatorActionsSource).toContain("system: options.service.getSystemMetrics()")
-    expect(operatorObservabilityActionsSource).toContain("function getOperatorSystemMetrics()")
-    expect(operatorObservabilityActionsSource).toContain("os.platform()")
-    expect(operatorObservabilityActionsSource).toContain("process.memoryUsage()")
-    expect(operatorObservabilityActionsSource).toContain("os.hostname()")
-    expect(operatorObservabilityActionsSource).toContain("getActiveSessions: () => agentSessionTracker.getActiveSessions()")
-    expect(operatorObservabilityActionsSource).toContain("getRecentSessions: (count) => agentSessionTracker.getRecentSessions(count)")
+    expect(operatorRouteDesktopActionsSource).toContain("function getOperatorSystemMetrics()")
+    expect(operatorRouteDesktopActionsSource).toContain("os.platform()")
+    expect(operatorRouteDesktopActionsSource).toContain("process.memoryUsage()")
+    expect(operatorRouteDesktopActionsSource).toContain("os.hostname()")
+    expect(operatorRouteDesktopActionsSource).toContain("getActiveSessions: () => agentSessionTracker.getActiveSessions()")
+    expect(operatorRouteDesktopActionsSource).toContain("getRecentSessions: (count) => agentSessionTracker.getRecentSessions(count)")
     // Conversations endpoint
     expect(sharedOperatorActionsSource).toContain("buildOperatorConversationsResponse(history, count)")
-    expect(operatorObservabilityActionsSource).toContain("getConversationHistory: () => conversationService.getConversationHistory()")
+    expect(operatorRouteDesktopActionsSource).toContain("getConversationHistory: () => conversationService.getConversationHistory()")
     expectRegisteredApiRoute(source, "GET", "operatorConversations")
     // Run-agent endpoint
     const agentRunActionsSource = getAgentRunActionsSource()

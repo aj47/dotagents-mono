@@ -1,4 +1,6 @@
 import crypto from "crypto"
+import { app } from "electron"
+import os from "os"
 import type { OperatorRouteActions } from "./operator-routes"
 import type { Config } from "../shared/types"
 import type {
@@ -32,14 +34,6 @@ import {
   testOperatorMcpServer,
 } from "./operator-mcp-actions"
 import {
-  getOperatorConversations,
-  getOperatorErrors,
-  getOperatorHealth,
-  getOperatorLogs,
-  getOperatorRemoteServer,
-  getOperatorStatus,
-} from "./operator-observability-actions"
-import {
   getOperatorAudit,
   recordOperatorAuditEvent,
   setOperatorAuditContext,
@@ -52,10 +46,16 @@ import {
   connectOperatorWhatsAppAction,
   disconnectOperatorDiscordAction,
   downloadLatestOperatorUpdateAssetAction,
+  getOperatorConversationsAction,
   getOperatorDiscordAction,
   getOperatorDiscordLogsAction,
+  getOperatorErrorsAction,
+  getOperatorHealthAction,
   getOperatorIntegrationsAction,
+  getOperatorLogsAction,
   getOperatorMessageQueuesAction,
+  getOperatorRemoteServerAction,
+  getOperatorStatusAction,
   getOperatorTunnelAction,
   getOperatorTunnelSetupAction,
   getOperatorUpdaterAction,
@@ -78,10 +78,14 @@ import {
   type OperatorAgentActionOptions,
   type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
+  type OperatorObservabilityActionOptions,
+  type OperatorRemoteServerStatusLike,
+  type OperatorSystemMetricsLike,
   type OperatorTunnelActionOptions,
   type OperatorUpdaterActionOptions,
 } from "@dotagents/shared/operator-actions"
 import { rotateOperatorRemoteServerApiKey } from "./operator-api-key-actions"
+import { agentSessionTracker } from "./agent-session-tracker"
 import { stopAgentSessionById } from "./agent-session-actions"
 import {
   checkCloudflaredInstalled,
@@ -93,6 +97,7 @@ import {
   stopCloudflareTunnel,
 } from "./cloudflare-tunnel"
 import { configStore } from "./config"
+import { conversationService } from "./conversation-service"
 import { diagnosticsService } from "./diagnostics"
 import { discordService } from "./discord-service"
 import {
@@ -117,6 +122,23 @@ import {
   openManualReleasesPage,
   revealDownloadedReleaseAsset,
 } from "./updater"
+
+function getOperatorSystemMetrics(): OperatorSystemMetricsLike {
+  return {
+    platform: os.platform(),
+    arch: os.arch(),
+    nodeVersion: process.version,
+    electronVersion: process.versions.electron,
+    appVersion: app.getVersion(),
+    osUptimeSeconds: os.uptime(),
+    processUptimeSeconds: process.uptime(),
+    memoryUsageBytes: process.memoryUsage(),
+    cpuCount: os.cpus().length,
+    totalMemoryBytes: os.totalmem(),
+    freeMemoryBytes: os.freemem(),
+    hostname: os.hostname(),
+  }
+}
 
 const modelPresetActionOptions: ModelPresetActionOptions<Config> = {
   config: {
@@ -226,6 +248,23 @@ const messageQueueActionOptions: OperatorMessageQueueActionOptions = {
   },
 }
 
+const observabilityActionOptions: OperatorObservabilityActionOptions = {
+  manualReleasesUrl: MANUAL_RELEASES_URL,
+  diagnostics: diagnosticsService,
+  service: {
+    getCurrentVersion: () => app.getVersion(),
+    getRecentErrors: (count) => diagnosticsService.getRecentErrors(count),
+    performHealthCheck: () => diagnosticsService.performHealthCheck(),
+    getTunnelStatus: getCloudflareTunnelStatus,
+    getIntegrationsSummary: buildOperatorIntegrationsSummary,
+    getUpdateInfo,
+    getSystemMetrics: getOperatorSystemMetrics,
+    getActiveSessions: () => agentSessionTracker.getActiveSessions(),
+    getRecentSessions: (count) => agentSessionTracker.getRecentSessions(count),
+    getConversationHistory: () => conversationService.getConversationHistory(),
+  },
+}
+
 const tunnelActionOptions: OperatorTunnelActionOptions = {
   config: {
     get: () => configStore.get(),
@@ -307,6 +346,30 @@ async function connectOperatorWhatsApp() {
 
 async function logoutOperatorWhatsApp() {
   return logoutOperatorWhatsAppAction(integrationActionOptions)
+}
+
+async function getOperatorStatus(remoteServerStatus: OperatorRemoteServerStatusLike) {
+  return getOperatorStatusAction(remoteServerStatus, observabilityActionOptions)
+}
+
+async function getOperatorHealth() {
+  return getOperatorHealthAction(observabilityActionOptions)
+}
+
+function getOperatorErrors(count: string | number | undefined) {
+  return getOperatorErrorsAction(count, observabilityActionOptions)
+}
+
+function getOperatorLogs(count: string | number | undefined, level: string | undefined) {
+  return getOperatorLogsAction(count, level, observabilityActionOptions)
+}
+
+async function getOperatorConversations(count: string | number | undefined) {
+  return getOperatorConversationsAction(count, observabilityActionOptions)
+}
+
+function getOperatorRemoteServer(remoteServerStatus: OperatorRemoteServerStatusLike) {
+  return getOperatorRemoteServerAction(remoteServerStatus)
 }
 
 function getOperatorMessageQueues() {
