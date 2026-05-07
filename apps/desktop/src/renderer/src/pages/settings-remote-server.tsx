@@ -20,8 +20,10 @@ import { EyeOff, ExternalLink } from "lucide-react"
 import {
   buildDotAgentsConfigDeepLink,
   buildRemoteServerBaseUrl,
+  CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
+  CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
   DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
@@ -542,7 +544,15 @@ export function RemoteServerSettingsGroups({
               </div>
             ) : (
               <>
-                <Control label={<ControlLabel label="Tunnel Mode" tooltip="Quick tunnels are easy but have random URLs. Named tunnels require setup but have persistent URLs." />} className="px-3">
+                <Control
+                  label={(
+                    <ControlLabel
+                      label={CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA.label}
+                      tooltip={CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA.tooltip}
+                    />
+                  )}
+                  className="px-3"
+                >
                   <Select
                     value={tunnelMode}
                     onValueChange={(value: CloudflareTunnelMode) => {
@@ -566,7 +576,15 @@ export function RemoteServerSettingsGroups({
                   </Select>
                 </Control>
 
-                <Control label={<ControlLabel label="Auto-Start Tunnel" tooltip="Automatically start the Cloudflare Tunnel when the application launches (requires Remote Server to be enabled)" />} className="px-3">
+                <Control
+                  label={(
+                    <ControlLabel
+                      label={CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA.label}
+                      tooltip={CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA.tooltip}
+                    />
+                  )}
+                  className="px-3"
+                >
                   <Switch
                     checked={cfg?.cloudflareTunnelAutoStart ?? DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START}
                     onCheckedChange={(value) => {

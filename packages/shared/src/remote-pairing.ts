@@ -115,6 +115,24 @@ export type CloudflareTunnelModeOption = {
   successMessage: string;
 };
 
+export type CloudflareTunnelModeFieldMetadata = {
+  key: 'cloudflareTunnelMode';
+  label: string;
+  tooltip: string;
+  pendingLabel: string;
+  accessibilityLabel: string;
+};
+
+export type CloudflareTunnelAutoStartFieldMetadata = {
+  key: 'cloudflareTunnelAutoStart';
+  label: string;
+  tooltip: string;
+  helperText: string;
+  pendingLabel: string;
+  successMessage: string;
+  accessibilityLabel: string;
+};
+
 export const DEFAULT_REMOTE_SERVER_BIND_ADDRESS: RemoteServerBindAddress = '127.0.0.1';
 export const DEFAULT_REMOTE_SERVER_PORT = 3210;
 export const DEFAULT_REMOTE_SERVER_LOG_LEVEL: RemoteServerLogLevel = 'info';
@@ -216,6 +234,22 @@ export const CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS: readonly CloudflareTunnelMo
     successMessage: 'Cloudflare tunnel mode set to named.',
   },
 ];
+export const CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA: CloudflareTunnelModeFieldMetadata = {
+  key: 'cloudflareTunnelMode',
+  label: 'Tunnel Mode',
+  tooltip: 'Quick tunnels are easy but have random URLs. Named tunnels require setup but have persistent URLs.',
+  pendingLabel: 'tunnel mode',
+  accessibilityLabel: 'Cloudflare tunnel mode',
+};
+export const CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA: CloudflareTunnelAutoStartFieldMetadata = {
+  key: 'cloudflareTunnelAutoStart',
+  label: 'Auto-Start Tunnel',
+  tooltip: 'Automatically start the Cloudflare Tunnel when the application launches (requires Remote Server to be enabled)',
+  helperText: 'Start the configured tunnel automatically when the desktop app is ready.',
+  pendingLabel: 'tunnel auto-start',
+  successMessage: 'Tunnel auto-start updated.',
+  accessibilityLabel: 'Auto-Start Tunnel',
+};
 
 export function getDefaultRemoteServerCorsOrigins(): string[] {
   return [...DEFAULT_REMOTE_SERVER_CORS_ORIGINS];

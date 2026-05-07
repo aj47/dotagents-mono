@@ -65,7 +65,9 @@ import {
   getOperatorTunnelStateLabel as getTunnelStateLabel,
 } from '@dotagents/shared/operator-display-utils';
 import {
+  CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
+  CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
@@ -2139,7 +2141,7 @@ export default function OperationsScreen({ navigation }: any) {
               </View>
 
               <Text style={styles.subsectionTitle}>Cloudflare tunnel</Text>
-              <Text style={styles.label}>Tunnel Mode</Text>
+              <Text style={styles.label}>{CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA.label}</Text>
               <View style={styles.chipRow}>
                 {CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS.map((option) => {
                   const selected = (settings.cloudflareTunnelMode ?? DEFAULT_CLOUDFLARE_TUNNEL_MODE) === option.value;
@@ -2153,13 +2155,13 @@ export default function OperationsScreen({ navigation }: any) {
                       ]}
                       onPress={() => void applySettingsUpdate(
                         { cloudflareTunnelMode: option.value },
-                        'tunnel mode',
+                        CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA.pendingLabel,
                         option.successMessage,
                       )}
                       disabled={controlsDisabled}
                       accessibilityRole="button"
                       accessibilityState={{ selected, disabled: controlsDisabled }}
-                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.compactLabel} Cloudflare tunnel mode`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.compactLabel} ${CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA.accessibilityLabel}`)}
                     >
                       <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>
                         {option.compactLabel}
@@ -2171,18 +2173,18 @@ export default function OperationsScreen({ navigation }: any) {
 
               <View style={styles.row}>
                 <View style={styles.rowCopy}>
-                  <Text style={styles.label}>Auto-Start Tunnel</Text>
-                  <Text style={styles.helperText}>Start the configured tunnel automatically when the desktop app is ready.</Text>
+                  <Text style={styles.label}>{CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA.label}</Text>
+                  <Text style={styles.helperText}>{CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA.helperText}</Text>
                 </View>
                 <Switch
                   value={settings.cloudflareTunnelAutoStart ?? DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START}
                   onValueChange={(value) => void applySettingsUpdate(
                     { cloudflareTunnelAutoStart: value },
-                    'tunnel auto-start',
-                    'Tunnel auto-start updated.',
+                    CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA.pendingLabel,
+                    CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA.successMessage,
                   )}
                   disabled={controlsDisabled}
-                  accessibilityLabel={createSwitchAccessibilityLabel('Auto-Start Tunnel')}
+                  accessibilityLabel={createSwitchAccessibilityLabel(CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA.accessibilityLabel)}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                   thumbColor={(settings.cloudflareTunnelAutoStart ?? DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START) ? theme.colors.primaryForeground : theme.colors.background}
                 />

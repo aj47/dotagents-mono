@@ -10,8 +10,10 @@ import {
   buildRemoteServerBaseUrl,
   buildRemoteServerCorsOptions,
   buildRemoteServerStatusSnapshot,
+  CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_MODE_OPTIONS,
   CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
+  CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
@@ -216,6 +218,22 @@ describe('remote server config contracts', () => {
         successMessage: 'Cloudflare tunnel mode set to named.',
       },
     ]);
+    expect(CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA).toEqual({
+      key: 'cloudflareTunnelMode',
+      label: 'Tunnel Mode',
+      tooltip: 'Quick tunnels are easy but have random URLs. Named tunnels require setup but have persistent URLs.',
+      pendingLabel: 'tunnel mode',
+      accessibilityLabel: 'Cloudflare tunnel mode',
+    });
+    expect(CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA).toEqual({
+      key: 'cloudflareTunnelAutoStart',
+      label: 'Auto-Start Tunnel',
+      tooltip: 'Automatically start the Cloudflare Tunnel when the application launches (requires Remote Server to be enabled)',
+      helperText: 'Start the configured tunnel automatically when the desktop app is ready.',
+      pendingLabel: 'tunnel auto-start',
+      successMessage: 'Tunnel auto-start updated.',
+      accessibilityLabel: 'Auto-Start Tunnel',
+    });
 
     expect(isRemoteServerBindAddressUpdateValue('0.0.0.0')).toBe(true);
     expect(isRemoteServerBindAddressUpdateValue('localhost')).toBe(false);
