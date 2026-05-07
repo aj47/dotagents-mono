@@ -22,12 +22,12 @@ import {
   taskIdToFilePath,
 } from "@dotagents/core"
 import {
-  assertHubPublishPublicMetadata,
+  buildHubPublishBundleExportRequest,
   buildHubPublishPayloadFromBundle,
   type HubPublishPayload,
+  type HubPublishBundleExportOptions,
 } from "@dotagents/shared/hub"
 import {
-  DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
   buildAgentProfileFromBundleProfile,
   buildBundleFromSourceLoaders,
   buildBundleImportExistingItems,
@@ -101,11 +101,7 @@ export type {
 export type BundleMCPServer = BundleMcpServer
 export type ExportableBundleMCPServer = ExportableBundleMcpServer
 export type ExportBundleOptions = ExportBundleRequest
-export type GeneratePublishPayloadOptions = ExportBundleRequest & {
-  publicMetadata: BundlePublicMetadata
-  catalogId?: string
-  artifactUrl?: string
-}
+export type GeneratePublishPayloadOptions = HubPublishBundleExportOptions
 
 export interface ExportBundleToFileResult {
   success: boolean
@@ -551,21 +547,11 @@ export async function generatePublishPayload(
   agentsDirs: string[],
   options: GeneratePublishPayloadOptions
 ): Promise<HubPublishPayload> {
-  assertHubPublishPublicMetadata(options.publicMetadata)
-
   const {
     catalogId: requestedCatalogId,
     artifactUrl: requestedArtifactUrl,
-    ...exportOptions
-  } = options
-
-  const publishOptions: ExportBundleOptions = {
-    ...exportOptions,
-    components: {
-      ...DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
-      ...options.components,
-    },
-  }
+    exportRequest: publishOptions,
+  } = buildHubPublishBundleExportRequest(options)
 
   const bundle = agentsDirs.length === 1
     ? await exportBundle(agentsDirs[0], publishOptions)

@@ -5,6 +5,7 @@ import {
   buildHubBundleInstallUrl,
   buildHubBundlePublicMetadata,
   buildHubPublishArtifactFileName,
+  buildHubPublishBundleExportRequest,
   buildHubPublishPayloadFromBundle,
   buildHubPublishSubmission,
   getHubDraftArtifactUrl,
@@ -93,6 +94,43 @@ describe("hub helpers", () => {
       source: "dotagents-desktop",
       version: 1,
       payload,
+    })
+
+    expect(buildHubPublishBundleExportRequest({
+      name: "My Bundle",
+      description: "Publish description",
+      catalogId: "custom-id",
+      artifactUrl: "https://cdn.example.com/custom.dotagents",
+      agentProfileIds: ["agent-1"],
+      publicMetadata: {
+        summary: "Useful agents",
+        author: { displayName: "AJ" },
+        tags: ["agents"],
+      },
+      components: {
+        skills: false,
+        repeatTasks: true,
+      },
+    })).toEqual({
+      catalogId: "custom-id",
+      artifactUrl: "https://cdn.example.com/custom.dotagents",
+      exportRequest: {
+        name: "My Bundle",
+        description: "Publish description",
+        agentProfileIds: ["agent-1"],
+        publicMetadata: {
+          summary: "Useful agents",
+          author: { displayName: "AJ" },
+          tags: ["agents"],
+        },
+        components: {
+          agentProfiles: true,
+          mcpServers: true,
+          skills: false,
+          repeatTasks: true,
+          knowledgeNotes: false,
+        },
+      },
     })
   })
 

@@ -1,4 +1,9 @@
-import type { BundlePublicMetadata, DotAgentsBundle } from "./bundle-api"
+import {
+  DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
+  type BundlePublicMetadata,
+  type DotAgentsBundle,
+  type ExportBundleRequest,
+} from "./bundle-api"
 
 export interface HubCatalogAuthor {
   displayName: string
@@ -71,6 +76,18 @@ export interface BuildHubPublishPayloadFromBundleOptions {
   getBundleSizeBytes?: (bundleJson: string) => number
 }
 
+export type HubPublishBundleExportOptions = ExportBundleRequest & {
+  publicMetadata: BundlePublicMetadata
+  catalogId?: string
+  artifactUrl?: string
+}
+
+export interface HubPublishBundleExportRequest {
+  exportRequest: ExportBundleRequest
+  catalogId?: string
+  artifactUrl?: string
+}
+
 const DEFAULT_HUB_BASE_URL = "https://hub.dotagentsprotocol.com"
 
 export function slugifyHubCatalogId(value: string): string {
@@ -138,6 +155,30 @@ export function assertHubPublishPublicMetadata(
   }
   if (!publicMetadata.author?.displayName) {
     throw new Error("Publish payload requires author.displayName in publicMetadata")
+  }
+}
+
+export function buildHubPublishBundleExportRequest(
+  options: HubPublishBundleExportOptions,
+): HubPublishBundleExportRequest {
+  assertHubPublishPublicMetadata(options.publicMetadata)
+
+  const {
+    catalogId,
+    artifactUrl,
+    ...exportRequest
+  } = options
+
+  return {
+    catalogId,
+    artifactUrl,
+    exportRequest: {
+      ...exportRequest,
+      components: {
+        ...DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
+        ...options.components,
+      },
+    },
   }
 }
 
