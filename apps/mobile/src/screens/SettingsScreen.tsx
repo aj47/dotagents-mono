@@ -58,11 +58,15 @@ import {
 import { sortAgentProfilesWithDefaultFirst } from '@dotagents/shared/agent-selector-options';
 import { getAcpxMainAgentOptions } from '@dotagents/shared/main-agent-selection';
 import {
+  buildModelPresetDraftFromSummary,
+  buildModelPresetPayloadFromDraft,
+  EMPTY_MODEL_PRESET_DRAFT,
   filterModelOptionsByQuery,
   getAgentModelPlaceholder,
   getAgentModelSettingKey,
   resolveAgentProviderId,
   resolveConfiguredAgentModel,
+  type ModelPresetDraft,
 } from '@dotagents/shared/model-presets';
 import {
   CHAT_PROVIDERS,
@@ -211,17 +215,6 @@ type McpServerEditorMode = 'create' | 'replace';
 type BundleImportComponentsState = RequiredBundleComponentSelection;
 type BundleImportComponentKey = BundleComponentOption['key'];
 
-type ModelPresetDraft = {
-  id?: string;
-  name: string;
-  baseUrl: string;
-  apiKey: string;
-  agentModel: string;
-  transcriptProcessingModel: string;
-  isBuiltIn: boolean;
-  hasApiKey: boolean;
-};
-
 type LoopRuntimeAction = {
   loopId: string;
   action: 'start' | 'stop';
@@ -351,16 +344,6 @@ const DISCORD_LIST_SETTING_SECTIONS: Array<{
     helper: 'Restrict direct-message access to specific Discord users.',
   },
 ];
-
-const EMPTY_MODEL_PRESET_DRAFT: ModelPresetDraft = {
-  name: '',
-  baseUrl: '',
-  apiKey: '',
-  agentModel: '',
-  transcriptProcessingModel: '',
-  isBuiltIn: false,
-  hasApiKey: false,
-};
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -2298,16 +2281,7 @@ export default function SettingsScreen({ navigation }: any) {
   const openPresetEditor = (mode: ModelPresetEditorMode, preset?: ModelPresetSummary) => {
     setPresetEditorMode(mode);
     if (mode === 'edit' && preset) {
-      setPresetDraft({
-        id: preset.id,
-        name: preset.name,
-        baseUrl: preset.baseUrl,
-        apiKey: '',
-        agentModel: preset.agentModel || preset.mcpToolsModel || '',
-        transcriptProcessingModel: preset.transcriptProcessingModel || '',
-        isBuiltIn: preset.isBuiltIn ?? false,
-        hasApiKey: !!preset.hasApiKey,
-      });
+      setPresetDraft(buildModelPresetDraftFromSummary(preset));
     } else {
       setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
     }
@@ -2335,32 +2309,19 @@ export default function SettingsScreen({ navigation }: any) {
   const handlePresetEditorSave = async () => {
     if (!settingsClient) return;
 
-    const name = presetDraft.name.trim();
-    const baseUrl = presetDraft.baseUrl.trim();
-    if (!name) {
-      setRemoteError('Endpoint name is required');
-      return;
-    }
-    if (!baseUrl) {
-      setRemoteError('Endpoint base URL is required');
+    const draftPayload = buildModelPresetPayloadFromDraft(presetDraft);
+    if (!draftPayload.ok) {
+      setRemoteError(draftPayload.error);
       return;
     }
 
     setIsSavingPreset(true);
     setRemoteError(null);
     try {
-      const payload = {
-        name,
-        baseUrl,
-        apiKey: presetDraft.apiKey.trim(),
-        agentModel: presetDraft.agentModel.trim(),
-        transcriptProcessingModel: presetDraft.transcriptProcessingModel.trim(),
-      };
-
       if (presetEditorMode === 'create') {
-        await settingsClient.createModelPreset(payload);
+        await settingsClient.createModelPreset(draftPayload.payload);
       } else if (presetDraft.id) {
-        await settingsClient.updateModelPreset(presetDraft.id, payload);
+        await settingsClient.updateModelPreset(presetDraft.id, draftPayload.payload);
       }
 
       await refreshSettingsAfterPresetMutation();

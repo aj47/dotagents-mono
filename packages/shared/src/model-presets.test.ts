@@ -3,11 +3,13 @@ import {
   AGENT_MODEL_FALLBACKS,
   buildAgentModelConfigUpdates,
   buildCustomModelPresetFromRequest,
+  buildModelPresetDraftFromSummary,
   buildModelPresetDeleteUpdates,
   buildModelPresetEditUpdates,
   buildModelPresetCreateAuditContext,
   buildModelPresetDeleteAuditContext,
   buildModelPresetMutationFailureAuditContext,
+  buildModelPresetPayloadFromDraft,
   buildModelPresetMutationResponse,
   buildModelPresetUpdatePatch,
   buildModelPresetUpdateAuditContext,
@@ -18,6 +20,7 @@ import {
   createOperatorModelPresetRouteActions,
   deleteOperatorModelPresetAction,
   buildPresetModelSelectionUpdates,
+  EMPTY_MODEL_PRESET_DRAFT,
   filterModelOptionsByQuery,
   formatModelPresetSummary,
   getActiveModelPreset,
@@ -115,6 +118,60 @@ describe('model preset helpers', () => {
     }, '********')).toMatchObject({
       apiKey: '********',
       hasApiKey: true,
+    });
+  });
+
+  it('builds editable model preset drafts from redacted summaries', () => {
+    expect(buildModelPresetDraftFromSummary({
+      id: 'openai',
+      name: 'OpenAI',
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: 'MASK',
+      hasApiKey: true,
+      isBuiltIn: true,
+      mcpToolsModel: 'gpt-4.1-mini',
+      transcriptProcessingModel: 'gpt-4.1-mini',
+    })).toEqual({
+      id: 'openai',
+      name: 'OpenAI',
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: '',
+      agentModel: 'gpt-4.1-mini',
+      transcriptProcessingModel: 'gpt-4.1-mini',
+      isBuiltIn: true,
+      hasApiKey: true,
+    });
+    expect(buildModelPresetDraftFromSummary(null)).toBe(EMPTY_MODEL_PRESET_DRAFT);
+  });
+
+  it('builds model preset mutation payloads from shared drafts', () => {
+    expect(buildModelPresetPayloadFromDraft({
+      ...EMPTY_MODEL_PRESET_DRAFT,
+      name: ' Custom ',
+      baseUrl: ' https://example.com/v1 ',
+      apiKey: ' sk-test ',
+      agentModel: ' gpt-4.1-mini ',
+      transcriptProcessingModel: ' gpt-4.1-mini ',
+    })).toEqual({
+      ok: true,
+      payload: {
+        name: 'Custom',
+        baseUrl: 'https://example.com/v1',
+        apiKey: 'sk-test',
+        agentModel: 'gpt-4.1-mini',
+        transcriptProcessingModel: 'gpt-4.1-mini',
+      },
+    });
+    expect(buildModelPresetPayloadFromDraft(EMPTY_MODEL_PRESET_DRAFT)).toEqual({
+      ok: false,
+      error: 'Endpoint name is required',
+    });
+    expect(buildModelPresetPayloadFromDraft({
+      ...EMPTY_MODEL_PRESET_DRAFT,
+      name: 'Custom',
+    })).toEqual({
+      ok: false,
+      error: 'Endpoint base URL is required',
     });
   });
 

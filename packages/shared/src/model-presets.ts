@@ -5,6 +5,7 @@ import type {
   ModelPresetMutationResponse,
   ModelPresetSummary,
   ModelPresetsResponse,
+  ModelPresetUpdateRequest,
 } from './api-types';
 
 export interface ModelPresetConfigLike {
@@ -83,6 +84,31 @@ export const AGENT_MODEL_FALLBACKS: Record<CHAT_PROVIDER_ID, string> = {
 export type ModelPresetCreateParseResult =
   | { ok: true; request: ModelPresetCreateRequest }
   | { ok: false; statusCode: 400; error: string };
+
+export type ModelPresetDraft = {
+  id?: string;
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  agentModel: string;
+  transcriptProcessingModel: string;
+  isBuiltIn: boolean;
+  hasApiKey: boolean;
+};
+
+export const EMPTY_MODEL_PRESET_DRAFT: ModelPresetDraft = {
+  name: '',
+  baseUrl: '',
+  apiKey: '',
+  agentModel: '',
+  transcriptProcessingModel: '',
+  isBuiltIn: false,
+  hasApiKey: false,
+};
+
+export type ModelPresetDraftPayloadResult =
+  | { ok: true; payload: ModelPresetCreateRequest & ModelPresetUpdateRequest }
+  | { ok: false; error: string };
 
 export type ModelPresetMutationAuditAction =
   | 'model-preset-create'
@@ -213,6 +239,39 @@ export function formatModelPresetSummary(preset: ModelPreset, secretMask: string
     isBuiltIn: preset.isBuiltIn ?? false,
     apiKey: hasApiKey ? secretMask : '',
     hasApiKey,
+  };
+}
+
+export function buildModelPresetDraftFromSummary(preset?: ModelPresetSummary | null): ModelPresetDraft {
+  if (!preset) return EMPTY_MODEL_PRESET_DRAFT;
+
+  return {
+    id: preset.id,
+    name: preset.name,
+    baseUrl: preset.baseUrl,
+    apiKey: '',
+    agentModel: preset.agentModel || preset.mcpToolsModel || '',
+    transcriptProcessingModel: preset.transcriptProcessingModel || '',
+    isBuiltIn: preset.isBuiltIn ?? false,
+    hasApiKey: !!preset.hasApiKey,
+  };
+}
+
+export function buildModelPresetPayloadFromDraft(draft: ModelPresetDraft): ModelPresetDraftPayloadResult {
+  const name = draft.name.trim();
+  const baseUrl = draft.baseUrl.trim();
+  if (!name) return { ok: false, error: 'Endpoint name is required' };
+  if (!baseUrl) return { ok: false, error: 'Endpoint base URL is required' };
+
+  return {
+    ok: true,
+    payload: {
+      name,
+      baseUrl,
+      apiKey: draft.apiKey.trim(),
+      agentModel: draft.agentModel.trim(),
+      transcriptProcessingModel: draft.transcriptProcessingModel.trim(),
+    },
   };
 }
 

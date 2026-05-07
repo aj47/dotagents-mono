@@ -58,6 +58,15 @@ test('sorts mobile skills like desktop without mutating fetched state', () => {
   assert.match(settingsSource, /displaySkills\.map\(\(skill\) => \{/);
 });
 
+test('lets mobile edit desktop model presets through shared draft helpers', () => {
+  assert.match(settingsSource, /EMPTY_MODEL_PRESET_DRAFT/);
+  assert.match(settingsSource, /type ModelPresetDraft/);
+  assert.match(settingsSource, /buildModelPresetDraftFromSummary\(preset\)/);
+  assert.match(settingsSource, /buildModelPresetPayloadFromDraft\(presetDraft\)/);
+  assert.match(settingsSource, /settingsClient\.createModelPreset\(draftPayload\.payload\)/);
+  assert.match(settingsSource, /settingsClient\.updateModelPreset\(presetDraft\.id, draftPayload\.payload\)/);
+});
+
 test('lets mobile delete non-reserved desktop MCP server configs', () => {
   assert.match(settingsSource, /handleMcpServerDelete/);
   assert.match(settingsSource, /settingsClient\.deleteMCPServerConfig\(server\.name\)/);
