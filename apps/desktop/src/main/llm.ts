@@ -70,9 +70,9 @@ import {
 import {
   EMPTY_RESPONSE_FINAL_CONTENT,
   EMPTY_RESPONSE_RETRY_PROMPT,
-  filterEphemeralMessages,
   getEmptyResponseRetryPrompt,
   isInternalNudgeContent,
+  stripConversationRuntimeMetadata,
 } from "@dotagents/shared/conversation-history-utils"
 import {
   filterNamedItemsToAllowedTools,
@@ -3444,10 +3444,7 @@ export async function processTranscriptWithAgentMode(
 
     return {
       content: finalContent,
-      conversationHistory: filterEphemeralMessages(conversationHistory).map((entry) => {
-        const { skipModelReplay: _skipModelReplay, ...rest } = entry
-        return rest
-      }),
+      conversationHistory: stripConversationRuntimeMetadata(conversationHistory),
       totalIterations: iteration,
     }
   } finally {

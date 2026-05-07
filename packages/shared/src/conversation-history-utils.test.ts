@@ -12,6 +12,7 @@ import {
   isGeneratedContextSummaryContent,
   isInternalNudgeContent,
   isRealUserRequestContent,
+  stripConversationRuntimeMetadata,
   type ConversationHistoryFilterMessage,
 } from './conversation-history-utils';
 
@@ -342,6 +343,42 @@ describe('conversation-history-utils', () => {
       expect(msg.toolCalls).toBeDefined();
       expect(msg.toolResults).toBeDefined();
       expect('ephemeral' in msg).toBe(false);
+    });
+  });
+
+  describe('stripConversationRuntimeMetadata', () => {
+    it('removes ephemeral messages and runtime-only replay metadata', () => {
+      const history = [
+        { role: 'user' as const, content: 'Keep me', timestamp: 1000 },
+        {
+          role: 'assistant' as const,
+          content: 'Do not replay internally',
+          timestamp: 1500,
+          skipModelReplay: true,
+          toolResults: [{ content: [{ type: 'text', text: 'raw' }], isError: false }],
+        },
+        {
+          role: 'user' as const,
+          content: 'Internal nudge',
+          timestamp: 2000,
+          ephemeral: true,
+          skipModelReplay: true,
+        },
+      ];
+
+      const filtered = stripConversationRuntimeMetadata(history);
+
+      expect(filtered).toEqual([
+        { role: 'user', content: 'Keep me', timestamp: 1000 },
+        {
+          role: 'assistant',
+          content: 'Do not replay internally',
+          timestamp: 1500,
+          toolResults: [{ content: [{ type: 'text', text: 'raw' }], isError: false }],
+        },
+      ]);
+      expect(filtered.some((message) => 'ephemeral' in message)).toBe(false);
+      expect(filtered.some((message) => 'skipModelReplay' in message)).toBe(false);
     });
   });
 });

@@ -22,6 +22,7 @@ export interface ConversationHistoryFilterMessage {
 }
 
 type WithEphemeralFlag = { ephemeral?: boolean }
+type WithConversationRuntimeMetadata = WithEphemeralFlag & { skipModelReplay?: boolean }
 type ConversationLike = { role: string; content?: string }
 
 export const MAPPED_TOOL_RESULT_PREFIX_RE = /^\[((?=[^\]]*[a-z])[A-Za-z0-9._:/-]+)\]\s(?:ERROR:\s*)?/
@@ -149,5 +150,25 @@ export function filterEphemeralMessages<T extends WithEphemeralFlag>(
     .map((msg) => {
       const { ephemeral: _ephemeral, ...rest } = msg
       return rest as Omit<T, "ephemeral">
+    })
+}
+
+/**
+ * Prepare agent runtime history for return to callers.
+ * Runtime-only markers are useful while building model context, but should not
+ * leak into the response history that can be replayed by a later turn.
+ */
+export function stripConversationRuntimeMetadata<T extends WithConversationRuntimeMetadata>(
+  history: T[],
+): Array<Omit<T, "ephemeral" | "skipModelReplay">> {
+  return history
+    .filter((msg) => !msg.ephemeral)
+    .map((msg) => {
+      const {
+        ephemeral: _ephemeral,
+        skipModelReplay: _skipModelReplay,
+        ...rest
+      } = msg
+      return rest as Omit<T, "ephemeral" | "skipModelReplay">
     })
 }
