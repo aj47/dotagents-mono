@@ -9,6 +9,7 @@ import {
   buildServerConversationCompactionCheckpointMetadata,
   buildServerConversationCompactionPrompt,
   buildServerConversationCompactionSummaryInput,
+  buildServerConversationAutoTitleSeed,
   buildServerConversationHistoryItem,
   buildNewServerConversationFromUpdateRequest,
   buildServerConversationTitle,
@@ -149,6 +150,53 @@ describe('server conversation API helpers', () => {
     );
 
     expect(conversation.title).toBe('Image');
+  });
+
+  it('selects auto-title seeds from stored raw conversation history', () => {
+    const seededConversation = {
+      id: 'conv-auto-title',
+      title: 'Summarize prism modularization',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [
+        {
+          id: 'summary-1',
+          role: 'assistant' as const,
+          content: 'Summary',
+          timestamp: 2,
+          isSummary: true,
+          summarizedMessageCount: 2,
+        },
+      ],
+      rawMessages: [
+        {
+          id: 'm1',
+          role: 'user' as const,
+          content: '  Summarize prism modularization  ',
+          timestamp: 1,
+        },
+        {
+          id: 'm2',
+          role: 'assistant' as const,
+          content: 'Shared server helpers were extracted.',
+          timestamp: 2,
+        },
+      ],
+    };
+
+    expect(buildServerConversationAutoTitleSeed(seededConversation)).toEqual({
+      fallbackTitle: 'Summarize prism modularization',
+      firstUserMessage: 'Summarize prism modularization',
+      firstAssistantMessage: 'Shared server helpers were extracted.',
+    });
+    expect(buildServerConversationAutoTitleSeed({
+      ...seededConversation,
+      title: 'Custom title',
+    })).toBeNull();
+    expect(buildServerConversationAutoTitleSeed({
+      ...seededConversation,
+      rawMessages: seededConversation.rawMessages.slice(0, 1),
+    })).toBeNull();
   });
 
   it('returns route-compatible validation errors for bad create and update bodies', () => {

@@ -20,8 +20,8 @@ import {
   buildServerConversationCompactionCheckpointMetadata,
   buildServerConversationCompactionPrompt,
   buildServerConversationCompactionSummaryInput,
+  buildServerConversationAutoTitleSeed,
   buildServerConversationHistoryItem,
-  buildServerConversationTitle,
   estimateServerConversationCompactionTokensFromText,
   getRepresentedServerConversationMessageCount,
   getStoredServerConversationMessages,
@@ -289,25 +289,7 @@ export class ConversationService {
     firstUserMessage: string
     firstAssistantMessage: string
   } | null {
-    const messages = this.getStoredRawMessages(conversation)
-    const firstUserMessage = messages.find((message) => message.role === "user" && message.content?.trim())?.content?.trim()
-    const firstAssistantMessage = messages.find((message) => message.role === "assistant" && message.content?.trim())?.content?.trim()
-
-    if (!firstUserMessage || !firstAssistantMessage) {
-      return null
-    }
-
-    const fallbackTitle = buildServerConversationTitle(undefined, [{ role: "user", content: firstUserMessage }])
-    const currentTitle = normalizeConversationTitleText(conversation.title, { maxChars: MAX_SESSION_TITLE_CHARS })
-    if (currentTitle !== normalizeConversationTitleText(fallbackTitle, { maxChars: MAX_SESSION_TITLE_CHARS })) {
-      return null
-    }
-
-    return {
-      fallbackTitle,
-      firstUserMessage,
-      firstAssistantMessage,
-    }
+    return buildServerConversationAutoTitleSeed(conversation, { maxTitleChars: MAX_SESSION_TITLE_CHARS })
   }
 
   private async generateAgentSessionTitle(

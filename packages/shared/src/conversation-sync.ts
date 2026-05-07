@@ -196,6 +196,16 @@ export type RenameServerConversationTitleResult<TConversation extends ServerConv
   | { ok: true; conversation: TConversation; title: string; changed: boolean }
   | { ok: false; error: string };
 
+export interface ServerConversationAutoTitleSeed {
+  fallbackTitle: string;
+  firstUserMessage: string;
+  firstAssistantMessage: string;
+}
+
+export interface BuildServerConversationAutoTitleSeedOptions {
+  maxTitleChars?: number;
+}
+
 export interface BuildServerConversationHistoryItemOptions {
   maxLastMessageChars?: number;
   maxPreviewChars?: number;
@@ -436,6 +446,32 @@ export function getRepresentedServerConversationMessageCount<TConversation exten
   }
 
   return getStoredServerConversationMessages(conversation).length;
+}
+
+export function buildServerConversationAutoTitleSeed<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+  options: BuildServerConversationAutoTitleSeedOptions = {},
+): ServerConversationAutoTitleSeed | null {
+  const maxTitleChars = options.maxTitleChars ?? 80;
+  const messages = getStoredServerConversationMessages(conversation);
+  const firstUserMessage = messages.find((message) => message.role === 'user' && message.content?.trim())?.content?.trim();
+  const firstAssistantMessage = messages.find((message) => message.role === 'assistant' && message.content?.trim())?.content?.trim();
+
+  if (!firstUserMessage || !firstAssistantMessage) {
+    return null;
+  }
+
+  const fallbackTitle = buildServerConversationTitle(undefined, [{ role: 'user', content: firstUserMessage }]);
+  const currentTitle = normalizeConversationTitleText(conversation.title, { maxChars: maxTitleChars });
+  if (currentTitle !== normalizeConversationTitleText(fallbackTitle, { maxChars: maxTitleChars })) {
+    return null;
+  }
+
+  return {
+    fallbackTitle,
+    firstUserMessage,
+    firstAssistantMessage,
+  };
 }
 
 export function estimateServerConversationCompactionTokensFromText(text: string): number {
