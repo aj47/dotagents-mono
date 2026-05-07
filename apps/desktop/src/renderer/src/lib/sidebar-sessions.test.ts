@@ -1019,6 +1019,38 @@ describe("paginateSidebarEntries", () => {
       "pinned",
     ])
   })
+
+  it("keeps grouped unpinned saved entries available before grouping", () => {
+    const groupedSessionKeys = new Set(["conversation:personal-c"])
+    const paginated = paginateSidebarEntries(
+      [
+        { session: { id: "active", conversationId: "active-c" }, isSavedConversation: false },
+        { session: { id: "personal", conversationId: "personal-c" }, isSavedConversation: true },
+        { session: { id: "hidden", conversationId: "hidden-c" }, isSavedConversation: true },
+      ],
+      new Set(),
+      0,
+      groupedSessionKeys,
+    )
+
+    const grouped = groupSidebarSessionEntries(paginated.visibleEntries, [
+      {
+        id: "personal",
+        name: "Personal",
+        expanded: true,
+        sessionKeys: ["conversation:personal-c"],
+      },
+    ])
+
+    expect(paginated.visibleEntries.map((entry) => entry.session.id)).toEqual([
+      "active",
+      "personal",
+    ])
+    expect(paginated.hasMoreEntries).toBe(true)
+    expect(grouped.groupedSections[0]?.entries.map((entry) => entry.session.id)).toEqual([
+      "personal",
+    ])
+  })
 })
 
 describe("agent response unread helpers", () => {

@@ -640,6 +640,10 @@ export function ActiveAgentsSidebar({
     visibleSavedConversationCount > 0
       ? visibleSavedConversationCount
       : defaultSavedConversationRows
+  const groupedSessionKeys = useMemo(
+    () => new Set(sessionGroups.flatMap((group) => group.sessionKeys)),
+    [sessionGroups],
+  )
   const canShowLessSavedConversations =
     visibleSavedConversationCount > defaultSavedConversationRows
 
@@ -651,8 +655,9 @@ export function ActiveAgentsSidebar({
       allUserSidebarSessions,
       pinnedSessionIds,
       displayedSavedConversationCount,
+      groupedSessionKeys,
     ),
-    [allUserSidebarSessions, displayedSavedConversationCount, pinnedSessionIds],
+    [allUserSidebarSessions, displayedSavedConversationCount, pinnedSessionIds, groupedSessionKeys],
   )
 
   const {

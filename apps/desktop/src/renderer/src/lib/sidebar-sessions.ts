@@ -365,17 +365,21 @@ export function paginateSidebarEntries<
   entries: T[],
   pinnedSessionIds: ReadonlySet<string>,
   visibleSavedEntryCount: number,
+  alwaysVisibleSessionKeys: ReadonlySet<string> = new Set(),
 ): { visibleEntries: T[]; hasMoreEntries: boolean } {
   const alwaysVisibleEntries: T[] = []
   const pageableEntries: T[] = []
   for (const entry of entries) {
     const conversationId = entry.session.conversationId
+    const sessionKey = getSidebarSessionGroupKey(entry.session)
     const isPinnedSavedConversation =
       entry.isSavedConversation &&
       !!conversationId &&
       pinnedSessionIds.has(conversationId)
+    const isGroupedSavedConversation =
+      entry.isSavedConversation && alwaysVisibleSessionKeys.has(sessionKey)
 
-    if (!entry.isSavedConversation || isPinnedSavedConversation) {
+    if (!entry.isSavedConversation || isPinnedSavedConversation || isGroupedSavedConversation) {
       alwaysVisibleEntries.push(entry)
     } else {
       pageableEntries.push(entry)
