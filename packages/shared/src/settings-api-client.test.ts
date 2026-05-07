@@ -318,6 +318,15 @@ describe('SettingsApiClient', () => {
       },
     )).not.toHaveProperty('maxConversationsToKeep');
     expect(buildSettingsUpdatePatch(
+      { panelPosition: 'floating' },
+      {},
+      {
+        providerSecretMask: '••••••••',
+        remoteServerSecretMask: '••••••••',
+        discordSecretMask: '••••••••',
+      },
+    )).not.toHaveProperty('panelPosition');
+    expect(buildSettingsUpdatePatch(
       {
         openaiTtsSpeed: 0.24,
         edgeTtsRate: 2.1,

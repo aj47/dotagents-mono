@@ -27,6 +27,7 @@ import {
   DEFAULT_LAUNCH_AT_LOGIN,
   DEFAULT_PANEL_DRAG_ENABLED,
   DEFAULT_PANEL_POSITION,
+  PANEL_POSITION_OPTIONS,
   OperatorAuditEntry,
   OperatorConversationItem,
   OperatorDiagnosticReport,
@@ -42,7 +43,6 @@ import {
   OperatorWhatsAppIntegrationSummary,
   Settings,
   SettingsUpdate,
-  type PanelPosition,
 } from '@dotagents/shared/api-types';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { saveConfig, useConfigContext } from '../store/config';
@@ -96,15 +96,6 @@ const DISCORD_LOG_PREVIEW_COUNT = 6;
 const MCP_LOG_PREVIEW_COUNT = 20;
 const ACTION_REFRESH_DELAY_MS = 1200;
 const AUTO_REFRESH_INTERVAL_MS = 30_000;
-const PANEL_POSITION_OPTIONS: Array<{ value: PanelPosition; label: string }> = [
-  { value: 'top-left', label: 'Top Left' },
-  { value: 'top-center', label: 'Top Center' },
-  { value: 'top-right', label: 'Top Right' },
-  { value: 'bottom-left', label: 'Bottom Left' },
-  { value: 'bottom-center', label: 'Bottom Center' },
-  { value: 'bottom-right', label: 'Bottom Right' },
-  { value: 'custom', label: 'Custom' },
-];
 export default function OperationsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -2081,14 +2072,14 @@ export default function OperationsScreen({ navigation }: any) {
                       onPress={() => void applySettingsUpdate(
                         { panelPosition: option.value },
                         'panel position',
-                        `Panel position set to ${option.label}.`,
+                        `Panel position set to ${option.compactLabel}.`,
                       )}
                       disabled={controlsDisabled}
                       accessibilityRole="button"
-                      accessibilityLabel={createButtonAccessibilityLabel(`Set floating panel position to ${option.label}`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(`Set floating panel position to ${option.compactLabel}`)}
                     >
                       <Text style={[styles.chipButtonText, isActive && styles.chipButtonTextActive]}>
-                        {option.label}
+                        {option.compactLabel}
                       </Text>
                     </TouchableOpacity>
                   );

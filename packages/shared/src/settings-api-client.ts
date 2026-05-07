@@ -149,6 +149,7 @@ import {
   DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
   DEFAULT_PANEL_DRAG_ENABLED,
   DEFAULT_PANEL_POSITION,
+  isPanelPosition,
   normalizeMaxConversationsToKeepValue,
 } from './api-types';
 import type {
@@ -396,8 +397,6 @@ export interface SettingsRouteActions {
 function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === 'object' && !Array.isArray(body) ? body as Record<string, unknown> : {};
 }
-
-const PANEL_POSITIONS = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'custom'] as const;
 
 function getRecordValue(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
@@ -985,7 +984,7 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.hidePanelWhenMainFocused === 'boolean') updates.hidePanelWhenMainFocused = requestBody.hidePanelWhenMainFocused;
   if (typeof requestBody.hideDockIcon === 'boolean') updates.hideDockIcon = requestBody.hideDockIcon;
   if (typeof requestBody.launchAtLogin === 'boolean') updates.launchAtLogin = requestBody.launchAtLogin;
-  if (typeof requestBody.panelPosition === 'string' && PANEL_POSITIONS.includes(requestBody.panelPosition as typeof PANEL_POSITIONS[number])) {
+  if (isPanelPosition(requestBody.panelPosition)) {
     updates.panelPosition = requestBody.panelPosition;
   }
   if (requestBody.panelCustomPosition === null) updates.panelCustomPosition = undefined;

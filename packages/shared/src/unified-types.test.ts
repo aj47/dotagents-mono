@@ -14,6 +14,9 @@ import {
   DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
   DEFAULT_PANEL_DRAG_ENABLED,
   DEFAULT_PANEL_POSITION,
+  PANEL_POSITION_OPTIONS,
+  PANEL_POSITION_VALUES,
+  isPanelPosition,
   MAX_CONVERSATIONS_TO_KEEP,
   MIN_CONVERSATIONS_TO_KEEP,
   formatMaxConversationsToKeepValidationMessage,
@@ -560,6 +563,22 @@ describe('settings API request/response contracts', () => {
     assertType<SettingsUpdate>(update)
     expect(defaultConfig.panelPosition).toBe('top-right')
     expect(defaultConfig.panelDragEnabled).toBe(true)
+    expect(PANEL_POSITION_VALUES).toEqual([
+      'top-left',
+      'top-center',
+      'top-right',
+      'bottom-left',
+      'bottom-center',
+      'bottom-right',
+      'custom',
+    ])
+    expect(PANEL_POSITION_OPTIONS.find((option) => option.value === 'custom')).toEqual({
+      value: 'custom',
+      label: 'Custom (Draggable)',
+      compactLabel: 'Custom',
+    })
+    expect(isPanelPosition('bottom-center')).toBe(true)
+    expect(isPanelPosition('floating')).toBe(false)
     expect(update.panelPosition).toBe('custom')
   })
 

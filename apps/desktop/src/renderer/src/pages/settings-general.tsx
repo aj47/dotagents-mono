@@ -52,6 +52,7 @@ import {
   DEFAULT_LAUNCH_AT_LOGIN,
   DEFAULT_PANEL_DRAG_ENABLED,
   DEFAULT_PANEL_POSITION,
+  PANEL_POSITION_OPTIONS,
   type PanelPosition,
 } from "@dotagents/shared/api-types"
 import { SUPPORTED_LANGUAGES } from "@dotagents/shared/languages"
@@ -1290,13 +1291,11 @@ export function Component() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="top-left">Top Left</SelectItem>
-                <SelectItem value="top-center">Top Center</SelectItem>
-                <SelectItem value="top-right">Top Right</SelectItem>
-                <SelectItem value="bottom-left">Bottom Left</SelectItem>
-                <SelectItem value="bottom-center">Bottom Center</SelectItem>
-                <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                <SelectItem value="custom">Custom (Draggable)</SelectItem>
+                {PANEL_POSITION_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Control>

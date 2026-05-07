@@ -820,14 +820,37 @@ export interface DesktopShellConfig {
 export const DEFAULT_HIDE_DOCK_ICON = false;
 export const DEFAULT_LAUNCH_AT_LOGIN = false;
 
-export type PanelPosition =
-  | "top-left"
-  | "top-center"
-  | "top-right"
-  | "bottom-left"
-  | "bottom-center"
-  | "bottom-right"
-  | "custom";
+export const PANEL_POSITION_VALUES = [
+  "top-left",
+  "top-center",
+  "top-right",
+  "bottom-left",
+  "bottom-center",
+  "bottom-right",
+  "custom",
+] as const;
+
+export type PanelPosition = typeof PANEL_POSITION_VALUES[number];
+
+export type PanelPositionOption = {
+  value: PanelPosition;
+  label: string;
+  compactLabel: string;
+};
+
+export const PANEL_POSITION_OPTIONS: readonly PanelPositionOption[] = [
+  { value: "top-left", label: "Top Left", compactLabel: "Top Left" },
+  { value: "top-center", label: "Top Center", compactLabel: "Top Center" },
+  { value: "top-right", label: "Top Right", compactLabel: "Top Right" },
+  { value: "bottom-left", label: "Bottom Left", compactLabel: "Bottom Left" },
+  { value: "bottom-center", label: "Bottom Center", compactLabel: "Bottom Center" },
+  { value: "bottom-right", label: "Bottom Right", compactLabel: "Bottom Right" },
+  { value: "custom", label: "Custom (Draggable)", compactLabel: "Custom" },
+];
+
+export function isPanelPosition(value: unknown): value is PanelPosition {
+  return typeof value === "string" && (PANEL_POSITION_VALUES as readonly string[]).includes(value);
+}
 
 export const DEFAULT_PANEL_POSITION: PanelPosition = "top-right";
 export const DEFAULT_PANEL_DRAG_ENABLED = true;

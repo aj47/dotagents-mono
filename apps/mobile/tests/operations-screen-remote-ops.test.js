@@ -38,6 +38,8 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /DEFAULT_PANEL_DRAG_ENABLED/);
   assert.match(operationsSource, /DEFAULT_PANEL_POSITION/);
   assert.match(operationsSource, /PANEL_POSITION_OPTIONS/);
+  assert.match(operationsSource, /option\.compactLabel/);
+  assert.doesNotMatch(operationsSource, /const PANEL_POSITION_OPTIONS/);
   assert.match(operationsSource, /REMOTE_SERVER_PORT_MIN/);
   assert.match(operationsSource, /REMOTE_SERVER_PORT_MAX/);
   assert.match(operationsSource, /isRemoteServerPortUpdateValue/);
