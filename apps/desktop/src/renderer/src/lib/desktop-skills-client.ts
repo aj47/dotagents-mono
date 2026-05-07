@@ -5,7 +5,7 @@ import type {
 } from "@dotagents/shared/api-types"
 import type { AgentSkill } from "@dotagents/shared/types"
 import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 
 export type DesktopSkillUpdateRequest = SkillUpdateRequest & { id: string }
 
@@ -27,6 +27,10 @@ export interface DesktopSkillFileActionResult {
 }
 
 export const desktopSkillsClient = {
+  onSkillsFolderChanged(listener: () => void): () => void {
+    return rendererHandlers.skillsFolderChanged.listen(listener)
+  },
+
   getSkills(): Promise<AgentSkill[]> {
     return tipcClient.getSkills() as Promise<AgentSkill[]>
   },

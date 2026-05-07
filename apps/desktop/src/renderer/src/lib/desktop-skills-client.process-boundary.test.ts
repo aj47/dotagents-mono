@@ -9,6 +9,7 @@ describe("desktop skills renderer client", () => {
     expect(clientSource).toContain("SkillCreateRequest")
     expect(clientSource).toContain("SkillUpdateRequest")
     expect(clientSource).toContain("SkillDeleteMultipleResult")
+    expect(clientSource).toContain("rendererHandlers.skillsFolderChanged.listen(listener)")
     expect(clientSource).toContain("tipcClient.getSkills()")
     expect(clientSource).toContain("tipcClient.createSkill(request)")
     expect(clientSource).toContain("tipcClient.updateSkill(request)")
@@ -21,6 +22,7 @@ describe("desktop skills renderer client", () => {
 
   it("keeps the settings skills UI off direct skill IPC channels", () => {
     expect(settingsSkillsSource).toContain("desktopSkillsClient.getSkills()")
+    expect(settingsSkillsSource).toContain("desktopSkillsClient.onSkillsFolderChanged(")
     expect(settingsSkillsSource).toContain("desktopSkillsClient.createSkill({ name, description, instructions })")
     expect(settingsSkillsSource).toContain("desktopSkillsClient.updateSkill({ id, name, description, instructions })")
     expect(settingsSkillsSource).toContain("desktopSkillsClient.deleteSkill(id)")
@@ -28,6 +30,7 @@ describe("desktop skills renderer client", () => {
     expect(settingsSkillsSource).toContain("desktopSkillsClient.toggleProfileSkill(profileId, skillId)")
     expect(settingsSkillsSource).toContain("desktopSkillsClient.importSkillFromGitHub(repoIdentifier)")
     expect(settingsSkillsSource).not.toContain("tipcClient.getSkills()")
+    expect(settingsSkillsSource).not.toContain("rendererHandlers.skillsFolderChanged")
     expect(settingsSkillsSource).not.toContain("tipcClient.createSkill(")
     expect(settingsSkillsSource).not.toContain("tipcClient.updateSkill(")
     expect(settingsSkillsSource).not.toContain("tipcClient.deleteSkill(")

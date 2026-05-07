@@ -10,6 +10,7 @@ describe("desktop loops renderer client", () => {
     expect(clientSource).toContain("LoopConfig")
     expect(clientSource).toContain("LoopRuntimeStatus")
     expect(clientSource).toContain("AgentSessionCandidatesResponse")
+    expect(clientSource).toContain("rendererHandlers.loopsFolderChanged.listen(listener)")
     expect(clientSource).toContain("tipcClient.getLoops()")
     expect(clientSource).toContain("tipcClient.getLoopStatuses()")
     expect(clientSource).toContain("tipcClient.listAgentSessionCandidates({ limit })")
@@ -24,6 +25,7 @@ describe("desktop loops renderer client", () => {
 
   it("keeps the settings loops UI off direct repeat-task IPC channels", () => {
     expect(settingsLoopsSource).toContain("desktopLoopsClient.getLoops()")
+    expect(settingsLoopsSource).toContain("desktopLoopsClient.onLoopsFolderChanged(")
     expect(settingsLoopsSource).toContain("desktopLoopsClient.getLoopStatuses()")
     expect(settingsLoopsSource).toContain("desktopLoopsClient.listAgentSessionCandidates(20)")
     expect(settingsLoopsSource).toContain("desktopLoopsClient.saveLoop(loopData)")
@@ -33,6 +35,7 @@ describe("desktop loops renderer client", () => {
     expect(settingsLoopsSource).toContain("desktopLoopsClient.runLoop(loop.id)")
     expect(settingsLoopsSource).toContain("desktopLoopsClient.openLoopTaskFile(loop.id)")
     expect(settingsLoopsSource).not.toContain("tipcClient.getLoops()")
+    expect(settingsLoopsSource).not.toContain("rendererHandlers.loopsFolderChanged")
     expect(settingsLoopsSource).not.toContain("tipcClient.getLoopStatuses()")
     expect(settingsLoopsSource).not.toContain("tipcClient.listAgentSessionCandidates(")
     expect(settingsLoopsSource).not.toContain("tipcClient.saveLoop(")

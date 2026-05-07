@@ -15,7 +15,6 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
 import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-react"
-import { rendererHandlers } from "@renderer/lib/tipc-client"
 import { desktopLoopsClient } from "@renderer/lib/desktop-loops-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -151,7 +150,7 @@ export function SettingsLoops() {
   })
 
   useEffect(() => {
-    return rendererHandlers.loopsFolderChanged.listen(() => {
+    return desktopLoopsClient.onLoopsFolderChanged(() => {
       queryClient.invalidateQueries({ queryKey: ["loops"] })
       queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
     })

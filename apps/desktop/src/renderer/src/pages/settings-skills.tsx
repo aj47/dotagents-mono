@@ -19,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@renderer/components/ui/dropdown-menu"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
-import { rendererHandlers } from "@renderer/lib/tipc-client"
 import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
 import { desktopAgentsFolderClient } from "@renderer/lib/desktop-agents-folder-client"
 import { desktopBundleClient } from "@renderer/lib/desktop-bundle-client"
@@ -94,7 +93,7 @@ export function Component() {
 
   // Listen for skills folder changes from the main process (file watcher)
   useEffect(() => {
-    const unsubscribe = rendererHandlers.skillsFolderChanged.listen(async () => {
+    const unsubscribe = desktopSkillsClient.onSkillsFolderChanged(async () => {
       try {
         // Auto-scan and refresh skills when folder changes
         const importedSkills = await desktopSkillsClient.scanSkillsFolder()

@@ -3,7 +3,7 @@ import type {
   LoopRuntimeStatus,
 } from "@dotagents/shared/api-types"
 import type { LoopConfig } from "@dotagents/shared/types"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 
 export interface DesktopLoopActionResult {
   success: boolean
@@ -12,6 +12,10 @@ export interface DesktopLoopActionResult {
 }
 
 export const desktopLoopsClient = {
+  onLoopsFolderChanged(listener: () => void): () => void {
+    return rendererHandlers.loopsFolderChanged.listen(listener)
+  },
+
   getLoops(): Promise<LoopConfig[]> {
     return tipcClient.getLoops() as Promise<LoopConfig[]>
   },
