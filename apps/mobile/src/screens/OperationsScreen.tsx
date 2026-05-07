@@ -75,6 +75,7 @@ import {
   OPERATOR_LOGS_PANEL_METADATA,
   OPERATOR_MCP_SERVERS_PANEL_METADATA,
   OPERATOR_MESSAGE_QUEUES_PANEL_METADATA,
+  OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA,
   OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
   OPERATOR_STATUS_PANEL_METADATA,
   OPERATOR_SYSTEM_PANEL_METADATA,
@@ -1892,10 +1893,10 @@ export default function OperationsScreen({ navigation }: any) {
 
           {settings && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Remote access settings</Text>
-              <Text style={styles.helperText}>These controls use the desktop settings API and keep the layout intentionally compact for phone screens.</Text>
+              <Text style={styles.panelTitle}>{OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA.panelTitle}</Text>
+              <Text style={styles.helperText}>{OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA.helperText}</Text>
 
-              <Text style={styles.subsectionTitle}>Remote server</Text>
+              <Text style={styles.subsectionTitle}>{OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA.remoteServerSectionTitle}</Text>
               <View style={styles.row}>
                 <View style={styles.rowCopy}>
                   <Text style={styles.label}>{REMOTE_SERVER_ENABLED_FIELD_METADATA.label}</Text>
@@ -1923,7 +1924,7 @@ export default function OperationsScreen({ navigation }: any) {
                 placeholderTextColor={theme.colors.mutedForeground}
                 accessibilityLabel={createTextInputAccessibilityLabel(REMOTE_SERVER_PORT_FIELD_METADATA.accessibilityLabel)}
               />
-              <Text style={styles.helperText}>Changing the port can temporarily disconnect this mobile session.</Text>
+              <Text style={styles.helperText}>{OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA.portDisconnectHelperText}</Text>
 
               <Text style={styles.label}>{REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.label}</Text>
               <View style={styles.chipRow}>

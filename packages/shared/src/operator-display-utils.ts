@@ -21,6 +21,20 @@ export const OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA: OperatorConnectionRequ
   openSettingsButtonLabel: "Open connection settings",
 }
 
+export type OperatorRemoteAccessSettingsPanelMetadata = {
+  panelTitle: string
+  helperText: string
+  remoteServerSectionTitle: string
+  portDisconnectHelperText: string
+}
+
+export const OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA: OperatorRemoteAccessSettingsPanelMetadata = {
+  panelTitle: "Remote access settings",
+  helperText: "These controls use the desktop settings API and keep the layout intentionally compact for phone screens.",
+  remoteServerSectionTitle: "Remote server",
+  portDisconnectHelperText: "Changing the port can temporarily disconnect this mobile session.",
+}
+
 export type OperatorStatusPanelMetadata = {
   panelTitle: string
   waitingText: string

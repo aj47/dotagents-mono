@@ -19,7 +19,14 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA\.openSettingsButtonLabel/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Connection required<\/Text>/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Open connection settings'\)/);
-  assert.match(operationsSource, /Remote access settings/);
+  assert.match(operationsSource, /OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA\.panelTitle/);
+  assert.match(operationsSource, /OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA\.helperText/);
+  assert.match(operationsSource, /OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA\.remoteServerSectionTitle/);
+  assert.match(operationsSource, /OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA\.portDisconnectHelperText/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Remote access settings<\/Text>/);
+  assert.doesNotMatch(operationsSource, /These controls use the desktop settings API/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.subsectionTitle\}>Remote server<\/Text>/);
+  assert.doesNotMatch(operationsSource, /Changing the port can temporarily disconnect this mobile session\./);
   assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA/);
   assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA/);
   assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS/);

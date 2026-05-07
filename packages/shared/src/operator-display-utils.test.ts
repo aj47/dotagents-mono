@@ -15,6 +15,7 @@ import {
   OPERATOR_LOGS_PANEL_METADATA,
   OPERATOR_MCP_SERVERS_PANEL_METADATA,
   OPERATOR_MESSAGE_QUEUES_PANEL_METADATA,
+  OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA,
   OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
   OPERATOR_STATUS_PANEL_METADATA,
   OPERATOR_SYSTEM_PANEL_METADATA,
@@ -40,6 +41,12 @@ describe("operator display utils", () => {
       bodyText: "Connect the mobile app to a DotAgents desktop server before using operator controls.",
       openSettingsAccessibilityLabel: "Open connection settings",
       openSettingsButtonLabel: "Open connection settings",
+    })
+    expect(OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA).toEqual({
+      panelTitle: "Remote access settings",
+      helperText: "These controls use the desktop settings API and keep the layout intentionally compact for phone screens.",
+      remoteServerSectionTitle: "Remote server",
+      portDisconnectHelperText: "Changing the port can temporarily disconnect this mobile session.",
     })
     expect(OPERATOR_STATUS_PANEL_METADATA).toEqual({
       panelTitle: "Operator status",
