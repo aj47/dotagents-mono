@@ -940,7 +940,9 @@ export default function OperationsScreen({ navigation }: any) {
                       <Text style={styles.detailText}>
                         {formatActiveAgentSessionSummary(s)}
                       </Text>
-                      <Text style={styles.mutedText}>Since {formatTimestamp(s.startTime)}</Text>
+                      <Text style={styles.mutedText}>
+                        {OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatActiveStartedAt(s.startTime)}
+                      </Text>
                     </View>
                     <View style={styles.mcpActionRow}>
                       <TouchableOpacity
@@ -1022,7 +1024,7 @@ export default function OperationsScreen({ navigation }: any) {
                             {formatRecentAgentSessionSummary(s)}
                           </Text>
                           <Text style={styles.mutedText}>
-                            {s.endTime ? `Ended ${formatTimestamp(s.endTime)}` : `Started ${formatTimestamp(s.startTime)}`}
+                            {OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatRecentTime(s.startTime, s.endTime)}
                           </Text>
                         </View>
                         <View style={styles.mcpActionRow}>
@@ -1870,14 +1872,22 @@ export default function OperationsScreen({ navigation }: any) {
                     <View style={styles.auditHeader}>
                       <Text style={styles.auditAction}>{entry.action}</Text>
                       <Text style={[styles.auditStatus, entry.success ? styles.auditStatusSuccess : styles.auditStatusFailure]}>
-                        {entry.success ? 'success' : 'failed'}
+                        {entry.success
+                          ? OPERATOR_AUDIT_PANEL_METADATA.successStatusLabel
+                          : OPERATOR_AUDIT_PANEL_METADATA.failedStatusLabel}
                       </Text>
                     </View>
                     <Text style={styles.auditPath}>{entry.path}</Text>
                     <Text style={styles.auditTimestamp}>{formatTimestamp(entry.timestamp)}</Text>
-                    {sourceText ? <Text style={styles.helperText}>Source: {sourceText}</Text> : null}
-                    {detailsText ? <Text style={styles.helperText}>Details: {detailsText}</Text> : null}
-                    {entry.failureReason ? <Text style={styles.warningText}>Failure: {entry.failureReason}</Text> : null}
+                    {sourceText ? (
+                      <Text style={styles.helperText}>{OPERATOR_AUDIT_PANEL_METADATA.formatSource(sourceText)}</Text>
+                    ) : null}
+                    {detailsText ? (
+                      <Text style={styles.helperText}>{OPERATOR_AUDIT_PANEL_METADATA.formatDetails(detailsText)}</Text>
+                    ) : null}
+                    {entry.failureReason ? (
+                      <Text style={styles.warningText}>{OPERATOR_AUDIT_PANEL_METADATA.formatFailure(entry.failureReason)}</Text>
+                    ) : null}
                   </View>
                 );
               })
@@ -1887,7 +1897,7 @@ export default function OperationsScreen({ navigation }: any) {
           {isLoading && !status && !settings ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={theme.colors.primary} />
-              <Text style={styles.mutedText}>Loading operator data…</Text>
+              <Text style={styles.mutedText}>{OPERATOR_STATUS_PANEL_METADATA.loadingText}</Text>
             </View>
           ) : null}
 

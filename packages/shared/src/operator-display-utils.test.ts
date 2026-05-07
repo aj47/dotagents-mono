@@ -51,6 +51,7 @@ describe("operator display utils", () => {
     expect(OPERATOR_STATUS_PANEL_METADATA).toEqual({
       panelTitle: "Operator status",
       waitingText: "Waiting for operator status…",
+      loadingText: "Loading operator data…",
       formatUpdatedText: expect.any(Function),
       formatIntegrationSummary: expect.any(Function),
       formatPendingSettingText: expect.any(Function),
@@ -277,7 +278,15 @@ describe("operator display utils", () => {
       panelTitle: "Recent operator audit",
       helperText: "Recent operator actions from the desktop audit log, including the stable device ID attached by this mobile client.",
       emptyText: "No recent operator audit entries returned by the desktop server.",
+      successStatusLabel: "success",
+      failedStatusLabel: "failed",
+      formatSource: expect.any(Function),
+      formatDetails: expect.any(Function),
+      formatFailure: expect.any(Function),
     })
+    expect(OPERATOR_AUDIT_PANEL_METADATA.formatSource("device • 127.0.0.1")).toBe("Source: device • 127.0.0.1")
+    expect(OPERATOR_AUDIT_PANEL_METADATA.formatDetails("enabled: true")).toBe("Details: enabled: true")
+    expect(OPERATOR_AUDIT_PANEL_METADATA.formatFailure("denied")).toBe("Failure: denied")
   })
 
   it("exports diagnostic report action metadata", () => {
@@ -338,6 +347,7 @@ describe("operator display utils", () => {
     expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA).toEqual({
       panelTitle: "Agent sessions",
       formatSummary: expect.any(Function),
+      formatActiveStartedAt: expect.any(Function),
       clearInactiveConfirmTitle: "Clear Inactive Sessions",
       clearInactiveConfirmMessage: "Clear recent inactive agent sessions on the desktop app? Sessions with queued follow-ups are kept.",
       clearInactiveConfirmButtonLabel: "Clear Sessions",
@@ -360,6 +370,7 @@ describe("operator display utils", () => {
       stopPendingLabel: "Stopping...",
       stopButtonLabel: "Stop",
       recentSessionsLabel: "Recent sessions",
+      formatRecentTime: expect.any(Function),
       dismissConfirmTitle: "Dismiss Agent Session",
       formatDismissConfirmMessage: expect.any(Function),
       dismissConfirmButtonLabel: "Dismiss",
@@ -369,6 +380,7 @@ describe("operator display utils", () => {
       noActiveSessionsText: "No active agent sessions",
     })
     expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSummary(2, 5)).toBe("Active: 2 • Recent: 5")
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatActiveStartedAt()).toBe(`Since ${OPERATOR_EMPTY_VALUE_LABEL}`)
     expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatShowAccessibilityLabel("Build release")).toBe(
       "Show Build release agent session on desktop",
     )
@@ -388,6 +400,8 @@ describe("operator display utils", () => {
     expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatStopAccessibilityLabel("Build release")).toBe(
       "Stop Build release agent session",
     )
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatRecentTime(undefined, 1_776_000_000_000)).toContain("Ended ")
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatRecentTime(1_776_000_000_000)).toContain("Started ")
     expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatDismissConfirmMessage("Build release")).toBe(
       "Dismiss Build release from desktop agent progress?",
     )

@@ -38,6 +38,7 @@ export const OPERATOR_REMOTE_ACCESS_SETTINGS_PANEL_METADATA: OperatorRemoteAcces
 export type OperatorStatusPanelMetadata = {
   panelTitle: string
   waitingText: string
+  loadingText: string
   formatUpdatedText: (overall: string, timestamp: number) => string
   formatIntegrationSummary: (pushTokenCount: number, recentErrorCount: number) => string
   formatPendingSettingText: (settingName: string) => string
@@ -46,6 +47,7 @@ export type OperatorStatusPanelMetadata = {
 export const OPERATOR_STATUS_PANEL_METADATA: OperatorStatusPanelMetadata = {
   panelTitle: "Operator status",
   waitingText: "Waiting for operator status…",
+  loadingText: "Loading operator data…",
   formatUpdatedText: (overall, timestamp) => `${overall} • Updated ${formatOperatorTimestamp(timestamp)}`,
   formatIntegrationSummary: (pushTokenCount, recentErrorCount) => `Push tokens: ${pushTokenCount} • Recent errors: ${recentErrorCount}`,
   formatPendingSettingText: (settingName) => `Saving ${settingName}…`,
@@ -312,12 +314,22 @@ export type OperatorAuditPanelMetadata = {
   panelTitle: string
   helperText: string
   emptyText: string
+  successStatusLabel: string
+  failedStatusLabel: string
+  formatSource: (source: string) => string
+  formatDetails: (details: string) => string
+  formatFailure: (failureReason: string) => string
 }
 
 export const OPERATOR_AUDIT_PANEL_METADATA: OperatorAuditPanelMetadata = {
   panelTitle: "Recent operator audit",
   helperText: "Recent operator actions from the desktop audit log, including the stable device ID attached by this mobile client.",
   emptyText: "No recent operator audit entries returned by the desktop server.",
+  successStatusLabel: "success",
+  failedStatusLabel: "failed",
+  formatSource: (source) => `Source: ${source}`,
+  formatDetails: (details) => `Details: ${details}`,
+  formatFailure: (failureReason) => `Failure: ${failureReason}`,
 }
 
 export type OperatorDiagnosticReportActionMetadata = {
@@ -420,6 +432,7 @@ export type OperatorRecentAgentSessionSummary = OperatorAgentSessionReference & 
 export type OperatorAgentSessionsPanelMetadata = {
   panelTitle: string
   formatSummary: (activeSessions: number, recentSessions: number) => string
+  formatActiveStartedAt: (timestamp?: number) => string
   clearInactiveConfirmTitle: string
   clearInactiveConfirmMessage: string
   clearInactiveConfirmButtonLabel: string
@@ -442,6 +455,7 @@ export type OperatorAgentSessionsPanelMetadata = {
   stopPendingLabel: string
   stopButtonLabel: string
   recentSessionsLabel: string
+  formatRecentTime: (startTime?: number, endTime?: number) => string
   dismissConfirmTitle: string
   formatDismissConfirmMessage: (sessionName: string) => string
   dismissConfirmButtonLabel: string
@@ -454,6 +468,7 @@ export type OperatorAgentSessionsPanelMetadata = {
 export const OPERATOR_AGENT_SESSIONS_PANEL_METADATA: OperatorAgentSessionsPanelMetadata = {
   panelTitle: "Agent sessions",
   formatSummary: (activeSessions, recentSessions) => `Active: ${activeSessions} • Recent: ${recentSessions}`,
+  formatActiveStartedAt: (timestamp) => `Since ${formatOperatorTimestamp(timestamp)}`,
   clearInactiveConfirmTitle: "Clear Inactive Sessions",
   clearInactiveConfirmMessage: "Clear recent inactive agent sessions on the desktop app? Sessions with queued follow-ups are kept.",
   clearInactiveConfirmButtonLabel: "Clear Sessions",
@@ -476,6 +491,8 @@ export const OPERATOR_AGENT_SESSIONS_PANEL_METADATA: OperatorAgentSessionsPanelM
   stopPendingLabel: "Stopping...",
   stopButtonLabel: "Stop",
   recentSessionsLabel: "Recent sessions",
+  formatRecentTime: (startTime, endTime) =>
+    endTime ? `Ended ${formatOperatorTimestamp(endTime)}` : `Started ${formatOperatorTimestamp(startTime)}`,
   dismissConfirmTitle: "Dismiss Agent Session",
   formatDismissConfirmMessage: (sessionName) => `Dismiss ${sessionName} from desktop agent progress?`,
   dismissConfirmButtonLabel: "Dismiss",

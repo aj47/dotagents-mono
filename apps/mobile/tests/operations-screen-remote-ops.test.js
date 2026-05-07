@@ -294,8 +294,17 @@ test('surfaces recent operator audit entries and rotates the API key using the s
   assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.helperText/);
   assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.emptyText/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.successStatusLabel/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.failedStatusLabel/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.formatSource\(sourceText\)/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.formatDetails\(detailsText\)/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.formatFailure\(entry\.failureReason\)/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Recent operator audit<\/Text>/);
   assert.doesNotMatch(operationsSource, /No recent operator audit entries returned by the desktop server\./);
+  assert.doesNotMatch(operationsSource, /entry\.success \? 'success' : 'failed'/);
+  assert.doesNotMatch(operationsSource, />Source: \{sourceText\}</);
+  assert.doesNotMatch(operationsSource, />Details: \{detailsText\}</);
+  assert.doesNotMatch(operationsSource, />Failure: \{entry\.failureReason\}</);
   assert.match(operationsSource, /OPERATOR_ALERT_METADATA\.actionFailedTitle/);
   assert.match(operationsSource, /OPERATOR_ALERT_METADATA\.updateFailedTitle/);
   assert.match(operationsSource, /OPERATOR_ALERT_METADATA\.connectionRequiredTitle/);
@@ -416,6 +425,7 @@ test('displays system metrics and agent sessions from operator status', () => {
   assert.match(operationsSource, /OPERATOR_STATUS_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_STATUS_PANEL_METADATA\.formatUpdatedText\(status\.health\.overall, status\.timestamp\)/);
   assert.match(operationsSource, /OPERATOR_STATUS_PANEL_METADATA\.waitingText/);
+  assert.match(operationsSource, /OPERATOR_STATUS_PANEL_METADATA\.loadingText/);
   assert.match(operationsSource, /OPERATOR_STATUS_PANEL_METADATA\.formatIntegrationSummary/);
   assert.match(operationsSource, /OPERATOR_STATUS_PANEL_METADATA\.formatPendingSettingText\(pendingSetting\)/);
   assert.match(operationsSource, /OPERATOR_SYSTEM_PANEL_METADATA\.panelTitle/);
@@ -427,6 +437,7 @@ test('displays system metrics and agent sessions from operator status', () => {
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Operator status<\/Text>/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>System<\/Text>/);
   assert.doesNotMatch(operationsSource, /Waiting for operator status…/);
+  assert.doesNotMatch(operationsSource, /Loading operator data…/);
   assert.match(operationsSource, /OPERATOR_HEALTH_CHECKS_PANEL_METADATA\.panelTitle/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Health checks<\/Text>/);
   assert.match(operationsSource, /OPERATOR_AGENT_SESSIONS_PANEL_METADATA\.panelTitle/);
@@ -436,6 +447,8 @@ test('displays system metrics and agent sessions from operator status', () => {
   assert.match(operationsSource, /status\.sessions\.recentSessionDetails/);
   assert.match(operationsSource, /formatActiveAgentSessionSummary\(s\)/);
   assert.match(operationsSource, /formatRecentAgentSessionSummary\(s\)/);
+  assert.match(operationsSource, /OPERATOR_AGENT_SESSIONS_PANEL_METADATA\.formatActiveStartedAt\(s\.startTime\)/);
+  assert.match(operationsSource, /OPERATOR_AGENT_SESSIONS_PANEL_METADATA\.formatRecentTime\(s\.startTime, s\.endTime\)/);
   assert.match(operationsSource, /const sessionName = getAgentSessionDisplayName\(s\)/);
   assert.match(operationsSource, /showOperatorAgentSession\(s\.id\)/);
   assert.match(operationsSource, /snoozeOperatorAgentSession\(s\.id\)/);
@@ -455,6 +468,9 @@ test('displays system metrics and agent sessions from operator status', () => {
   assert.match(operationsSource, /OPERATOR_AGENT_SESSIONS_PANEL_METADATA\.formatStopAccessibilityLabel\(sessionName\)/);
   assert.match(operationsSource, /OPERATOR_AGENT_SESSIONS_PANEL_METADATA\.noActiveSessionsText/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Agent sessions<\/Text>/);
+  assert.doesNotMatch(operationsSource, /Since \{formatTimestamp\(s\.startTime\)\}/);
+  assert.doesNotMatch(operationsSource, /Ended \$\{formatTimestamp\(s\.endTime\)\}/);
+  assert.doesNotMatch(operationsSource, /Started \$\{formatTimestamp\(s\.startTime\)\}/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Clear inactive agent sessions on desktop'\)/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\(`Show \$\{s\.title \?\? s\.id\} agent session on desktop`\)/);
 });
