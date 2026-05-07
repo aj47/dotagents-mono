@@ -7,6 +7,7 @@ import {
   buildPushStatusResponse,
   buildPushUnregistrationResponse,
   clearPushBadgeAction,
+  createPushRouteActions,
   getPushStatusAction,
   parsePushTokenBody,
   parsePushTokenRegistrationBody,
@@ -283,6 +284,42 @@ describe('push notification API helpers', () => {
       'Updated push notification token for android',
       'Unregistered push notification token',
     ]);
+
+    tokens = [];
+    logs.length = 0;
+    const routeActions = createPushRouteActions(options);
+    expect(routeActions.registerPushToken({
+      token: 't2',
+      platform: 'ios',
+    })).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        message: 'Token registered',
+        tokenCount: 1,
+      },
+    });
+    expect(routeActions.getPushStatus()).toEqual({
+      statusCode: 200,
+      body: {
+        enabled: true,
+        tokenCount: 1,
+        platforms: ['ios'],
+      },
+    });
+    expect(routeActions.unregisterPushToken({ token: 't2' })).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        message: 'Token unregistered',
+        tokenCount: 0,
+      },
+    });
+    expect(tokens).toEqual([]);
+    expect(logs).toEqual([
+      'Registered new push notification token for ios',
+      'Unregistered push notification token',
+    ]);
   });
 
   it('runs push badge clearing and parse failures through shared adapters', () => {
@@ -304,7 +341,11 @@ describe('push notification API helpers', () => {
       statusCode: 200,
       body: { success: true },
     });
-    expect(clearedTokens).toEqual(['t1']);
+    expect(createPushRouteActions(options).clearPushBadge({ token: 't2' })).toEqual({
+      statusCode: 200,
+      body: { success: true },
+    });
+    expect(clearedTokens).toEqual(['t1', 't2']);
     expect(registerPushTokenAction({ platform: 'ios' }, options)).toEqual({
       statusCode: 400,
       body: { error: 'Missing or invalid token' },

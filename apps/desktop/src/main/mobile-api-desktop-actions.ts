@@ -77,10 +77,7 @@ import {
   type SkillActionOptions,
 } from "@dotagents/shared/skills-api"
 import {
-  clearPushBadgeAction,
-  getPushStatusAction,
-  registerPushTokenAction,
-  unregisterPushTokenAction,
+  createPushRouteActions,
   type PushTokenRecord,
 } from "@dotagents/shared/push-notifications"
 import {
@@ -255,6 +252,8 @@ const pushActionOptions = {
     clearBadgeCount,
   },
 }
+
+const pushRouteActions = createPushRouteActions(pushActionOptions)
 
 function getBundleLayerDirs(): string[] {
   const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -544,22 +543,6 @@ async function updateSettings(body: unknown, masks: SettingsUpdateMasks) {
   return updateSettingsAction(body, masks, settingsActionOptions)
 }
 
-function registerPushToken(body: unknown) {
-  return registerPushTokenAction(body, pushActionOptions)
-}
-
-function unregisterPushToken(body: unknown) {
-  return unregisterPushTokenAction(body, pushActionOptions)
-}
-
-function getPushStatus() {
-  return getPushStatusAction(pushActionOptions)
-}
-
-function clearPushBadge(body: unknown) {
-  return clearPushBadgeAction(body, pushActionOptions)
-}
-
 function getBundleExportableItems() {
   return getBundleExportableItemsAction(bundleActionOptions)
 }
@@ -651,10 +634,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   getConversation,
   getConversationVideoAsset,
   synthesizeSpeech,
-  registerPushToken,
-  unregisterPushToken,
-  getPushStatus,
-  clearPushBadge,
+  ...pushRouteActions,
   getConversations,
   createConversation,
   updateConversation,

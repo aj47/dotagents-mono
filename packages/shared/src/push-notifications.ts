@@ -101,6 +101,13 @@ export interface PushActionOptions {
   now?: () => number;
 }
 
+export interface PushRouteActions {
+  registerPushToken(body: unknown): PushActionResult;
+  unregisterPushToken(body: unknown): PushActionResult;
+  getPushStatus(): PushActionResult;
+  clearPushBadge(body: unknown): PushActionResult;
+}
+
 const DEFAULT_MESSAGE_PUSH_NOTIFICATION_PREVIEW_LENGTH = 100;
 
 export function parsePushTokenRegistrationBody(body: unknown): PushRegistrationParseResult {
@@ -392,4 +399,13 @@ export function clearPushBadgeAction(body: unknown, options: PushActionOptions):
     options.diagnostics.logError('push-actions', 'Failed to clear badge count', caughtError);
     return pushActionError(500, getUnknownErrorMessage(caughtError, 'Failed to clear badge count'));
   }
+}
+
+export function createPushRouteActions(options: PushActionOptions): PushRouteActions {
+  return {
+    registerPushToken: (body) => registerPushTokenAction(body, options),
+    unregisterPushToken: (body) => unregisterPushTokenAction(body, options),
+    getPushStatus: () => getPushStatusAction(options),
+    clearPushBadge: (body) => clearPushBadgeAction(body, options),
+  };
 }
