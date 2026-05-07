@@ -112,7 +112,13 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /hideDockIcon: value/);
   assert.match(operationsSource, /launchAtLogin: value/);
   assert.match(operationsSource, /themePreference: option\.value/);
-  assert.match(operationsSource, /Text Input/);
+  assert.match(operationsSource, /DESKTOP_TEXT_INPUT_FIELD_METADATA\.label/);
+  assert.match(operationsSource, /DESKTOP_TEXT_INPUT_FIELD_METADATA\.helperText/);
+  assert.match(operationsSource, /DESKTOP_TEXT_INPUT_FIELD_METADATA\.pendingLabel/);
+  assert.match(operationsSource, /DESKTOP_TEXT_INPUT_FIELD_METADATA\.successMessage/);
+  assert.match(operationsSource, /DESKTOP_TEXT_INPUT_FIELD_METADATA\.accessibilityLabel/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.label\}>Text Input<\/Text>/);
+  assert.doesNotMatch(operationsSource, /createSwitchAccessibilityLabel\('Desktop Text Input'\)/);
   assert.match(operationsSource, /textInputEnabled: value/);
   assert.match(operationsSource, /Desktop floating panel/);
   assert.match(operationsSource, /Auto-Show Floating Panel/);

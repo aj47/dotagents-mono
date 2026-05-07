@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DESKTOP_TEXT_INPUT_FIELD_METADATA,
   DEFAULT_TEXT_INPUT_ENABLED,
   DEFAULT_TEXT_INPUT_SHORTCUT,
   formatKeyComboForDisplay,
@@ -53,6 +54,13 @@ describe('shortcut display helpers', () => {
   it('exports shared text input defaults', () => {
     expect(DEFAULT_TEXT_INPUT_ENABLED).toBe(true)
     expect(DEFAULT_TEXT_INPUT_SHORTCUT).toBe('ctrl-t')
+    expect(DESKTOP_TEXT_INPUT_FIELD_METADATA).toEqual({
+      label: 'Text Input',
+      helperText: 'Enable desktop panel text prompts. Keyboard shortcuts stay configured on desktop.',
+      pendingLabel: 'text input',
+      successMessage: 'Desktop text input preference updated.',
+      accessibilityLabel: 'Desktop Text Input',
+    })
   })
 
   it('resolves custom shortcuts only when selected', () => {

@@ -227,6 +227,22 @@ export const getMcpToolsShortcutDisplay = getAgentShortcutDisplay
 export const DEFAULT_TEXT_INPUT_ENABLED = true
 export const DEFAULT_TEXT_INPUT_SHORTCUT = "ctrl-t"
 
+export type DesktopTextInputFieldMetadata = {
+  label: string
+  helperText: string
+  pendingLabel: string
+  successMessage: string
+  accessibilityLabel: string
+}
+
+export const DESKTOP_TEXT_INPUT_FIELD_METADATA: DesktopTextInputFieldMetadata = {
+  label: "Text Input",
+  helperText: "Enable desktop panel text prompts. Keyboard shortcuts stay configured on desktop.",
+  pendingLabel: "text input",
+  successMessage: "Desktop text input preference updated.",
+  accessibilityLabel: "Desktop Text Input",
+}
+
 export function getTextInputShortcutDisplay(
   shortcut: "ctrl-t" | "ctrl-shift-t" | "alt-t" | "custom" | undefined,
   customShortcut?: string,

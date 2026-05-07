@@ -51,7 +51,10 @@ import { useTheme } from '../ui/ThemeProvider';
 import { radius, spacing } from '../ui/theme';
 import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
 import { getErrorMessage } from '@dotagents/shared/error-utils';
-import { DEFAULT_TEXT_INPUT_ENABLED } from '@dotagents/shared/key-utils';
+import {
+  DESKTOP_TEXT_INPUT_FIELD_METADATA,
+  DEFAULT_TEXT_INPUT_ENABLED,
+} from '@dotagents/shared/key-utils';
 import {
   DESKTOP_THEME_PREFERENCE_FIELD_METADATA,
   DEFAULT_THEME_PREFERENCE,
@@ -2020,18 +2023,18 @@ export default function OperationsScreen({ navigation }: any) {
 
               <View style={styles.row}>
                 <View style={styles.rowCopy}>
-                  <Text style={styles.label}>Text Input</Text>
-                  <Text style={styles.helperText}>Enable desktop panel text prompts. Keyboard shortcuts stay configured on desktop.</Text>
+                  <Text style={styles.label}>{DESKTOP_TEXT_INPUT_FIELD_METADATA.label}</Text>
+                  <Text style={styles.helperText}>{DESKTOP_TEXT_INPUT_FIELD_METADATA.helperText}</Text>
                 </View>
                 <Switch
                   value={settings.textInputEnabled ?? DEFAULT_TEXT_INPUT_ENABLED}
                   onValueChange={(value) => void applySettingsUpdate(
                     { textInputEnabled: value },
-                    'text input',
-                    'Desktop text input preference updated.',
+                    DESKTOP_TEXT_INPUT_FIELD_METADATA.pendingLabel,
+                    DESKTOP_TEXT_INPUT_FIELD_METADATA.successMessage,
                   )}
                   disabled={controlsDisabled}
-                  accessibilityLabel={createSwitchAccessibilityLabel('Desktop Text Input')}
+                  accessibilityLabel={createSwitchAccessibilityLabel(DESKTOP_TEXT_INPUT_FIELD_METADATA.accessibilityLabel)}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                   thumbColor={(settings.textInputEnabled ?? DEFAULT_TEXT_INPUT_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                 />
