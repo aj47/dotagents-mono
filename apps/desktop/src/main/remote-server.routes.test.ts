@@ -1855,9 +1855,10 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("buildOperatorApiKeyRotationAuditContext()")
     expect(sharedOperatorActionsSource).toContain("buildOperatorApiKeyRotationFailureAuditContext()")
     // Runtime status shaping stays shared while desktop supplies process and service state.
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorSystemMetricsCollector(")
     expect(sharedOperatorActionsSource).toContain("buildOperatorRuntimeStatus({")
     expect(sharedOperatorActionsSource).toContain("system: options.service.getSystemMetrics()")
-    expect(operatorRouteDesktopActionsSource).toContain("function getOperatorSystemMetrics()")
+    expect(operatorRouteDesktopActionsSource).toContain("const getOperatorSystemMetrics = createOperatorSystemMetricsCollector({")
     expect(operatorRouteDesktopActionsSource).toContain("os.platform()")
     expect(operatorRouteDesktopActionsSource).toContain("process.memoryUsage()")
     expect(operatorRouteDesktopActionsSource).toContain("os.hostname()")

@@ -44,6 +44,7 @@ import {
   createOperatorMessageQueueRouteActions,
   createOperatorObservabilityRouteActions,
   createOperatorRestartRouteActions,
+  createOperatorSystemMetricsCollector,
   createOperatorTunnelRouteActions,
   createOperatorUpdaterRouteActions,
   type OperatorActionAuditContext,
@@ -52,7 +53,6 @@ import {
   type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
   type OperatorObservabilityActionOptions,
-  type OperatorSystemMetricsLike,
   type OperatorTunnelActionOptions,
   type OperatorUpdaterActionOptions,
 } from "@dotagents/shared/operator-actions"
@@ -94,22 +94,20 @@ import {
   revealDownloadedReleaseAsset,
 } from "./updater"
 
-function getOperatorSystemMetrics(): OperatorSystemMetricsLike {
-  return {
-    platform: os.platform(),
-    arch: os.arch(),
-    nodeVersion: process.version,
-    electronVersion: process.versions.electron,
-    appVersion: app.getVersion(),
-    osUptimeSeconds: os.uptime(),
-    processUptimeSeconds: process.uptime(),
-    memoryUsageBytes: process.memoryUsage(),
-    cpuCount: os.cpus().length,
-    totalMemoryBytes: os.totalmem(),
-    freeMemoryBytes: os.freemem(),
-    hostname: os.hostname(),
-  }
-}
+const getOperatorSystemMetrics = createOperatorSystemMetricsCollector({
+  getPlatform: () => os.platform(),
+  getArch: () => os.arch(),
+  getNodeVersion: () => process.version,
+  getElectronVersion: () => process.versions.electron,
+  getAppVersion: () => app.getVersion(),
+  getOsUptimeSeconds: () => os.uptime(),
+  getProcessUptimeSeconds: () => process.uptime(),
+  getMemoryUsageBytes: () => process.memoryUsage(),
+  getCpuCount: () => os.cpus().length,
+  getTotalMemoryBytes: () => os.totalmem(),
+  getFreeMemoryBytes: () => os.freemem(),
+  getHostname: () => os.hostname(),
+})
 
 const modelPresetActionOptions: ModelPresetActionOptions<Config> = {
   config: {

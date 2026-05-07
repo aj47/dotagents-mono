@@ -82,6 +82,7 @@ import {
   createOperatorMessageQueueRouteActions,
   createOperatorObservabilityRouteActions,
   createOperatorRestartRouteActions,
+  createOperatorSystemMetricsCollector,
   createOperatorTunnelRouteActions,
   createOperatorUpdaterRouteActions,
   getConfiguredCloudflareTunnelStartPlan,
@@ -2665,6 +2666,44 @@ describe("operator action API helpers", () => {
   })
 
   it("builds system metrics from raw process and OS values", () => {
+    const collectSystemMetrics = createOperatorSystemMetricsCollector({
+      getPlatform: () => "darwin",
+      getArch: () => "arm64",
+      getNodeVersion: () => "v20.0.0",
+      getElectronVersion: () => "30.0.0",
+      getAppVersion: () => "1.2.3",
+      getOsUptimeSeconds: () => 123.9,
+      getProcessUptimeSeconds: () => 45.8,
+      getMemoryUsageBytes: () => ({
+        heapUsed: 1_572_864,
+        heapTotal: 2_097_152,
+        rss: 10_485_760,
+      }),
+      getCpuCount: () => 8,
+      getTotalMemoryBytes: () => 17_179_869_184,
+      getFreeMemoryBytes: () => 4_294_967_296,
+      getHostname: () => "workstation",
+    })
+
+    expect(collectSystemMetrics()).toEqual({
+      platform: "darwin",
+      arch: "arm64",
+      nodeVersion: "v20.0.0",
+      electronVersion: "30.0.0",
+      appVersion: "1.2.3",
+      osUptimeSeconds: 123.9,
+      processUptimeSeconds: 45.8,
+      memoryUsageBytes: {
+        heapUsed: 1_572_864,
+        heapTotal: 2_097_152,
+        rss: 10_485_760,
+      },
+      cpuCount: 8,
+      totalMemoryBytes: 17_179_869_184,
+      freeMemoryBytes: 4_294_967_296,
+      hostname: "workstation",
+    })
+
     expect(buildOperatorSystemMetrics({
       platform: "darwin",
       arch: "arm64",

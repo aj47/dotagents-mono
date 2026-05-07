@@ -544,6 +544,40 @@ export type OperatorSystemMetricsLike = {
   hostname: string
 }
 
+export interface OperatorSystemMetricsCollectorAdapter {
+  getPlatform(): string
+  getArch(): string
+  getNodeVersion(): string
+  getElectronVersion(): string | undefined
+  getAppVersion(): string | undefined
+  getOsUptimeSeconds(): number
+  getProcessUptimeSeconds(): number
+  getMemoryUsageBytes(): OperatorSystemMetricsLike["memoryUsageBytes"]
+  getCpuCount(): number
+  getTotalMemoryBytes(): number
+  getFreeMemoryBytes(): number
+  getHostname(): string
+}
+
+export function createOperatorSystemMetricsCollector(
+  adapter: OperatorSystemMetricsCollectorAdapter,
+): () => OperatorSystemMetricsLike {
+  return () => ({
+    platform: adapter.getPlatform(),
+    arch: adapter.getArch(),
+    nodeVersion: adapter.getNodeVersion(),
+    electronVersion: adapter.getElectronVersion(),
+    appVersion: adapter.getAppVersion(),
+    osUptimeSeconds: adapter.getOsUptimeSeconds(),
+    processUptimeSeconds: adapter.getProcessUptimeSeconds(),
+    memoryUsageBytes: adapter.getMemoryUsageBytes(),
+    cpuCount: adapter.getCpuCount(),
+    totalMemoryBytes: adapter.getTotalMemoryBytes(),
+    freeMemoryBytes: adapter.getFreeMemoryBytes(),
+    hostname: adapter.getHostname(),
+  })
+}
+
 export type OperatorSessionSummaryLike = {
   id: string
   conversationTitle?: string
