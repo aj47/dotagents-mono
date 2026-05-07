@@ -66,6 +66,8 @@ import {
 } from '@dotagents/shared/operator-display-utils';
 import {
   CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_ID_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
   CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
@@ -2190,40 +2192,40 @@ export default function OperationsScreen({ navigation }: any) {
                 />
               </View>
 
-              <Text style={styles.label}>Tunnel ID</Text>
+              <Text style={styles.label}>{CLOUDFLARE_TUNNEL_ID_FIELD_METADATA.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.cloudflareTunnelId}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, cloudflareTunnelId: value }))}
                 onEndEditing={() => void applySettingsUpdate(
                   { cloudflareTunnelId: drafts.cloudflareTunnelId.trim() },
-                  'tunnel id',
-                  'Tunnel ID saved.',
+                  CLOUDFLARE_TUNNEL_ID_FIELD_METADATA.pendingLabel,
+                  CLOUDFLARE_TUNNEL_ID_FIELD_METADATA.successMessage,
                 )}
                 editable={!controlsDisabled}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="Tunnel UUID"
+                placeholder={CLOUDFLARE_TUNNEL_ID_FIELD_METADATA.mobilePlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('Cloudflare tunnel ID')}
+                accessibilityLabel={createTextInputAccessibilityLabel(CLOUDFLARE_TUNNEL_ID_FIELD_METADATA.accessibilityLabel)}
               />
 
-              <Text style={styles.label}>Hostname</Text>
+              <Text style={styles.label}>{CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.cloudflareTunnelHostname}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, cloudflareTunnelHostname: value }))}
                 onEndEditing={() => void applySettingsUpdate(
                   { cloudflareTunnelHostname: drafts.cloudflareTunnelHostname.trim() },
-                  'tunnel hostname',
-                  'Tunnel hostname saved.',
+                  CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA.pendingLabel,
+                  CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA.successMessage,
                 )}
                 editable={!controlsDisabled}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="agent.example.com"
+                placeholder={CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA.mobilePlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('Cloudflare tunnel hostname')}
+                accessibilityLabel={createTextInputAccessibilityLabel(CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA.accessibilityLabel)}
               />
 
               <Text style={styles.label}>Tunnel Name</Text>

@@ -11,6 +11,8 @@ import {
   buildRemoteServerCorsOptions,
   buildRemoteServerStatusSnapshot,
   CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_ID_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_MODE_OPTIONS,
   CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
   CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA,
@@ -233,6 +235,26 @@ describe('remote server config contracts', () => {
       pendingLabel: 'tunnel auto-start',
       successMessage: 'Tunnel auto-start updated.',
       accessibilityLabel: 'Auto-Start Tunnel',
+    });
+    expect(CLOUDFLARE_TUNNEL_ID_FIELD_METADATA).toEqual({
+      key: 'cloudflareTunnelId',
+      label: 'Tunnel ID',
+      tooltip: "The UUID of your named tunnel. Find it with 'cloudflared tunnel list'",
+      desktopPlaceholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      mobilePlaceholder: 'Tunnel UUID',
+      pendingLabel: 'tunnel id',
+      successMessage: 'Tunnel ID saved.',
+      accessibilityLabel: 'Cloudflare tunnel ID',
+    });
+    expect(CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA).toEqual({
+      key: 'cloudflareTunnelHostname',
+      label: 'Hostname',
+      tooltip: 'The public hostname for your tunnel (e.g., myapp.example.com). Must be configured in Cloudflare DNS.',
+      desktopPlaceholder: 'myapp.example.com',
+      mobilePlaceholder: 'agent.example.com',
+      pendingLabel: 'tunnel hostname',
+      successMessage: 'Tunnel hostname saved.',
+      accessibilityLabel: 'Cloudflare tunnel hostname',
     });
 
     expect(isRemoteServerBindAddressUpdateValue('0.0.0.0')).toBe(true);

@@ -21,6 +21,8 @@ import {
   buildDotAgentsConfigDeepLink,
   buildRemoteServerBaseUrl,
   CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_ID_FIELD_METADATA,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
   CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA,
@@ -612,13 +614,21 @@ export function RemoteServerSettingsGroups({
                       </div>
                     ) : (
                       <>
-                        <Control label={<ControlLabel label="Tunnel ID" tooltip="The UUID of your named tunnel. Find it with 'cloudflared tunnel list'" />} className="px-3">
+                        <Control
+                          label={(
+                            <ControlLabel
+                              label={CLOUDFLARE_TUNNEL_ID_FIELD_METADATA.label}
+                              tooltip={CLOUDFLARE_TUNNEL_ID_FIELD_METADATA.tooltip}
+                            />
+                          )}
+                          className="px-3"
+                        >
                           <div className="flex flex-col gap-2">
                             <Input
                               type="text"
                               value={cfg?.cloudflareTunnelId ?? ""}
                               onChange={(e) => saveConfig({ cloudflareTunnelId: e.currentTarget.value })}
-                              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                              placeholder={CLOUDFLARE_TUNNEL_ID_FIELD_METADATA.desktopPlaceholder}
                               className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                             />
                             {tunnelList.length > 0 && (
@@ -641,12 +651,20 @@ export function RemoteServerSettingsGroups({
                           </div>
                         </Control>
 
-                        <Control label={<ControlLabel label="Hostname" tooltip="The public hostname for your tunnel (e.g., myapp.example.com). Must be configured in Cloudflare DNS." />} className="px-3">
+                        <Control
+                          label={(
+                            <ControlLabel
+                              label={CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA.label}
+                              tooltip={CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA.tooltip}
+                            />
+                          )}
+                          className="px-3"
+                        >
                           <Input
                             type="text"
                             value={cfg?.cloudflareTunnelHostname ?? ""}
                             onChange={(e) => saveConfig({ cloudflareTunnelHostname: e.currentTarget.value })}
-                            placeholder="myapp.example.com"
+                            placeholder={CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA.desktopPlaceholder}
                             className="w-full sm:w-[300px] max-w-full min-w-0"
                           />
                         </Control>

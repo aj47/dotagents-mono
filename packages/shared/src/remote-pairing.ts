@@ -133,6 +133,17 @@ export type CloudflareTunnelAutoStartFieldMetadata = {
   accessibilityLabel: string;
 };
 
+export type CloudflareTunnelTextFieldMetadata = {
+  key: 'cloudflareTunnelId' | 'cloudflareTunnelHostname';
+  label: string;
+  tooltip: string;
+  desktopPlaceholder: string;
+  mobilePlaceholder: string;
+  pendingLabel: string;
+  successMessage: string;
+  accessibilityLabel: string;
+};
+
 export const DEFAULT_REMOTE_SERVER_BIND_ADDRESS: RemoteServerBindAddress = '127.0.0.1';
 export const DEFAULT_REMOTE_SERVER_PORT = 3210;
 export const DEFAULT_REMOTE_SERVER_LOG_LEVEL: RemoteServerLogLevel = 'info';
@@ -249,6 +260,26 @@ export const CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA: CloudflareTunnelAutoSt
   pendingLabel: 'tunnel auto-start',
   successMessage: 'Tunnel auto-start updated.',
   accessibilityLabel: 'Auto-Start Tunnel',
+};
+export const CLOUDFLARE_TUNNEL_ID_FIELD_METADATA: CloudflareTunnelTextFieldMetadata = {
+  key: 'cloudflareTunnelId',
+  label: 'Tunnel ID',
+  tooltip: "The UUID of your named tunnel. Find it with 'cloudflared tunnel list'",
+  desktopPlaceholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+  mobilePlaceholder: 'Tunnel UUID',
+  pendingLabel: 'tunnel id',
+  successMessage: 'Tunnel ID saved.',
+  accessibilityLabel: 'Cloudflare tunnel ID',
+};
+export const CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA: CloudflareTunnelTextFieldMetadata = {
+  key: 'cloudflareTunnelHostname',
+  label: 'Hostname',
+  tooltip: 'The public hostname for your tunnel (e.g., myapp.example.com). Must be configured in Cloudflare DNS.',
+  desktopPlaceholder: 'myapp.example.com',
+  mobilePlaceholder: 'agent.example.com',
+  pendingLabel: 'tunnel hostname',
+  successMessage: 'Tunnel hostname saved.',
+  accessibilityLabel: 'Cloudflare tunnel hostname',
 };
 
 export function getDefaultRemoteServerCorsOrigins(): string[] {
