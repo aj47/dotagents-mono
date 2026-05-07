@@ -7,6 +7,7 @@ import {
   buildNewServerConversation,
   buildBranchedServerConversation,
   buildServerConversationCompactionCheckpointMetadata,
+  buildServerConversationCompactionPlan,
   buildServerConversationCompactionPrompt,
   buildServerConversationCompactionSummaryInput,
   buildServerConversationAutoTitleSeed,
@@ -638,6 +639,97 @@ describe('server conversation API helpers', () => {
     expect(buildServerConversationCompactionPrompt(summaryInput)).toBe(
       `Summarize this conversation history concisely, preserving key facts, decisions, and context:\n\n${summaryInput}`,
     );
+  });
+
+  it('skips compaction planning when stored history is at the threshold', () => {
+    const messages = Array.from({ length: 20 }, (_, index) => ({
+      id: `m${index}`,
+      role: index % 2 === 0 ? 'user' as const : 'assistant' as const,
+      content: `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }));
+
+    const plan = buildServerConversationCompactionPlan({
+      id: 'conv-plan-skip',
+      title: 'Skip',
+      createdAt: 1,
+      updatedAt: 2,
+      messages,
+    }, {
+      messageThreshold: 20,
+      keepLast: 10,
+    });
+
+    expect(plan).toMatchObject({
+      action: 'skip',
+      messageCount: 20,
+    });
+    expect(plan.fullMessageHistory.map((message) => message.id)).toEqual(messages.map((message) => message.id));
+  });
+
+  it('plans checkpoint backfill for already compacted preserved raw history', () => {
+    const rawMessages = Array.from({ length: 25 }, (_, index) => ({
+      id: `raw-${index}`,
+      role: index % 2 === 0 ? 'user' as const : 'assistant' as const,
+      content: `Raw message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }));
+    const summaryMessage = {
+      id: 'summary-1',
+      role: 'assistant' as const,
+      content: 'Summary',
+      timestamp: 1_700_000_000_100,
+      isSummary: true,
+      summarizedMessageCount: 15,
+    };
+
+    const plan = buildServerConversationCompactionPlan({
+      id: 'conv-plan-backfill',
+      title: 'Backfill',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [summaryMessage, ...rawMessages.slice(15)],
+      rawMessages,
+    }, {
+      messageThreshold: 20,
+      keepLast: 10,
+    });
+
+    expect(plan).toMatchObject({
+      action: 'backfill_checkpoint',
+      messageCount: 25,
+    });
+    expect(plan.fullMessageHistory).toBe(rawMessages);
+  });
+
+  it('plans compaction slices from the full stored history', () => {
+    const messages = Array.from({ length: 25 }, (_, index) => ({
+      id: `m${index}`,
+      role: index % 2 === 0 ? 'user' as const : 'assistant' as const,
+      content: `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }));
+
+    const plan = buildServerConversationCompactionPlan({
+      id: 'conv-plan-compact',
+      title: 'Compact',
+      createdAt: 1,
+      updatedAt: 2,
+      messages,
+    }, {
+      messageThreshold: 20,
+      keepLast: 10,
+    });
+
+    expect(plan).toMatchObject({
+      action: 'compact',
+      messageCount: 25,
+    });
+    expect(plan.action).toBe('compact');
+    if (plan.action !== 'compact') return;
+    expect(plan.messagesToSummarize.map((message) => message.id)).toEqual(messages.slice(0, 15).map((message) => message.id));
+    expect(plan.messagesToKeep.map((message) => message.id)).toEqual(messages.slice(15).map((message) => message.id));
+    expect(plan.fullMessageHistory).toBe(messages);
   });
 
   it('limits loaded conversation messages without returning raw history payloads', () => {

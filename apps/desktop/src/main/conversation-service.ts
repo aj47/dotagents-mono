@@ -18,12 +18,12 @@ import {
   buildBranchedServerConversation,
   buildNewServerConversation,
   buildServerConversationCompactionCheckpointMetadata,
+  buildServerConversationCompactionPlan,
   buildServerConversationCompactionPrompt,
   buildServerConversationCompactionSummaryInput,
   buildServerConversationAutoTitleSeed,
   buildServerConversationHistoryItem,
   estimateServerConversationCompactionTokensFromText,
-  getRepresentedServerConversationMessageCount,
   getStoredServerConversationMessages,
   getValidServerConversationCompactionTimestamp,
   hasPersistedServerConversationCompactionCheckpoint,
@@ -712,10 +712,6 @@ export class ConversationService {
     await this.writeIndexToDisk()
   }
 
-  private hasSummaryMessages(messages: ConversationMessage[]): boolean {
-    return messages.some((message) => message.isSummary)
-  }
-
   private applyConversationMessageLimit(
     conversation: Conversation,
     messageLimit?: number,
@@ -725,10 +721,6 @@ export class ConversationService {
 
   private getStoredRawMessages(conversation: Conversation): ConversationMessage[] {
     return getStoredServerConversationMessages(conversation) as ConversationMessage[]
-  }
-
-  private getRepresentedMessageCount(conversation: Conversation): number {
-    return getRepresentedServerConversationMessageCount(conversation)
   }
 
   private syncConversationStorageMetadata(conversation: Conversation): boolean {
@@ -1089,30 +1081,22 @@ export class ConversationService {
    * @returns The compacted conversation
    */
   private async compactOnLoad(conversation: Conversation, sessionId?: string): Promise<Conversation> {
-    const fullMessageHistory = this.getStoredRawMessages(conversation)
-    const messageCount = fullMessageHistory.length
-    if (messageCount <= COMPACTION_MESSAGE_THRESHOLD) {
+    const compactionPlan = buildServerConversationCompactionPlan(conversation, {
+      messageThreshold: COMPACTION_MESSAGE_THRESHOLD,
+      keepLast: COMPACTION_KEEP_LAST,
+    })
+
+    if (compactionPlan.action === "skip") {
       return conversation
     }
 
-    const activeNonSummaryCount = conversation.messages.filter((message) => !message.isSummary).length
-    if (
-      Array.isArray(conversation.rawMessages) &&
-      conversation.rawMessages.length > 0 &&
-      this.hasSummaryMessages(conversation.messages) &&
-      this.getRepresentedMessageCount(conversation) === messageCount &&
-      activeNonSummaryCount <= COMPACTION_KEEP_LAST
-    ) {
+    const fullMessageHistory = compactionPlan.fullMessageHistory as ConversationMessage[]
+    if (compactionPlan.action === "backfill_checkpoint") {
       return this.persistCompactionCheckpointIfMissing(conversation, fullMessageHistory)
     }
 
-    // Calculate how many messages to summarize
-    const messagesToSummarize = fullMessageHistory.slice(0, messageCount - COMPACTION_KEEP_LAST)
-    const messagesToKeep = fullMessageHistory.slice(messageCount - COMPACTION_KEEP_LAST)
-
-    if (messagesToSummarize.length === 0) {
-      return conversation
-    }
+    const messagesToSummarize = compactionPlan.messagesToSummarize as ConversationMessage[]
+    const messagesToKeep = compactionPlan.messagesToKeep as ConversationMessage[]
 
     logApp(`[conversationService] compactOnLoad: compacting ${messagesToSummarize.length} messages for ${conversation.id}`)
 

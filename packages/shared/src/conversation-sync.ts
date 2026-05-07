@@ -254,6 +254,30 @@ export interface BuildServerConversationCompactionSummaryInputOptions {
   maxToolResultChars?: number;
 }
 
+export interface BuildServerConversationCompactionPlanOptions {
+  messageThreshold: number;
+  keepLast: number;
+}
+
+export type ServerConversationCompactionPlan<TMessage extends ServerConversationRecordMessage = ServerConversationRecordMessage> =
+  | {
+    action: 'skip';
+    fullMessageHistory: TMessage[];
+    messageCount: number;
+  }
+  | {
+    action: 'backfill_checkpoint';
+    fullMessageHistory: TMessage[];
+    messageCount: number;
+  }
+  | {
+    action: 'compact';
+    fullMessageHistory: TMessage[];
+    messageCount: number;
+    messagesToSummarize: TMessage[];
+    messagesToKeep: TMessage[];
+  };
+
 export type LimitedServerConversationRecord<TConversation extends ServerConversationRecord<any>> = TConversation & {
   messageOffset?: number;
   totalMessageCount?: number;
@@ -669,6 +693,47 @@ export function buildServerConversationCompactionSummaryInput(
 
 export function buildServerConversationCompactionPrompt(summaryInput: string): string {
   return `Summarize this conversation history concisely, preserving key facts, decisions, and context:\n\n${summaryInput}`;
+}
+
+export function buildServerConversationCompactionPlan<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+  options: BuildServerConversationCompactionPlanOptions,
+): ServerConversationCompactionPlan<TConversation['messages'][number]> {
+  const fullMessageHistory = getStoredServerConversationMessages(conversation) as TConversation['messages'][number][];
+  const messageCount = fullMessageHistory.length;
+  const messageThreshold = Math.max(0, Math.floor(options.messageThreshold));
+  const keepLast = Math.max(0, Math.floor(options.keepLast));
+
+  if (messageCount <= messageThreshold) {
+    return { action: 'skip', fullMessageHistory, messageCount };
+  }
+
+  const activeNonSummaryCount = conversation.messages.filter((message) => !message.isSummary).length;
+  const hasPreservedRawHistory = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0;
+  const hasSummaryMessages = conversation.messages.some((message) => message.isSummary);
+  if (
+    hasPreservedRawHistory &&
+    hasSummaryMessages &&
+    getRepresentedServerConversationMessageCount(conversation) === messageCount &&
+    activeNonSummaryCount <= keepLast
+  ) {
+    return { action: 'backfill_checkpoint', fullMessageHistory, messageCount };
+  }
+
+  const messagesToSummarize = fullMessageHistory.slice(0, messageCount - keepLast);
+  const messagesToKeep = fullMessageHistory.slice(messageCount - keepLast);
+
+  if (messagesToSummarize.length === 0) {
+    return { action: 'skip', fullMessageHistory, messageCount };
+  }
+
+  return {
+    action: 'compact',
+    fullMessageHistory,
+    messageCount,
+    messagesToSummarize,
+    messagesToKeep,
+  };
 }
 
 export function buildServerConversationCompactionCheckpointMetadata(
