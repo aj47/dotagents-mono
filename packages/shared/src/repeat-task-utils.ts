@@ -197,6 +197,11 @@ export type RepeatTaskIntervalDraftResolution = {
 
 export type RepeatTaskIdGenerator = () => string
 
+export interface RepeatTaskRuntimeIdOptions {
+  now?: () => number
+  random?: () => number
+}
+
 export type RepeatTaskNextDelayResult = {
   delayMs: number
   nextRunAt?: number
@@ -276,6 +281,12 @@ export function slugifyRepeatTaskName(name: string, maxLength = 64): string {
 
 export function createRepeatTaskIdFromName(name: string, createFallbackId: RepeatTaskIdGenerator): string {
   return slugifyRepeatTaskName(name) || createFallbackId()
+}
+
+export function createRepeatTaskRuntimeId(options: RepeatTaskRuntimeIdOptions = {}): string {
+  const now = options.now ?? Date.now
+  const random = options.random ?? Math.random
+  return `loop_${now()}_${random().toString(36).slice(2, 11)}`
 }
 
 function toTitleCaseRepeatTaskName(value: string, options: { dropConnectorWords?: boolean } = {}): string {

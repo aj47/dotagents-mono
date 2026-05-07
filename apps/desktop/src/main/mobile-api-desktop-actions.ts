@@ -77,6 +77,7 @@ import {
   type ProfileActionOptions,
 } from "@dotagents/shared/profile-api"
 import {
+  createRepeatTaskRuntimeId,
   createRepeatTaskRouteActions,
   type RepeatTaskActionOptions,
   type RepeatTaskLoopService,
@@ -371,7 +372,7 @@ const repeatTaskActionOptions: RepeatTaskActionOptions<LoopConfig, ReturnType<ty
   loadLoopService,
   getConfig: () => configStore.get(),
   saveConfig: (config) => configStore.save(config),
-  createId: () => `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+  createId: createRepeatTaskRuntimeId,
   getProfileName: getLoopProfileName,
   diagnostics: diagnosticsService,
 }

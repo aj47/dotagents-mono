@@ -4,6 +4,7 @@ import {
   applyRepeatTaskUpdate,
   applyRepeatTaskRuntimeStatus,
   createRepeatTaskAction,
+  createRepeatTaskRuntimeId,
   createRepeatTaskRouteActions,
   buildRepeatTaskMutationResponse,
   buildRepeatTaskDeleteResponse,
@@ -79,6 +80,13 @@ describe("repeat task schedule helpers", () => {
     expect(slugifyRepeatTaskName("Noon / Evening Review", 8)).toBe("noon-eve")
     expect(createRepeatTaskIdFromName("Daily Summary", () => "fallback")).toBe("daily-summary")
     expect(createRepeatTaskIdFromName("!!!", () => "fallback")).toBe("fallback")
+  })
+
+  it("creates repeat task runtime ids from shared timestamp and random inputs", () => {
+    expect(createRepeatTaskRuntimeId({
+      now: () => 123456789,
+      random: () => 0.123456789,
+    })).toBe("loop_123456789_4fzzzxjyl")
   })
 
   it("builds repeat task title hints from names and prompt headings", () => {

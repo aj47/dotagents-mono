@@ -2413,6 +2413,8 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.updateRepeatTask(params.id, req.body)")
     expect(mobileApiRoutesSource).toContain("actions.deleteRepeatTask(params.id)")
     expect(mobileApiDesktopActionsSource).toContain("await import(\"./loop-service\")")
+    expect(mobileApiDesktopActionsSource).toContain("createId: createRepeatTaskRuntimeId")
+    expect(mobileApiDesktopActionsSource).not.toContain("Math.random().toString(36)")
     expect(mobileApiDesktopActionsSource).toContain(
       "const repeatTaskRouteActions = createRepeatTaskRouteActions(repeatTaskActionOptions)",
     )
@@ -2430,6 +2432,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).not.toContain("deleteRepeatTaskAction(id, repeatTaskActionOptions)")
     expect(sharedRepeatTaskUtilsSource).toContain("export interface RepeatTaskActionOptions")
     expect(sharedRepeatTaskUtilsSource).toContain("export interface RepeatTaskRouteActions")
+    expect(sharedRepeatTaskUtilsSource).toContain("export function createRepeatTaskRuntimeId(")
     expect(sharedRepeatTaskUtilsSource).toContain("export function createRepeatTaskRouteActions")
     expect(sharedRepeatTaskUtilsSource).toContain("getRepeatTasks: () => getRepeatTasksAction(options)")
     expect(sharedRepeatTaskUtilsSource).toContain("updateRepeatTask: (id, body) => updateRepeatTaskAction(id, body, options)")
