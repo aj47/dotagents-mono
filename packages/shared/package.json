@@ -371,6 +371,11 @@
       "import": "./dist/remote-server-mobile-api-routes.mjs",
       "require": "./dist/remote-server-mobile-api-routes.js"
     },
+    "./remote-server-operator-routes": {
+      "types": "./dist/remote-server-operator-routes.d.ts",
+      "import": "./dist/remote-server-operator-routes.mjs",
+      "require": "./dist/remote-server-operator-routes.js"
+    },
     "./remote-server-api": {
       "types": "./dist/remote-server-api.d.ts",
       "import": "./dist/remote-server-api.mjs",

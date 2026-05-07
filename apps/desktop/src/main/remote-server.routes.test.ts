@@ -156,10 +156,26 @@ function getSharedMessageQueueStoreSource(): string {
   return readFileSync(sharedMessageQueueStorePath, "utf8")
 }
 
-function getOperatorRoutesSource(): string {
+function getOperatorRoutesFacadeSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const operatorRoutesPath = path.join(testDir, "operator-routes.ts")
   return readFileSync(operatorRoutesPath, "utf8")
+}
+
+function getSharedOperatorRoutesSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedOperatorRoutesPath = path.join(
+    testDir,
+    "../../../../packages/shared/src/remote-server-operator-routes.ts",
+  )
+  return readFileSync(sharedOperatorRoutesPath, "utf8")
+}
+
+function getOperatorRoutesSource(): string {
+  return [
+    getOperatorRoutesFacadeSource(),
+    getSharedOperatorRoutesSource(),
+  ].join("\n")
 }
 
 function getOperatorRouteDesktopActionsSource(): string {
@@ -502,7 +518,9 @@ describe("remote-server route registration", () => {
     const controllerSource = getRemoteServerControllerSource()
     const routeBundleSource = getRemoteServerRouteBundleSource()
     const desktopAdaptersSource = getRemoteServerDesktopAdaptersSource()
+    const operatorRoutesFacadeSource = getOperatorRoutesFacadeSource()
     const operatorRoutesSource = getOperatorRoutesSource()
+    const sharedOperatorRoutesSource = getSharedOperatorRoutesSource()
     const operatorRouteDesktopActionsSource = getOperatorRouteDesktopActionsSource()
     const injectedMcpRoutesSource = getInjectedMcpRoutesSource()
     const sharedInjectedMcpRoutesSource = getSharedInjectedMcpRoutesSource()
@@ -585,25 +603,34 @@ describe("remote-server route registration", () => {
     expect(routeBundleSource).toContain("actions: mobileApiDesktopActions")
     expect(routeBundleSource).toContain("registerInjectedMcpRoutes(fastify, {")
     expect(routeBundleSource).toContain("actions: injectedMcpDesktopActions")
-    expect(operatorRoutesSource).not.toContain('from "./operator-agent-actions"')
-    expect(operatorRoutesSource).not.toContain('from "./operator-mcp-actions"')
-    expect(operatorRoutesSource).not.toContain('from "./operator-local-speech-actions"')
-    expect(operatorRoutesSource).not.toContain('from "./operator-model-preset-actions"')
-    expect(operatorRoutesSource).not.toContain('from "./operator-tunnel-actions"')
-    expect(operatorRoutesSource).not.toContain('from "./operator-updater-actions"')
-    expect(operatorRoutesSource).not.toContain('from "./operator-integration-actions"')
-    expect(operatorRoutesSource).not.toContain('from "./operator-message-queue-actions"')
-    expect(operatorRoutesSource).not.toContain('from "./operator-observability-actions"')
-    expect(operatorRoutesSource).not.toContain('from "./operator-audit-actions"')
-    expect(operatorRoutesSource).not.toContain('from "./operator-restart-actions"')
-    expect(operatorRoutesSource).not.toContain('from "./operator-api-key-actions"')
-    expect(operatorRoutesSource).toContain('from "@dotagents/shared/remote-server-route-contracts"')
-    expect(operatorRoutesSource).toContain("export type OperatorRouteActions = SharedOperatorRouteActions<FastifyRequest>")
-    expect(operatorRoutesSource).toContain(
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-agent-actions"')
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-mcp-actions"')
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-local-speech-actions"')
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-model-preset-actions"')
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-tunnel-actions"')
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-updater-actions"')
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-integration-actions"')
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-message-queue-actions"')
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-observability-actions"')
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-audit-actions"')
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-restart-actions"')
+    expect(operatorRoutesFacadeSource).not.toContain('from "./operator-api-key-actions"')
+    expect(operatorRoutesFacadeSource).toContain('from "@dotagents/shared/remote-server-operator-routes"')
+    expect(operatorRoutesFacadeSource).toContain("registerOperatorRoutes as registerSharedOperatorRoutes")
+    expect(operatorRoutesFacadeSource).toContain("export type OperatorRouteActions = SharedOperatorRouteActions<FastifyRequest>")
+    expect(operatorRoutesFacadeSource).toContain(
       "export type RegisterOperatorRoutesOptions = SharedOperatorRouteOptions<FastifyRequest, FastifyReply>",
     )
-    expect(operatorRoutesSource).not.toContain("export interface OperatorRouteActions")
-    expect(operatorRoutesSource).not.toContain("export interface RegisterOperatorRoutesOptions")
+    expect(operatorRoutesFacadeSource).not.toContain("export interface OperatorRouteActions")
+    expect(operatorRoutesFacadeSource).not.toContain("export interface RegisterOperatorRoutesOptions")
+    expect(sharedOperatorRoutesSource).toContain("from './remote-server-route-contracts'")
+    expect(sharedOperatorRoutesSource).toContain("export interface RemoteServerOperatorRouteServer")
+    expect(sharedOperatorRoutesSource).toContain("fastify.get(API_ROUTES.operatorStatus")
+    expect(sharedOperatorRoutesSource).toContain("fastify.post(API_ROUTES.operatorRestartRemoteServer")
+    expect(sharedOperatorRoutesSource).toContain("fastify.patch(API_ROUTES.operatorModelPreset")
+    expect(sharedOperatorRoutesSource).toContain("fastify.delete(API_ROUTES.operatorMessageQueueMessage")
+    expect(sharedOperatorRoutesSource).not.toContain("Fastify")
+    expect(sharedOperatorRoutesSource).not.toContain("Electron")
     expect(operatorRouteDesktopActionsSource).toContain("export const operatorRouteDesktopActions")
     expect(operatorRouteDesktopActionsSource).toContain("runOperatorAgent")
     expect(operatorRouteDesktopActionsSource).toContain("getOperatorStatus")
