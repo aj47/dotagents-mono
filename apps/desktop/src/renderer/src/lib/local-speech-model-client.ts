@@ -15,6 +15,25 @@ const LOCAL_SPEECH_MODEL_DOWNLOAD_CHANNELS: Record<LocalSpeechModelProviderId, s
   supertonic: "downloadSupertonicModel",
 }
 
+export interface LocalSpeechModelAudioResult {
+  audio: string
+  sampleRate: number
+}
+
+export interface KittenLocalSpeechSampleRequest {
+  text: string
+  voiceId?: number
+  speed?: number
+}
+
+export interface SupertonicLocalSpeechSampleRequest {
+  text: string
+  voice?: string
+  lang?: string
+  speed?: number
+  steps?: number
+}
+
 export function getLocalSpeechModelStatus(
   providerId: LocalSpeechModelProviderId,
 ): Promise<LocalSpeechModelStatus> {
@@ -29,4 +48,22 @@ export async function downloadLocalSpeechModel(
   await window.electron.ipcRenderer.invoke(
     LOCAL_SPEECH_MODEL_DOWNLOAD_CHANNELS[providerId],
   )
+}
+
+export function synthesizeKittenLocalSpeechSample(
+  request: KittenLocalSpeechSampleRequest,
+): Promise<LocalSpeechModelAudioResult> {
+  return window.electron.ipcRenderer.invoke(
+    "synthesizeWithKitten",
+    request,
+  ) as Promise<LocalSpeechModelAudioResult>
+}
+
+export function synthesizeSupertonicLocalSpeechSample(
+  request: SupertonicLocalSpeechSampleRequest,
+): Promise<LocalSpeechModelAudioResult> {
+  return window.electron.ipcRenderer.invoke(
+    "synthesizeWithSupertonic",
+    request,
+  ) as Promise<LocalSpeechModelAudioResult>
 }

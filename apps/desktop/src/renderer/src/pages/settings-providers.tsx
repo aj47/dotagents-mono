@@ -18,6 +18,8 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import {
   downloadLocalSpeechModel,
   getLocalSpeechModelStatus,
+  synthesizeKittenLocalSpeechSample,
+  synthesizeSupertonicLocalSpeechSample,
 } from "@renderer/lib/local-speech-model-client"
 import { Config } from "@shared/types"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
@@ -359,10 +361,10 @@ function KittenProviderSection({
   const modelDownloaded = (modelStatusQuery.data as { downloaded: boolean } | undefined)?.downloaded ?? false
   const handleTestVoice = async () => {
     try {
-      const result = await window.electron.ipcRenderer.invoke("synthesizeWithKitten", {
+      const result = await synthesizeKittenLocalSpeechSample({
         text: "Hello! This is a test of the Kitten text to speech voice.",
         voiceId,
-      }) as { audio: string; sampleRate: number }
+      })
       // Decode base64 WAV audio and play it
       const audioData = Uint8Array.from(atob(result.audio), c => c.charCodeAt(0))
       const blob = new Blob([audioData], { type: "audio/wav" })
@@ -564,13 +566,13 @@ function SupertonicProviderSection({
 
   const handleTestVoice = async () => {
     try {
-      const result = await window.electron.ipcRenderer.invoke("synthesizeWithSupertonic", {
+      const result = await synthesizeSupertonicLocalSpeechSample({
         text: "Hello! This is a test of the Supertonic text to speech voice.",
         voice,
         lang: language,
         speed,
         steps,
-      }) as { audio: string; sampleRate: number }
+      })
       const audioData = Uint8Array.from(atob(result.audio), c => c.charCodeAt(0))
       const blob = new Blob([audioData], { type: "audio/wav" })
       const url = URL.createObjectURL(blob)
