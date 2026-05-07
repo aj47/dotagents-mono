@@ -35,6 +35,7 @@ import {
 } from "@dotagents/shared/hub"
 import {
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
+  buildBundleImportPreviewConflicts,
   parseDotAgentsBundle,
   sanitizeBundlePublicMetadata,
   type BundleAgentProfile,
@@ -859,38 +860,14 @@ export function previewBundleWithConflicts(
   const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
     defaultValue: {},
   })
-  const existingMcpServers = new Set(Object.keys(readMcpServersFromConfig(mcpConfig)))
-
-  // Detect conflicts
-  const conflicts = {
-    agentProfiles: bundle.agentProfiles
-      .filter(p => existingProfiles.originById.has(p.id))
-      .map(p => {
-        const existing = existingProfiles.profiles.find(ep => ep.id === p.id)
-        return { id: p.id, name: p.name, existingName: existing?.name }
-      }),
-    mcpServers: bundle.mcpServers
-      .filter(s => existingMcpServers.has(s.name))
-      .map(s => ({ id: s.name, name: s.name })),
-    skills: bundle.skills
-      .filter(s => existingSkills.originById.has(s.id))
-      .map(s => {
-        const existing = existingSkills.skills.find(es => es.id === s.id)
-        return { id: s.id, name: s.name, existingName: existing?.name }
-      }),
-    repeatTasks: bundle.repeatTasks
-      .filter(t => existingTasks.originById.has(t.id))
-      .map(t => {
-        const existing = existingTasks.tasks.find(et => et.id === t.id)
-        return { id: t.id, name: t.name, existingName: existing?.name }
-      }),
-    knowledgeNotes: bundle.knowledgeNotes
-      .filter(note => existingKnowledgeNotes.originById.has(note.id))
-      .map(note => {
-        const existing = existingKnowledgeNotes.notes.find(existingNote => existingNote.id === note.id)
-        return { id: note.id, name: note.title, existingName: existing?.title }
-      }),
-  }
+  const existingMcpServers = Object.keys(readMcpServersFromConfig(mcpConfig))
+  const conflicts = buildBundleImportPreviewConflicts(bundle, {
+    agentProfiles: existingProfiles.profiles.map((profile) => ({ id: profile.id, name: profile.name })),
+    mcpServers: existingMcpServers.map((name) => ({ id: name })),
+    skills: existingSkills.skills.map((skill) => ({ id: skill.id, name: skill.name })),
+    repeatTasks: existingTasks.tasks.map((task) => ({ id: task.id, name: task.name })),
+    knowledgeNotes: existingKnowledgeNotes.notes.map((note) => ({ id: note.id, name: note.title })),
+  })
 
   return { success: true, filePath, bundle, conflicts }
 }

@@ -9,6 +9,7 @@ import {
   EMPTY_BUNDLE_ITEM_SELECTION,
   buildBundleExportResponse,
   buildBundleExportableItemsResponse,
+  buildBundleImportPreviewConflicts,
   buildBundleImportPreviewResponse,
   createBundleItemSelection,
   createBundleRouteActions,
@@ -253,6 +254,52 @@ describe("bundle API helpers", () => {
       runContinuously: true,
     })
     expect(parsed?.repeatTasks[0]).not.toHaveProperty("schedule")
+  })
+
+  it("builds shared bundle import preview conflicts", () => {
+    const conflictBundle: DotAgentsBundle = {
+      ...bundle,
+      manifest: {
+        ...bundle.manifest,
+        components: {
+          agentProfiles: 1,
+          mcpServers: 1,
+          skills: 1,
+          repeatTasks: 1,
+          knowledgeNotes: 1,
+        },
+      },
+      mcpServers: [{ name: "server-1" }],
+      repeatTasks: [{
+        id: "task-1",
+        name: "Task",
+        prompt: "Run",
+        intervalMinutes: 15,
+        enabled: true,
+      }],
+      knowledgeNotes: [{
+        id: "note-1",
+        title: "Note",
+        context: "search-only",
+        body: "Body",
+        tags: [],
+        updatedAt: 123,
+      }],
+    }
+
+    expect(buildBundleImportPreviewConflicts(conflictBundle, {
+      agentProfiles: [{ id: "agent-1", name: "Existing Agent" }],
+      mcpServers: [{ id: "server-1" }],
+      skills: [{ id: "skill-1", name: "Existing Skill" }],
+      repeatTasks: [{ id: "task-1", name: "Existing Task" }],
+      knowledgeNotes: [{ id: "note-1", name: "Existing Note" }],
+    })).toEqual({
+      agentProfiles: [{ id: "agent-1", name: "agent", existingName: "Existing Agent" }],
+      mcpServers: [{ id: "server-1", name: "server-1" }],
+      skills: [{ id: "skill-1", name: "Skill", existingName: "Existing Skill" }],
+      repeatTasks: [{ id: "task-1", name: "Task", existingName: "Existing Task" }],
+      knowledgeNotes: [{ id: "note-1", name: "Note", existingName: "Existing Note" }],
+    })
   })
 
   it("builds shared bundle selection defaults and dependency warnings", () => {

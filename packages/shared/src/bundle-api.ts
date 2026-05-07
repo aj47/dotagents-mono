@@ -638,6 +638,19 @@ export type BundleImportPreviewConflicts = {
   knowledgeNotes: BundleImportPreviewConflict[]
 }
 
+export type BundleImportExistingItem = {
+  id: string
+  name?: string
+}
+
+export type BundleImportExistingItems = {
+  agentProfiles: BundleImportExistingItem[]
+  mcpServers: BundleImportExistingItem[]
+  skills: BundleImportExistingItem[]
+  repeatTasks: BundleImportExistingItem[]
+  knowledgeNotes: BundleImportExistingItem[]
+}
+
 export type BundleImportPreview = {
   bundle: DotAgentsBundle
   conflicts: BundleImportPreviewConflicts
@@ -673,6 +686,53 @@ export function hasBundleImportConflicts(
   if (!conflicts) return false
   const resolved = resolveBundleComponentSelection(components)
   return BUNDLE_COMPONENT_KEYS.some((key) => resolved[key] && conflicts[key].length > 0)
+}
+
+function createBundleImportConflict(
+  id: string,
+  name: string,
+  existingName: string | undefined,
+): BundleImportPreviewConflict {
+  return {
+    id,
+    name,
+    ...(existingName ? { existingName } : {}),
+  }
+}
+
+function createBundleImportExistingItemMap(
+  items: readonly BundleImportExistingItem[],
+): Map<string, BundleImportExistingItem> {
+  return new Map(items.map((item) => [item.id, item]))
+}
+
+export function buildBundleImportPreviewConflicts(
+  bundle: DotAgentsBundle,
+  existingItems: BundleImportExistingItems,
+): BundleImportPreviewConflicts {
+  const existingAgentProfiles = createBundleImportExistingItemMap(existingItems.agentProfiles)
+  const existingMcpServers = createBundleImportExistingItemMap(existingItems.mcpServers)
+  const existingSkills = createBundleImportExistingItemMap(existingItems.skills)
+  const existingRepeatTasks = createBundleImportExistingItemMap(existingItems.repeatTasks)
+  const existingKnowledgeNotes = createBundleImportExistingItemMap(existingItems.knowledgeNotes)
+
+  return {
+    agentProfiles: bundle.agentProfiles
+      .filter((agent) => existingAgentProfiles.has(agent.id))
+      .map((agent) => createBundleImportConflict(agent.id, agent.name, existingAgentProfiles.get(agent.id)?.name)),
+    mcpServers: bundle.mcpServers
+      .filter((server) => existingMcpServers.has(server.name))
+      .map((server) => createBundleImportConflict(server.name, server.name, existingMcpServers.get(server.name)?.name)),
+    skills: bundle.skills
+      .filter((skill) => existingSkills.has(skill.id))
+      .map((skill) => createBundleImportConflict(skill.id, skill.name, existingSkills.get(skill.id)?.name)),
+    repeatTasks: bundle.repeatTasks
+      .filter((task) => existingRepeatTasks.has(task.id))
+      .map((task) => createBundleImportConflict(task.id, task.name, existingRepeatTasks.get(task.id)?.name)),
+    knowledgeNotes: bundle.knowledgeNotes
+      .filter((note) => existingKnowledgeNotes.has(note.id))
+      .map((note) => createBundleImportConflict(note.id, note.title, existingKnowledgeNotes.get(note.id)?.name)),
+  }
 }
 
 export function getBundleImportChangedItemCount(result: BundleImportResult): number {
