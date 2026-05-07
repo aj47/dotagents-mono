@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   createAgentProfileAction,
   createAgentProfileRouteActions,
+  createProfileActionServices,
   createProfileRouteActionBundle,
   createProfileRouteActions,
   deleteAgentProfileAction,
@@ -704,6 +705,78 @@ describe("profile API helpers", () => {
     ])
     expect(deletedProfileIds).toEqual(["agent-1"])
     expect(reloadCount).toBe(1)
+  })
+
+  it("creates profile action service bundles from desktop-style service adapters", async () => {
+    const agentProfile = {
+      id: "agent-1",
+      name: "research-agent",
+      displayName: "Research Agent",
+      connection: { type: "internal" as const },
+      enabled: true,
+      isBuiltIn: false,
+      isUserProfile: false,
+      isAgentTarget: true,
+      createdAt: 10,
+      updatedAt: 20,
+    }
+    const calls: string[] = []
+    const services = createProfileActionServices({
+      profile: {
+        getUserProfiles: () => {
+          calls.push("getUserProfiles")
+          return [profile]
+        },
+        getCurrentProfile: () => profile,
+        setCurrentProfileStrict: (profileId) => {
+          calls.push(`setCurrentProfileStrict:${profileId}`)
+          return profile
+        },
+        exportProfile: (profileId) => `export:${profileId}`,
+        importProfile: (profileJson) => ({
+          ...profile,
+          id: "imported-profile",
+          name: profileJson,
+        }),
+      },
+      agentProfile: {
+        getAll: () => [agentProfile],
+        getById: (profileId) => profileId === agentProfile.id ? agentProfile : undefined,
+        create: () => agentProfile,
+        update: () => agentProfile,
+        delete: (profileId) => {
+          calls.push(`delete:${profileId}`)
+          return true
+        },
+        reload: () => {
+          calls.push("reload")
+        },
+      },
+      verifyExternalAgentCommand: async (request) => ({
+        ok: true,
+        resolvedCommand: request.command,
+        details: "verified",
+      }),
+    })
+
+    expect(services.profile.getUserProfiles()).toEqual([profile])
+    expect(services.profile.setCurrentProfileStrict("profile-1")).toBe(profile)
+    expect(services.profile.exportProfile("profile-1")).toBe("export:profile-1")
+    expect(services.agentProfile.getAll()).toEqual([agentProfile])
+    expect(services.agentProfile.getById("agent-1")).toBe(agentProfile)
+    expect(services.agentProfile.deleteProfile("agent-1")).toBe(true)
+    services.agentProfile.reload()
+    await expect(services.externalCommandVerification.verifyExternalAgentCommand({ command: "codex-acp" })).resolves.toEqual({
+      ok: true,
+      resolvedCommand: "codex-acp",
+      details: "verified",
+    })
+    expect(calls).toEqual([
+      "getUserProfiles",
+      "setCurrentProfileStrict:profile-1",
+      "delete:agent-1",
+      "reload",
+    ])
   })
 
   it("creates profile route action bundles from shared service adapters", async () => {

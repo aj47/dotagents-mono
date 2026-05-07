@@ -72,6 +72,7 @@ import {
   createPushRouteActions,
 } from "@dotagents/shared/push-notifications"
 import {
+  createProfileActionServices,
   createProfileRouteActionBundle,
 } from "@dotagents/shared/profile-api"
 import {
@@ -273,26 +274,11 @@ const conversationVideoAssetActionOptions: ConversationVideoAssetActionOptions =
 const conversationVideoAssetRouteActions = createConversationVideoAssetRouteActions(conversationVideoAssetActionOptions)
 
 const profileRouteActionBundle = createProfileRouteActionBundle({
-  services: {
-    profile: {
-      getUserProfiles: () => agentProfileService.getUserProfiles(),
-      getCurrentProfile: () => agentProfileService.getCurrentProfile(),
-      setCurrentProfileStrict: (profileId) => agentProfileService.setCurrentProfileStrict(profileId),
-      exportProfile: (profileId) => agentProfileService.exportProfile(profileId),
-      importProfile: (profileJson) => agentProfileService.importProfile(profileJson),
-    },
-    agentProfile: {
-      getAll: () => agentProfileService.getAll(),
-      getById: (profileId) => agentProfileService.getById(profileId),
-      create: (profile) => agentProfileService.create(profile),
-      update: (profileId, updates) => agentProfileService.update(profileId, updates),
-      deleteProfile: (profileId) => agentProfileService.delete(profileId),
-      reload: () => agentProfileService.reload(),
-    },
-    externalCommandVerification: {
-      verifyExternalAgentCommand: verifyExternalAgentCommandService,
-    },
-  },
+  services: createProfileActionServices({
+    profile: agentProfileService,
+    agentProfile: agentProfileService,
+    verifyExternalAgentCommand: verifyExternalAgentCommandService,
+  }),
   diagnostics: diagnosticsService,
   applyCurrentProfile: (profile) => {
     const mcpServerConfig = toolConfigToMcpServerConfig(profile.toolConfig)

@@ -205,6 +205,52 @@ export interface ProfileRouteActionBundleOptions<
   applyCurrentProfile?: (profile: TProfile) => void
 }
 
+export interface AgentProfileServiceAdapter<TProfile extends AgentProfileApiLike = AgentProfileApiLike> {
+  getAll(): TProfile[]
+  getById(profileId: string): TProfile | null | undefined
+  create(profile: AgentProfileCreateRouteRequest): TProfile
+  update(profileId: string, updates: AgentProfileUpdateRouteRequest): TProfile | null | undefined
+  delete(profileId: string): boolean
+  reload(): void
+}
+
+export interface ProfileActionServicesAdapterOptions<
+  TProfile extends ProfileLike = ProfileLike,
+  TAgentProfile extends AgentProfileApiLike = AgentProfileApiLike,
+> {
+  profile: ProfileActionService<TProfile>
+  agentProfile: AgentProfileServiceAdapter<TAgentProfile>
+  verifyExternalAgentCommand: ExternalAgentCommandVerificationActionService["verifyExternalAgentCommand"]
+}
+
+export function createProfileActionServices<
+  TProfile extends ProfileLike,
+  TAgentProfile extends AgentProfileApiLike,
+>(
+  options: ProfileActionServicesAdapterOptions<TProfile, TAgentProfile>,
+): ProfileRouteActionBundleOptions<TProfile, TAgentProfile>["services"] {
+  return {
+    profile: {
+      getUserProfiles: () => options.profile.getUserProfiles(),
+      getCurrentProfile: () => options.profile.getCurrentProfile(),
+      setCurrentProfileStrict: (profileId) => options.profile.setCurrentProfileStrict(profileId),
+      exportProfile: (profileId) => options.profile.exportProfile(profileId),
+      importProfile: (profileJson) => options.profile.importProfile(profileJson),
+    },
+    agentProfile: {
+      getAll: () => options.agentProfile.getAll(),
+      getById: (profileId) => options.agentProfile.getById(profileId),
+      create: (profile) => options.agentProfile.create(profile),
+      update: (profileId, updates) => options.agentProfile.update(profileId, updates),
+      deleteProfile: (profileId) => options.agentProfile.delete(profileId),
+      reload: () => options.agentProfile.reload(),
+    },
+    externalCommandVerification: {
+      verifyExternalAgentCommand: (request) => options.verifyExternalAgentCommand(request),
+    },
+  }
+}
+
 export interface ProfileRouteActionBundle {
   profiles: ProfileRouteActions
   agentProfiles: AgentProfileRouteActions
