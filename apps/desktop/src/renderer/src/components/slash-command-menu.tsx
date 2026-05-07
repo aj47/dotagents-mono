@@ -3,9 +3,9 @@ import { cn } from "@renderer/lib/utils"
 import { BookMarked, Clock3, Sparkles } from "lucide-react"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useQuery } from "@tanstack/react-query"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopLoopsClient } from "@renderer/lib/desktop-loops-client"
+import { desktopSkillsClient } from "@renderer/lib/desktop-skills-client"
 import { toast } from "sonner"
-import type { LoopConfig } from "@dotagents/shared/types"
 import { getRepeatTaskRunNowDescription } from "@dotagents/shared/repeat-task-utils"
 import {
   getPromptLibraryPromptContent,
@@ -50,12 +50,12 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
   const configQuery = useConfigQuery()
   const skillsQuery = useQuery({
     queryKey: ["skills"],
-    queryFn: () => tipcClient.getSkills(),
+    queryFn: () => desktopSkillsClient.getSkills(),
     enabled: isOpen,
   })
   const loopsQuery = useQuery({
     queryKey: ["loops"],
-    queryFn: () => tipcClient.getLoops() as Promise<LoopConfig[]>,
+    queryFn: () => desktopLoopsClient.getLoops(),
     enabled: isOpen,
   })
 
@@ -204,7 +204,7 @@ export function useSlashCommands(
       setSlashQuery("")
       setIsSlashMenuOpen(false)
       try {
-        const result = await tipcClient.triggerLoop?.({ loopId: item.id })
+        const result = await desktopLoopsClient.triggerLoop(item.id)
         if (result && !result.success) {
           toast.error(`Could not trigger "${item.name}" right now`)
           return

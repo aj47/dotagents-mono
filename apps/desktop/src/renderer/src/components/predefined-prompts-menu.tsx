@@ -22,6 +22,8 @@ import {
 } from "@renderer/components/ui/dialog"
 import { BookMarked, Plus, Pencil, Trash2, Sparkles, Clock3, Search } from "lucide-react"
 import { queryClient, useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
+import { desktopLoopsClient } from "@renderer/lib/desktop-loops-client"
+import { desktopSkillsClient } from "@renderer/lib/desktop-skills-client"
 import type { PredefinedPrompt } from "@dotagents/shared/api-types"
 import type { LoopConfig } from "@dotagents/shared/types"
 import {
@@ -35,7 +37,6 @@ import {
   updatePredefinedPromptList,
 } from "@dotagents/shared/predefined-prompts"
 import { useQuery } from "@tanstack/react-query"
-import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
 
 interface PredefinedPromptsMenuProps {
@@ -65,13 +66,13 @@ export function PredefinedPromptsMenu({
 
   const skillsQuery = useQuery({
     queryKey: ["skills"],
-    queryFn: () => tipcClient.getSkills(),
+    queryFn: () => desktopSkillsClient.getSkills(),
   })
   const availableSkills = skillsQuery.data ?? []
 
   const loopsQuery = useQuery({
     queryKey: ["loops"],
-    queryFn: () => tipcClient.getLoops() as Promise<LoopConfig[]>,
+    queryFn: () => desktopLoopsClient.getLoops(),
   })
   const availableTasks = loopsQuery.data ?? []
   const triggerButtonClassName = buttonSize === "default"
@@ -106,7 +107,7 @@ export function PredefinedPromptsMenu({
 
   const handleTriggerTask = async (task: LoopConfig) => {
     try {
-      const result = await tipcClient.triggerLoop?.({ loopId: task.id })
+      const result = await desktopLoopsClient.triggerLoop(task.id)
       if (result && !result.success) {
         toast.error(`Could not trigger "${task.name}" right now`)
         return

@@ -14,13 +14,13 @@ describe("slash command menu repeat-task support", () => {
     expect(slashCommandMenuSource).toContain("getPromptLibrarySkillDescription(s)")
     expect(slashCommandMenuSource).toContain("getRepeatTaskRunNowDescription(loop)")
     expect(slashCommandMenuSource).toContain('queryKey: ["loops"]')
-    expect(slashCommandMenuSource).toContain('queryFn: () => tipcClient.getLoops() as Promise<LoopConfig[]>')
+    expect(slashCommandMenuSource).toContain("queryFn: () => desktopLoopsClient.getLoops()")
     expect(slashCommandMenuSource).toContain('type: "loop" as const')
   })
 
   it("triggers repeat tasks instead of inserting them into the composer", () => {
     expect(slashCommandMenuSource).toContain('if (item.type === "loop")')
-    expect(slashCommandMenuSource).toContain('const result = await tipcClient.triggerLoop?.({ loopId: item.id })')
+    expect(slashCommandMenuSource).toContain("const result = await desktopLoopsClient.triggerLoop(item.id)")
     expect(slashCommandMenuSource).toContain('toast.success(`Running "${item.name}"...`)')
     expect(slashCommandMenuSource).toContain('toast.error("Failed to trigger task")')
   })
