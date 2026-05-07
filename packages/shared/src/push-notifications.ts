@@ -104,8 +104,19 @@ export interface PushActionBadgeService {
 }
 
 export interface PushActionOptions {
-  tokenStore: PushActionTokenStore;
+  service: PushActionService;
   diagnostics: PushActionDiagnostics;
+}
+
+export interface PushActionService {
+  getPushNotificationTokens(): PushTokenRecord[];
+  savePushNotificationTokens(tokens: PushTokenRecord[]): void;
+  clearBadgeCount(token: string): void;
+  getRegisteredAt(): number;
+}
+
+export interface PushActionServiceOptions {
+  tokenStore: PushActionTokenStore;
   badgeService?: PushActionBadgeService;
   now?: () => number;
 }
@@ -126,6 +137,15 @@ export function createPushConfigTokenStore<TConfig extends PushConfigTokenStoreC
       const config = store.get();
       store.save({ ...config, pushNotificationTokens: tokens });
     },
+  };
+}
+
+export function createPushActionService(options: PushActionServiceOptions): PushActionService {
+  return {
+    getPushNotificationTokens: () => options.tokenStore.getPushNotificationTokens(),
+    savePushNotificationTokens: (tokens) => options.tokenStore.savePushNotificationTokens(tokens),
+    clearBadgeCount: (token) => options.badgeService?.clearBadgeCount(token),
+    getRegisteredAt: () => (options.now ?? Date.now)(),
   };
 }
 
@@ -341,11 +361,11 @@ export function registerPushTokenAction(body: unknown, options: PushActionOption
       return pushActionError(parsedRequest.statusCode, parsedRequest.error);
     }
 
-    const existingTokens = options.tokenStore.getPushNotificationTokens();
+    const existingTokens = options.service.getPushNotificationTokens();
     const registrationResult = upsertPushTokenRegistration(
       existingTokens,
       parsedRequest.registration,
-      (options.now ?? Date.now)(),
+      options.service.getRegisteredAt(),
     );
 
     if (registrationResult.updatedExisting) {
@@ -360,7 +380,7 @@ export function registerPushTokenAction(body: unknown, options: PushActionOption
       );
     }
 
-    options.tokenStore.savePushNotificationTokens(registrationResult.tokens);
+    options.service.savePushNotificationTokens(registrationResult.tokens);
 
     return pushActionOk(buildPushRegistrationResponse(
       registrationResult.tokens.length,
@@ -379,11 +399,11 @@ export function unregisterPushTokenAction(body: unknown, options: PushActionOpti
       return pushActionError(parsedRequest.statusCode, parsedRequest.error);
     }
 
-    const existingTokens = options.tokenStore.getPushNotificationTokens();
+    const existingTokens = options.service.getPushNotificationTokens();
     const unregisterResult = removePushTokenRegistration(existingTokens, parsedRequest.token);
 
     if (unregisterResult.removed) {
-      options.tokenStore.savePushNotificationTokens(unregisterResult.tokens);
+      options.service.savePushNotificationTokens(unregisterResult.tokens);
       options.diagnostics.logInfo?.('push-actions', 'Unregistered push notification token');
     }
 
@@ -399,7 +419,7 @@ export function unregisterPushTokenAction(body: unknown, options: PushActionOpti
 
 export function getPushStatusAction(options: PushActionOptions): PushActionResult {
   try {
-    return pushActionOk(buildPushStatusResponse(options.tokenStore.getPushNotificationTokens()));
+    return pushActionOk(buildPushStatusResponse(options.service.getPushNotificationTokens()));
   } catch (caughtError) {
     options.diagnostics.logError('push-actions', 'Failed to get push status', caughtError);
     return pushActionError(500, getUnknownErrorMessage(caughtError, 'Failed to get push status'));
@@ -413,7 +433,7 @@ export function clearPushBadgeAction(body: unknown, options: PushActionOptions):
       return pushActionError(parsedRequest.statusCode, parsedRequest.error);
     }
 
-    options.badgeService?.clearBadgeCount(parsedRequest.token);
+    options.service.clearBadgeCount(parsedRequest.token);
 
     return pushActionOk(buildPushBadgeClearResponse());
   } catch (caughtError) {

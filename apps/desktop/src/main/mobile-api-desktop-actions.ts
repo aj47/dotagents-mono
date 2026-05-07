@@ -71,6 +71,7 @@ import {
   type SkillActionOptions,
 } from "@dotagents/shared/skills-api"
 import {
+  createPushActionService,
   createPushConfigTokenStore,
   createPushRouteActions,
 } from "@dotagents/shared/push-notifications"
@@ -199,14 +200,16 @@ const settingsRouteActionBundle = createSettingsRouteActionBundle({
 })
 
 const pushActionOptions = {
-  tokenStore: createPushConfigTokenStore({
-    get: () => configStore.get(),
-    save: (config) => configStore.save(config),
+  service: createPushActionService({
+    tokenStore: createPushConfigTokenStore({
+      get: () => configStore.get(),
+      save: (config) => configStore.save(config),
+    }),
+    badgeService: {
+      clearBadgeCount,
+    },
   }),
   diagnostics: diagnosticsService,
-  badgeService: {
-    clearBadgeCount,
-  },
 }
 
 const pushRouteActions = createPushRouteActions(pushActionOptions)

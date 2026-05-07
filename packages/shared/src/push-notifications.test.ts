@@ -7,6 +7,7 @@ import {
   buildPushStatusResponse,
   buildPushUnregistrationResponse,
   clearPushBadgeAction,
+  createPushActionService,
   createPushConfigTokenStore,
   createPushRouteActions,
   getPushStatusAction,
@@ -138,6 +139,45 @@ describe('push notification API helpers', () => {
     });
   });
 
+  it('creates push action services from token store and badge adapters', () => {
+    let tokens: PushTokenRecord[] = [{
+      token: 't1',
+      type: 'expo',
+      platform: 'ios',
+      registeredAt: 100,
+    }];
+    const clearedTokens: string[] = [];
+    const service = createPushActionService({
+      tokenStore: {
+        getPushNotificationTokens: () => tokens,
+        savePushNotificationTokens: (nextTokens) => {
+          tokens = nextTokens;
+        },
+      },
+      badgeService: {
+        clearBadgeCount: (token) => clearedTokens.push(token),
+      },
+      now: () => 123,
+    });
+
+    expect(service.getPushNotificationTokens()).toEqual(tokens);
+    service.savePushNotificationTokens([{
+      token: 't2',
+      type: 'expo',
+      platform: 'android',
+      registeredAt: 200,
+    }]);
+    expect(tokens).toEqual([{
+      token: 't2',
+      type: 'expo',
+      platform: 'android',
+      registeredAt: 200,
+    }]);
+    service.clearBadgeCount('t2');
+    expect(clearedTokens).toEqual(['t2']);
+    expect(service.getRegisteredAt()).toBe(123);
+  });
+
   it('builds registration, unregistration, and status responses', () => {
     expect(buildPushRegistrationResponse(2, false)).toEqual({
       success: true,
@@ -257,18 +297,21 @@ describe('push notification API helpers', () => {
   it('runs push registration actions through shared token store adapters', () => {
     let tokens: PushTokenRecord[] = [];
     const logs: string[] = [];
-    const options = {
+    const service = createPushActionService({
       tokenStore: {
         getPushNotificationTokens: () => tokens,
         savePushNotificationTokens: (nextTokens: PushTokenRecord[]) => {
           tokens = nextTokens;
         },
       },
+      now: () => 123,
+    });
+    const options = {
+      service,
       diagnostics: {
         logError: (_source: string, message: string) => logs.push(message),
         logInfo: (_source: string, message: string) => logs.push(message),
       },
-      now: () => 123,
     };
 
     expect(registerPushTokenAction({
@@ -361,15 +404,17 @@ describe('push notification API helpers', () => {
   it('runs push badge clearing and parse failures through shared adapters', () => {
     const clearedTokens: string[] = [];
     const options = {
-      tokenStore: {
-        getPushNotificationTokens: () => [],
-        savePushNotificationTokens: () => undefined,
-      },
+      service: createPushActionService({
+        tokenStore: {
+          getPushNotificationTokens: () => [],
+          savePushNotificationTokens: () => undefined,
+        },
+        badgeService: {
+          clearBadgeCount: (token: string) => clearedTokens.push(token),
+        },
+      }),
       diagnostics: {
         logError: () => undefined,
-      },
-      badgeService: {
-        clearBadgeCount: (token: string) => clearedTokens.push(token),
       },
     };
 
