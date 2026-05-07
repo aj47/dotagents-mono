@@ -155,6 +155,10 @@ export type ConversationBuildResult =
   | { ok: true; conversation: ServerConversationRecord<never> }
   | { ok: false; statusCode: 400; error: string };
 
+export type BranchConversationBuildResult<TConversation extends ServerConversationRecord<any>> =
+  | { ok: true; conversation: TConversation }
+  | { ok: false; statusCode: 400; error: string; messageCount: number };
+
 export type ServerConversationMessageIdFactory = (timestamp: number, index: number) => string;
 
 export function createServerConversationMessageId(timestamp: number, index: number): string {
@@ -309,6 +313,60 @@ export function buildServerConversationMessages(
     toolCalls: msg.toolCalls,
     toolResults: msg.toolResults,
   }));
+}
+
+export function getBranchableServerConversationMessages<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+): ServerConversationRecordMessage[] {
+  return Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
+    ? conversation.rawMessages
+    : conversation.messages;
+}
+
+export function buildBranchedServerConversation<TConversation extends ServerConversationRecord<any>>(
+  sourceConversation: TConversation,
+  options: {
+    sourceConversationId: string;
+    conversationId: string;
+    messageIndex: number;
+    timestamp: number;
+    messageIdFactory?: ServerConversationMessageIdFactory;
+  },
+): BranchConversationBuildResult<TConversation> {
+  const sourceMessages = getBranchableServerConversationMessages(sourceConversation);
+  if (options.messageIndex < 0 || options.messageIndex >= sourceMessages.length) {
+    return {
+      ok: false,
+      statusCode: 400,
+      error: 'Invalid messageIndex',
+      messageCount: sourceMessages.length,
+    };
+  }
+
+  const messageIdFactory = options.messageIdFactory ?? createServerConversationMessageId;
+  const branchedMessages = sourceMessages
+    .slice(0, options.messageIndex + 1)
+    .map((message, index) => ({
+      ...message,
+      id: messageIdFactory(message.timestamp ?? options.timestamp, index),
+      timestamp: message.timestamp ?? options.timestamp,
+    }));
+
+  return {
+    ok: true,
+    conversation: {
+      id: options.conversationId,
+      title: `Branch: ${sourceConversation.title}`,
+      createdAt: options.timestamp,
+      updatedAt: options.timestamp,
+      messages: branchedMessages,
+      branchSource: {
+        sourceConversationId: options.sourceConversationId,
+        sourceMessageIndex: options.messageIndex,
+        branchedAt: options.timestamp,
+      },
+    } as TConversation,
+  };
 }
 
 export function buildNewServerConversation(
@@ -595,38 +653,20 @@ export async function branchConversationAction<TConversation extends ServerConve
       return conversationActionError(404, 'Conversation not found');
     }
 
-    const sourceMessages = Array.isArray(sourceConversation.rawMessages) && sourceConversation.rawMessages.length > 0
-      ? sourceConversation.rawMessages
-      : sourceConversation.messages;
     const messageIndex = parsedRequest.request.messageIndex;
-    if (messageIndex < 0 || messageIndex >= sourceMessages.length) {
-      return conversationActionError(400, 'Invalid messageIndex');
-    }
-
     const timestamp = options.service.getTimestamp();
     const branchConversationId = options.service.generateConversationId();
-    const branchedMessages = sourceMessages
-      .slice(0, messageIndex + 1)
-      .map((message, index) => ({
-        ...message,
-        id: createServerConversationMessageId(message.timestamp ?? timestamp, index),
-        timestamp: message.timestamp ?? timestamp,
-      }));
+    const buildResult = buildBranchedServerConversation(sourceConversation, {
+      sourceConversationId: conversationId,
+      conversationId: branchConversationId,
+      messageIndex,
+      timestamp,
+    });
+    if (buildResult.ok === false) {
+      return conversationActionError(buildResult.statusCode, buildResult.error);
+    }
 
-    const branchedConversation = {
-      id: branchConversationId,
-      title: `Branch: ${sourceConversation.title}`,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      messages: branchedMessages,
-      branchSource: {
-        sourceConversationId: conversationId,
-        sourceMessageIndex: messageIndex,
-        branchedAt: timestamp,
-      },
-    } as TConversation;
-
-    await options.service.saveConversation(branchedConversation, true);
+    await options.service.saveConversation(buildResult.conversation, true);
     options.diagnostics.logInfo(
       'conversation-actions',
       `Branched conversation ${conversationId} at message ${messageIndex} -> ${branchConversationId}`,
@@ -634,7 +674,7 @@ export async function branchConversationAction<TConversation extends ServerConve
 
     onChanged();
 
-    return conversationActionOk(buildServerConversationFullResponse(branchedConversation), 201);
+    return conversationActionOk(buildServerConversationFullResponse(buildResult.conversation), 201);
   } catch (caughtError) {
     options.diagnostics.logError('conversation-actions', 'Failed to branch conversation', caughtError);
     return conversationActionError(500, getUnknownErrorMessage(caughtError, 'Failed to branch conversation'));

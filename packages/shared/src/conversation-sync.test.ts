@@ -3,6 +3,7 @@ import type { Session } from './session';
 import {
   applyServerConversationUpdate,
   buildNewServerConversation,
+  buildBranchedServerConversation,
   buildNewServerConversationFromUpdateRequest,
   buildServerConversationDeleteResponse,
   buildServerConversationFullResponse,
@@ -477,6 +478,34 @@ describe('server conversation API helpers', () => {
   });
 
   it('branches raw conversation history when compacted messages carry raw messages', async () => {
+    const directBuild = buildBranchedServerConversation({
+      id: 'conv-compact',
+      title: 'Compacted Chat',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'summary-1', role: 'assistant' as const, content: 'Summary', timestamp: 2 }],
+      rawMessages: [
+        { id: 'raw-1', role: 'user' as const, content: 'first', timestamp: 1 },
+        { id: 'raw-2', role: 'assistant' as const, content: 'second', timestamp: 2 },
+      ],
+    }, {
+      sourceConversationId: 'conv-compact',
+      conversationId: 'conv-direct-branch',
+      messageIndex: 1,
+      timestamp: 10,
+      messageIdFactory: (_timestamp, index) => `direct-${index}`,
+    });
+    expect(directBuild).toMatchObject({
+      ok: true,
+      conversation: {
+        id: 'conv-direct-branch',
+        messages: [
+          { id: 'direct-0', role: 'user', content: 'first', timestamp: 1 },
+          { id: 'direct-1', role: 'assistant', content: 'second', timestamp: 2 },
+        ],
+      },
+    });
+
     const changed = vi.fn();
     const savedConversations = new Map([[
       'conv-compact',

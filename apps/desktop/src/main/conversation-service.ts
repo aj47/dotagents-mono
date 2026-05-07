@@ -8,12 +8,12 @@ import { conversationsFolder } from "./config"
 import { logApp } from "./debug"
 import type {
   Conversation,
-  ConversationBranchSource,
   ConversationCompactionMetadata,
   ConversationMessage,
   ConversationHistoryItem,
   LoadedConversation,
 } from "@dotagents/shared/conversation-domain"
+import { buildBranchedServerConversation } from "@dotagents/shared/conversation-sync"
 import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "@dotagents/shared/conversation-context-builder"
 import {
@@ -1299,36 +1299,22 @@ export class ConversationService {
       return null
     }
 
-    const sourceMessages = this.getStoredRawMessages(sourceConversation)
-    if (messageIndex < 0 || messageIndex >= sourceMessages.length) {
-      logApp(`[ConversationService] branchConversation: invalid messageIndex ${messageIndex} (${sourceMessages.length} messages)`)
+    const newConversationId = generateConversationId()
+    const now = Date.now()
+    const buildResult = buildBranchedServerConversation(sourceConversation, {
+      sourceConversationId,
+      conversationId: newConversationId,
+      messageIndex,
+      timestamp: now,
+      messageIdFactory: () => generateMessageId(),
+    })
+
+    if (buildResult.ok === false) {
+      logApp(`[ConversationService] branchConversation: invalid messageIndex ${messageIndex} (${buildResult.messageCount} messages)`)
       return null
     }
 
-    const branchedMessages = sourceMessages.slice(0, messageIndex + 1)
-    const newConversationId = generateConversationId()
-    const now = Date.now()
-
-    // Re-generate message IDs for the cloned messages to avoid collisions
-    const clonedMessages: ConversationMessage[] = branchedMessages.map((msg) => ({
-      ...msg,
-      id: generateMessageId(),
-    }))
-
-    const branchSource: ConversationBranchSource = {
-      sourceConversationId,
-      sourceMessageIndex: messageIndex,
-      branchedAt: now,
-    }
-
-    const branchedConversation: Conversation = {
-      id: newConversationId,
-      title: `Branch: ${sourceConversation.title}`,
-      createdAt: now,
-      updatedAt: now,
-      messages: clonedMessages,
-      branchSource,
-    }
+    const branchedConversation = buildResult.conversation
 
     await this.enqueueConversationMutation(newConversationId, async () => {
       await this.saveConversationUnlocked(branchedConversation)
