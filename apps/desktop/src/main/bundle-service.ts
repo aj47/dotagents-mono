@@ -29,14 +29,18 @@ import {
   type AgentProfileRole,
 } from "@dotagents/core"
 import {
-  buildHubBundleArtifactUrl,
   buildHubBundleInstallUrl,
-  slugifyHubCatalogId,
+  buildHubPublishArtifactFileName,
+  normalizeHubPublishArtifactUrl,
+  normalizeHubPublishCatalogId,
   type HubCatalogAuthor,
   type HubCatalogCompatibility,
   type HubPublishPayload,
 } from "@dotagents/shared/hub"
-import { DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION } from "@dotagents/shared/bundle-api"
+import {
+  DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
+  sanitizeBundlePublicMetadata,
+} from "@dotagents/shared/bundle-api"
 import { isAgentProfileConnectionTypeValue } from "@dotagents/shared/agent-profile-connection"
 import { isAgentProfileRole } from "@dotagents/shared/agent-profile-role"
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "@dotagents/core"
@@ -331,92 +335,6 @@ function isReservedTopLevelMcpKey(key: string): boolean {
 
 function isRecordObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function normalizeOptionalString(value: string | undefined): string | undefined {
-  if (typeof value !== "string") return undefined
-  const normalized = value.trim()
-  return normalized.length > 0 ? normalized : undefined
-}
-
-function normalizeStringArray(values: string[] | undefined): string[] {
-  if (!Array.isArray(values)) return []
-
-  const normalized = new Set<string>()
-  for (const value of values) {
-    if (typeof value !== "string") continue
-    const trimmed = value.trim()
-    if (trimmed.length === 0) continue
-    normalized.add(trimmed)
-  }
-
-  return Array.from(normalized)
-}
-
-function sanitizeBundlePublicMetadata(
-  publicMetadata: BundlePublicMetadata | undefined
-): BundlePublicMetadata | undefined {
-  if (!publicMetadata) return undefined
-
-  const summary = normalizeOptionalString(publicMetadata.summary)
-  if (!summary) {
-    throw new Error("Bundle public metadata requires a non-empty summary")
-  }
-
-  const displayName = normalizeOptionalString(publicMetadata.author?.displayName)
-  if (!displayName) {
-    throw new Error("Bundle public metadata requires author.displayName")
-  }
-
-  const handle = normalizeOptionalString(publicMetadata.author.handle)
-  const url = normalizeOptionalString(publicMetadata.author.url)
-  const minDesktopVersion = normalizeOptionalString(publicMetadata.compatibility?.minDesktopVersion)
-  const notes = normalizeStringArray(publicMetadata.compatibility?.notes)
-
-  return {
-    summary,
-    author: {
-      displayName,
-      ...(handle ? { handle } : {}),
-      ...(url ? { url } : {}),
-    },
-    tags: normalizeStringArray(publicMetadata.tags),
-    ...((minDesktopVersion || notes.length > 0)
-      ? {
-          compatibility: {
-            ...(minDesktopVersion ? { minDesktopVersion } : {}),
-            ...(notes.length > 0 ? { notes } : {}),
-          },
-        }
-      : {}),
-  }
-}
-
-function normalizePublishCatalogId(catalogId: string | undefined, bundleName: string): string {
-  const normalized = normalizeOptionalString(catalogId)
-  return slugifyHubCatalogId(normalized || bundleName)
-}
-
-function normalizePublishArtifactUrl(artifactUrl: string | undefined, catalogId: string): string {
-  const normalized = normalizeOptionalString(artifactUrl)
-  if (!normalized) {
-    return buildHubBundleArtifactUrl(catalogId)
-  }
-
-  try {
-    const parsedUrl = new URL(normalized)
-    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-      throw new Error("unsupported protocol")
-    }
-    return parsedUrl.toString()
-  } catch {
-    throw new Error("Publish payload requires artifactUrl to be a valid http(s) URL")
-  }
-}
-
-function buildPublishArtifactFileName(bundleName: string, catalogId: string): string {
-  const safeName = bundleName.replace(/[^a-zA-Z0-9-_ ]/g, "").trim()
-  return `${safeName || catalogId}.dotagents`
 }
 
 function isSecretKey(key: string): boolean {
@@ -1843,9 +1761,9 @@ export async function generatePublishPayload(
 
   const bundleJson = JSON.stringify(bundle, null, 2)
   const now = new Date().toISOString()
-  const catalogId = normalizePublishCatalogId(requestedCatalogId, bundle.manifest.name)
-  const artifactUrl = normalizePublishArtifactUrl(requestedArtifactUrl, catalogId)
-  const artifactFileName = buildPublishArtifactFileName(bundle.manifest.name, catalogId)
+  const catalogId = normalizeHubPublishCatalogId(requestedCatalogId, bundle.manifest.name)
+  const artifactUrl = normalizeHubPublishArtifactUrl(requestedArtifactUrl, catalogId)
+  const artifactFileName = buildHubPublishArtifactFileName(bundle.manifest.name, catalogId)
   const publicMetadata = bundle.manifest.publicMetadata!
 
   return {

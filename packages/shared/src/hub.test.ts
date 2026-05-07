@@ -4,9 +4,12 @@ import {
   buildHubBundleArtifactUrl,
   buildHubBundleInstallUrl,
   buildHubBundlePublicMetadata,
+  buildHubPublishArtifactFileName,
   buildHubPublishSubmission,
   getHubDraftArtifactUrl,
   getHubDraftCatalogId,
+  normalizeHubPublishArtifactUrl,
+  normalizeHubPublishCatalogId,
   slugifyHubCatalogId,
   type HubPublishPayload,
 } from "./hub"
@@ -27,6 +30,16 @@ describe("hub helpers", () => {
       name: "My Bundle",
       artifactUrl: " https://cdn.example.com/bundles/my-bundle.dotagents ",
     })).toBe("https://cdn.example.com/bundles/my-bundle.dotagents")
+    expect(normalizeHubPublishCatalogId(" Custom ID ", "My Bundle")).toBe("custom-id")
+    expect(normalizeHubPublishCatalogId(undefined, "My Bundle")).toBe("my-bundle")
+    expect(normalizeHubPublishArtifactUrl(undefined, "my-bundle")).toBe(
+      "https://hub.dotagentsprotocol.com/bundles/my-bundle.dotagents",
+    )
+    expect(normalizeHubPublishArtifactUrl(" https://cdn.example.com/bundle.dotagents ", "my-bundle")).toBe(
+      "https://cdn.example.com/bundle.dotagents",
+    )
+    expect(buildHubPublishArtifactFileName(" My/Bundle!? ", "fallback-id")).toBe("MyBundle.dotagents")
+    expect(() => normalizeHubPublishArtifactUrl("file:///tmp/bad.dotagents", "my-bundle")).toThrow(/artifactUrl/)
   })
 
   it("builds publish metadata and submission envelopes from shared drafts", () => {

@@ -31,6 +31,7 @@ import {
   resolveBundleExportLayerDirs,
   resolveBundleComponentSelection,
   resolveBundleImportTargetDir,
+  sanitizeBundlePublicMetadata,
   type DotAgentsBundle,
   type ExportableBundleItems,
 } from "./bundle-api"
@@ -308,6 +309,45 @@ describe("bundle API helpers", () => {
       now: () => 123456789,
       createUniqueId: () => "unique-id",
     })).toBe("123456789-unique-id.dotagents")
+  })
+
+  it("sanitizes public bundle metadata for shared Hub publishing", () => {
+    expect(sanitizeBundlePublicMetadata({
+      summary: "  Shareable bundle  ",
+      author: {
+        displayName: " AJ ",
+        handle: " techfren ",
+        url: " https://dotagents.org/aj ",
+      },
+      tags: [" agents ", "", "mobile", "agents"],
+      compatibility: {
+        minDesktopVersion: " 1.0.0 ",
+        notes: [" Desktop server required ", "", "Desktop server required"],
+      },
+    })).toEqual({
+      summary: "Shareable bundle",
+      author: {
+        displayName: "AJ",
+        handle: "techfren",
+        url: "https://dotagents.org/aj",
+      },
+      tags: ["agents", "mobile"],
+      compatibility: {
+        minDesktopVersion: "1.0.0",
+        notes: ["Desktop server required"],
+      },
+    })
+
+    expect(() => sanitizeBundlePublicMetadata({
+      summary: " ",
+      author: { displayName: "AJ" },
+      tags: [],
+    })).toThrow(/summary/)
+    expect(() => sanitizeBundlePublicMetadata({
+      summary: "Summary",
+      author: { displayName: " " },
+      tags: [],
+    })).toThrow(/displayName/)
   })
 
   it("runs bundle actions through service adapters", async () => {

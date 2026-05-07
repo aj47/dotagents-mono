@@ -85,6 +85,39 @@ export function buildHubBundleArtifactUrl(
   return baseUrl.toString()
 }
 
+function normalizeHubPublishOptionalString(value: string | undefined): string | undefined {
+  if (typeof value !== "string") return undefined
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : undefined
+}
+
+export function normalizeHubPublishCatalogId(catalogId: string | undefined, bundleName: string): string {
+  const normalized = normalizeHubPublishOptionalString(catalogId)
+  return slugifyHubCatalogId(normalized || bundleName)
+}
+
+export function normalizeHubPublishArtifactUrl(artifactUrl: string | undefined, catalogId: string): string {
+  const normalized = normalizeHubPublishOptionalString(artifactUrl)
+  if (!normalized) {
+    return buildHubBundleArtifactUrl(catalogId)
+  }
+
+  try {
+    const parsedUrl = new URL(normalized)
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      throw new Error("unsupported protocol")
+    }
+    return parsedUrl.toString()
+  } catch {
+    throw new Error("Publish payload requires artifactUrl to be a valid http(s) URL")
+  }
+}
+
+export function buildHubPublishArtifactFileName(bundleName: string, catalogId: string): string {
+  const safeName = bundleName.replace(/[^a-zA-Z0-9-_ ]/g, "").trim()
+  return `${safeName || catalogId}.dotagents`
+}
+
 export function buildHubBundleInstallUrl(bundleUrl: string): string {
   return `dotagents://install?bundle=${encodeURIComponent(bundleUrl)}`
 }

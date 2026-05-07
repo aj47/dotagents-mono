@@ -137,6 +137,65 @@ export type DotAgentsBundle = {
   knowledgeNotes: BundleKnowledgeNote[]
 }
 
+function normalizeBundlePublicMetadataString(value: string | undefined): string | undefined {
+  if (typeof value !== "string") return undefined
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : undefined
+}
+
+function normalizeBundlePublicMetadataStringArray(values: string[] | undefined): string[] {
+  if (!Array.isArray(values)) return []
+
+  const normalized = new Set<string>()
+  for (const value of values) {
+    if (typeof value !== "string") continue
+    const trimmed = value.trim()
+    if (trimmed.length === 0) continue
+    normalized.add(trimmed)
+  }
+
+  return Array.from(normalized)
+}
+
+export function sanitizeBundlePublicMetadata(
+  publicMetadata: BundlePublicMetadata | undefined,
+): BundlePublicMetadata | undefined {
+  if (!publicMetadata) return undefined
+
+  const summary = normalizeBundlePublicMetadataString(publicMetadata.summary)
+  if (!summary) {
+    throw new Error("Bundle public metadata requires a non-empty summary")
+  }
+
+  const displayName = normalizeBundlePublicMetadataString(publicMetadata.author?.displayName)
+  if (!displayName) {
+    throw new Error("Bundle public metadata requires author.displayName")
+  }
+
+  const handle = normalizeBundlePublicMetadataString(publicMetadata.author.handle)
+  const url = normalizeBundlePublicMetadataString(publicMetadata.author.url)
+  const minDesktopVersion = normalizeBundlePublicMetadataString(publicMetadata.compatibility?.minDesktopVersion)
+  const notes = normalizeBundlePublicMetadataStringArray(publicMetadata.compatibility?.notes)
+
+  return {
+    summary,
+    author: {
+      displayName,
+      ...(handle ? { handle } : {}),
+      ...(url ? { url } : {}),
+    },
+    tags: normalizeBundlePublicMetadataStringArray(publicMetadata.tags),
+    ...((minDesktopVersion || notes.length > 0)
+      ? {
+          compatibility: {
+            ...(minDesktopVersion ? { minDesktopVersion } : {}),
+            ...(notes.length > 0 ? { notes } : {}),
+          },
+        }
+      : {}),
+  }
+}
+
 export type ExportableBundleAgentProfile = {
   id: string
   name: string
