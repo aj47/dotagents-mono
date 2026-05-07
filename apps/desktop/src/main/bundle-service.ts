@@ -22,10 +22,8 @@ import {
   taskIdToFilePath,
 } from "@dotagents/core"
 import {
-  buildHubBundleInstallUrl,
-  buildHubPublishArtifactFileName,
-  normalizeHubPublishArtifactUrl,
-  normalizeHubPublishCatalogId,
+  assertHubPublishPublicMetadata,
+  buildHubPublishPayloadFromBundle,
   type HubPublishPayload,
 } from "@dotagents/shared/hub"
 import {
@@ -832,12 +830,7 @@ export async function generatePublishPayload(
   agentsDirs: string[],
   options: GeneratePublishPayloadOptions
 ): Promise<HubPublishPayload> {
-  if (!options.publicMetadata?.summary) {
-    throw new Error("Publish payload requires a summary in publicMetadata")
-  }
-  if (!options.publicMetadata?.author?.displayName) {
-    throw new Error("Publish payload requires author.displayName in publicMetadata")
-  }
+  assertHubPublishPublicMetadata(options.publicMetadata)
 
   const {
     catalogId: requestedCatalogId,
@@ -857,35 +850,8 @@ export async function generatePublishPayload(
     ? await exportBundle(agentsDirs[0], publishOptions)
     : await exportBundleFromLayers(agentsDirs, publishOptions)
 
-  const bundleJson = JSON.stringify(bundle, null, 2)
-  const now = new Date().toISOString()
-  const catalogId = normalizeHubPublishCatalogId(requestedCatalogId, bundle.manifest.name)
-  const artifactUrl = normalizeHubPublishArtifactUrl(requestedArtifactUrl, catalogId)
-  const artifactFileName = buildHubPublishArtifactFileName(bundle.manifest.name, catalogId)
-  const publicMetadata = bundle.manifest.publicMetadata!
-
-  return {
-    catalogItem: {
-      id: catalogId,
-      name: bundle.manifest.name,
-      summary: publicMetadata.summary,
-      description: bundle.manifest.description,
-      author: publicMetadata.author,
-      tags: publicMetadata.tags,
-      bundleVersion: 1,
-      publishedAt: now,
-      updatedAt: now,
-      componentCounts: bundle.manifest.components,
-      artifact: {
-        url: artifactUrl,
-        fileName: artifactFileName,
-        sizeBytes: Buffer.byteLength(bundleJson, "utf-8"),
-      },
-      ...(publicMetadata.compatibility
-        ? { compatibility: publicMetadata.compatibility }
-        : {}),
-    },
-    bundleJson,
-    installUrl: buildHubBundleInstallUrl(artifactUrl),
-  }
+  return buildHubPublishPayloadFromBundle(bundle, {
+    catalogId: requestedCatalogId,
+    artifactUrl: requestedArtifactUrl,
+  })
 }

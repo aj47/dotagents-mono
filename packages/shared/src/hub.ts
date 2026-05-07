@@ -1,4 +1,4 @@
-import type { BundlePublicMetadata } from "./bundle-api"
+import type { BundlePublicMetadata, DotAgentsBundle } from "./bundle-api"
 
 export interface HubCatalogAuthor {
   displayName: string
@@ -63,6 +63,14 @@ export interface HubPublishMetadataDraft {
   tags?: string
 }
 
+export interface BuildHubPublishPayloadFromBundleOptions {
+  catalogId?: string
+  artifactUrl?: string
+  now?: () => Date
+  bundleJson?: string
+  getBundleSizeBytes?: (bundleJson: string) => number
+}
+
 const DEFAULT_HUB_BASE_URL = "https://hub.dotagentsprotocol.com"
 
 export function slugifyHubCatalogId(value: string): string {
@@ -120,6 +128,59 @@ export function buildHubPublishArtifactFileName(bundleName: string, catalogId: s
 
 export function buildHubBundleInstallUrl(bundleUrl: string): string {
   return `dotagents://install?bundle=${encodeURIComponent(bundleUrl)}`
+}
+
+export function assertHubPublishPublicMetadata(
+  publicMetadata: BundlePublicMetadata | undefined,
+): asserts publicMetadata is BundlePublicMetadata {
+  if (!publicMetadata?.summary) {
+    throw new Error("Publish payload requires a summary in publicMetadata")
+  }
+  if (!publicMetadata.author?.displayName) {
+    throw new Error("Publish payload requires author.displayName in publicMetadata")
+  }
+}
+
+export function getHubBundleJsonSizeBytes(bundleJson: string): number {
+  return new TextEncoder().encode(bundleJson).length
+}
+
+export function buildHubPublishPayloadFromBundle(
+  bundle: DotAgentsBundle,
+  options: BuildHubPublishPayloadFromBundleOptions = {},
+): HubPublishPayload {
+  const bundleJson = options.bundleJson ?? JSON.stringify(bundle, null, 2)
+  const publishedAt = (options.now?.() ?? new Date()).toISOString()
+  const catalogId = normalizeHubPublishCatalogId(options.catalogId, bundle.manifest.name)
+  const artifactUrl = normalizeHubPublishArtifactUrl(options.artifactUrl, catalogId)
+  const artifactFileName = buildHubPublishArtifactFileName(bundle.manifest.name, catalogId)
+  const publicMetadata = bundle.manifest.publicMetadata
+  assertHubPublishPublicMetadata(publicMetadata)
+
+  return {
+    catalogItem: {
+      id: catalogId,
+      name: bundle.manifest.name,
+      summary: publicMetadata.summary,
+      description: bundle.manifest.description,
+      author: publicMetadata.author,
+      tags: publicMetadata.tags,
+      bundleVersion: 1,
+      publishedAt,
+      updatedAt: publishedAt,
+      componentCounts: bundle.manifest.components,
+      artifact: {
+        url: artifactUrl,
+        fileName: artifactFileName,
+        sizeBytes: (options.getBundleSizeBytes ?? getHubBundleJsonSizeBytes)(bundleJson),
+      },
+      ...(publicMetadata.compatibility
+        ? { compatibility: publicMetadata.compatibility }
+        : {}),
+    },
+    bundleJson,
+    installUrl: buildHubBundleInstallUrl(artifactUrl),
+  }
 }
 
 export function buildHubBundlePublicMetadata(draft: HubPublishMetadataDraft): BundlePublicMetadata {

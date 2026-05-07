@@ -5,14 +5,17 @@ import {
   buildHubBundleInstallUrl,
   buildHubBundlePublicMetadata,
   buildHubPublishArtifactFileName,
+  buildHubPublishPayloadFromBundle,
   buildHubPublishSubmission,
   getHubDraftArtifactUrl,
   getHubDraftCatalogId,
+  getHubBundleJsonSizeBytes,
   normalizeHubPublishArtifactUrl,
   normalizeHubPublishCatalogId,
   slugifyHubCatalogId,
   type HubPublishPayload,
 } from "./hub"
+import type { DotAgentsBundle } from "./bundle-api"
 
 describe("hub helpers", () => {
   it("normalizes Hub catalog ids and derived URLs", () => {
@@ -91,5 +94,84 @@ describe("hub helpers", () => {
       version: 1,
       payload,
     })
+  })
+
+  it("builds publish payloads from bundles", () => {
+    expect(getHubBundleJsonSizeBytes("é")).toBe(2)
+
+    const bundle: DotAgentsBundle = {
+      manifest: {
+        version: 1,
+        name: "My Bundle",
+        description: "Useful bundle",
+        createdAt: "2026-05-06T00:00:00.000Z",
+        exportedFrom: "dotagents-desktop",
+        publicMetadata: {
+          summary: "Useful agents",
+          author: { displayName: "AJ" },
+          tags: ["agents"],
+          compatibility: {
+            minDesktopVersion: "0.0.1",
+          },
+        },
+        components: {
+          agentProfiles: 1,
+          mcpServers: 0,
+          skills: 1,
+          repeatTasks: 0,
+          knowledgeNotes: 0,
+        },
+      },
+      agentProfiles: [],
+      mcpServers: [],
+      skills: [],
+      repeatTasks: [],
+      knowledgeNotes: [],
+    }
+
+    expect(buildHubPublishPayloadFromBundle(bundle, {
+      catalogId: " Custom ID ",
+      artifactUrl: " https://cdn.example.com/custom.dotagents ",
+      now: () => new Date("2026-05-06T12:00:00.000Z"),
+      bundleJson: "{\"bundle\":true}",
+      getBundleSizeBytes: (bundleJson) => bundleJson.length,
+    })).toEqual({
+      catalogItem: {
+        id: "custom-id",
+        name: "My Bundle",
+        summary: "Useful agents",
+        description: "Useful bundle",
+        author: { displayName: "AJ" },
+        tags: ["agents"],
+        bundleVersion: 1,
+        publishedAt: "2026-05-06T12:00:00.000Z",
+        updatedAt: "2026-05-06T12:00:00.000Z",
+        componentCounts: {
+          agentProfiles: 1,
+          mcpServers: 0,
+          skills: 1,
+          repeatTasks: 0,
+          knowledgeNotes: 0,
+        },
+        artifact: {
+          url: "https://cdn.example.com/custom.dotagents",
+          fileName: "My Bundle.dotagents",
+          sizeBytes: 15,
+        },
+        compatibility: {
+          minDesktopVersion: "0.0.1",
+        },
+      },
+      bundleJson: "{\"bundle\":true}",
+      installUrl: "dotagents://install?bundle=https%3A%2F%2Fcdn.example.com%2Fcustom.dotagents",
+    })
+
+    expect(() => buildHubPublishPayloadFromBundle({
+      ...bundle,
+      manifest: {
+        ...bundle.manifest,
+        publicMetadata: undefined,
+      },
+    })).toThrow(/summary/)
   })
 })
