@@ -1840,6 +1840,8 @@ describe("remote-server route registration", () => {
     expect(sharedConversationMediaAssetsSource).toContain("export function getConversationVideoAssetPath(")
     expect(sharedConversationMediaAssetsSource).toContain("export function parseConversationImageAssetUrl(")
     expect(sharedConversationMediaAssetsSource).toContain("export function isConversationImageAssetUrl(")
+    expect(sharedConversationMediaAssetsSource).toContain("export async function materializeDataImageMarkdownReferences")
+    expect(getConversationServiceSource()).toContain("materializeDataImageMarkdownReferences(content")
     expect(conversationImageAssetsSource).toContain('from "@dotagents/shared/conversation-media-assets"')
     expect(conversationImageAssetsSource).toContain("getConversationImageAssetPath as getSharedConversationImageAssetPath")
     expect(conversationImageAssetsSource).toContain("pathAdapter: path")

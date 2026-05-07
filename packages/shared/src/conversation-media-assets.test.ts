@@ -49,6 +49,7 @@ import {
   isConversationImageAssetUrl,
   isConversationVideoAssetUrl,
   isRenderableVideoUrl,
+  materializeDataImageMarkdownReferences,
   parseRespondToUserArgs,
   materializeRespondToUserResponse,
   MAX_CHAT_IMAGE_ATTACHMENTS,
@@ -348,6 +349,38 @@ describe('conversation video asset utilities', () => {
         index: content.indexOf('![multiline]'),
       },
     ]);
+  });
+
+  it('materializes markdown data image references with an adapter while preserving failed replacements', async () => {
+    const errors: unknown[] = [];
+    const content = [
+      'A ![one](data:image/png;base64,AAAA) B',
+      '![two](data:image/gif;base64,BBBB) C',
+      '![asset](assets://conversation-image/conv_1/abcdef1234567890.png)',
+    ].join(' ');
+
+    await expect(materializeDataImageMarkdownReferences('plain text', {
+      materializeDataImageUrl: () => {
+        throw new Error('should not run');
+      },
+    })).resolves.toBe('plain text');
+
+    await expect(materializeDataImageMarkdownReferences(content, {
+      materializeDataImageUrl: (reference) => {
+        if (reference.altText === 'two') {
+          throw new Error('store failed');
+        }
+        return `assets://conversation-image/conv_1/${reference.altText}.png`;
+      },
+      onMaterializeError: (error) => errors.push(error),
+    })).resolves.toBe([
+      'A ![one](assets://conversation-image/conv_1/one.png) B',
+      '![two](data:image/gif;base64,BBBB) C',
+      '![asset](assets://conversation-image/conv_1/abcdef1234567890.png)',
+    ].join(' '));
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toBeInstanceOf(Error);
   });
 
   it('extracts and rewrites generic markdown image references', () => {

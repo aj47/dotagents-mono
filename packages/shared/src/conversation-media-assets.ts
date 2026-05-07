@@ -131,6 +131,11 @@ export interface StripMarkdownImageReferencesOptions {
   mediaOnly?: boolean;
 }
 
+export interface MaterializeDataImageMarkdownReferencesOptions {
+  materializeDataImageUrl(reference: ConversationImageMarkdownReference): string | Promise<string>;
+  onMaterializeError?: (error: unknown, reference: ConversationImageMarkdownReference) => void;
+}
+
 export interface MarkdownLinkReference {
   fullMatch: string;
   linkMatch: string;
@@ -448,6 +453,34 @@ export function replaceMarkdownImageReferences(
   for (const reference of references) {
     nextContent += content.slice(lastIndex, reference.index);
     nextContent += replacer(reference);
+    lastIndex = reference.index + reference.fullMatch.length;
+  }
+
+  return nextContent + content.slice(lastIndex);
+}
+
+export async function materializeDataImageMarkdownReferences(
+  content: string,
+  options: MaterializeDataImageMarkdownReferencesOptions,
+): Promise<string> {
+  if (!/data:image\//i.test(content)) {
+    return content;
+  }
+
+  const references = extractDataImageMarkdownReferences(content);
+  if (references.length === 0) return content;
+
+  let nextContent = '';
+  let lastIndex = 0;
+  for (const reference of references) {
+    nextContent += content.slice(lastIndex, reference.index);
+    try {
+      const assetUrl = await options.materializeDataImageUrl(reference);
+      nextContent += `![${reference.altText}](${assetUrl})`;
+    } catch (error) {
+      options.onMaterializeError?.(error, reference);
+      nextContent += reference.fullMatch;
+    }
     lastIndex = reference.index + reference.fullMatch.length;
   }
 

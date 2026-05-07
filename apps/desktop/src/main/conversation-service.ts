@@ -57,11 +57,11 @@ import {
   generateMessageId,
 } from "@dotagents/shared/session"
 import {
-  extractDataImageMarkdownReferences,
   getConversationImageExtensionForMimeType,
   getConversationImageMimeTypeFromFileName,
   getConversationVideoExtensionForMimeType,
   getRenderableVideoMimeTypeFromFileName,
+  materializeDataImageMarkdownReferences,
   parseDataImageUrl,
 } from "@dotagents/shared/conversation-media-assets"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
@@ -232,28 +232,12 @@ export class ConversationService {
   }
 
   async materializeInlineDataImagesInContent(conversationId: string, content: string): Promise<string> {
-    if (!/data:image\//i.test(content)) {
-      return content
-    }
-
-    let nextContent = ""
-    let lastIndex = 0
-    const matches = extractDataImageMarkdownReferences(content)
-
-    for (const match of matches) {
-      const matchIndex = match.index
-      nextContent += content.slice(lastIndex, matchIndex)
-      try {
-        const assetUrl = await this.storeDataImageUrlAsConversationAsset(conversationId, match.url)
-        nextContent += `![${match.altText}](${assetUrl})`
-      } catch (error) {
+    return materializeDataImageMarkdownReferences(content, {
+      materializeDataImageUrl: (reference) => this.storeDataImageUrlAsConversationAsset(conversationId, reference.url),
+      onMaterializeError: (error) => {
         logApp(`[ConversationService] Failed to materialize inline image for ${conversationId}`, error)
-        nextContent += match.fullMatch
-      }
-      lastIndex = matchIndex + match.fullMatch.length
-    }
-
-    return nextContent + content.slice(lastIndex)
+      },
+    })
   }
 
   private async materializeConversationInlineImages(conversation: Conversation): Promise<boolean> {
