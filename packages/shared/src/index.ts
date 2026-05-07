@@ -83,6 +83,7 @@ export * from './agent-profile-presets';
 export * from './agent-profile-connection';
 export * from './agent-selector-options';
 export * from './agent-session-candidates';
+export * from './agent-session-store';
 export * from './repeat-task-utils';
 export * from './repeat-task-markdown';
 export * from './knowledge-note-grouping';

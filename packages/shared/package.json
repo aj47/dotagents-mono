@@ -301,6 +301,11 @@
       "import": "./dist/agent-session-candidates.mjs",
       "require": "./dist/agent-session-candidates.js"
     },
+    "./agent-session-store": {
+      "types": "./dist/agent-session-store.d.ts",
+      "import": "./dist/agent-session-store.mjs",
+      "require": "./dist/agent-session-store.js"
+    },
     "./repeat-task-utils": {
       "types": "./dist/repeat-task-utils.d.ts",
       "import": "./dist/repeat-task-utils.mjs",

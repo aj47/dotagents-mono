@@ -312,6 +312,18 @@ function getSharedAgentSessionCandidatesSource(): string {
   return readFileSync(sharedAgentSessionCandidatesPath, "utf8")
 }
 
+function getAgentSessionTrackerSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const agentSessionTrackerPath = path.join(testDir, "agent-session-tracker.ts")
+  return readFileSync(agentSessionTrackerPath, "utf8")
+}
+
+function getSharedAgentSessionStoreSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedAgentSessionStorePath = path.join(testDir, "../../../../packages/shared/src/agent-session-store.ts")
+  return readFileSync(sharedAgentSessionStorePath, "utf8")
+}
+
 type RegisteredRoute = {
   method: string
   path: string
@@ -1005,6 +1017,24 @@ describe("remote-server route registration", () => {
     expect(sharedAgentSessionCandidatesSource).toContain("parseAgentSessionCandidateLimit(query)")
     expect(sharedAgentSessionCandidatesSource).toContain("buildAgentSessionCandidatesResponse(")
     expect(sharedAgentSessionCandidatesSource).not.toContain('from "./agent-session-tracker"')
+  })
+
+  it("keeps agent session tracker state transitions shared", () => {
+    const agentSessionTrackerSource = getAgentSessionTrackerSource()
+    const sharedAgentSessionStoreSource = getSharedAgentSessionStoreSource()
+
+    expect(agentSessionTrackerSource).toContain('from "@dotagents/shared/agent-session-store"')
+    expect(agentSessionTrackerSource).toContain("createAgentSessionStore({")
+    expect(agentSessionTrackerSource).toContain("restoreAgentSessionStoreState(")
+    expect(agentSessionTrackerSource).not.toContain("private sessions: Map")
+    expect(agentSessionTrackerSource).not.toContain("private completedSessions")
+    expect(sharedAgentSessionStoreSource).toContain("export interface AgentSession")
+    expect(sharedAgentSessionStoreSource).toContain("export function createAgentSessionStore")
+    expect(sharedAgentSessionStoreSource).toContain("export function restoreAgentSessionStoreState")
+    expect(sharedAgentSessionStoreSource).toContain("DEFAULT_AGENT_SESSION_RESTART_ACTIVITY")
+    expect(sharedAgentSessionStoreSource).not.toContain("@egoist/tipc")
+    expect(sharedAgentSessionStoreSource).not.toContain("WINDOWS")
+    expect(sharedAgentSessionStoreSource).not.toContain("electron")
   })
 
   it("delegates emergency stop route behavior to emergency stop actions", () => {
