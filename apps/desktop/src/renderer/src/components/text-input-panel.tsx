@@ -69,13 +69,30 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
 
   useEffect(() => {
     if (textareaRef.current && !isBusy) {
+      // Pair textarea focus retries with panel-window focus re-requests.
+      // When Ctrl+T is pressed while the main window is the focused window,
+      // the initial panel.focus() call from panel.tsx can lose the focus race
+      // against macOS, leaving the panel visible but unfocused. Re-asserting
+      // panel-window focus alongside the textarea retries makes the handoff
+      // converge even when the first attempt is dropped.
+      const ensurePanelFocus = () => {
+        void tipcClient
+          .setPanelFocusable({ focusable: true, andFocus: true })
+          .catch(() => {
+            // Ignore — textarea retries below may still succeed.
+          })
+      }
+
+      ensurePanelFocus()
       textareaRef.current.focus()
 
       const timer1 = setTimeout(() => {
+        ensurePanelFocus()
         textareaRef.current?.focus()
       }, 50)
 
       const timer2 = setTimeout(() => {
+        ensurePanelFocus()
         textareaRef.current?.focus()
       }, 150)
 
