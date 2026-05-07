@@ -43,15 +43,6 @@ import {
   logoutOperatorWhatsApp,
 } from "./operator-integration-actions"
 import {
-  clearOperatorMessageQueue,
-  getOperatorMessageQueues,
-  pauseOperatorMessageQueue,
-  removeOperatorQueuedMessage,
-  resumeOperatorMessageQueue,
-  retryOperatorQueuedMessage,
-  updateOperatorQueuedMessage,
-} from "./operator-message-queue-actions"
-import {
   getOperatorConversations,
   getOperatorErrors,
   getOperatorHealth,
@@ -66,12 +57,18 @@ import {
 } from "./operator-audit-actions"
 import {
   checkOperatorUpdaterAction,
+  clearOperatorMessageQueueAction,
   downloadLatestOperatorUpdateAssetAction,
+  getOperatorMessageQueuesAction,
   getOperatorTunnelAction,
   getOperatorTunnelSetupAction,
   getOperatorUpdaterAction,
   openOperatorReleasesPageAction,
   openOperatorUpdateAssetAction,
+  pauseOperatorMessageQueueAction,
+  removeOperatorQueuedMessageAction,
+  resumeOperatorMessageQueueAction,
+  retryOperatorQueuedMessageAction,
   revealOperatorUpdateAssetAction,
   runOperatorAgentAction,
   restartOperatorAppAction as restartOperatorApp,
@@ -79,7 +76,9 @@ import {
   startOperatorTunnelAction,
   stopOperatorAgentSessionAction,
   stopOperatorTunnelAction,
+  updateOperatorQueuedMessageAction,
   type OperatorAgentActionOptions,
+  type OperatorMessageQueueActionOptions,
   type OperatorTunnelActionOptions,
   type OperatorUpdaterActionOptions,
 } from "@dotagents/shared/operator-actions"
@@ -96,6 +95,14 @@ import {
 } from "./cloudflare-tunnel"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
+import {
+  pauseMessageQueueByConversationId,
+  removeQueuedMessageById,
+  retryQueuedMessageById,
+  resumeMessageQueueByConversationId,
+  updateQueuedMessageTextById,
+} from "./message-queue-actions"
+import { messageQueueService } from "./message-queue-service"
 import {
   MANUAL_RELEASES_URL,
   checkForUpdatesAndDownload,
@@ -178,6 +185,20 @@ const localSpeechModelActionOptions: LocalSpeechModelActionOptions = {
   },
 }
 
+const messageQueueActionOptions: OperatorMessageQueueActionOptions = {
+  service: {
+    getAllQueues: () => messageQueueService.getAllQueues(),
+    isQueuePaused: (conversationId) => messageQueueService.isQueuePaused(conversationId),
+    clearQueue: (conversationId) => messageQueueService.clearQueue(conversationId),
+    pauseQueue: (conversationId) => pauseMessageQueueByConversationId(conversationId),
+    resumeQueue: (conversationId) => resumeMessageQueueByConversationId(conversationId),
+    removeQueuedMessage: (conversationId, messageId) => removeQueuedMessageById(conversationId, messageId),
+    retryQueuedMessage: (conversationId, messageId) => retryQueuedMessageById(conversationId, messageId),
+    updateQueuedMessageText: (conversationId, messageId, text) =>
+      updateQueuedMessageTextById(conversationId, messageId, text),
+  },
+}
+
 const tunnelActionOptions: OperatorTunnelActionOptions = {
   config: {
     get: () => configStore.get(),
@@ -223,6 +244,38 @@ async function getOperatorLocalSpeechModelStatus(providerId: unknown) {
 
 async function downloadOperatorLocalSpeechModel(providerId: unknown) {
   return downloadOperatorLocalSpeechModelAction(providerId, localSpeechModelActionOptions)
+}
+
+function getOperatorMessageQueues() {
+  return getOperatorMessageQueuesAction(messageQueueActionOptions)
+}
+
+function clearOperatorMessageQueue(conversationIdParam: string | undefined) {
+  return clearOperatorMessageQueueAction(conversationIdParam, messageQueueActionOptions)
+}
+
+function pauseOperatorMessageQueue(conversationIdParam: string | undefined) {
+  return pauseOperatorMessageQueueAction(conversationIdParam, messageQueueActionOptions)
+}
+
+function resumeOperatorMessageQueue(conversationIdParam: string | undefined) {
+  return resumeOperatorMessageQueueAction(conversationIdParam, messageQueueActionOptions)
+}
+
+function removeOperatorQueuedMessage(conversationIdParam: string | undefined, messageIdParam: string | undefined) {
+  return removeOperatorQueuedMessageAction(conversationIdParam, messageIdParam, messageQueueActionOptions)
+}
+
+function retryOperatorQueuedMessage(conversationIdParam: string | undefined, messageIdParam: string | undefined) {
+  return retryOperatorQueuedMessageAction(conversationIdParam, messageIdParam, messageQueueActionOptions)
+}
+
+function updateOperatorQueuedMessage(
+  conversationIdParam: string | undefined,
+  messageIdParam: string | undefined,
+  body: unknown,
+) {
+  return updateOperatorQueuedMessageAction(conversationIdParam, messageIdParam, body, messageQueueActionOptions)
 }
 
 async function getOperatorModelPresets(secretMask: string) {
