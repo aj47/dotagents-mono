@@ -37,7 +37,7 @@ import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import {
   createLLMGeneration,
   endLLMGeneration,
-  isLangfuseEnabled,
+  isTracingEnabled,
 } from "./langfuse-service"
 import { recordActualTokenUsage } from "./context-budget"
 import { getCurrentChatGptWebModelName, isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
@@ -875,7 +875,7 @@ export async function makeLLMCallWithFetch(
 
         if (isChatGptWebProvider(effectiveProviderId)) {
           const modelName = getCurrentChatGptWebModelName("mcp")
-          const generationId = isLangfuseEnabled() ? randomUUID() : null
+          const generationId = isTracingEnabled() ? randomUUID() : null
           if (generationId) {
             createLLMGeneration(sessionId || null, generationId, {
               name: "LLM Call",
@@ -981,8 +981,8 @@ export async function makeLLMCallWithFetch(
           })
         }
 
-        // Create Langfuse generation if enabled
-        const generationId = isLangfuseEnabled() ? randomUUID() : null
+        // Create generation trace event if observability is enabled
+        const generationId = isTracingEnabled() ? randomUUID() : null
         if (generationId) {
           createLLMGeneration(sessionId || null, generationId, {
             name: "LLM Call",
@@ -1176,7 +1176,7 @@ export async function makeLLMCallWithStreamingAndTools(
         : undefined
 
       if (isChatGptWebProvider(effectiveProviderId)) {
-        const generationId = isLangfuseEnabled() ? randomUUID() : null
+        const generationId = isTracingEnabled() ? randomUUID() : null
         if (generationId) {
           createLLMGeneration(sessionId || null, generationId, {
             name: "Streaming LLM Call",
@@ -1263,7 +1263,7 @@ export async function makeLLMCallWithStreamingAndTools(
         })
       }
 
-      const generationId = isLangfuseEnabled() ? randomUUID() : null
+      const generationId = isTracingEnabled() ? randomUUID() : null
       if (generationId) {
         createLLMGeneration(sessionId || null, generationId, {
           name: "Streaming LLM Call",
@@ -1401,8 +1401,8 @@ export async function makeTextCompletionWithFetch(
     async () => {
       const abortController = createSessionAbortController(sessionId)
 
-      // Create Langfuse generation if enabled
-      const generationId = isLangfuseEnabled() ? randomUUID() : null
+      // Create generation trace event if observability is enabled
+      const generationId = isTracingEnabled() ? randomUUID() : null
       const modelName = isChatGptWebProvider(effectiveProviderId)
         ? getCurrentChatGptWebModelName("transcript")
         : getCurrentModelName(effectiveProviderId, "transcript")
@@ -1521,8 +1521,8 @@ export async function verifyCompletionWithFetch(
           ? getCurrentChatGptWebModelName("mcp")
           : getCurrentModelName(effectiveProviderId)
 
-        // Create Langfuse generation if enabled
-        const generationId = isLangfuseEnabled() ? randomUUID() : null
+        // Create generation trace event if observability is enabled
+        const generationId = isTracingEnabled() ? randomUUID() : null
         const promptCaching = isChatGptWebProvider(effectiveProviderId)
           ? undefined
           : getPromptCachingConfig(effectiveProviderId)

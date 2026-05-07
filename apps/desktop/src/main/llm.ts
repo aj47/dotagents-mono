@@ -23,7 +23,7 @@ import { DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT, getCurrentPresetName } from 
 import {
   createAgentTrace,
   endAgentTrace,
-  isLangfuseEnabled,
+  isTracingEnabled,
   flushLangfuse,
 } from "./langfuse-service"
 import {
@@ -706,10 +706,10 @@ export async function processTranscriptWithAgentMode(
   // Track step summaries for dual-model mode
   const stepSummaries: import("../shared/types").AgentStepSummary[] = []
 
-  // Create Langfuse trace for this agent session if enabled
+  // Create an observability trace for this agent session if enabled
   // - traceId: unique ID for this trace (our agent session ID)
-  // - sessionId: groups traces together in Langfuse (our conversation ID)
-  if (isLangfuseEnabled()) {
+  // - sessionId: groups traces together (our conversation ID)
+  if (isTracingEnabled()) {
     createAgentTrace(currentSessionId, {
       name: "Agent Session",
       sessionId: currentConversationId,  // Groups all agent sessions in this conversation
@@ -3550,9 +3550,9 @@ export async function processTranscriptWithAgentMode(
       totalIterations: iteration,
     }
   } finally {
-    // End Langfuse trace for this agent session if enabled
+    // End observability trace for this agent session if enabled
     // This is in a finally block to ensure traces are closed even on unexpected exceptions
-    if (isLangfuseEnabled()) {
+    if (isTracingEnabled()) {
       endAgentTrace(currentSessionId, {
         output: finalContent,
         metadata: {
@@ -3567,7 +3567,7 @@ export async function processTranscriptWithAgentMode(
           }),
         },
       })
-      // Flush to ensure trace is sent
+      // Flush to ensure local trace writes and/or Langfuse events are completed
       flushLangfuse().catch(() => {})
     }
 

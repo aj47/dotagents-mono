@@ -22,7 +22,7 @@ vi.mock("./oauth-client", () => ({ OAuthClient: class {} }))
 vi.mock("./oauth-storage", () => ({ oauthStorage: {} }))
 vi.mock("./mcp-elicitation", () => ({ requestElicitation: vi.fn(), handleElicitationComplete: vi.fn(), cancelAllElicitations: vi.fn() }))
 vi.mock("./mcp-sampling", () => ({ requestSampling: vi.fn(), cancelAllSamplingRequests: vi.fn() }))
-vi.mock("./langfuse-service", () => ({ isLangfuseEnabled: vi.fn(() => false), createToolSpan: vi.fn(), endToolSpan: vi.fn(), getAgentTrace: vi.fn(() => null) }))
+vi.mock("./langfuse-service", () => ({ isTracingEnabled: vi.fn(() => false), createToolSpan: vi.fn(), endToolSpan: vi.fn(), getAgentTrace: vi.fn(() => null) }))
 vi.mock("./agent-profile-service", () => ({ agentProfileService: { getCurrentProfile: () => ({ id: "profile_1", toolConfig: { enabledRuntimeTools: currentProfileEnabledRuntimeTools } }), saveCurrentMcpStateToProfile: mockSaveCurrentMcpStateToProfile } }))
 vi.mock("./runtime-tools", () => ({ runtimeTools, isRuntimeTool: (n: string) => runtimeTools.some((tool) => tool.name === n), executeRuntimeTool: mockExecuteRuntimeTool }))
 

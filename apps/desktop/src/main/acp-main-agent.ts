@@ -29,6 +29,14 @@ import { conversationService } from "./conversation-service"
 import { buildProfileContext } from "./agent-run-utils"
 import { extractRespondToUserContentFromArgs } from "./respond-to-user-utils"
 import { resolveMessageTimestamps, type AgentConversationState, type AgentUserResponseEvent } from "@dotagents/shared"
+import {
+  createAgentTrace,
+  createToolSpan,
+  endAgentTrace,
+  endToolSpan,
+  flushLangfuse,
+  isTracingEnabled,
+} from "./langfuse-service"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 
@@ -348,8 +356,28 @@ export async function processTranscriptWithACPAgent(
   let accumulatedText = ""
   let sawAssistantTextBlock = false
   let lastAssistantTextMessageIndex: number | undefined
-  const trackedToolCalls = new Map<string, { assistantIndex: number; resultIndex?: number }>()
+  const trackedToolCalls = new Map<string, { assistantIndex: number; resultIndex?: number; spanId?: string; spanEnded?: boolean }>()
   let fallbackToolCallIdCounter = 0
+  const tracingEnabled = isTracingEnabled()
+  let traceOutput = ""
+  let traceError: string | undefined
+  let traceStopReason: string | undefined
+  let traceAcpSessionId: string | undefined
+
+  if (tracingEnabled) {
+    createAgentTrace(sessionId, {
+      name: "ACP Agent Session",
+      sessionId: conversationId,
+      input: transcript,
+      metadata: {
+        agentName,
+        forceNewSession: forceNewSession === true,
+        profileId: profileSnapshot?.profileId,
+        profileName: profileSnapshot?.profileName,
+      },
+      tags: profileSnapshot?.profileName ? [`profile:${profileSnapshot.profileName}`, "acp"] : ["acp"],
+    })
+  }
 
   // Counter for generating unique step IDs to avoid collisions in tight loops
   let stepIdCounter = 0
@@ -482,10 +510,19 @@ export async function processTranscriptWithACPAgent(
     let tracked = trackedToolCalls.get(toolCallId)
 
     if (!tracked) {
+      const spanId = tracingEnabled ? `acp-tool-${toolCallId}` : undefined
       tracked = {
         assistantIndex: appendOrMergeAssistantToolCall(toolCall, timestamp),
+        spanId,
       }
       trackedToolCalls.set(toolCallId, tracked)
+      if (spanId) {
+        createToolSpan(sessionId, spanId, {
+          name: `ACP Tool: ${toolCall.name}`,
+          input: toolCall.arguments as Record<string, unknown>,
+          metadata: { toolName: toolCall.name, acpToolCallId: toolCallId, agentName },
+        })
+      }
     } else {
       const assistantEntry = conversationHistory[tracked.assistantIndex]
       if (assistantEntry) {
@@ -513,6 +550,15 @@ export async function processTranscriptWithACPAgent(
           timestamp,
         })
         tracked.resultIndex = conversationHistory.length - 1
+      }
+
+      if (tracked.spanId && !tracked.spanEnded) {
+        endToolSpan(tracked.spanId, {
+          output: toolResult.content,
+          level: toolResult.error ? "ERROR" : "DEFAULT",
+          statusMessage: toolResult.error,
+        })
+        tracked.spanEnded = true
       }
     }
   }
@@ -640,6 +686,7 @@ export async function processTranscriptWithACPAgent(
       preferredSessionName,
       shouldEmitSetupProgress ? emitSetupProgress : undefined,
     )
+    traceAcpSessionId = acpSessionId
 
     setSessionForConversation(conversationId, acpSessionId, agentName, preferredSessionName)
     if (existingSession?.sessionId && existingSession.sessionId === acpSessionId) {
@@ -827,14 +874,18 @@ export async function processTranscriptWithACPAgent(
       // Send the prompt
       await emitSetupProgress("sending_prompt")
       const promptContext = buildProfileContext(profileSnapshot, ACP_RUNTIME_TOOL_PROMPT_CONTEXT)
-    const result = await acpService.sendPrompt(agentName, preferredSessionName, transcript, promptContext)
-    if (result.sessionId && result.sessionId !== acpSessionId) {
-      updateConversationRuntimeSessionId(conversationId, result.sessionId)
-      registerKnownAppSessionId(sessionId)
-      setAcpToAppSessionMapping(result.sessionId, sessionId, runId)
-    }
+      const result = await acpService.sendPrompt(agentName, preferredSessionName, transcript, promptContext)
+      if (result.sessionId && result.sessionId !== acpSessionId) {
+        traceAcpSessionId = result.sessionId
+        updateConversationRuntimeSessionId(conversationId, result.sessionId)
+        registerKnownAppSessionId(sessionId)
+        setAcpToAppSessionMapping(result.sessionId, sessionId, runId)
+      }
 
       const { userResponse, finalResponse } = deriveFinalAssistantResponse(result.response)
+      traceOutput = finalResponse || ""
+      traceError = result.success ? undefined : result.error
+      traceStopReason = result.stopReason
 
       if (finalResponse && !userResponse && !sawAssistantTextBlock) {
         appendAssistantText(finalResponse, Date.now())
@@ -880,6 +931,8 @@ export async function processTranscriptWithACPAgent(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     const { finalResponse } = deriveFinalAssistantResponse()
+    traceOutput = finalResponse || ""
+    traceError = errorMessage
     logApp(`[ACP Main] Error: ${errorMessage}`)
 
     await emitProgress([
@@ -906,6 +959,31 @@ export async function processTranscriptWithACPAgent(
     return {
       success: false,
       error: errorMessage,
+    }
+  } finally {
+    if (tracingEnabled) {
+      for (const tracked of trackedToolCalls.values()) {
+        if (tracked.spanId && !tracked.spanEnded) {
+          endToolSpan(tracked.spanId, {
+            level: "WARNING",
+            statusMessage: traceError || "ACP session ended before tool completed",
+          })
+          tracked.spanEnded = true
+        }
+      }
+
+      endAgentTrace(sessionId, {
+        output: traceOutput,
+        metadata: {
+          agentName,
+          conversationId,
+          acpSessionId: traceAcpSessionId,
+          success: !traceError,
+          error: traceError,
+          stopReason: traceStopReason,
+        },
+      })
+      await flushLangfuse().catch(() => {})
     }
   }
 }

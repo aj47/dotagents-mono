@@ -45,7 +45,7 @@ import { randomUUID } from "crypto"
 import {
   createToolSpan,
   endToolSpan,
-  isLangfuseEnabled,
+  isTracingEnabled,
   getAgentTrace,
 } from "./langfuse-service"
 
@@ -2664,8 +2664,8 @@ export class MCPService {
     sessionId?: string,
     profileMcpConfig?: ProfileMcpServerConfig
   ): Promise<MCPToolResult> {
-    // Create Langfuse span for tool call if enabled and we have a trace
-    const spanId = isLangfuseEnabled() && sessionId ? randomUUID() : null
+    // Create tool span event if observability is enabled and we have a trace
+    const spanId = isTracingEnabled() && sessionId ? randomUUID() : null
     if (spanId && sessionId) {
       createToolSpan(sessionId, spanId, {
         name: `Tool: ${toolCall.name}`,
