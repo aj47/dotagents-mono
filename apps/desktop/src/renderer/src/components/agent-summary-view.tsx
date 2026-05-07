@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopKnowledgeClient } from "@renderer/lib/desktop-knowledge-client"
 
 interface AgentSummaryViewProps {
   progress: AgentProgressUpdate | null
@@ -66,7 +66,7 @@ function SummaryCard({
     
     setIsSaving(true)
     try {
-      const result = await tipcClient.saveKnowledgeNoteFromSummary({
+      const result = await desktopKnowledgeClient.saveNoteFromSummary({
         summary,
         conversationTitle,
         conversationId,

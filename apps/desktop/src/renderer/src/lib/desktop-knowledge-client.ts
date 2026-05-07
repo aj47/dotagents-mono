@@ -5,6 +5,7 @@ import type {
   KnowledgeNoteSort,
 } from "@dotagents/shared/knowledge-note-domain"
 import type { KnowledgeNotesOverview } from "@dotagents/shared/knowledge-note-grouping"
+import type { AgentStepSummary } from "@dotagents/shared/agent-progress"
 import { tipcClient } from "@renderer/lib/tipc-client"
 
 export interface DesktopKnowledgeNotesFilter {
@@ -36,6 +37,21 @@ export interface DesktopKnowledgeNoteUpdateRequest {
 export interface DesktopKnowledgeFolderActionResult {
   success: boolean
   error?: string
+}
+
+export interface DesktopKnowledgeSummarySaveRequest {
+  summary: AgentStepSummary
+  title?: string
+  userNotes?: string
+  tags?: string[]
+  conversationTitle?: string
+  conversationId?: string
+}
+
+export interface DesktopKnowledgeSummarySaveResult {
+  success: boolean
+  note: KnowledgeNote | null
+  reason?: "no_durable_content"
 }
 
 export const desktopKnowledgeClient = {
@@ -77,5 +93,13 @@ export const desktopKnowledgeClient = {
 
   openWorkspaceKnowledgeFolder(): Promise<DesktopKnowledgeFolderActionResult> {
     return tipcClient.openWorkspaceKnowledgeFolder() as Promise<DesktopKnowledgeFolderActionResult>
+  },
+
+  saveNoteFromSummary(
+    request: DesktopKnowledgeSummarySaveRequest,
+  ): Promise<DesktopKnowledgeSummarySaveResult> {
+    return tipcClient.saveKnowledgeNoteFromSummary(request) as Promise<
+      DesktopKnowledgeSummarySaveResult
+    >
   },
 }
