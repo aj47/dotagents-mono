@@ -61,7 +61,7 @@ export type ConversationActionResult = {
   headers?: Record<string, string>;
 };
 
-type ConversationMaybePromise<T> = T | Promise<T>;
+export type ConversationMaybePromise<T> = T | Promise<T>;
 
 export interface ConversationActionDiagnostics {
   logInfo(source: string, message: string): void;
@@ -192,6 +192,7 @@ export type BranchConversationBuildResult<TConversation extends ServerConversati
   | { ok: false; statusCode: 400; error: string; messageCount: number };
 
 export type ServerConversationMessageIdFactory = (timestamp: number, index: number) => string;
+export type ServerConversationContentMaterializer = (content: string) => ConversationMaybePromise<string>;
 
 export interface AppendServerConversationMessageRequest {
   id: string;
@@ -201,6 +202,10 @@ export interface AppendServerConversationMessageRequest {
   toolCalls?: ServerConversationRecordMessage['toolCalls'];
   toolResults?: ServerConversationRecordMessage['toolResults'];
   displayContent?: string;
+}
+
+export interface MaterializeServerConversationContentOptions {
+  materializeContent?: ServerConversationContentMaterializer;
 }
 
 export interface AppendServerConversationMessageResult<TConversation extends ServerConversationRecord<any>> {
@@ -559,6 +564,52 @@ export function buildServerConversationMessages(
     toolCalls: msg.toolCalls,
     toolResults: msg.toolResults,
   }));
+}
+
+async function materializeServerConversationContent(
+  content: string,
+  materializeContent?: ServerConversationContentMaterializer,
+): Promise<string> {
+  return materializeContent ? materializeContent(content) : content;
+}
+
+export async function materializeServerConversationCreateRequest(
+  request: CreateConversationRequest,
+  options: MaterializeServerConversationContentOptions = {},
+): Promise<CreateConversationRequest> {
+  const messages: ServerConversationMessage[] = [];
+
+  for (const message of request.messages) {
+    messages.push({
+      ...message,
+      content: await materializeServerConversationContent(message.content, options.materializeContent),
+    });
+  }
+
+  return {
+    ...request,
+    messages,
+  };
+}
+
+export async function materializeAppendServerConversationMessageRequest(
+  request: AppendServerConversationMessageRequest,
+  options: MaterializeServerConversationContentOptions = {},
+): Promise<AppendServerConversationMessageRequest> {
+  const content = await materializeServerConversationContent(request.content, options.materializeContent);
+  const displayContent = typeof request.displayContent === 'string' && request.displayContent.trim().length > 0
+    ? await materializeServerConversationContent(request.displayContent, options.materializeContent)
+    : undefined;
+
+  return {
+    id: request.id,
+    role: request.role,
+    content,
+    timestamp: request.timestamp,
+    toolCalls: request.toolCalls,
+    toolResults: request.toolResults,
+    ...(displayContent ? { displayContent } : {}),
+  };
 }
 
 export function getStoredServerConversationMessages<TConversation extends ServerConversationRecord<any>>(

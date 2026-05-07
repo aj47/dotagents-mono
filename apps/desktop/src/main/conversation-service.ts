@@ -30,6 +30,8 @@ import {
   getMostRecentServerConversationHistoryItem,
   getStoredServerConversationMessages,
   isValidServerConversationRecordShape,
+  materializeAppendServerConversationMessageRequest,
+  materializeServerConversationCreateRequest,
   normalizeServerConversationHistoryIndex,
   renameServerConversationTitle,
   repairServerConversationJsonData,
@@ -860,11 +862,14 @@ export class ConversationService {
     // Validate and sanitize the externally-provided conversation ID
     const validatedId = this.validateConversationId(conversationId)
     const now = Date.now()
-    const storedFirstMessage = await this.materializeInlineDataImagesInContent(validatedId, firstMessage)
+    const createRequest = await materializeServerConversationCreateRequest(
+      { messages: [{ role, content: firstMessage }] },
+      { materializeContent: (content) => this.materializeInlineDataImagesInContent(validatedId, content) },
+    )
 
     const conversation = buildNewServerConversation(
       validatedId,
-      { messages: [{ role, content: storedFirstMessage }] },
+      createRequest,
       now,
       () => generateMessageId(),
     ) as Conversation
@@ -890,20 +895,18 @@ export class ConversationService {
           return null
         }
 
-        const storedContent = await this.materializeInlineDataImagesInContent(conversationId, content)
-        const storedDisplayContent = typeof options?.displayContent === "string" && options.displayContent.trim().length > 0
-          ? await this.materializeInlineDataImagesInContent(conversationId, options.displayContent)
-          : undefined
-
-        appendServerConversationMessage(conversation, {
+        const messageRequest = await materializeAppendServerConversationMessageRequest({
           id: generateMessageId(),
           role,
-          content: storedContent,
+          content,
           timestamp: Date.now(),
           toolCalls,
           toolResults,
-          ...(storedDisplayContent ? { displayContent: storedDisplayContent } : {}),
+          displayContent: options?.displayContent,
+        }, {
+          materializeContent: (value) => this.materializeInlineDataImagesInContent(conversationId, value),
         })
+        appendServerConversationMessage(conversation, messageRequest)
         await this.saveConversationUnlocked(conversation)
 
         return conversation

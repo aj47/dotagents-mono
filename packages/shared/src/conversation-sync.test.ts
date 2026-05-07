@@ -40,6 +40,8 @@ import {
   getValidServerConversationCompactionTimestamp,
   hasPersistedServerConversationCompactionCheckpoint,
   isValidServerConversationRecordShape,
+  materializeAppendServerConversationMessageRequest,
+  materializeServerConversationCreateRequest,
   normalizeServerConversationHistoryIndex,
   normalizeServerConversationSummarizedMessageCount,
   parseCreateConversationRequestBody,
@@ -161,6 +163,72 @@ describe('server conversation API helpers', () => {
     );
 
     expect(conversation.title).toBe('Image');
+  });
+
+  it('materializes create request content before building stored conversations', async () => {
+    const request = await materializeServerConversationCreateRequest({
+      title: 'Provided',
+      messages: [
+        { role: 'user', content: 'data:image/png;base64,abc', timestamp: 0 },
+        { role: 'assistant', content: 'plain answer' },
+      ],
+      createdAt: 10,
+      updatedAt: 20,
+    }, {
+      materializeContent: (content) => content.replace('data:image/png;base64,abc', 'assets://conversation-image/conv-1/image.png'),
+    });
+
+    expect(request).toEqual({
+      title: 'Provided',
+      messages: [
+        { role: 'user', content: 'assets://conversation-image/conv-1/image.png', timestamp: 0 },
+        { role: 'assistant', content: 'plain answer' },
+      ],
+      createdAt: 10,
+      updatedAt: 20,
+    });
+    expect(buildNewServerConversation('conv-1', request, 30, messageIdFactory).messages[0].content).toBe(
+      'assets://conversation-image/conv-1/image.png',
+    );
+  });
+
+  it('materializes append request content and display content consistently', async () => {
+    const request = await materializeAppendServerConversationMessageRequest({
+      id: 'msg-new',
+      role: 'assistant',
+      content: 'stored data:image/png;base64,abc',
+      displayContent: '<think>hidden</think>\n\nshown data:image/png;base64,abc',
+      timestamp: 5,
+      toolCalls: [{ name: 'respond_to_user', arguments: { text: 'ok' } }],
+      toolResults: [{ success: true, content: 'ok' }],
+    }, {
+      materializeContent: async (content) => content.replace('data:image/png;base64,abc', 'assets://image.png'),
+    });
+
+    expect(request).toEqual({
+      id: 'msg-new',
+      role: 'assistant',
+      content: 'stored assets://image.png',
+      displayContent: '<think>hidden</think>\n\nshown assets://image.png',
+      timestamp: 5,
+      toolCalls: [{ name: 'respond_to_user', arguments: { text: 'ok' } }],
+      toolResults: [{ success: true, content: 'ok' }],
+    });
+
+    await expect(materializeAppendServerConversationMessageRequest({
+      id: 'msg-blank-display',
+      role: 'assistant',
+      content: 'stored',
+      displayContent: '   ',
+      timestamp: 6,
+    })).resolves.toEqual({
+      id: 'msg-blank-display',
+      role: 'assistant',
+      content: 'stored',
+      timestamp: 6,
+      toolCalls: undefined,
+      toolResults: undefined,
+    });
   });
 
   it('selects auto-title seeds from stored raw conversation history', () => {
