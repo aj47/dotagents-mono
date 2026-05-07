@@ -15,6 +15,10 @@ import {
   useSaveConfigMutation,
 } from "@renderer/lib/queries"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import {
+  downloadLocalSpeechModel,
+  getLocalSpeechModelStatus,
+} from "@renderer/lib/local-speech-model-client"
 import { Config } from "@shared/types"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import {
@@ -73,7 +77,7 @@ function ParakeetModelDownload() {
 
   const modelStatusQuery = useQuery({
     queryKey: ["parakeetModelStatus"],
-    queryFn: () => window.electron.ipcRenderer.invoke("getParakeetModelStatus"),
+    queryFn: () => getLocalSpeechModelStatus("parakeet"),
     // Poll while downloading (either local state or server state) to keep progress updated
     refetchInterval: (query) => {
       const status = query.state.data as { downloading?: boolean } | undefined
@@ -85,7 +89,7 @@ function ParakeetModelDownload() {
     setIsDownloading(true)
     setDownloadProgress(0)
     try {
-      await window.electron.ipcRenderer.invoke("downloadParakeetModel")
+      await downloadLocalSpeechModel("parakeet")
     } catch (error) {
       console.error("Failed to download Parakeet model:", error)
     } finally {
@@ -256,7 +260,7 @@ function KittenModelDownload() {
 
   const modelStatusQuery = useQuery({
     queryKey: ["kittenModelStatus"],
-    queryFn: () => window.electron.ipcRenderer.invoke("getKittenModelStatus"),
+    queryFn: () => getLocalSpeechModelStatus("kitten"),
     // Poll while downloading (either local state or server state) to keep progress updated
     refetchInterval: (query) => {
       const status = query.state.data as { downloading?: boolean } | undefined
@@ -268,7 +272,7 @@ function KittenModelDownload() {
     setIsDownloading(true)
     setDownloadProgress(0)
     try {
-      await window.electron.ipcRenderer.invoke("downloadKittenModel")
+      await downloadLocalSpeechModel("kitten")
     } catch (error) {
       console.error("Failed to download Kitten model:", error)
     } finally {
@@ -350,7 +354,7 @@ function KittenProviderSection({
   // Query model status to determine if voice controls should be shown
   const modelStatusQuery = useQuery({
     queryKey: ["kittenModelStatus"],
-    queryFn: () => window.electron.ipcRenderer.invoke("getKittenModelStatus"),
+    queryFn: () => getLocalSpeechModelStatus("kitten"),
   })
   const modelDownloaded = (modelStatusQuery.data as { downloaded: boolean } | undefined)?.downloaded ?? false
   const handleTestVoice = async () => {
@@ -457,7 +461,7 @@ function SupertonicModelDownload() {
 
   const modelStatusQuery = useQuery({
     queryKey: ["supertonicModelStatus"],
-    queryFn: () => window.electron.ipcRenderer.invoke("getSupertonicModelStatus"),
+    queryFn: () => getLocalSpeechModelStatus("supertonic"),
     refetchInterval: (query) => {
       const status = query.state.data as { downloading?: boolean } | undefined
       return (isDownloading || status?.downloading) ? 500 : false
@@ -468,7 +472,7 @@ function SupertonicModelDownload() {
     setIsDownloading(true)
     setDownloadProgress(0)
     try {
-      await window.electron.ipcRenderer.invoke("downloadSupertonicModel")
+      await downloadLocalSpeechModel("supertonic")
     } catch (error) {
       console.error("Failed to download Supertonic model:", error)
     } finally {
@@ -554,7 +558,7 @@ function SupertonicProviderSection({
 }) {
   const modelStatusQuery = useQuery({
     queryKey: ["supertonicModelStatus"],
-    queryFn: () => window.electron.ipcRenderer.invoke("getSupertonicModelStatus"),
+    queryFn: () => getLocalSpeechModelStatus("supertonic"),
   })
   const modelDownloaded = (modelStatusQuery.data as { downloaded: boolean } | undefined)?.downloaded ?? false
 
