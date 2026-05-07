@@ -570,6 +570,8 @@ describe("remote-server route registration", () => {
     expect(desktopAdaptersSource).toContain("authorizeRequest: authorizeRemoteServerRequest")
     expect(desktopAdaptersSource).not.toContain('from "./operator-api-key-actions"')
     expect(desktopAdaptersSource).not.toContain('from "./remote-server-pairing-actions"')
+    expect(desktopAdaptersSource).not.toContain('from "./remote-server-controller"')
+    expect(desktopAdaptersSource).toContain('from "@dotagents/shared/remote-server-controller-contracts"')
     expect(desktopAdaptersSource).toContain("generateApiKey: generateRemoteServerApiKey")
     expect(desktopAdaptersSource).toContain("function generateRemoteServerApiKey()")
     expect(desktopAdaptersSource).toContain('crypto.randomBytes(32).toString("hex")')

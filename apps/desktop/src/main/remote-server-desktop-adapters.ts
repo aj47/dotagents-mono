@@ -2,8 +2,10 @@ import crypto from "crypto"
 import fs from "fs"
 import os from "os"
 import path from "path"
+import type { FastifyReply, FastifyRequest } from "fastify"
 import QRCode from "qrcode"
 import { authorizeRemoteServerRequest } from "@dotagents/shared/operator-actions"
+import type { RemoteServerControllerAdapters } from "@dotagents/shared/remote-server-controller-contracts"
 import {
   buildDotAgentsConfigDeepLink,
   formatConnectableRemoteHostWarning,
@@ -13,7 +15,6 @@ import {
   resolveRemoteServerApiKey,
 } from "@dotagents/shared/remote-pairing"
 import type { Config } from "../shared/types"
-import type { RemoteServerControllerAdapters } from "./remote-server-controller"
 import {
   recordOperatorResponseAuditEvent,
   recordRejectedOperatorDeviceAttempt,
@@ -89,7 +90,7 @@ function getConnectableBaseUrlForMobilePairing(
   return resolution.baseUrl
 }
 
-export const remoteServerDesktopAdapters: RemoteServerControllerAdapters = {
+export const remoteServerDesktopAdapters: RemoteServerControllerAdapters<FastifyRequest, FastifyReply, Config> = {
   authorizeRequest: authorizeRemoteServerRequest,
   generateApiKey: generateRemoteServerApiKey,
   resolveApiKeyReference: readDotAgentsSecretReference,
