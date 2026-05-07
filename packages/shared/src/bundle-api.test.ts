@@ -48,6 +48,7 @@ import {
   importBundleAction,
   importBundleFromTemporaryFile,
   importBundleItemCollection,
+  importBundleMcpServersIntoConfig,
   isHubBundleHandoffFilePath,
   isSupportedBundleFilePath,
   mergeBundleBuildItems,
@@ -379,6 +380,68 @@ describe("bundle API helpers", () => {
       },
       mcpDisabledTools: { nested: ["tool"] },
     })
+
+    const mcpImportResult = createBundleImportResult()
+    const mcpImport = importBundleMcpServersIntoConfig({
+      result: mcpImportResult,
+      mcpConfig: {
+        mcpConfig: {
+          mcpServers: {
+            github: { command: "old-github-server" },
+          },
+        },
+        mcpDisabledTools: ["github:create_issue"],
+      },
+      bundleServers: [
+        {
+          name: "github",
+          command: "npx",
+          args: ["-y", "@modelcontextprotocol/server-github"],
+          transport: "stdio",
+          enabled: false,
+        },
+        {
+          name: "exa",
+          transport: "streamableHttp",
+          enabled: true,
+        },
+      ],
+      conflictStrategy: "rename",
+    })
+    expect(mcpImport.modified).toBe(true)
+    expect(mcpImportResult.mcpServers).toEqual([
+      { id: "github", name: "github", action: "renamed", newId: "github_imported" },
+      { id: "exa", name: "exa", action: "imported" },
+    ])
+    expect(mcpImport.mcpConfig).toEqual({
+      mcpConfig: {
+        mcpServers: {
+          github: { command: "old-github-server" },
+          github_imported: {
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-github"],
+            transport: "stdio",
+            disabled: true,
+          },
+          exa: {
+            transport: "streamableHttp",
+          },
+        },
+      },
+      mcpDisabledTools: ["github:create_issue"],
+    })
+
+    const skippedMcpConfig = { mcpConfig: { mcpServers: { github: { command: "old" } } } }
+    const skippedMcpImportResult = createBundleImportResult()
+    const skippedMcpImport = importBundleMcpServersIntoConfig({
+      result: skippedMcpImportResult,
+      mcpConfig: skippedMcpConfig,
+      bundleServers: [{ name: "github", command: "new" }],
+      conflictStrategy: "skip",
+    })
+    expect(skippedMcpImport.modified).toBe(false)
+    expect(skippedMcpImport.mcpConfig).toEqual(skippedMcpConfig)
+    expect(skippedMcpImportResult.mcpServers).toEqual([{ id: "github", name: "github", action: "skipped" }])
   })
 
   it("strips secret-looking bundle MCP fields recursively", () => {

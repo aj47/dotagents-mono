@@ -33,7 +33,6 @@ import {
   buildBundleAgentProfilesFromProfiles,
   buildBundleImportPreviewConflicts,
   buildBundleKnowledgeNotesFromNotes,
-  buildBundleImportItemResult,
   buildBundleMcpServersFromConfig,
   buildBundleRepeatTasksFromTasks,
   buildBundleSkillsFromSkills,
@@ -44,22 +43,20 @@ import {
   buildExportableBundleRepeatTasks,
   buildExportableBundleSkills,
   buildKnowledgeNoteFromBundleNote,
-  buildMcpServerConfigFromBundleServer,
   buildRepeatTaskFromBundleTask,
   buildSkillFromBundleSkill,
   createBundleImportResult,
   finalizeBundleImportResult,
   getBundleBuildItems,
   importBundleItemCollection,
+  importBundleMcpServersIntoConfig,
   isHubBundleHandoffFilePath,
   isSupportedBundleFilePath,
   mergeBundleBuildItems,
   mergeExportableBundleItems,
   parseDotAgentsBundleJson,
   readBundleMcpServersFromConfig,
-  resolveBundleImportItemAction,
   sortExportableBundleItems,
-  writeCanonicalBundleMcpConfig,
   type BundleAgentProfile,
   type BundleComponentSelection,
   type BundleImportConflictStrategy,
@@ -560,28 +557,15 @@ export async function importBundle(
       const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
         defaultValue: {},
       })
-      const mcpServers = { ...readBundleMcpServersFromConfig(mcpConfig) }
-      const existingNames = new Set(Object.keys(mcpServers))
-      let modified = false
+      const mcpImport = importBundleMcpServersIntoConfig({
+        result,
+        mcpConfig,
+        bundleServers: bundle.mcpServers,
+        conflictStrategy,
+      })
 
-      for (const bundleServer of bundle.mcpServers) {
-        const importAction = resolveBundleImportItemAction(bundleServer.name, existingNames, conflictStrategy)
-
-        if (!importAction.shouldImport) {
-          result.mcpServers.push(buildBundleImportItemResult(bundleServer.name, bundleServer.name, importAction))
-          continue
-        }
-
-        mcpServers[importAction.finalId] = buildMcpServerConfigFromBundleServer(bundleServer)
-        existingNames.add(importAction.finalId)
-        modified = true
-
-        result.mcpServers.push(buildBundleImportItemResult(bundleServer.name, bundleServer.name, importAction))
-      }
-
-      if (modified) {
-        const newMcpConfig = writeCanonicalBundleMcpConfig(mcpConfig, mcpServers)
-        safeWriteJsonFileSync(layer.mcpJsonPath, newMcpConfig, {
+      if (mcpImport.modified) {
+        safeWriteJsonFileSync(layer.mcpJsonPath, mcpImport.mcpConfig, {
           backupDir: layer.backupsDir,
           maxBackups: 10,
           pretty: true,

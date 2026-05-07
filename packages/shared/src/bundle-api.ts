@@ -1432,6 +1432,50 @@ export async function importBundleItemCollection<TItem>(
   }
 }
 
+export interface BundleMcpServersImportOptions {
+  result: BundleImportResult
+  mcpConfig: Record<string, unknown>
+  bundleServers: readonly BundleMcpServer[]
+  conflictStrategy: BundleImportConflictStrategy
+}
+
+export interface BundleMcpServersImportResult {
+  modified: boolean
+  mcpConfig: Record<string, unknown>
+}
+
+export function importBundleMcpServersIntoConfig(
+  options: BundleMcpServersImportOptions,
+): BundleMcpServersImportResult {
+  const mcpServers = { ...readBundleMcpServersFromConfig(options.mcpConfig) }
+  const existingNames = new Set(Object.keys(mcpServers))
+  let modified = false
+
+  for (const bundleServer of options.bundleServers) {
+    const importAction = resolveBundleImportItemAction(
+      bundleServer.name,
+      existingNames,
+      options.conflictStrategy,
+    )
+
+    if (!importAction.shouldImport) {
+      options.result.mcpServers.push(buildBundleImportItemResult(bundleServer.name, bundleServer.name, importAction))
+      continue
+    }
+
+    mcpServers[importAction.finalId] = buildMcpServerConfigFromBundleServer(bundleServer)
+    existingNames.add(importAction.finalId)
+    modified = true
+
+    options.result.mcpServers.push(buildBundleImportItemResult(bundleServer.name, bundleServer.name, importAction))
+  }
+
+  return {
+    modified,
+    mcpConfig: modified ? writeCanonicalBundleMcpConfig(options.mcpConfig, mcpServers) : options.mcpConfig,
+  }
+}
+
 export function hasBundleImportConflicts(
   conflicts: BundleImportPreviewConflicts | undefined,
   components: BundleComponentSelection,
