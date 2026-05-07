@@ -45,6 +45,7 @@ import {
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueActionService,
   createOperatorMessageQueueRouteActions,
+  createOperatorObservabilityActionService,
   createOperatorObservabilityRouteActions,
   createOperatorRestartRouteActions,
   createOperatorSystemMetricsCollector,
@@ -306,18 +307,16 @@ const operatorMessageQueueRouteActions = createOperatorMessageQueueRouteActions(
 const observabilityActionOptions: OperatorObservabilityActionOptions = {
   manualReleasesUrl: MANUAL_RELEASES_URL,
   diagnostics: diagnosticsService,
-  service: {
+  service: createOperatorObservabilityActionService({
     getCurrentVersion: () => app.getVersion(),
-    getRecentErrors: (count) => diagnosticsService.getRecentErrors(count),
-    performHealthCheck: () => diagnosticsService.performHealthCheck(),
+    diagnostics: diagnosticsService,
     getTunnelStatus: getCloudflareTunnelStatus,
     getIntegrationsSummary: buildOperatorIntegrationsSummary,
     getUpdateInfo,
     getSystemMetrics: getOperatorSystemMetrics,
-    getActiveSessions: () => agentSessionTracker.getActiveSessions(),
-    getRecentSessions: (count) => agentSessionTracker.getRecentSessions(count),
-    getConversationHistory: () => conversationService.getConversationHistory(),
-  },
+    sessions: agentSessionTracker,
+    conversations: conversationService,
+  }),
 }
 
 const operatorObservabilityRouteActions = createOperatorObservabilityRouteActions(observabilityActionOptions)

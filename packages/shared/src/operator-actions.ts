@@ -326,6 +326,48 @@ export interface OperatorObservabilityActionService {
   getConversationHistory(): Promise<OperatorConversationHistoryLike[]>
 }
 
+export interface OperatorObservabilityDiagnosticsServiceAdapter {
+  getRecentErrors(count: number): OperatorRecentErrorLike[]
+  performHealthCheck(): Promise<OperatorHealthLike>
+}
+
+export interface OperatorObservabilitySessionServiceAdapter {
+  getActiveSessions(): OperatorSessionSummaryLike[]
+  getRecentSessions(count: number): OperatorSessionSummaryLike[]
+}
+
+export interface OperatorObservabilityConversationServiceAdapter {
+  getConversationHistory(): Promise<OperatorConversationHistoryLike[]>
+}
+
+export interface OperatorObservabilityActionServiceOptions {
+  getCurrentVersion(): string
+  diagnostics: OperatorObservabilityDiagnosticsServiceAdapter
+  getTunnelStatus(): OperatorTunnelStatusLike
+  getIntegrationsSummary(): Promise<OperatorIntegrationsSummary>
+  getUpdateInfo(): OperatorUpdateInfoLike
+  getSystemMetrics(): OperatorSystemMetricsLike
+  sessions: OperatorObservabilitySessionServiceAdapter
+  conversations: OperatorObservabilityConversationServiceAdapter
+}
+
+export function createOperatorObservabilityActionService(
+  options: OperatorObservabilityActionServiceOptions,
+): OperatorObservabilityActionService {
+  return {
+    getCurrentVersion: () => options.getCurrentVersion(),
+    getRecentErrors: (count) => options.diagnostics.getRecentErrors(count),
+    performHealthCheck: () => options.diagnostics.performHealthCheck(),
+    getTunnelStatus: () => options.getTunnelStatus(),
+    getIntegrationsSummary: () => options.getIntegrationsSummary(),
+    getUpdateInfo: () => options.getUpdateInfo(),
+    getSystemMetrics: () => options.getSystemMetrics(),
+    getActiveSessions: () => options.sessions.getActiveSessions(),
+    getRecentSessions: (count) => options.sessions.getRecentSessions(count),
+    getConversationHistory: () => options.conversations.getConversationHistory(),
+  }
+}
+
 export interface OperatorObservabilityActionOptions {
   manualReleasesUrl: string
   diagnostics: OperatorObservabilityActionDiagnostics

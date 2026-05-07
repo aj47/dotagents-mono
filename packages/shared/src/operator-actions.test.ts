@@ -82,6 +82,7 @@ import {
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueActionService,
   createOperatorMessageQueueRouteActions,
+  createOperatorObservabilityActionService,
   createOperatorObservabilityRouteActions,
   createOperatorRestartRouteActions,
   createOperatorSystemMetricsCollector,
@@ -2920,6 +2921,121 @@ describe("operator action API helpers", () => {
         maxIterations: 5,
       }],
     })
+  })
+
+  it("creates operator observability action services from diagnostics, sessions, and conversations", async () => {
+    const calls: string[] = []
+    const service = createOperatorObservabilityActionService({
+      getCurrentVersion: () => "1.2.3",
+      diagnostics: {
+        getRecentErrors: (count) => {
+          calls.push(`errors:${count}`)
+          return [{ timestamp: 1, level: "error", component: "mcp", message: "failed" }].slice(0, count)
+        },
+        performHealthCheck: async () => {
+          calls.push("health")
+          return { overall: "ok", checks: {} }
+        },
+      },
+      getTunnelStatus: () => {
+        calls.push("tunnel")
+        return { running: false, starting: false, mode: null }
+      },
+      getIntegrationsSummary: async () => {
+        calls.push("integrations")
+        return {
+          discord: {
+            available: true,
+            enabled: false,
+            connected: false,
+            connecting: false,
+            logs: { total: 0 },
+          },
+          whatsapp: {
+            enabled: false,
+            available: false,
+            connected: false,
+            serverConfigured: false,
+            serverConnected: false,
+            autoReplyEnabled: false,
+            logMessagesEnabled: false,
+            allowedSenderCount: 0,
+            logs: { total: 0 },
+          },
+          pushNotifications: {
+            enabled: false,
+            tokenCount: 0,
+            platforms: [],
+          },
+        }
+      },
+      getUpdateInfo: () => {
+        calls.push("update")
+        return null
+      },
+      getSystemMetrics: () => {
+        calls.push("system")
+        return {
+          platform: "darwin",
+          arch: "arm64",
+          nodeVersion: "v20.0.0",
+          electronVersion: "30.0.0",
+          appVersion: "1.2.3",
+          osUptimeSeconds: 10,
+          processUptimeSeconds: 2,
+          memoryUsageBytes: { heapUsed: 1, heapTotal: 2, rss: 3 },
+          cpuCount: 8,
+          totalMemoryBytes: 100,
+          freeMemoryBytes: 50,
+          hostname: "workstation",
+        }
+      },
+      sessions: {
+        getActiveSessions: () => {
+          calls.push("active-sessions")
+          return [{ id: "session-1", status: "active", startTime: 1 }]
+        },
+        getRecentSessions: (count) => {
+          calls.push(`recent-sessions:${count}`)
+          return [{ id: "session-2", status: "completed", startTime: 2 }]
+        },
+      },
+      conversations: {
+        getConversationHistory: async () => {
+          calls.push("conversations")
+          return [{ id: "conversation-1", title: "Ops", createdAt: 1, updatedAt: 2, messageCount: 1, preview: "Done" }]
+        },
+      },
+    })
+
+    expect(service.getCurrentVersion()).toBe("1.2.3")
+    expect(service.getRecentErrors(1)).toHaveLength(1)
+    await expect(service.performHealthCheck()).resolves.toEqual({ overall: "ok", checks: {} })
+    expect(service.getTunnelStatus()).toEqual({ running: false, starting: false, mode: null })
+    await expect(service.getIntegrationsSummary()).resolves.toMatchObject({ discord: { available: true } })
+    expect(service.getUpdateInfo()).toBeNull()
+    expect(service.getSystemMetrics()).toMatchObject({ platform: "darwin", hostname: "workstation" })
+    expect(service.getActiveSessions()).toEqual([{ id: "session-1", status: "active", startTime: 1 }])
+    expect(service.getRecentSessions(5)).toEqual([{ id: "session-2", status: "completed", startTime: 2 }])
+    await expect(service.getConversationHistory()).resolves.toEqual([{
+      id: "conversation-1",
+      title: "Ops",
+      createdAt: 1,
+      updatedAt: 2,
+      messageCount: 1,
+      preview: "Done",
+    }])
+    expect(calls).toEqual([
+      "errors:1",
+      "health",
+      "tunnel",
+      "integrations",
+      "update",
+      "system",
+      "active-sessions",
+      "recent-sessions:5",
+      "conversations",
+    ])
   })
 
   it("runs observability route actions through a shared service adapter", async () => {
