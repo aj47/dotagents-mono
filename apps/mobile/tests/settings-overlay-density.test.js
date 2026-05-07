@@ -24,14 +24,25 @@ test('keeps mobile settings overlay close affordances text-first and explicitly 
   const closeTextMatches = [
     ...settingsSource.matchAll(/<Text style=\{styles\.modalCloseText\}>Close<\/Text>/g),
   ];
-  assert.equal(closeTextMatches.length, 6);
+  const expectedCloseLabels = [
+    'Close model picker',
+    'Close endpoint picker',
+    'Close endpoint editor',
+    'Close MCP server editor',
+    'Close bundle import modal',
+    'Close skill import modal',
+    'Close GitHub skill import modal',
+    'Close loop import modal',
+    'Close MCP server import modal',
+    'Close TTS model picker',
+    'Close TTS voice picker',
+    'Close import profile modal',
+  ];
+  assert.equal(closeTextMatches.length, expectedCloseLabels.length);
 
-  assert.match(settingsSource, /accessibilityLabel="Close model picker"/);
-  assert.match(settingsSource, /accessibilityLabel="Close endpoint picker"/);
-  assert.match(settingsSource, /accessibilityLabel="Close endpoint editor"/);
-  assert.match(settingsSource, /accessibilityLabel="Close TTS model picker"/);
-  assert.match(settingsSource, /accessibilityLabel="Close TTS voice picker"/);
-  assert.match(settingsSource, /accessibilityLabel="Close import profile modal"/);
+  for (const label of expectedCloseLabels) {
+    assert.match(settingsSource, new RegExp(`accessibilityLabel="${label}"`));
+  }
 });
 
 test('keeps mobile settings overlay headers compact and flex-safe on narrow widths', () => {

@@ -20,8 +20,8 @@ function extractBetween(startMarker, endMarker) {
 
 test('keeps the mobile knowledge notes subsection free of decorative delete emoji chrome', () => {
   const knowledgeNoteRowRenderer = extractBetween(
-    'const renderKnowledgeNoteRow = (note: KnowledgeNote) => (',
-    '  );\n\n  if (!ready)'
+    'const renderKnowledgeNoteRow = (note: KnowledgeNote) => {',
+    '  };\n\n  if (!ready)'
   );
   const knowledgeNotesSection = extractBetween(
     '<CollapsibleSection id="knowledgeNotes" title="Knowledge Notes">',

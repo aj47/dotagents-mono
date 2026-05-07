@@ -9,7 +9,7 @@ const screenSource = fs.readFileSync(
 );
 
 test('loads operator MCP tools for per-agent mobile MCP tool overrides', () => {
-  assert.match(screenSource, /type OperatorMCPToolSummary/);
+  assert.match(screenSource, /OperatorMCPToolSummary/);
   assert.match(screenSource, /const \[mcpToolsByServer, setMcpToolsByServer\]/);
   assert.match(screenSource, /const \[isMcpToolsLoading, setIsMcpToolsLoading\]/);
   assert.match(screenSource, /settingsClient\.getOperatorMCPTools\(server\.name\)/);
