@@ -1574,11 +1574,13 @@ describe("remote-server route registration", () => {
     const sharedConversationMediaAssetsSource = getSharedConversationMediaAssetsSource()
 
     expectRegisteredApiRoute(source, "GET", "conversation")
+    expectRegisteredApiRoute(source, "GET", "conversationImageAsset")
     expectRegisteredApiRoute(source, "GET", "conversationVideoAsset")
     expectRegisteredApiRoute(source, "GET", "conversations")
     expectRegisteredApiRoute(source, "POST", "conversations")
     expectRegisteredApiRoute(source, "PUT", "conversation")
     expect(mobileApiRoutesSource).toContain("actions.getConversation(params.id)")
+    expect(mobileApiRoutesSource).toContain("actions.getConversationImageAsset(params.id, params.fileName)")
     expect(mobileApiRoutesSource).toContain("actions.getConversationVideoAsset(params.id, params.fileName, req.headers.range)")
     expect(mobileApiRoutesSource).toContain("actions.getConversations()")
     expect(mobileApiRoutesSource).toContain("actions.createConversation(req.body, notifyConversationHistoryChanged)")
@@ -1630,6 +1632,13 @@ describe("remote-server route registration", () => {
     expect(sharedConversationSyncSource).toContain("parseUpdateConversationRequestBody(body)")
     expect(sharedConversationSyncSource).toContain("applyServerConversationUpdate(conversation, parsedRequest.request, timestamp)")
     expect(sharedConversationSyncSource).not.toContain('from "./conversation-service"')
+    expect(mobileApiDesktopActionsSource).toContain("const conversationImageAssetActionOptions: ConversationImageAssetActionOptions")
+    expect(mobileApiDesktopActionsSource).toContain(
+      "const conversationImageAssetRouteActions = createConversationImageAssetRouteActions(conversationImageAssetActionOptions)",
+    )
+    expect(mobileApiDesktopActionsSource).toContain("conversationImageAssets: conversationImageAssetRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("service: createConversationImageAssetFileService({")
+    expect(mobileApiDesktopActionsSource).toContain("resolveImageAssetPath: getConversationImageAssetPath")
     expect(mobileApiDesktopActionsSource).toContain("const conversationVideoAssetActionOptions: ConversationVideoAssetActionOptions")
     expect(mobileApiDesktopActionsSource).toContain(
       "const conversationVideoAssetRouteActions = createConversationVideoAssetRouteActions(conversationVideoAssetActionOptions)",
@@ -1652,6 +1661,14 @@ describe("remote-server route registration", () => {
     expect(sharedRemoteServerRouteContractsSource).toContain("export function buildMobileApiActionError(")
     expect(sharedRemoteServerRouteContractsSource).toContain("return buildMobileApiActionResult({ error: message }, statusCode, headers)")
     expect(sharedConversationMediaAssetsSource).toContain("export function buildConversationVideoAssetStreamPlan(")
+    expect(sharedConversationMediaAssetsSource).toContain("export async function getConversationImageAssetAction")
+    expect(sharedConversationMediaAssetsSource).toContain("export function createConversationImageAssetFileService")
+    expect(sharedConversationMediaAssetsSource).toContain("const assetPath = options.resolveImageAssetPath(conversationId, fileName)")
+    expect(sharedConversationMediaAssetsSource).toContain("export interface ConversationImageAssetRouteActions")
+    expect(sharedConversationMediaAssetsSource).toContain("export function createConversationImageAssetRouteActions")
+    expect(sharedConversationMediaAssetsSource).toContain("getConversationImageAsset: (id, fileName) =>")
+    expect(sharedConversationMediaAssetsSource).toContain("getConversationImageAssetAction(id, fileName, options)")
+    expect(sharedConversationMediaAssetsSource).toContain("options.service.getImageAssetFile(conversationId, assetFileName)")
     expect(sharedConversationMediaAssetsSource).toContain("export async function getConversationVideoAssetAction")
     expect(sharedConversationMediaAssetsSource).toContain("validateConversationId(conversationId: string): string | null | undefined")
     expect(sharedConversationMediaAssetsSource).toContain("export function createConversationVideoAssetFileService")
