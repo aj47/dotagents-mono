@@ -47,13 +47,13 @@ import {
   buildSkillFromBundleSkill,
   createBundleImportResult,
   finalizeBundleImportResult,
-  getBundleBuildItems,
+  getBundleExportableItemsFromLayerDirs,
   importBundleItemCollection,
   importBundleMcpServersIntoConfig,
   isHubBundleHandoffFilePath,
   isSupportedBundleFilePath,
-  mergeBundleBuildItems,
-  mergeExportableBundleItems,
+  buildBundleFromLayerDirs,
+  normalizeBundleLayerDirs,
   parseDotAgentsBundleJson,
   readBundleMcpServersFromConfig,
   sortExportableBundleItems,
@@ -217,21 +217,14 @@ export function getBundleExportableItems(agentsDir: string): ExportableBundleIte
 }
 
 export function getBundleExportableItemsFromLayers(agentsDirs: string[]): ExportableBundleItems {
-  const normalizedDirs = Array.from(
-    new Set(agentsDirs.map((dir) => path.resolve(dir)).filter((dir) => dir.length > 0))
+  return getBundleExportableItemsFromLayerDirs(
+    agentsDirs,
+    getBundleExportableItems,
+    {
+      resolveDir: (dir) => path.resolve(dir),
+      emptyErrorMessage: "No agents directories provided for exportable item listing",
+    },
   )
-
-  if (normalizedDirs.length === 0) {
-    throw new Error("No agents directories provided for exportable item listing")
-  }
-
-  if (normalizedDirs.length === 1) {
-    return getBundleExportableItems(normalizedDirs[0])
-  }
-
-  const layerItems = normalizedDirs.map((dir) => getBundleExportableItems(dir))
-
-  return mergeExportableBundleItems(layerItems)
 }
 
 export async function exportBundle(
@@ -274,38 +267,29 @@ export async function exportBundleFromLayers(
   agentsDirs: string[],
   options?: ExportBundleOptions
 ): Promise<DotAgentsBundle> {
-  const normalizedDirs = Array.from(
-    new Set(agentsDirs.map((dir) => path.resolve(dir)).filter((dir) => dir.length > 0))
+  const normalizedDirs = normalizeBundleLayerDirs(agentsDirs, (dir) => path.resolve(dir))
+  const bundle = await buildBundleFromLayerDirs(
+    normalizedDirs,
+    (dir) => exportBundle(dir, options),
+    options,
+    {
+      emptyErrorMessage: "No agents directories provided for bundle export",
+      buildOptions: { exportedFrom: "dotagents-desktop" },
+    },
   )
 
-  if (normalizedDirs.length === 0) {
-    throw new Error("No agents directories provided for bundle export")
+  if (normalizedDirs.length > 1) {
+    logApp("[bundle-service] Exported merged bundle", {
+      layers: normalizedDirs.length,
+      profiles: bundle.agentProfiles.length,
+      mcpServers: bundle.mcpServers.length,
+      skills: bundle.skills.length,
+      repeatTasks: bundle.repeatTasks.length,
+      knowledgeNotes: bundle.knowledgeNotes.length,
+    })
   }
 
-  if (normalizedDirs.length === 1) {
-    return exportBundle(normalizedDirs[0], options)
-  }
-
-  // Layer order matters: later layers override earlier layers by id/name.
-  const layerBundles = await Promise.all(
-    normalizedDirs.map((dir) => exportBundle(dir, options))
-  )
-
-  const mergedItems = mergeBundleBuildItems(layerBundles.map(getBundleBuildItems))
-  const mergedBundle = buildDotAgentsBundle(options, mergedItems, {
-    exportedFrom: "dotagents-desktop",
-  })
-
-  logApp("[bundle-service] Exported merged bundle", {
-    layers: normalizedDirs.length,
-    profiles: mergedItems.agentProfiles.length,
-    mcpServers: mergedItems.mcpServers.length,
-    skills: mergedItems.skills.length,
-    repeatTasks: mergedItems.repeatTasks.length,
-    knowledgeNotes: mergedItems.knowledgeNotes.length,
-  })
-
-  return mergedBundle
+  return bundle
 }
 
 async function saveBundleToFile(bundle: DotAgentsBundle): Promise<ExportBundleToFileResult> {

@@ -1167,6 +1167,68 @@ export function mergeBundleBuildItems(layerItems: readonly BundleBuildItems[]): 
   }
 }
 
+export type BundleLayerDirResolver = (dir: string) => string
+
+export interface BundleLayerDirOptions {
+  resolveDir?: BundleLayerDirResolver
+  emptyErrorMessage?: string
+}
+
+export function normalizeBundleLayerDirs(
+  agentsDirs: readonly string[],
+  resolveDir: BundleLayerDirResolver = (dir) => dir,
+): string[] {
+  return Array.from(
+    new Set(agentsDirs.map((dir) => resolveDir(dir)).filter((dir) => dir.length > 0))
+  )
+}
+
+export function getBundleExportableItemsFromLayerDirs(
+  agentsDirs: readonly string[],
+  loadLayerItems: (agentsDir: string) => ExportableBundleItems,
+  options: BundleLayerDirOptions = {},
+): ExportableBundleItems {
+  const normalizedDirs = normalizeBundleLayerDirs(agentsDirs, options.resolveDir)
+
+  if (normalizedDirs.length === 0) {
+    throw new Error(options.emptyErrorMessage ?? "No agents directories provided for exportable item listing")
+  }
+
+  if (normalizedDirs.length === 1) {
+    return loadLayerItems(normalizedDirs[0])
+  }
+
+  return mergeExportableBundleItems(normalizedDirs.map((dir) => loadLayerItems(dir)))
+}
+
+export interface BuildBundleFromLayerDirsOptions extends BundleLayerDirOptions {
+  buildOptions?: BuildDotAgentsBundleOptions
+}
+
+export async function buildBundleFromLayerDirs(
+  agentsDirs: readonly string[],
+  loadLayerBundle: (agentsDir: string) => DotAgentsBundle | Promise<DotAgentsBundle>,
+  request: ExportBundleRequest | undefined,
+  options: BuildBundleFromLayerDirsOptions = {},
+): Promise<DotAgentsBundle> {
+  const normalizedDirs = normalizeBundleLayerDirs(agentsDirs, options.resolveDir)
+
+  if (normalizedDirs.length === 0) {
+    throw new Error(options.emptyErrorMessage ?? "No agents directories provided for bundle export")
+  }
+
+  if (normalizedDirs.length === 1) {
+    return loadLayerBundle(normalizedDirs[0])
+  }
+
+  const layerBundles = await Promise.all(
+    normalizedDirs.map((dir) => loadLayerBundle(dir))
+  )
+  const mergedItems = mergeBundleBuildItems(layerBundles.map(getBundleBuildItems))
+
+  return buildDotAgentsBundle(request, mergedItems, options.buildOptions)
+}
+
 export function getBundleBuildItems(bundle: DotAgentsBundle): BundleBuildItems {
   return {
     agentProfiles: bundle.agentProfiles,

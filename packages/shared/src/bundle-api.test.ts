@@ -19,6 +19,7 @@ import {
   buildBundleSkillsFromSkills,
   buildBundleImportItemErrorResult,
   buildBundleImportItemResult,
+  buildBundleFromLayerDirs,
   buildDotAgentsBundle,
   buildExportableBundleAgentProfiles,
   buildExportableBundleKnowledgeNotes,
@@ -43,6 +44,7 @@ import {
   getBundleDependencyWarnings,
   getBundleExportableItemsAction,
   getBundleImportChangedItemCount,
+  getBundleExportableItemsFromLayerDirs,
   hasBundleImportConflicts,
   hasSelectedBundleComponent,
   importBundleAction,
@@ -53,6 +55,7 @@ import {
   isSupportedBundleFilePath,
   mergeBundleBuildItems,
   mergeExportableBundleItems,
+  normalizeBundleLayerDirs,
   parseDotAgentsBundle,
   parseDotAgentsBundleJson,
   parseExportBundleRequestBody,
@@ -945,36 +948,21 @@ describe("bundle API helpers", () => {
   })
 
   it("merges layered bundle items with later layers winning", () => {
-    expect(mergeBundleBuildItems([
-      {
-        agentProfiles: [{ id: "agent-1", name: "Base", enabled: true, connection: { type: "internal" } }],
-        mcpServers: [{ name: "server-1", command: "base" }],
-        skills: [{ id: "skill-1", name: "Base Skill" }],
-        repeatTasks: [{ id: "task-1", name: "Base Task", prompt: "base", intervalMinutes: 15, enabled: true }],
-        knowledgeNotes: [{
-          id: "note-1",
-          title: "Base Note",
-          context: "search-only",
-          body: "base",
-          tags: [],
-          updatedAt: 1,
-        }],
-      },
-      {
-        agentProfiles: [{ id: "agent-1", name: "Workspace", enabled: false, connection: { type: "internal" } }],
-        mcpServers: [{ name: "server-1", command: "workspace" }, { name: "server-2" }],
-        skills: [{ id: "skill-1", name: "Workspace Skill" }, { id: "skill-2", name: "Second Skill" }],
-        repeatTasks: [{ id: "task-1", name: "Workspace Task", prompt: "workspace", intervalMinutes: 30, enabled: false }],
-        knowledgeNotes: [{
-          id: "note-1",
-          title: "Workspace Note",
-          context: "auto",
-          body: "workspace",
-          tags: [],
-          updatedAt: 2,
-        }],
-      },
-    ])).toEqual({
+    const baseItems = {
+      agentProfiles: [{ id: "agent-1", name: "Base", enabled: true, connection: { type: "internal" } }],
+      mcpServers: [{ name: "server-1", command: "base" }],
+      skills: [{ id: "skill-1", name: "Base Skill" }],
+      repeatTasks: [{ id: "task-1", name: "Base Task", prompt: "base", intervalMinutes: 15, enabled: true }],
+      knowledgeNotes: [{
+        id: "note-1",
+        title: "Base Note",
+        context: "search-only",
+        body: "base",
+        tags: [],
+        updatedAt: 1,
+      }],
+    } satisfies Parameters<typeof mergeBundleBuildItems>[0][number]
+    const workspaceItems = {
       agentProfiles: [{ id: "agent-1", name: "Workspace", enabled: false, connection: { type: "internal" } }],
       mcpServers: [{ name: "server-1", command: "workspace" }, { name: "server-2" }],
       skills: [{ id: "skill-1", name: "Workspace Skill" }, { id: "skill-2", name: "Second Skill" }],
@@ -987,6 +975,136 @@ describe("bundle API helpers", () => {
         tags: [],
         updatedAt: 2,
       }],
+    } satisfies Parameters<typeof mergeBundleBuildItems>[0][number]
+    const mergedItems = {
+      agentProfiles: [{ id: "agent-1", name: "Workspace", enabled: false, connection: { type: "internal" } }],
+      mcpServers: [{ name: "server-1", command: "workspace" }, { name: "server-2" }],
+      skills: [{ id: "skill-1", name: "Workspace Skill" }, { id: "skill-2", name: "Second Skill" }],
+      repeatTasks: [{ id: "task-1", name: "Workspace Task", prompt: "workspace", intervalMinutes: 30, enabled: false }],
+      knowledgeNotes: [{
+        id: "note-1",
+        title: "Workspace Note",
+        context: "auto",
+        body: "workspace",
+        tags: [],
+        updatedAt: 2,
+      }],
+    } satisfies Parameters<typeof mergeBundleBuildItems>[0][number]
+
+    expect(mergeBundleBuildItems([
+      baseItems,
+      workspaceItems,
+    ])).toEqual(mergedItems)
+  })
+
+  it("normalizes layer dirs and builds bundles from shared layer adapters", async () => {
+    expect(normalizeBundleLayerDirs([" ./base ", " ./base ", " ./workspace "], (dir) => dir.trim())).toEqual([
+      "./base",
+      "./workspace",
+    ])
+    expect(() => getBundleExportableItemsFromLayerDirs([], () => exportableItems, {
+      emptyErrorMessage: "empty exportables",
+    })).toThrow("empty exportables")
+
+    const baseItems = {
+      agentProfiles: [{ id: "agent-1", name: "Base", enabled: true, referencedMcpServerNames: [], referencedSkillIds: [] }],
+      mcpServers: [{ name: "server-1" }],
+      skills: [{ id: "skill-1", name: "Base Skill" }],
+      repeatTasks: [],
+      knowledgeNotes: [],
+    }
+    const workspaceItems = {
+      agentProfiles: [{ id: "agent-1", name: "Workspace", enabled: false, referencedMcpServerNames: [], referencedSkillIds: [] }],
+      mcpServers: [{ name: "server-2" }],
+      skills: [{ id: "skill-2", name: "Workspace Skill" }],
+      repeatTasks: [],
+      knowledgeNotes: [],
+    }
+    expect(getBundleExportableItemsFromLayerDirs(
+      [" base ", " base ", " workspace "],
+      (dir) => dir === "base" ? baseItems : workspaceItems,
+      { resolveDir: (dir) => dir.trim() },
+    )).toEqual({
+      agentProfiles: [{ id: "agent-1", name: "Workspace", enabled: false, referencedMcpServerNames: [], referencedSkillIds: [] }],
+      mcpServers: [{ name: "server-1" }, { name: "server-2" }],
+      skills: [{ id: "skill-1", name: "Base Skill" }, { id: "skill-2", name: "Workspace Skill" }],
+      repeatTasks: [],
+      knowledgeNotes: [],
+    })
+
+    await expect(buildBundleFromLayerDirs([], async () => bundle, {}, {
+      emptyErrorMessage: "empty bundle export",
+    })).rejects.toThrow("empty bundle export")
+
+    const baseBuildItems = {
+      agentProfiles: [{ id: "agent-1", name: "Base", enabled: true, connection: { type: "internal" } }],
+      mcpServers: [{ name: "server-1", command: "base" }],
+      skills: [{ id: "skill-1", name: "Base Skill" }],
+      repeatTasks: [{ id: "task-1", name: "Base Task", prompt: "base", intervalMinutes: 15, enabled: true }],
+      knowledgeNotes: [{
+        id: "note-1",
+        title: "Base Note",
+        context: "search-only",
+        body: "base",
+        tags: [],
+        updatedAt: 1,
+      }],
+    } satisfies Parameters<typeof buildDotAgentsBundle>[1]
+    const workspaceBuildItems = {
+      agentProfiles: [{ id: "agent-1", name: "Workspace", enabled: false, connection: { type: "internal" } }],
+      mcpServers: [{ name: "server-1", command: "workspace" }, { name: "server-2" }],
+      skills: [{ id: "skill-1", name: "Workspace Skill" }, { id: "skill-2", name: "Second Skill" }],
+      repeatTasks: [{ id: "task-1", name: "Workspace Task", prompt: "workspace", intervalMinutes: 30, enabled: false }],
+      knowledgeNotes: [{
+        id: "note-1",
+        title: "Workspace Note",
+        context: "auto",
+        body: "workspace",
+        tags: [],
+        updatedAt: 2,
+      }],
+    } satisfies Parameters<typeof buildDotAgentsBundle>[1]
+    const baseBundle = buildDotAgentsBundle({ name: "Layered" }, baseBuildItems, {
+      createdAt: "2026-05-06T12:00:00.000Z",
+      exportedFrom: "test",
+    })
+    const workspaceBundle = buildDotAgentsBundle({ name: "Layered" }, workspaceBuildItems, {
+      createdAt: "2026-05-06T12:00:00.000Z",
+      exportedFrom: "test",
+    })
+    const mergedBuildItems = mergeBundleBuildItems([baseBuildItems, workspaceBuildItems])
+    const singleBundle = await buildBundleFromLayerDirs(
+      [" base "],
+      async () => baseBundle,
+      { name: "Single" },
+      { resolveDir: (dir) => dir.trim() },
+    )
+    expect(singleBundle).toBe(baseBundle)
+
+    const layeredBundle = await buildBundleFromLayerDirs(
+      [" base ", " workspace "],
+      async (dir) => dir.trim() === "base" ? baseBundle : workspaceBundle,
+      { name: "Layered" },
+      {
+        resolveDir: (dir) => dir.trim(),
+        buildOptions: { createdAt: "2026-05-06T12:00:00.000Z", exportedFrom: "shared-test" },
+      },
+    )
+    expect(layeredBundle).toEqual({
+      manifest: {
+        version: 1,
+        name: "Layered",
+        createdAt: "2026-05-06T12:00:00.000Z",
+        exportedFrom: "shared-test",
+        components: {
+          agentProfiles: 1,
+          mcpServers: 2,
+          skills: 2,
+          repeatTasks: 1,
+          knowledgeNotes: 1,
+        },
+      },
+      ...mergedBuildItems,
     })
   })
 
