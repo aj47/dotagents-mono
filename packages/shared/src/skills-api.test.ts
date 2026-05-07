@@ -12,6 +12,7 @@ import {
   buildSkillToggleResponse,
   createSkillAction,
   createSkillIdFromName,
+  createSkillRouteActions,
   deleteSkillAction,
   exportSkillToMarkdownAction,
   importSkillFromGitHubAction,
@@ -268,6 +269,20 @@ describe("skills API helpers", () => {
         enabledForProfile: true,
       },
     })
+
+    const routeActions = createSkillRouteActions({ service, diagnostics })
+    expect(routeActions.getSkills()).toEqual({
+      statusCode: 200,
+      body: buildSkillsResponse(skills, profile),
+    })
+    expect(routeActions.toggleProfileSkill("research")).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        skillId: "research",
+        enabledForProfile: true,
+      },
+    })
   })
 
   it("runs shared skill CRUD actions through service adapters", async () => {
@@ -369,6 +384,46 @@ describe("skills API helpers", () => {
       body: buildSkillMutationResponse(updated, profile),
     })
     expect(deleteSkillAction("research", { service, diagnostics })).toEqual({
+      statusCode: 200,
+      body: buildSkillDeleteResponse("research"),
+    })
+
+    const routeActions = createSkillRouteActions({ service, diagnostics })
+    expect(routeActions.getSkill("research")).toEqual({
+      statusCode: 200,
+      body: buildSkillResponse(skills[0], profile),
+    })
+    expect(routeActions.createSkill({
+      name: " Created ",
+      description: "New skill",
+      instructions: "Do it",
+    })).toEqual({
+      statusCode: 200,
+      body: buildSkillMutationResponse(created, profile),
+    })
+    expect(routeActions.importSkillFromMarkdown({
+      content: "---\nname: Created\n---\nDo it",
+    })).toEqual({
+      statusCode: 200,
+      body: buildSkillMutationResponse(created, profile),
+    })
+    await expect(routeActions.importSkillFromGitHub({
+      repoIdentifier: " owner/repo ",
+    })).resolves.toEqual({
+      statusCode: 200,
+      body: buildSkillImportGitHubResponse([created], profile),
+    })
+    expect(routeActions.exportSkillToMarkdown("research")).toEqual({
+      statusCode: 200,
+      body: buildSkillExportMarkdownResponse("research", "---\nname: Research\n---\nUse sources"),
+    })
+    expect(routeActions.updateSkill("research", {
+      description: "Updated description",
+    })).toEqual({
+      statusCode: 200,
+      body: buildSkillMutationResponse(updated, profile),
+    })
+    expect(routeActions.deleteSkill("research")).toEqual({
       statusCode: 200,
       body: buildSkillDeleteResponse("research"),
     })

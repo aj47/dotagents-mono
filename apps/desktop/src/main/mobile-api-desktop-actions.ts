@@ -73,15 +73,7 @@ import {
   type SettingsActionOptions,
 } from "@dotagents/shared/settings-api-client"
 import {
-  createSkillAction,
-  deleteSkillAction,
-  exportSkillToMarkdownAction,
-  getSkillAction,
-  getSkillsAction,
-  importSkillFromGitHubAction,
-  importSkillFromMarkdownAction,
-  toggleProfileSkillAction,
-  updateSkillAction,
+  createSkillRouteActions,
   type SkillActionOptions,
 } from "@dotagents/shared/skills-api"
 import {
@@ -522,6 +514,8 @@ const skillActionOptions: SkillActionOptions = {
   diagnostics: diagnosticsService,
 }
 
+const skillRouteActions = createSkillRouteActions(skillActionOptions)
+
 function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
@@ -635,42 +629,6 @@ function deleteMcpServerConfig(serverName: string | undefined) {
   return deleteMcpServerConfigAction(serverName, mcpServerConfigActionOptions)
 }
 
-function getSkills() {
-  return getSkillsAction(skillActionOptions)
-}
-
-function getSkill(skillId: string | undefined) {
-  return getSkillAction(skillId, skillActionOptions)
-}
-
-function createSkill(body: unknown) {
-  return createSkillAction(body, skillActionOptions)
-}
-
-function importSkillFromMarkdown(body: unknown) {
-  return importSkillFromMarkdownAction(body, skillActionOptions)
-}
-
-async function importSkillFromGitHub(body: unknown) {
-  return importSkillFromGitHubAction(body, skillActionOptions)
-}
-
-function exportSkillToMarkdown(skillId: string | undefined) {
-  return exportSkillToMarkdownAction(skillId, skillActionOptions)
-}
-
-function updateSkill(skillId: string | undefined, body: unknown) {
-  return updateSkillAction(skillId, body, skillActionOptions)
-}
-
-function deleteSkill(skillId: string | undefined) {
-  return deleteSkillAction(skillId, skillActionOptions)
-}
-
-function toggleProfileSkill(skillId: string | undefined) {
-  return toggleProfileSkillAction(skillId, skillActionOptions)
-}
-
 export const mobileApiDesktopActions: MobileApiRouteActions = {
   handleChatCompletionRequest,
   getModels,
@@ -701,15 +659,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   createConversation,
   updateConversation,
   triggerEmergencyStop,
-  getSkills,
-  getSkill,
-  createSkill,
-  importSkillFromMarkdown,
-  importSkillFromGitHub,
-  exportSkillToMarkdown,
-  updateSkill,
-  deleteSkill,
-  toggleProfileSkill,
+  ...skillRouteActions,
   ...knowledgeNoteRouteActions,
   ...agentProfileRouteActions,
   ...repeatTaskRouteActions,

@@ -68,6 +68,18 @@ export interface SkillActionOptions {
   diagnostics: SkillActionDiagnostics
 }
 
+export interface SkillRouteActions {
+  getSkills(): SkillActionResult
+  getSkill(id: string | undefined): SkillActionResult
+  createSkill(body: unknown): SkillActionResult
+  importSkillFromMarkdown(body: unknown): SkillActionResult
+  importSkillFromGitHub(body: unknown): Promise<SkillActionResult>
+  exportSkillToMarkdown(id: string | undefined): SkillActionResult
+  updateSkill(id: string | undefined, body: unknown): SkillActionResult
+  deleteSkill(id: string | undefined): SkillActionResult
+  toggleProfileSkill(id: string | undefined): SkillActionResult
+}
+
 export type GitHubSkillIdentifier = {
   owner: string
   repo: string
@@ -739,5 +751,19 @@ export function toggleProfileSkillAction(
   } catch (caughtError) {
     options.diagnostics.logError("skill-actions", "Failed to toggle skill", caughtError)
     return skillActionError(500, getUnknownErrorMessage(caughtError, "Failed to toggle skill"))
+  }
+}
+
+export function createSkillRouteActions(options: SkillActionOptions): SkillRouteActions {
+  return {
+    getSkills: () => getSkillsAction(options),
+    getSkill: (id) => getSkillAction(id, options),
+    createSkill: (body) => createSkillAction(body, options),
+    importSkillFromMarkdown: (body) => importSkillFromMarkdownAction(body, options),
+    importSkillFromGitHub: (body) => importSkillFromGitHubAction(body, options),
+    exportSkillToMarkdown: (id) => exportSkillToMarkdownAction(id, options),
+    updateSkill: (id, body) => updateSkillAction(id, body, options),
+    deleteSkill: (id) => deleteSkillAction(id, options),
+    toggleProfileSkill: (id) => toggleProfileSkillAction(id, options),
   }
 }
