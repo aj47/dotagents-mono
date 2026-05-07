@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildAgentSessionCandidateOptions,
   buildAgentSessionCandidatesResponse,
+  createAgentSessionCandidateService,
   createAgentSessionCandidateRouteActions,
   formatAgentSessionCandidateLabel,
   formatAgentSessionCandidateTime,
@@ -45,6 +46,32 @@ describe("agent session candidates", () => {
       activeSessions: active,
       completedSessions: completed,
     })
+  })
+
+  it("creates session candidate services from session tracker adapters", () => {
+    const active = [{
+      id: "active-1",
+      status: "active",
+      startTime: 10,
+    }]
+    const completed = [{
+      id: "done-1",
+      status: "completed",
+      startTime: 1,
+      endTime: 5,
+    }]
+    const requestedLimits: number[] = []
+    const service = createAgentSessionCandidateService({
+      getActiveSessions: () => active,
+      getRecentSessions: (limit) => {
+        requestedLimits.push(limit)
+        return completed
+      },
+    })
+
+    expect(service.getActiveSessions()).toBe(active)
+    expect(service.getRecentSessions(8)).toBe(completed)
+    expect(requestedLimits).toEqual([8])
   })
 
   it("formats and merges active, recent, and selected session candidates", () => {

@@ -5,6 +5,7 @@ import path from "node:path"
 import { createMobileApiRouteActions } from "@dotagents/shared/remote-server-route-contracts"
 import { getAgentsLayerPaths, type LoopConfig } from "@dotagents/core"
 import {
+  createAgentSessionCandidateService,
   createAgentSessionCandidateRouteActions,
   type AgentSessionCandidateActionOptions,
 } from "@dotagents/shared/agent-session-candidates"
@@ -141,10 +142,7 @@ const chatRouteActionBundle = createChatRouteActionBundle({
 })
 
 const agentSessionCandidateActionOptions: AgentSessionCandidateActionOptions = {
-  service: {
-    getActiveSessions: () => agentSessionTracker.getActiveSessions(),
-    getRecentSessions: (limit) => agentSessionTracker.getRecentSessions(limit),
-  },
+  service: createAgentSessionCandidateService(agentSessionTracker),
   diagnostics: diagnosticsService,
 }
 

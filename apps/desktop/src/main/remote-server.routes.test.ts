@@ -1073,12 +1073,16 @@ describe("remote-server route registration", () => {
       "const agentSessionCandidateRouteActions = createAgentSessionCandidateRouteActions(agentSessionCandidateActionOptions)",
     )
     expect(mobileApiDesktopActionsSource).toContain("agentSessionCandidates: agentSessionCandidateRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("service: createAgentSessionCandidateService(agentSessionTracker)")
     expect(mobileApiDesktopActionsSource).not.toContain(
       "getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)",
     )
-    expect(mobileApiDesktopActionsSource).toContain("agentSessionTracker.getActiveSessions()")
-    expect(mobileApiDesktopActionsSource).toContain("agentSessionTracker.getRecentSessions(limit)")
+    expect(mobileApiDesktopActionsSource).not.toContain("agentSessionTracker.getActiveSessions()")
+    expect(mobileApiDesktopActionsSource).not.toContain("agentSessionTracker.getRecentSessions(limit)")
     expect(sharedAgentSessionCandidatesSource).toContain("export interface AgentSessionCandidateRouteActions")
+    expect(sharedAgentSessionCandidatesSource).toContain("export function createAgentSessionCandidateService")
+    expect(sharedAgentSessionCandidatesSource).toContain("getActiveSessions: () => tracker.getActiveSessions()")
+    expect(sharedAgentSessionCandidatesSource).toContain("getRecentSessions: (limit) => tracker.getRecentSessions(limit)")
     expect(sharedAgentSessionCandidatesSource).toContain("export function getAgentSessionCandidatesAction")
     expect(sharedAgentSessionCandidatesSource).toContain("export function createAgentSessionCandidateRouteActions")
     expect(sharedAgentSessionCandidatesSource).toContain(

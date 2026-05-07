@@ -39,6 +39,20 @@ export interface AgentSessionCandidateService {
   getRecentSessions(limit: number): AgentSessionCandidateLike[]
 }
 
+export interface AgentSessionCandidateTrackerLike {
+  getActiveSessions(): AgentSessionCandidateLike[]
+  getRecentSessions(limit: number): AgentSessionCandidateLike[]
+}
+
+export function createAgentSessionCandidateService(
+  tracker: AgentSessionCandidateTrackerLike,
+): AgentSessionCandidateService {
+  return {
+    getActiveSessions: () => tracker.getActiveSessions(),
+    getRecentSessions: (limit) => tracker.getRecentSessions(limit),
+  }
+}
+
 export interface AgentSessionCandidateActionOptions {
   service: AgentSessionCandidateService
   diagnostics: {
