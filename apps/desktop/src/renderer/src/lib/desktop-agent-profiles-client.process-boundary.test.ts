@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest"
 
 const clientSource = readFileSync(new URL("./desktop-agent-profiles-client.ts", import.meta.url), "utf8")
 const settingsAgentsSource = readFileSync(new URL("../pages/settings-agents.tsx", import.meta.url), "utf8")
+const applySelectedAgentSource = readFileSync(new URL("./apply-selected-agent.ts", import.meta.url), "utf8")
+const agentSelectorSource = readFileSync(new URL("../components/agent-selector.tsx", import.meta.url), "utf8")
+const panelSource = readFileSync(new URL("../pages/panel.tsx", import.meta.url), "utf8")
+const settingsDiscordSource = readFileSync(new URL("../pages/settings-discord.tsx", import.meta.url), "utf8")
 
 describe("desktop agent profiles renderer client", () => {
   it("centralizes desktop agent profile IPC channels behind shared profile types", () => {
@@ -14,6 +18,7 @@ describe("desktop agent profiles renderer client", () => {
     expect(clientSource).toContain("tipcClient.createAgentProfile({ profile: payload })")
     expect(clientSource).toContain("tipcClient.updateAgentProfile({ id, updates })")
     expect(clientSource).toContain("tipcClient.deleteAgentProfile({ id })")
+    expect(clientSource).toContain("tipcClient.setCurrentAgentProfile({ id })")
     expect(clientSource).toContain("tipcClient.reloadAgentProfiles()")
     expect(clientSource).toContain("tipcClient.verifyExternalAgentCommand(request)")
     expect(clientSource).toContain("tipcClient.getDefaultSystemPrompt()")
@@ -43,5 +48,18 @@ describe("desktop agent profiles renderer client", () => {
     expect(settingsAgentsSource).not.toContain("tipcClient.getMcpServerStatus(")
     expect(settingsAgentsSource).not.toContain("tipcClient.getMcpDetailedToolList(")
     expect(settingsAgentsSource).not.toContain("tipcClient.getSkills(")
+  })
+
+  it("keeps renderer agent profile selection consumers off direct profile IPC calls", () => {
+    expect(applySelectedAgentSource).toContain("desktopAgentProfilesClient.getAgentProfiles()")
+    expect(applySelectedAgentSource).toContain("desktopAgentProfilesClient.setCurrentAgentProfile(selection.agentId)")
+    expect(agentSelectorSource).toContain("desktopAgentProfilesClient.getAgentProfiles()")
+    expect(panelSource).toContain("desktopAgentProfilesClient.getAgentProfiles()")
+    expect(settingsDiscordSource).toContain("desktopAgentProfilesClient.getAgentProfiles()")
+    expect(applySelectedAgentSource).not.toContain("tipcClient.getAgentProfiles(")
+    expect(applySelectedAgentSource).not.toContain("tipcClient.setCurrentAgentProfile(")
+    expect(agentSelectorSource).not.toContain("tipcClient.getAgentProfiles(")
+    expect(panelSource).not.toContain("tipcClient.getAgentProfiles(")
+    expect(settingsDiscordSource).not.toContain("tipcClient.getAgentProfiles(")
   })
 })

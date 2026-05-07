@@ -7,7 +7,11 @@ const { getAgentProfiles, setCurrentAgentProfile, toastError } = vi.hoisted(() =
 }))
 
 vi.mock("./tipc-client", () => ({
-  tipcClient: {
+  tipcClient: {},
+}))
+
+vi.mock("./desktop-agent-profiles-client", () => ({
+  desktopAgentProfilesClient: {
     getAgentProfiles,
     setCurrentAgentProfile,
   },
@@ -41,7 +45,7 @@ describe("applySelectedAgentToNextSession", () => {
     })
 
     expect(result).toBe(true)
-    expect(setCurrentAgentProfile).toHaveBeenCalledWith({ id: "agent-2" })
+    expect(setCurrentAgentProfile).toHaveBeenCalledWith("agent-2")
     expect(toastError).not.toHaveBeenCalled()
   })
 
@@ -57,7 +61,7 @@ describe("applySelectedAgentToNextSession", () => {
     })
 
     expect(result).toBe(true)
-    expect(setCurrentAgentProfile).toHaveBeenCalledWith({ id: "agent-1" })
+    expect(setCurrentAgentProfile).toHaveBeenCalledWith("agent-1")
   })
 
   it("clears stale selections and blocks the session start instead of silently switching agents", async () => {
@@ -92,7 +96,7 @@ describe("applySelectedAgentToNextSession", () => {
 
     expect(result).toBe(false)
     expect(getAgentProfiles).not.toHaveBeenCalled()
-    expect(setCurrentAgentProfile).toHaveBeenCalledWith({ id: "agent-1" })
+    expect(setCurrentAgentProfile).toHaveBeenCalledWith("agent-1")
     expect(onError).toHaveBeenCalledTimes(1)
     expect(toastError).toHaveBeenCalledWith("Failed to apply selected agent")
   })
@@ -112,7 +116,7 @@ describe("applySelectedAgentToNextSession", () => {
 
     expect(result).toBe(true)
     expect(getAgentProfiles).toHaveBeenCalledOnce()
-    expect(setCurrentAgentProfile).toHaveBeenCalledWith({ id: "agent-2" })
+    expect(setCurrentAgentProfile).toHaveBeenCalledWith("agent-2")
     expect(setSelectedAgentId).not.toHaveBeenCalled()
     expect(toastError).not.toHaveBeenCalled()
   })

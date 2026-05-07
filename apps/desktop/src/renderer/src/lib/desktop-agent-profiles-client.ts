@@ -37,6 +37,10 @@ export interface DesktopAgentProfilesReloadResult {
   success: boolean
 }
 
+export interface DesktopSetCurrentAgentProfileResult {
+  success: boolean
+}
+
 export const desktopAgentProfilesClient = {
   getAgentProfiles(): Promise<AgentProfile[]> {
     return tipcClient.getAgentProfiles() as Promise<AgentProfile[]>
@@ -60,6 +64,10 @@ export const desktopAgentProfilesClient = {
 
   deleteAgentProfile(id: string): Promise<boolean> {
     return tipcClient.deleteAgentProfile({ id }) as Promise<boolean>
+  },
+
+  setCurrentAgentProfile(id: string): Promise<DesktopSetCurrentAgentProfileResult> {
+    return tipcClient.setCurrentAgentProfile({ id }) as Promise<DesktopSetCurrentAgentProfileResult>
   },
 
   reloadAgentProfiles(): Promise<DesktopAgentProfilesReloadResult> {

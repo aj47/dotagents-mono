@@ -6,7 +6,7 @@
 import React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
 import { Bot, Check, Edit2, Plus } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
 import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
@@ -85,7 +85,7 @@ export function AgentSelector({ selectedAgentId, onSelectAgent }: AgentSelectorP
   const navigate = useNavigate()
   const { data: agents = [] } = useQuery<AgentProfile[]>({
     queryKey: ["agentProfilesSelector"],
-    queryFn: () => tipcClient.getAgentProfiles(),
+    queryFn: () => desktopAgentProfilesClient.getAgentProfiles(),
   })
 
   const enabledAgents = getEnabledAgentProfiles(agents)

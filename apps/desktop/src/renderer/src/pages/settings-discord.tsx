@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
+import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { formatConfigListInput, parseConfigListInput } from "@dotagents/shared/config-list-input"
 import {
@@ -101,7 +102,7 @@ export function Component() {
       const [nextStatus, nextLogs, nextProfiles] = await Promise.all([
         tipcClient.discordGetStatus(),
         tipcClient.discordGetLogs(),
-        tipcClient.getAgentProfiles(),
+        desktopAgentProfilesClient.getAgentProfiles(),
       ])
       setStatus(nextStatus as DiscordStatus)
       setLogs((nextLogs as DiscordLogEntry[]).slice().reverse())

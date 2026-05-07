@@ -11,6 +11,7 @@ import { TextInputPanel, TextInputPanelRef } from "@renderer/components/text-inp
 import { PanelResizeWrapper } from "@renderer/components/panel-resize-wrapper"
 import { useAgentStore, useAgentProgress, useConversationStore } from "@renderer/stores"
 import { useConfigQuery, useConversationQuery, useCreateConversationMutation } from "@renderer/lib/queries"
+import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
 import { PanelDragBar } from "@renderer/components/panel-drag-bar"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
 import { useTheme } from "@renderer/contexts/theme-context"
@@ -266,7 +267,7 @@ export function Component() {
   const [selectedAgentId, setSelectedAgentId] = useSelectedAgentId()
   const { data: agents = [] } = useQuery<AgentProfile[]>({
     queryKey: ["agentProfilesPanel"],
-    queryFn: () => tipcClient.getAgentProfiles(),
+    queryFn: () => desktopAgentProfilesClient.getAgentProfiles(),
   })
   const selectedAgentName = useMemo(() => {
     if (!selectedAgentId) return null

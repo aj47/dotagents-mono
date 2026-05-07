@@ -5,7 +5,7 @@ import {
 
 import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
 
-import { tipcClient } from "./tipc-client"
+import { desktopAgentProfilesClient } from "./desktop-agent-profiles-client"
 
 interface ApplySelectedAgentToNextSessionOptions {
   selectedAgentId: string | null
@@ -25,7 +25,7 @@ export async function applySelectedAgentToNextSession({
   try {
     const agents = agentProfiles && agentProfiles.length > 0
       ? agentProfiles
-      : ((await tipcClient.getAgentProfiles()) as AgentProfile[])
+      : await desktopAgentProfilesClient.getAgentProfiles()
     const selection = resolveAgentProfileIdForNextSession(
       agents,
       selectedAgentId,
@@ -41,7 +41,7 @@ export async function applySelectedAgentToNextSession({
 
     if (selection.status === "no-agent") return true
 
-    const result = await tipcClient.setCurrentAgentProfile({ id: selection.agentId })
+    const result = await desktopAgentProfilesClient.setCurrentAgentProfile(selection.agentId)
     if (!result?.success) {
       throw new Error("setCurrentAgentProfile returned success=false")
     }
