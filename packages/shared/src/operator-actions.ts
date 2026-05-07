@@ -930,6 +930,20 @@ export interface OperatorWhatsAppIntegrationSummaryActionService {
   executeStatusTool(): Promise<OperatorWhatsAppActionToolResultLike>
 }
 
+export type OperatorWhatsAppIntegrationSummaryActionServiceOptions =
+  OperatorWhatsAppIntegrationSummaryActionService
+
+export function createOperatorWhatsAppIntegrationSummaryActionService(
+  options: OperatorWhatsAppIntegrationSummaryActionServiceOptions,
+): OperatorWhatsAppIntegrationSummaryActionService {
+  return {
+    getConfig: () => options.getConfig(),
+    getServerStatus: () => options.getServerStatus(),
+    getServerLogs: (serverName) => options.getServerLogs(serverName),
+    executeStatusTool: () => options.executeStatusTool(),
+  }
+}
+
 export interface OperatorWhatsAppIntegrationSummaryActionOptions {
   serverName: string
   diagnostics: OperatorWhatsAppIntegrationSummaryActionDiagnostics
@@ -941,6 +955,20 @@ export interface OperatorIntegrationsSummaryActionService {
   getDiscordLogs(): OperatorLogSummaryEntryLike[]
   getWhatsAppSummary(): Promise<OperatorWhatsAppIntegrationSummary>
   getPushNotificationTokens(): OperatorPushTokenLike[]
+}
+
+export type OperatorIntegrationsSummaryActionServiceOptions =
+  OperatorIntegrationsSummaryActionService
+
+export function createOperatorIntegrationsSummaryActionService(
+  options: OperatorIntegrationsSummaryActionServiceOptions,
+): OperatorIntegrationsSummaryActionService {
+  return {
+    getDiscordStatus: () => options.getDiscordStatus(),
+    getDiscordLogs: () => options.getDiscordLogs(),
+    getWhatsAppSummary: () => options.getWhatsAppSummary(),
+    getPushNotificationTokens: () => options.getPushNotificationTokens(),
+  }
 }
 
 export interface OperatorIntegrationsSummaryActionOptions {

@@ -83,6 +83,7 @@ import {
   createOperatorAuditRecorder,
   createOperatorAuditRouteActionBundle,
   createOperatorAuditRouteActions,
+  createOperatorIntegrationsSummaryActionService,
   createOperatorIntegrationActionService,
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueActionService,
@@ -95,6 +96,7 @@ import {
   createOperatorTunnelRouteActions,
   createOperatorUpdaterActionService,
   createOperatorUpdaterRouteActions,
+  createOperatorWhatsAppIntegrationSummaryActionService,
   getConfiguredCloudflareTunnelStartPlan,
   getOperatorAuditAction,
   getOperatorDiscordAction,
@@ -1877,7 +1879,7 @@ describe("operator action API helpers", () => {
         logWarning: (_source: string, message: string) => { warnings.push(message) },
         getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error),
       },
-      service: {
+      service: createOperatorWhatsAppIntegrationSummaryActionService({
         getConfig: () => ({
           whatsappEnabled: true,
           whatsappAutoReply: true,
@@ -1899,7 +1901,7 @@ describe("operator action API helpers", () => {
           if (shouldThrow) throw new Error("status failed")
           return statusToolResult
         },
-      },
+      }),
     }
 
     expect(await getOperatorWhatsAppIntegrationSummaryAction(options)).toMatchObject({
@@ -1958,7 +1960,7 @@ describe("operator action API helpers", () => {
     })
 
     await expect(buildOperatorIntegrationsSummaryAction({
-      service: {
+      service: createOperatorIntegrationsSummaryActionService({
         getDiscordStatus: () => ({
           available: true,
           enabled: true,
@@ -1976,7 +1978,7 @@ describe("operator action API helpers", () => {
           { platform: "android" },
           { platform: "ios" },
         ],
-      },
+      }),
     })).resolves.toEqual({
       discord: expect.objectContaining({
         available: true,

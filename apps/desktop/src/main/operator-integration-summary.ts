@@ -4,6 +4,8 @@ import type {
 } from "@dotagents/shared/api-types"
 import {
   buildOperatorIntegrationsSummaryAction,
+  createOperatorIntegrationsSummaryActionService,
+  createOperatorWhatsAppIntegrationSummaryActionService,
   getOperatorWhatsAppIntegrationSummaryAction,
 } from "@dotagents/shared/operator-actions"
 import { configStore } from "./config"
@@ -19,7 +21,7 @@ export async function getOperatorWhatsAppIntegrationSummary(): Promise<OperatorW
       logWarning: (source, message) => diagnosticsService.logWarning(source, message),
       getErrorMessage,
     },
-    service: {
+    service: createOperatorWhatsAppIntegrationSummaryActionService({
       getConfig: () => configStore.get(),
       getServerStatus: () => mcpService.getServerStatus(),
       getServerLogs: (serverName) => mcpService.getServerLogs(serverName),
@@ -28,17 +30,17 @@ export async function getOperatorWhatsAppIntegrationSummary(): Promise<OperatorW
         undefined,
         true,
       ),
-    },
+    }),
   })
 }
 
 export async function buildOperatorIntegrationsSummary(): Promise<OperatorIntegrationsSummary> {
   return buildOperatorIntegrationsSummaryAction({
-    service: {
+    service: createOperatorIntegrationsSummaryActionService({
       getDiscordStatus: () => discordService.getStatus(),
       getDiscordLogs: () => discordService.getLogs(),
       getWhatsAppSummary: getOperatorWhatsAppIntegrationSummary,
       getPushNotificationTokens: () => configStore.get().pushNotificationTokens ?? [],
-    },
+    }),
   })
 }
