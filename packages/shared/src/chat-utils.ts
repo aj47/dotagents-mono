@@ -219,6 +219,26 @@ export interface ChatCompletionActionLogger {
   log(message?: unknown, ...optionalParams: unknown[]): void;
 }
 
+export type ChatTranscriptHistoryItem = {
+  id: string;
+  createdAt: number;
+  duration: number;
+  transcript: string;
+};
+
+export interface ChatTranscriptHistoryStore {
+  ensureStorage(): void;
+  readHistoryText(): string;
+  writeHistoryText(historyText: string): void;
+}
+
+export interface ChatTranscriptHistoryRecorderOptions {
+  store: ChatTranscriptHistoryStore;
+  diagnostics: Pick<ChatCompletionActionDiagnostics, 'logWarning'>;
+  now?: () => number;
+  createId?: () => string;
+}
+
 export interface ChatCompletionActionOptions {
   diagnostics: ChatCompletionActionDiagnostics;
   getActiveModelConfig(): ActiveModelConfigLike;
@@ -675,6 +695,52 @@ export function createModelRouteActions(options: ModelActionOptions): ModelRoute
     getModels: () => getModelsAction(options),
     getProviderModels: (providerId) => getProviderModelsAction(providerId, options),
   };
+}
+
+function readChatTranscriptHistory(store: ChatTranscriptHistoryStore): ChatTranscriptHistoryItem[] {
+  try {
+    const parsed = JSON.parse(store.readHistoryText());
+    return Array.isArray(parsed) ? parsed as ChatTranscriptHistoryItem[] : [];
+  } catch {
+    return [];
+  }
+}
+
+export function buildChatTranscriptHistoryItem(
+  transcript: string,
+  options: Pick<ChatTranscriptHistoryRecorderOptions, 'now' | 'createId'> = {},
+): ChatTranscriptHistoryItem {
+  const now = options.now ?? Date.now;
+  return {
+    id: options.createId ? options.createId() : now().toString(),
+    createdAt: now(),
+    duration: 0,
+    transcript,
+  };
+}
+
+export function recordChatTranscriptHistory(
+  transcript: string,
+  options: ChatTranscriptHistoryRecorderOptions,
+): void {
+  try {
+    options.store.ensureStorage();
+    const history = readChatTranscriptHistory(options.store);
+    history.push(buildChatTranscriptHistoryItem(transcript, options));
+    options.store.writeHistoryText(JSON.stringify(history));
+  } catch (caughtError) {
+    options.diagnostics.logWarning(
+      'remote-server',
+      'Failed to record history item',
+      caughtError,
+    );
+  }
+}
+
+export function createChatTranscriptHistoryRecorder(
+  options: ChatTranscriptHistoryRecorderOptions,
+): (transcript: string) => void {
+  return (transcript) => recordChatTranscriptHistory(transcript, options);
 }
 
 export function buildChatCompletionProgressSsePayload(update: AgentProgressUpdate): DotAgentsChatCompletionProgressSsePayload {

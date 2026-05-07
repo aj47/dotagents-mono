@@ -22,6 +22,7 @@ import {
   type KnowledgeNoteActionOptions,
 } from "@dotagents/shared/knowledge-note-form"
 import {
+  createChatTranscriptHistoryRecorder,
   createChatCompletionRouteActions,
   createModelRouteActions,
   type ChatCompletionActionOptions,
@@ -120,33 +121,15 @@ const modelActionOptions: ModelActionOptions = {
 
 const modelRouteActions = createModelRouteActions(modelActionOptions)
 
-function recordHistory(transcript: string) {
-  try {
-    fs.mkdirSync(recordingsFolder, { recursive: true })
-    const historyPath = path.join(recordingsFolder, "history.json")
-    let history: Array<{ id: string; createdAt: number; duration: number; transcript: string }>
-    try {
-      history = JSON.parse(fs.readFileSync(historyPath, "utf8"))
-    } catch {
-      history = []
-    }
-
-    const item = {
-      id: Date.now().toString(),
-      createdAt: Date.now(),
-      duration: 0,
-      transcript,
-    }
-    history.push(item)
-    fs.writeFileSync(historyPath, JSON.stringify(history))
-  } catch (caughtError) {
-    diagnosticsService.logWarning(
-      "remote-server",
-      "Failed to record history item",
-      caughtError,
-    )
-  }
-}
+const historyPath = path.join(recordingsFolder, "history.json")
+const recordHistory = createChatTranscriptHistoryRecorder({
+  store: {
+    ensureStorage: () => fs.mkdirSync(recordingsFolder, { recursive: true }),
+    readHistoryText: () => fs.readFileSync(historyPath, "utf8"),
+    writeHistoryText: (historyText) => fs.writeFileSync(historyPath, historyText),
+  },
+  diagnostics: diagnosticsService,
+})
 
 const chatCompletionActionOptions: ChatCompletionActionOptions = {
   diagnostics: diagnosticsService,

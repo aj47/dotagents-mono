@@ -17,6 +17,8 @@ import {
   buildChatCompletionPushNotificationPlan,
   buildChatCompletionRequestBody,
   buildChatCompletionSseHeaders,
+  buildChatTranscriptHistoryItem,
+  createChatTranscriptHistoryRecorder,
   buildDotAgentsChatCompletionResponse,
   buildOpenAIChatCompletionResponse,
   buildOpenAICompatibleModelsResponse,
@@ -37,6 +39,7 @@ import {
   normalizeUserFacingResponseContent,
   parseChatCompletionRequestBody,
   parseChatCompletionSseEvent,
+  recordChatTranscriptHistory,
   resolveMessageTimestamps,
   resolveLatestUserFacingResponse,
   sanitizeMessagesForRequest,
@@ -657,6 +660,116 @@ describe('buildChatCompletionSseHeaders', () => {
       .toBe('https://first.example')
     expect(normalizeServerSentEventOrigin([])).toBe('*')
     expect(normalizeServerSentEventOrigin(undefined)).toBe('*')
+  })
+})
+
+describe('chat transcript history recording', () => {
+  function createHistoryStore(initialText = '[]') {
+    let historyText = initialText
+    const calls: string[] = []
+    return {
+      calls,
+      store: {
+        ensureStorage: vi.fn(() => { calls.push('ensure') }),
+        readHistoryText: vi.fn(() => {
+          calls.push('read')
+          return historyText
+        }),
+        writeHistoryText: vi.fn((nextHistoryText: string) => {
+          calls.push(`write:${nextHistoryText}`)
+          historyText = nextHistoryText
+        }),
+      },
+      getHistoryText: () => historyText,
+    }
+  }
+
+  it('builds deterministic transcript history items', () => {
+    const now = vi.fn()
+      .mockReturnValueOnce(123)
+      .mockReturnValueOnce(456)
+
+    expect(buildChatTranscriptHistoryItem('Hello', { now })).toEqual({
+      id: '123',
+      createdAt: 456,
+      duration: 0,
+      transcript: 'Hello',
+    })
+  })
+
+  it('appends transcript history through an injected text store', () => {
+    const history = createHistoryStore(JSON.stringify([{
+      id: 'existing',
+      createdAt: 1,
+      duration: 0,
+      transcript: 'Earlier',
+    }]))
+    const diagnostics = { logWarning: vi.fn() }
+
+    recordChatTranscriptHistory('Reply', {
+      store: history.store,
+      diagnostics,
+      createId: () => 'item-1',
+      now: () => 200,
+    })
+
+    expect(JSON.parse(history.getHistoryText())).toEqual([{
+      id: 'existing',
+      createdAt: 1,
+      duration: 0,
+      transcript: 'Earlier',
+    }, {
+      id: 'item-1',
+      createdAt: 200,
+      duration: 0,
+      transcript: 'Reply',
+    }])
+    expect(history.calls).toEqual([
+      'ensure',
+      'read',
+      'write:[{"id":"existing","createdAt":1,"duration":0,"transcript":"Earlier"},{"id":"item-1","createdAt":200,"duration":0,"transcript":"Reply"}]',
+    ])
+    expect(diagnostics.logWarning).not.toHaveBeenCalled()
+  })
+
+  it('defaults invalid or unreadable transcript history to an empty list', () => {
+    const history = createHistoryStore('{bad')
+
+    createChatTranscriptHistoryRecorder({
+      store: history.store,
+      diagnostics: { logWarning: vi.fn() },
+      createId: () => 'new-item',
+      now: () => 300,
+    })('Fresh reply')
+
+    expect(JSON.parse(history.getHistoryText())).toEqual([{
+      id: 'new-item',
+      createdAt: 300,
+      duration: 0,
+      transcript: 'Fresh reply',
+    }])
+  })
+
+  it('logs transcript history write failures without throwing', () => {
+    const diagnostics = { logWarning: vi.fn() }
+    const writeError = new Error('disk full')
+
+    expect(() => recordChatTranscriptHistory('Reply', {
+      store: {
+        ensureStorage: vi.fn(),
+        readHistoryText: vi.fn(() => '[]'),
+        writeHistoryText: vi.fn(() => { throw writeError }),
+      },
+      diagnostics,
+      createId: () => 'item-1',
+      now: () => 200,
+    })).not.toThrow()
+
+    expect(diagnostics.logWarning).toHaveBeenCalledWith(
+      'remote-server',
+      'Failed to record history item',
+      writeError,
+    )
   })
 })
 
