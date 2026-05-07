@@ -12,7 +12,7 @@ import {
 } from "@renderer/components/ui/select"
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopRemoteServerClient } from "@renderer/lib/desktop-remote-server-client"
 import type { Config } from "@shared/types"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
@@ -89,46 +89,46 @@ export function RemoteServerSettingsGroups({
   // Cloudflare Tunnel queries and mutations
   const cloudflaredInstalledQuery = useQuery({
     queryKey: ["cloudflared-installed"],
-    queryFn: () => tipcClient.checkCloudflaredInstalled(),
+    queryFn: () => desktopRemoteServerClient.checkCloudflaredInstalled(),
     staleTime: 60000, // Check once per minute
   })
 
   const cloudflaredLoggedInQuery = useQuery({
     queryKey: ["cloudflared-logged-in"],
-    queryFn: () => tipcClient.checkCloudflaredLoggedIn(),
+    queryFn: () => desktopRemoteServerClient.checkCloudflaredLoggedIn(),
     staleTime: 60000, // Check once per minute
     enabled: cfg?.remoteServerEnabled && cfg?.cloudflareTunnelMode === "named",
   })
 
   const tunnelListQuery = useQuery({
     queryKey: ["cloudflare-tunnel-list"],
-    queryFn: () => tipcClient.listCloudflareTunnels(),
+    queryFn: () => desktopRemoteServerClient.listCloudflareTunnels(),
     staleTime: 60000, // Refresh once per minute
     enabled: cfg?.remoteServerEnabled && cfg?.cloudflareTunnelMode === "named" && (cloudflaredLoggedInQuery.data ?? false),
   })
 
   const tunnelStatusQuery = useQuery({
     queryKey: ["cloudflare-tunnel-status"],
-    queryFn: () => tipcClient.getCloudflareTunnelStatus(),
+    queryFn: () => desktopRemoteServerClient.getCloudflareTunnelStatus(),
     refetchInterval: 2000, // Poll every 2 seconds when tunnel is active
     enabled: cfg?.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED,
   })
 
   const remoteServerStatusQuery = useQuery({
     queryKey: ["remote-server-status"],
-    queryFn: () => tipcClient.getRemoteServerStatus(),
+    queryFn: () => desktopRemoteServerClient.getRemoteServerStatus(),
     refetchInterval: 2000,
     enabled: cfg?.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED,
   })
 
   const remoteServerPairingApiKeyQuery = useQuery({
     queryKey: ["remote-server-pairing-api-key", cfg?.remoteServerApiKey, cfg?.streamerModeEnabled],
-    queryFn: () => tipcClient.getRemoteServerPairingApiKey(),
+    queryFn: () => desktopRemoteServerClient.getPairingApiKey(),
     enabled: !!cfg?.remoteServerApiKey && !(cfg?.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED),
   })
 
   const startTunnelMutation = useMutation({
-    mutationFn: () => tipcClient.startCloudflareTunnel(),
+    mutationFn: () => desktopRemoteServerClient.startCloudflareTunnel(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cloudflare-tunnel-status"] })
     },
@@ -136,14 +136,14 @@ export function RemoteServerSettingsGroups({
 
   const startNamedTunnelMutation = useMutation({
     mutationFn: (params: { tunnelId: string; hostname: string; credentialsPath?: string }) =>
-      tipcClient.startNamedCloudflareTunnel(params),
+      desktopRemoteServerClient.startNamedCloudflareTunnel(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cloudflare-tunnel-status"] })
     },
   })
 
   const stopTunnelMutation = useMutation({
-    mutationFn: () => tipcClient.stopCloudflareTunnel(),
+    mutationFn: () => desktopRemoteServerClient.stopCloudflareTunnel(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cloudflare-tunnel-status"] })
     },
@@ -437,7 +437,7 @@ export function RemoteServerSettingsGroups({
                             title={streamerMode ? "Disabled in Streamer Mode" : "Print QR code to terminal (useful for SSH/headless access)"}
                             onClick={() => {
                               if (streamerMode) return
-                              tipcClient.printRemoteServerQRCode()
+                              void desktopRemoteServerClient.printQRCodeToTerminal()
                             }}
                           >
                             Print to Terminal

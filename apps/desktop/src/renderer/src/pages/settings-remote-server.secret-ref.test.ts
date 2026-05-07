@@ -32,7 +32,7 @@ describe("remote server settings secret references", () => {
   it("uses the explicit pairing API key endpoint for copy and QR payloads", () => {
     const source = getRemoteServerSettingsSource()
 
-    expect(source).toContain("tipcClient.getRemoteServerPairingApiKey()")
+    expect(source).toContain("desktopRemoteServerClient.getPairingApiKey()")
     expect(source).toContain("cfg.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED")
     expect(source).toContain("!(cfg?.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED)")
     expect(source).toContain('value={cfg.remoteServerApiKey ? "••••••••" : ""}')

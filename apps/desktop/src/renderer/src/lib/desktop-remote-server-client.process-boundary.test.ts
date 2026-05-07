@@ -1,0 +1,47 @@
+import { readFileSync } from "node:fs"
+import { describe, expect, it } from "vitest"
+
+const clientSource = readFileSync(new URL("./desktop-remote-server-client.ts", import.meta.url), "utf8")
+const settingsRemoteServerSource = readFileSync(new URL("../pages/settings-remote-server.tsx", import.meta.url), "utf8")
+
+describe("desktop remote server renderer client", () => {
+  it("centralizes remote server and Cloudflare IPC channels behind shared operator types", () => {
+    expect(clientSource).toContain("OperatorActionResponse")
+    expect(clientSource).toContain("OperatorRemoteServerStatus")
+    expect(clientSource).toContain("OperatorTunnelStatus")
+    expect(clientSource).toContain("tipcClient.checkCloudflaredInstalled()")
+    expect(clientSource).toContain("tipcClient.checkCloudflaredLoggedIn()")
+    expect(clientSource).toContain("tipcClient.listCloudflareTunnels()")
+    expect(clientSource).toContain("tipcClient.getCloudflareTunnelStatus()")
+    expect(clientSource).toContain("tipcClient.getRemoteServerStatus()")
+    expect(clientSource).toContain("tipcClient.getRemoteServerPairingApiKey()")
+    expect(clientSource).toContain("tipcClient.startCloudflareTunnel()")
+    expect(clientSource).toContain("tipcClient.startNamedCloudflareTunnel(params)")
+    expect(clientSource).toContain("tipcClient.stopCloudflareTunnel()")
+    expect(clientSource).toContain("tipcClient.printRemoteServerQRCode()")
+    expect(clientSource).not.toContain("window.electron.ipcRenderer")
+  })
+
+  it("keeps remote server settings UI off direct remote server and Cloudflare IPC channels", () => {
+    expect(settingsRemoteServerSource).toContain("desktopRemoteServerClient.checkCloudflaredInstalled()")
+    expect(settingsRemoteServerSource).toContain("desktopRemoteServerClient.checkCloudflaredLoggedIn()")
+    expect(settingsRemoteServerSource).toContain("desktopRemoteServerClient.listCloudflareTunnels()")
+    expect(settingsRemoteServerSource).toContain("desktopRemoteServerClient.getCloudflareTunnelStatus()")
+    expect(settingsRemoteServerSource).toContain("desktopRemoteServerClient.getRemoteServerStatus()")
+    expect(settingsRemoteServerSource).toContain("desktopRemoteServerClient.getPairingApiKey()")
+    expect(settingsRemoteServerSource).toContain("desktopRemoteServerClient.startCloudflareTunnel()")
+    expect(settingsRemoteServerSource).toContain("desktopRemoteServerClient.startNamedCloudflareTunnel(params)")
+    expect(settingsRemoteServerSource).toContain("desktopRemoteServerClient.stopCloudflareTunnel()")
+    expect(settingsRemoteServerSource).toContain("desktopRemoteServerClient.printQRCodeToTerminal()")
+    expect(settingsRemoteServerSource).not.toContain("tipcClient.checkCloudflaredInstalled(")
+    expect(settingsRemoteServerSource).not.toContain("tipcClient.checkCloudflaredLoggedIn(")
+    expect(settingsRemoteServerSource).not.toContain("tipcClient.listCloudflareTunnels(")
+    expect(settingsRemoteServerSource).not.toContain("tipcClient.getCloudflareTunnelStatus(")
+    expect(settingsRemoteServerSource).not.toContain("tipcClient.getRemoteServerStatus(")
+    expect(settingsRemoteServerSource).not.toContain("tipcClient.getRemoteServerPairingApiKey(")
+    expect(settingsRemoteServerSource).not.toContain("tipcClient.startCloudflareTunnel(")
+    expect(settingsRemoteServerSource).not.toContain("tipcClient.startNamedCloudflareTunnel(")
+    expect(settingsRemoteServerSource).not.toContain("tipcClient.stopCloudflareTunnel(")
+    expect(settingsRemoteServerSource).not.toContain("tipcClient.printRemoteServerQRCode(")
+  })
+})
