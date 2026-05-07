@@ -49,6 +49,18 @@ export const desktopPanelClient = {
     return tipcClient.resizePanelForWaveformPreview({ showPreview }) as Promise<void>
   },
 
+  showPanelWindow(): Promise<void> {
+    return tipcClient.showPanelWindow({}) as Promise<void>
+  },
+
+  hidePanelWindow(): Promise<void> {
+    return tipcClient.hidePanelWindow({}) as Promise<void>
+  },
+
+  clearTextInputState(): Promise<void> {
+    return tipcClient.clearTextInputState({}) as Promise<void>
+  },
+
   updatePanelSize(size: PanelSize): Promise<PanelSize> {
     return tipcClient.updatePanelSize(size) as Promise<PanelSize>
   },

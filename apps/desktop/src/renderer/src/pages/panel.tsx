@@ -460,7 +460,7 @@ export function Component() {
       })
     },
     onError(error) {
-      tipcClient.hidePanelWindow({})
+      void desktopPanelClient.hidePanelWindow()
       tipcClient.displayError({
         title: error.name,
         message: error.message,
@@ -501,7 +501,7 @@ export function Component() {
       // If recording was from a tile, hide the floating panel immediately
       // The session will continue in the tile view
       if (wasFromTile) {
-        tipcClient.hidePanelWindow({})
+        void desktopPanelClient.hidePanelWindow()
       }
 
       const result = await tipcClient.createMcpRecording({
@@ -531,7 +531,7 @@ export function Component() {
       mcpSessionIdRef.current = undefined
       fromTileRef.current = false
 
-      tipcClient.hidePanelWindow({})
+      void desktopPanelClient.hidePanelWindow()
       tipcClient.displayError({
         title: error.name,
         message: error.message,
@@ -550,9 +550,9 @@ export function Component() {
     },
     onError(error) {
       setShowTextInput(false)
-      tipcClient.clearTextInputState({})
+      void desktopPanelClient.clearTextInputState()
 
-      tipcClient.hidePanelWindow({})
+      void desktopPanelClient.hidePanelWindow()
       tipcClient.displayError({
         title: error.name,
         message: error.message,
@@ -561,9 +561,9 @@ export function Component() {
     onSuccess() {
       setShowTextInput(false)
       // Clear text input state
-      tipcClient.clearTextInputState({})
+      void desktopPanelClient.clearTextInputState()
 
-      tipcClient.hidePanelWindow({})
+      void desktopPanelClient.hidePanelWindow()
     },
   })
 
@@ -587,9 +587,9 @@ export function Component() {
     },
     onError(error) {
       setShowTextInput(false)
-      tipcClient.clearTextInputState({})
+      void desktopPanelClient.clearTextInputState()
 
-      tipcClient.hidePanelWindow({})
+      void desktopPanelClient.hidePanelWindow()
       tipcClient.displayError({
         title: error.name,
         message: error.message,
@@ -598,7 +598,7 @@ export function Component() {
     onSuccess() {
       setShowTextInput(false)
       // Ensure main process knows text input is no longer active (prevents textInput positioning)
-      tipcClient.clearTextInputState({})
+      void desktopPanelClient.clearTextInputState()
       // Don't hide panel on success - agent mode will handle this and keep panel visible
       // The panel needs to stay visible for agent mode progress updates
     },
@@ -661,7 +661,7 @@ export function Component() {
         mcpModeRef.current = false
         setFromButtonClick(false)
         setContinueConversationTitle(null)
-        tipcClient.hidePanelWindow({})
+        void desktopPanelClient.hidePanelWindow()
         return
       }
 
@@ -676,7 +676,7 @@ export function Component() {
         mcpModeRef.current = false
         setFromButtonClick(false)
         setContinueConversationTitle(null)
-        tipcClient.hidePanelWindow({})
+        void desktopPanelClient.hidePanelWindow()
         return
       }
 
@@ -833,7 +833,7 @@ export function Component() {
       // Hide text input panel if it was showing - voice recording takes precedence
       setShowTextInput(false)
       // Clear text input state in main process so panel doesn't stay in textInput mode (positioning/sizing)
-      tipcClient.clearTextInputState({})
+      void desktopPanelClient.clearTextInputState()
       // Set recording state immediately to show waveform UI without waiting for async mic init
       // This prevents flash of stale UI during the ~280ms mic initialization (fixes #974)
       setRecording(true)
@@ -889,7 +889,7 @@ export function Component() {
         setRecording(true)
         recordingRef.current = true
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-        tipcClient.showPanelWindow({})
+        void desktopPanelClient.showPanelWindow()
         startRecordingWithFreshDevice()?.catch?.((err: unknown) => {
           console.error('[panel] startRecording failed, resetting recording state:', err)
           setRecording(false)
@@ -975,7 +975,7 @@ export function Component() {
     // Hide the text input immediately and show processing/overlay
     setShowTextInput(false)
     // Ensure main process no longer treats panel as textInput mode
-    tipcClient.clearTextInputState({})
+    void desktopPanelClient.clearTextInputState()
 
     // Always use MCP processing
     mcpTextInputMutation.mutate({
@@ -1023,7 +1023,7 @@ export function Component() {
       // This fixes bug #903 where mic button in continue conversation showed text input
       setShowTextInput(false)
       // Clear text input state in main process so panel doesn't stay in textInput mode (positioning/sizing)
-      tipcClient.clearTextInputState({})
+      void desktopPanelClient.clearTextInputState()
 
       setMcpMode(true)
       mcpModeRef.current = true
@@ -1080,7 +1080,7 @@ export function Component() {
         // This fixes bug #903 where mic button in continue conversation showed text input
         setShowTextInput(false)
         // Clear text input state in main process so panel doesn't stay in textInput mode (positioning/sizing)
-        tipcClient.clearTextInputState({})
+        void desktopPanelClient.clearTextInputState()
         setMcpMode(true)
         mcpModeRef.current = true
         // Set recording state immediately to avoid stale progress flashing before mic init.
@@ -1088,7 +1088,7 @@ export function Component() {
         recordingRef.current = true
         setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
         requestPanelMode("normal") // Ensure panel is normal size for recording
-        tipcClient.showPanelWindow({})
+        void desktopPanelClient.showPanelWindow()
         startRecordingWithFreshDevice()?.catch?.((err: unknown) => {
           console.error('[panel] startRecording failed, resetting recording state:', err)
           setRecording(false)
@@ -1262,7 +1262,7 @@ export function Component() {
 	          !latestState.isTextSubmissionPending
 
 	        if (stillShouldClose) {
-	          tipcClient.hidePanelWindow({})
+	          void desktopPanelClient.hidePanelWindow()
 	        }
 	      }, 200)
 	      return () => clearTimeout(t)
@@ -1359,7 +1359,7 @@ export function Component() {
                 showTextInput,
               })
               setShowTextInput(false)
-              tipcClient.hidePanelWindow({})
+              void desktopPanelClient.hidePanelWindow()
             }}
             isProcessing={
               textInputMutation.isPending || mcpTextInputMutation.isPending

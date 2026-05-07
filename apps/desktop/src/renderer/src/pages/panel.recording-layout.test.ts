@@ -246,8 +246,8 @@ describe("panel recording layout", () => {
       panelSource.indexOf("isProcessing={", panelSource.indexOf("onCancel={() => {")),
     )
 
-    expect(cancelSection).toContain("tipcClient.hidePanelWindow({})")
-    expect(cancelSection).not.toContain("tipcClient.clearTextInputState({})")
+    expect(cancelSection).toContain("desktopPanelClient.hidePanelWindow()")
+    expect(cancelSection).not.toContain("clearTextInputState(")
   })
 
   it("lets MCP text submits create fresh conversations in the main process", () => {
