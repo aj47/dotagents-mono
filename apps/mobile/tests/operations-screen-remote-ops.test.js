@@ -339,8 +339,10 @@ test('surfaces recent operator audit entries and rotates the API key using the s
   assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotatePendingButtonLabel/);
   assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotateButtonLabel/);
   assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotateHelperText/);
+  assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.formatRotateSuccessMessage\(response\.restartScheduled\)/);
   assert.doesNotMatch(operationsSource, /'Rotate API Key'/);
   assert.doesNotMatch(operationsSource, /'Rotate Key'/);
+  assert.doesNotMatch(operationsSource, /API key rotated and saved locally\./);
   assert.match(operationsSource, /OPERATOR_ACTIONS_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_ACTIONS_PANEL_METADATA\.runAgentLabel/);
   assert.match(operationsSource, /OPERATOR_ACTIONS_PANEL_METADATA\.runAgentPromptPlaceholder/);

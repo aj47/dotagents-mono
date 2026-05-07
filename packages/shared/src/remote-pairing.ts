@@ -110,6 +110,7 @@ export type RemoteServerApiKeyFieldMetadata = {
   rotateButtonLabel: string;
   rotatePendingButtonLabel: string;
   rotateHelperText: string;
+  formatRotateSuccessMessage: (restartScheduled: boolean) => string;
 };
 
 export type RemoteServerPortFieldMetadata = {
@@ -299,6 +300,10 @@ export const REMOTE_SERVER_API_KEY_FIELD_METADATA: RemoteServerApiKeyFieldMetada
   rotateButtonLabel: 'Rotate API key',
   rotatePendingButtonLabel: 'Rotating API key…',
   rotateHelperText: 'Rotating the API key revokes the previous mobile/remote credential. This phone saves the new key automatically after confirmation.',
+  formatRotateSuccessMessage: (restartScheduled) =>
+    restartScheduled
+      ? 'API key rotated and saved locally. The desktop remote server is restarting with the new key.'
+      : 'API key rotated and saved locally.',
 };
 export const REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS: readonly RemoteServerBindAddressOption[] = [
   {

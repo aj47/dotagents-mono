@@ -195,7 +195,14 @@ describe('remote server config contracts', () => {
       rotateButtonLabel: 'Rotate API key',
       rotatePendingButtonLabel: 'Rotating API key…',
       rotateHelperText: 'Rotating the API key revokes the previous mobile/remote credential. This phone saves the new key automatically after confirmation.',
+      formatRotateSuccessMessage: expect.any(Function),
     });
+    expect(REMOTE_SERVER_API_KEY_FIELD_METADATA.formatRotateSuccessMessage(true)).toBe(
+      'API key rotated and saved locally. The desktop remote server is restarting with the new key.',
+    );
+    expect(REMOTE_SERVER_API_KEY_FIELD_METADATA.formatRotateSuccessMessage(false)).toBe(
+      'API key rotated and saved locally.',
+    );
     expect(REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS).toEqual([
       { value: 'error', label: 'error', successMessage: 'Remote server log level saved as error.' },
       { value: 'info', label: 'info', successMessage: 'Remote server log level saved as info.' },

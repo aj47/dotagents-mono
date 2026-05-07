@@ -442,11 +442,7 @@ export default function OperationsScreen({ navigation }: any) {
 
       setConfig(nextConfig);
       await saveConfig(nextConfig);
-      setActionFeedback(
-        response.restartScheduled
-          ? 'API key rotated and saved locally. The desktop remote server is restarting with the new key.'
-          : 'API key rotated and saved locally.',
-      );
+      setActionFeedback(REMOTE_SERVER_API_KEY_FIELD_METADATA.formatRotateSuccessMessage(response.restartScheduled));
     } catch (actionError) {
       Alert.alert(OPERATOR_ALERT_METADATA.actionFailedTitle, getErrorMessage(actionError));
     } finally {
