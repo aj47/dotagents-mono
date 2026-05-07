@@ -22,6 +22,7 @@ import {
   buildOperatorDiscordIntegrationSummary,
   buildOperatorDiscordLogsResponse,
   buildOperatorDownloadedAssetActionResponse,
+  buildOperatorIntegrationsSummaryAction,
   buildOperatorHealthSnapshot,
   buildOperatorLogSummary,
   buildOperatorLogsResponse,
@@ -1693,6 +1694,55 @@ describe("operator action API helpers", () => {
     expect(warnings).toEqual([
       "Failed to summarize WhatsApp integration status: status failed",
     ])
+  })
+
+  it("builds full integration summaries through a shared service adapter", async () => {
+    const whatsappSummary = buildOperatorWhatsAppIntegrationSummary({
+      enabled: true,
+      serverConfigured: true,
+      serverConnected: true,
+      autoReplyEnabled: false,
+      logMessagesEnabled: true,
+      allowedSenderCount: 1,
+      logs: [],
+    })
+
+    await expect(buildOperatorIntegrationsSummaryAction({
+      service: {
+        getDiscordStatus: () => ({
+          available: true,
+          enabled: true,
+          connected: true,
+          connecting: false,
+          tokenConfigured: true,
+        }),
+        getDiscordLogs: () => [
+          { timestamp: 1, level: "info" },
+          { timestamp: 2, level: "error" },
+        ],
+        getWhatsAppSummary: async () => whatsappSummary,
+        getPushNotificationTokens: () => [
+          { platform: "ios" },
+          { platform: "android" },
+          { platform: "ios" },
+        ],
+      },
+    })).resolves.toEqual({
+      discord: expect.objectContaining({
+        available: true,
+        connected: true,
+        logs: expect.objectContaining({
+          total: 2,
+          errorCount: 1,
+        }),
+      }),
+      whatsapp: whatsappSummary,
+      pushNotifications: {
+        enabled: true,
+        tokenCount: 3,
+        platforms: ["android", "ios"],
+      },
+    })
   })
 
   it("runs integration route actions through a shared service adapter", async () => {

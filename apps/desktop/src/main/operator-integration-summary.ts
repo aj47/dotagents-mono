@@ -3,8 +3,7 @@ import type {
   OperatorWhatsAppIntegrationSummary,
 } from "@dotagents/shared/api-types"
 import {
-  buildOperatorDiscordIntegrationSummary,
-  buildOperatorPushNotificationsSummary,
+  buildOperatorIntegrationsSummaryAction,
   getOperatorWhatsAppIntegrationSummaryAction,
 } from "@dotagents/shared/operator-actions"
 import { configStore } from "./config"
@@ -34,15 +33,12 @@ export async function getOperatorWhatsAppIntegrationSummary(): Promise<OperatorW
 }
 
 export async function buildOperatorIntegrationsSummary(): Promise<OperatorIntegrationsSummary> {
-  const cfg = configStore.get()
-  const pushTokens = cfg.pushNotificationTokens ?? []
-
-  return {
-    discord: buildOperatorDiscordIntegrationSummary(
-      discordService.getStatus(),
-      discordService.getLogs(),
-    ),
-    whatsapp: await getOperatorWhatsAppIntegrationSummary(),
-    pushNotifications: buildOperatorPushNotificationsSummary(pushTokens),
-  }
+  return buildOperatorIntegrationsSummaryAction({
+    service: {
+      getDiscordStatus: () => discordService.getStatus(),
+      getDiscordLogs: () => discordService.getLogs(),
+      getWhatsAppSummary: getOperatorWhatsAppIntegrationSummary,
+      getPushNotificationTokens: () => configStore.get().pushNotificationTokens ?? [],
+    },
+  })
 }

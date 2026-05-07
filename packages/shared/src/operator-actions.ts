@@ -636,6 +636,17 @@ export interface OperatorWhatsAppIntegrationSummaryActionOptions {
   service: OperatorWhatsAppIntegrationSummaryActionService
 }
 
+export interface OperatorIntegrationsSummaryActionService {
+  getDiscordStatus(): OperatorDiscordStatusLike
+  getDiscordLogs(): OperatorLogSummaryEntryLike[]
+  getWhatsAppSummary(): Promise<OperatorWhatsAppIntegrationSummary>
+  getPushNotificationTokens(): OperatorPushTokenLike[]
+}
+
+export interface OperatorIntegrationsSummaryActionOptions {
+  service: OperatorIntegrationsSummaryActionService
+}
+
 export type OperatorUpdaterStatusOptions = {
   currentVersion?: string
   updateInfo?: OperatorUpdateInfoLike
@@ -1570,6 +1581,19 @@ export async function getOperatorWhatsAppIntegrationSummaryAction(
       ...summary,
       lastError: errorMessage,
     }
+  }
+}
+
+export async function buildOperatorIntegrationsSummaryAction(
+  options: OperatorIntegrationsSummaryActionOptions,
+): Promise<OperatorIntegrationsSummary> {
+  return {
+    discord: buildOperatorDiscordIntegrationSummary(
+      options.service.getDiscordStatus(),
+      options.service.getDiscordLogs(),
+    ),
+    whatsapp: await options.service.getWhatsAppSummary(),
+    pushNotifications: buildOperatorPushNotificationsSummary(options.service.getPushNotificationTokens()),
   }
 }
 
