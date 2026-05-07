@@ -4,7 +4,7 @@ import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Pla
 import { Button } from "@renderer/components/ui/button"
 import type { QueuedMessage } from "@dotagents/shared/message-queue-utils"
 import { useMutation } from "@tanstack/react-query"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopMessageQueueClient } from "@renderer/lib/desktop-message-queue-client"
 
 interface MessageQueuePanelProps {
   conversationId: string
@@ -45,17 +45,13 @@ function QueuedMessageItem({
 
   const removeMutation = useMutation({
     mutationFn: async () => {
-      await tipcClient.removeFromMessageQueue({ conversationId, messageId: message.id })
+      await desktopMessageQueueClient.removeMessage(conversationId, message.id)
     },
   })
 
   const updateMutation = useMutation({
     mutationFn: async (newText: string) => {
-      const success = await tipcClient.updateQueuedMessageText({
-        conversationId,
-        messageId: message.id,
-        text: newText,
-      })
+      const success = await desktopMessageQueueClient.updateMessageText(conversationId, message.id, newText)
       // Throw if backend rejected the update (e.g., message is processing or already added to history)
       if (!success) {
         throw new Error("Failed to update message")
@@ -95,10 +91,7 @@ function QueuedMessageItem({
   const retryMutation = useMutation({
     mutationFn: async () => {
       // Retry the failed message - resets status to pending and triggers queue processing if idle
-      await tipcClient.retryQueuedMessage({
-        conversationId,
-        messageId: message.id,
-      })
+      await desktopMessageQueueClient.retryMessage(conversationId, message.id)
     },
   })
 
@@ -263,19 +256,19 @@ export function MessageQueuePanel({
 
   const clearMutation = useMutation({
     mutationFn: async () => {
-      await tipcClient.clearMessageQueue({ conversationId })
+      await desktopMessageQueueClient.clearQueue(conversationId)
     },
   })
 
   const resumeMutation = useMutation({
     mutationFn: async () => {
-      await tipcClient.resumeMessageQueue({ conversationId })
+      await desktopMessageQueueClient.resumeQueue(conversationId)
     },
   })
 
   const pauseMutation = useMutation({
     mutationFn: async () => {
-      await tipcClient.pauseMessageQueue({ conversationId })
+      await desktopMessageQueueClient.pauseQueue(conversationId)
     },
   })
 

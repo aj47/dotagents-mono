@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { reportConfigSaveError } from '@renderer/lib/config-save-error'
 import { rendererHandlers, tipcClient } from '@renderer/lib/tipc-client'
+import { desktopMessageQueueClient } from '@renderer/lib/desktop-message-queue-client'
 import { useAgentStore, useConversationStore } from '@renderer/stores'
 import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress'
 import type { QueuedMessage } from '@dotagents/shared/message-queue-utils'
@@ -184,7 +185,7 @@ export function useStoreSync() {
 
   // Initial hydration of message queues on mount
   useEffect(() => {
-    tipcClient.getAllMessageQueues().then((queues: Array<{ conversationId: string; messages: QueuedMessage[]; isPaused: boolean }>) => {
+    desktopMessageQueueClient.getAllQueues().then((queues) => {
       for (const queue of queues) {
         updateMessageQueue(queue.conversationId, queue.messages, queue.isPaused)
       }
