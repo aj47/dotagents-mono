@@ -169,6 +169,7 @@ import {
   type McpServerConfigDraft as McpServerDraft,
   type MCPTransportType,
 } from '@dotagents/shared/mcp-utils';
+import { sortSkillsByProfileEnablement } from '@dotagents/shared/skills-api';
 import {
   REMOTE_SETTINGS_SECRET_MASK as SECRET_MASK,
   buildRemoteSettingsInputDrafts,
@@ -435,11 +436,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [loopBulkRuntimeAction, setLoopBulkRuntimeAction] = useState<'start-all' | 'stop-all' | null>(null);
   const [showLoopImportModal, setShowLoopImportModal] = useState(false);
   const [loopImportMarkdownText, setLoopImportMarkdownText] = useState('');
-  const displaySkills = useMemo(() => [...skills].sort((a, b) => {
-    const enabledDiff = Number(b.enabledForProfile) - Number(a.enabledForProfile);
-    if (enabledDiff !== 0) return enabledDiff;
-    return a.name.localeCompare(b.name);
-  }), [skills]);
+  const displaySkills = useMemo(() => sortSkillsByProfileEnablement(skills), [skills]);
   const displayedSkillIds = useMemo(
     () => new Set(displaySkills.map((skill) => skill.id)),
     [displaySkills]

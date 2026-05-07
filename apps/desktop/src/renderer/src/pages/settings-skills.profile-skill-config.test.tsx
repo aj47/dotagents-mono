@@ -6,6 +6,7 @@ const settingsSkillsSource = readFileSync(new URL("./settings-skills.tsx", impor
 describe("settings skills profile config", () => {
   it("uses shared profile skill enablement semantics", () => {
     expect(settingsSkillsSource).toContain("isSkillEnabledForProfile(skillId, currentProfile)")
+    expect(settingsSkillsSource).toContain("sortSkillsByProfileEnablement(skills, (skill) => isSkillEnabledForCurrentProfile(skill.id))")
     expect(settingsSkillsSource).not.toContain("currentProfile.skillsConfig.allSkillsDisabledByDefault")
     expect(settingsSkillsSource).not.toContain("currentProfile.skillsConfig.enabledSkillIds")
   })

@@ -39,6 +39,7 @@ import {
   parseSkillImportMarkdownRequestBody,
   parseRuntimeSkillIdArg,
   resolveRuntimeSkill,
+  sortSkillsByProfileEnablement,
   toggleProfileSkillAction,
   updateSkillAction,
   slugifySkillName,
@@ -121,6 +122,26 @@ describe("skills API helpers", () => {
       description: "Find context",
       instructions: "",
     })
+  })
+
+  it("sorts skills by profile enablement before name", () => {
+    const input = [
+      { id: "writing", name: "Writing", enabledForProfile: false },
+      { id: "beta", name: "Beta", enabledForProfile: true },
+      { id: "alpha", name: "Alpha", enabledForProfile: true },
+      { id: "offline", name: "Offline" },
+    ]
+
+    const sorted = sortSkillsByProfileEnablement(input)
+
+    expect(sorted.map((skill) => skill.id)).toEqual(["alpha", "beta", "offline", "writing"])
+    expect(input.map((skill) => skill.id)).toEqual(["writing", "beta", "alpha", "offline"])
+    expect(sortSkillsByProfileEnablement(input, (skill) => skill.id === "writing").map((skill) => skill.id)).toEqual([
+      "writing",
+      "alpha",
+      "beta",
+      "offline",
+    ])
   })
 
   it("enables all skills when a profile has default skill semantics", () => {

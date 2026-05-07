@@ -46,6 +46,11 @@ export type SkillProfileLike = {
   }
 }
 
+export type SkillDisplaySortLike = {
+  name: string
+  enabledForProfile?: boolean | null
+}
+
 export type SkillActionProfileLike = SkillProfileLike & {
   id: string
 }
@@ -448,6 +453,17 @@ export function isSkillEnabledForProfile(skillId: string, profile?: SkillProfile
   return !skillsConfig || !skillsConfig.allSkillsDisabledByDefault
     ? true
     : (skillsConfig.enabledSkillIds ?? []).includes(skillId)
+}
+
+export function sortSkillsByProfileEnablement<TSkill extends SkillDisplaySortLike>(
+  skills: readonly TSkill[],
+  getEnabledForProfile: (skill: TSkill) => boolean | null | undefined = (skill) => skill.enabledForProfile,
+): TSkill[] {
+  return [...skills].sort((a, b) => {
+    const enabledDiff = Number(getEnabledForProfile(b) === true) - Number(getEnabledForProfile(a) === true)
+    if (enabledDiff !== 0) return enabledDiff
+    return a.name.localeCompare(b.name)
+  })
 }
 
 export function formatSkillForApi(skill: SkillApiLike, enabledForProfile: boolean): Skill {
