@@ -266,7 +266,7 @@ describe("panel recording layout", () => {
       panelSource.indexOf("const textInputMutation = useMutation({"),
     )
 
-    expect(mcpRecordingSection).toContain("await tipcClient.createMcpRecording({")
+    expect(mcpRecordingSection).toContain("await desktopMcpSessionActionsClient.createMcpRecording({")
     expect(mcpRecordingSection).not.toContain('await startNewConversation(transcript, "user")')
   })
 

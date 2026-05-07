@@ -14,6 +14,7 @@ const sessionActionDialogSource = readFileSync(
   new URL("../components/session-action-dialog.tsx", import.meta.url),
   "utf8",
 )
+const panelPageSource = readFileSync(new URL("../pages/panel.tsx", import.meta.url), "utf8")
 
 describe("desktop MCP session actions renderer client", () => {
   it("centralizes MCP text and voice continuation IPC", () => {
@@ -23,8 +24,13 @@ describe("desktop MCP session actions renderer client", () => {
     expect(clientSource).not.toContain("window.electron.ipcRenderer")
   })
 
-  it("keeps follow-up inputs and session dialog off direct MCP session action IPC", () => {
-    const combinedSource = [overlayFollowUpInputSource, tileFollowUpInputSource, sessionActionDialogSource].join("\n")
+  it("keeps follow-up inputs, session dialog, and panel page off direct MCP session action IPC", () => {
+    const combinedSource = [
+      overlayFollowUpInputSource,
+      tileFollowUpInputSource,
+      sessionActionDialogSource,
+      panelPageSource,
+    ].join("\n")
 
     expect(overlayFollowUpInputSource).toContain("desktopMcpSessionActionsClient.createMcpTextInput({")
     expect(overlayFollowUpInputSource).toContain("desktopMcpSessionActionsClient.triggerMcpRecording({")
@@ -32,6 +38,8 @@ describe("desktop MCP session actions renderer client", () => {
     expect(tileFollowUpInputSource).toContain("desktopMcpSessionActionsClient.triggerMcpRecording({")
     expect(sessionActionDialogSource).toContain("desktopMcpSessionActionsClient.createMcpTextInput({")
     expect(sessionActionDialogSource).toContain("desktopMcpSessionActionsClient.createMcpRecording({")
+    expect(panelPageSource).toContain("desktopMcpSessionActionsClient.createMcpTextInput({")
+    expect(panelPageSource).toContain("desktopMcpSessionActionsClient.createMcpRecording({")
     expect(combinedSource).not.toContain("tipcClient.createMcpTextInput(")
     expect(combinedSource).not.toContain("tipcClient.createMcpRecording(")
     expect(combinedSource).not.toContain("tipcClient.triggerMcpRecording(")

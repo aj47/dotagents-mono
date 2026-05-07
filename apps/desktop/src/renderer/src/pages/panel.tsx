@@ -13,6 +13,7 @@ import { useAgentStore, useAgentProgress, useConversationStore } from "@renderer
 import { useConfigQuery, useConversationQuery, useCreateConversationMutation } from "@renderer/lib/queries"
 import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
 import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
+import { desktopMcpSessionActionsClient } from "@renderer/lib/desktop-mcp-session-actions-client"
 import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
 import { PanelDragBar } from "@renderer/components/panel-drag-bar"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
@@ -504,7 +505,7 @@ export function Component() {
         void desktopPanelClient.hidePanelWindow()
       }
 
-      const result = await tipcClient.createMcpRecording({
+      const result = await desktopMcpSessionActionsClient.createMcpRecording({
         recording: arrayBuffer,
         pcmRecording,
         duration,
@@ -575,7 +576,7 @@ export function Component() {
       text: string
       conversationId?: string
     }) => {
-      const result = await tipcClient.createMcpTextInput({ text, conversationId })
+      const result = await desktopMcpSessionActionsClient.createMcpTextInput({ text, conversationId })
 
       // NOTE: Do NOT call continueConversation here!
       // The currentConversationId should only be set through explicit user actions
