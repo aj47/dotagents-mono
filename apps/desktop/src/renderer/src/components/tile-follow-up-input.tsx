@@ -4,6 +4,7 @@ import { Button } from "@renderer/components/ui/button"
 import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
 import { logUI } from "@renderer/lib/debug"
@@ -283,7 +284,7 @@ export function TileFollowUpInput({
     if (!sessionId || sessionId.startsWith('pending-')) {
       setIsStoppingSession(true)
       try {
-        await tipcClient.emergencyStopAgent()
+        await desktopAgentSessionsClient.emergencyStopAgent()
       } catch (error) {
         console.error("Failed to emergency stop agent:", error)
       } finally {
@@ -294,7 +295,7 @@ export function TileFollowUpInput({
 
     setIsStoppingSession(true)
     try {
-      await tipcClient.stopAgentSession({ sessionId })
+      await desktopAgentSessionsClient.stopAgentSession(sessionId)
     } catch (error) {
       console.error("Failed to stop agent session:", error)
     } finally {
