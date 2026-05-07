@@ -4,9 +4,9 @@ import fs from "fs"
 import path from "path"
 import {
   createOperatorAuditRecorder,
+  createOperatorAuditEventRouteActions,
   createOperatorAuditRouteActions,
   type OperatorAuditActionOptions,
-  type OperatorAuditEventOptions,
   type OperatorResponseAuditContext,
 } from "@dotagents/shared/operator-actions"
 import {
@@ -56,15 +56,10 @@ const operatorAuditRecorder = createOperatorAuditRecorder({
   appendEntry: (entry) => operatorAuditLogStore.append(entry),
 })
 
+export const operatorAuditEventRouteActions = createOperatorAuditEventRouteActions<FastifyRequest>(operatorAuditRecorder)
+
 export function recordRejectedOperatorDeviceAttempt(request: FastifyRequest, failureReason: string): void {
   operatorAuditRecorder.recordRejectedDeviceAttempt(request, failureReason)
-}
-
-export function recordOperatorAuditEvent(
-  request: FastifyRequest,
-  options: OperatorAuditEventOptions,
-): void {
-  operatorAuditRecorder.recordAuditEvent(request, options)
 }
 
 export function getOperatorAuditContext(request: FastifyRequest): OperatorAuditContext {

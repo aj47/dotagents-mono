@@ -78,6 +78,7 @@ import {
   createOperatorApiKeyActionService,
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
+  createOperatorAuditEventRouteActions,
   createOperatorAuditRecorder,
   createOperatorAuditRouteActions,
   createOperatorIntegrationActionService,
@@ -1653,6 +1654,42 @@ describe("operator action API helpers", () => {
       failureReason: "http-500",
       details: { scheduled: false },
     })
+  })
+
+  it("creates operator audit event route actions from a recorder", () => {
+    const entries: Array<ReturnType<typeof buildOperatorAuditEventEntry>> = []
+    const routeActions = createOperatorAuditEventRouteActions({
+      recordAuditEvent: (request, options) => {
+        entries.push(buildOperatorAuditEventEntry({
+          action: options.action,
+          path: options.path ?? request.url,
+          success: options.success,
+          details: options.details,
+          failureReason: options.failureReason,
+          deviceId: "device-1",
+          source: { ip: request.ip },
+        }))
+      },
+    })
+
+    routeActions.recordOperatorAuditEvent({
+      url: "/v1/settings",
+      ip: "10.0.0.5",
+      headers: {},
+    }, {
+      action: "settings-update",
+      success: false,
+      details: { keys: ["remoteServer"] },
+      failureReason: "invalid-api-key",
+    })
+
+    expect(entries).toEqual([expect.objectContaining({
+      action: "settings-update",
+      path: "/v1/settings",
+      success: false,
+      details: { keys: ["remoteServer"] },
+      failureReason: "invalid-api-key",
+    })])
   })
 
   it("parses operator JSON records defensively", () => {

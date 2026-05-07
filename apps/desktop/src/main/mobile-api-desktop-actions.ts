@@ -97,7 +97,7 @@ import {
 } from "./bundle-service"
 import { conversationService } from "./conversation-service"
 import { getConversationVideoAssetPath } from "./conversation-video-assets"
-import { recordOperatorAuditEvent } from "./operator-audit-actions"
+import { operatorAuditEventRouteActions } from "./operator-audit-actions"
 import { cleanupInvalidMcpServerReferencesInLayers } from "./agent-profile-mcp-cleanup"
 import { cleanupInvalidSkillReferencesInLayers } from "./agent-profile-skill-cleanup"
 import { agentProfileService, toolConfigToMcpServerConfig } from "./agent-profile-service"
@@ -412,7 +412,7 @@ export const mobileApiDesktopActions = createMobileApiRouteActions({
   mcp: mcpRouteActions,
   settings: settingsRouteActionBundle.settings,
   agentSessionCandidates: agentSessionCandidateRouteActions,
-  audit: { recordOperatorAuditEvent },
+  audit: operatorAuditEventRouteActions,
   conversations: conversationRouteActions,
   conversationVideoAssets: conversationVideoAssetRouteActions,
   tts: ttsRouteActions,

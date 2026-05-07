@@ -80,6 +80,10 @@ export interface OperatorAuditRouteActions {
   getOperatorAudit(count: string | number | undefined): OperatorAuditActionResult
 }
 
+export interface OperatorAuditEventRouteActions<Request extends OperatorAuditRequestLike = OperatorAuditRequestLike> {
+  recordOperatorAuditEvent(request: Request, options: OperatorAuditEventOptions): void
+}
+
 export type OperatorMcpRestartRequest = {
   server: string
 }
@@ -1670,6 +1674,14 @@ export function createOperatorAuditRouteActions(
 ): OperatorAuditRouteActions {
   return {
     getOperatorAudit: (count) => getOperatorAuditAction(count, options),
+  }
+}
+
+export function createOperatorAuditEventRouteActions<Request extends OperatorAuditRequestLike>(
+  recorder: Pick<OperatorAuditRecorder, "recordAuditEvent">,
+): OperatorAuditEventRouteActions<Request> {
+  return {
+    recordOperatorAuditEvent: (request, options) => recorder.recordAuditEvent(request, options),
   }
 }
 

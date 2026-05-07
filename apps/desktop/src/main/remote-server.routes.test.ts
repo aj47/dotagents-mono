@@ -658,7 +658,9 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain("agent: operatorAgentRouteActions")
     expect(operatorRouteDesktopActionsSource).toContain("observability: operatorObservabilityRouteActions")
     expect(operatorRouteDesktopActionsSource).toContain("getOperatorAudit: operatorAuditRouteActions.getOperatorAudit")
-    expect(operatorRouteDesktopActionsSource).toContain("recordOperatorAuditEvent")
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "recordOperatorAuditEvent: operatorAuditEventRouteActions.recordOperatorAuditEvent",
+    )
     expect(injectedMcpRoutesSource).not.toContain('from "./injected-mcp-actions"')
     expect(injectedMcpRoutesSource).not.toContain("export interface InjectedMcpRouteActions")
     expect(injectedMcpRoutesSource).not.toContain("export interface RegisterInjectedMcpRoutesOptions")
@@ -703,7 +705,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain('from "@dotagents/shared/remote-server-route-contracts"')
     expect(mobileApiDesktopActionsSource).toContain("chatCompletion: chatRouteActionBundle.chatCompletion")
     expect(mobileApiDesktopActionsSource).toContain("models: chatRouteActionBundle.models")
-    expect(mobileApiDesktopActionsSource).toContain("audit: { recordOperatorAuditEvent }")
+    expect(mobileApiDesktopActionsSource).toContain("audit: operatorAuditEventRouteActions")
     expect(desktopAdaptersSource).toContain("authorizeRequest: authorizeRemoteServerRequest")
     expect(desktopAdaptersSource).not.toContain('from "./operator-api-key-actions"')
     expect(desktopAdaptersSource).not.toContain('from "./remote-server-pairing-actions"')
@@ -1993,7 +1995,10 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("getOperatorAuditSource(request)")
     expect(operatorAuditActionsSource).not.toContain("getOperatorAuditDeviceId(request)")
     expect(operatorAuditActionsSource).not.toContain("getOperatorAuditSource(request)")
-    expect(operatorAuditActionsSource).toContain("function recordOperatorAuditEvent")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorAuditEventRouteActions")
+    expect(operatorAuditActionsSource).toContain(
+      "export const operatorAuditEventRouteActions = createOperatorAuditEventRouteActions<FastifyRequest>(operatorAuditRecorder)",
+    )
     expect(operatorAuditActionsSource).toContain(
       "export const operatorAuditRouteActions = createOperatorAuditRouteActions(operatorAuditActionOptions)",
     )
