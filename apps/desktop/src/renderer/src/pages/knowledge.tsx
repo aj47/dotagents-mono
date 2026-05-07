@@ -55,6 +55,7 @@ import { cn } from "@renderer/lib/utils"
 import {
   formatKnowledgeNoteReferencesInput,
   formatKnowledgeNoteTagsInput,
+  KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS,
   parseKnowledgeNoteReferencesInput,
   parseKnowledgeNoteTagsInput,
 } from "@dotagents/shared/knowledge-note-form"
@@ -1163,21 +1164,18 @@ export function Component() {
               <div className="space-y-2">
                 <Label>Context</Label>
                 <div className="flex flex-wrap gap-2">
-                  {KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS
-                    .filter((option) => option.value !== "all")
-                    .map((option) => (
-                      <Button
-                        key={option.value}
-                        type="button"
-                        variant={editForm.context === option.value ? "default" : "outline"}
-                        size="sm"
-                        onClick={() =>
-                          setEditForm({ ...editForm, context: option.value as KnowledgeNoteContext })
-                        }
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
+                  {KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={editForm.context === option.value ? "default" : "outline"}
+                      size="sm"
+                      title={option.description}
+                      onClick={() => setEditForm({ ...editForm, context: option.value })}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Keep <span className="font-medium">auto</span> notes limited to high-signal context.

@@ -57,6 +57,7 @@ describe("desktop knowledge renderer client", () => {
     expect(knowledgePageSource).toContain("KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS")
     expect(knowledgePageSource).toContain("KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS")
     expect(knowledgePageSource).toContain("KNOWLEDGE_NOTE_SORT_OPTIONS")
+    expect(knowledgePageSource).toContain("KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS")
     expect(knowledgePageSource).not.toContain("const contextFilterOptions")
     expect(knowledgePageSource).not.toContain("const dateFilterOptions")
     expect(knowledgePageSource).not.toContain("const sortOptions")

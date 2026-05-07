@@ -20,6 +20,7 @@ import {
   formatKnowledgeNoteTagsInput,
   getKnowledgeNoteAction,
   getKnowledgeNotesAction,
+  KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS,
   parseKnowledgeNoteCreateRequestBody,
   parseKnowledgeNotesDeleteMultipleRequestBody,
   parseKnowledgeNotesListRequestQuery,
@@ -33,6 +34,20 @@ import {
 } from "./knowledge-note-form"
 
 describe("knowledge note form helpers", () => {
+  it("exposes shared edit context options for app surfaces", () => {
+    expect(KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS.map((option) => option.value)).toEqual(["search-only", "auto"])
+    expect(KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS).toContainEqual({
+      label: "Search only",
+      value: "search-only",
+      description: "Keep this note available for search and explicit retrieval.",
+    })
+    expect(KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS).toContainEqual({
+      label: "Auto",
+      value: "auto",
+      description: "Allow this note to be considered for automatic runtime loading.",
+    })
+  })
+
   it("formats tag and reference arrays for editor inputs", () => {
     expect(formatKnowledgeNoteTagsInput(["project", "preference"])).toBe("project, preference")
     expect(formatKnowledgeNoteReferencesInput(["docs/a.md", "https://example.com"])).toBe("docs/a.md\nhttps://example.com")

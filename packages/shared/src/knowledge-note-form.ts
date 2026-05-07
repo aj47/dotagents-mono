@@ -42,7 +42,26 @@ export type KnowledgeNoteEditFormData = {
   referencesInput: string
 }
 
+export type KnowledgeNoteEditContextOption = {
+  label: string
+  value: KnowledgeNoteContext
+  description: string
+}
+
 export const DEFAULT_KNOWLEDGE_NOTE_CONTEXT: KnowledgeNoteContext = "search-only"
+
+export const KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS: readonly KnowledgeNoteEditContextOption[] = [
+  {
+    label: "Search only",
+    value: "search-only",
+    description: "Keep this note available for search and explicit retrieval.",
+  },
+  {
+    label: "Auto",
+    value: "auto",
+    description: "Allow this note to be considered for automatic runtime loading.",
+  },
+]
 
 export const DEFAULT_KNOWLEDGE_NOTE_EDIT_FORM_DATA: KnowledgeNoteEditFormData = {
   noteId: "",

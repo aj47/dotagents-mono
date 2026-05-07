@@ -5,7 +5,6 @@ import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import type {
   KnowledgeNote,
-  KnowledgeNoteContext,
   KnowledgeNoteCreateRequest,
   KnowledgeNoteUpdateRequest,
 } from '@dotagents/shared/api-types';
@@ -15,15 +14,11 @@ import { useConfigContext } from '../store/config';
 import {
   DEFAULT_KNOWLEDGE_NOTE_EDIT_FORM_DATA,
   formatKnowledgeNoteEditFormData,
+  KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS,
   parseKnowledgeNoteReferencesInput,
   parseKnowledgeNoteTagsInput,
   type KnowledgeNoteEditFormData,
 } from '@dotagents/shared/knowledge-note-form';
-
-const CONTEXT_OPTIONS: { label: string; value: KnowledgeNoteContext; description: string }[] = [
-  { label: 'Search only', value: 'search-only', description: 'Keep this note available for search and explicit retrieval.' },
-  { label: 'Auto', value: 'auto', description: 'Allow this note to be considered for automatic runtime loading.' },
-];
 
 const toFormData = (note: KnowledgeNote): KnowledgeNoteEditFormData =>
   formatKnowledgeNoteEditFormData(note, { referencesInputFormat: 'comma' });
@@ -202,7 +197,7 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
         <Text style={styles.label}>Context</Text>
         <Text style={styles.sectionHelperText}>Context controls retrieval behavior. Use auto only when the note should be considered for automatic runtime loading.</Text>
         <View style={styles.noteContextOptions}>
-          {CONTEXT_OPTIONS.map(option => {
+          {KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS.map(option => {
             const isSelected = formData.context === option.value;
             return (
               <TouchableOpacity

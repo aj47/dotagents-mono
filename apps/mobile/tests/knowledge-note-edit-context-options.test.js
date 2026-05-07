@@ -7,19 +7,25 @@ const screenSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'screens', 'KnowledgeNoteEditScreen.tsx'),
   'utf8'
 );
+const sharedFormSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'knowledge-note-form.ts'),
+  'utf8'
+);
 
 test('explains note context using knowledge-note terminology', () => {
   assert.match(screenSource, /Context controls retrieval behavior\./);
   assert.match(screenSource, /Use auto only when the note should be considered for automatic runtime loading\./);
-  assert.match(screenSource, /Keep this note available for search and explicit retrieval\./);
+  assert.match(sharedFormSource, /Keep this note available for search and explicit retrieval\./);
   assert.match(screenSource, /Canonical files live at \.agents\/knowledge\/&lt;slug&gt;\/&lt;slug&gt;\.md\./);
 });
 
 test('uses shared knowledge note edit form defaults and formatting', () => {
   assert.match(screenSource, /DEFAULT_KNOWLEDGE_NOTE_EDIT_FORM_DATA/);
   assert.match(screenSource, /formatKnowledgeNoteEditFormData\(note, \{ referencesInputFormat: 'comma' \}\)/);
+  assert.match(screenSource, /KNOWLEDGE_NOTE_EDIT_CONTEXT_OPTIONS/);
   assert.match(screenSource, /KnowledgeNoteEditFormData/);
   assert.doesNotMatch(screenSource, /const defaultFormData/);
+  assert.doesNotMatch(screenSource, /const CONTEXT_OPTIONS/);
 });
 
 test('exposes knowledge-note context choices as selected-state buttons', () => {
