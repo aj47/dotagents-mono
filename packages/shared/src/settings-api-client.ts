@@ -149,6 +149,7 @@ import {
   DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
   DEFAULT_PANEL_DRAG_ENABLED,
   DEFAULT_PANEL_POSITION,
+  normalizeMaxConversationsToKeepValue,
 } from './api-types';
 import type {
   AgentModelSelectionConfig,
@@ -1003,12 +1004,8 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.textInputEnabled === 'boolean') updates.textInputEnabled = requestBody.textInputEnabled;
   if (typeof requestBody.conversationsEnabled === 'boolean') updates.conversationsEnabled = requestBody.conversationsEnabled;
   if (typeof requestBody.autoSaveConversations === 'boolean') updates.autoSaveConversations = requestBody.autoSaveConversations;
-  if (typeof requestBody.maxConversationsToKeep === 'number' && Number.isFinite(requestBody.maxConversationsToKeep)) {
-    const maxConversationsToKeep = Math.floor(requestBody.maxConversationsToKeep);
-    if (maxConversationsToKeep >= 1 && maxConversationsToKeep <= 10000) {
-      updates.maxConversationsToKeep = maxConversationsToKeep;
-    }
-  }
+  const maxConversationsToKeep = normalizeMaxConversationsToKeepValue(requestBody.maxConversationsToKeep);
+  if (maxConversationsToKeep !== undefined) updates.maxConversationsToKeep = maxConversationsToKeep;
   if (typeof requestBody.openaiApiKey === 'string' && requestBody.openaiApiKey !== providerSecretMask) updates.openaiApiKey = requestBody.openaiApiKey.trim();
   if (typeof requestBody.openaiBaseUrl === 'string') updates.openaiBaseUrl = requestBody.openaiBaseUrl.trim();
   if (typeof requestBody.groqApiKey === 'string' && requestBody.groqApiKey !== providerSecretMask) updates.groqApiKey = requestBody.groqApiKey.trim();

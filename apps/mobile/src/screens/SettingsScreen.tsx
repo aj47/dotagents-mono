@@ -24,24 +24,29 @@ import {
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
 } from '@dotagents/shared/accessibility-utils';
-import type {
-  ApiAgentProfile as AgentProfile,
-  ChatGptWebAuthStatus,
-  KnowledgeNote,
-  KnowledgeNoteContext,
-  KnowledgeNoteDateFilter,
-  KnowledgeNoteSort,
-  LocalSpeechModelProviderId,
-  LocalSpeechModelStatus,
-  Loop,
-  LoopRuntimeStatus,
-  MCPServer,
-  ModelInfo,
-  ModelPresetSummary,
-  Profile,
-  Settings,
-  SettingsUpdate,
-  Skill,
+import {
+  DEFAULT_AUTO_SAVE_CONVERSATIONS,
+  DEFAULT_CONVERSATIONS_ENABLED,
+  DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
+  formatMaxConversationsToKeepValidationMessage,
+  parseMaxConversationsToKeepDraft,
+  type ApiAgentProfile as AgentProfile,
+  type ChatGptWebAuthStatus,
+  type KnowledgeNote,
+  type KnowledgeNoteContext,
+  type KnowledgeNoteDateFilter,
+  type KnowledgeNoteSort,
+  type LocalSpeechModelProviderId,
+  type LocalSpeechModelStatus,
+  type Loop,
+  type LoopRuntimeStatus,
+  type MCPServer,
+  type ModelInfo,
+  type ModelPresetSummary,
+  type Profile,
+  type Settings,
+  type SettingsUpdate,
+  type Skill,
 } from '@dotagents/shared/api-types';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { speakRemoteTts } from '../lib/remoteTts';
@@ -2659,6 +2664,13 @@ export default function SettingsScreen({ navigation }: any) {
         if (pendingKeys.has('localTraceLogPath')) {
           updates.localTraceLogPath = inputDrafts.localTraceLogPath ?? '';
         }
+        if (pendingKeys.has('maxConversationsToKeep')) {
+          const parsedMaxConversations = parseMaxConversationsToKeepDraft(inputDrafts.maxConversationsToKeep ?? '');
+          if (parsedMaxConversations === null) {
+            throw new Error(formatMaxConversationsToKeepValidationMessage());
+          }
+          updates.maxConversationsToKeep = parsedMaxConversations;
+        }
         if (pendingKeys.has('mcpMaxIterations')) {
           const parsedIterations = parseMcpMaxIterationsDraft(inputDrafts.mcpMaxIterations ?? '');
           if (parsedIterations === null) {
@@ -2967,6 +2979,59 @@ export default function SettingsScreen({ navigation }: any) {
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Chats</Text>
+        {remoteSettings && (
+          <>
+            <View style={styles.row}>
+              <Text style={styles.label}>Desktop History</Text>
+              <Switch
+                value={remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED}
+                onValueChange={(v) => handleRemoteSettingToggle('conversationsEnabled', v)}
+                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                thumbColor={(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+              />
+            </View>
+            <Text style={styles.helperText}>
+              Store desktop agent conversations so they can sync to mobile.
+            </Text>
+
+            <View style={styles.row}>
+              <Text style={styles.label}>Auto-Save Desktop Chats</Text>
+              <Switch
+                value={remoteSettings.autoSaveConversations ?? DEFAULT_AUTO_SAVE_CONVERSATIONS}
+                onValueChange={(v) => handleRemoteSettingToggle('autoSaveConversations', v)}
+                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                thumbColor={(remoteSettings.autoSaveConversations ?? DEFAULT_AUTO_SAVE_CONVERSATIONS) ? theme.colors.primaryForeground : theme.colors.background}
+                disabled={!(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED)}
+              />
+            </View>
+
+            <Text style={styles.label}>Keep Recent Chats</Text>
+            <TextInput
+              style={[
+                styles.input,
+                !(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED) && styles.inputDisabled,
+              ]}
+              value={inputDrafts.maxConversationsToKeep ?? String(DEFAULT_MAX_CONVERSATIONS_TO_KEEP)}
+              onChangeText={(v) => {
+                markRemotePending('maxConversationsToKeep');
+                setSaveStatusMessage(null);
+                const num = parseMaxConversationsToKeepDraft(v);
+                if (num !== null) {
+                  handleRemoteSettingUpdate('maxConversationsToKeep', num);
+                } else {
+                  setInputDrafts(prev => ({ ...prev, maxConversationsToKeep: v }));
+                }
+              }}
+              placeholder={String(DEFAULT_MAX_CONVERSATIONS_TO_KEEP)}
+              placeholderTextColor={theme.colors.mutedForeground}
+              keyboardType="number-pad"
+              editable={remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED}
+            />
+            <Text style={styles.helperText}>
+              Maximum desktop chats to keep before pruning older history.
+            </Text>
+          </>
+        )}
         <View style={styles.serverRow}>
           <View style={styles.serverInfo}>
             <Text style={styles.serverName}>Clear all chats</Text>

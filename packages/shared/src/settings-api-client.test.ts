@@ -282,6 +282,15 @@ describe('SettingsApiClient', () => {
       },
     )).toMatchObject({ mcpAutoPasteDelay: 0 });
     expect(buildSettingsUpdatePatch(
+      { maxConversationsToKeep: 1 },
+      {},
+      {
+        providerSecretMask: '••••••••',
+        remoteServerSecretMask: '••••••••',
+        discordSecretMask: '••••••••',
+      },
+    )).toMatchObject({ maxConversationsToKeep: 1 });
+    expect(buildSettingsUpdatePatch(
       { mcpMaxIterations: 101 },
       {},
       {
@@ -299,6 +308,15 @@ describe('SettingsApiClient', () => {
         discordSecretMask: '••••••••',
       },
     )).not.toHaveProperty('mcpAutoPasteDelay');
+    expect(buildSettingsUpdatePatch(
+      { maxConversationsToKeep: 10001 },
+      {},
+      {
+        providerSecretMask: '••••••••',
+        remoteServerSecretMask: '••••••••',
+        discordSecretMask: '••••••••',
+      },
+    )).not.toHaveProperty('maxConversationsToKeep');
     expect(buildSettingsUpdatePatch(
       {
         openaiTtsSpeed: 0.24,

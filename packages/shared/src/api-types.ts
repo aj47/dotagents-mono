@@ -857,8 +857,32 @@ export interface DesktopTextInputConfig {
 }
 
 export const DEFAULT_CONVERSATIONS_ENABLED = true;
+export const MIN_CONVERSATIONS_TO_KEEP = 1;
+export const MAX_CONVERSATIONS_TO_KEEP = 10000;
 export const DEFAULT_MAX_CONVERSATIONS_TO_KEEP = 100;
 export const DEFAULT_AUTO_SAVE_CONVERSATIONS = true;
+
+export function parseMaxConversationsToKeepDraft(value: string): number | null {
+  const parsedValue = Number.parseInt(value, 10);
+  if (Number.isNaN(parsedValue)) return null;
+  if (parsedValue < MIN_CONVERSATIONS_TO_KEEP || parsedValue > MAX_CONVERSATIONS_TO_KEEP) return null;
+  return parsedValue;
+}
+
+export function normalizeMaxConversationsToKeepValue(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  const normalizedValue = Math.floor(value);
+  return normalizedValue >= MIN_CONVERSATIONS_TO_KEEP && normalizedValue <= MAX_CONVERSATIONS_TO_KEEP
+    ? normalizedValue
+    : undefined;
+}
+
+export function formatMaxConversationsToKeepValidationMessage(): string {
+  return `Keep Recent Chats must be between ${MIN_CONVERSATIONS_TO_KEEP} and ${MAX_CONVERSATIONS_TO_KEEP} before saving.`;
+}
 
 export interface ConversationStorageConfig {
   conversationsEnabled?: boolean;

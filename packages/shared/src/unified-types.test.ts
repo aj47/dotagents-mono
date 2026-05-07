@@ -14,6 +14,11 @@ import {
   DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
   DEFAULT_PANEL_DRAG_ENABLED,
   DEFAULT_PANEL_POSITION,
+  MAX_CONVERSATIONS_TO_KEEP,
+  MIN_CONVERSATIONS_TO_KEEP,
+  formatMaxConversationsToKeepValidationMessage,
+  normalizeMaxConversationsToKeepValue,
+  parseMaxConversationsToKeepDraft,
 } from './api-types'
 import {
   DEFAULT_DUAL_MODEL_ENABLED,
@@ -589,9 +594,18 @@ describe('settings API request/response contracts', () => {
     assertType<ConversationStorageConfig>(config)
     assertType<SettingsUpdate>(update)
     expect(defaultConfig.conversationsEnabled).toBe(true)
+    expect(MIN_CONVERSATIONS_TO_KEEP).toBe(1)
+    expect(MAX_CONVERSATIONS_TO_KEEP).toBe(10000)
     expect(defaultConfig.maxConversationsToKeep).toBe(100)
     expect(defaultConfig.autoSaveConversations).toBe(true)
     expect(update.maxConversationsToKeep).toBe(250)
+    expect(parseMaxConversationsToKeepDraft('1')).toBe(1)
+    expect(parseMaxConversationsToKeepDraft('10000')).toBe(10000)
+    expect(parseMaxConversationsToKeepDraft('0')).toBeNull()
+    expect(parseMaxConversationsToKeepDraft('10001')).toBeNull()
+    expect(normalizeMaxConversationsToKeepValue(250.9)).toBe(250)
+    expect(normalizeMaxConversationsToKeepValue('250')).toBeUndefined()
+    expect(formatMaxConversationsToKeepValidationMessage()).toBe('Keep Recent Chats must be between 1 and 10000 before saving.')
   })
 
   it('accepts streamer mode config shared by settings and remote pairing', () => {

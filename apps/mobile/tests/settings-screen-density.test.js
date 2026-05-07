@@ -37,6 +37,16 @@ test('keeps a global save button visible on mobile settings so typed changes are
 
 test('moves clear all chats into mobile settings', () => {
   assert.match(settingsSource, /<Text style=\{styles\.sectionTitle\}>Chats<\/Text>/);
+  assert.match(settingsSource, /DEFAULT_CONVERSATIONS_ENABLED/);
+  assert.match(settingsSource, /DEFAULT_AUTO_SAVE_CONVERSATIONS/);
+  assert.match(settingsSource, /DEFAULT_MAX_CONVERSATIONS_TO_KEEP/);
+  assert.match(settingsSource, /remoteSettings\.conversationsEnabled \?\? DEFAULT_CONVERSATIONS_ENABLED/);
+  assert.match(settingsSource, /handleRemoteSettingToggle\('conversationsEnabled', v\)/);
+  assert.match(settingsSource, /remoteSettings\.autoSaveConversations \?\? DEFAULT_AUTO_SAVE_CONVERSATIONS/);
+  assert.match(settingsSource, /handleRemoteSettingToggle\('autoSaveConversations', v\)/);
+  assert.match(settingsSource, /inputDrafts\.maxConversationsToKeep \?\? String\(DEFAULT_MAX_CONVERSATIONS_TO_KEEP\)/);
+  assert.match(settingsSource, /parseMaxConversationsToKeepDraft\(inputDrafts\.maxConversationsToKeep \?\? ''\)/);
+  assert.match(settingsSource, /updates\.maxConversationsToKeep = parsedMaxConversations/);
   assert.match(settingsSource, /Clear all chats/);
   assert.match(settingsSource, /Delete every chat saved in this mobile app, including pinned chats\./);
 });

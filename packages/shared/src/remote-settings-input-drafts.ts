@@ -1,4 +1,4 @@
-import type { Settings } from "./api-types"
+import { DEFAULT_MAX_CONVERSATIONS_TO_KEEP, type Settings } from "./api-types"
 import { formatConfigListInput } from "./config-list-input"
 import { DEFAULT_MCP_AUTO_PASTE_DELAY, MCP_MAX_ITERATIONS_DEFAULT } from "./mcp-api"
 
@@ -31,6 +31,7 @@ export function buildRemoteSettingsInputDrafts(
     transcriptPostProcessingChatgptWebModel: settings.transcriptPostProcessingChatgptWebModel || "",
     mcpMaxIterations: String(settings.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
     mcpAutoPasteDelay: String(settings.mcpAutoPasteDelay ?? DEFAULT_MCP_AUTO_PASTE_DELAY),
+    maxConversationsToKeep: String(settings.maxConversationsToKeep ?? DEFAULT_MAX_CONVERSATIONS_TO_KEEP),
     whatsappAllowFrom: formatConfigListInput(settings.whatsappAllowFrom),
     discordBotToken: getRemoteSettingsSecretInputDraft(settings.discordBotToken, secretMask),
     discordAllowUserIds: formatConfigListInput(settings.discordAllowUserIds, { separator: "newline" }),
