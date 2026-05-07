@@ -7,6 +7,7 @@ import {
   DEFAULT_UNLIMITED_GUARDRAIL_ITERATION_BUDGET,
   SESSION_STOPPED_BY_KILL_SWITCH_REASON,
   appendAgentStopNote,
+  buildPreviousConversationHistoryForAgentRun,
   buildAgentStoppedProgressUpdate,
   buildProfileContext,
   calculateLlmRetryBackoffDelay,
@@ -412,6 +413,43 @@ describe('stopRemoteAgentSessionAction', () => {
 })
 
 describe('runRemoteAgentAction', () => {
+  it('builds previous conversation history for agent replay', () => {
+    expect(buildPreviousConversationHistoryForAgentRun([
+      { role: 'user', content: 'first', timestamp: 1 },
+      {
+        role: 'assistant',
+        content: 'summary',
+        displayContent: 'shown summary',
+        timestamp: 2,
+        isSummary: true,
+        summarizedMessageCount: 3,
+        toolResults: [{ success: false, content: 'raw failure', error: 'failed' }],
+      },
+      { role: 'user', content: 'current turn', timestamp: 3 },
+    ])).toEqual([
+      {
+        role: 'user',
+        content: 'first',
+        timestamp: 1,
+        toolCalls: undefined,
+        toolResults: undefined,
+        branchMessageIndex: 0,
+      },
+      {
+        role: 'assistant',
+        content: 'summary',
+        displayContent: 'shown summary',
+        timestamp: 2,
+        toolCalls: undefined,
+        toolResults: [{
+          content: [{ type: 'text', text: 'failed' }],
+          isError: true,
+        }],
+        branchMessageIndex: 3,
+      },
+    ])
+  })
+
   function createRemoteAgentRunService(overrides: Partial<RemoteAgentRunActionService> = {}) {
     const conversations = new Map<string, RemoteAgentConversationLike>()
     conversations.set('conv-1', {

@@ -1,6 +1,9 @@
-import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
 import { getBranchableServerConversationMessages } from "@dotagents/shared/conversation-sync"
-import { resolveAgentModeMaxIterations } from "@dotagents/shared/agent-run-utils"
+import {
+  buildPreviousConversationHistoryForAgentRun,
+  resolveAgentModeMaxIterations,
+  type AgentRunPreviousConversationHistoryMessage,
+} from "@dotagents/shared/agent-run-utils"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import type { ConversationCompactionMetadata } from "@dotagents/shared/conversation-domain"
@@ -285,17 +288,7 @@ export async function processWithAgentMode(
       return undefined
     }
 
-    let previousConversationHistory:
-      | Array<{
-          role: "user" | "assistant" | "tool"
-          content: string
-          displayContent?: string
-          toolCalls?: any[]
-          toolResults?: any[]
-          timestamp?: number
-          branchMessageIndex?: number
-        }>
-      | undefined
+    let previousConversationHistory: AgentRunPreviousConversationHistoryMessage[] | undefined
     let previousConversationCompaction: ConversationCompactionMetadata | undefined
 
     if (conversationId) {
@@ -307,26 +300,8 @@ export async function processWithAgentMode(
         previousConversationCompaction = conversation.compaction
 
         const replayMessages = getBranchableServerConversationMessages(conversation)
-        const messagesToConvert = replayMessages.slice(0, -1)
-        const branchMessageIndexMap = getBranchMessageIndexMap(messagesToConvert)
-        logLLM(`[agent-loop-runner] Converting ${messagesToConvert.length} messages (excluding last message)`)
-        previousConversationHistory = messagesToConvert.map((msg, index) => ({
-          role: msg.role,
-          content: msg.content,
-          ...(msg.displayContent ? { displayContent: msg.displayContent } : {}),
-          toolCalls: msg.toolCalls,
-          timestamp: msg.timestamp,
-          toolResults: msg.toolResults?.map((tr) => ({
-            content: [
-              {
-                type: "text" as const,
-                text: tr.success ? tr.content : (tr.error || tr.content),
-              },
-            ],
-            isError: !tr.success,
-          })),
-          branchMessageIndex: branchMessageIndexMap[index],
-        }))
+        previousConversationHistory = buildPreviousConversationHistoryForAgentRun(replayMessages)
+        logLLM(`[agent-loop-runner] Converting ${previousConversationHistory.length} messages (excluding last message)`)
 
         logLLM(`[agent-loop-runner] previousConversationHistory roles: [${previousConversationHistory.map(m => m.role).join(", ")}]`)
       } else {

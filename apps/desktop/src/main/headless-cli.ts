@@ -17,8 +17,12 @@ import { getErrorMessage } from "@dotagents/shared/error-utils"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import type { Config } from "@shared/types"
-import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
-import { resolveAgentModeMaxIterations } from "@dotagents/shared/agent-run-utils"
+import { getBranchableServerConversationMessages } from "@dotagents/shared/conversation-sync"
+import {
+  buildPreviousConversationHistoryForAgentRun,
+  resolveAgentModeMaxIterations,
+  type AgentRunPreviousConversationHistoryMessage,
+} from "@dotagents/shared/agent-run-utils"
 import { getEnabledChatAgentProfiles } from "@dotagents/shared/agent-profile-queries"
 
 // ANSI color codes (no external deps)
@@ -348,15 +352,7 @@ async function runAgentCLI(prompt: string): Promise<void> {
   state.agentIterationCount = 0
 
   // Load or create conversation
-  let previousConversationHistory: Array<{
-    role: "user" | "assistant" | "tool"
-    content: string
-    displayContent?: string
-    toolCalls?: any[]
-    toolResults?: any[]
-    timestamp?: number
-    branchMessageIndex?: number
-  }> | undefined
+  let previousConversationHistory: AgentRunPreviousConversationHistoryMessage[] | undefined
 
   let conversationId = currentConversationId
 
@@ -367,20 +363,9 @@ async function runAgentCLI(prompt: string): Promise<void> {
       "user"
     )
     if (updatedConversation) {
-      const messagesToConvert = updatedConversation.messages.slice(0, -1)
-      const branchMessageIndexMap = getBranchMessageIndexMap(messagesToConvert)
-      previousConversationHistory = messagesToConvert.map((msg, index) => ({
-        role: msg.role,
-        content: msg.content,
-        ...(msg.displayContent ? { displayContent: msg.displayContent } : {}),
-        toolCalls: msg.toolCalls,
-        timestamp: msg.timestamp,
-        toolResults: msg.toolResults?.map((tr) => ({
-          content: [{ type: "text" as const, text: tr.success ? tr.content : (tr.error || tr.content) }],
-          isError: !tr.success,
-        })),
-        branchMessageIndex: branchMessageIndexMap[index],
-      }))
+      previousConversationHistory = buildPreviousConversationHistoryForAgentRun(
+        getBranchableServerConversationMessages(updatedConversation),
+      )
     } else {
       const newConversation = await conversationService.createConversationWithId(conversationId, prompt, "user")
       conversationId = newConversation.id

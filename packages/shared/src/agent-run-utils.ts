@@ -5,6 +5,7 @@ import {
   resolveLatestUserFacingResponse,
   type ConversationHistoryForApiEntryLike,
 } from './chat-utils';
+import { getBranchMessageIndexMap } from './conversation-progress';
 import { DEFAULT_MCP_UNLIMITED_ITERATIONS } from './mcp-api';
 import type { AgentProgressUpdate } from './agent-progress';
 import type { ConversationHistoryMessage } from './types';
@@ -50,6 +51,30 @@ export type RemoteAgentConversationLike = {
   id: string
   messages: RemoteAgentConversationMessageLike[]
   rawMessages?: RemoteAgentConversationMessageLike[]
+}
+
+export type AgentRunConversationHistorySourceMessage = {
+  role: 'user' | 'assistant' | 'tool'
+  content: string
+  displayContent?: string
+  toolCalls?: any[]
+  toolResults?: Array<{ success: boolean; content: string; error?: string } | null | undefined>
+  timestamp?: number
+  isSummary?: boolean
+  summarizedMessageCount?: number
+}
+
+export type AgentRunPreviousConversationHistoryMessage = {
+  role: 'user' | 'assistant' | 'tool'
+  content: string
+  displayContent?: string
+  toolCalls?: any[]
+  toolResults?: Array<{
+    content: Array<{ type: 'text'; text: string }>
+    isError: boolean
+  }>
+  timestamp?: number
+  branchMessageIndex?: number
 }
 
 export type RemoteAgentSessionLike = {
@@ -170,6 +195,29 @@ export function getRemoteAgentConversationMessages<TConversation extends RemoteA
   return Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
     ? conversation.rawMessages
     : conversation.messages
+}
+
+export function buildPreviousConversationHistoryForAgentRun(
+  messages: readonly AgentRunConversationHistorySourceMessage[],
+): AgentRunPreviousConversationHistoryMessage[] {
+  const messagesToConvert = messages.slice(0, -1)
+  const branchMessageIndexMap = getBranchMessageIndexMap(messagesToConvert)
+
+  return messagesToConvert.map((message, index) => ({
+    role: message.role,
+    content: message.content,
+    ...(message.displayContent ? { displayContent: message.displayContent } : {}),
+    toolCalls: message.toolCalls,
+    timestamp: message.timestamp,
+    toolResults: message.toolResults?.map((result) => ({
+      content: [{
+        type: 'text' as const,
+        text: result?.success ? result.content : (result?.error || result?.content || ''),
+      }],
+      isError: !result?.success,
+    })),
+    branchMessageIndex: branchMessageIndexMap[index],
+  }))
 }
 
 export type RemoteAgentChildSessionLike = {
