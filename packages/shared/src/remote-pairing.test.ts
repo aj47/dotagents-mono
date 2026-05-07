@@ -19,6 +19,7 @@ import {
   CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
   CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_NAME_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_SECTION_METADATA,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
@@ -321,6 +322,10 @@ describe('remote server config contracts', () => {
       tooltip: 'Quick tunnels are easy but have random URLs. Named tunnels require setup but have persistent URLs.',
       pendingLabel: 'tunnel mode',
       accessibilityLabel: 'Cloudflare tunnel mode',
+    });
+    expect(CLOUDFLARE_TUNNEL_SECTION_METADATA).toEqual({
+      sectionTitle: 'Cloudflare tunnel',
+      namedTunnelHelperText: 'Named tunnels need a tunnel ID and hostname. Credentials path is optional if the desktop already knows where to find the credentials file.',
     });
     expect(CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA).toEqual({
       key: 'cloudflareTunnelAutoStart',

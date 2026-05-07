@@ -73,6 +73,7 @@ import {
   CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
   CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_NAME_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_SECTION_METADATA,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
@@ -2158,7 +2159,7 @@ export default function OperationsScreen({ navigation }: any) {
                 />
               </View>
 
-              <Text style={styles.subsectionTitle}>Cloudflare tunnel</Text>
+              <Text style={styles.subsectionTitle}>{CLOUDFLARE_TUNNEL_SECTION_METADATA.sectionTitle}</Text>
               <Text style={styles.label}>{CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA.label}</Text>
               <View style={styles.chipRow}>
                 {CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS.map((option) => {
@@ -2279,7 +2280,7 @@ export default function OperationsScreen({ navigation }: any) {
                 placeholderTextColor={theme.colors.mutedForeground}
                 accessibilityLabel={createTextInputAccessibilityLabel(CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA.accessibilityLabel)}
               />
-              <Text style={styles.helperText}>Named tunnels need a tunnel ID and hostname. Credentials path is optional if the desktop already knows where to find the credentials file.</Text>
+              <Text style={styles.helperText}>{CLOUDFLARE_TUNNEL_SECTION_METADATA.namedTunnelHelperText}</Text>
 
               <Text style={styles.subsectionTitle}>{CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA.sectionTitle}</Text>
               <Text style={styles.helperText}>{CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA.helperText}</Text>

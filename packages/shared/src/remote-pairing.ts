@@ -190,6 +190,11 @@ export type CloudflareTunnelModeFieldMetadata = {
   accessibilityLabel: string;
 };
 
+export type CloudflareTunnelSectionMetadata = {
+  sectionTitle: string;
+  namedTunnelHelperText: string;
+};
+
 export type CloudflareTunnelAutoStartFieldMetadata = {
   key: 'cloudflareTunnelAutoStart';
   label: string;
@@ -407,6 +412,10 @@ export const CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA: CloudflareTunnelModeFieldMet
   tooltip: 'Quick tunnels are easy but have random URLs. Named tunnels require setup but have persistent URLs.',
   pendingLabel: 'tunnel mode',
   accessibilityLabel: 'Cloudflare tunnel mode',
+};
+export const CLOUDFLARE_TUNNEL_SECTION_METADATA: CloudflareTunnelSectionMetadata = {
+  sectionTitle: 'Cloudflare tunnel',
+  namedTunnelHelperText: 'Named tunnels need a tunnel ID and hostname. Credentials path is optional if the desktop already knows where to find the credentials file.',
 };
 export const CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA: CloudflareTunnelAutoStartFieldMetadata = {
   key: 'cloudflareTunnelAutoStart',

@@ -116,6 +116,8 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA/);
   assert.match(operationsSource, /CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA\.pendingLabel/);
   assert.match(operationsSource, /CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA\.accessibilityLabel/);
+  assert.match(operationsSource, /CLOUDFLARE_TUNNEL_SECTION_METADATA\.sectionTitle/);
+  assert.match(operationsSource, /CLOUDFLARE_TUNNEL_SECTION_METADATA\.namedTunnelHelperText/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.label\}>Tunnel Mode<\/Text>/);
   assert.match(operationsSource, /CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS/);
   assert.match(operationsSource, /DEFAULT_CLOUDFLARE_TUNNEL_MODE/);
