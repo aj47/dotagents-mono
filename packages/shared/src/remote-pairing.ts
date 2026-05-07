@@ -135,6 +135,23 @@ export type RemoteServerCorsOriginsFieldMetadata = {
   accessibilityLabel: string;
 };
 
+export type RemoteServerOperatorDeviceAllowlistFieldMetadata = {
+  key: 'remoteServerOperatorAllowDeviceIds';
+  sectionTitle: string;
+  helperText: string;
+  currentDeviceLabel: string;
+  currentDeviceLoadingText: string;
+  label: string;
+  placeholder: string;
+  pendingLabel: string;
+  updateSuccessMessage: string;
+  trustSuccessMessage: string;
+  accessibilityLabel: string;
+  trustAccessibilityLabel: string;
+  trustButtonLabel: string;
+  trustedButtonLabel: string;
+};
+
 export type CloudflareTunnelModeOption = {
   value: CloudflareTunnelMode;
   label: string;
@@ -283,6 +300,22 @@ export const REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA: RemoteServerCorsOriginsF
   pendingLabel: 'remote server CORS origins',
   successMessage: 'Remote server CORS origins updated.',
   accessibilityLabel: 'Remote server CORS origins',
+};
+export const REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA: RemoteServerOperatorDeviceAllowlistFieldMetadata = {
+  key: 'remoteServerOperatorAllowDeviceIds',
+  sectionTitle: 'Trusted operator devices',
+  helperText: 'If this list is empty, any authenticated client can use operator/admin routes. Once set, non-loopback operator access requires a matching stable device ID.',
+  currentDeviceLabel: 'Current device ID',
+  currentDeviceLoadingText: 'Loading…',
+  label: 'Trusted Device IDs',
+  placeholder: 'device-id-1, device-id-2',
+  pendingLabel: 'trusted operator devices',
+  updateSuccessMessage: 'Trusted operator device allowlist updated.',
+  trustSuccessMessage: 'This mobile device is now trusted for operator access.',
+  accessibilityLabel: 'Trusted operator device IDs',
+  trustAccessibilityLabel: 'Trust this device for operator access',
+  trustButtonLabel: 'Trust this device',
+  trustedButtonLabel: 'This device is trusted',
 };
 export const CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS: readonly CloudflareTunnelModeOption[] = [
   {

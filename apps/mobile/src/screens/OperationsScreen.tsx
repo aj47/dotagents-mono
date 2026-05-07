@@ -90,6 +90,7 @@ import {
   REMOTE_SERVER_ENABLED_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA,
+  REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA,
   REMOTE_SERVER_PORT_FIELD_METADATA,
   REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA,
 } from '@dotagents/shared/remote-pairing';
@@ -1890,25 +1891,27 @@ export default function OperationsScreen({ navigation }: any) {
               />
               <Text style={styles.helperText}>{REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA.helperText}</Text>
 
-              <Text style={styles.subsectionTitle}>Trusted operator devices</Text>
-              <Text style={styles.helperText}>If this list is empty, any authenticated client can use operator/admin routes. Once set, non-loopback operator access requires a matching stable device ID.</Text>
-              <Text style={styles.detailText}>Current device ID: {currentDeviceId ?? 'Loading…'}</Text>
-              <Text style={styles.label}>Trusted Device IDs</Text>
+              <Text style={styles.subsectionTitle}>{REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.sectionTitle}</Text>
+              <Text style={styles.helperText}>{REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.helperText}</Text>
+              <Text style={styles.detailText}>
+                {REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.currentDeviceLabel}: {currentDeviceId ?? REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.currentDeviceLoadingText}
+              </Text>
+              <Text style={styles.label}>{REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.remoteServerOperatorAllowDeviceIds}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, remoteServerOperatorAllowDeviceIds: value }))}
                 onEndEditing={() => void applySettingsUpdate(
                   { remoteServerOperatorAllowDeviceIds: parseConfigListInput(drafts.remoteServerOperatorAllowDeviceIds, { unique: true }) },
-                  'trusted operator devices',
-                  'Trusted operator device allowlist updated.',
+                  REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.pendingLabel,
+                  REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.updateSuccessMessage,
                 )}
                 editable={!controlsDisabled}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="device-id-1, device-id-2"
+                placeholder={REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('Trusted operator device IDs')}
+                accessibilityLabel={createTextInputAccessibilityLabel(REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.accessibilityLabel)}
               />
               <View style={styles.actionGrid}>
                 <TouchableOpacity
@@ -1923,15 +1926,19 @@ export default function OperationsScreen({ navigation }: any) {
                     setDrafts((current) => ({ ...current, remoteServerOperatorAllowDeviceIds: formatConfigListInput(nextIds) }));
                     void applySettingsUpdate(
                       { remoteServerOperatorAllowDeviceIds: nextIds },
-                      'trusted operator devices',
-                      'This mobile device is now trusted for operator access.',
+                      REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.pendingLabel,
+                      REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.trustSuccessMessage,
                     );
                   }}
                   disabled={controlsDisabled || !currentDeviceId || currentDeviceTrusted}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Trust this device for operator access')}
+                  accessibilityLabel={createButtonAccessibilityLabel(REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.trustAccessibilityLabel)}
                 >
-                  <Text style={styles.secondaryActionText}>{currentDeviceTrusted ? 'This device is trusted' : 'Trust this device'}</Text>
+                  <Text style={styles.secondaryActionText}>
+                    {currentDeviceTrusted
+                      ? REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.trustedButtonLabel
+                      : REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA.trustButtonLabel}
+                  </Text>
                 </TouchableOpacity>
               </View>
 

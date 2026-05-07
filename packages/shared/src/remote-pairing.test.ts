@@ -70,6 +70,7 @@ import {
   REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
+  REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA,
   REMOTE_SERVER_PORT_FIELD_METADATA,
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
@@ -207,6 +208,22 @@ describe('remote server config contracts', () => {
       pendingLabel: 'remote server CORS origins',
       successMessage: 'Remote server CORS origins updated.',
       accessibilityLabel: 'Remote server CORS origins',
+    });
+    expect(REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA).toEqual({
+      key: 'remoteServerOperatorAllowDeviceIds',
+      sectionTitle: 'Trusted operator devices',
+      helperText: 'If this list is empty, any authenticated client can use operator/admin routes. Once set, non-loopback operator access requires a matching stable device ID.',
+      currentDeviceLabel: 'Current device ID',
+      currentDeviceLoadingText: 'Loading…',
+      label: 'Trusted Device IDs',
+      placeholder: 'device-id-1, device-id-2',
+      pendingLabel: 'trusted operator devices',
+      updateSuccessMessage: 'Trusted operator device allowlist updated.',
+      trustSuccessMessage: 'This mobile device is now trusted for operator access.',
+      accessibilityLabel: 'Trusted operator device IDs',
+      trustAccessibilityLabel: 'Trust this device for operator access',
+      trustButtonLabel: 'Trust this device',
+      trustedButtonLabel: 'This device is trusted',
     });
     expect(DEFAULT_REMOTE_SERVER_CORS_ORIGINS).toEqual(['*']);
     expect(getDefaultRemoteServerCorsOrigins()).toEqual(['*']);
