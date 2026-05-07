@@ -6,12 +6,13 @@ import { playSound, setSoundOutputDevice } from "@renderer/lib/sound"
 import { cn } from "@renderer/lib/utils"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
-import { rendererHandlers, tipcClient } from "~/lib/tipc-client"
+import { rendererHandlers } from "~/lib/tipc-client"
 import { TextInputPanel, TextInputPanelRef } from "@renderer/components/text-input-panel"
 import { PanelResizeWrapper } from "@renderer/components/panel-resize-wrapper"
 import { useAgentStore, useAgentProgress, useConversationStore } from "@renderer/stores"
 import { useConfigQuery, useConversationQuery, useCreateConversationMutation } from "@renderer/lib/queries"
 import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
+import { desktopAppShellClient } from "@renderer/lib/desktop-app-shell-client"
 import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
 import { desktopDictationClient } from "@renderer/lib/desktop-dictation-client"
 import { desktopMcpSessionActionsClient } from "@renderer/lib/desktop-mcp-session-actions-client"
@@ -463,7 +464,7 @@ export function Component() {
     },
     onError(error) {
       void desktopPanelClient.hidePanelWindow()
-      tipcClient.displayError({
+      void desktopAppShellClient.displayError({
         title: error.name,
         message: error.message,
       })
@@ -534,7 +535,7 @@ export function Component() {
       fromTileRef.current = false
 
       void desktopPanelClient.hidePanelWindow()
-      tipcClient.displayError({
+      void desktopAppShellClient.displayError({
         title: error.name,
         message: error.message,
       })
@@ -555,7 +556,7 @@ export function Component() {
       void desktopPanelClient.clearTextInputState()
 
       void desktopPanelClient.hidePanelWindow()
-      tipcClient.displayError({
+      void desktopAppShellClient.displayError({
         title: error.name,
         message: error.message,
       })
@@ -592,7 +593,7 @@ export function Component() {
       void desktopPanelClient.clearTextInputState()
 
       void desktopPanelClient.hidePanelWindow()
-      tipcClient.displayError({
+      void desktopAppShellClient.displayError({
         title: error.name,
         message: error.message,
       })

@@ -12,6 +12,11 @@ export interface DesktopContextMenuRequest {
   }
 }
 
+export interface DesktopDisplayErrorRequest {
+  title?: string
+  message: string
+}
+
 export const desktopAppShellClient = {
   showContextMenu(request: DesktopContextMenuRequest): Promise<void> {
     return tipcClient.showContextMenu(request) as Promise<void>
@@ -19,5 +24,9 @@ export const desktopAppShellClient = {
 
   broadcastThemeChange(themeMode: ThemePreferenceValue): Promise<void> {
     return tipcClient.broadcastThemeChange?.({ themeMode }) ?? Promise.resolve()
+  },
+
+  displayError(request: DesktopDisplayErrorRequest): Promise<void> {
+    return tipcClient.displayError(request) as Promise<void>
   },
 }
