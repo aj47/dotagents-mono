@@ -105,7 +105,10 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /desktopShellFields\.launchAtLogin\.pendingLabel/);
   assert.match(operationsSource, /desktopShellFields\.launchAtLogin\.successMessage/);
   assert.match(operationsSource, /desktopShellFields\.launchAtLogin\.accessibilityLabel/);
-  assert.match(operationsSource, /Desktop Theme/);
+  assert.match(operationsSource, /DESKTOP_THEME_PREFERENCE_FIELD_METADATA\.label/);
+  assert.match(operationsSource, /DESKTOP_THEME_PREFERENCE_FIELD_METADATA\.pendingLabel/);
+  assert.match(operationsSource, /DESKTOP_THEME_PREFERENCE_FIELD_METADATA\.formatSuccessMessage\(option\.label\)/);
+  assert.match(operationsSource, /DESKTOP_THEME_PREFERENCE_FIELD_METADATA\.formatButtonAccessibilityLabel\(option\.label\)/);
   assert.match(operationsSource, /hideDockIcon: value/);
   assert.match(operationsSource, /launchAtLogin: value/);
   assert.match(operationsSource, /themePreference: option\.value/);

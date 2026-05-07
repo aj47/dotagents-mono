@@ -8,6 +8,13 @@ export type ThemePreferenceOption = {
   value: ThemePreferenceValue
 }
 
+export type DesktopThemePreferenceFieldMetadata = {
+  label: string
+  pendingLabel: string
+  formatSuccessMessage: (label: string) => string
+  formatButtonAccessibilityLabel: (label: string) => string
+}
+
 export const THEME_PREFERENCE_VALUES: readonly ThemePreferenceValue[] = ["system", "light", "dark"]
 export const DEFAULT_THEME_PREFERENCE: ThemePreferenceValue = "system"
 export const THEME_PREFERENCE_OPTIONS: readonly ThemePreferenceOption[] = [
@@ -15,6 +22,12 @@ export const THEME_PREFERENCE_OPTIONS: readonly ThemePreferenceOption[] = [
   { label: "Light", value: "light" },
   { label: "Dark", value: "dark" },
 ]
+export const DESKTOP_THEME_PREFERENCE_FIELD_METADATA: DesktopThemePreferenceFieldMetadata = {
+  label: "Desktop Theme",
+  pendingLabel: "desktop theme",
+  formatSuccessMessage: (label) => `Desktop theme set to ${label}.`,
+  formatButtonAccessibilityLabel: (label) => `Set desktop theme to ${label}`,
+}
 export const DESKTOP_THEME_PREFERENCE_STORAGE_KEY = "theme-preference"
 export const MOBILE_THEME_PREFERENCE_STORAGE_KEY = "dotagents-theme-preference"
 export const THEME_PREFERENCE_CHANGED_EVENT = "theme-preference-changed"

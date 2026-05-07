@@ -53,6 +53,7 @@ import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/c
 import { getErrorMessage } from '@dotagents/shared/error-utils';
 import { DEFAULT_TEXT_INPUT_ENABLED } from '@dotagents/shared/key-utils';
 import {
+  DESKTOP_THEME_PREFERENCE_FIELD_METADATA,
   DEFAULT_THEME_PREFERENCE,
   THEME_PREFERENCE_OPTIONS,
 } from '@dotagents/shared/theme-preference';
@@ -1969,7 +1970,7 @@ export default function OperationsScreen({ navigation }: any) {
                 </View>
               ) : null}
 
-              <Text style={styles.label}>Desktop Theme</Text>
+              <Text style={styles.label}>{DESKTOP_THEME_PREFERENCE_FIELD_METADATA.label}</Text>
               <View style={styles.chipRow}>
                 {THEME_PREFERENCE_OPTIONS.map((option) => {
                   const isActive = (settings.themePreference ?? DEFAULT_THEME_PREFERENCE) === option.value;
@@ -1983,12 +1984,12 @@ export default function OperationsScreen({ navigation }: any) {
                       ]}
                       onPress={() => void applySettingsUpdate(
                         { themePreference: option.value },
-                        'desktop theme',
-                        `Desktop theme set to ${option.label}.`,
+                        DESKTOP_THEME_PREFERENCE_FIELD_METADATA.pendingLabel,
+                        DESKTOP_THEME_PREFERENCE_FIELD_METADATA.formatSuccessMessage(option.label),
                       )}
                       disabled={controlsDisabled}
                       accessibilityRole="button"
-                      accessibilityLabel={createButtonAccessibilityLabel(`Set desktop theme to ${option.label}`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(DESKTOP_THEME_PREFERENCE_FIELD_METADATA.formatButtonAccessibilityLabel(option.label))}
                     >
                       <Text style={[styles.chipButtonText, isActive && styles.chipButtonTextActive]}>
                         {option.label}

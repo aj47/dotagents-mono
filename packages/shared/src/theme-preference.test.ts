@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   DEFAULT_THEME_PREFERENCE,
+  DESKTOP_THEME_PREFERENCE_FIELD_METADATA,
   DESKTOP_THEME_PREFERENCE_STORAGE_KEY,
   THEME_PREFERENCE_OPTIONS,
   THEME_PREFERENCE_VALUES,
@@ -30,6 +31,14 @@ describe("theme preference", () => {
       { label: "Light", value: "light" },
       { label: "Dark", value: "dark" },
     ])
+    expect(DESKTOP_THEME_PREFERENCE_FIELD_METADATA).toEqual({
+      label: "Desktop Theme",
+      pendingLabel: "desktop theme",
+      formatSuccessMessage: expect.any(Function),
+      formatButtonAccessibilityLabel: expect.any(Function),
+    })
+    expect(DESKTOP_THEME_PREFERENCE_FIELD_METADATA.formatSuccessMessage("Dark")).toBe("Desktop theme set to Dark.")
+    expect(DESKTOP_THEME_PREFERENCE_FIELD_METADATA.formatButtonAccessibilityLabel("Dark")).toBe("Set desktop theme to Dark")
     expect(isThemePreference("system")).toBe(true)
     expect(isThemePreference("light")).toBe(true)
     expect(isThemePreference("dark")).toBe(true)
