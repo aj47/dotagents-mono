@@ -565,6 +565,12 @@ export async function runRemoteAgentAction<TConversation extends RemoteAgentConv
   }
 }
 
+export function createRemoteAgentRunExecutor<TConversation extends RemoteAgentConversationLike = RemoteAgentConversationLike>(
+  actionOptions: RemoteAgentRunActionOptions<TConversation>,
+): AgentRunExecutor {
+  return (options) => runRemoteAgentAction(options, actionOptions)
+}
+
 function getLatestAssistantMessageContent(
   conversation?: ConversationMessageLike[],
 ): string | undefined {

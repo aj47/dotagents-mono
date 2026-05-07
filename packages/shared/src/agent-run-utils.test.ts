@@ -10,6 +10,7 @@ import {
   buildAgentStoppedProgressUpdate,
   buildProfileContext,
   calculateLlmRetryBackoffDelay,
+  createRemoteAgentRunExecutor,
   describeAgentSessionId,
   getExplicitAgentStopReason,
   getPreferredDelegationOutput,
@@ -446,6 +447,34 @@ describe('runRemoteAgentAction', () => {
     expect(stateChanges).toEqual([
       { isAgentModeActive: true, shouldStopAgent: false, agentIterationCount: 0 },
       { isAgentModeActive: false, shouldStopAgent: false, agentIterationCount: 0 },
+    ])
+  })
+
+  it('builds remote agent run executors from injected action options', async () => {
+    const { calls, service } = createRemoteAgentRunService({
+      getConfig: () => ({ remoteServerAutoShowPanel: true }),
+      findSessionByConversationId: () => undefined,
+    })
+    const executor = createRemoteAgentRunExecutor({
+      service,
+      diagnostics: {
+        logInfo: () => {},
+      },
+    })
+
+    await expect(executor({
+      prompt: 'executor prompt',
+      conversationId: 'missing-conv',
+    })).resolves.toMatchObject({
+      content: 'done',
+      conversationId: 'missing-conv',
+    })
+
+    expect(calls).toEqual([
+      'add:missing-conv:executor prompt:user',
+      'create:missing-conv:executor prompt:user',
+      'process:executor prompt:missing-conv:new:false:',
+      'notify',
     ])
   })
 })
