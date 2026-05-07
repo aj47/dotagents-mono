@@ -72,6 +72,7 @@ import {
   type ModelPresetDraft,
 } from '@dotagents/shared/model-presets';
 import {
+  CHAT_PROVIDER_CREDENTIAL_SECTIONS as PROVIDER_CREDENTIAL_SECTIONS,
   CHAT_PROVIDERS,
   DEFAULT_STT_PROVIDER_ID,
   DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID,
@@ -85,6 +86,7 @@ import {
   getTtsVoiceSettingKey,
   getTtsVoicesForProvider,
   getTranscriptPostProcessingModelSettingKey,
+  type ChatProviderSecretSettingKey as ProviderSecretSettingKey,
   type CHAT_PROVIDER_ID,
 } from '@dotagents/shared/providers';
 import {
@@ -202,14 +204,6 @@ import {
   normalizeTextToSpeechVoiceUpdateValue as normalizeTtsVoiceUpdateValue,
 } from '@dotagents/shared/text-to-speech-settings';
 
-type ProviderSecretSettingKey =
-  | 'openaiApiKey'
-  | 'groqApiKey'
-  | 'geminiApiKey'
-  | 'chatgptWebAccessToken'
-  | 'chatgptWebSessionToken';
-type ProviderBaseUrlSettingKey = 'openaiBaseUrl' | 'groqBaseUrl' | 'geminiBaseUrl' | 'chatgptWebBaseUrl';
-
 type ModelPresetEditorMode = 'create' | 'edit';
 type McpServerEditorMode = 'create' | 'replace';
 type BundleImportComponentsState = RequiredBundleComponentSelection;
@@ -231,50 +225,6 @@ intervalMinutes: ${DEFAULT_REPEAT_TASK_INTERVAL_MINUTES}
 enabled: ${DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled}
 ---
 Summarize overnight work.`;
-
-const PROVIDER_CREDENTIAL_SECTIONS: Array<{
-  id: string;
-  label: string;
-  secrets: Array<{
-    key: ProviderSecretSettingKey;
-    label: string;
-    placeholder: string;
-  }>;
-  baseUrl: ProviderBaseUrlSettingKey;
-  baseUrlPlaceholder: string;
-}> = [
-  {
-    id: 'openai',
-    label: 'OpenAI Compatible',
-    secrets: [{ key: 'openaiApiKey', label: 'API Key', placeholder: 'sk-...' }],
-    baseUrl: 'openaiBaseUrl',
-    baseUrlPlaceholder: 'https://api.openai.com/v1',
-  },
-  {
-    id: 'groq',
-    label: 'Groq',
-    secrets: [{ key: 'groqApiKey', label: 'API Key', placeholder: 'gsk_...' }],
-    baseUrl: 'groqBaseUrl',
-    baseUrlPlaceholder: 'https://api.groq.com/openai/v1',
-  },
-  {
-    id: 'gemini',
-    label: 'Gemini',
-    secrets: [{ key: 'geminiApiKey', label: 'API Key', placeholder: 'AIza...' }],
-    baseUrl: 'geminiBaseUrl',
-    baseUrlPlaceholder: 'https://generativelanguage.googleapis.com',
-  },
-  {
-    id: 'chatgpt-web',
-    label: 'OpenAI Codex',
-    secrets: [
-      { key: 'chatgptWebAccessToken', label: 'Access Token', placeholder: 'access token' },
-      { key: 'chatgptWebSessionToken', label: 'Session Token', placeholder: 'session token' },
-    ],
-    baseUrl: 'chatgptWebBaseUrl',
-    baseUrlPlaceholder: 'https://chatgpt.com',
-  },
-];
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {

@@ -5,6 +5,7 @@ import {
   DEFAULT_STT_PROVIDER_ID,
   CHAT_PROVIDERS,
   CHAT_PROVIDER_IDS,
+  CHAT_PROVIDER_CREDENTIAL_SECTIONS,
   DEFAULT_AGENT_PROVIDER_ID,
   DEFAULT_CHAT_PROVIDER_ID,
   DEFAULT_CHAT_MODELS,
@@ -101,6 +102,42 @@ describe('CHAT_PROVIDERS', () => {
     expect(isChatProviderId(undefined)).toBe(false)
     expect(normalizeChatProviderId(' OpenAI ')).toBe('openai')
     expect(() => normalizeChatProviderId('edge')).toThrow('Unknown provider: edge')
+  })
+
+  it('describes shared chat provider credential fields', () => {
+    expect(CHAT_PROVIDER_CREDENTIAL_SECTIONS).toEqual([
+      {
+        id: 'openai',
+        label: 'OpenAI Compatible',
+        secrets: [{ key: 'openaiApiKey', label: 'API Key', placeholder: 'sk-...' }],
+        baseUrl: 'openaiBaseUrl',
+        baseUrlPlaceholder: 'https://api.openai.com/v1',
+      },
+      {
+        id: 'groq',
+        label: 'Groq',
+        secrets: [{ key: 'groqApiKey', label: 'API Key', placeholder: 'gsk_...' }],
+        baseUrl: 'groqBaseUrl',
+        baseUrlPlaceholder: 'https://api.groq.com/openai/v1',
+      },
+      {
+        id: 'gemini',
+        label: 'Gemini',
+        secrets: [{ key: 'geminiApiKey', label: 'API Key', placeholder: 'AIza...' }],
+        baseUrl: 'geminiBaseUrl',
+        baseUrlPlaceholder: 'https://generativelanguage.googleapis.com',
+      },
+      {
+        id: 'chatgpt-web',
+        label: 'OpenAI Codex',
+        secrets: [
+          { key: 'chatgptWebAccessToken', label: 'Access Token', placeholder: 'access token' },
+          { key: 'chatgptWebSessionToken', label: 'Session Token', placeholder: 'session token' },
+        ],
+        baseUrl: 'chatgptWebBaseUrl',
+        baseUrlPlaceholder: 'https://chatgpt.com',
+      },
+    ])
   })
 
   it('keeps shared chat model defaults and text-usage sanitization rules', () => {

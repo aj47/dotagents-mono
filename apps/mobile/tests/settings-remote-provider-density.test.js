@@ -11,6 +11,10 @@ const remoteSettingsDraftsSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'remote-settings-input-drafts.ts'),
   'utf8'
 );
+const providersSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'providers.ts'),
+  'utf8'
+);
 const discordConfigSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'discord-config.ts'),
   'utf8'
@@ -52,13 +56,14 @@ test('lets mobile configure desktop provider credentials without echoing secrets
     '<CollapsibleSection id="profileModel" title="Profile & Model">'
   );
 
-  assert.match(settingsSource, /PROVIDER_CREDENTIAL_SECTIONS/);
-  assert.match(settingsSource, /openaiApiKey/);
-  assert.match(settingsSource, /groqApiKey/);
-  assert.match(settingsSource, /geminiApiKey/);
-  assert.match(settingsSource, /chatgptWebAccessToken/);
-  assert.match(settingsSource, /chatgptWebSessionToken/);
-  assert.match(settingsSource, /chatgptWebBaseUrl/);
+  assert.match(providersSource, /CHAT_PROVIDER_CREDENTIAL_SECTIONS/);
+  assert.match(settingsSource, /CHAT_PROVIDER_CREDENTIAL_SECTIONS as PROVIDER_CREDENTIAL_SECTIONS/);
+  assert.match(providersSource, /openaiApiKey/);
+  assert.match(providersSource, /groqApiKey/);
+  assert.match(providersSource, /geminiApiKey/);
+  assert.match(providersSource, /chatgptWebAccessToken/);
+  assert.match(providersSource, /chatgptWebSessionToken/);
+  assert.match(providersSource, /chatgptWebBaseUrl/);
   assert.match(providerSetupSection, /handleRemoteSecretDraftChange\(secret\.key, v\)/);
   assert.match(providerSetupSection, /commitRemoteSecretDraft\(secret\.key\)/);
   assert.match(providerSetupSection, /handleRemoteSettingUpdate\(provider\.baseUrl, v\)/);

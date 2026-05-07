@@ -40,6 +40,57 @@ export const CHAT_PROVIDER_IDS: readonly CHAT_PROVIDER_ID[] = CHAT_PROVIDERS.map
 export const DEFAULT_CHAT_PROVIDER_ID: CHAT_PROVIDER_ID = "openai";
 export const DEFAULT_AGENT_PROVIDER_ID: CHAT_PROVIDER_ID = DEFAULT_CHAT_PROVIDER_ID;
 export const DEFAULT_MCP_TOOLS_PROVIDER_ID: CHAT_PROVIDER_ID = DEFAULT_CHAT_PROVIDER_ID;
+export type ChatProviderSecretSettingKey =
+  | "openaiApiKey"
+  | "groqApiKey"
+  | "geminiApiKey"
+  | "chatgptWebAccessToken"
+  | "chatgptWebSessionToken";
+export type ChatProviderBaseUrlSettingKey = "openaiBaseUrl" | "groqBaseUrl" | "geminiBaseUrl" | "chatgptWebBaseUrl";
+export type ChatProviderCredentialSection = {
+  id: CHAT_PROVIDER_ID;
+  label: string;
+  secrets: readonly {
+    key: ChatProviderSecretSettingKey;
+    label: string;
+    placeholder: string;
+  }[];
+  baseUrl: ChatProviderBaseUrlSettingKey;
+  baseUrlPlaceholder: string;
+};
+export const CHAT_PROVIDER_CREDENTIAL_SECTIONS: readonly ChatProviderCredentialSection[] = [
+  {
+    id: "openai",
+    label: "OpenAI Compatible",
+    secrets: [{ key: "openaiApiKey", label: "API Key", placeholder: "sk-..." }],
+    baseUrl: "openaiBaseUrl",
+    baseUrlPlaceholder: "https://api.openai.com/v1",
+  },
+  {
+    id: "groq",
+    label: "Groq",
+    secrets: [{ key: "groqApiKey", label: "API Key", placeholder: "gsk_..." }],
+    baseUrl: "groqBaseUrl",
+    baseUrlPlaceholder: "https://api.groq.com/openai/v1",
+  },
+  {
+    id: "gemini",
+    label: "Gemini",
+    secrets: [{ key: "geminiApiKey", label: "API Key", placeholder: "AIza..." }],
+    baseUrl: "geminiBaseUrl",
+    baseUrlPlaceholder: "https://generativelanguage.googleapis.com",
+  },
+  {
+    id: "chatgpt-web",
+    label: "OpenAI Codex",
+    secrets: [
+      { key: "chatgptWebAccessToken", label: "Access Token", placeholder: "access token" },
+      { key: "chatgptWebSessionToken", label: "Session Token", placeholder: "session token" },
+    ],
+    baseUrl: "chatgptWebBaseUrl",
+    baseUrlPlaceholder: "https://chatgpt.com",
+  },
+];
 export type ChatModelContext = "mcp" | "transcript";
 export type ChatModelSelectionResolutionReason = "transcription-only" | "chatgpt-web-only";
 export type ChatModelSelectionResolution = {
