@@ -1702,6 +1702,7 @@ describe("remote-server route registration", () => {
     expect(sharedConversationSyncSource).toContain("export function normalizeServerConversationHistoryIndex")
     expect(sharedConversationSyncSource).toContain("export function renameServerConversationTitle")
     expect(sharedConversationSyncSource).toContain("export function syncServerConversationStorageMetadata")
+    expect(sharedConversationSyncSource).toContain("export function buildServerConversationCompactedRecord")
     expect(sharedConversationSyncSource).toContain("export function buildServerConversationCompactionCheckpointMetadata")
     expect(sharedConversationSyncSource).toContain("export function buildServerConversationCompactionSummaryInput")
     expect(sharedConversationSyncSource).toContain("export function buildServerConversationCompactionPrompt")
@@ -1723,6 +1724,7 @@ describe("remote-server route registration", () => {
     expect(conversationServiceSource).toContain("normalizeServerConversationHistoryIndex(index")
     expect(conversationServiceSource).toContain("renameServerConversationTitle(conversation, title")
     expect(conversationServiceSource).toContain("syncServerConversationStorageMetadata(conversation)")
+    expect(conversationServiceSource).toContain("buildServerConversationCompactedRecord(conversation")
     expect(conversationServiceSource).toContain("buildServerConversationCompactionCheckpointMetadata({")
     expect(conversationServiceSource).toContain("buildServerConversationCompactionSummaryInput(messagesToSummarize)")
     expect(conversationServiceSource).toContain("buildServerConversationCompactionPrompt(summaryInput)")
@@ -1738,6 +1740,7 @@ describe("remote-server route registration", () => {
     expect(conversationServiceSource).not.toContain("getRepresentedCountForMessages")
     expect(conversationServiceSource).not.toContain("private hasSummaryMessages")
     expect(conversationServiceSource).not.toContain("private getRepresentedMessageCount")
+    expect(conversationServiceSource).not.toContain("rawMessages: [...fullMessageHistory]")
     expect(conversationServiceSource).not.toContain("conversation.title = normalizedTitle")
     expect(mobileApiDesktopActionsSource).toContain("const conversationImageAssetActionOptions: ConversationImageAssetActionOptions")
     expect(mobileApiDesktopActionsSource).toContain(

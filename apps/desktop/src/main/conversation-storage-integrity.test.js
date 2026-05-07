@@ -30,14 +30,16 @@ test('conversation service preserves raw messages during compaction and marks le
   assert.match(serviceSource, /private syncConversationStorageMetadata\(conversation: Conversation\): boolean/)
   assert.match(serviceSource, /syncServerConversationStorageMetadata\(conversation\)/)
   assert.match(sharedConversationSyncSource, /partialReason: isLegacyPartial \? 'legacy_summary_without_raw_messages' : undefined/)
-  assert.match(serviceSource, /rawMessages: \[\.\.\.fullMessageHistory\]/)
+  assert.match(serviceSource, /buildServerConversationCompactedRecord\(conversation/)
+  assert.match(sharedConversationSyncSource, /rawMessages: \[\.\.\.fullMessageHistory\]/)
   assert.match(sharedConversationSyncSource, /storedRawMessageCount: fullMessageHistory\.length/)
   assert.match(sharedConversationSyncSource, /representedMessageCount: fullMessageHistory\.length/)
+  assert.match(sharedConversationSyncSource, /export function buildServerConversationCompactedRecord/)
   assert.match(sharedConversationSyncSource, /export function buildServerConversationCompactionCheckpointMetadata/)
 })
 
 test('conversation indexing and append flow follow represented full-history counts', () => {
-  assert.match(serviceSource, /const messages = this\.getStoredRawMessages\(conversation\)/)
+  assert.match(sharedConversationSyncSource, /export function getStoredServerConversationMessages/)
   assert.match(serviceSource, /buildServerConversationHistoryItem\(conversation/)
   assert.match(sharedConversationSyncSource, /messageCount: getRepresentedServerConversationMessageCount\(conversation\)/)
   assert.match(sharedConversationSyncSource, /const storedMessages = getStoredServerConversationMessages\(conversation\)/)

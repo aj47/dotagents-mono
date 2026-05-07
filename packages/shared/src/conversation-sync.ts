@@ -278,6 +278,16 @@ export type ServerConversationCompactionPlan<TMessage extends ServerConversation
     messagesToKeep: TMessage[];
   };
 
+export interface BuildServerConversationCompactedRecordOptions<TMessage extends ServerConversationRecordMessage = ServerConversationRecordMessage> {
+  fullMessageHistory: TMessage[];
+  messagesToSummarize: TMessage[];
+  messagesToKeep: TMessage[];
+  summaryContent: string;
+  summaryInput: string;
+  summaryMessageId: string;
+  compactedAt: number;
+}
+
 export type LimitedServerConversationRecord<TConversation extends ServerConversationRecord<any>> = TConversation & {
   messageOffset?: number;
   totalMessageCount?: number;
@@ -734,6 +744,44 @@ export function buildServerConversationCompactionPlan<TConversation extends Serv
     messagesToSummarize,
     messagesToKeep,
   };
+}
+
+export function buildServerConversationCompactedRecord<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+  options: BuildServerConversationCompactedRecordOptions<TConversation['messages'][number]>,
+): TConversation {
+  const {
+    fullMessageHistory,
+    messagesToSummarize,
+    messagesToKeep,
+    summaryContent,
+    summaryInput,
+    summaryMessageId,
+    compactedAt,
+  } = options;
+  const summaryMessage = {
+    id: summaryMessageId,
+    role: 'assistant' as const,
+    content: summaryContent,
+    timestamp: messagesToSummarize[0]?.timestamp || compactedAt,
+    isSummary: true,
+    summarizedMessageCount: messagesToSummarize.length,
+  } satisfies ServerConversationRecordMessage;
+
+  return {
+    ...conversation,
+    messages: [summaryMessage, ...messagesToKeep],
+    rawMessages: [...fullMessageHistory],
+    compaction: buildServerConversationCompactionCheckpointMetadata({
+      existing: conversation.compaction,
+      fullMessageHistory,
+      summaryMessage,
+      summarizedMessageCount: messagesToSummarize.length,
+      tokensBefore: estimateServerConversationCompactionTokensFromText(summaryInput),
+      compactedAt,
+    }),
+    updatedAt: compactedAt,
+  } as TConversation;
 }
 
 export function buildServerConversationCompactionCheckpointMetadata(

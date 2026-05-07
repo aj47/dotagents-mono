@@ -17,6 +17,7 @@ import {
   applyServerConversationMessageLimit,
   buildBranchedServerConversation,
   buildNewServerConversation,
+  buildServerConversationCompactedRecord,
   buildServerConversationCompactionCheckpointMetadata,
   buildServerConversationCompactionPlan,
   buildServerConversationCompactionPrompt,
@@ -1119,31 +1120,15 @@ export class ConversationService {
       return conversation
     }
 
-    // Create summary message
-    const summaryMessage: ConversationMessage = {
-      id: generateMessageId(),
-      role: "assistant",
-      content: summaryContent,
-      timestamp: messagesToSummarize[0]?.timestamp || Date.now(),
-      isSummary: true,
-      summarizedMessageCount: messagesToSummarize.length,
-    }
-
-    // Create compacted conversation (don't mutate original)
-    const tokensBefore = this.estimateCompactionTokensFromText(summaryInput)
-    const compactedConversation: Conversation = {
-      ...conversation,
-      messages: [summaryMessage, ...messagesToKeep],
-      rawMessages: [...fullMessageHistory],
-      compaction: buildServerConversationCompactionCheckpointMetadata({
-        existing: conversation.compaction,
-        fullMessageHistory,
-        summaryMessage,
-        summarizedMessageCount: messagesToSummarize.length,
-        tokensBefore,
-      }),
-      updatedAt: Date.now(),
-    }
+    const compactedConversation = buildServerConversationCompactedRecord(conversation, {
+      fullMessageHistory,
+      messagesToSummarize,
+      messagesToKeep,
+      summaryContent,
+      summaryInput,
+      summaryMessageId: generateMessageId(),
+      compactedAt: Date.now(),
+    }) as Conversation
 
     // Persist the compacted conversation
     // Note: saveConversation() already calls updateConversationIndex(), so no need to call it separately

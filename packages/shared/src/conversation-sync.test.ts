@@ -6,6 +6,7 @@ import {
   appendServerConversationMessage,
   buildNewServerConversation,
   buildBranchedServerConversation,
+  buildServerConversationCompactedRecord,
   buildServerConversationCompactionCheckpointMetadata,
   buildServerConversationCompactionPlan,
   buildServerConversationCompactionPrompt,
@@ -730,6 +731,69 @@ describe('server conversation API helpers', () => {
     expect(plan.messagesToSummarize.map((message) => message.id)).toEqual(messages.slice(0, 15).map((message) => message.id));
     expect(plan.messagesToKeep.map((message) => message.id)).toEqual(messages.slice(15).map((message) => message.id));
     expect(plan.fullMessageHistory).toBe(messages);
+  });
+
+  it('builds compacted conversation records with preserved raw history metadata', () => {
+    const messages = Array.from({ length: 25 }, (_, index) => ({
+      id: `m${index}`,
+      role: index % 2 === 0 ? 'user' as const : 'assistant' as const,
+      content: index === 2
+        ? 'Remember the analytics repo is Bin-Huang/youtube-analytics-cli.'
+        : `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }));
+    const messagesToSummarize = messages.slice(0, 15);
+    const messagesToKeep = messages.slice(15);
+    const summaryInput = buildServerConversationCompactionSummaryInput(messagesToSummarize);
+
+    const compacted = buildServerConversationCompactedRecord({
+      id: 'conv-compacted-record',
+      title: 'Compacted',
+      createdAt: 1,
+      updatedAt: 2,
+      messages,
+      metadata: { source: 'test' },
+    }, {
+      fullMessageHistory: messages,
+      messagesToSummarize,
+      messagesToKeep,
+      summaryContent: 'The user mentioned Bin-Huang/youtube-analytics-cli.',
+      summaryInput,
+      summaryMessageId: 'summary-generated',
+      compactedAt: 1_700_000_010_000,
+    });
+
+    expect(compacted.messages.map((message) => message.id)).toEqual([
+      'summary-generated',
+      ...messagesToKeep.map((message) => message.id),
+    ]);
+    expect(compacted.messages[0]).toMatchObject({
+      role: 'assistant',
+      content: 'The user mentioned Bin-Huang/youtube-analytics-cli.',
+      timestamp: messagesToSummarize[0].timestamp,
+      isSummary: true,
+      summarizedMessageCount: 15,
+    });
+    expect(compacted.rawMessages).toEqual(messages);
+    expect(compacted.rawMessages).not.toBe(messages);
+    expect(compacted.updatedAt).toBe(1_700_000_010_000);
+    expect(compacted.metadata).toEqual({ source: 'test' });
+    expect(compacted.compaction).toMatchObject({
+      rawHistoryPreserved: true,
+      storedRawMessageCount: 25,
+      representedMessageCount: 25,
+      compactedAt: 1_700_000_010_000,
+      summary: 'The user mentioned Bin-Huang/youtube-analytics-cli.',
+      summaryMessageId: 'summary-generated',
+      firstKeptMessageId: 'm15',
+      firstKeptMessageIndex: 15,
+      summarizedMessageCount: 15,
+    });
+    expect(compacted.compaction?.tokensBefore).toBeGreaterThan(0);
+    expect(compacted.compaction?.extractedFacts?.[0]).toMatchObject({
+      sourceMessageId: 'm2',
+      repoSlugs: ['Bin-Huang/youtube-analytics-cli'],
+    });
   });
 
   it('limits loaded conversation messages without returning raw history payloads', () => {
