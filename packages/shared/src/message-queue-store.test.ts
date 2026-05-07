@@ -4,6 +4,10 @@ import {
   buildMessageQueueResumeResult,
   buildQueuedMessageActionResult,
   createMessageQueueStore,
+  processQueuedMessagesAction,
+  processQueuedMessagesIfConversationIdleAction,
+  type ProcessQueuedMessagesIdleActionService,
+  type ProcessQueuedMessagesActionService,
 } from './message-queue-store';
 
 describe('message-queue-store', () => {
@@ -126,5 +130,141 @@ describe('message-queue-store', () => {
       changed: true,
     });
     expect(changes).toEqual(['conversation-1', 'conversation-1']);
+  });
+
+  it('processes queued messages through injected conversation and session services', async () => {
+    const store = createMessageQueueStore({
+      idFactory: () => 'msg-1',
+    });
+    store.enqueue('conversation-1', 'next task', 'preferred-session');
+
+    const logMessages: string[] = [];
+    const revived: Array<{ sessionId: string; startSnoozed: boolean }> = [];
+    const processed: unknown[] = [];
+    const service: ProcessQueuedMessagesActionService = {
+      tryAcquireProcessingLock: (conversationId) => store.tryAcquireProcessingLock(conversationId),
+      releaseProcessingLock: (conversationId) => store.releaseProcessingLock(conversationId),
+      isQueuePaused: (conversationId) => store.isQueuePaused(conversationId),
+      peek: (conversationId) => store.peek(conversationId),
+      getQueue: (conversationId) => store.getQueue(conversationId),
+      markProcessing: (conversationId, messageId) => store.markProcessing(conversationId, messageId).success,
+      markAddedToHistory: (conversationId, messageId) => store.markAddedToHistory(conversationId, messageId).success,
+      markProcessed: (conversationId, messageId) => store.markProcessed(conversationId, messageId).success,
+      markFailed: (conversationId, messageId, errorMessage) => store.markFailed(conversationId, messageId, errorMessage).success,
+      addMessageToConversation: async (conversationId, text, role) => ({ conversationId, text, role }),
+      isPanelVisible: () => false,
+      findSessionByConversationId: () => 'fallback-session',
+      getSession: () => ({ status: 'idle' }),
+      reviveSession: (sessionId, startSnoozed) => {
+        revived.push({ sessionId, startSnoozed });
+        return sessionId === 'fallback-session';
+      },
+      processAgentMode: async (text, conversationId, existingSessionId, startSnoozed) => {
+        processed.push({ text, conversationId, existingSessionId, startSnoozed });
+      },
+    };
+
+    await processQueuedMessagesAction('conversation-1', {
+      service,
+      diagnostics: {
+        logLLM: (message) => { logMessages.push(message); },
+      },
+    });
+
+    expect(revived).toEqual([
+      { sessionId: 'preferred-session', startSnoozed: true },
+      { sessionId: 'fallback-session', startSnoozed: true },
+    ]);
+    expect(processed).toEqual([{
+      text: 'next task',
+      conversationId: 'conversation-1',
+      existingSessionId: 'fallback-session',
+      startSnoozed: true,
+    }]);
+    expect(store.getQueue('conversation-1')).toEqual([]);
+    expect(store.isProcessing('conversation-1')).toBe(false);
+    expect(logMessages).toContain(
+      '[processQueuedMessages] Preferred queued session preferred-session could not be revived, trying fallback lookup',
+    );
+  });
+
+  it('marks the queued message failed when processing throws and still releases the lock', async () => {
+    const store = createMessageQueueStore({
+      idFactory: () => 'msg-1',
+    });
+    store.enqueue('conversation-1', 'next task');
+
+    const service: ProcessQueuedMessagesActionService = {
+      tryAcquireProcessingLock: (conversationId) => store.tryAcquireProcessingLock(conversationId),
+      releaseProcessingLock: (conversationId) => store.releaseProcessingLock(conversationId),
+      isQueuePaused: (conversationId) => store.isQueuePaused(conversationId),
+      peek: (conversationId) => store.peek(conversationId),
+      getQueue: (conversationId) => store.getQueue(conversationId),
+      markProcessing: (conversationId, messageId) => store.markProcessing(conversationId, messageId).success,
+      markAddedToHistory: (conversationId, messageId) => store.markAddedToHistory(conversationId, messageId).success,
+      markProcessed: (conversationId, messageId) => store.markProcessed(conversationId, messageId).success,
+      markFailed: (conversationId, messageId, errorMessage) => store.markFailed(conversationId, messageId, errorMessage).success,
+      addMessageToConversation: async () => ({ ok: true }),
+      isPanelVisible: () => true,
+      findSessionByConversationId: () => undefined,
+      getSession: () => undefined,
+      reviveSession: () => false,
+      processAgentMode: async () => { throw new Error('agent failed'); },
+    };
+
+    await processQueuedMessagesAction('conversation-1', {
+      service,
+      diagnostics: {
+        logLLM: () => {},
+      },
+    });
+
+    expect(store.getQueue('conversation-1')).toEqual([
+      expect.objectContaining({
+        id: 'msg-1',
+        status: 'failed',
+        addedToHistory: true,
+        errorMessage: 'agent failed',
+      }),
+    ]);
+    expect(store.isProcessing('conversation-1')).toBe(false);
+  });
+
+  it('starts queued processing only when the conversation has no active session', () => {
+    const logMessages: string[] = [];
+    const processed: string[] = [];
+    const service: ProcessQueuedMessagesIdleActionService = {
+      findSessionByConversationId: () => 'session-1',
+      getSession: () => ({ status: 'active' }),
+    };
+
+    expect(processQueuedMessagesIfConversationIdleAction(
+      'conversation-1',
+      'testQueue',
+      async (conversationId) => { processed.push(conversationId); },
+      {
+        service,
+        diagnostics: { logLLM: (message) => { logMessages.push(message); } },
+      },
+    )).toBe(false);
+
+    expect(processed).toEqual([]);
+
+    const idleService = {
+      ...service,
+      getSession: () => ({ status: 'idle' }),
+    };
+
+    expect(processQueuedMessagesIfConversationIdleAction(
+      'conversation-1',
+      'testQueue',
+      async (conversationId) => { processed.push(conversationId); },
+      {
+        service: idleService,
+        diagnostics: { logLLM: (message) => { logMessages.push(message); } },
+      },
+    )).toBe(true);
+
+    expect(processed).toEqual(['conversation-1']);
   });
 });
