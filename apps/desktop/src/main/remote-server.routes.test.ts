@@ -1681,9 +1681,19 @@ describe("remote-server route registration", () => {
     expect(operatorSection).toContain("actions.restartOperatorApp(getAppVersion())")
     expect(operatorSection).toContain("scheduleRemoteServerRestartFromOperator()")
     expect(operatorSection).toContain("scheduleAppRestartFromOperator()")
-    expect(operatorRouteDesktopActionsSource).toContain("restartOperatorRemoteServerAction as restartOperatorRemoteServer")
-    expect(operatorRouteDesktopActionsSource).toContain("restartOperatorAppAction as restartOperatorApp")
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "const operatorRestartRouteActions = createOperatorRestartRouteActions()",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain("...operatorRestartRouteActions")
+    expect(operatorRouteDesktopActionsSource).not.toContain("restartOperatorRemoteServerAction as restartOperatorRemoteServer")
+    expect(operatorRouteDesktopActionsSource).not.toContain("restartOperatorAppAction as restartOperatorApp")
     expect(sharedOperatorActionsSource).toContain("export function restartOperatorRemoteServerAction(")
+    expect(sharedOperatorActionsSource).toContain("export interface OperatorRestartRouteActions")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorRestartRouteActions")
+    expect(sharedOperatorActionsSource).toContain("restartOperatorApp: (appVersion) => restartOperatorAppAction(appVersion)")
+    expect(sharedOperatorActionsSource).toContain(
+      "restartOperatorRemoteServer: (isRunning) => restartOperatorRemoteServerAction(isRunning)",
+    )
     expect(sharedOperatorActionsSource).toContain("buildOperatorRestartRemoteServerActionResponse(isRunning)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorRestartAppActionResponse(appVersion)")
     expect(sharedOperatorActionsSource).toContain("auditContext: buildOperatorActionAuditContext(body)")

@@ -78,6 +78,7 @@ import {
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueRouteActions,
   createOperatorObservabilityRouteActions,
+  createOperatorRestartRouteActions,
   createOperatorTunnelRouteActions,
   createOperatorUpdaterRouteActions,
   getConfiguredCloudflareTunnelStartPlan,
@@ -1348,6 +1349,26 @@ describe("operator action API helpers", () => {
       auditContext: {
         action: "restart-app",
         success: true,
+        details: { currentVersion: "1.2.3" },
+      },
+      shouldRestartApp: true,
+    })
+
+    const routeActions = createOperatorRestartRouteActions()
+    expect(routeActions.restartOperatorRemoteServer(false)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "restart-remote-server",
+        details: { wasRunning: false },
+      },
+      shouldRestartRemoteServer: true,
+    })
+    expect(routeActions.restartOperatorApp("1.2.3")).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "restart-app",
         details: { currentVersion: "1.2.3" },
       },
       shouldRestartApp: true,

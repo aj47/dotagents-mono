@@ -155,6 +155,11 @@ export type OperatorRestartActionResult = {
   shouldRestartApp?: boolean
 }
 
+export interface OperatorRestartRouteActions {
+  restartOperatorApp(appVersion: string): OperatorRestartActionResult
+  restartOperatorRemoteServer(isRunning: boolean): OperatorRestartActionResult
+}
+
 export type OperatorApiKeyActionResult = {
   statusCode: number
   body: unknown
@@ -2638,6 +2643,13 @@ export function restartOperatorAppAction(appVersion: string): OperatorRestartAct
     buildOperatorRestartAppActionResponse(appVersion),
     { shouldRestartApp: true },
   )
+}
+
+export function createOperatorRestartRouteActions(): OperatorRestartRouteActions {
+  return {
+    restartOperatorApp: (appVersion) => restartOperatorAppAction(appVersion),
+    restartOperatorRemoteServer: (isRunning) => restartOperatorRemoteServerAction(isRunning),
+  }
 }
 
 function operatorUpdaterActionResult(

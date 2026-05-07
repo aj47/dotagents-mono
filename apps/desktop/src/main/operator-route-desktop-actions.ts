@@ -46,10 +46,9 @@ import {
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueRouteActions,
   createOperatorObservabilityRouteActions,
+  createOperatorRestartRouteActions,
   createOperatorTunnelRouteActions,
   createOperatorUpdaterRouteActions,
-  restartOperatorAppAction as restartOperatorApp,
-  restartOperatorRemoteServerAction as restartOperatorRemoteServer,
   type OperatorActionAuditContext,
   type OperatorApiKeyActionOptions,
   type OperatorAgentActionOptions,
@@ -367,6 +366,8 @@ const updaterActionOptions: OperatorUpdaterActionOptions = {
 
 const operatorUpdaterRouteActions = createOperatorUpdaterRouteActions(MANUAL_RELEASES_URL, updaterActionOptions)
 
+const operatorRestartRouteActions = createOperatorRestartRouteActions()
+
 export const operatorRouteDesktopActions: OperatorRouteActions = {
   ...operatorAgentRouteActions,
   ...operatorApiKeyRouteActions,
@@ -378,9 +379,8 @@ export const operatorRouteDesktopActions: OperatorRouteActions = {
   ...operatorIntegrationRouteActions,
   ...operatorMessageQueueRouteActions,
   ...operatorObservabilityRouteActions,
+  ...operatorRestartRouteActions,
   getOperatorAudit,
   recordOperatorAuditEvent,
   setOperatorAuditContext,
-  restartOperatorApp,
-  restartOperatorRemoteServer,
 }
