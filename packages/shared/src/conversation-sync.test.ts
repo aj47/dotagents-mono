@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { Session } from './session';
 import {
@@ -39,6 +40,8 @@ import {
   getRepresentedServerConversationMessageSliceCount,
   getServerConversationDataFileName,
   getServerConversationIdFromDataFileName,
+  getServerConversationStorageDataPath,
+  getServerConversationStorageIndexPath,
   getSortedServerConversationDataFileNames,
   getStoredServerConversationMessages,
   getValidServerConversationCompactionTimestamp,
@@ -154,6 +157,19 @@ describe('server conversation API helpers', () => {
     expect(getServerConversationIdFromDataFileName(SERVER_CONVERSATION_INDEX_FILE_NAME)).toBeNull();
     expect(getSortedServerConversationDataFileNames(fileNames)).toEqual(['conv-a.json', 'conv-b.json']);
     expect(countServerConversationDataFileNames(fileNames)).toBe(2);
+  });
+
+  it('builds portable conversation storage paths with path traversal protection', () => {
+    const options = {
+      conversationsFolder: '/tmp/dotagents/conversations',
+      pathAdapter: path.posix,
+    };
+
+    expect(getServerConversationStorageIndexPath(options)).toBe('/tmp/dotagents/conversations/index.json');
+    expect(getServerConversationStorageDataPath('conv-a', options)).toBe('/tmp/dotagents/conversations/conv-a.json');
+    expect(() => getServerConversationStorageDataPath('../secret', options)).toThrow(
+      'Invalid conversation ID: path traversal detected',
+    );
   });
 
   it('serializes portable server conversation storage records with stable indentation', () => {

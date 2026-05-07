@@ -28,8 +28,9 @@ import {
   buildServerConversationHistoryItem,
   countServerConversationDataFileNames,
   getMostRecentServerConversationHistoryItem,
-  getServerConversationDataFileName,
   getServerConversationIdFromDataFileName,
+  getServerConversationStorageDataPath,
+  getServerConversationStorageIndexPath,
   getSortedServerConversationDataFileNames,
   getStoredServerConversationMessages,
   isServerConversationCompactionSummaryLikelyFailed,
@@ -41,7 +42,6 @@ import {
   renameServerConversationTitle,
   removeServerConversationHistoryIndexItem,
   resolveServerConversationGeneratedTitle,
-  SERVER_CONVERSATION_INDEX_FILE_NAME,
   serializeServerConversationHistoryIndex,
   serializeServerConversationRecord,
   sortServerConversationHistoryByUpdatedAt,
@@ -89,6 +89,10 @@ const MAX_SESSION_TITLE_CHARS = 80
 const MAX_AGENT_SESSION_TITLE_WORDS = 10
 const MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS = 500
 const MAX_CONVERSATION_HISTORY_PREVIEW_CHARS = 200
+const conversationStoragePathOptions = {
+  conversationsFolder,
+  pathAdapter: path,
+}
 
 export class ConversationService {
   private static instance: ConversationService | null = null
@@ -124,16 +128,11 @@ export class ConversationService {
   }
 
   private getConversationPath(conversationId: string): string {
-    const resolved = path.resolve(conversationsFolder, getServerConversationDataFileName(conversationId))
-    const resolvedFolder = path.resolve(conversationsFolder)
-    if (!resolved.startsWith(resolvedFolder + path.sep)) {
-      throw new Error(`Invalid conversation ID: path traversal detected`)
-    }
-    return resolved
+    return getServerConversationStorageDataPath(conversationId, conversationStoragePathOptions)
   }
 
   private getConversationIndexPath(): string {
-    return path.join(conversationsFolder, SERVER_CONVERSATION_INDEX_FILE_NAME)
+    return getServerConversationStorageIndexPath(conversationStoragePathOptions)
   }
 
   private async storeConversationImageBuffer(
@@ -778,11 +777,7 @@ export class ConversationService {
     // Sanitize: only allow alphanumeric, underscore, hyphen, at sign, and dot.
     // This covers formats like: conv_123_abc, whatsapp_61406142826@s.whatsapp.net.
     const sanitized = validateAndSanitizeConversationId(conversationId)
-    // Ensure the sanitized ID doesn't resolve outside conversations folder
-    const resolvedPath = path.resolve(conversationsFolder, `${sanitized}.json`)
-    if (!resolvedPath.startsWith(path.resolve(conversationsFolder))) {
-      throw new Error(`Invalid conversation ID: path traversal detected`)
-    }
+    getServerConversationStorageDataPath(sanitized, conversationStoragePathOptions)
     return sanitized
   }
 

@@ -291,6 +291,17 @@ export interface NormalizeServerConversationHistoryIndexResult<TItem> {
   changed: boolean;
 }
 
+export interface ServerConversationStoragePathAdapter {
+  join(...segments: string[]): string;
+  resolve(...segments: string[]): string;
+  sep: string;
+}
+
+export interface ServerConversationStoragePathOptions {
+  conversationsFolder: string;
+  pathAdapter: ServerConversationStoragePathAdapter;
+}
+
 export interface BuildServerConversationCompactionCheckpointMetadataOptions {
   existing?: ConversationCompactionMetadata;
   fullMessageHistory: ServerConversationRecordMessage[];
@@ -495,6 +506,25 @@ export function getServerConversationIdFromDataFileName(fileName: string): strin
 
 export function getServerConversationDataFileName(conversationId: string): string {
   return `${conversationId}${SERVER_CONVERSATION_DATA_FILE_EXTENSION}`;
+}
+
+export function getServerConversationStorageIndexPath(options: ServerConversationStoragePathOptions): string {
+  return options.pathAdapter.join(options.conversationsFolder, SERVER_CONVERSATION_INDEX_FILE_NAME);
+}
+
+export function getServerConversationStorageDataPath(
+  conversationId: string,
+  options: ServerConversationStoragePathOptions,
+): string {
+  const resolved = options.pathAdapter.resolve(
+    options.conversationsFolder,
+    getServerConversationDataFileName(conversationId),
+  );
+  const resolvedFolder = options.pathAdapter.resolve(options.conversationsFolder);
+  if (!resolved.startsWith(`${resolvedFolder}${options.pathAdapter.sep}`)) {
+    throw new Error('Invalid conversation ID: path traversal detected');
+  }
+  return resolved;
 }
 
 export function getSortedServerConversationDataFileNames(fileNames: readonly string[]): string[] {
