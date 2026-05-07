@@ -214,10 +214,20 @@ test('exposes compact remote access settings for mobile remote ops', () => {
 });
 
 test('includes tunnel, Discord, and WhatsApp operator controls and summaries', () => {
-  assert.match(operationsSource, /Tunnel status/);
-  assert.match(operationsSource, /Tunnel Setup/);
-  assert.match(operationsSource, /Start tunnel/);
-  assert.match(operationsSource, /Stop tunnel/);
+  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.panelTitle/);
+  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.configuredLabel/);
+  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.runningLabel/);
+  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.bindLabel/);
+  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.connectableUrlLabel/);
+  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.lastErrorLabel/);
+  assert.match(operationsSource, /OPERATOR_TUNNEL_STATUS_PANEL_METADATA\.panelTitle/);
+  assert.match(operationsSource, /OPERATOR_TUNNEL_STATUS_PANEL_METADATA\.setupTitle/);
+  assert.match(operationsSource, /OPERATOR_TUNNEL_STATUS_PANEL_METADATA\.startButtonLabel/);
+  assert.match(operationsSource, /OPERATOR_TUNNEL_STATUS_PANEL_METADATA\.stopButtonLabel/);
+  assert.match(operationsSource, /OPERATOR_TUNNEL_STATUS_PANEL_METADATA\.helperText/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Tunnel status<\/Text>/);
+  assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Start tunnel'\)/);
+  assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Stop tunnel'\)/);
   assert.match(operationsSource, /Discord log preview/);
   assert.match(operationsSource, /Connect Discord/);
   assert.match(operationsSource, /Clear logs/);

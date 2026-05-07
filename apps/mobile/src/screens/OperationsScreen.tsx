@@ -66,6 +66,8 @@ import {
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_ERRORS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
+  OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
+  OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
   formatOperatorAuditDetails as formatAuditDetails,
   formatOperatorAuditSource as formatAuditSource,
   formatOperatorDurationSeconds as formatDuration,
@@ -2396,35 +2398,41 @@ export default function OperationsScreen({ navigation }: any) {
 
           {status && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Remote server runtime</Text>
-              <Text style={styles.detailText}>Configured: {settings?.remoteServerEnabled ? 'Enabled' : 'Disabled'}</Text>
-              <Text style={styles.detailText}>Running: {status.remoteServer.running ? 'Yes' : 'No'}</Text>
-              <Text style={styles.detailText}>Bind: {status.remoteServer.bind}:{status.remoteServer.port}</Text>
-              <Text style={styles.detailText}>Connectable URL: {status.remoteServer.connectableUrl || status.remoteServer.url || '—'}</Text>
-              {status.remoteServer.lastError && <Text style={styles.warningText}>Last error: {status.remoteServer.lastError}</Text>}
+              <Text style={styles.panelTitle}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.panelTitle}</Text>
+              <Text style={styles.detailText}>
+                {OPERATOR_RUNTIME_STATUS_PANEL_METADATA.configuredLabel}: {settings?.remoteServerEnabled
+                  ? OPERATOR_RUNTIME_STATUS_PANEL_METADATA.enabledValue
+                  : OPERATOR_RUNTIME_STATUS_PANEL_METADATA.disabledValue}
+              </Text>
+              <Text style={styles.detailText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.runningLabel}: {formatYesNo(status.remoteServer.running)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.bindLabel}: {status.remoteServer.bind}:{status.remoteServer.port}</Text>
+              <Text style={styles.detailText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.connectableUrlLabel}: {status.remoteServer.connectableUrl || status.remoteServer.url || '—'}</Text>
+              {status.remoteServer.lastError && (
+                <Text style={styles.warningText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.lastErrorLabel}: {status.remoteServer.lastError}</Text>
+              )}
             </View>
           )}
 
           {(tunnelStatus || tunnelSetup) && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Tunnel status</Text>
-              <Text style={styles.detailText}>State: {getTunnelStateLabel(tunnelStatus)}</Text>
-              <Text style={styles.detailText}>Mode: {tunnelStatus?.mode || tunnelSetup?.mode || settings?.cloudflareTunnelMode || '—'}</Text>
-              <Text style={styles.detailText}>URL: {tunnelStatus?.url || '—'}</Text>
-              <Text style={styles.detailText}>Remote server running: {status?.remoteServer.running ? 'Yes' : 'No'}</Text>
-              <Text style={styles.sectionCaption}>Tunnel Setup</Text>
-              <Text style={styles.detailText}>Installed: {formatYesNo(tunnelSetup?.installed)}</Text>
-              <Text style={styles.detailText}>Logged in: {formatYesNo(tunnelSetup?.loggedIn)}</Text>
-              <Text style={styles.detailText}>Named tunnel configured: {formatYesNo(tunnelSetup?.namedTunnelConfigured)}</Text>
-              <Text style={styles.detailText}>Credentials path configured: {formatYesNo(tunnelSetup?.credentialsPathConfigured)}</Text>
-              <Text style={styles.detailText}>Discovered named tunnels: {tunnelSetup?.tunnelCount ?? 0}</Text>
-              {tunnelSetup?.configuredTunnelId ? <Text style={styles.detailText}>Configured tunnel ID: {tunnelSetup.configuredTunnelId}</Text> : null}
-              {tunnelSetup?.configuredHostname ? <Text style={styles.detailText}>Configured hostname: {tunnelSetup.configuredHostname}</Text> : null}
+              <Text style={styles.panelTitle}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.panelTitle}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.stateLabel}: {getTunnelStateLabel(tunnelStatus)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.modeLabel}: {tunnelStatus?.mode || tunnelSetup?.mode || settings?.cloudflareTunnelMode || '—'}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.urlLabel}: {tunnelStatus?.url || '—'}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.remoteServerRunningLabel}: {formatYesNo(status?.remoteServer.running)}</Text>
+              <Text style={styles.sectionCaption}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.setupTitle}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.installedLabel}: {formatYesNo(tunnelSetup?.installed)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.loggedInLabel}: {formatYesNo(tunnelSetup?.loggedIn)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.namedTunnelConfiguredLabel}: {formatYesNo(tunnelSetup?.namedTunnelConfigured)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.credentialsPathConfiguredLabel}: {formatYesNo(tunnelSetup?.credentialsPathConfigured)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.discoveredNamedTunnelsLabel}: {tunnelSetup?.tunnelCount ?? 0}</Text>
+              {tunnelSetup?.configuredTunnelId ? <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.configuredTunnelIdLabel}: {tunnelSetup.configuredTunnelId}</Text> : null}
+              {tunnelSetup?.configuredHostname ? <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.configuredHostnameLabel}: {tunnelSetup.configuredHostname}</Text> : null}
               {tunnelSetup?.tunnels.slice(0, 3).map((tunnel) => (
                 <Text key={tunnel.id} style={styles.helperText}>• {tunnel.name} ({tunnel.id})</Text>
               ))}
-              {tunnelStatus?.error && <Text style={styles.warningText}>Tunnel error: {tunnelStatus.error}</Text>}
-              {tunnelSetup?.error && <Text style={styles.warningText}>Setup error: {tunnelSetup.error}</Text>}
+              {tunnelStatus?.error && <Text style={styles.warningText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.tunnelErrorLabel}: {tunnelStatus.error}</Text>}
+              {tunnelSetup?.error && <Text style={styles.warningText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.setupErrorLabel}: {tunnelSetup.error}</Text>}
 
               <View style={styles.actionGrid}>
                 <TouchableOpacity
@@ -2436,9 +2444,9 @@ export default function OperationsScreen({ navigation }: any) {
                   onPress={() => void runAction('tunnel-start', () => settingsClient.startOperatorTunnel())}
                   disabled={controlsDisabled || !status?.remoteServer.running || !!tunnelStatus?.running || !!tunnelStatus?.starting}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Start tunnel')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.startAccessibilityLabel)}
                 >
-                  <Text style={styles.secondaryActionText}>Start tunnel</Text>
+                  <Text style={styles.secondaryActionText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.startButtonLabel}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -2448,20 +2456,20 @@ export default function OperationsScreen({ navigation }: any) {
                     (controlsDisabled || (!tunnelStatus?.running && !tunnelStatus?.starting)) && styles.actionButtonDisabled,
                   ]}
                   onPress={() => confirmAction(
-                    'Stop Tunnel',
-                    'Stop the active Cloudflare tunnel? Mobile access through the tunnel will drop until it is started again.',
-                    'Stop Tunnel',
+                    OPERATOR_TUNNEL_STATUS_PANEL_METADATA.stopConfirmTitle,
+                    OPERATOR_TUNNEL_STATUS_PANEL_METADATA.stopConfirmMessage,
+                    OPERATOR_TUNNEL_STATUS_PANEL_METADATA.stopConfirmButtonLabel,
                     false,
                     () => runAction('tunnel-stop', () => settingsClient.stopOperatorTunnel()),
                   )}
                   disabled={controlsDisabled || (!tunnelStatus?.running && !tunnelStatus?.starting)}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Stop tunnel')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.stopAccessibilityLabel)}
                 >
-                  <Text style={styles.secondaryActionText}>Stop tunnel</Text>
+                  <Text style={styles.secondaryActionText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.stopButtonLabel}</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.helperText}>The remote server must be running before a tunnel can start.</Text>
+              <Text style={styles.helperText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.helperText}</Text>
             </View>
           )}
 

@@ -6,6 +6,8 @@ import {
   OPERATOR_EMPTY_VALUE_LABEL,
   OPERATOR_ERRORS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
+  OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
+  OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
   formatOperatorAuditDetails,
   formatOperatorAuditSource,
   formatOperatorDurationSeconds,
@@ -59,6 +61,44 @@ describe("operator display utils", () => {
   it("exports operator conversations panel metadata", () => {
     expect(OPERATOR_CONVERSATIONS_PANEL_METADATA).toEqual({
       panelTitle: "Recent conversations",
+    })
+  })
+
+  it("exports operator runtime and tunnel status panel metadata", () => {
+    expect(OPERATOR_RUNTIME_STATUS_PANEL_METADATA).toEqual({
+      panelTitle: "Remote server runtime",
+      configuredLabel: "Configured",
+      enabledValue: "Enabled",
+      disabledValue: "Disabled",
+      runningLabel: "Running",
+      bindLabel: "Bind",
+      connectableUrlLabel: "Connectable URL",
+      lastErrorLabel: "Last error",
+    })
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA).toEqual({
+      panelTitle: "Tunnel status",
+      stateLabel: "State",
+      modeLabel: "Mode",
+      urlLabel: "URL",
+      remoteServerRunningLabel: "Remote server running",
+      setupTitle: "Tunnel Setup",
+      installedLabel: "Installed",
+      loggedInLabel: "Logged in",
+      namedTunnelConfiguredLabel: "Named tunnel configured",
+      credentialsPathConfiguredLabel: "Credentials path configured",
+      discoveredNamedTunnelsLabel: "Discovered named tunnels",
+      configuredTunnelIdLabel: "Configured tunnel ID",
+      configuredHostnameLabel: "Configured hostname",
+      tunnelErrorLabel: "Tunnel error",
+      setupErrorLabel: "Setup error",
+      startButtonLabel: "Start tunnel",
+      startAccessibilityLabel: "Start tunnel",
+      stopConfirmTitle: "Stop Tunnel",
+      stopConfirmMessage: "Stop the active Cloudflare tunnel? Mobile access through the tunnel will drop until it is started again.",
+      stopConfirmButtonLabel: "Stop Tunnel",
+      stopButtonLabel: "Stop tunnel",
+      stopAccessibilityLabel: "Stop tunnel",
+      helperText: "The remote server must be running before a tunnel can start.",
     })
   })
 

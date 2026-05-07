@@ -72,6 +72,80 @@ export const OPERATOR_CONVERSATIONS_PANEL_METADATA: OperatorConversationsPanelMe
   panelTitle: "Recent conversations",
 }
 
+export type OperatorRuntimeStatusPanelMetadata = {
+  panelTitle: string
+  configuredLabel: string
+  enabledValue: string
+  disabledValue: string
+  runningLabel: string
+  bindLabel: string
+  connectableUrlLabel: string
+  lastErrorLabel: string
+}
+
+export const OPERATOR_RUNTIME_STATUS_PANEL_METADATA: OperatorRuntimeStatusPanelMetadata = {
+  panelTitle: "Remote server runtime",
+  configuredLabel: "Configured",
+  enabledValue: "Enabled",
+  disabledValue: "Disabled",
+  runningLabel: "Running",
+  bindLabel: "Bind",
+  connectableUrlLabel: "Connectable URL",
+  lastErrorLabel: "Last error",
+}
+
+export type OperatorTunnelStatusPanelMetadata = {
+  panelTitle: string
+  stateLabel: string
+  modeLabel: string
+  urlLabel: string
+  remoteServerRunningLabel: string
+  setupTitle: string
+  installedLabel: string
+  loggedInLabel: string
+  namedTunnelConfiguredLabel: string
+  credentialsPathConfiguredLabel: string
+  discoveredNamedTunnelsLabel: string
+  configuredTunnelIdLabel: string
+  configuredHostnameLabel: string
+  tunnelErrorLabel: string
+  setupErrorLabel: string
+  startButtonLabel: string
+  startAccessibilityLabel: string
+  stopConfirmTitle: string
+  stopConfirmMessage: string
+  stopConfirmButtonLabel: string
+  stopButtonLabel: string
+  stopAccessibilityLabel: string
+  helperText: string
+}
+
+export const OPERATOR_TUNNEL_STATUS_PANEL_METADATA: OperatorTunnelStatusPanelMetadata = {
+  panelTitle: "Tunnel status",
+  stateLabel: "State",
+  modeLabel: "Mode",
+  urlLabel: "URL",
+  remoteServerRunningLabel: "Remote server running",
+  setupTitle: "Tunnel Setup",
+  installedLabel: "Installed",
+  loggedInLabel: "Logged in",
+  namedTunnelConfiguredLabel: "Named tunnel configured",
+  credentialsPathConfiguredLabel: "Credentials path configured",
+  discoveredNamedTunnelsLabel: "Discovered named tunnels",
+  configuredTunnelIdLabel: "Configured tunnel ID",
+  configuredHostnameLabel: "Configured hostname",
+  tunnelErrorLabel: "Tunnel error",
+  setupErrorLabel: "Setup error",
+  startButtonLabel: "Start tunnel",
+  startAccessibilityLabel: "Start tunnel",
+  stopConfirmTitle: "Stop Tunnel",
+  stopConfirmMessage: "Stop the active Cloudflare tunnel? Mobile access through the tunnel will drop until it is started again.",
+  stopConfirmButtonLabel: "Stop Tunnel",
+  stopButtonLabel: "Stop tunnel",
+  stopAccessibilityLabel: "Stop tunnel",
+  helperText: "The remote server must be running before a tunnel can start.",
+}
+
 export function formatOperatorTimestamp(timestamp?: number): string {
   if (!timestamp) return OPERATOR_EMPTY_VALUE_LABEL
   return new Date(timestamp).toLocaleString()
