@@ -126,6 +126,8 @@ export type RemoteServerCorsOriginsFieldMetadata = {
   tooltip: string;
   placeholder: string;
   helperText: string;
+  pendingLabel: string;
+  successMessage: string;
   accessibilityLabel: string;
 };
 
@@ -270,6 +272,8 @@ export const REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA: RemoteServerCorsOriginsF
   tooltip: 'Allowed origins for CORS requests. Use * for all origins (development), or specify comma-separated URLs like http://localhost:8081.',
   placeholder: '* or http://localhost:8081, http://example.com',
   helperText: 'Use * for development or specify allowed origins separated by commas.',
+  pendingLabel: 'remote server CORS origins',
+  successMessage: 'Remote server CORS origins updated.',
   accessibilityLabel: 'Remote server CORS origins',
 };
 export const CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS: readonly CloudflareTunnelModeOption[] = [

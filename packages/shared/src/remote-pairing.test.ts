@@ -199,6 +199,8 @@ describe('remote server config contracts', () => {
       tooltip: 'Allowed origins for CORS requests. Use * for all origins (development), or specify comma-separated URLs like http://localhost:8081.',
       placeholder: '* or http://localhost:8081, http://example.com',
       helperText: 'Use * for development or specify allowed origins separated by commas.',
+      pendingLabel: 'remote server CORS origins',
+      successMessage: 'Remote server CORS origins updated.',
       accessibilityLabel: 'Remote server CORS origins',
     });
     expect(DEFAULT_REMOTE_SERVER_CORS_ORIGINS).toEqual(['*']);

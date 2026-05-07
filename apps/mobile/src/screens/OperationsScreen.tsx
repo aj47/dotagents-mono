@@ -1873,8 +1873,8 @@ export default function OperationsScreen({ navigation }: any) {
                   const origins = parseConfigListInput(drafts.remoteServerCorsOrigins, { unique: true });
                   void applySettingsUpdate(
                     { remoteServerCorsOrigins: origins.length > 0 ? origins : [...DEFAULT_REMOTE_SERVER_CORS_ORIGINS] },
-                    'remote server CORS origins',
-                    'Remote server CORS origins updated.',
+                    REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA.pendingLabel,
+                    REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA.successMessage,
                   );
                 }}
                 editable={!controlsDisabled}
