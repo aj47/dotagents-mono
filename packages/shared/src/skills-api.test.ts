@@ -293,6 +293,9 @@ describe("skills API helpers", () => {
           return profile
         },
       },
+      onSkillDeleted: (context) => {
+        calls.push(`deleted:${context.skillId}:${context.availableSkillIds.join(",")}`)
+      },
     })
 
     expect(service.getSkills()).toBe(skills)
@@ -307,6 +310,11 @@ describe("skills API helpers", () => {
     expect(service.exportSkillToMarkdown("research")).toBe("---\nname: Research\n---\nUse sources")
     expect(service.updateSkill("research", { description: "Updated" })).toBe(updated)
     expect(service.deleteSkill("research")).toBe(true)
+    service.onSkillDeleted?.({
+      skillId: "research",
+      availableSkills: skills,
+      availableSkillIds: skills.map((skill) => skill.id),
+    })
     expect(service.getCurrentProfile()).toBe(profile)
     expect(service.enableSkillForCurrentProfile?.("created")).toBe(profile)
     expect(service.toggleProfileSkill("profile-1", "research", ["research", "writing"])).toBe(profile)
@@ -317,6 +325,7 @@ describe("skills API helpers", () => {
       "export:research",
       "update:research:Updated",
       "delete:research",
+      "deleted:research:research,writing",
       "enable:created",
       "toggle:profile-1:research:research,writing",
     ])
@@ -437,6 +446,9 @@ describe("skills API helpers", () => {
         expect(skillId).toBe("research")
         return true
       },
+      onSkillDeleted: (context) => {
+        deletedContexts.push(context)
+      },
     })
     const diagnostics = {
       logError: () => {
@@ -481,9 +493,6 @@ describe("skills API helpers", () => {
     expect(deleteSkillAction("research", {
       service,
       diagnostics,
-      onSkillDeleted: (context) => {
-        deletedContexts.push(context)
-      },
     })).toEqual({
       statusCode: 200,
       body: buildSkillDeleteResponse("research"),

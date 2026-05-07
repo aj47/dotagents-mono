@@ -395,11 +395,11 @@ const skillActionOptions: SkillActionOptions = {
   service: createSkillActionService({
     skills: skillsService,
     profile: agentProfileService,
+    onSkillDeleted: ({ availableSkillIds }) => {
+      cleanupDeletedSkillReferences(availableSkillIds)
+    },
   }),
   diagnostics: diagnosticsService,
-  onSkillDeleted: ({ availableSkillIds }) => {
-    cleanupDeletedSkillReferences(availableSkillIds)
-  },
 }
 
 const skillRouteActions = createSkillRouteActions(skillActionOptions)

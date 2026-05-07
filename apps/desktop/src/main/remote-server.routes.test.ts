@@ -950,6 +950,9 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).not.toContain("deleteSkillAction(skillId, skillActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("toggleProfileSkillAction(skillId, skillActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain("onSkillDeleted: ({ availableSkillIds }) => {")
+    expect(mobileApiDesktopActionsSource).not.toContain(
+      "}),\n  diagnostics: diagnosticsService,\n  onSkillDeleted: ({ availableSkillIds }) => {",
+    )
     expect(mobileApiDesktopActionsSource).toContain("const layers = getAgentProfileReferenceCleanupLayers()")
     expect(mobileApiDesktopActionsSource).not.toContain("const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()")
     expect(mobileApiDesktopActionsSource).toContain("cleanupInvalidSkillReferencesInLayers(")
@@ -962,6 +965,7 @@ describe("remote-server route registration", () => {
     expect(sharedSkillsApiSource).toContain("getSkills: () => skills.getSkills()")
     expect(sharedSkillsApiSource).toContain("getCurrentProfile: () => profile.getCurrentProfile()")
     expect(sharedSkillsApiSource).toContain("onSkillDeleted?(context: SkillDeletedContext): void")
+    expect(sharedSkillsApiSource).toContain("onSkillDeleted: options.onSkillDeleted")
     expect(sharedSkillsApiSource).toContain("export interface SkillRouteActions")
     expect(sharedSkillsApiSource).toContain("export function createSkillRouteActions")
     expect(sharedSkillsApiSource).toContain("getSkills: () => getSkillsAction(options)")
@@ -974,7 +978,7 @@ describe("remote-server route registration", () => {
     expect(sharedSkillsApiSource).toContain("export function exportSkillToMarkdownAction")
     expect(sharedSkillsApiSource).toContain("export function updateSkillAction")
     expect(sharedSkillsApiSource).toContain("export function deleteSkillAction")
-    expect(sharedSkillsApiSource).toContain("options.onSkillDeleted({")
+    expect(sharedSkillsApiSource).toContain("options.service.onSkillDeleted({")
     expect(sharedSkillsApiSource).toContain("export function toggleProfileSkillAction")
     expect(sharedSkillsApiSource).toContain("buildSkillsResponse(skills, currentProfile)")
     expect(sharedSkillsApiSource).toContain("parseSkillCreateRequestBody(body)")

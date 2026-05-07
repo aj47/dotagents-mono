@@ -64,6 +64,7 @@ export interface SkillActionService {
     updates: Partial<Pick<SkillApiLike, "name" | "description" | "instructions">>,
   ): SkillApiLike
   deleteSkill(id: string): boolean
+  onSkillDeleted?(context: SkillDeletedContext): void
   getCurrentProfile(): SkillActionProfileLike | null | undefined
   enableSkillForCurrentProfile?(skillId: string): SkillActionProfileLike | null | undefined
   toggleProfileSkill(profileId: string, skillId: string, allSkillIds: string[]): SkillActionProfileLike | null | undefined
@@ -95,6 +96,7 @@ export interface SkillActionServiceAdapterOptions<
 > {
   skills: SkillActionSkillsServiceLike<TSkill>
   profile: SkillActionProfileServiceLike<TProfile>
+  onSkillDeleted?(context: SkillDeletedContext): void
 }
 
 export function createSkillActionService<
@@ -112,6 +114,7 @@ export function createSkillActionService<
     exportSkillToMarkdown: (id) => skills.exportSkillToMarkdown(id),
     updateSkill: (id, updates) => skills.updateSkill(id, updates),
     deleteSkill: (id) => skills.deleteSkill(id),
+    onSkillDeleted: options.onSkillDeleted,
     getCurrentProfile: () => profile.getCurrentProfile(),
     enableSkillForCurrentProfile: (skillId) => profile.enableSkillForCurrentProfile?.(skillId),
     toggleProfileSkill: (profileId, skillId, allSkillIds) =>
@@ -129,7 +132,6 @@ export function createSkillActionService<
 export interface SkillActionOptions {
   service: SkillActionService
   diagnostics: SkillActionDiagnostics
-  onSkillDeleted?(context: SkillDeletedContext): void
 }
 
 export interface SkillRouteActions {
@@ -786,9 +788,9 @@ export function deleteSkillAction(
       return skillActionError(404, "Skill not found")
     }
 
-    if (options.onSkillDeleted) {
+    if (options.service.onSkillDeleted) {
       const availableSkills = options.service.getSkills()
-      options.onSkillDeleted({
+      options.service.onSkillDeleted({
         skillId,
         availableSkills,
         availableSkillIds: availableSkills.map((skill) => skill.id),
