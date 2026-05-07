@@ -4,6 +4,7 @@ import type {
   ConversationHistoryMessage,
   ChatApiResponse,
 } from '@dotagents/shared/types';
+import type { ServerConversationFull } from '@dotagents/shared/api-types';
 import type {
   AgentProgressUpdate,
   AgentProgressStep,
@@ -12,6 +13,7 @@ import type {
 import {
   buildChatCompletionRequestBody,
   parseChatCompletionSseEvent,
+  type ChatCompletionRequestBody,
 } from '@dotagents/shared/chat-utils';
 import {
   ConnectionStatus,
@@ -23,7 +25,8 @@ import {
   normalizeApiBaseUrl,
   type ConnectionRecoveryConfig,
 } from '@dotagents/shared/connection-recovery';
-import { REMOTE_SERVER_API_BUILDERS, REMOTE_SERVER_API_PATHS } from '@dotagents/shared/remote-server-api';
+import { REMOTE_SERVER_API_PATHS } from '@dotagents/shared/remote-server-api';
+import { SettingsApiClient as SharedSettingsApiClient } from '@dotagents/shared/settings-api-client';
 import { Platform } from 'react-native';
 import EventSource from 'react-native-sse';
 import { ConnectionRecoveryManager } from './connectionRecovery';
@@ -57,6 +60,7 @@ export type ChatResponse = ChatApiResponse;
 export class OpenAIClient {
   private cfg: OpenAIConfig;
   private baseUrl: string;
+  private remoteApiClient: SharedSettingsApiClient;
   private recoveryManager: ConnectionRecoveryManager | null = null;
   private onConnectionStatusChange?: OnConnectionStatusChange;
   private activeEventSource: EventSource | null = null;
@@ -66,6 +70,7 @@ export class OpenAIClient {
   constructor(cfg: OpenAIConfig) {
     this.cfg = { ...cfg, baseUrl: cfg.baseUrl?.trim?.() ?? '' };
     this.baseUrl = this.normalizeBaseUrl(this.cfg.baseUrl);
+    this.remoteApiClient = new SharedSettingsApiClient(this.baseUrl, this.cfg.apiKey);
   }
 
   private normalizeBaseUrl(raw: string): string {
@@ -138,10 +143,9 @@ export class OpenAIClient {
   }
 
   async health(): Promise<boolean> {
-    const url = this.getUrl(REMOTE_SERVER_API_PATHS.models);
     try {
-      const res = await fetch(url, { headers: this.authHeaders() });
-      return res.ok;
+      await this.remoteApiClient.getOpenAICompatibleModels();
+      return true;
     } catch (error) {
       console.error('[OpenAIClient] Health check error:', error);
       return false;
@@ -155,7 +159,7 @@ export class OpenAIClient {
     conversationId?: string
   ): Promise<ChatResponse> {
     const url = this.getUrl(REMOTE_SERVER_API_PATHS.chatCompletions);
-    const body: Record<string, any> = buildChatCompletionRequestBody({
+    const body = buildChatCompletionRequestBody({
       model: this.cfg.model,
       messages,
       conversationId,
@@ -176,7 +180,7 @@ export class OpenAIClient {
 
   private async chatWithRecovery(
     url: string,
-    body: Record<string, any>,
+    body: ChatCompletionRequestBody<ChatMessage>,
     onToken?: (token: string) => void,
     onProgress?: OnProgressCallback
   ): Promise<ChatResponse> {
@@ -295,7 +299,7 @@ export class OpenAIClient {
 
   private streamSSEWithEventSource(
     url: string,
-    body: object,
+    body: ChatCompletionRequestBody<ChatMessage>,
     onToken?: (token: string) => void,
     onProgress?: OnProgressCallback
   ): Promise<ChatResponse> {
@@ -458,7 +462,7 @@ export class OpenAIClient {
    */
   private streamSSEWithXHR(
     url: string,
-    body: object,
+    body: ChatCompletionRequestBody<ChatMessage>,
     onToken?: (token: string) => void,
     onProgress?: OnProgressCallback
   ): Promise<ChatResponse> {
@@ -641,8 +645,8 @@ export class OpenAIClient {
   }
 
   private async streamSSEWithFetch(
-    url: string,
-    body: object,
+    _url: string,
+    body: ChatCompletionRequestBody<ChatMessage>,
     onToken?: (token: string) => void,
     onProgress?: OnProgressCallback
   ): Promise<ChatResponse> {
@@ -658,10 +662,7 @@ export class OpenAIClient {
     });
 
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: this.authHeaders(),
-        body: JSON.stringify(body),
+      const res = await this.remoteApiClient.requestChatCompletionResponse(body, {
         signal: abortController.signal,
       });
 
@@ -838,41 +839,11 @@ export class OpenAIClient {
    * This is used when the mobile app loses connection and needs to sync
    * with the server's conversation state.
    */
-  async getConversation(conversationId: string): Promise<{
-    id: string;
-    title: string;
-    createdAt: number;
-    updatedAt: number;
-    messages: Array<{
-      id: string;
-      role: 'user' | 'assistant' | 'tool';
-      content: string;
-      timestamp: number;
-      toolCalls?: any[];
-      toolResults?: any[];
-    }>;
-    metadata?: any;
-  } | null> {
-    const url = this.getUrl(REMOTE_SERVER_API_BUILDERS.conversation(conversationId));
-    console.log('[OpenAIClient] Fetching conversation for recovery:', url);
+  async getConversation(conversationId: string): Promise<ServerConversationFull | null> {
+    console.log('[OpenAIClient] Fetching conversation for recovery:', conversationId);
 
     try {
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: this.authHeaders(),
-      });
-
-      if (res.status === 404) {
-        console.log('[OpenAIClient] Conversation not found on server:', conversationId);
-        return null;
-      }
-
-      if (!res.ok) {
-        console.error('[OpenAIClient] Failed to fetch conversation:', res.status, res.statusText);
-        return null;
-      }
-
-      const data = await res.json();
+      const data = await this.remoteApiClient.getConversation(conversationId);
       console.log('[OpenAIClient] Fetched conversation:', data.id, 'with', data.messages?.length, 'messages');
       return data;
     } catch (error: any) {
@@ -882,28 +853,10 @@ export class OpenAIClient {
   }
 
   async killSwitch(): Promise<{ success: boolean; message?: string; error?: string; processesKilled?: number }> {
-    const url = this.getUrl(REMOTE_SERVER_API_PATHS.emergencyStop);
-    console.log('[OpenAIClient] Triggering emergency stop:', url);
+    console.log('[OpenAIClient] Triggering emergency stop');
 
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: this.authHeaders(),
-        body: JSON.stringify({}),
-      });
-
-      console.log('[OpenAIClient] Kill switch response:', res.status, res.statusText);
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        console.error('[OpenAIClient] Kill switch error:', data);
-        return {
-          success: false,
-          error: data?.error || `Kill switch failed: ${res.status}`,
-        };
-      }
-
+      const data = await this.remoteApiClient.emergencyStop();
       console.log('[OpenAIClient] Kill switch success:', data);
       return {
         success: true,

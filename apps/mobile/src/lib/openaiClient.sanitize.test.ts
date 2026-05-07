@@ -212,7 +212,7 @@ describe('OpenAIClient remote API routes', () => {
     await client.getConversation('conv/with slash');
     await client.killSwitch();
 
-    expect(fetchMock.mock.calls.map((call) => [call[0], call[1]?.method])).toEqual([
+    expect(fetchMock.mock.calls.map((call) => [call[0], call[1]?.method ?? 'GET'])).toEqual([
       ['https://example.com/v1/conversations/conv%2Fwith%20slash', 'GET'],
       ['https://example.com/v1/emergency-stop', 'POST'],
     ]);
