@@ -508,6 +508,8 @@ describe("remote-server route registration", () => {
     expect(controllerSource).toContain("adapters.resolveConfiguredApiKey(current)")
     expect(controllerSource).toContain("adapters.recordOperatorResponseAuditEvent(req, reply)")
     expect(routeBundleSource).toContain("registerOperatorRoutes(fastify, {")
+    expect(routeBundleSource).not.toContain('from "./remote-server-controller"')
+    expect(routeBundleSource).toContain('from "@dotagents/shared/remote-server-controller-contracts"')
     expect(routeBundleSource).toContain("actions: operatorRouteDesktopActions")
     expect(routeBundleSource).toContain("registerMobileApiRoutes(fastify, {")
     expect(routeBundleSource).toContain("actions: mobileApiDesktopActions")

@@ -6,6 +6,7 @@ import {
   ListToolsRequestSchema,
   isInitializeRequest,
 } from "@modelcontextprotocol/sdk/types.js"
+import type { FastifyInstance, FastifyReply } from "fastify"
 import { agentSessionStateManager, type SessionProfileSnapshot } from "@dotagents/core"
 import {
   buildInjectedMcpToolCallErrorResponse,
@@ -16,7 +17,7 @@ import {
   listInjectedMcpToolsAction,
   type InjectedMcpActionOptions,
 } from "@dotagents/shared/mcp-api"
-import type { RemoteServerRouteRegistrar } from "./remote-server-controller"
+import type { RemoteServerRouteRegistrar } from "@dotagents/shared/remote-server-controller-contracts"
 import {
   getAcpSessionForClientSessionToken,
   getAppSessionForAcpSession,
@@ -291,7 +292,10 @@ const injectedMcpDesktopActions: InjectedMcpRouteActions = {
   listInjectedMcpTools,
 }
 
-export const registerDesktopRemoteServerRoutes: RemoteServerRouteRegistrar = (fastify, context) => {
+export const registerDesktopRemoteServerRoutes: RemoteServerRouteRegistrar<
+  FastifyInstance,
+  FastifyReply
+> = (fastify, context) => {
   registerOperatorRoutes(fastify, {
     actions: operatorRouteDesktopActions,
     providerSecretMask: context.providerSecretMask,
