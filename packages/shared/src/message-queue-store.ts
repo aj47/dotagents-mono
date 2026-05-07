@@ -125,6 +125,20 @@ export interface ProcessQueuedMessagesIdleActionOptions {
   diagnostics: ProcessQueuedMessagesActionDiagnostics;
 }
 
+export interface MessageQueueRuntimeActionService {
+  pauseQueue(conversationId: string): void;
+  resumeQueue(conversationId: string): void;
+  removeFromQueue(conversationId: string, messageId: string): boolean;
+  resetToPending(conversationId: string, messageId: string): boolean;
+  updateMessageText(conversationId: string, messageId: string, text: string): boolean;
+  getQueue(conversationId: string): QueuedMessage[];
+}
+
+export interface MessageQueueRuntimeActionOptions {
+  service: MessageQueueRuntimeActionService;
+  processQueuedMessagesIfConversationIdle(conversationId: string, logContext: string): boolean;
+}
+
 function defaultMessageIdFactory(createdAt: number): string {
   return `qmsg_${createdAt}_${Math.random().toString(36).slice(2, 11)}`;
 }
@@ -172,6 +186,74 @@ export function buildQueuedMessageActionResult(
     messageId,
     processingStarted,
   };
+}
+
+export function resumeMessageQueueAction(
+  conversationId: string,
+  options: MessageQueueRuntimeActionOptions,
+): MessageQueueResumeResult {
+  options.service.resumeQueue(conversationId);
+
+  return buildMessageQueueResumeResult(
+    conversationId,
+    options.processQueuedMessagesIfConversationIdle(conversationId, 'resumeMessageQueue'),
+  );
+}
+
+export function pauseMessageQueueAction(
+  conversationId: string,
+  options: Pick<MessageQueueRuntimeActionOptions, 'service'>,
+): MessageQueuePauseResult {
+  options.service.pauseQueue(conversationId);
+  return buildMessageQueuePauseResult(conversationId);
+}
+
+export function removeQueuedMessageAction(
+  conversationId: string,
+  messageId: string,
+  options: Pick<MessageQueueRuntimeActionOptions, 'service'>,
+): QueuedMessageActionResult {
+  return buildQueuedMessageActionResult(
+    conversationId,
+    messageId,
+    options.service.removeFromQueue(conversationId, messageId),
+    false,
+  );
+}
+
+export function retryQueuedMessageAction(
+  conversationId: string,
+  messageId: string,
+  options: MessageQueueRuntimeActionOptions,
+): QueuedMessageActionResult {
+  const success = options.service.resetToPending(conversationId, messageId);
+  return buildQueuedMessageActionResult(
+    conversationId,
+    messageId,
+    success,
+    success
+      ? options.processQueuedMessagesIfConversationIdle(conversationId, 'retryQueuedMessage')
+      : false,
+  );
+}
+
+export function updateQueuedMessageTextAction(
+  conversationId: string,
+  messageId: string,
+  text: string,
+  options: MessageQueueRuntimeActionOptions,
+): QueuedMessageActionResult {
+  const wasFailed = options.service.getQueue(conversationId)
+    .find((message) => message.id === messageId)?.status === 'failed';
+  const success = options.service.updateMessageText(conversationId, messageId, text);
+  return buildQueuedMessageActionResult(
+    conversationId,
+    messageId,
+    success,
+    success && wasFailed
+      ? options.processQueuedMessagesIfConversationIdle(conversationId, 'updateQueuedMessageText')
+      : false,
+  );
 }
 
 export async function processQueuedMessagesAction(

@@ -4,8 +4,14 @@ import {
   buildMessageQueueResumeResult,
   buildQueuedMessageActionResult,
   createMessageQueueStore,
+  pauseMessageQueueAction,
   processQueuedMessagesAction,
   processQueuedMessagesIfConversationIdleAction,
+  removeQueuedMessageAction,
+  resumeMessageQueueAction,
+  retryQueuedMessageAction,
+  updateQueuedMessageTextAction,
+  type MessageQueueRuntimeActionService,
   type ProcessQueuedMessagesIdleActionService,
   type ProcessQueuedMessagesActionService,
 } from './message-queue-store';
@@ -27,6 +33,93 @@ describe('message-queue-store', () => {
       messageId: 'message-1',
       processingStarted: false,
     });
+  });
+
+  it('runs queue runtime action wrappers through injected services', () => {
+    const calls: string[] = [];
+    const service: MessageQueueRuntimeActionService = {
+      pauseQueue: (conversationId) => { calls.push(`pause:${conversationId}`); },
+      resumeQueue: (conversationId) => { calls.push(`resume:${conversationId}`); },
+      removeFromQueue: (conversationId, messageId) => {
+        calls.push(`remove:${conversationId}:${messageId}`);
+        return messageId !== 'missing';
+      },
+      resetToPending: (conversationId, messageId) => {
+        calls.push(`reset:${conversationId}:${messageId}`);
+        return messageId !== 'missing';
+      },
+      updateMessageText: (conversationId, messageId, text) => {
+        calls.push(`update:${conversationId}:${messageId}:${text}`);
+        return messageId !== 'missing';
+      },
+      getQueue: () => [
+        { id: 'failed-message', conversationId: 'conversation-1', text: 'old', createdAt: 1, status: 'failed' },
+        { id: 'pending-message', conversationId: 'conversation-1', text: 'old', createdAt: 2, status: 'pending' },
+      ],
+    };
+    const processingStarts: string[] = [];
+    const options = {
+      service,
+      processQueuedMessagesIfConversationIdle: (conversationId: string, logContext: string) => {
+        processingStarts.push(`${logContext}:${conversationId}`);
+        return true;
+      },
+    };
+
+    expect(resumeMessageQueueAction('conversation-1', options)).toEqual({
+      success: true,
+      conversationId: 'conversation-1',
+      processingStarted: true,
+    });
+    expect(pauseMessageQueueAction('conversation-1', options)).toEqual({
+      success: true,
+      conversationId: 'conversation-1',
+    });
+    expect(removeQueuedMessageAction('conversation-1', 'message-1', options)).toEqual({
+      success: true,
+      conversationId: 'conversation-1',
+      messageId: 'message-1',
+      processingStarted: false,
+    });
+    expect(retryQueuedMessageAction('conversation-1', 'message-1', options)).toEqual({
+      success: true,
+      conversationId: 'conversation-1',
+      messageId: 'message-1',
+      processingStarted: true,
+    });
+    expect(updateQueuedMessageTextAction('conversation-1', 'failed-message', 'new', options)).toEqual({
+      success: true,
+      conversationId: 'conversation-1',
+      messageId: 'failed-message',
+      processingStarted: true,
+    });
+    expect(updateQueuedMessageTextAction('conversation-1', 'pending-message', 'newer', options)).toEqual({
+      success: true,
+      conversationId: 'conversation-1',
+      messageId: 'pending-message',
+      processingStarted: false,
+    });
+    expect(retryQueuedMessageAction('conversation-1', 'missing', options)).toEqual({
+      success: false,
+      conversationId: 'conversation-1',
+      messageId: 'missing',
+      processingStarted: false,
+    });
+
+    expect(calls).toEqual([
+      'resume:conversation-1',
+      'pause:conversation-1',
+      'remove:conversation-1:message-1',
+      'reset:conversation-1:message-1',
+      'update:conversation-1:failed-message:new',
+      'update:conversation-1:pending-message:newer',
+      'reset:conversation-1:missing',
+    ]);
+    expect(processingStarts).toEqual([
+      'resumeMessageQueue:conversation-1',
+      'retryQueuedMessage:conversation-1',
+      'updateQueuedMessageText:conversation-1',
+    ]);
   });
 
   it('manages queue state and emits external change notifications', () => {

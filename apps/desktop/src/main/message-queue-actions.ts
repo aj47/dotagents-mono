@@ -1,9 +1,12 @@
 import {
-  buildMessageQueuePauseResult,
-  buildMessageQueueResumeResult,
-  buildQueuedMessageActionResult,
+  pauseMessageQueueAction,
   processQueuedMessagesAction,
   processQueuedMessagesIfConversationIdleAction,
+  removeQueuedMessageAction,
+  resumeMessageQueueAction,
+  retryQueuedMessageAction,
+  updateQueuedMessageTextAction,
+  type MessageQueueRuntimeActionOptions,
   type ProcessQueuedMessagesActionOptions,
   type MessageQueuePauseResult,
   type MessageQueueResumeResult,
@@ -50,6 +53,21 @@ function createQueuedMessagesActionOptions(): ProcessQueuedMessagesActionOptions
   }
 }
 
+function createMessageQueueRuntimeActionOptions(): MessageQueueRuntimeActionOptions {
+  return {
+    service: {
+      pauseQueue: (conversationId) => messageQueueService.pauseQueue(conversationId),
+      resumeQueue: (conversationId) => messageQueueService.resumeQueue(conversationId),
+      removeFromQueue: (conversationId, messageId) => messageQueueService.removeFromQueue(conversationId, messageId),
+      resetToPending: (conversationId, messageId) => messageQueueService.resetToPending(conversationId, messageId),
+      updateMessageText: (conversationId, messageId, text) =>
+        messageQueueService.updateMessageText(conversationId, messageId, text),
+      getQueue: (conversationId) => messageQueueService.getQueue(conversationId),
+    },
+    processQueuedMessagesIfConversationIdle,
+  }
+}
+
 /**
  * Process queued messages for a conversation after the current session completes.
  * This function peeks at messages and only removes them after successful processing.
@@ -72,44 +90,25 @@ export function processQueuedMessagesIfConversationIdle(
 }
 
 export function resumeMessageQueueByConversationId(conversationId: string): MessageQueueResumeResult {
-  messageQueueService.resumeQueue(conversationId)
-
-  return buildMessageQueueResumeResult(
-    conversationId,
-    processQueuedMessagesIfConversationIdle(conversationId, "resumeMessageQueue"),
-  )
+  return resumeMessageQueueAction(conversationId, createMessageQueueRuntimeActionOptions())
 }
 
 export function pauseMessageQueueByConversationId(conversationId: string): MessageQueuePauseResult {
-  messageQueueService.pauseQueue(conversationId)
-  return buildMessageQueuePauseResult(conversationId)
+  return pauseMessageQueueAction(conversationId, createMessageQueueRuntimeActionOptions())
 }
 
 export function removeQueuedMessageById(
   conversationId: string,
   messageId: string,
 ): QueuedMessageActionResult {
-  return buildQueuedMessageActionResult(
-    conversationId,
-    messageId,
-    messageQueueService.removeFromQueue(conversationId, messageId),
-    false,
-  )
+  return removeQueuedMessageAction(conversationId, messageId, createMessageQueueRuntimeActionOptions())
 }
 
 export function retryQueuedMessageById(
   conversationId: string,
   messageId: string,
 ): QueuedMessageActionResult {
-  const success = messageQueueService.resetToPending(conversationId, messageId)
-  return buildQueuedMessageActionResult(
-    conversationId,
-    messageId,
-    success,
-    success
-      ? processQueuedMessagesIfConversationIdle(conversationId, "retryQueuedMessage")
-      : false,
-  )
+  return retryQueuedMessageAction(conversationId, messageId, createMessageQueueRuntimeActionOptions())
 }
 
 export function updateQueuedMessageTextById(
@@ -117,16 +116,5 @@ export function updateQueuedMessageTextById(
   messageId: string,
   text: string,
 ): QueuedMessageActionResult {
-  const wasFailed = messageQueueService.getQueue(conversationId)
-    .find((message) => message.id === messageId)?.status === "failed"
-
-  const success = messageQueueService.updateMessageText(conversationId, messageId, text)
-  return buildQueuedMessageActionResult(
-    conversationId,
-    messageId,
-    success,
-    success && wasFailed
-      ? processQueuedMessagesIfConversationIdle(conversationId, "updateQueuedMessageText")
-      : false,
-  )
+  return updateQueuedMessageTextAction(conversationId, messageId, text, createMessageQueueRuntimeActionOptions())
 }
