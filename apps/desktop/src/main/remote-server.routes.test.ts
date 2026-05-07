@@ -1606,19 +1606,35 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.openOperatorUpdateAsset()")
     expect(operatorRoutesSource).toContain("actions.openOperatorReleasesPage()")
     expect(operatorRouteDesktopActionsSource).toContain(
+      "const operatorUpdaterRouteActions = createOperatorUpdaterRouteActions(MANUAL_RELEASES_URL, updaterActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain("...operatorUpdaterRouteActions")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
       "getOperatorUpdaterAction(currentVersion, MANUAL_RELEASES_URL, updaterActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain(
+    expect(operatorRouteDesktopActionsSource).not.toContain(
       "checkOperatorUpdaterAction(MANUAL_RELEASES_URL, updaterActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("downloadLatestOperatorUpdateAssetAction(updaterActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain("openOperatorReleasesPageAction(updaterActionOptions)")
+    expect(operatorRouteDesktopActionsSource).not.toContain("downloadLatestOperatorUpdateAssetAction(updaterActionOptions)")
+    expect(operatorRouteDesktopActionsSource).not.toContain("openOperatorReleasesPageAction(updaterActionOptions)")
     expect(operatorRouteDesktopActionsSource).toContain("service: {")
     expect(operatorRouteDesktopActionsSource).toContain("checkForUpdatesAndDownload")
     expect(operatorRouteDesktopActionsSource).toContain("downloadLatestReleaseAsset")
     expect(operatorRouteDesktopActionsSource).toContain("revealDownloadedReleaseAsset")
     expect(operatorRouteDesktopActionsSource).toContain("openDownloadedReleaseAsset")
     expect(operatorRouteDesktopActionsSource).toContain("openManualReleasesPage")
+    expect(sharedOperatorActionsSource).toContain("export interface OperatorUpdaterRouteActions")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorUpdaterRouteActions")
+    expect(sharedOperatorActionsSource).toContain(
+      "getOperatorUpdater: (currentVersion) => getOperatorUpdaterAction(currentVersion, manualReleasesUrl, options)",
+    )
+    expect(sharedOperatorActionsSource).toContain(
+      "checkOperatorUpdater: () => checkOperatorUpdaterAction(manualReleasesUrl, options)",
+    )
+    expect(sharedOperatorActionsSource).toContain(
+      "downloadLatestOperatorUpdateAsset: () => downloadLatestOperatorUpdateAssetAction(options)",
+    )
+    expect(sharedOperatorActionsSource).toContain("openOperatorReleasesPage: () => openOperatorReleasesPageAction(options)")
     expect(sharedOperatorActionsSource).toContain("export function getOperatorUpdaterAction(")
     expect(sharedOperatorActionsSource).toContain("export async function checkOperatorUpdaterAction(")
     expect(sharedOperatorActionsSource).toContain("buildOperatorUpdaterStatus({")

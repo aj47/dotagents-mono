@@ -180,6 +180,15 @@ export interface OperatorUpdaterActionOptions {
   service: OperatorUpdaterActionService
 }
 
+export interface OperatorUpdaterRouteActions {
+  getOperatorUpdater(currentVersion: string): OperatorUpdaterActionResult
+  checkOperatorUpdater(): Promise<OperatorUpdaterActionResult>
+  downloadLatestOperatorUpdateAsset(): Promise<OperatorUpdaterActionResult>
+  revealOperatorUpdateAsset(): Promise<OperatorUpdaterActionResult>
+  openOperatorUpdateAsset(): Promise<OperatorUpdaterActionResult>
+  openOperatorReleasesPage(): Promise<OperatorUpdaterActionResult>
+}
+
 export type OperatorTunnelActionResult = {
   statusCode: number
   body: unknown
@@ -2667,6 +2676,20 @@ export async function openOperatorReleasesPageAction(
       getUnknownOperatorActionErrorMessage(caughtError),
     )
     return operatorUpdaterActionResult(response, buildOperatorActionAuditContext(response))
+  }
+}
+
+export function createOperatorUpdaterRouteActions(
+  manualReleasesUrl: string,
+  options: OperatorUpdaterActionOptions,
+): OperatorUpdaterRouteActions {
+  return {
+    getOperatorUpdater: (currentVersion) => getOperatorUpdaterAction(currentVersion, manualReleasesUrl, options),
+    checkOperatorUpdater: () => checkOperatorUpdaterAction(manualReleasesUrl, options),
+    downloadLatestOperatorUpdateAsset: () => downloadLatestOperatorUpdateAssetAction(options),
+    revealOperatorUpdateAsset: () => revealOperatorUpdateAssetAction(options),
+    openOperatorUpdateAsset: () => openOperatorUpdateAssetAction(options),
+    openOperatorReleasesPage: () => openOperatorReleasesPageAction(options),
   }
 }
 

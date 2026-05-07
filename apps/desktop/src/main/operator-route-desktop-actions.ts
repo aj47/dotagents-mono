@@ -55,21 +55,16 @@ import {
   buildOperatorMcpStopFailureAuditContext,
   buildOperatorMcpTestAuditContext,
   buildOperatorMcpTestFailureAuditContext,
-  checkOperatorUpdaterAction,
   clearOperatorMessageQueueAction,
-  downloadLatestOperatorUpdateAssetAction,
   createOperatorIntegrationRouteActions,
   createOperatorObservabilityRouteActions,
   createOperatorTunnelRouteActions,
+  createOperatorUpdaterRouteActions,
   getOperatorMessageQueuesAction,
-  getOperatorUpdaterAction,
-  openOperatorReleasesPageAction,
-  openOperatorUpdateAssetAction,
   pauseOperatorMessageQueueAction,
   removeOperatorQueuedMessageAction,
   resumeOperatorMessageQueueAction,
   retryOperatorQueuedMessageAction,
-  revealOperatorUpdateAssetAction,
   runOperatorAgentAction,
   restartOperatorAppAction as restartOperatorApp,
   restartOperatorRemoteServerAction as restartOperatorRemoteServer,
@@ -374,6 +369,8 @@ const updaterActionOptions: OperatorUpdaterActionOptions = {
   },
 }
 
+const operatorUpdaterRouteActions = createOperatorUpdaterRouteActions(MANUAL_RELEASES_URL, updaterActionOptions)
+
 async function runOperatorAgent(body: unknown, runAgent: AgentRunExecutor) {
   return runOperatorAgentAction(body, runAgent, agentActionOptions)
 }
@@ -492,30 +489,6 @@ function rotateOperatorRemoteServerApiKey() {
   return rotateOperatorRemoteServerApiKeyAction(apiKeyActionOptions)
 }
 
-function getOperatorUpdater(currentVersion: string) {
-  return getOperatorUpdaterAction(currentVersion, MANUAL_RELEASES_URL, updaterActionOptions)
-}
-
-async function checkOperatorUpdater() {
-  return checkOperatorUpdaterAction(MANUAL_RELEASES_URL, updaterActionOptions)
-}
-
-async function downloadLatestOperatorUpdateAsset() {
-  return downloadLatestOperatorUpdateAssetAction(updaterActionOptions)
-}
-
-async function revealOperatorUpdateAsset() {
-  return revealOperatorUpdateAssetAction(updaterActionOptions)
-}
-
-async function openOperatorUpdateAsset() {
-  return openOperatorUpdateAssetAction(updaterActionOptions)
-}
-
-async function openOperatorReleasesPage() {
-  return openOperatorReleasesPageAction(updaterActionOptions)
-}
-
 export const operatorRouteDesktopActions: OperatorRouteActions = {
   runOperatorAgent,
   stopOperatorAgentSession,
@@ -536,12 +509,7 @@ export const operatorRouteDesktopActions: OperatorRouteActions = {
   getOperatorModelPresets,
   updateOperatorModelPreset,
   ...operatorTunnelRouteActions,
-  checkOperatorUpdater,
-  downloadLatestOperatorUpdateAsset,
-  getOperatorUpdater,
-  openOperatorReleasesPage,
-  openOperatorUpdateAsset,
-  revealOperatorUpdateAsset,
+  ...operatorUpdaterRouteActions,
   ...operatorIntegrationRouteActions,
   clearOperatorMessageQueue,
   getOperatorMessageQueues,

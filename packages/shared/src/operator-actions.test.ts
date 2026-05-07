@@ -76,6 +76,7 @@ import {
   createOperatorIntegrationRouteActions,
   createOperatorObservabilityRouteActions,
   createOperatorTunnelRouteActions,
+  createOperatorUpdaterRouteActions,
   getConfiguredCloudflareTunnelStartPlan,
   getOperatorAuditAction,
   getOperatorDiscordAction,
@@ -2156,6 +2157,51 @@ describe("operator action API helpers", () => {
       },
     })
     expect(calls).toEqual(["check", "download", "reveal", "open", "releases"])
+
+    const routeActions = createOperatorUpdaterRouteActions("https://example.com/releases", options)
+    expect(routeActions.getOperatorUpdater("1.0.0")).toMatchObject({
+      statusCode: 200,
+      body: {
+        currentVersion: "1.0.0",
+        manualReleasesUrl: "https://example.com/releases",
+        updateAvailable: true,
+      },
+    })
+    expect(await routeActions.checkOperatorUpdater()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "updater-check",
+      },
+    })
+    expect(await routeActions.downloadLatestOperatorUpdateAsset()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "updater-download-latest",
+      },
+    })
+    expect(await routeActions.revealOperatorUpdateAsset()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "updater-reveal-download",
+      },
+    })
+    expect(await routeActions.openOperatorUpdateAsset()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "updater-open-download",
+      },
+    })
+    expect(await routeActions.openOperatorReleasesPage()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "updater-open-releases",
+      },
+    })
 
     const failingOptions: OperatorUpdaterActionOptions = {
       service: {
