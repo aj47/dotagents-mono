@@ -684,7 +684,11 @@ export default function OperationsScreen({ navigation }: any) {
       return;
     }
 
-    void applySettingsUpdate({ remoteServerPort: parsed }, 'remote server port', `Remote server port saved as ${parsed}.`);
+    void applySettingsUpdate(
+      { remoteServerPort: parsed },
+      REMOTE_SERVER_PORT_FIELD_METADATA.pendingLabel,
+      REMOTE_SERVER_PORT_FIELD_METADATA.formatSuccessMessage(parsed),
+    );
   }, [applySettingsUpdate, drafts.remoteServerPort, settings?.remoteServerPort]);
 
   const healthColor = !status

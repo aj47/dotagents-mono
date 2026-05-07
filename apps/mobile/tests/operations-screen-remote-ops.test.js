@@ -43,6 +43,8 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /option\.compactLabel/);
   assert.doesNotMatch(operationsSource, /const PANEL_POSITION_OPTIONS/);
   assert.match(operationsSource, /REMOTE_SERVER_PORT_FIELD_METADATA/);
+  assert.match(operationsSource, /REMOTE_SERVER_PORT_FIELD_METADATA\.pendingLabel/);
+  assert.match(operationsSource, /REMOTE_SERVER_PORT_FIELD_METADATA\.formatSuccessMessage\(parsed\)/);
   assert.match(operationsSource, /isRemoteServerPortUpdateValue/);
   assert.match(operationsSource, /buildOperatorRemoteAccessDrafts as buildDrafts/);
   assert.match(remoteAccessDraftsSource, /DEFAULT_REMOTE_SERVER_CORS_ORIGINS/);

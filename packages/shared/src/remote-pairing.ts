@@ -115,6 +115,8 @@ export type RemoteServerPortFieldMetadata = {
   label: string;
   tooltip: string;
   placeholder: string;
+  pendingLabel: string;
+  formatSuccessMessage: (port: number) => string;
   accessibilityLabel: string;
   invalidTitle: string;
   invalidMessage: string;
@@ -209,6 +211,8 @@ export const REMOTE_SERVER_PORT_FIELD_METADATA: RemoteServerPortFieldMetadata = 
   label: 'Port',
   tooltip: 'HTTP port to listen on.',
   placeholder: String(DEFAULT_REMOTE_SERVER_PORT),
+  pendingLabel: 'remote server port',
+  formatSuccessMessage: (port) => `Remote server port saved as ${port}.`,
   accessibilityLabel: 'Remote server port',
   invalidTitle: 'Invalid Port',
   invalidMessage: `Enter a whole number between ${REMOTE_SERVER_PORT_MIN} and ${REMOTE_SERVER_PORT_MAX}.`,

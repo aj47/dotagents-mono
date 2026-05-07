@@ -156,10 +156,13 @@ describe('remote server config contracts', () => {
       label: 'Port',
       tooltip: 'HTTP port to listen on.',
       placeholder: '3210',
+      pendingLabel: 'remote server port',
+      formatSuccessMessage: expect.any(Function),
       accessibilityLabel: 'Remote server port',
       invalidTitle: 'Invalid Port',
       invalidMessage: 'Enter a whole number between 1 and 65535.',
     });
+    expect(REMOTE_SERVER_PORT_FIELD_METADATA.formatSuccessMessage(4321)).toBe('Remote server port saved as 4321.');
     expect(DEFAULT_REMOTE_SERVER_LOG_LEVEL).toBe('info');
     expect(REMOTE_SERVER_LOG_LEVEL_OPTIONS).toEqual(['error', 'info', 'debug']);
     expect(REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA).toEqual({
