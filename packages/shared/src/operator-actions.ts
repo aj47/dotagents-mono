@@ -660,6 +660,9 @@ export interface OperatorAgentActionService {
     sessionId: string
     isSnoozed: boolean
   }
+  clearInactiveAgentSessions(): {
+    clearedCount?: number
+  }
 }
 
 export interface OperatorAgentActionServiceOptions {
@@ -674,6 +677,9 @@ export interface OperatorAgentActionServiceOptions {
     sessionId: string
     isSnoozed: boolean
   }
+  clearInactiveAgentSessions(): {
+    clearedCount?: number
+  }
 }
 
 export function createOperatorAgentActionService(
@@ -683,6 +689,7 @@ export function createOperatorAgentActionService(
     showAgentSession: (sessionId) => options.showAgentSession(sessionId),
     stopAgentSessionById: (sessionId) => options.stopAgentSessionById(sessionId),
     setAgentSessionSnoozed: (sessionId, isSnoozed) => options.setAgentSessionSnoozed(sessionId, isSnoozed),
+    clearInactiveAgentSessions: () => options.clearInactiveAgentSessions(),
   }
 }
 
@@ -697,6 +704,7 @@ export interface OperatorAgentRouteActions {
   stopOperatorAgentSession(sessionIdParam: string | undefined): Promise<OperatorAgentActionResult>
   snoozeOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
   unsnoozeOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
+  clearInactiveOperatorAgentSessions(): OperatorAgentActionResult
 }
 
 export type OperatorTtsPlaybackActionResult = {
@@ -2402,6 +2410,21 @@ export function buildOperatorAgentSessionSnoozedResponse(
   }
 }
 
+export function buildOperatorAgentSessionsClearInactiveResponse(
+  clearedCount?: number,
+): OperatorActionResponse {
+  return {
+    success: true,
+    action: "agent-sessions-clear-inactive",
+    message: typeof clearedCount === "number"
+      ? `Cleared ${clearedCount} inactive agent session${clearedCount === 1 ? "" : "s"}`
+      : "Cleared inactive agent sessions",
+    details: {
+      ...(typeof clearedCount === "number" ? { clearedCount } : {}),
+    },
+  }
+}
+
 export function buildOperatorMessageQueueClearResponse(
   conversationId: string,
   success: boolean,
@@ -2643,6 +2666,28 @@ export function setOperatorAgentSessionSnoozedAction(
   }
 }
 
+export function clearInactiveOperatorAgentSessionsAction(
+  options: OperatorAgentActionOptions,
+): OperatorAgentActionResult {
+  try {
+    const result = options.service.clearInactiveAgentSessions()
+    const response = buildOperatorAgentSessionsClearInactiveResponse(result.clearedCount)
+    return operatorAgentActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    const response = buildOperatorActionErrorResponse(
+      "agent-sessions-clear-inactive",
+      `Failed to clear inactive agent sessions: ${errorMessage}`,
+    )
+    options.diagnostics.logError(
+      "operator-agent-actions",
+      `Failed to clear inactive agent sessions: ${errorMessage}`,
+      caughtError,
+    )
+    return operatorAgentActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
 export function createOperatorAgentRouteActions(
   options: OperatorAgentActionOptions,
 ): OperatorAgentRouteActions {
@@ -2654,6 +2699,7 @@ export function createOperatorAgentRouteActions(
       setOperatorAgentSessionSnoozedAction(sessionIdParam, true, options),
     unsnoozeOperatorAgentSession: (sessionIdParam) =>
       setOperatorAgentSessionSnoozedAction(sessionIdParam, false, options),
+    clearInactiveOperatorAgentSessions: () => clearInactiveOperatorAgentSessionsAction(options),
   }
 }
 

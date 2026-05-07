@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest"
 import {
   appendOperatorAuditLogEntry,
   authorizeRemoteServerRequest,
+  clearInactiveOperatorAgentSessionsAction,
   clearOperatorMessageQueueAction,
   buildOperatorActionErrorResponse,
   buildOperatorActionAuditContext,
+  buildOperatorAgentSessionsClearInactiveResponse,
   buildOperatorAgentSessionShowResponse,
   buildOperatorAgentSessionStopResponse,
   buildOperatorAgentSessionSnoozedResponse,
@@ -237,6 +239,10 @@ describe("operator action API helpers", () => {
         calls.push(`${isSnoozed ? "snooze" : "unsnooze"}:${sessionId}`)
         return { sessionId, isSnoozed }
       },
+      clearInactiveAgentSessions: () => {
+        calls.push("clear-inactive")
+        return { clearedCount: 2 }
+      },
     })
 
     await expect(service.stopAgentSessionById("session-1")).resolves.toEqual({
@@ -250,7 +256,8 @@ describe("operator action API helpers", () => {
       sessionId: "session-1",
       isSnoozed: true,
     })
-    expect(calls).toEqual(["stop:session-1", "show:session-1", "snooze:session-1"])
+    expect(service.clearInactiveAgentSessions()).toEqual({ clearedCount: 2 })
+    expect(calls).toEqual(["stop:session-1", "show:session-1", "snooze:session-1", "clear-inactive"])
   })
 
   it("runs TTS playback route actions through a shared service adapter", () => {
@@ -337,6 +344,10 @@ describe("operator action API helpers", () => {
         setAgentSessionSnoozed: (sessionId, isSnoozed) => {
           calls.push(`${isSnoozed ? "snooze" : "unsnooze"}:${sessionId}`)
           return { sessionId, isSnoozed }
+        },
+        clearInactiveAgentSessions: () => {
+          calls.push("clear-inactive")
+          return { clearedCount: 3 }
         },
       },
     }
@@ -473,6 +484,20 @@ describe("operator action API helpers", () => {
         failureReason: "Missing session ID",
       },
     })
+    expect(clearInactiveOperatorAgentSessionsAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "agent-sessions-clear-inactive",
+        details: {
+          clearedCount: 3,
+        },
+      },
+      auditContext: {
+        action: "agent-sessions-clear-inactive",
+        success: true,
+      },
+    })
 
     const routeActions = createOperatorAgentRouteActions(options)
     expect(await routeActions.runOperatorAgent({ prompt: "Route run" }, runAgent)).toMatchObject({
@@ -504,6 +529,13 @@ describe("operator action API helpers", () => {
         action: "agent-session-unsnooze",
       },
     })
+    expect(routeActions.clearInactiveOperatorAgentSessions()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "agent-sessions-clear-inactive",
+      },
+    })
 
     const failingStopOptions: OperatorAgentActionOptions = {
       ...options,
@@ -511,6 +543,7 @@ describe("operator action API helpers", () => {
         showAgentSession: () => { throw new Error("missing session") },
         stopAgentSessionById: async () => { throw new Error("missing session") },
         setAgentSessionSnoozed: () => { throw new Error("missing session") },
+        clearInactiveAgentSessions: () => { throw new Error("missing session") },
       },
     }
     expect(await stopOperatorAgentSessionAction("session-404", failingStopOptions)).toMatchObject({
@@ -526,6 +559,19 @@ describe("operator action API helpers", () => {
         failureReason: "Failed to stop agent session: missing session",
       },
     })
+    expect(clearInactiveOperatorAgentSessionsAction(failingStopOptions)).toMatchObject({
+      statusCode: 500,
+      body: {
+        success: false,
+        action: "agent-sessions-clear-inactive",
+        error: "Failed to clear inactive agent sessions: missing session",
+      },
+      auditContext: {
+        action: "agent-sessions-clear-inactive",
+        success: false,
+        failureReason: "Failed to clear inactive agent sessions: missing session",
+      },
+    })
     expect(calls).toEqual(expect.arrayContaining([
       "info:Operator run-agent: 5 chars (conversation conv-1)",
       "run:Do it:conv-1:profile-1",
@@ -534,7 +580,9 @@ describe("operator action API helpers", () => {
       "show:session-1",
       "snooze:session-1",
       "unsnooze:session-1",
+      "clear-inactive",
       "error:Failed to stop agent session session-404: missing session",
+      "error:Failed to clear inactive agent sessions: missing session",
     ]))
   })
 
@@ -2751,6 +2799,15 @@ describe("operator action API helpers", () => {
       details: {
         sessionId: "session-1",
         isSnoozed: false,
+      },
+    })
+
+    expect(buildOperatorAgentSessionsClearInactiveResponse(2)).toEqual({
+      success: true,
+      action: "agent-sessions-clear-inactive",
+      message: "Cleared 2 inactive agent sessions",
+      details: {
+        clearedCount: 2,
       },
     })
 

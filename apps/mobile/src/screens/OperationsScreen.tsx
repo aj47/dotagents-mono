@@ -792,6 +792,32 @@ export default function OperationsScreen({ navigation }: any) {
               <Text style={styles.detailText}>
                 Active: {status.sessions.activeSessions} • Recent: {status.sessions.recentSessions}
               </Text>
+              <View style={styles.mcpActionRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.sessionStopButton,
+                    styles.secondaryActionButton,
+                    (controlsDisabled || status.sessions.recentSessions === 0) && styles.actionButtonDisabled,
+                  ]}
+                  onPress={() => confirmAction(
+                    'Clear Inactive Sessions',
+                    'Clear recent inactive agent sessions on the desktop app? Sessions with queued follow-ups are kept.',
+                    'Clear Sessions',
+                    false,
+                    () => runAction(
+                      'agent-sessions-clear-inactive',
+                      () => settingsClient.clearInactiveOperatorAgentSessions(),
+                    ),
+                  )}
+                  disabled={controlsDisabled || status.sessions.recentSessions === 0}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Clear inactive agent sessions on desktop')}
+                >
+                  <Text style={styles.secondaryActionText}>
+                    {pendingAction === 'agent-sessions-clear-inactive' ? 'Clearing...' : 'Clear inactive'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               {status.sessions.activeSessionDetails.map((s) => {
                 const stopAction = `agent-session-stop:${s.id}`;
                 const showAction = `agent-session-show:${s.id}`;

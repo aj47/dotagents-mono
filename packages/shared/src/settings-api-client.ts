@@ -1561,6 +1561,12 @@ export class SettingsApiClient {
     });
   }
 
+  async clearInactiveOperatorAgentSessions(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorAgentSessionsClearInactive, {
+      method: 'POST',
+    });
+  }
+
   async getOperatorMessageQueues(): Promise<OperatorMessageQueuesResponse> {
     return this.request<OperatorMessageQueuesResponse>(API_PATHS.operatorMessageQueues);
   }

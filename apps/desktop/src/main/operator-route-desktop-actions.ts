@@ -186,6 +186,26 @@ const agentActionOptions: OperatorAgentActionOptions = {
       setTrackedAgentSessionSnoozed(sessionId, isSnoozed)
       return { sessionId, isSnoozed }
     },
+    clearInactiveAgentSessions: () => {
+      const shouldClear = (session: { conversationId?: string }) => {
+        if (!session.conversationId) return true
+        return messageQueueService.getQueue(session.conversationId).length === 0
+      }
+      const clearedCount = agentSessionTracker.getRecentSessions(100).filter(shouldClear).length
+      agentSessionTracker.clearCompletedSessions(shouldClear)
+      for (const id of ["main", "panel"] as const) {
+        try {
+          getWindowRendererHandlers(id)?.clearInactiveSessions?.send()
+        } catch (error) {
+          diagnosticsService.logError(
+            "operator-route-desktop-actions",
+            `Failed to notify ${id} window after clearing inactive sessions`,
+            error,
+          )
+        }
+      }
+      return { clearedCount }
+    },
   }),
 }
 
