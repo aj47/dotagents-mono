@@ -13,7 +13,15 @@ import type {
   StreamingCheckpoint,
   OnStatusChange,
 } from '@dotagents/shared/connection-recovery';
-import { DEFAULT_RECOVERY_CONFIG, calculateBackoff } from '@dotagents/shared/connection-recovery';
+import {
+  DEFAULT_RECOVERY_CONFIG,
+  applyStreamingCheckpointFailure,
+  calculateBackoff,
+  clearRecoveryContent,
+  createStreamingCheckpoint,
+  hasRecoverablePartialContent,
+  updateStreamingCheckpoint,
+} from '@dotagents/shared/connection-recovery';
 
 export class ConnectionRecoveryManager {
   private config: ConnectionRecoveryConfig;
@@ -140,22 +148,14 @@ export class ConnectionRecoveryManager {
   markFailed(error: string): void {
     // Preserve conversationId even when content is empty so manual retry can resume the same conversation.
     // This handles cases where the server sent a conversationId but the stream failed before any text arrived.
-    if (this.checkpoint) {
-      if (this.checkpoint.content) {
-        this.state.partialContent = this.checkpoint.content;
-      }
-      if (this.checkpoint.conversationId) {
-        this.state.conversationId = this.checkpoint.conversationId;
-      }
-    }
+    this.state = applyStreamingCheckpointFailure(this.state, this.checkpoint);
     this.updateStatus('failed', error);
   }
 
   reset(): void {
     this.state.retryCount = 0;
     this.state.lastError = undefined;
-    this.state.partialContent = undefined;
-    this.state.conversationId = undefined;
+    this.state = clearRecoveryContent(this.state);
     this.checkpoint = null;
     this.updateStatus('connecting');
   }
@@ -173,12 +173,7 @@ export class ConnectionRecoveryManager {
    * Initialize a new streaming checkpoint at the start of a request.
    */
   initCheckpoint(): void {
-    this.checkpoint = {
-      content: '',
-      conversationId: undefined,
-      lastUpdateTime: Date.now(),
-      progressCount: 0,
-    };
+    this.checkpoint = createStreamingCheckpoint();
   }
 
   /**
@@ -197,16 +192,7 @@ export class ConnectionRecoveryManager {
     if (!this.checkpoint) {
       this.initCheckpoint();
     }
-    // Only update content if new content is non-empty or checkpoint has no content yet.
-    // This preserves partial content from earlier attempts when retries fail early.
-    if (content || !this.checkpoint!.content) {
-      this.checkpoint!.content = content;
-    }
-    this.checkpoint!.lastUpdateTime = Date.now();
-    this.checkpoint!.progressCount++;
-    if (conversationId) {
-      this.checkpoint!.conversationId = conversationId;
-    }
+    this.checkpoint = updateStreamingCheckpoint(this.checkpoint, content, conversationId);
   }
 
   /**
@@ -222,15 +208,14 @@ export class ConnectionRecoveryManager {
    */
   clearCheckpoint(): void {
     this.checkpoint = null;
-    this.state.partialContent = undefined;
-    this.state.conversationId = undefined;
+    this.state = clearRecoveryContent(this.state);
   }
 
   /**
    * Check if there's recoverable partial content from a failed request.
    */
   hasRecoverableContent(): boolean {
-    return !!(this.state.partialContent && this.state.partialContent.length > 0);
+    return hasRecoverablePartialContent(this.state);
   }
 
   /**

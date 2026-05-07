@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
+  applyStreamingCheckpointFailure,
   calculateBackoff,
+  clearRecoveryContent,
+  createStreamingCheckpoint,
+  updateStreamingCheckpoint,
+  hasRecoverablePartialContent,
   isRetryableError,
   normalizeApiBaseUrl,
   delay,
@@ -9,6 +14,82 @@ import {
   checkServerConnection,
 } from './connection-recovery'
 import type { RecoveryState, ConnectionStatus } from './connection-recovery'
+
+// ── streaming checkpoints ───────────────────────────────────────────────────
+
+describe('streaming checkpoints', () => {
+  it('creates and updates checkpoints while preserving prior content on empty retries', () => {
+    let now = 1000
+    const getNow = () => now
+
+    let checkpoint = createStreamingCheckpoint(getNow)
+    expect(checkpoint).toEqual({
+      content: '',
+      conversationId: undefined,
+      lastUpdateTime: 1000,
+      progressCount: 0,
+    })
+
+    now = 1100
+    checkpoint = updateStreamingCheckpoint(checkpoint, 'partial answer', 'conversation-1', getNow)
+    expect(checkpoint).toEqual({
+      content: 'partial answer',
+      conversationId: 'conversation-1',
+      lastUpdateTime: 1100,
+      progressCount: 1,
+    })
+
+    now = 1200
+    checkpoint = updateStreamingCheckpoint(checkpoint, '', undefined, getNow)
+    expect(checkpoint).toEqual({
+      content: 'partial answer',
+      conversationId: 'conversation-1',
+      lastUpdateTime: 1200,
+      progressCount: 2,
+    })
+  })
+
+  it('copies recoverable checkpoint data into recovery state on failure', () => {
+    const state: RecoveryState = {
+      status: 'reconnecting',
+      retryCount: 2,
+      isAppActive: true,
+    }
+
+    const failedState = applyStreamingCheckpointFailure(state, {
+      content: 'partial answer',
+      conversationId: 'conversation-1',
+      lastUpdateTime: 1000,
+      progressCount: 2,
+    })
+
+    expect(failedState).toEqual({
+      ...state,
+      partialContent: 'partial answer',
+      conversationId: 'conversation-1',
+    })
+    expect(hasRecoverablePartialContent(failedState)).toBe(true)
+    expect(clearRecoveryContent(failedState)).toEqual(state)
+  })
+
+  it('preserves conversation id even when checkpoint content is empty', () => {
+    const state: RecoveryState = {
+      status: 'reconnecting',
+      retryCount: 1,
+      isAppActive: true,
+    }
+
+    expect(applyStreamingCheckpointFailure(state, {
+      content: '',
+      conversationId: 'conversation-1',
+      lastUpdateTime: 1000,
+      progressCount: 1,
+    })).toEqual({
+      ...state,
+      conversationId: 'conversation-1',
+    })
+  })
+})
 
 // ── calculateBackoff ─────────────────────────────────────────────────────────
 

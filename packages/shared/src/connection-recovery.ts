@@ -56,6 +56,60 @@ export type StreamingCheckpoint = {
 
 export type OnStatusChange = (state: RecoveryState) => void;
 
+export function createStreamingCheckpoint(now: () => number = Date.now): StreamingCheckpoint {
+  return {
+    content: '',
+    conversationId: undefined,
+    lastUpdateTime: now(),
+    progressCount: 0,
+  };
+}
+
+export function updateStreamingCheckpoint(
+  checkpoint: StreamingCheckpoint | null | undefined,
+  content: string,
+  conversationId?: string,
+  now: () => number = Date.now,
+): StreamingCheckpoint {
+  const timestamp = now();
+  const currentCheckpoint = checkpoint ?? {
+    content: '',
+    conversationId: undefined,
+    lastUpdateTime: timestamp,
+    progressCount: 0,
+  };
+
+  return {
+    ...currentCheckpoint,
+    content: content || !currentCheckpoint.content ? content : currentCheckpoint.content,
+    lastUpdateTime: timestamp,
+    progressCount: currentCheckpoint.progressCount + 1,
+    ...(conversationId ? { conversationId } : {}),
+  };
+}
+
+export function applyStreamingCheckpointFailure(
+  state: RecoveryState,
+  checkpoint: StreamingCheckpoint | null | undefined,
+): RecoveryState {
+  if (!checkpoint) return { ...state };
+
+  return {
+    ...state,
+    ...(checkpoint.content ? { partialContent: checkpoint.content } : {}),
+    ...(checkpoint.conversationId ? { conversationId: checkpoint.conversationId } : {}),
+  };
+}
+
+export function clearRecoveryContent(state: RecoveryState): RecoveryState {
+  const { partialContent: _partialContent, conversationId: _conversationId, ...rest } = state;
+  return rest;
+}
+
+export function hasRecoverablePartialContent(state: RecoveryState): boolean {
+  return !!(state.partialContent && state.partialContent.length > 0);
+}
+
 export function calculateBackoff(
   attempt: number,
   initialDelayMs: number,
