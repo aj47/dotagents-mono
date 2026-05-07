@@ -4,10 +4,12 @@ import {
   buildConversationVideoAssetStreamPlan,
   buildConversationVideoAssetUrl,
   buildConversationImageAssetHttpUrl,
+  buildConversationImageAssetStoragePlan,
   buildConversationImageAssetUrl,
   buildConversationImageMarkdownMessage,
   buildConversationImageMarkdownReference,
   buildConversationVideoAssetHttpUrl,
+  buildConversationVideoAssetStoragePlan,
   createConversationImageAssetFileService,
   createConversationImageAssetRouteActions,
   createConversationVideoAssetFileService,
@@ -175,6 +177,41 @@ describe('conversation video asset utilities', () => {
       .toThrow('Invalid conversation image asset filename');
     expect(() => getConversationVideoAssetPath('conv_1', 'abcdef1234567890.png', pathOptions))
       .toThrow('Invalid conversation video asset filename');
+  });
+
+  it('builds storage plans for persisted media assets from content hashes', () => {
+    const pathOptions = {
+      conversationsFolder: '/var/dotagents/conversations',
+      pathAdapter: path.posix,
+    };
+
+    expect(buildConversationImageAssetStoragePlan(
+      'conv_1',
+      'ABCDEF1234567890',
+      'image/jpeg',
+      pathOptions,
+    )).toEqual({
+      fileName: 'abcdef1234567890.jpg',
+      assetDir: '/var/dotagents/conversations/_images/conv_1',
+      assetPath: '/var/dotagents/conversations/_images/conv_1/abcdef1234567890.jpg',
+      assetUrl: 'assets://conversation-image/conv_1/abcdef1234567890.jpg',
+    });
+
+    expect(buildConversationVideoAssetStoragePlan(
+      'conv_1',
+      'abcdef1234567890',
+      'video/webm',
+      pathOptions,
+    )).toEqual({
+      fileName: 'abcdef1234567890.webm',
+      assetDir: '/var/dotagents/conversations/_videos/conv_1',
+      assetPath: '/var/dotagents/conversations/_videos/conv_1/abcdef1234567890.webm',
+      assetUrl: 'assets://conversation-video/conv_1/abcdef1234567890.webm',
+    });
+
+    expect(buildConversationImageAssetStoragePlan('conv_1', 'not-a-hash', 'image/png', pathOptions)).toBeNull();
+    expect(buildConversationVideoAssetStoragePlan('conv_1', 'abcdef1234567890', 'video/x-msvideo', pathOptions))
+      .toBeNull();
   });
 
   it('resolves video MIME types from filenames', () => {

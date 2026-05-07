@@ -58,24 +58,15 @@ import {
   generateMessageId,
 } from "@dotagents/shared/session"
 import {
-  getConversationImageExtensionForMimeType,
+  buildConversationImageAssetStoragePlan,
+  buildConversationVideoAssetStoragePlan,
+  type ConversationMediaAssetPathOptions,
   getConversationImageMimeTypeFromFileName,
-  getConversationVideoExtensionForMimeType,
   getRenderableVideoMimeTypeFromFileName,
   materializeDataImageMarkdownReferences,
   parseDataImageUrl,
 } from "@dotagents/shared/conversation-media-assets"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
-import {
-  buildConversationImageAssetUrl,
-  getConversationImageAssetDir,
-  getConversationImageAssetPath,
-} from "./conversation-image-assets"
-import {
-  buildConversationVideoAssetUrl,
-  getConversationVideoAssetDir,
-  getConversationVideoAssetPath,
-} from "./conversation-video-assets"
 
 // Threshold for compacting conversations on load
 // When a conversation exceeds this many messages, older ones are summarized
@@ -90,6 +81,10 @@ const MAX_AGENT_SESSION_TITLE_WORDS = 10
 const MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS = 500
 const MAX_CONVERSATION_HISTORY_PREVIEW_CHARS = 200
 const conversationStoragePathOptions = {
+  conversationsFolder,
+  pathAdapter: path,
+}
+const conversationMediaAssetPathOptions: ConversationMediaAssetPathOptions = {
   conversationsFolder,
   pathAdapter: path,
 }
@@ -140,25 +135,31 @@ export class ConversationService {
     buffer: Buffer,
     mimeType: string,
   ): Promise<string> {
-    const extension = getConversationImageExtensionForMimeType(mimeType)
-    if (!extension || buffer.length <= 0) {
+    if (buffer.length <= 0) {
       throw new Error(`Unsupported or empty conversation image: ${mimeType}`)
     }
 
     const hash = createHash("sha256").update(buffer).digest("hex")
-    const fileName = `${hash}.${extension}`
-    const assetPath = getConversationImageAssetPath(conversationId, fileName)
+    const storagePlan = buildConversationImageAssetStoragePlan(
+      conversationId,
+      hash,
+      mimeType,
+      conversationMediaAssetPathOptions,
+    )
+    if (!storagePlan) {
+      throw new Error(`Unsupported or empty conversation image: ${mimeType}`)
+    }
 
-    await fsPromises.mkdir(getConversationImageAssetDir(conversationId), { recursive: true })
+    await fsPromises.mkdir(storagePlan.assetDir, { recursive: true })
     try {
-      await fsPromises.writeFile(assetPath, buffer, { flag: "wx" })
+      await fsPromises.writeFile(storagePlan.assetPath, buffer, { flag: "wx" })
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
         throw error
       }
     }
 
-    return buildConversationImageAssetUrl(conversationId, fileName)
+    return storagePlan.assetUrl
   }
 
   async storeImagePathAsConversationAsset(conversationId: string, imagePath: string): Promise<string> {
@@ -201,26 +202,32 @@ export class ConversationService {
       throw new Error(`Unsupported video extension for path: ${videoPath}`)
     }
 
-    const extension = getConversationVideoExtensionForMimeType(mimeType)
     const sourceStat = await fsPromises.stat(videoPath)
     if (!sourceStat.isFile()) {
       throw new Error(`Video path is not a regular file: ${videoPath}`)
     }
-    if (!extension || sourceStat.size <= 0) {
+    if (sourceStat.size <= 0) {
       throw new Error(`Unsupported or empty conversation video: ${mimeType}`)
     }
 
     const hash = await this.computeFileSha256(videoPath)
-    const fileName = `${hash}.${extension}`
-    const assetPath = getConversationVideoAssetPath(conversationId, fileName)
+    const storagePlan = buildConversationVideoAssetStoragePlan(
+      conversationId,
+      hash,
+      mimeType,
+      conversationMediaAssetPathOptions,
+    )
+    if (!storagePlan) {
+      throw new Error(`Unsupported or empty conversation video: ${mimeType}`)
+    }
 
-    await fsPromises.mkdir(getConversationVideoAssetDir(conversationId), { recursive: true })
+    await fsPromises.mkdir(storagePlan.assetDir, { recursive: true })
     try {
-      await pipeline(fs.createReadStream(videoPath), fs.createWriteStream(assetPath, { flags: "wx" }))
+      await pipeline(fs.createReadStream(videoPath), fs.createWriteStream(storagePlan.assetPath, { flags: "wx" }))
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
         try {
-          await fsPromises.unlink(assetPath)
+          await fsPromises.unlink(storagePlan.assetPath)
         } catch {
           // Best-effort cleanup for partially copied files.
         }
@@ -228,7 +235,7 @@ export class ConversationService {
       }
     }
 
-    return buildConversationVideoAssetUrl(conversationId, fileName)
+    return storagePlan.assetUrl
   }
 
   async materializeInlineDataImagesInContent(conversationId: string, content: string): Promise<string> {

@@ -103,6 +103,13 @@ export interface ConversationMediaAssetPathOptions {
   pathAdapter: ConversationMediaAssetPathAdapter;
 }
 
+export interface ConversationMediaAssetStoragePlan {
+  fileName: string;
+  assetDir: string;
+  assetPath: string;
+  assetUrl: string;
+}
+
 export interface ParsedDataImageUrl {
   mimeType: string;
   base64: string;
@@ -1164,6 +1171,66 @@ export function getConversationVideoAssetPath(
     options,
     CONVERSATION_VIDEO_ASSETS_DIR_NAME,
     'video',
+    isSafeConversationVideoAssetFileName,
+  );
+}
+
+function buildConversationMediaAssetStoragePlan(
+  conversationId: string,
+  contentHash: string,
+  extension: string | undefined,
+  options: ConversationMediaAssetPathOptions,
+  buildAssetUrl: (conversationId: string, fileName: string) => string,
+  getAssetDir: (conversationId: string, options: ConversationMediaAssetPathOptions) => string,
+  getAssetPath: (conversationId: string, fileName: string, options: ConversationMediaAssetPathOptions) => string,
+  isSafeFileName: (fileName: string) => boolean,
+): ConversationMediaAssetStoragePlan | null {
+  if (!extension) return null;
+
+  const normalizedHash = contentHash.trim().toLowerCase();
+  const fileName = `${normalizedHash}.${extension}`;
+  if (!isSafeFileName(fileName)) return null;
+
+  return {
+    fileName,
+    assetDir: getAssetDir(conversationId, options),
+    assetPath: getAssetPath(conversationId, fileName, options),
+    assetUrl: buildAssetUrl(conversationId, fileName),
+  };
+}
+
+export function buildConversationImageAssetStoragePlan(
+  conversationId: string,
+  contentHash: string,
+  mimeType: string,
+  options: ConversationMediaAssetPathOptions,
+): ConversationMediaAssetStoragePlan | null {
+  return buildConversationMediaAssetStoragePlan(
+    conversationId,
+    contentHash,
+    getConversationImageExtensionForMimeType(mimeType),
+    options,
+    buildConversationImageAssetUrl,
+    getConversationImageAssetDir,
+    getConversationImageAssetPath,
+    isSafeConversationImageAssetFileName,
+  );
+}
+
+export function buildConversationVideoAssetStoragePlan(
+  conversationId: string,
+  contentHash: string,
+  mimeType: string,
+  options: ConversationMediaAssetPathOptions,
+): ConversationMediaAssetStoragePlan | null {
+  return buildConversationMediaAssetStoragePlan(
+    conversationId,
+    contentHash,
+    getConversationVideoExtensionForMimeType(mimeType),
+    options,
+    buildConversationVideoAssetUrl,
+    getConversationVideoAssetDir,
+    getConversationVideoAssetPath,
     isSafeConversationVideoAssetFileName,
   );
 }
