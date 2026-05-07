@@ -893,6 +893,79 @@ export function isPanelPosition(value: unknown): value is PanelPosition {
 export const DEFAULT_PANEL_POSITION: PanelPosition = "top-right";
 export const DEFAULT_PANEL_DRAG_ENABLED = true;
 
+export type DesktopFloatingPanelBooleanFieldKey =
+  | "floatingPanelAutoShow"
+  | "hidePanelWhenMainFocused"
+  | "panelDragEnabled";
+
+export type DesktopFloatingPanelSettingsFieldKey =
+  | DesktopFloatingPanelBooleanFieldKey
+  | "panelPosition";
+
+export type DesktopFloatingPanelBooleanFieldMetadata<Key extends DesktopFloatingPanelBooleanFieldKey = DesktopFloatingPanelBooleanFieldKey> = {
+  key: Key;
+  label: string;
+  helperText: string;
+  pendingLabel: string;
+  successMessage: string;
+  accessibilityLabel: string;
+};
+
+export type DesktopFloatingPanelPositionFieldMetadata = {
+  key: "panelPosition";
+  label: string;
+  pendingLabel: string;
+  formatSuccessMessage: (label: string) => string;
+  formatButtonAccessibilityLabel: (label: string) => string;
+};
+
+export type DesktopFloatingPanelSettingsSectionMetadata = {
+  sectionTitle: string;
+  fields: {
+    floatingPanelAutoShow: DesktopFloatingPanelBooleanFieldMetadata<"floatingPanelAutoShow">;
+    hidePanelWhenMainFocused: DesktopFloatingPanelBooleanFieldMetadata<"hidePanelWhenMainFocused">;
+    panelDragEnabled: DesktopFloatingPanelBooleanFieldMetadata<"panelDragEnabled">;
+    panelPosition: DesktopFloatingPanelPositionFieldMetadata;
+  };
+};
+
+export const DESKTOP_FLOATING_PANEL_SETTINGS_SECTION_METADATA: DesktopFloatingPanelSettingsSectionMetadata = {
+  sectionTitle: "Desktop floating panel",
+  fields: {
+    floatingPanelAutoShow: {
+      key: "floatingPanelAutoShow",
+      label: "Auto-Show Floating Panel",
+      helperText: "Show the desktop panel during agent sessions.",
+      pendingLabel: "floating panel auto-show",
+      successMessage: "Floating panel auto-show updated.",
+      accessibilityLabel: "Auto-Show Floating Panel",
+    },
+    hidePanelWhenMainFocused: {
+      key: "hidePanelWhenMainFocused",
+      label: "Hide When Main Focused",
+      helperText: "Keep the panel out of the way while the desktop window is active.",
+      pendingLabel: "hide panel when main focused",
+      successMessage: "Panel focus behavior updated.",
+      accessibilityLabel: "Hide Panel When Main Focused",
+    },
+    panelDragEnabled: {
+      key: "panelDragEnabled",
+      label: "Enable Dragging",
+      helperText: "Allow manual panel placement from the desktop panel handle.",
+      pendingLabel: "panel dragging",
+      successMessage: "Panel dragging updated.",
+      accessibilityLabel: "Enable Floating Panel Dragging",
+    },
+    panelPosition: {
+      key: "panelPosition",
+      label: "Default Position",
+      pendingLabel: "panel position",
+      formatSuccessMessage: (label) => `Panel position set to ${label}.`,
+      formatButtonAccessibilityLabel: (label) => `Set floating panel position to ${label}`,
+    },
+  },
+};
+
 export interface PanelPoint {
   x: number;
   y: number;

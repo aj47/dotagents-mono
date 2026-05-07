@@ -27,6 +27,7 @@ import {
   DEFAULT_LAUNCH_AT_LOGIN,
   DEFAULT_PANEL_DRAG_ENABLED,
   DEFAULT_PANEL_POSITION,
+  DESKTOP_FLOATING_PANEL_SETTINGS_SECTION_METADATA,
   DESKTOP_SHELL_SETTINGS_SECTION_METADATA,
   PANEL_POSITION_OPTIONS,
   OperatorAuditEntry,
@@ -716,6 +717,7 @@ export default function OperationsScreen({ navigation }: any) {
   const currentDeviceTrusted = currentDeviceId ? trustedDeviceIds.includes(currentDeviceId) : false;
   const channelAllowlistFields = CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA.fields;
   const desktopShellFields = DESKTOP_SHELL_SETTINGS_SECTION_METADATA.fields;
+  const desktopFloatingPanelFields = DESKTOP_FLOATING_PANEL_SETTINGS_SECTION_METADATA.fields;
 
   return (
     <ScrollView
@@ -2040,21 +2042,21 @@ export default function OperationsScreen({ navigation }: any) {
                 />
               </View>
 
-              <Text style={styles.subsectionTitle}>Desktop floating panel</Text>
+              <Text style={styles.subsectionTitle}>{DESKTOP_FLOATING_PANEL_SETTINGS_SECTION_METADATA.sectionTitle}</Text>
               <View style={styles.row}>
                 <View style={styles.rowCopy}>
-                  <Text style={styles.label}>Auto-Show Floating Panel</Text>
-                  <Text style={styles.helperText}>Show the desktop panel during agent sessions.</Text>
+                  <Text style={styles.label}>{desktopFloatingPanelFields.floatingPanelAutoShow.label}</Text>
+                  <Text style={styles.helperText}>{desktopFloatingPanelFields.floatingPanelAutoShow.helperText}</Text>
                 </View>
                 <Switch
                   value={settings.floatingPanelAutoShow ?? DEFAULT_FLOATING_PANEL_AUTO_SHOW}
                   onValueChange={(value) => void applySettingsUpdate(
                     { floatingPanelAutoShow: value },
-                    'floating panel auto-show',
-                    'Floating panel auto-show updated.',
+                    desktopFloatingPanelFields.floatingPanelAutoShow.pendingLabel,
+                    desktopFloatingPanelFields.floatingPanelAutoShow.successMessage,
                   )}
                   disabled={controlsDisabled}
-                  accessibilityLabel={createSwitchAccessibilityLabel('Auto-Show Floating Panel')}
+                  accessibilityLabel={createSwitchAccessibilityLabel(desktopFloatingPanelFields.floatingPanelAutoShow.accessibilityLabel)}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                   thumbColor={(settings.floatingPanelAutoShow ?? DEFAULT_FLOATING_PANEL_AUTO_SHOW) ? theme.colors.primaryForeground : theme.colors.background}
                 />
@@ -2062,18 +2064,18 @@ export default function OperationsScreen({ navigation }: any) {
 
               <View style={styles.row}>
                 <View style={styles.rowCopy}>
-                  <Text style={styles.label}>Hide When Main Focused</Text>
-                  <Text style={styles.helperText}>Keep the panel out of the way while the desktop window is active.</Text>
+                  <Text style={styles.label}>{desktopFloatingPanelFields.hidePanelWhenMainFocused.label}</Text>
+                  <Text style={styles.helperText}>{desktopFloatingPanelFields.hidePanelWhenMainFocused.helperText}</Text>
                 </View>
                 <Switch
                   value={settings.hidePanelWhenMainFocused ?? DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED}
                   onValueChange={(value) => void applySettingsUpdate(
                     { hidePanelWhenMainFocused: value },
-                    'hide panel when main focused',
-                    'Panel focus behavior updated.',
+                    desktopFloatingPanelFields.hidePanelWhenMainFocused.pendingLabel,
+                    desktopFloatingPanelFields.hidePanelWhenMainFocused.successMessage,
                   )}
                   disabled={controlsDisabled}
-                  accessibilityLabel={createSwitchAccessibilityLabel('Hide Panel When Main Focused')}
+                  accessibilityLabel={createSwitchAccessibilityLabel(desktopFloatingPanelFields.hidePanelWhenMainFocused.accessibilityLabel)}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                   thumbColor={(settings.hidePanelWhenMainFocused ?? DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED) ? theme.colors.primaryForeground : theme.colors.background}
                 />
@@ -2081,24 +2083,24 @@ export default function OperationsScreen({ navigation }: any) {
 
               <View style={styles.row}>
                 <View style={styles.rowCopy}>
-                  <Text style={styles.label}>Enable Dragging</Text>
-                  <Text style={styles.helperText}>Allow manual panel placement from the desktop panel handle.</Text>
+                  <Text style={styles.label}>{desktopFloatingPanelFields.panelDragEnabled.label}</Text>
+                  <Text style={styles.helperText}>{desktopFloatingPanelFields.panelDragEnabled.helperText}</Text>
                 </View>
                 <Switch
                   value={settings.panelDragEnabled ?? DEFAULT_PANEL_DRAG_ENABLED}
                   onValueChange={(value) => void applySettingsUpdate(
                     { panelDragEnabled: value },
-                    'panel dragging',
-                    'Panel dragging updated.',
+                    desktopFloatingPanelFields.panelDragEnabled.pendingLabel,
+                    desktopFloatingPanelFields.panelDragEnabled.successMessage,
                   )}
                   disabled={controlsDisabled}
-                  accessibilityLabel={createSwitchAccessibilityLabel('Enable Floating Panel Dragging')}
+                  accessibilityLabel={createSwitchAccessibilityLabel(desktopFloatingPanelFields.panelDragEnabled.accessibilityLabel)}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                   thumbColor={(settings.panelDragEnabled ?? DEFAULT_PANEL_DRAG_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                 />
               </View>
 
-              <Text style={styles.label}>Default Position</Text>
+              <Text style={styles.label}>{desktopFloatingPanelFields.panelPosition.label}</Text>
               <View style={styles.chipRow}>
                 {PANEL_POSITION_OPTIONS.map((option) => {
                   const isActive = (settings.panelPosition ?? DEFAULT_PANEL_POSITION) === option.value;
@@ -2112,12 +2114,12 @@ export default function OperationsScreen({ navigation }: any) {
                       ]}
                       onPress={() => void applySettingsUpdate(
                         { panelPosition: option.value },
-                        'panel position',
-                        `Panel position set to ${option.compactLabel}.`,
+                        desktopFloatingPanelFields.panelPosition.pendingLabel,
+                        desktopFloatingPanelFields.panelPosition.formatSuccessMessage(option.compactLabel),
                       )}
                       disabled={controlsDisabled}
                       accessibilityRole="button"
-                      accessibilityLabel={createButtonAccessibilityLabel(`Set floating panel position to ${option.compactLabel}`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(desktopFloatingPanelFields.panelPosition.formatButtonAccessibilityLabel(option.compactLabel))}
                     >
                       <Text style={[styles.chipButtonText, isActive && styles.chipButtonTextActive]}>
                         {option.compactLabel}

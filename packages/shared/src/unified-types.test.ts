@@ -7,6 +7,7 @@ import type { WhatsAppIntegrationConfig } from './whatsapp-config'
 import {
   DEFAULT_AUTO_SAVE_CONVERSATIONS,
   DEFAULT_CONVERSATIONS_ENABLED,
+  DESKTOP_FLOATING_PANEL_SETTINGS_SECTION_METADATA,
   DESKTOP_SHELL_SETTINGS_SECTION_METADATA,
   DEFAULT_FLOATING_PANEL_AUTO_SHOW,
   DEFAULT_HIDE_DOCK_ICON,
@@ -599,6 +600,48 @@ describe('settings API request/response contracts', () => {
       label: 'Custom (Draggable)',
       compactLabel: 'Custom',
     })
+    expect(DESKTOP_FLOATING_PANEL_SETTINGS_SECTION_METADATA).toEqual({
+      sectionTitle: 'Desktop floating panel',
+      fields: {
+        floatingPanelAutoShow: {
+          key: 'floatingPanelAutoShow',
+          label: 'Auto-Show Floating Panel',
+          helperText: 'Show the desktop panel during agent sessions.',
+          pendingLabel: 'floating panel auto-show',
+          successMessage: 'Floating panel auto-show updated.',
+          accessibilityLabel: 'Auto-Show Floating Panel',
+        },
+        hidePanelWhenMainFocused: {
+          key: 'hidePanelWhenMainFocused',
+          label: 'Hide When Main Focused',
+          helperText: 'Keep the panel out of the way while the desktop window is active.',
+          pendingLabel: 'hide panel when main focused',
+          successMessage: 'Panel focus behavior updated.',
+          accessibilityLabel: 'Hide Panel When Main Focused',
+        },
+        panelDragEnabled: {
+          key: 'panelDragEnabled',
+          label: 'Enable Dragging',
+          helperText: 'Allow manual panel placement from the desktop panel handle.',
+          pendingLabel: 'panel dragging',
+          successMessage: 'Panel dragging updated.',
+          accessibilityLabel: 'Enable Floating Panel Dragging',
+        },
+        panelPosition: {
+          key: 'panelPosition',
+          label: 'Default Position',
+          pendingLabel: 'panel position',
+          formatSuccessMessage: expect.any(Function),
+          formatButtonAccessibilityLabel: expect.any(Function),
+        },
+      },
+    })
+    expect(DESKTOP_FLOATING_PANEL_SETTINGS_SECTION_METADATA.fields.panelPosition.formatSuccessMessage('Top Right')).toBe(
+      'Panel position set to Top Right.',
+    )
+    expect(DESKTOP_FLOATING_PANEL_SETTINGS_SECTION_METADATA.fields.panelPosition.formatButtonAccessibilityLabel('Top Right')).toBe(
+      'Set floating panel position to Top Right',
+    )
     expect(isPanelPosition('bottom-center')).toBe(true)
     expect(isPanelPosition('floating')).toBe(false)
     expect(update.panelPosition).toBe('custom')
