@@ -3526,7 +3526,7 @@ export const router = {
   loadConversation: t.procedure
     .input<{ conversationId: string; messageLimit?: number }>()
     .action(async ({ input }) => {
-      return conversationService.loadConversation(input.conversationId, {
+      return conversationService.loadConversationForDisplay(input.conversationId, {
         messageLimit: input.messageLimit,
       })
     }),
