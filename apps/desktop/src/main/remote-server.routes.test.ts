@@ -1892,18 +1892,36 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.createOperatorModelPreset(req.body, providerSecretMask)")
     expect(operatorRoutesSource).toContain("actions.updateOperatorModelPreset(params.presetId, req.body, providerSecretMask)")
     expect(operatorRoutesSource).toContain("actions.deleteOperatorModelPreset(params.presetId, providerSecretMask)")
-    expect(operatorRouteDesktopActionsSource).toContain("getOperatorModelPresetsAction(secretMask, modelPresetActionOptions)")
     expect(operatorRouteDesktopActionsSource).toContain(
+      "const operatorModelPresetRouteActions = createOperatorModelPresetRouteActions(modelPresetActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain("...operatorModelPresetRouteActions")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "getOperatorModelPresetsAction(secretMask, modelPresetActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "createPresetId: () => `custom-${crypto.randomUUID()}`",
+    )
+    expect(operatorRouteDesktopActionsSource).not.toContain(
       "createOperatorModelPresetAction(body, secretMask, modelPresetActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain(
+    expect(operatorRouteDesktopActionsSource).not.toContain(
       "updateOperatorModelPresetAction(presetId, body, secretMask, modelPresetActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain(
+    expect(operatorRouteDesktopActionsSource).not.toContain(
       "deleteOperatorModelPresetAction(presetId, secretMask, modelPresetActionOptions)",
     )
     expect(source).toContain("PROVIDER_SECRET_MASK")
     expect(sharedModelPresetsSource).toContain("export interface ModelPresetActionOptions")
+    expect(sharedModelPresetsSource).toContain("export interface OperatorModelPresetRouteActions")
+    expect(sharedModelPresetsSource).toContain("export function createOperatorModelPresetRouteActions")
+    expect(sharedModelPresetsSource).toContain("getOperatorModelPresets: (secretMask) => getOperatorModelPresetsAction(secretMask, options)")
+    expect(sharedModelPresetsSource).toContain(
+      "createOperatorModelPreset: (body, secretMask) => createOperatorModelPresetAction(body, secretMask, options)",
+    )
+    expect(sharedModelPresetsSource).toContain(
+      "updateOperatorModelPresetAction(presetId, body, secretMask, options)",
+    )
     expect(sharedModelPresetsSource).toContain("export async function getOperatorModelPresetsAction")
     expect(sharedModelPresetsSource).toContain("export async function createOperatorModelPresetAction")
     expect(sharedModelPresetsSource).toContain("export async function updateOperatorModelPresetAction")

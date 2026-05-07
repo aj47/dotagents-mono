@@ -13,6 +13,7 @@ import {
   buildModelPresetUpdateAuditContext,
   buildModelPresetsResponse,
   createOperatorModelPresetAction,
+  createOperatorModelPresetRouteActions,
   deleteOperatorModelPresetAction,
   buildPresetModelSelectionUpdates,
   filterModelOptionsByQuery,
@@ -664,6 +665,68 @@ describe('model preset helpers', () => {
     await expect(deleteOperatorModelPresetAction(DEFAULT_MODEL_PRESET_ID, 'MASK', options)).resolves.toEqual({
       statusCode: 400,
       body: { error: 'Built-in presets cannot be deleted' },
+    });
+  });
+
+  it('creates operator model preset route actions through config adapters', async () => {
+    let config: ModelPresetActionConfigLike = {
+      currentModelPresetId: 'custom-1',
+      modelPresets: [{
+        id: 'custom-1',
+        name: 'Custom',
+        baseUrl: 'https://example.com/v1',
+        apiKey: 'sk-test',
+        isBuiltIn: false,
+      }],
+    };
+    const options: ModelPresetActionOptions = {
+      config: {
+        get: () => config,
+        save: async (nextConfig) => {
+          config = nextConfig;
+        },
+      },
+      diagnostics: {
+        logError: () => {
+          throw new Error('unexpected diagnostics log');
+        },
+      },
+      createPresetId: () => 'custom-2',
+      now: () => 123,
+    };
+    const routeActions = createOperatorModelPresetRouteActions(options);
+
+    await expect(routeActions.getOperatorModelPresets('MASK')).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        currentModelPresetId: 'custom-1',
+      },
+    });
+    await expect(routeActions.createOperatorModelPreset({
+      name: 'New preset',
+      baseUrl: 'https://new.example.com/v1',
+    }, 'MASK')).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        preset: { id: 'custom-2' },
+      },
+    });
+    await expect(routeActions.updateOperatorModelPreset('custom-1', {
+      agentModel: 'model-b',
+    }, 'MASK')).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        preset: { id: 'custom-1', agentModel: 'model-b' },
+      },
+    });
+    await expect(routeActions.deleteOperatorModelPreset('custom-1', 'MASK')).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        deletedPresetId: 'custom-1',
+      },
     });
   });
 

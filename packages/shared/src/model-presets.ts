@@ -122,6 +122,20 @@ export interface ModelPresetActionOptions<TConfig extends ModelPresetActionConfi
   now(): number;
 }
 
+export interface OperatorModelPresetRouteActions {
+  getOperatorModelPresets(secretMask: string): Promise<ModelPresetActionResult>;
+  createOperatorModelPreset(body: unknown, secretMask: string): Promise<ModelPresetActionResult>;
+  updateOperatorModelPreset(
+    presetId: string | undefined,
+    body: unknown,
+    secretMask: string,
+  ): Promise<ModelPresetActionResult>;
+  deleteOperatorModelPreset(
+    presetId: string | undefined,
+    secretMask: string,
+  ): Promise<ModelPresetActionResult>;
+}
+
 function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === 'object' && !Array.isArray(body) ? body as Record<string, unknown> : {};
 }
@@ -432,6 +446,19 @@ export async function deleteOperatorModelPresetAction<TConfig extends ModelPrese
       buildModelPresetMutationFailureAuditContext('model-preset-delete', message, presetId),
     );
   }
+}
+
+export function createOperatorModelPresetRouteActions<TConfig extends ModelPresetActionConfigLike>(
+  options: ModelPresetActionOptions<TConfig>,
+): OperatorModelPresetRouteActions {
+  return {
+    getOperatorModelPresets: (secretMask) => getOperatorModelPresetsAction(secretMask, options),
+    createOperatorModelPreset: (body, secretMask) => createOperatorModelPresetAction(body, secretMask, options),
+    updateOperatorModelPreset: (presetId, body, secretMask) =>
+      updateOperatorModelPresetAction(presetId, body, secretMask, options),
+    deleteOperatorModelPreset: (presetId, secretMask) =>
+      deleteOperatorModelPresetAction(presetId, secretMask, options),
+  };
 }
 
 export function getModelPresetActivationUpdates(preset: ModelPreset): ModelPresetActivationUpdates {

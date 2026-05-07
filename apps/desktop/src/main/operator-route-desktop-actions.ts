@@ -16,10 +16,7 @@ import {
   type LocalSpeechModelActionOptions,
 } from "@dotagents/shared/local-speech-models"
 import {
-  createOperatorModelPresetAction,
-  deleteOperatorModelPresetAction,
-  getOperatorModelPresetsAction,
-  updateOperatorModelPresetAction,
+  createOperatorModelPresetRouteActions,
   type ModelPresetActionOptions,
 } from "@dotagents/shared/model-presets"
 import {
@@ -139,6 +136,8 @@ const modelPresetActionOptions: ModelPresetActionOptions<Config> = {
   createPresetId: () => `custom-${crypto.randomUUID()}`,
   now: () => Date.now(),
 }
+
+const operatorModelPresetRouteActions = createOperatorModelPresetRouteActions(modelPresetActionOptions)
 
 const apiKeyActionOptions: OperatorApiKeyActionOptions<Config> = {
   config: {
@@ -429,26 +428,6 @@ async function restartOperatorMcpServer(body: unknown) {
   return restartOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)
 }
 
-async function getOperatorModelPresets(secretMask: string) {
-  return getOperatorModelPresetsAction(secretMask, modelPresetActionOptions)
-}
-
-async function createOperatorModelPreset(body: unknown, secretMask: string) {
-  return createOperatorModelPresetAction(body, secretMask, modelPresetActionOptions)
-}
-
-async function updateOperatorModelPreset(
-  presetId: string | undefined,
-  body: unknown,
-  secretMask: string,
-) {
-  return updateOperatorModelPresetAction(presetId, body, secretMask, modelPresetActionOptions)
-}
-
-async function deleteOperatorModelPreset(presetId: string | undefined, secretMask: string) {
-  return deleteOperatorModelPresetAction(presetId, secretMask, modelPresetActionOptions)
-}
-
 function rotateOperatorRemoteServerApiKey() {
   return rotateOperatorRemoteServerApiKeyAction(apiKeyActionOptions)
 }
@@ -468,10 +447,7 @@ export const operatorRouteDesktopActions: OperatorRouteActions = {
   downloadOperatorLocalSpeechModel,
   getOperatorLocalSpeechModelStatus,
   getOperatorLocalSpeechModelStatuses,
-  createOperatorModelPreset,
-  deleteOperatorModelPreset,
-  getOperatorModelPresets,
-  updateOperatorModelPreset,
+  ...operatorModelPresetRouteActions,
   ...operatorTunnelRouteActions,
   ...operatorUpdaterRouteActions,
   ...operatorIntegrationRouteActions,
