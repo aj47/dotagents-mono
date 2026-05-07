@@ -1,7 +1,7 @@
 import crypto from "crypto"
 import { app } from "electron"
 import os from "os"
-import type { OperatorRouteActions } from "@dotagents/shared/remote-server-route-contracts"
+import { createOperatorRouteActions } from "@dotagents/shared/remote-server-route-contracts"
 import type { Config } from "../shared/types"
 import type {
   LocalSpeechModelProviderId,
@@ -368,19 +368,21 @@ const operatorUpdaterRouteActions = createOperatorUpdaterRouteActions(MANUAL_REL
 
 const operatorRestartRouteActions = createOperatorRestartRouteActions()
 
-export const operatorRouteDesktopActions: OperatorRouteActions = {
-  ...operatorAgentRouteActions,
-  ...operatorApiKeyRouteActions,
-  ...operatorMcpRouteActions,
-  ...operatorLocalSpeechModelRouteActions,
-  ...operatorModelPresetRouteActions,
-  ...operatorTunnelRouteActions,
-  ...operatorUpdaterRouteActions,
-  ...operatorIntegrationRouteActions,
-  ...operatorMessageQueueRouteActions,
-  ...operatorObservabilityRouteActions,
-  ...operatorRestartRouteActions,
-  ...operatorAuditRouteActions,
-  recordOperatorAuditEvent,
-  setOperatorAuditContext,
-}
+export const operatorRouteDesktopActions = createOperatorRouteActions({
+  agent: operatorAgentRouteActions,
+  apiKey: operatorApiKeyRouteActions,
+  mcp: operatorMcpRouteActions,
+  localSpeechModels: operatorLocalSpeechModelRouteActions,
+  modelPresets: operatorModelPresetRouteActions,
+  tunnel: operatorTunnelRouteActions,
+  updater: operatorUpdaterRouteActions,
+  integrations: operatorIntegrationRouteActions,
+  messageQueue: operatorMessageQueueRouteActions,
+  observability: operatorObservabilityRouteActions,
+  restart: operatorRestartRouteActions,
+  audit: {
+    getOperatorAudit: operatorAuditRouteActions.getOperatorAudit,
+    recordOperatorAuditEvent,
+    setOperatorAuditContext,
+  },
+})

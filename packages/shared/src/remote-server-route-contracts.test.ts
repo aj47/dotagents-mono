@@ -3,12 +3,15 @@ import {
   buildMobileApiActionError,
   buildMobileApiActionResult,
   createMobileApiRouteActions,
+  createOperatorRouteActions,
   type MobileApiRouteActions,
+  type OperatorRouteActions,
 } from './remote-server-route-contracts';
 
 type TestRequest = { requestId: string };
 type TestReply = { replyId: string };
 type TestMobileApiRouteActions = MobileApiRouteActions<TestRequest, TestReply>;
+type TestOperatorRouteActions = OperatorRouteActions<TestRequest>;
 
 const actionKeys = [
   'handleChatCompletionRequest',
@@ -81,6 +84,65 @@ const actionKeys = [
   'updateRepeatTask',
   'deleteRepeatTask',
 ] as const satisfies ReadonlyArray<keyof TestMobileApiRouteActions>;
+
+const operatorActionKeys = [
+  'runOperatorAgent',
+  'stopOperatorAgentSession',
+  'clearOperatorMcpServerLogs',
+  'getOperatorMcpServerLogs',
+  'getOperatorMcpStatus',
+  'getOperatorMcpTools',
+  'restartOperatorMcpServer',
+  'setOperatorMcpToolEnabled',
+  'startOperatorMcpServer',
+  'stopOperatorMcpServer',
+  'testOperatorMcpServer',
+  'downloadOperatorLocalSpeechModel',
+  'getOperatorLocalSpeechModelStatus',
+  'getOperatorLocalSpeechModelStatuses',
+  'createOperatorModelPreset',
+  'deleteOperatorModelPreset',
+  'getOperatorModelPresets',
+  'updateOperatorModelPreset',
+  'getOperatorTunnel',
+  'getOperatorTunnelSetup',
+  'startOperatorTunnel',
+  'stopOperatorTunnel',
+  'checkOperatorUpdater',
+  'downloadLatestOperatorUpdateAsset',
+  'getOperatorUpdater',
+  'openOperatorReleasesPage',
+  'openOperatorUpdateAsset',
+  'revealOperatorUpdateAsset',
+  'clearOperatorDiscordLogs',
+  'connectOperatorDiscord',
+  'connectOperatorWhatsApp',
+  'disconnectOperatorDiscord',
+  'getOperatorDiscord',
+  'getOperatorDiscordLogs',
+  'getOperatorIntegrations',
+  'getOperatorWhatsApp',
+  'logoutOperatorWhatsApp',
+  'clearOperatorMessageQueue',
+  'getOperatorMessageQueues',
+  'pauseOperatorMessageQueue',
+  'removeOperatorQueuedMessage',
+  'resumeOperatorMessageQueue',
+  'retryOperatorQueuedMessage',
+  'updateOperatorQueuedMessage',
+  'getOperatorConversations',
+  'getOperatorErrors',
+  'getOperatorHealth',
+  'getOperatorLogs',
+  'getOperatorRemoteServer',
+  'getOperatorStatus',
+  'getOperatorAudit',
+  'recordOperatorAuditEvent',
+  'setOperatorAuditContext',
+  'restartOperatorApp',
+  'restartOperatorRemoteServer',
+  'rotateOperatorRemoteServerApiKey',
+] as const satisfies ReadonlyArray<keyof TestOperatorRouteActions>;
 
 describe('remote server route contracts', () => {
   it('builds mobile api action results with default success status', () => {
@@ -179,6 +241,81 @@ describe('remote server route contracts', () => {
     });
 
     expect(Object.keys(routeActions).sort()).toEqual([...actionKeys].sort());
+    expect(routeActions).toEqual(actions);
+  });
+
+  it('builds a complete operator action facade from route action groups', () => {
+    const actions = Object.fromEntries(operatorActionKeys.map((key) => [key, vi.fn()])) as TestOperatorRouteActions;
+    const pick = <K extends keyof TestOperatorRouteActions>(...keys: K[]): Pick<TestOperatorRouteActions, K> =>
+      Object.fromEntries(keys.map((key) => [key, actions[key]])) as Pick<TestOperatorRouteActions, K>;
+
+    const routeActions = createOperatorRouteActions<TestRequest>({
+      agent: pick('runOperatorAgent', 'stopOperatorAgentSession'),
+      apiKey: pick('rotateOperatorRemoteServerApiKey'),
+      mcp: pick(
+        'clearOperatorMcpServerLogs',
+        'getOperatorMcpServerLogs',
+        'getOperatorMcpStatus',
+        'getOperatorMcpTools',
+        'restartOperatorMcpServer',
+        'setOperatorMcpToolEnabled',
+        'startOperatorMcpServer',
+        'stopOperatorMcpServer',
+        'testOperatorMcpServer',
+      ),
+      localSpeechModels: pick(
+        'downloadOperatorLocalSpeechModel',
+        'getOperatorLocalSpeechModelStatus',
+        'getOperatorLocalSpeechModelStatuses',
+      ),
+      modelPresets: pick(
+        'createOperatorModelPreset',
+        'deleteOperatorModelPreset',
+        'getOperatorModelPresets',
+        'updateOperatorModelPreset',
+      ),
+      tunnel: pick('getOperatorTunnel', 'getOperatorTunnelSetup', 'startOperatorTunnel', 'stopOperatorTunnel'),
+      updater: pick(
+        'checkOperatorUpdater',
+        'downloadLatestOperatorUpdateAsset',
+        'getOperatorUpdater',
+        'openOperatorReleasesPage',
+        'openOperatorUpdateAsset',
+        'revealOperatorUpdateAsset',
+      ),
+      integrations: pick(
+        'clearOperatorDiscordLogs',
+        'connectOperatorDiscord',
+        'connectOperatorWhatsApp',
+        'disconnectOperatorDiscord',
+        'getOperatorDiscord',
+        'getOperatorDiscordLogs',
+        'getOperatorIntegrations',
+        'getOperatorWhatsApp',
+        'logoutOperatorWhatsApp',
+      ),
+      messageQueue: pick(
+        'clearOperatorMessageQueue',
+        'getOperatorMessageQueues',
+        'pauseOperatorMessageQueue',
+        'removeOperatorQueuedMessage',
+        'resumeOperatorMessageQueue',
+        'retryOperatorQueuedMessage',
+        'updateOperatorQueuedMessage',
+      ),
+      observability: pick(
+        'getOperatorConversations',
+        'getOperatorErrors',
+        'getOperatorHealth',
+        'getOperatorLogs',
+        'getOperatorRemoteServer',
+        'getOperatorStatus',
+      ),
+      restart: pick('restartOperatorApp', 'restartOperatorRemoteServer'),
+      audit: pick('getOperatorAudit', 'recordOperatorAuditEvent', 'setOperatorAuditContext'),
+    });
+
+    expect(Object.keys(routeActions).sort()).toEqual([...operatorActionKeys].sort());
     expect(routeActions).toEqual(actions);
   });
 });

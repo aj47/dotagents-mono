@@ -619,12 +619,12 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorRoutesSource).toContain("fastify.delete(API_ROUTES.operatorMessageQueueMessage")
     expect(sharedOperatorRoutesSource).not.toContain("Fastify")
     expect(sharedOperatorRoutesSource).not.toContain("Electron")
-    expect(operatorRouteDesktopActionsSource).toContain("export const operatorRouteDesktopActions")
+    expect(operatorRouteDesktopActionsSource).toContain("export const operatorRouteDesktopActions = createOperatorRouteActions({")
     expect(operatorRouteDesktopActionsSource).not.toContain('from "./operator-routes"')
     expect(operatorRouteDesktopActionsSource).toContain('from "@dotagents/shared/remote-server-route-contracts"')
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorAgentRouteActions")
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorObservabilityRouteActions")
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorAuditRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("agent: operatorAgentRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("observability: operatorObservabilityRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorAudit: operatorAuditRouteActions.getOperatorAudit")
     expect(operatorRouteDesktopActionsSource).toContain("recordOperatorAuditEvent")
     expect(injectedMcpRoutesSource).not.toContain('from "./injected-mcp-actions"')
     expect(injectedMcpRoutesSource).not.toContain("export interface InjectedMcpRouteActions")
@@ -710,6 +710,9 @@ describe("remote-server route registration", () => {
     expect(sharedRouteContractsSource).toContain("...groups.chatCompletion")
     expect(sharedRouteContractsSource).toContain("export interface MobileApiRouteOptions<Request = unknown, Reply = unknown>")
     expect(sharedRouteContractsSource).toContain("export interface OperatorRouteActions<Request = unknown>")
+    expect(sharedRouteContractsSource).toContain("export interface OperatorRouteActionGroups<Request = unknown>")
+    expect(sharedRouteContractsSource).toContain("export function createOperatorRouteActions")
+    expect(sharedRouteContractsSource).toContain("...groups.agent")
     expect(sharedRouteContractsSource).toContain("export interface OperatorRouteOptions<Request = unknown, Reply = unknown>")
     expect(sharedRouteContractsSource).toContain("export interface InjectedMcpRouteActions<Request = unknown, Reply = unknown>")
     expect(sharedRouteContractsSource).toContain("export interface InjectedMcpRouteOptions<Request = unknown, Reply = unknown>")
@@ -1488,7 +1491,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorObservabilityRouteActions = createOperatorObservabilityRouteActions(observabilityActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorObservabilityRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("observability: operatorObservabilityRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorStatusAction(remoteServerStatus, observabilityActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorHealthAction(observabilityActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorErrorsAction(count, observabilityActionOptions)")
@@ -1539,7 +1542,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorIntegrationRouteActions = createOperatorIntegrationRouteActions(integrationActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorIntegrationRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("integrations: operatorIntegrationRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorIntegrationsAction(integrationActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorDiscordAction(integrationActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorDiscordLogsAction(count, integrationActionOptions)")
@@ -1586,7 +1589,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorTunnelRouteActions = createOperatorTunnelRouteActions(tunnelActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorTunnelRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("tunnel: operatorTunnelRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorTunnelAction(tunnelActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorTunnelSetupAction(tunnelActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain(
@@ -1618,7 +1621,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorUpdaterRouteActions = createOperatorUpdaterRouteActions(MANUAL_RELEASES_URL, updaterActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorUpdaterRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("updater: operatorUpdaterRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "getOperatorUpdaterAction(currentVersion, MANUAL_RELEASES_URL, updaterActionOptions)",
     )
@@ -1696,7 +1699,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorRestartRouteActions = createOperatorRestartRouteActions()",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorRestartRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("restart: operatorRestartRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain("restartOperatorRemoteServerAction as restartOperatorRemoteServer")
     expect(operatorRouteDesktopActionsSource).not.toContain("restartOperatorAppAction as restartOperatorApp")
     expect(sharedOperatorActionsSource).toContain("export function restartOperatorRemoteServerAction(")
@@ -1714,7 +1717,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorApiKeyRouteActions = createOperatorApiKeyRouteActions(apiKeyActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorApiKeyRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("apiKey: operatorApiKeyRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain("rotateOperatorRemoteServerApiKeyAction(apiKeyActionOptions)")
     expect(operatorRouteDesktopActionsSource).toContain('generateApiKey: () => crypto.randomBytes(32).toString("hex")')
     expect(desktopAdaptersSource).toContain("generateApiKey: generateRemoteServerApiKey")
@@ -1751,7 +1754,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorAgentRouteActions = createOperatorAgentRouteActions(agentActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorAgentRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("agent: operatorAgentRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain("runOperatorAgentAction(body, runAgent, agentActionOptions)")
     expect(operatorRouteDesktopActionsSource).toContain("service: {")
     expect(sharedOperatorActionsSource).toContain("export interface OperatorAgentRouteActions")
@@ -1790,7 +1793,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorMessageQueueRouteActions = createOperatorMessageQueueRouteActions(messageQueueActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorMessageQueueRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("messageQueue: operatorMessageQueueRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorMessageQueuesAction(messageQueueActionOptions)")
     expect(operatorRouteDesktopActionsSource).toContain(
       "clearQueue: (conversationId) => messageQueueService.clearQueue(conversationId)",
@@ -1876,7 +1879,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain("mutation: operatorMcpMutationActionOptions")
     expect(operatorRouteDesktopActionsSource).toContain("test: operatorMcpTestActionOptions")
     expect(operatorRouteDesktopActionsSource).toContain("lifecycle: operatorMcpLifecycleActionOptions")
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorMcpRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("mcp: operatorMcpRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorMcpStatusAction(operatorMcpReadActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "getOperatorMcpServerLogsAction(serverName, count, operatorMcpReadActionOptions)",
@@ -1937,7 +1940,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorLocalSpeechModelRouteActions = createOperatorLocalSpeechModelRouteActions(localSpeechModelActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorLocalSpeechModelRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("localSpeechModels: operatorLocalSpeechModelRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "getOperatorLocalSpeechModelStatusesAction(localSpeechModelActionOptions)",
     )
@@ -1976,7 +1979,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorModelPresetRouteActions = createOperatorModelPresetRouteActions(modelPresetActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("...operatorModelPresetRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("modelPresets: operatorModelPresetRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "getOperatorModelPresetsAction(secretMask, modelPresetActionOptions)",
     )

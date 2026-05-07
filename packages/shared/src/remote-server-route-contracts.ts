@@ -376,6 +376,101 @@ export interface OperatorRouteActions<Request = unknown> {
   rotateOperatorRemoteServerApiKey: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
 }
 
+export interface OperatorRouteActionGroups<Request = unknown> {
+  agent: Pick<OperatorRouteActions<Request>, 'runOperatorAgent' | 'stopOperatorAgentSession'>;
+  apiKey: Pick<OperatorRouteActions<Request>, 'rotateOperatorRemoteServerApiKey'>;
+  mcp: Pick<
+    OperatorRouteActions<Request>,
+    | 'clearOperatorMcpServerLogs'
+    | 'getOperatorMcpServerLogs'
+    | 'getOperatorMcpStatus'
+    | 'getOperatorMcpTools'
+    | 'restartOperatorMcpServer'
+    | 'setOperatorMcpToolEnabled'
+    | 'startOperatorMcpServer'
+    | 'stopOperatorMcpServer'
+    | 'testOperatorMcpServer'
+  >;
+  localSpeechModels: Pick<
+    OperatorRouteActions<Request>,
+    | 'downloadOperatorLocalSpeechModel'
+    | 'getOperatorLocalSpeechModelStatus'
+    | 'getOperatorLocalSpeechModelStatuses'
+  >;
+  modelPresets: Pick<
+    OperatorRouteActions<Request>,
+    | 'createOperatorModelPreset'
+    | 'deleteOperatorModelPreset'
+    | 'getOperatorModelPresets'
+    | 'updateOperatorModelPreset'
+  >;
+  tunnel: Pick<
+    OperatorRouteActions<Request>,
+    'getOperatorTunnel' | 'getOperatorTunnelSetup' | 'startOperatorTunnel' | 'stopOperatorTunnel'
+  >;
+  updater: Pick<
+    OperatorRouteActions<Request>,
+    | 'checkOperatorUpdater'
+    | 'downloadLatestOperatorUpdateAsset'
+    | 'getOperatorUpdater'
+    | 'openOperatorReleasesPage'
+    | 'openOperatorUpdateAsset'
+    | 'revealOperatorUpdateAsset'
+  >;
+  integrations: Pick<
+    OperatorRouteActions<Request>,
+    | 'clearOperatorDiscordLogs'
+    | 'connectOperatorDiscord'
+    | 'connectOperatorWhatsApp'
+    | 'disconnectOperatorDiscord'
+    | 'getOperatorDiscord'
+    | 'getOperatorDiscordLogs'
+    | 'getOperatorIntegrations'
+    | 'getOperatorWhatsApp'
+    | 'logoutOperatorWhatsApp'
+  >;
+  messageQueue: Pick<
+    OperatorRouteActions<Request>,
+    | 'clearOperatorMessageQueue'
+    | 'getOperatorMessageQueues'
+    | 'pauseOperatorMessageQueue'
+    | 'removeOperatorQueuedMessage'
+    | 'resumeOperatorMessageQueue'
+    | 'retryOperatorQueuedMessage'
+    | 'updateOperatorQueuedMessage'
+  >;
+  observability: Pick<
+    OperatorRouteActions<Request>,
+    | 'getOperatorConversations'
+    | 'getOperatorErrors'
+    | 'getOperatorHealth'
+    | 'getOperatorLogs'
+    | 'getOperatorRemoteServer'
+    | 'getOperatorStatus'
+  >;
+  restart: Pick<OperatorRouteActions<Request>, 'restartOperatorApp' | 'restartOperatorRemoteServer'>;
+  audit: Pick<OperatorRouteActions<Request>, 'getOperatorAudit' | 'recordOperatorAuditEvent' | 'setOperatorAuditContext'>;
+}
+
+export function createOperatorRouteActions<Request = unknown>(
+  groups: OperatorRouteActionGroups<Request>,
+): OperatorRouteActions<Request> {
+  return {
+    ...groups.agent,
+    ...groups.apiKey,
+    ...groups.mcp,
+    ...groups.localSpeechModels,
+    ...groups.modelPresets,
+    ...groups.tunnel,
+    ...groups.updater,
+    ...groups.integrations,
+    ...groups.messageQueue,
+    ...groups.observability,
+    ...groups.restart,
+    ...groups.audit,
+  };
+}
+
 export interface OperatorRouteOptions<Request = unknown, Reply = unknown> {
   actions: OperatorRouteActions<Request>;
   providerSecretMask: string;
