@@ -8,6 +8,8 @@ import {
   buildSettingsSensitiveUpdateFailureAuditContext,
   buildSettingsUpdatePatch,
   buildSettingsUpdateResponse,
+  createEmergencyStopRouteActions,
+  createSettingsRouteActions,
   DOTAGENTS_DEVICE_ID_HEADER,
   ExtendedSettingsApiClient,
   getSettingsAction,
@@ -671,6 +673,61 @@ describe('SettingsApiClient', () => {
     ]);
   });
 
+  it('creates settings route actions that delegate through config adapters', async () => {
+    let config: SettingsActionConfigLike = {
+      remoteServerEnabled: false,
+      ttsEnabled: true,
+      modelPresets: [],
+    };
+    const routeActions = createSettingsRouteActions({
+      config: {
+        get: () => config,
+        save: async (nextConfig) => {
+          config = nextConfig;
+        },
+      },
+      diagnostics: {
+        logInfo: () => undefined,
+        logError: () => {
+          throw new Error('unexpected error log');
+        },
+      },
+      getMaskedRemoteServerApiKey: () => 'REMOTE-MASK',
+      getMaskedDiscordBotToken: () => 'DISCORD-MASK',
+      getDiscordDefaultProfileId: () => '',
+      getAcpxAgents: () => [],
+      getDiscordLifecycleAction: () => 'noop',
+      applyDiscordLifecycleAction: async () => undefined,
+      applyWhatsappToggle: async () => undefined,
+    });
+
+    expect(routeActions.getSettings('MASKED')).toMatchObject({
+      statusCode: 200,
+      body: {
+        remoteServerApiKey: 'REMOTE-MASK',
+        discordBotToken: 'DISCORD-MASK',
+        ttsEnabled: true,
+      },
+    });
+
+    await expect(routeActions.updateSettings({
+      ttsEnabled: false,
+    }, {
+      providerSecretMask: 'MASKED',
+      remoteServerSecretMask: 'REMOTE-MASK',
+      discordSecretMask: 'DISCORD-MASK',
+    })).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        updated: ['ttsEnabled'],
+      },
+      remoteServerLifecycleAction: 'noop',
+      auditContext: undefined,
+    });
+    expect(config.ttsEnabled).toBe(false);
+  });
+
   it('returns shared settings action validation and failure audit responses', async () => {
     const options: SettingsActionOptions = {
       config: {
@@ -806,6 +863,28 @@ describe('SettingsApiClient', () => {
       { level: 'log', message: '[KILLSWITCH] Calling emergency stop handler...' },
       { level: 'log', message: '[KILLSWITCH] Emergency stop completed. Killed 3 processes. Remaining: 1' },
     ]);
+  });
+
+  it('creates emergency stop route actions that delegate through adapters', async () => {
+    const routeActions = createEmergencyStopRouteActions({
+      stopAll: async () => ({ before: 2, after: 0 }),
+      diagnostics: {
+        logInfo: () => undefined,
+        logError: () => {
+          throw new Error('unexpected error log');
+        },
+      },
+    });
+
+    await expect(routeActions.triggerEmergencyStop()).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        message: 'Emergency stop executed',
+        processesKilled: 2,
+        processesRemaining: 0,
+      },
+    });
   });
 
   it('logs shared emergency stop failures and returns the route error body', async () => {

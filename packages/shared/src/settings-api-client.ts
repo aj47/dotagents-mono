@@ -327,6 +327,14 @@ export interface SettingsActionOptions<TConfig extends SettingsActionConfigLike 
   applyDesktopShellSettings?(prev: TConfig, next: TConfig): SettingsMaybePromise<void>;
 }
 
+export interface SettingsRouteActions {
+  getSettings(providerSecretMask: string): SettingsActionResult;
+  updateSettings(
+    body: unknown,
+    masks: BuildSettingsUpdatePatchOptions,
+  ): Promise<SettingsActionResult>;
+}
+
 function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === 'object' && !Array.isArray(body) ? body as Record<string, unknown> : {};
 }
@@ -697,6 +705,15 @@ export async function updateSettingsAction<TConfig extends SettingsActionConfigL
   }
 }
 
+export function createSettingsRouteActions<TConfig extends SettingsActionConfigLike>(
+  options: SettingsActionOptions<TConfig>,
+): SettingsRouteActions {
+  return {
+    getSettings: (providerSecretMask) => getSettingsAction(providerSecretMask, options),
+    updateSettings: (body, masks) => updateSettingsAction(body, masks, options),
+  };
+}
+
 export function buildEmergencyStopResponse(
   processesKilled: number,
   processesRemaining: number,
@@ -743,6 +760,10 @@ export interface EmergencyStopActionOptions {
   logger?: EmergencyStopActionLogger;
 }
 
+export interface EmergencyStopRouteActions {
+  triggerEmergencyStop(): Promise<EmergencyStopActionResult>;
+}
+
 function emergencyStopActionOk(body: unknown): EmergencyStopActionResult {
   return {
     statusCode: 200,
@@ -780,6 +801,14 @@ export async function triggerEmergencyStopAction(
     options.diagnostics.logError('remote-server', 'Emergency stop error', caughtError);
     return emergencyStopActionError(500, buildEmergencyStopErrorResponse(caughtError));
   }
+}
+
+export function createEmergencyStopRouteActions(
+  options: EmergencyStopActionOptions,
+): EmergencyStopRouteActions {
+  return {
+    triggerEmergencyStop: () => triggerEmergencyStopAction(options),
+  };
 }
 
 export function buildSettingsUpdatePatch(

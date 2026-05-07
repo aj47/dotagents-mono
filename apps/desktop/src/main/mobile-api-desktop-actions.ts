@@ -65,9 +65,8 @@ import {
   type TtsActionOptions,
 } from "@dotagents/shared/tts-api"
 import {
-  getSettingsAction,
-  triggerEmergencyStopAction,
-  updateSettingsAction,
+  createEmergencyStopRouteActions,
+  createSettingsRouteActions,
   type EmergencyStopActionOptions,
   type SettingsActionOptions,
 } from "@dotagents/shared/settings-api-client"
@@ -121,12 +120,6 @@ import { generateTTS } from "./tts-service"
 type DesktopProfileActionProfile = ReturnType<typeof agentProfileService.setCurrentProfileStrict>
 type DesktopAgentProfileActionProfile = NonNullable<ReturnType<typeof agentProfileService.getById>>
 type DesktopConversationActionConversation = NonNullable<Awaited<ReturnType<typeof conversationService.loadConversation>>>
-type SettingsUpdateMasks = {
-  providerSecretMask: string
-  remoteServerSecretMask: string
-  discordSecretMask: string
-  langfuseSecretMask: string
-}
 
 const modelActionOptions: ModelActionOptions = {
   getConfig: () => configStore.get(),
@@ -215,6 +208,8 @@ const emergencyStopActionOptions: EmergencyStopActionOptions = {
   logger: console,
 }
 
+const emergencyStopRouteActions = createEmergencyStopRouteActions(emergencyStopActionOptions)
+
 async function applyDiscordLifecycleAction(discordLifecycleAction: ReturnType<typeof getDiscordLifecycleAction>): Promise<void> {
   if (discordLifecycleAction === "start") {
     await discordService.start()
@@ -241,6 +236,8 @@ const settingsActionOptions: SettingsActionOptions<Config> = {
   applyWhatsappToggle: handleWhatsAppToggle,
   applyDesktopShellSettings,
 }
+
+const settingsRouteActions = createSettingsRouteActions(settingsActionOptions)
 
 const pushActionOptions = {
   tokenStore: {
@@ -522,18 +519,6 @@ function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
 
-async function triggerEmergencyStop() {
-  return triggerEmergencyStopAction(emergencyStopActionOptions)
-}
-
-function getSettings(providerSecretMask: string) {
-  return getSettingsAction(providerSecretMask, settingsActionOptions)
-}
-
-async function updateSettings(body: unknown, masks: SettingsUpdateMasks) {
-  return updateSettingsAction(body, masks, settingsActionOptions)
-}
-
 function getBundleExportableItems() {
   return getBundleExportableItemsAction(bundleActionOptions)
 }
@@ -617,8 +602,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   importMcpServerConfigs,
   upsertMcpServerConfig,
   deleteMcpServerConfig,
-  getSettings,
-  updateSettings,
+  ...settingsRouteActions,
   getAgentSessionCandidates,
   recordOperatorAuditEvent,
   getConversation,
@@ -628,7 +612,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   getConversations,
   createConversation,
   updateConversation,
-  triggerEmergencyStop,
+  ...emergencyStopRouteActions,
   ...skillRouteActions,
   ...knowledgeNoteRouteActions,
   ...agentProfileRouteActions,
