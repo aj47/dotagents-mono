@@ -326,6 +326,17 @@ export function resolveBundleImportTargetDir(
   return workspaceAgentsFolder ?? globalAgentsFolder
 }
 
+export interface TemporaryBundleFileNameOptions {
+  now?: () => number
+  createUniqueId?: () => string
+}
+
+export function createTemporaryBundleFileName(options: TemporaryBundleFileNameOptions = {}): string {
+  const now = options.now ?? Date.now
+  const createUniqueId = options.createUniqueId ?? (() => Math.random().toString(36).slice(2, 11))
+  return `${now()}-${createUniqueId()}.dotagents`
+}
+
 export type BundleExportableItemsResponse = {
   success: true
   items: ExportableBundleItems

@@ -11,6 +11,7 @@ import {
 import { getEnabledAcpxAgentProfiles } from "@dotagents/shared/agent-profile-queries"
 import {
   createTemporaryBundleFileImportService,
+  createTemporaryBundleFileName,
   createBundleRouteActions,
   resolveBundleExportLayerDirs,
   resolveBundleImportTargetDir,
@@ -221,7 +222,7 @@ const temporaryBundleImportService = createTemporaryBundleFileImportService({
     writeTemporaryBundleFile: (bundleJson) => {
       const tempDir = path.join(os.tmpdir(), "dotagents-bundle-import")
       fs.mkdirSync(tempDir, { recursive: true })
-      const filePath = path.join(tempDir, `${Date.now()}-${randomUUID()}.dotagents`)
+      const filePath = path.join(tempDir, createTemporaryBundleFileName({ createUniqueId: randomUUID }))
       fs.writeFileSync(filePath, bundleJson, "utf8")
       return filePath
     },

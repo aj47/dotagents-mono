@@ -13,6 +13,7 @@ import {
   createBundleItemSelection,
   createBundleRouteActions,
   createTemporaryBundleFileImportService,
+  createTemporaryBundleFileName,
   exportBundleAction,
   getAvailableBundleComponentSelection,
   getBundleDependencyWarnings,
@@ -300,6 +301,13 @@ describe("bundle API helpers", () => {
     ])
     expect(resolveBundleImportTargetDir("/global/.agents")).toBe("/global/.agents")
     expect(resolveBundleImportTargetDir("/global/.agents", "/workspace/.agents")).toBe("/workspace/.agents")
+  })
+
+  it("creates temporary bundle filenames with shared .dotagents naming", () => {
+    expect(createTemporaryBundleFileName({
+      now: () => 123456789,
+      createUniqueId: () => "unique-id",
+    })).toBe("123456789-unique-id.dotagents")
   })
 
   it("runs bundle actions through service adapters", async () => {
