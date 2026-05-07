@@ -52,9 +52,11 @@ import {
   finalizeBundleImportResult,
   formatBundleImportItemError,
   getBundleBuildItems,
+  isHubBundleHandoffFilePath,
+  isSupportedBundleFilePath,
   mergeBundleBuildItems,
   mergeExportableBundleItems,
-  parseDotAgentsBundle,
+  parseDotAgentsBundleJson,
   readBundleMcpServersFromConfig,
   resolveBundleImportItemAction,
   sortExportableBundleItems,
@@ -62,6 +64,7 @@ import {
   type BundleAgentProfile,
   type BundleComponentSelection,
   type BundleImportConflictStrategy,
+  type BundleImportItemResult,
   type BundleImportPreviewConflict,
   type BundleImportPreviewConflicts,
   type BundleImportResult,
@@ -156,13 +159,6 @@ export interface BundlePreviewResult {
   conflicts?: BundleImportPreviewConflicts
   error?: string
 }
-
-// ============================================================================
-// Secret stripping
-// ============================================================================
-
-const BUNDLE_FILE_EXTENSIONS = new Set([".dotagents", ".json"])
-const HUB_BUNDLE_FILE_EXTENSION = ".dotagents"
 
 // ============================================================================
 // Export
@@ -396,17 +392,12 @@ export async function exportBundleToFileFromLayers(
 // Preview (for import)
 // ============================================================================
 
-function isSupportedBundleFile(filePath: string): boolean {
-  const extension = path.extname(filePath).toLowerCase()
-  return BUNDLE_FILE_EXTENSIONS.has(extension)
-}
-
 export function findHubBundleHandoffFilePath(candidates: readonly string[]): string | null {
   for (const candidate of candidates) {
     if (typeof candidate !== "string" || candidate.trim().length === 0) continue
 
     const normalizedPath = path.resolve(candidate)
-    if (path.extname(normalizedPath).toLowerCase() !== HUB_BUNDLE_FILE_EXTENSION) {
+    if (!isHubBundleHandoffFilePath(normalizedPath)) {
       continue
     }
 
@@ -426,7 +417,7 @@ export function findHubBundleHandoffFilePath(candidates: readonly string[]): str
 export function previewBundle(filePath: string): DotAgentsBundle | null {
   try {
     const normalizedPath = path.resolve(filePath)
-    if (!isSupportedBundleFile(normalizedPath)) {
+    if (!isSupportedBundleFilePath(normalizedPath)) {
       throw new Error("Unsupported bundle file extension")
     }
 
@@ -436,8 +427,7 @@ export function previewBundle(filePath: string): DotAgentsBundle | null {
     }
 
     const content = fs.readFileSync(normalizedPath, "utf-8")
-    const parsed = JSON.parse(content) as unknown
-    const bundle = parseDotAgentsBundle(parsed)
+    const bundle = parseDotAgentsBundleJson(content)
 
     if (!bundle) {
       throw new Error("Invalid bundle format or unsupported version")

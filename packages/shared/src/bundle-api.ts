@@ -149,6 +149,9 @@ export type DotAgentsBundle = {
   knowledgeNotes: BundleKnowledgeNote[]
 }
 
+export const SUPPORTED_BUNDLE_FILE_EXTENSIONS = [".dotagents", ".json"] as const
+export const HUB_BUNDLE_FILE_EXTENSION = ".dotagents"
+
 const BUNDLE_SECRET_PATTERNS = [
   /key/i,
   /token/i,
@@ -385,6 +388,31 @@ export function normalizeDotAgentsBundle(bundle: ParsedDotAgentsBundle): DotAgen
 
 export function parseDotAgentsBundle(bundle: unknown): DotAgentsBundle | null {
   return validateDotAgentsBundle(bundle) ? normalizeDotAgentsBundle(bundle) : null
+}
+
+export function parseDotAgentsBundleJson(bundleJson: string): DotAgentsBundle | null {
+  try {
+    return parseDotAgentsBundle(JSON.parse(bundleJson) as unknown)
+  } catch {
+    return null
+  }
+}
+
+export function getBundleFileExtension(filePath: string): string {
+  const candidate = filePath.trim().split(/[?#]/, 1)[0] ?? ""
+  const slashIndex = Math.max(candidate.lastIndexOf("/"), candidate.lastIndexOf("\\"))
+  const fileName = candidate.slice(slashIndex + 1)
+  const dotIndex = fileName.lastIndexOf(".")
+  return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : ""
+}
+
+export function isSupportedBundleFilePath(filePath: string): boolean {
+  const extension = getBundleFileExtension(filePath)
+  return SUPPORTED_BUNDLE_FILE_EXTENSIONS.some((supportedExtension) => supportedExtension === extension)
+}
+
+export function isHubBundleHandoffFilePath(filePath: string): boolean {
+  return getBundleFileExtension(filePath) === HUB_BUNDLE_FILE_EXTENSION
 }
 
 function isBundleSecretKey(key: string): boolean {

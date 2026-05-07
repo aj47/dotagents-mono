@@ -38,6 +38,7 @@ import {
   finalizeBundleImportResult,
   formatBundleImportItemError,
   generateBundleImportUniqueId,
+  getBundleFileExtension,
   getAvailableBundleComponentSelection,
   getBundleDependencyWarnings,
   getBundleExportableItemsAction,
@@ -46,9 +47,12 @@ import {
   hasSelectedBundleComponent,
   importBundleAction,
   importBundleFromTemporaryFile,
+  isHubBundleHandoffFilePath,
+  isSupportedBundleFilePath,
   mergeBundleBuildItems,
   mergeExportableBundleItems,
   parseDotAgentsBundle,
+  parseDotAgentsBundleJson,
   parseExportBundleRequestBody,
   parseImportBundleRequestBody,
   parsePreviewBundleImportRequestBody,
@@ -237,6 +241,9 @@ describe("bundle API helpers", () => {
 
   it("parses current and legacy DotAgents bundle payloads", () => {
     expect(parseDotAgentsBundle(bundle)).toEqual(bundle)
+    expect(parseDotAgentsBundleJson(JSON.stringify(bundle))).toEqual(bundle)
+    expect(parseDotAgentsBundleJson("{bad")).toBeNull()
+    expect(parseDotAgentsBundleJson(JSON.stringify({ manifest: { version: 2 } }))).toBeNull()
 
     const legacyBundle = {
       manifest: {
@@ -1018,6 +1025,13 @@ describe("bundle API helpers", () => {
       now: () => 123456789,
       createUniqueId: () => "unique-id",
     })).toBe("123456789-unique-id.dotagents")
+    expect(getBundleFileExtension("/tmp/import.DOTAGENTS")).toBe(".dotagents")
+    expect(getBundleFileExtension("C:\\tmp\\bundle.json?download=1")).toBe(".json")
+    expect(isSupportedBundleFilePath("/tmp/import.dotagents")).toBe(true)
+    expect(isSupportedBundleFilePath("/tmp/import.json")).toBe(true)
+    expect(isSupportedBundleFilePath("/tmp/import.txt")).toBe(false)
+    expect(isHubBundleHandoffFilePath("/tmp/import.dotagents")).toBe(true)
+    expect(isHubBundleHandoffFilePath("/tmp/import.json")).toBe(false)
   })
 
   it("sanitizes public bundle metadata for shared Hub publishing", () => {
