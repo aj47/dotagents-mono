@@ -38,6 +38,7 @@ import {
   createInjectedMcpToolRouteActions,
   createMcpConfigActionService,
   createMcpRouteActions,
+  createOperatorMcpMutationActionService,
   createOperatorMcpReadActionService,
   createOperatorMcpRouteActions,
   formatMcpMaxIterationsValidationMessage,
@@ -604,6 +605,38 @@ describe("MCP API helpers", () => {
       serverEnabled: true,
     }])
     expect(calls).toEqual(["status", "logs:filesystem", "tools"])
+  })
+
+  it("creates operator MCP mutation action services from MCP adapters", () => {
+    const calls: string[] = []
+    const service = createOperatorMcpMutationActionService({
+      getServerStatus: () => {
+        calls.push("status")
+        return {
+          filesystem: {
+            connected: true,
+            toolCount: 1,
+          },
+        }
+      },
+      clearServerLogs: (serverName) => {
+        calls.push(`clear:${serverName}`)
+      },
+      setToolEnabled: (toolName, enabled) => {
+        calls.push(`toggle:${toolName}:${enabled}`)
+        return true
+      },
+    })
+
+    expect(service.getServerStatus()).toEqual({
+      filesystem: {
+        connected: true,
+        toolCount: 1,
+      },
+    })
+    service.clearServerLogs("filesystem")
+    expect(service.setToolEnabled("filesystem:read", false)).toBe(true)
+    expect(calls).toEqual(["status", "clear:filesystem", "toggle:filesystem:read:false"])
   })
 
   it("creates mobile MCP route actions that delegate through service adapters", () => {

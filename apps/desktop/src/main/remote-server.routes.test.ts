@@ -2161,8 +2161,12 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "const operatorMcpReadActionOptions: OperatorMcpReadActionOptions = {\n  diagnostics: {\n    logError: (...args) => diagnosticsService.logError(...args),\n    getErrorMessage,\n  },\n  service: {\n    getServerStatus: () => mcpService.getServerStatus(),",
     )
+    expect(operatorRouteDesktopActionsSource).toContain("service: createOperatorMcpMutationActionService({")
     expect(operatorRouteDesktopActionsSource).toContain("clearServerLogs: (serverName) => mcpService.clearServerLogs(serverName)")
     expect(operatorRouteDesktopActionsSource).toContain("setToolEnabled: (toolName, enabled) => mcpService.setToolEnabled(toolName, enabled)")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "const operatorMcpMutationActionOptions: OperatorMcpMutationActionOptions<OperatorActionAuditContext> = {\n  diagnostics: {\n    logError: (...args) => diagnosticsService.logError(...args),\n    getErrorMessage,\n  },\n  service: {\n    getServerStatus: () => mcpService.getServerStatus(),",
+    )
     expect(operatorRouteDesktopActionsSource).toContain("getServerConfig: (serverName) => configStore.get().mcpConfig?.mcpServers?.[serverName]")
     expect(operatorRouteDesktopActionsSource).toContain("testServerConnection: (serverName, serverConfig) => mcpService.testServerConnection(serverName, serverConfig)")
     expect(operatorRouteDesktopActionsSource).toContain("setServerRuntimeEnabled: (serverName, enabled) => mcpService.setServerRuntimeEnabled(serverName, enabled)")
@@ -2174,6 +2178,11 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain("export function createOperatorMcpReadActionService")
     expect(sharedMcpApiSource).toContain("getServerLogs: (serverName) => options.getServerLogs(serverName)")
     expect(sharedMcpApiSource).toContain("getDetailedToolList: () => options.getDetailedToolList()")
+    expect(sharedMcpApiSource).toContain("export function createOperatorMcpMutationActionService")
+    expect(sharedMcpApiSource).toContain("clearServerLogs: (serverName) => options.clearServerLogs(serverName)")
+    expect(sharedMcpApiSource).toContain(
+      "setToolEnabled: (toolName, enabled) => options.setToolEnabled(toolName, enabled)",
+    )
     expect(sharedMcpApiSource).toContain("export function clearOperatorMcpServerLogsAction<")
     expect(sharedMcpApiSource).toContain("export function setOperatorMcpToolEnabledAction<")
     expect(sharedMcpApiSource).toContain("export async function testOperatorMcpServerAction<")

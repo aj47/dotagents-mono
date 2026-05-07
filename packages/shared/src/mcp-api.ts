@@ -374,6 +374,22 @@ export interface OperatorMcpMutationActionService {
   setToolEnabled(toolName: string, enabled: boolean): boolean
 }
 
+export interface OperatorMcpMutationActionServiceOptions {
+  getServerStatus(): McpServerStatusMapLike
+  clearServerLogs(serverName: string): void
+  setToolEnabled(toolName: string, enabled: boolean): boolean
+}
+
+export function createOperatorMcpMutationActionService(
+  options: OperatorMcpMutationActionServiceOptions,
+): OperatorMcpMutationActionService {
+  return {
+    getServerStatus: () => options.getServerStatus(),
+    clearServerLogs: (serverName) => options.clearServerLogs(serverName),
+    setToolEnabled: (toolName, enabled) => options.setToolEnabled(toolName, enabled),
+  }
+}
+
 export interface OperatorMcpMutationActionAudit<TAuditContext> {
   buildClearLogsAuditContext(serverName: string): TAuditContext
   buildClearLogsFailureAuditContext(failureReason: string): TAuditContext
