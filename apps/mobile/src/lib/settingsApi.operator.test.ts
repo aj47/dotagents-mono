@@ -73,6 +73,9 @@ describe('SettingsApiClient operator endpoints', () => {
       }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'operator-save-diagnostic-report', message: 'saved', filePath: '/tmp/report.json' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'operator-clear-errors', message: 'cleared' }))
+      .mockResolvedValueOnce(jsonResponse({ authenticated: false, callbackUrl: 'http://127.0.0.1:1455/callback' }))
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'chatgpt-web-oauth-login', message: 'connected', status: { authenticated: true, callbackUrl: 'http://127.0.0.1:1455/callback' } }))
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'chatgpt-web-oauth-logout', message: 'disconnected', status: { authenticated: false, callbackUrl: 'http://127.0.0.1:1455/callback' } }))
       .mockResolvedValueOnce(jsonResponse({ count: 1, entries: [] }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'restart-remote-server', message: 'scheduled' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'restart-app', message: 'scheduled' }))
@@ -102,6 +105,9 @@ describe('SettingsApiClient operator endpoints', () => {
     await client.getOperatorDiagnosticReport();
     await client.saveOperatorDiagnosticReport('/tmp/report.json');
     await client.clearOperatorErrors();
+    await client.getChatGptWebAuthStatus();
+    await client.loginChatGptWebOAuth();
+    await client.logoutChatGptWebOAuth();
     await client.getOperatorAudit();
     await client.restartRemoteServer();
     await client.restartApp();
@@ -122,6 +128,9 @@ describe('SettingsApiClient operator endpoints', () => {
       'https://example.com/v1/operator/diagnostics/report',
       'https://example.com/v1/operator/diagnostics/report/save',
       'https://example.com/v1/operator/errors/clear',
+      'https://example.com/v1/operator/providers/chatgpt-web/auth',
+      'https://example.com/v1/operator/providers/chatgpt-web/auth/login',
+      'https://example.com/v1/operator/providers/chatgpt-web/auth/logout',
       'https://example.com/v1/operator/audit?count=20',
       'https://example.com/v1/operator/actions/restart-remote-server',
       'https://example.com/v1/operator/actions/restart-app',
@@ -138,7 +147,7 @@ describe('SettingsApiClient operator endpoints', () => {
       'https://example.com/v1/operator/sessions/session%2F1/unsnooze',
     ]);
 
-    for (const index of [2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]) {
+    for (const index of [2, 3, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]) {
       expect(fetchMock.mock.calls[index]?.[1]?.method).toBe('POST');
     }
     expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(JSON.stringify({ filePath: '/tmp/report.json' }));

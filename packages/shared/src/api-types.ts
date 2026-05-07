@@ -773,6 +773,10 @@ export interface ChatGptWebAuthStatus {
   callbackUrl: string;
 }
 
+export interface OperatorChatGptWebAuthActionResponse extends OperatorActionResponse {
+  status: ChatGptWebAuthStatus;
+}
+
 export type OpenAiReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
 export type CodexTextVerbosity = "low" | "medium" | "high";
 

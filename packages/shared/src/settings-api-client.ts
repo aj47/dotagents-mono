@@ -151,6 +151,7 @@ import {
 } from './api-types';
 import type {
   AgentModelSelectionConfig,
+  ChatGptWebAuthStatus,
   ChatProviderCredentialsConfig,
   AgentSessionCandidatesResponse,
   ToolApprovalResponse,
@@ -203,6 +204,7 @@ import type {
   OperatorActionResponse,
   OperatorApiKeyRotationResponse,
   OperatorAuditResponse,
+  OperatorChatGptWebAuthActionResponse,
   OperatorConversationsResponse,
   OperatorDiagnosticReport,
   OperatorDiagnosticReportSaveResponse,
@@ -1446,6 +1448,22 @@ export class SettingsApiClient {
 
   async clearOperatorErrors(): Promise<OperatorActionResponse> {
     return this.request<OperatorActionResponse>(API_PATHS.operatorErrorsClear, {
+      method: 'POST',
+    });
+  }
+
+  async getChatGptWebAuthStatus(): Promise<ChatGptWebAuthStatus> {
+    return this.request<ChatGptWebAuthStatus>(API_PATHS.operatorChatGptWebAuth);
+  }
+
+  async loginChatGptWebOAuth(): Promise<OperatorChatGptWebAuthActionResponse> {
+    return this.request<OperatorChatGptWebAuthActionResponse>(API_PATHS.operatorChatGptWebAuthLogin, {
+      method: 'POST',
+    });
+  }
+
+  async logoutChatGptWebOAuth(): Promise<OperatorChatGptWebAuthActionResponse> {
+    return this.request<OperatorChatGptWebAuthActionResponse>(API_PATHS.operatorChatGptWebAuthLogout, {
       method: 'POST',
     });
   }

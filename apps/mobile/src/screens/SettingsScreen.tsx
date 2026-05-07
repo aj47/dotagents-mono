@@ -26,6 +26,7 @@ import {
 } from '@dotagents/shared/accessibility-utils';
 import type {
   ApiAgentProfile as AgentProfile,
+  ChatGptWebAuthStatus,
   KnowledgeNote,
   KnowledgeNoteContext,
   KnowledgeNoteDateFilter,
@@ -427,6 +428,8 @@ export default function SettingsScreen({ navigation }: any) {
   const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
   const [mcpOAuthStatus, setMcpOAuthStatus] = useState<Record<string, McpOAuthStatusResponse>>({});
   const [pendingMcpOAuthAction, setPendingMcpOAuthAction] = useState<string | null>(null);
+  const [chatGptWebAuthStatus, setChatGptWebAuthStatus] = useState<ChatGptWebAuthStatus | null>(null);
+  const [pendingChatGptWebAuthAction, setPendingChatGptWebAuthAction] = useState<'login' | 'logout' | null>(null);
   const [remoteSettings, setRemoteSettings] = useState<Settings | null>(null);
   const [localSpeechModelStatuses, setLocalSpeechModelStatuses] = useState<Partial<Record<LocalSpeechModelProviderId, LocalSpeechModelStatus>>>({});
   const [pendingLocalSpeechModelAction, setPendingLocalSpeechModelAction] = useState<string | null>(null);
@@ -704,6 +707,23 @@ export default function SettingsScreen({ navigation }: any) {
     setMcpOAuthStatus(Object.fromEntries(entries));
   }, [settingsClient]);
 
+  const refreshChatGptWebAuthStatus = useCallback(async () => {
+    if (!settingsClient) {
+      setChatGptWebAuthStatus(null);
+      return null;
+    }
+
+    try {
+      const status = await settingsClient.getChatGptWebAuthStatus();
+      setChatGptWebAuthStatus(status);
+      return status;
+    } catch (error) {
+      console.warn('[Settings] Failed to load ChatGPT Web auth status:', error);
+      setChatGptWebAuthStatus(null);
+      return null;
+    }
+  }, [settingsClient]);
+
   // Clear pending model update timeout when settingsClient changes
   // to prevent sending updates to the previous server
   useEffect(() => {
@@ -719,6 +739,7 @@ export default function SettingsScreen({ navigation }: any) {
       setProfiles([]);
       setMcpServers([]);
       setMcpOAuthStatus({});
+      setChatGptWebAuthStatus(null);
       setRemoteSettings(null);
       setLocalSpeechModelStatuses({});
       setIsDotAgentsServer(false);
@@ -754,6 +775,7 @@ export default function SettingsScreen({ navigation }: any) {
         // Sync input drafts from fetched settings (only on explicit fetch,
         // not on optimistic local updates, to avoid overwriting user's typing)
         setInputDrafts(buildRemoteSettingsInputDrafts(settingsRes));
+        void refreshChatGptWebAuthStatus();
         successCount++;
       }
       if (localModelsRes) {
@@ -779,7 +801,7 @@ export default function SettingsScreen({ navigation }: any) {
     } finally {
       setIsLoadingRemote(false);
     }
-  }, [refreshMcpOAuthStatuses, settingsClient]);
+  }, [refreshChatGptWebAuthStatus, refreshMcpOAuthStatuses, settingsClient]);
 
   const refreshRemoteSettingsSnapshot = useCallback(async () => {
     if (!settingsClient) return null;
@@ -1525,6 +1547,55 @@ export default function SettingsScreen({ navigation }: any) {
     },
     []
   );
+
+  const handleChatGptWebOAuthLogin = useCallback(async () => {
+    if (!settingsClient || pendingChatGptWebAuthAction) return;
+
+    setPendingChatGptWebAuthAction('login');
+    setRemoteError(null);
+    setSaveStatusMessage(null);
+    try {
+      const result = await settingsClient.loginChatGptWebOAuth();
+      if (!result.success) {
+        throw new Error(result.error || result.message || 'Failed to connect ChatGPT Web');
+      }
+      setChatGptWebAuthStatus(result.status);
+      setSaveStatusMessage(result.message);
+    } catch (error: any) {
+      console.error('[Settings] Failed to connect ChatGPT Web OAuth:', error);
+      setRemoteError(error.message || 'Failed to connect ChatGPT Web');
+    } finally {
+      setPendingChatGptWebAuthAction(null);
+    }
+  }, [pendingChatGptWebAuthAction, settingsClient]);
+
+  const handleChatGptWebOAuthLogout = useCallback(() => {
+    if (!settingsClient || pendingChatGptWebAuthAction) return;
+
+    confirmDestructiveAction(
+      'Disconnect ChatGPT Web',
+      'Disconnect the desktop OpenAI Codex OAuth session?',
+      async () => {
+        setPendingChatGptWebAuthAction('logout');
+        setRemoteError(null);
+        setSaveStatusMessage(null);
+        try {
+          const result = await settingsClient.logoutChatGptWebOAuth();
+          if (!result.success) {
+            throw new Error(result.error || result.message || 'Failed to disconnect ChatGPT Web');
+          }
+          setChatGptWebAuthStatus(result.status);
+          setSaveStatusMessage(result.message);
+        } catch (error: any) {
+          console.error('[Settings] Failed to disconnect ChatGPT Web OAuth:', error);
+          setRemoteError(error.message || 'Failed to disconnect ChatGPT Web');
+        } finally {
+          setPendingChatGptWebAuthAction(null);
+        }
+      },
+      'Disconnect'
+    );
+  }, [confirmDestructiveAction, pendingChatGptWebAuthAction, settingsClient]);
 
   const handleClearAllChats = useCallback(() => {
     const clearsDesktop = !!settingsClient;
@@ -3196,6 +3267,68 @@ export default function SettingsScreen({ navigation }: any) {
                       autoCorrect={false}
                       keyboardType="url"
                     />
+
+                    {provider.id === 'chatgpt-web' && (
+                      <View style={styles.chatGptWebAuthBlock}>
+                        <Text style={styles.label}>Desktop OAuth</Text>
+                        <View style={styles.serverNameRow}>
+                          <View style={[
+                            styles.statusDot,
+                            chatGptWebAuthStatus?.authenticated ? styles.statusConnected : styles.statusDisconnected,
+                          ]} />
+                          <Text style={styles.serverName}>
+                            {chatGptWebAuthStatus?.authenticated ? 'Connected' : 'Not connected'}
+                          </Text>
+                        </View>
+                        {chatGptWebAuthStatus?.authenticated && (
+                          <Text style={styles.helperText}>
+                            {[chatGptWebAuthStatus.email, chatGptWebAuthStatus.planType].filter(Boolean).join(' • ') || 'OpenAI Codex'}
+                          </Text>
+                        )}
+                        {chatGptWebAuthStatus?.callbackUrl && (
+                          <Text style={styles.helperText} numberOfLines={2}>
+                            Callback URL: {chatGptWebAuthStatus.callbackUrl}
+                          </Text>
+                        )}
+                        <View style={styles.profileActions}>
+                          <TouchableOpacity
+                            style={[
+                              styles.profileActionButton,
+                              pendingChatGptWebAuthAction && styles.profileActionButtonDisabled,
+                            ]}
+                            onPress={handleChatGptWebOAuthLogin}
+                            disabled={!!pendingChatGptWebAuthAction}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel('Connect ChatGPT Web OAuth')}
+                          >
+                            <Text style={styles.profileActionButtonText}>
+                              {pendingChatGptWebAuthAction === 'login'
+                                ? 'Connecting...'
+                                : chatGptWebAuthStatus?.authenticated
+                                  ? 'Re-auth'
+                                  : 'Connect'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.dangerActionButton,
+                              (!chatGptWebAuthStatus?.authenticated || pendingChatGptWebAuthAction) && styles.dangerActionButtonDisabled,
+                            ]}
+                            onPress={handleChatGptWebOAuthLogout}
+                            disabled={!chatGptWebAuthStatus?.authenticated || !!pendingChatGptWebAuthAction}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel('Disconnect ChatGPT Web OAuth')}
+                          >
+                            <Text style={[
+                              styles.dangerActionButtonText,
+                              !chatGptWebAuthStatus?.authenticated && styles.dangerActionButtonTextDisabled,
+                            ]}>
+                              {pendingChatGptWebAuthAction === 'logout' ? 'Disconnecting...' : 'Disconnect'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
                   </View>
                 ))}
               </CollapsibleSection>
@@ -6526,6 +6659,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingBottom: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
+    },
+    chatGptWebAuthBlock: {
+      gap: spacing.xs,
+      marginTop: spacing.sm,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
     },
     primaryButton: {
       backgroundColor: theme.colors.primary,

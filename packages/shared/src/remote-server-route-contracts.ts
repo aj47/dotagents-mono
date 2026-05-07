@@ -372,6 +372,9 @@ export interface OperatorRouteActions<Request = unknown> {
   getOperatorIntegrations: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
   getOperatorWhatsApp: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
   logoutOperatorWhatsApp: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
+  getOperatorChatGptWebAuthStatus: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
+  loginOperatorChatGptWebOAuth: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
+  logoutOperatorChatGptWebOAuth: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
   clearOperatorMessageQueue: (conversationId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   getOperatorMessageQueues: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
   pauseOperatorMessageQueue: (conversationId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
@@ -474,6 +477,12 @@ export interface OperatorRouteActionGroups<Request = unknown> {
     | 'getOperatorWhatsApp'
     | 'logoutOperatorWhatsApp'
   >;
+  providerAuth: Pick<
+    OperatorRouteActions<Request>,
+    | 'getOperatorChatGptWebAuthStatus'
+    | 'loginOperatorChatGptWebOAuth'
+    | 'logoutOperatorChatGptWebOAuth'
+  >;
   messageQueue: Pick<
     OperatorRouteActions<Request>,
     | 'clearOperatorMessageQueue'
@@ -513,6 +522,7 @@ export function createOperatorRouteActions<Request = unknown>(
     ...groups.tunnel,
     ...groups.updater,
     ...groups.integrations,
+    ...groups.providerAuth,
     ...groups.messageQueue,
     ...groups.observability,
     ...groups.restart,

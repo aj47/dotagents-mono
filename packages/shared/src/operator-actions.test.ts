@@ -17,6 +17,7 @@ import {
   buildOperatorAuditResponse,
   buildOperatorResponseAuditContext,
   buildRejectedOperatorDeviceAuditEntry,
+  buildOperatorChatGptWebAuthActionResponse,
   buildOperatorConversationsResponse,
   buildOperatorDiscordClearLogsActionResponse,
   buildOperatorDiscordConnectActionResponse,
@@ -82,6 +83,8 @@ import {
   createOperatorApiKeyActionService,
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
+  createOperatorChatGptWebAuthActionService,
+  createOperatorChatGptWebAuthRouteActions,
   createOperatorAuditContextRouteActions,
   createOperatorAuditEventRouteActions,
   createOperatorAuditRecorder,
@@ -114,6 +117,7 @@ import {
   getOperatorAuditDeviceId,
   getOperatorAuditPath,
   getOperatorAuditSource,
+  getOperatorChatGptWebAuthStatusAction,
   getOperatorConversationsAction,
   getOperatorDiagnosticReportAction,
   getOperatorErrorsAction,
@@ -133,6 +137,8 @@ import {
   isProtectedOperatorAccessPath,
   isSensitiveOperatorSettingsKey,
   disconnectOperatorDiscordAction,
+  loginOperatorChatGptWebOAuthAction,
+  logoutOperatorChatGptWebOAuthAction,
   logoutOperatorWhatsAppAction,
   mergeOperatorWhatsAppStatusPayload,
   normalizeOperatorLogLevel,
@@ -169,6 +175,7 @@ import {
   type OperatorAgentActionOptions,
   type OperatorApiKeyActionOptions,
   type OperatorAuditActionOptions,
+  type OperatorChatGptWebAuthActionOptions,
   type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
   type OperatorObservabilityActionOptions,
@@ -3543,6 +3550,130 @@ describe("operator action API helpers", () => {
       "active-sessions",
       "recent-sessions:5",
       "conversations",
+    ])
+  })
+
+  it("runs ChatGPT Web auth route actions through a shared service adapter", async () => {
+    const calls: string[] = []
+    const disconnectedStatus = {
+      authenticated: false,
+      callbackUrl: "http://127.0.0.1:1455/callback",
+    }
+    const connectedStatus = {
+      authenticated: true,
+      accountId: "account-1",
+      email: "user@example.com",
+      planType: "plus",
+      connectedAt: 10,
+      callbackUrl: "http://127.0.0.1:1455/callback",
+    }
+    const service = createOperatorChatGptWebAuthActionService({
+      getAuthStatus: async () => {
+        calls.push("status")
+        return disconnectedStatus
+      },
+      loginOAuth: async () => {
+        calls.push("login")
+        return connectedStatus
+      },
+      logoutOAuth: async () => {
+        calls.push("logout")
+      },
+    })
+    const options: OperatorChatGptWebAuthActionOptions = {
+      diagnostics: {
+        logError: (_source, message) => { calls.push(`error:${message}`) },
+      },
+      service,
+    }
+
+    expect(buildOperatorChatGptWebAuthActionResponse(
+      "chatgpt-web-oauth-login",
+      "ChatGPT Web connected",
+      connectedStatus,
+    )).toEqual({
+      success: true,
+      action: "chatgpt-web-oauth-login",
+      message: "ChatGPT Web connected",
+      status: connectedStatus,
+      details: {
+        authenticated: true,
+        planType: "plus",
+      },
+    })
+    await expect(getOperatorChatGptWebAuthStatusAction(options)).resolves.toEqual({
+      statusCode: 200,
+      body: disconnectedStatus,
+    })
+    await expect(loginOperatorChatGptWebOAuthAction(options)).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "chatgpt-web-oauth-login",
+        message: "ChatGPT Web connected",
+        status: connectedStatus,
+        details: {
+          authenticated: true,
+          planType: "plus",
+        },
+      },
+      auditContext: {
+        action: "chatgpt-web-oauth-login",
+        success: true,
+        details: {
+          authenticated: true,
+          planType: "plus",
+        },
+      },
+    })
+    await expect(logoutOperatorChatGptWebOAuthAction(options)).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "chatgpt-web-oauth-logout",
+        message: "ChatGPT Web disconnected",
+        status: disconnectedStatus,
+        details: {
+          authenticated: false,
+        },
+      },
+      auditContext: {
+        action: "chatgpt-web-oauth-logout",
+        success: true,
+        details: {
+          authenticated: false,
+        },
+      },
+    })
+
+    const routeActions = createOperatorChatGptWebAuthRouteActions(options)
+    await expect(routeActions.getOperatorChatGptWebAuthStatus()).resolves.toMatchObject({
+      statusCode: 200,
+      body: disconnectedStatus,
+    })
+    await expect(routeActions.loginOperatorChatGptWebOAuth()).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        action: "chatgpt-web-oauth-login",
+        status: connectedStatus,
+      },
+    })
+    await expect(routeActions.logoutOperatorChatGptWebOAuth()).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        action: "chatgpt-web-oauth-logout",
+        status: disconnectedStatus,
+      },
+    })
+    expect(calls).toEqual([
+      "status",
+      "login",
+      "logout",
+      "status",
+      "status",
+      "login",
+      "logout",
+      "status",
     ])
   })
 

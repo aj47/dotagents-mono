@@ -40,6 +40,9 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorDiagnosticReport).toBe('/v1/operator/diagnostics/report');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorDiagnosticReportSave).toBe('/v1/operator/diagnostics/report/save');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorErrorsClear).toBe('/v1/operator/errors/clear');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorChatGptWebAuth).toBe('/v1/operator/providers/chatgpt-web/auth');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorChatGptWebAuthLogin).toBe('/v1/operator/providers/chatgpt-web/auth/login');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorChatGptWebAuthLogout).toBe('/v1/operator/providers/chatgpt-web/auth/logout');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionShow).toBe('/v1/operator/sessions/:sessionId/show');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionSnooze).toBe('/v1/operator/sessions/:sessionId/snooze');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionUnsnooze).toBe('/v1/operator/sessions/:sessionId/unsnooze');

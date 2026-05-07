@@ -3,6 +3,7 @@ import type {
   OperatorAuditResponse,
   OperatorActionResponse,
   OperatorApiKeyRotationResponse,
+  OperatorChatGptWebAuthActionResponse,
   OperatorConversationItem,
   OperatorConversationsResponse,
   OperatorDiagnosticReport,
@@ -29,6 +30,7 @@ import type {
   OperatorTunnelStatus,
   OperatorUpdaterStatus,
   OperatorWhatsAppIntegrationSummary,
+  ChatGptWebAuthStatus,
 } from "./api-types"
 import { sanitizeConfigStringList } from "./config-list-input"
 import type {
@@ -493,6 +495,46 @@ export interface OperatorObservabilityRouteActions {
   getOperatorLogs(count: string | number | undefined, level: string | undefined): OperatorObservabilityActionResult
   getOperatorConversations(count: string | number | undefined): Promise<OperatorObservabilityActionResult>
   getOperatorRemoteServer(remoteServerStatus: OperatorRemoteServerStatusLike): OperatorObservabilityActionResult
+}
+
+export type OperatorChatGptWebAuthActionResult = {
+  statusCode: number
+  body: unknown
+  auditContext?: OperatorActionAuditContext
+}
+
+export interface OperatorChatGptWebAuthActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void
+}
+
+export interface OperatorChatGptWebAuthActionService {
+  getAuthStatus(): Promise<ChatGptWebAuthStatus>
+  loginOAuth(): Promise<ChatGptWebAuthStatus>
+  logoutOAuth(): Promise<void>
+}
+
+export type OperatorChatGptWebAuthActionServiceOptions =
+  OperatorChatGptWebAuthActionService
+
+export function createOperatorChatGptWebAuthActionService(
+  options: OperatorChatGptWebAuthActionServiceOptions,
+): OperatorChatGptWebAuthActionService {
+  return {
+    getAuthStatus: () => options.getAuthStatus(),
+    loginOAuth: () => options.loginOAuth(),
+    logoutOAuth: () => options.logoutOAuth(),
+  }
+}
+
+export interface OperatorChatGptWebAuthActionOptions {
+  diagnostics: OperatorChatGptWebAuthActionDiagnostics
+  service: OperatorChatGptWebAuthActionService
+}
+
+export interface OperatorChatGptWebAuthRouteActions {
+  getOperatorChatGptWebAuthStatus(): Promise<OperatorChatGptWebAuthActionResult>
+  loginOperatorChatGptWebOAuth(): Promise<OperatorChatGptWebAuthActionResult>
+  logoutOperatorChatGptWebOAuth(): Promise<OperatorChatGptWebAuthActionResult>
 }
 
 export type OperatorIntegrationActionResult = {
@@ -1846,6 +1888,23 @@ export function buildOperatorDiagnosticReportSavedResponse(
   }
 }
 
+export function buildOperatorChatGptWebAuthActionResponse(
+  action: "chatgpt-web-oauth-login" | "chatgpt-web-oauth-logout",
+  message: string,
+  status: ChatGptWebAuthStatus,
+): OperatorChatGptWebAuthActionResponse {
+  return {
+    success: true,
+    action,
+    message,
+    status,
+    details: {
+      authenticated: status.authenticated,
+      ...(status.planType ? { planType: status.planType } : {}),
+    },
+  }
+}
+
 export function buildOperatorAuditResponse(
   entries: OperatorAuditEntry[],
   count: unknown = 20,
@@ -2652,6 +2711,18 @@ function operatorObservabilityActionError(
   return operatorObservabilityActionResult(statusCode, { error: message })
 }
 
+function operatorChatGptWebAuthActionResult(
+  statusCode: number,
+  body: unknown,
+  auditContext?: OperatorActionAuditContext,
+): OperatorChatGptWebAuthActionResult {
+  return {
+    statusCode,
+    body,
+    ...(auditContext ? { auditContext } : {}),
+  }
+}
+
 export async function getOperatorStatusAction(
   remoteServerStatus: OperatorRemoteServerStatusLike,
   options: OperatorObservabilityActionOptions,
@@ -2823,6 +2894,85 @@ export function createOperatorObservabilityRouteActions(
     getOperatorLogs: (count, level) => getOperatorLogsAction(count, level, options),
     getOperatorConversations: (count) => getOperatorConversationsAction(count, options),
     getOperatorRemoteServer: (remoteServerStatus) => getOperatorRemoteServerAction(remoteServerStatus),
+  }
+}
+
+export async function getOperatorChatGptWebAuthStatusAction(
+  options: OperatorChatGptWebAuthActionOptions,
+): Promise<OperatorChatGptWebAuthActionResult> {
+  try {
+    const status = await options.service.getAuthStatus()
+    return operatorChatGptWebAuthActionResult(200, status)
+  } catch (caughtError) {
+    options.diagnostics.logError(
+      "operator-chatgpt-web-auth-actions",
+      "Failed to load ChatGPT Web auth status",
+      caughtError,
+    )
+    return operatorChatGptWebAuthActionResult(500, { error: "Failed to load ChatGPT Web auth status" })
+  }
+}
+
+export async function loginOperatorChatGptWebOAuthAction(
+  options: OperatorChatGptWebAuthActionOptions,
+): Promise<OperatorChatGptWebAuthActionResult> {
+  try {
+    const status = await options.service.loginOAuth()
+    const response = buildOperatorChatGptWebAuthActionResponse(
+      "chatgpt-web-oauth-login",
+      status.authenticated ? "ChatGPT Web connected" : "ChatGPT Web OAuth completed",
+      status,
+    )
+    return operatorChatGptWebAuthActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = caughtError instanceof Error ? caughtError.message : String(caughtError)
+    const response = buildOperatorActionErrorResponse(
+      "chatgpt-web-oauth-login",
+      `Failed to start ChatGPT Web OAuth: ${errorMessage}`,
+    )
+    options.diagnostics.logError(
+      "operator-chatgpt-web-auth-actions",
+      `Failed to start ChatGPT Web OAuth: ${errorMessage}`,
+      caughtError,
+    )
+    return operatorChatGptWebAuthActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
+export async function logoutOperatorChatGptWebOAuthAction(
+  options: OperatorChatGptWebAuthActionOptions,
+): Promise<OperatorChatGptWebAuthActionResult> {
+  try {
+    await options.service.logoutOAuth()
+    const status = await options.service.getAuthStatus()
+    const response = buildOperatorChatGptWebAuthActionResponse(
+      "chatgpt-web-oauth-logout",
+      "ChatGPT Web disconnected",
+      status,
+    )
+    return operatorChatGptWebAuthActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = caughtError instanceof Error ? caughtError.message : String(caughtError)
+    const response = buildOperatorActionErrorResponse(
+      "chatgpt-web-oauth-logout",
+      `Failed to disconnect ChatGPT Web: ${errorMessage}`,
+    )
+    options.diagnostics.logError(
+      "operator-chatgpt-web-auth-actions",
+      `Failed to disconnect ChatGPT Web: ${errorMessage}`,
+      caughtError,
+    )
+    return operatorChatGptWebAuthActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
+export function createOperatorChatGptWebAuthRouteActions(
+  options: OperatorChatGptWebAuthActionOptions,
+): OperatorChatGptWebAuthRouteActions {
+  return {
+    getOperatorChatGptWebAuthStatus: () => getOperatorChatGptWebAuthStatusAction(options),
+    loginOperatorChatGptWebOAuth: () => loginOperatorChatGptWebOAuthAction(options),
+    logoutOperatorChatGptWebOAuth: () => logoutOperatorChatGptWebOAuthAction(options),
   }
 }
 

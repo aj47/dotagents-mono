@@ -45,6 +45,8 @@ import {
   createOperatorApiKeyActionService,
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
+  createOperatorChatGptWebAuthActionService,
+  createOperatorChatGptWebAuthRouteActions,
   createOperatorIntegrationActionService,
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueActionService,
@@ -62,6 +64,7 @@ import {
   type OperatorActionAuditContext,
   type OperatorApiKeyActionOptions,
   type OperatorAgentActionOptions,
+  type OperatorChatGptWebAuthActionOptions,
   type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
   type OperatorObservabilityActionOptions,
@@ -340,6 +343,28 @@ const integrationActionOptions: OperatorIntegrationActionOptions = {
 
 const operatorIntegrationRouteActions = createOperatorIntegrationRouteActions(integrationActionOptions)
 
+const chatGptWebAuthActionOptions: OperatorChatGptWebAuthActionOptions = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+  },
+  service: createOperatorChatGptWebAuthActionService({
+    getAuthStatus: async () => {
+      const { getChatGptWebAuthStatus } = await import("./chatgpt-web-provider")
+      return getChatGptWebAuthStatus()
+    },
+    loginOAuth: async () => {
+      const { loginChatGptWebOAuth } = await import("./chatgpt-web-provider")
+      return loginChatGptWebOAuth()
+    },
+    logoutOAuth: async () => {
+      const { logoutChatGptWebOAuth } = await import("./chatgpt-web-provider")
+      await logoutChatGptWebOAuth()
+    },
+  }),
+}
+
+const operatorChatGptWebAuthRouteActions = createOperatorChatGptWebAuthRouteActions(chatGptWebAuthActionOptions)
+
 const messageQueueActionOptions: OperatorMessageQueueActionOptions = {
   service: createOperatorMessageQueueActionService({
     queue: messageQueueService,
@@ -413,6 +438,7 @@ export const operatorRouteDesktopActions = createOperatorRouteActions({
   tunnel: operatorTunnelRouteActions,
   updater: operatorUpdaterRouteActions,
   integrations: operatorIntegrationRouteActions,
+  providerAuth: operatorChatGptWebAuthRouteActions,
   messageQueue: operatorMessageQueueRouteActions,
   observability: operatorObservabilityRouteActions,
   restart: operatorRestartRouteActions,

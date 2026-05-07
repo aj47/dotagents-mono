@@ -1789,6 +1789,9 @@ describe("remote-server route registration", () => {
       ["GET", "operatorTunnel"],
       ["GET", "operatorTunnelSetup"],
       ["GET", "operatorIntegrations"],
+      ["GET", "operatorChatGptWebAuth"],
+      ["POST", "operatorChatGptWebAuthLogin"],
+      ["POST", "operatorChatGptWebAuthLogout"],
       ["GET", "operatorUpdater"],
       ["POST", "operatorUpdaterCheck"],
       ["POST", "operatorUpdaterDownloadLatest"],
@@ -1862,10 +1865,16 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.getOperatorLogs(query.count, query.level)")
     expect(operatorRoutesSource).toContain("actions.getOperatorConversations(query.count)")
     expect(operatorRoutesSource).toContain("actions.getOperatorRemoteServer(getRemoteServerStatus())")
+    expect(operatorRoutesSource).toContain("actions.getOperatorChatGptWebAuthStatus()")
+    expect(operatorRoutesSource).toContain("actions.loginOperatorChatGptWebOAuth()")
+    expect(operatorRoutesSource).toContain("actions.logoutOperatorChatGptWebOAuth()")
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorObservabilityRouteActions = createOperatorObservabilityRouteActions(observabilityActionOptions)",
     )
     expect(operatorRouteDesktopActionsSource).toContain("observability: operatorObservabilityRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("providerAuth: operatorChatGptWebAuthRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("createOperatorChatGptWebAuthActionService({")
+    expect(operatorRouteDesktopActionsSource).toContain('await import("./chatgpt-web-provider")')
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorStatusAction(remoteServerStatus, observabilityActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorHealthAction(observabilityActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorErrorsAction(count, observabilityActionOptions)")

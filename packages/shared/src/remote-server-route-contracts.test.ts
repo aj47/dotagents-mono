@@ -138,6 +138,9 @@ const operatorActionKeys = [
   'getOperatorIntegrations',
   'getOperatorWhatsApp',
   'logoutOperatorWhatsApp',
+  'getOperatorChatGptWebAuthStatus',
+  'loginOperatorChatGptWebOAuth',
+  'logoutOperatorChatGptWebOAuth',
   'clearOperatorMessageQueue',
   'getOperatorMessageQueues',
   'pauseOperatorMessageQueue',
@@ -336,6 +339,11 @@ describe('remote server route contracts', () => {
         'getOperatorIntegrations',
         'getOperatorWhatsApp',
         'logoutOperatorWhatsApp',
+      ),
+      providerAuth: pick(
+        'getOperatorChatGptWebAuthStatus',
+        'loginOperatorChatGptWebOAuth',
+        'logoutOperatorChatGptWebOAuth',
       ),
       messageQueue: pick(
         'clearOperatorMessageQueue',

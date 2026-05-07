@@ -114,6 +114,18 @@ test('lets mobile start and revoke desktop MCP OAuth flows through the shared cl
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Revoke OAuth for MCP server \$\{server\.name\}`\)/);
 });
 
+test('lets mobile manage desktop ChatGPT Web OAuth through the shared client', () => {
+  assert.match(settingsSource, /ChatGptWebAuthStatus/);
+  assert.match(settingsSource, /refreshChatGptWebAuthStatus/);
+  assert.match(settingsSource, /settingsClient\.getChatGptWebAuthStatus\(\)/);
+  assert.match(settingsSource, /settingsClient\.loginChatGptWebOAuth\(\)/);
+  assert.match(settingsSource, /settingsClient\.logoutChatGptWebOAuth\(\)/);
+  assert.match(settingsSource, /Desktop OAuth/);
+  assert.match(settingsSource, /Callback URL: \{chatGptWebAuthStatus\.callbackUrl\}/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Connect ChatGPT Web OAuth'\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Disconnect ChatGPT Web OAuth'\)/);
+});
+
 test('lets mobile export DotAgents bundles through the shared client', () => {
   assert.match(settingsSource, /handleBundleExport/);
   assert.match(settingsSource, /settingsClient\.exportBundle\(\{ name: 'DotAgents Bundle' \}\)/);

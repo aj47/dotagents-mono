@@ -114,6 +114,8 @@ describe('remote server operator routes', () => {
     const rotateAuditContext = { action: 'rotate-api-key', success: true };
     const clearErrorsAuditContext = { action: 'operator-clear-errors', success: true };
     const saveDiagnosticAuditContext = { action: 'operator-save-diagnostic-report', success: true };
+    const chatGptLoginAuditContext = { action: 'chatgpt-web-oauth-login', success: true };
+    const chatGptLogoutAuditContext = { action: 'chatgpt-web-oauth-logout', success: true };
     const actions = {
       getOperatorStatus: vi.fn(() => ({ statusCode: 200, body: { running: true } })),
       getOperatorDiagnosticReport: vi.fn(() => ({ statusCode: 200, body: { timestamp: 1 } })),
@@ -127,6 +129,20 @@ describe('remote server operator routes', () => {
         statusCode: 200,
         body: { success: true, action: 'operator-clear-errors' },
         auditContext: clearErrorsAuditContext,
+      })),
+      getOperatorChatGptWebAuthStatus: vi.fn(() => ({
+        statusCode: 200,
+        body: { authenticated: false, callbackUrl: 'http://127.0.0.1:1455/callback' },
+      })),
+      loginOperatorChatGptWebOAuth: vi.fn(() => ({
+        statusCode: 200,
+        body: { success: true, action: 'chatgpt-web-oauth-login' },
+        auditContext: chatGptLoginAuditContext,
+      })),
+      logoutOperatorChatGptWebOAuth: vi.fn(() => ({
+        statusCode: 200,
+        body: { success: true, action: 'chatgpt-web-oauth-logout' },
+        auditContext: chatGptLogoutAuditContext,
       })),
       restartOperatorRemoteServer: vi.fn(() => ({
         statusCode: 202,
@@ -191,6 +207,28 @@ describe('remote server operator routes', () => {
     );
     expect(actions.clearOperatorErrors).toHaveBeenCalledTimes(1);
     expect(actions.setOperatorAuditContext).toHaveBeenCalledWith(clearErrorsRequest, clearErrorsAuditContext);
+
+    await routes.get(`GET ${REMOTE_SERVER_API_ROUTE_PATHS.operatorChatGptWebAuth}`)!(
+      createRequest(),
+      createReply(),
+    );
+    expect(actions.getOperatorChatGptWebAuthStatus).toHaveBeenCalledTimes(1);
+
+    const chatGptLoginRequest = createRequest();
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorChatGptWebAuthLogin}`)!(
+      chatGptLoginRequest,
+      createReply(),
+    );
+    expect(actions.loginOperatorChatGptWebOAuth).toHaveBeenCalledTimes(1);
+    expect(actions.setOperatorAuditContext).toHaveBeenCalledWith(chatGptLoginRequest, chatGptLoginAuditContext);
+
+    const chatGptLogoutRequest = createRequest();
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorChatGptWebAuthLogout}`)!(
+      chatGptLogoutRequest,
+      createReply(),
+    );
+    expect(actions.logoutOperatorChatGptWebOAuth).toHaveBeenCalledTimes(1);
+    expect(actions.setOperatorAuditContext).toHaveBeenCalledWith(chatGptLogoutRequest, chatGptLogoutAuditContext);
 
     const restartRequest = createRequest();
     await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorRestartRemoteServer}`)!(

@@ -140,6 +140,27 @@ export function registerOperatorRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  fastify.get(API_ROUTES.operatorChatGptWebAuth, async (_req, reply) => {
+    const result = await actions.getOperatorChatGptWebAuthStatus();
+    return reply.code(result.statusCode).send(result.body);
+  });
+
+  fastify.post(API_ROUTES.operatorChatGptWebAuthLogin, async (req, reply) => {
+    const result = await actions.loginOperatorChatGptWebOAuth();
+    if (result.auditContext) {
+      actions.setOperatorAuditContext(req, result.auditContext);
+    }
+    return reply.code(result.statusCode).send(result.body);
+  });
+
+  fastify.post(API_ROUTES.operatorChatGptWebAuthLogout, async (req, reply) => {
+    const result = await actions.logoutOperatorChatGptWebOAuth();
+    if (result.auditContext) {
+      actions.setOperatorAuditContext(req, result.auditContext);
+    }
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   fastify.get(API_ROUTES.operatorUpdater, async (_req, reply) => {
     const result = await actions.getOperatorUpdater(getAppVersion());
     return reply.code(result.statusCode).send(result.body);
