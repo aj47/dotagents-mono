@@ -12,6 +12,7 @@ describe("remote server settings secret references", () => {
   it("uses shared remote server option values", () => {
     const source = getRemoteServerSettingsSource()
 
+    expect(source).toContain("REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA")
     expect(source).toContain("REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS")
     expect(source).toContain("REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA")
     expect(source).not.toContain("const bindOptions")
@@ -35,6 +36,9 @@ describe("remote server settings secret references", () => {
     expect(source).toContain("DEFAULT_CLOUDFLARE_TUNNEL_MODE")
     expect(source).not.toContain('title="Remote Server"')
     expect(source).not.toContain('label="Enable Remote Server"')
+    expect(source).not.toContain('label="Auto-Show Panel"')
+    expect(source).not.toContain('label="Terminal QR Code"')
+    expect(source).toContain("REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA")
     expect(source).not.toContain('label="Bind Address"')
     expect(source).not.toContain('label="Port"')
     expect(source).not.toContain('label="Log Level"')

@@ -76,6 +76,7 @@ import {
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED,
   isRemoteServerPortUpdateValue,
+  REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
   REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
@@ -83,6 +84,7 @@ import {
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA,
   REMOTE_SERVER_PORT_FIELD_METADATA,
+  REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA,
 } from '@dotagents/shared/remote-pairing';
 import {
   buildOperatorRemoteAccessDrafts as buildDrafts,
@@ -2100,18 +2102,18 @@ export default function OperationsScreen({ navigation }: any) {
 
               <View style={styles.row}>
                 <View style={styles.rowCopy}>
-                  <Text style={styles.label}>Auto-Show Panel</Text>
-                  <Text style={styles.helperText}>Show the desktop operator panel when new remote work begins.</Text>
+                  <Text style={styles.label}>{REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA.label}</Text>
+                  <Text style={styles.helperText}>{REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA.helperText}</Text>
                 </View>
                 <Switch
                   value={settings.remoteServerAutoShowPanel ?? DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL}
                   onValueChange={(value) => void applySettingsUpdate(
                     { remoteServerAutoShowPanel: value },
-                    'auto-show panel',
-                    'Remote panel auto-show updated.',
+                    REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA.pendingLabel,
+                    REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA.successMessage,
                   )}
                   disabled={controlsDisabled}
-                  accessibilityLabel={createSwitchAccessibilityLabel('Auto-Show Panel')}
+                  accessibilityLabel={createSwitchAccessibilityLabel(REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA.accessibilityLabel)}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                   thumbColor={(settings.remoteServerAutoShowPanel ?? DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL) ? theme.colors.primaryForeground : theme.colors.background}
                 />
@@ -2119,18 +2121,18 @@ export default function OperationsScreen({ navigation }: any) {
 
               <View style={styles.row}>
                 <View style={styles.rowCopy}>
-                  <Text style={styles.label}>Terminal QR</Text>
-                  <Text style={styles.helperText}>Print a pairing QR code in the desktop terminal when supported.</Text>
+                  <Text style={styles.label}>{REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA.label}</Text>
+                  <Text style={styles.helperText}>{REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA.helperText}</Text>
                 </View>
                 <Switch
                   value={settings.remoteServerTerminalQrEnabled ?? DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED}
                   onValueChange={(value) => void applySettingsUpdate(
                     { remoteServerTerminalQrEnabled: value },
-                    'terminal QR',
-                    'Terminal QR preference updated.',
+                    REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA.pendingLabel,
+                    REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA.successMessage,
                   )}
                   disabled={controlsDisabled}
-                  accessibilityLabel={createSwitchAccessibilityLabel('Terminal QR')}
+                  accessibilityLabel={createSwitchAccessibilityLabel(REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA.accessibilityLabel)}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                   thumbColor={(settings.remoteServerTerminalQrEnabled ?? DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                 />

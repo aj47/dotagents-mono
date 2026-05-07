@@ -34,6 +34,7 @@ import {
   isLoopbackRemoteHost,
   isUnconnectableRemoteHostForMobilePairing,
   isWildcardRemoteHost,
+  REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA,
   REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
@@ -43,6 +44,7 @@ import {
   REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_PORT_FIELD_METADATA,
+  REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA,
   type CloudflareTunnelMode,
   type RemoteServerBindAddress,
   type RemoteServerLogLevel,
@@ -229,7 +231,15 @@ export function RemoteServerSettingsGroups({
 
           {enabled && (
             <>
-              <Control label={<ControlLabel label="Auto-Show Panel" tooltip="Automatically show the floating panel when receiving messages from remote clients" />} className="px-3">
+              <Control
+                label={(
+                  <ControlLabel
+                    label={REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA.label}
+                    tooltip={REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA.tooltip}
+                  />
+                )}
+                className="px-3"
+              >
                 <Switch
                   checked={cfg.remoteServerAutoShowPanel ?? DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL}
                   onCheckedChange={(value) => {
@@ -238,7 +248,15 @@ export function RemoteServerSettingsGroups({
                 />
               </Control>
 
-              <Control label={<ControlLabel label="Terminal QR Code" tooltip="Print QR code to terminal on server start (auto-enabled in headless environments)" />} className="px-3">
+              <Control
+                label={(
+                  <ControlLabel
+                    label={REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA.desktopLabel}
+                    tooltip={REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA.tooltip}
+                  />
+                )}
+                className="px-3"
+              >
                 <Switch
                   checked={cfg.remoteServerTerminalQrEnabled ?? DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED}
                   onCheckedChange={(value) => {

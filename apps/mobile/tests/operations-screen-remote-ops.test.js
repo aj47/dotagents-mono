@@ -27,6 +27,8 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_CORS_ORIGINS/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_PORT/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED/);
+  assert.match(operationsSource, /REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA/);
+  assert.match(operationsSource, /REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA/);
   assert.match(operationsSource, /DEFAULT_HIDE_DOCK_ICON/);
   assert.match(operationsSource, /DEFAULT_LAUNCH_AT_LOGIN/);
   assert.match(operationsSource, /DEFAULT_TEXT_INPUT_ENABLED/);
@@ -64,8 +66,16 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA\.accessibilityLabel/);
   assert.match(operationsSource, /remoteServerCorsOrigins: origins\.length > 0 \? origins : \[\.\.\.DEFAULT_REMOTE_SERVER_CORS_ORIGINS\]/);
   assert.doesNotMatch(operationsSource, /placeholder="\* or http:\/\/localhost:8081/);
-  assert.match(operationsSource, /Auto-Show Panel/);
-  assert.match(operationsSource, /Terminal QR/);
+  assert.match(operationsSource, /REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA\.pendingLabel/);
+  assert.match(operationsSource, /REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA\.successMessage/);
+  assert.match(operationsSource, /REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA\.accessibilityLabel/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.label\}>Auto-Show Panel<\/Text>/);
+  assert.doesNotMatch(operationsSource, /createSwitchAccessibilityLabel\('Auto-Show Panel'\)/);
+  assert.match(operationsSource, /REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA\.pendingLabel/);
+  assert.match(operationsSource, /REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA\.successMessage/);
+  assert.match(operationsSource, /REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA\.accessibilityLabel/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.label\}>Terminal QR<\/Text>/);
+  assert.doesNotMatch(operationsSource, /createSwitchAccessibilityLabel\('Terminal QR'\)/);
   assert.match(operationsSource, /Trusted operator devices/);
   assert.match(operationsSource, /Current device ID:/);
   assert.match(operationsSource, /Trust this device/);

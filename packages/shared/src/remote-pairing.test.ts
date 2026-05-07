@@ -54,6 +54,7 @@ import {
   isWildcardRemoteHost,
   normalizeRemoteHostForComparison,
   parseDotAgentsConfigDeepLink,
+  REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA,
   REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
   REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
@@ -65,6 +66,7 @@ import {
   REMOTE_SERVER_PORT_FIELD_METADATA,
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
+  REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA,
 } from './remote-pairing';
 
 function assertType<T>(_value: T): void {
@@ -176,7 +178,26 @@ describe('remote server config contracts', () => {
     expect(getDefaultRemoteServerCorsOrigins()).toEqual(['*']);
     expect(getDefaultRemoteServerCorsOrigins()).not.toBe(DEFAULT_REMOTE_SERVER_CORS_ORIGINS);
     expect(DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL).toBe(false);
+    expect(REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA).toEqual({
+      key: 'remoteServerAutoShowPanel',
+      label: 'Auto-Show Panel',
+      tooltip: 'Automatically show the floating panel when receiving messages from remote clients',
+      helperText: 'Show the desktop operator panel when new remote work begins.',
+      pendingLabel: 'auto-show panel',
+      successMessage: 'Remote panel auto-show updated.',
+      accessibilityLabel: 'Auto-Show Panel',
+    });
     expect(DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED).toBe(false);
+    expect(REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA).toEqual({
+      key: 'remoteServerTerminalQrEnabled',
+      label: 'Terminal QR',
+      desktopLabel: 'Terminal QR Code',
+      tooltip: 'Print QR code to terminal on server start (auto-enabled in headless environments)',
+      helperText: 'Print a pairing QR code in the desktop terminal when supported.',
+      pendingLabel: 'terminal QR',
+      successMessage: 'Terminal QR preference updated.',
+      accessibilityLabel: 'Terminal QR',
+    });
     expect(DEFAULT_STREAMER_MODE_ENABLED).toBe(false);
     expect(DEFAULT_CLOUDFLARE_TUNNEL_MODE).toBe('quick');
     expect(DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START).toBe(false);

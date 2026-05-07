@@ -31,6 +31,16 @@ export type RemoteServerBindAddressOption = {
   successMessage: string;
 };
 
+export type RemoteServerAutoShowPanelFieldMetadata = {
+  key: 'remoteServerAutoShowPanel';
+  label: string;
+  tooltip: string;
+  helperText: string;
+  pendingLabel: string;
+  successMessage: string;
+  accessibilityLabel: string;
+};
+
 export type RemoteServerBindAddressFieldMetadata = {
   key: 'remoteServerBindAddress';
   label: string;
@@ -52,6 +62,17 @@ export type RemoteServerEnabledFieldMetadata = {
   disableConfirmButtonLabel: string;
   disableSuccessMessage: string;
   updateSuccessMessage: string;
+  accessibilityLabel: string;
+};
+
+export type RemoteServerTerminalQrFieldMetadata = {
+  key: 'remoteServerTerminalQrEnabled';
+  label: string;
+  desktopLabel: string;
+  tooltip: string;
+  helperText: string;
+  pendingLabel: string;
+  successMessage: string;
   accessibilityLabel: string;
 };
 
@@ -111,6 +132,25 @@ export const REMOTE_SERVER_ENABLED_FIELD_METADATA: RemoteServerEnabledFieldMetad
   disableSuccessMessage: 'Remote server disable scheduled.',
   updateSuccessMessage: 'Remote server updated.',
   accessibilityLabel: 'Remote Server',
+};
+export const REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA: RemoteServerAutoShowPanelFieldMetadata = {
+  key: 'remoteServerAutoShowPanel',
+  label: 'Auto-Show Panel',
+  tooltip: 'Automatically show the floating panel when receiving messages from remote clients',
+  helperText: 'Show the desktop operator panel when new remote work begins.',
+  pendingLabel: 'auto-show panel',
+  successMessage: 'Remote panel auto-show updated.',
+  accessibilityLabel: 'Auto-Show Panel',
+};
+export const REMOTE_SERVER_TERMINAL_QR_FIELD_METADATA: RemoteServerTerminalQrFieldMetadata = {
+  key: 'remoteServerTerminalQrEnabled',
+  label: 'Terminal QR',
+  desktopLabel: 'Terminal QR Code',
+  tooltip: 'Print QR code to terminal on server start (auto-enabled in headless environments)',
+  helperText: 'Print a pairing QR code in the desktop terminal when supported.',
+  pendingLabel: 'terminal QR',
+  successMessage: 'Terminal QR preference updated.',
+  accessibilityLabel: 'Terminal QR',
 };
 export const REMOTE_SERVER_PORT_FIELD_METADATA: RemoteServerPortFieldMetadata = {
   key: 'remoteServerPort',
