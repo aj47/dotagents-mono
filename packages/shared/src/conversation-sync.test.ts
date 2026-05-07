@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Session } from './session';
 import {
   applyServerConversationGeneratedTitle,
+  applyServerConversationSessionState,
   applyServerConversationUpdate,
   applyServerConversationMessageLimit,
   appendServerConversationMessage,
@@ -54,6 +55,7 @@ import {
   materializeAppendServerConversationMessageRequest,
   materializeServerConversationCreateRequest,
   materializeServerConversationRecordContent,
+  mergeSyncedSessionsWithLocalChanges,
   normalizeServerConversationHistoryIndex,
   normalizeServerConversationSummarizedMessageCount,
   parseServerConversationHistoryIndexData,
@@ -1812,6 +1814,95 @@ describe('syncConversations', () => {
     });
     expect(result.pushed).toBe(1);
     expect(sessions[0]?.serverConversationId).toBe('conv-created-by-sync');
+  });
+
+  it('applies server pin and archive state by conversation id', () => {
+    const session = createLocalSession({
+      serverConversationId: 'conv-1',
+      isPinned: true,
+      isArchived: false,
+    });
+
+    expect(applyServerConversationSessionState(session, {
+      pinnedConversationIds: [],
+      archivedConversationIds: ['conv-1'],
+    })).toEqual({
+      ...session,
+      isPinned: false,
+      isArchived: true,
+    });
+    expect(applyServerConversationSessionState(session, null)).toBe(session);
+    expect(applyServerConversationSessionState({ ...session, serverConversationId: undefined }, {
+      pinnedConversationIds: ['conv-1'],
+    })).toEqual({ ...session, serverConversationId: undefined });
+  });
+
+  it('merges synced sessions while preserving local edits made during sync', () => {
+    const snapshotSession = createLocalSession({
+      id: 'current-1',
+      title: 'Before sync',
+      updatedAt: 10,
+      serverConversationId: 'conv-1',
+      isPinned: false,
+      isArchived: false,
+    });
+    const locallyModifiedSession = {
+      ...snapshotSession,
+      title: 'Local edit during sync',
+      updatedAt: 12,
+      isPinned: false,
+      isArchived: false,
+    };
+    const syncedSession = {
+      ...snapshotSession,
+      title: 'Server update',
+      updatedAt: 11,
+      isPinned: false,
+      isArchived: false,
+    };
+    const newSyncedSession = createLocalSession({
+      id: 'server-new',
+      title: 'Pulled from server',
+      serverConversationId: 'conv-new',
+      updatedAt: 9,
+    });
+
+    const merged = mergeSyncedSessionsWithLocalChanges(
+      [locallyModifiedSession],
+      [snapshotSession],
+      [syncedSession, newSyncedSession],
+      { serverState: { pinnedConversationIds: ['conv-new'], archivedConversationIds: ['conv-1'] } },
+    );
+
+    expect(merged).toEqual([
+      { ...newSyncedSession, isPinned: true, isArchived: false },
+      locallyModifiedSession,
+    ]);
+  });
+
+  it('uses synced sessions when local sessions did not change during sync', () => {
+    const snapshotSession = createLocalSession({
+      id: 'current-1',
+      title: 'Before sync',
+      updatedAt: 10,
+      serverConversationId: 'conv-1',
+      isPinned: false,
+      isArchived: false,
+    });
+    const syncedSession = {
+      ...snapshotSession,
+      title: 'Server update',
+      updatedAt: 11,
+      isPinned: false,
+      isArchived: false,
+    };
+
+    expect(mergeSyncedSessionsWithLocalChanges(
+      [snapshotSession],
+      [snapshotSession],
+      [syncedSession],
+      { serverState: { pinnedConversationIds: ['conv-1'] } },
+    )).toEqual([{ ...syncedSession, isPinned: true, isArchived: false }]);
   });
 
   it('fetches full conversation messages for lazy-loaded sessions', async () => {

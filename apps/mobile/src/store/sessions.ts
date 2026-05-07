@@ -12,7 +12,13 @@ import {
 } from '@dotagents/shared/session';
 import { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
-import { fetchFullConversation, syncConversations, type SyncResult } from '@dotagents/shared/conversation-sync';
+import {
+  fetchFullConversation,
+  mergeSyncedSessionsWithLocalChanges,
+  syncConversations,
+  type ServerConversationSessionState,
+  type SyncResult,
+} from '@dotagents/shared/conversation-sync';
 
 const SESSIONS_KEY = 'chat_sessions_v1';
 const CURRENT_SESSION_KEY = 'current_session_id_v1';
@@ -683,53 +689,21 @@ export function useSessions(): SessionStore {
       const hasServerPinState = serverSettings !== null &&
         ('pinnedSessionIds' in serverSettings || 'archivedSessionIds' in serverSettings);
 
-      // Helper: apply server pin/archive state to a session based on its serverConversationId
-      // Only apply when we actually received settings from the server
-      const applyServerPinState = (session: Session): Session => {
-        if (!hasServerPinState || !session.serverConversationId) return session;
-        const isPinned = serverPinnedIds.has(session.serverConversationId);
-        const isArchived = serverArchivedIds.has(session.serverConversationId);
-        if (session.isPinned === isPinned && session.isArchived === isArchived) return session;
-        return { ...session, isPinned, isArchived };
-      };
-
       if (hasConversationChanges || hasServerPinState) {
-        // Smart merge: preserve any local changes that occurred during sync
+        const serverState: ServerConversationSessionState | null = hasServerPinState
+          ? {
+              pinnedConversationIds: serverPinnedIds,
+              archivedConversationIds: serverArchivedIds,
+            }
+          : null;
+
         const currentSessions = sessionsRef.current;
-        const syncedById = new Map(syncedSessions.map(s => [s.id, s]));
-        const snapshotById = new Map(snapshotSessions.map(s => [s.id, s]));
-
-        // Build merged result
-        const mergedSessions: Session[] = [];
-        const seenIds = new Set<string>();
-
-        // First, process current sessions - preserve if modified during sync
-        for (const current of currentSessions) {
-          seenIds.add(current.id);
-          const snapshot = snapshotById.get(current.id);
-          const synced = syncedById.get(current.id);
-
-          // If session was modified locally during sync (updatedAt changed since snapshot), keep current version
-          if (snapshot && current.updatedAt > snapshot.updatedAt) {
-            mergedSessions.push(current);
-          } else if (synced) {
-            // Session wasn't modified during sync, use synced version
-            // Apply server pin/archive state instead of preserving local isPinned
-            mergedSessions.push(applyServerPinState(synced));
-          } else {
-            // Session exists in current but not in synced (e.g., newly created during sync)
-            mergedSessions.push(applyServerPinState(current));
-          }
-        }
-
-        // Add any new sessions from sync that don't exist in current
-        const newSessionsToAdd: Session[] = [];
-        for (const synced of syncedSessions) {
-          if (!seenIds.has(synced.id)) {
-            newSessionsToAdd.push(applyServerPinState(synced));
-          }
-        }
-        mergedSessions.unshift(...newSessionsToAdd);
+        const mergedSessions = mergeSyncedSessionsWithLocalChanges(
+          currentSessions,
+          snapshotSessions,
+          syncedSessions,
+          { serverState },
+        );
 
         // Update ref and state
         sessionsRef.current = mergedSessions;

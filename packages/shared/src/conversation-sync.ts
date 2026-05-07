@@ -44,6 +44,15 @@ export interface SyncConversationOptions {
   pendingCreateSessionIds?: ReadonlySet<string>;
 }
 
+export interface ServerConversationSessionState {
+  pinnedConversationIds?: Iterable<string> | null;
+  archivedConversationIds?: Iterable<string> | null;
+}
+
+export interface MergeSyncedSessionsOptions {
+  serverState?: ServerConversationSessionState | null;
+}
+
 export interface ConversationSyncClient {
   getConversations(): Promise<{ conversations: ServerConversation[] }>;
   getConversation(id: string): Promise<ServerConversationFull>;
@@ -1979,6 +1988,72 @@ export function serverConversationToStubSession(item: ServerConversation): Sessi
       preview: (item.preview || '').substring(0, 200),
     },
   };
+}
+
+function iterableHasValue(values: Iterable<string> | null | undefined, target: string): boolean {
+  if (!values) return false;
+
+  for (const value of values) {
+    if (value === target) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function applyServerConversationSessionState<
+  TSession extends Pick<Session, 'serverConversationId' | 'isPinned' | 'isArchived'>,
+>(
+  session: TSession,
+  serverState?: ServerConversationSessionState | null,
+): TSession {
+  if (!serverState || !session.serverConversationId) {
+    return session;
+  }
+
+  const isPinned = iterableHasValue(serverState.pinnedConversationIds, session.serverConversationId);
+  const isArchived = iterableHasValue(serverState.archivedConversationIds, session.serverConversationId);
+  if (session.isPinned === isPinned && session.isArchived === isArchived) {
+    return session;
+  }
+
+  return { ...session, isPinned, isArchived };
+}
+
+export function mergeSyncedSessionsWithLocalChanges<TSession extends Session>(
+  currentSessions: TSession[],
+  snapshotSessions: TSession[],
+  syncedSessions: TSession[],
+  options: MergeSyncedSessionsOptions = {},
+): TSession[] {
+  const syncedById = new Map(syncedSessions.map((session) => [session.id, session]));
+  const snapshotById = new Map(snapshotSessions.map((session) => [session.id, session]));
+  const mergedSessions: TSession[] = [];
+  const seenIds = new Set<string>();
+
+  for (const current of currentSessions) {
+    seenIds.add(current.id);
+    const snapshot = snapshotById.get(current.id);
+    const synced = syncedById.get(current.id);
+
+    if (snapshot && current.updatedAt > snapshot.updatedAt) {
+      mergedSessions.push(current);
+    } else if (synced) {
+      mergedSessions.push(applyServerConversationSessionState(synced, options.serverState));
+    } else {
+      mergedSessions.push(applyServerConversationSessionState(current, options.serverState));
+    }
+  }
+
+  const newSessionsToAdd: TSession[] = [];
+  for (const synced of syncedSessions) {
+    if (!seenIds.has(synced.id)) {
+      newSessionsToAdd.push(applyServerConversationSessionState(synced, options.serverState));
+    }
+  }
+
+  return [...newSessionsToAdd, ...mergedSessions];
 }
 
 /**
