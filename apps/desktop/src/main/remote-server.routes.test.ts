@@ -275,12 +275,6 @@ function getSharedAgentSessionCandidatesSource(): string {
   return readFileSync(sharedAgentSessionCandidatesPath, "utf8")
 }
 
-function getInjectedMcpActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const injectedMcpActionsPath = path.join(testDir, "injected-mcp-actions.ts")
-  return readFileSync(injectedMcpActionsPath, "utf8")
-}
-
 type RegisteredRoute = {
   method: string
   path: string
@@ -1671,11 +1665,11 @@ describe("remote-server route registration", () => {
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {
     const source = getRemoteServerSource()
     const injectedMcpRoutesSource = getInjectedMcpRoutesSource()
-    const injectedMcpActionsSource = getInjectedMcpActionsSource()
+    const injectedMcpActionsSource = getRemoteServerRouteBundleSource()
     const sharedMcpApiSource = getSharedMcpApiSource()
-    const listInjectedMcpToolsSection = getSection(injectedMcpActionsSource, "export async function listInjectedMcpTools", "export async function callInjectedMcpTool")
-    const callInjectedMcpToolSection = getSection(injectedMcpActionsSource, "export async function callInjectedMcpTool", "export async function handleInjectedMcpProtocolRequest")
-    const streamableMcpSection = getSection(injectedMcpActionsSource, "export async function handleInjectedMcpProtocolRequest", "if (!reply.sent)")
+    const listInjectedMcpToolsSection = getSection(injectedMcpActionsSource, "async function listInjectedMcpTools", "async function callInjectedMcpTool")
+    const callInjectedMcpToolSection = getSection(injectedMcpActionsSource, "async function callInjectedMcpTool", "async function handleInjectedMcpProtocolRequest")
+    const streamableMcpSection = getSection(injectedMcpActionsSource, "async function handleInjectedMcpProtocolRequest", "if (!reply.sent)")
 
     expect(injectedMcpActionsSource).toContain("function getAcpMcpRequestContext")
     expect(injectedMcpActionsSource).toContain("function getInjectedRuntimeToolsForAcpSession")
