@@ -53,6 +53,22 @@ export type RepeatTaskScheduleDraft = {
   scheduleDaysOfWeek: number[]
 }
 
+export type RepeatTaskEditFormData = {
+  name: string
+  prompt: string
+  intervalMinutes: string
+  enabled: boolean
+  profileId: string
+  runOnStartup: boolean
+  speakOnTrigger: boolean
+  continueInSession: boolean
+  lastSessionId: string
+  maxIterations: string
+  scheduleMode: RepeatTaskScheduleMode
+  scheduleTimes: string[]
+  scheduleDaysOfWeek: number[]
+}
+
 export type RepeatTaskScheduleDraftError = "missing-schedule-times" | "missing-weekly-days"
 
 export type RepeatTaskScheduleDraftResult =
@@ -114,6 +130,22 @@ export type RepeatTaskRecord = {
 export type RepeatTaskApiRecord = RepeatTaskRecord & {
   lastRunAt?: number
 }
+
+export type RepeatTaskEditFormSource = Pick<
+  Loop,
+  | "name"
+  | "prompt"
+  | "intervalMinutes"
+  | "enabled"
+  | "profileId"
+  | "runOnStartup"
+  | "speakOnTrigger"
+  | "continueInSession"
+  | "lastSessionId"
+  | "maxIterations"
+  | "runContinuously"
+  | "schedule"
+>
 
 export type RepeatTaskLayerRecord = {
   id: string
@@ -216,6 +248,22 @@ export type RepeatTaskActionResult = {
 }
 
 type RepeatTaskMaybePromise<T> = T | Promise<T>
+
+export const DEFAULT_REPEAT_TASK_EDIT_FORM_DATA: RepeatTaskEditFormData = {
+  name: "",
+  prompt: "",
+  intervalMinutes: String(DEFAULT_REPEAT_TASK_INTERVAL_MINUTES),
+  enabled: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled,
+  profileId: "",
+  runOnStartup: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runOnStartup,
+  speakOnTrigger: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.speakOnTrigger,
+  continueInSession: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.continueInSession,
+  lastSessionId: "",
+  maxIterations: "",
+  scheduleMode: "interval",
+  scheduleTimes: [...DEFAULT_REPEAT_TASK_SCHEDULE_TIMES],
+  scheduleDaysOfWeek: [...DEFAULT_REPEAT_TASK_WEEKDAYS],
+}
 
 export interface RepeatTaskActionDiagnostics {
   logError(source: string, message: string, error: unknown): void
@@ -1662,4 +1710,22 @@ export function getLoopScheduleDaysOfWeek(loop: { schedule?: RepeatTaskSchedule 
   return loop.schedule?.type === "weekly"
     ? [...loop.schedule.daysOfWeek]
     : [...DEFAULT_REPEAT_TASK_WEEKDAYS]
+}
+
+export function formatRepeatTaskEditFormData(loop: RepeatTaskEditFormSource): RepeatTaskEditFormData {
+  return {
+    name: loop.name,
+    prompt: loop.prompt,
+    intervalMinutes: String(loop.intervalMinutes),
+    enabled: loop.enabled,
+    profileId: loop.profileId || "",
+    runOnStartup: loop.runOnStartup ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runOnStartup,
+    speakOnTrigger: loop.speakOnTrigger ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.speakOnTrigger,
+    continueInSession: loop.continueInSession ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.continueInSession,
+    lastSessionId: loop.lastSessionId || "",
+    maxIterations: loop.maxIterations ? String(loop.maxIterations) : "",
+    scheduleMode: getLoopScheduleMode(loop),
+    scheduleTimes: getLoopScheduleTimes(loop),
+    scheduleDaysOfWeek: getLoopScheduleDaysOfWeek(loop),
+  }
 }

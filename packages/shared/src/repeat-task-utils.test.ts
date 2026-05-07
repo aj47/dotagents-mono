@@ -20,6 +20,7 @@ import {
   buildRepeatTasksResponse,
   buildRepeatTaskToggleResponse,
   buildRepeatTaskScheduleFromDraft,
+  DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
   computeNextScheduledRun,
   createRepeatTaskIdFromName,
   DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
@@ -35,6 +36,7 @@ import {
   formatRepeatTaskTitle,
   formatLoopInterval,
   formatLoopIntervalDraft,
+  formatRepeatTaskEditFormData,
   getNextRepeatTaskDelayMs,
   getRepeatTaskTitleHints,
   getRepeatTaskIntervalMs,
@@ -401,6 +403,53 @@ describe("repeat task schedule helpers", () => {
     expect(getLoopScheduleMode(interval)).toBe("interval")
     expect(getLoopScheduleTimes(interval)).toEqual(["09:00"])
     expect(getLoopScheduleDaysOfWeek(interval)).toEqual([1, 2, 3, 4, 5])
+  })
+
+  it("formats repeat tasks for shared edit forms", () => {
+    expect(DEFAULT_REPEAT_TASK_EDIT_FORM_DATA).toEqual({
+      name: "",
+      prompt: "",
+      intervalMinutes: "60",
+      enabled: true,
+      profileId: "",
+      runOnStartup: false,
+      speakOnTrigger: false,
+      continueInSession: false,
+      lastSessionId: "",
+      maxIterations: "",
+      scheduleMode: "interval",
+      scheduleTimes: ["09:00"],
+      scheduleDaysOfWeek: [1, 2, 3, 4, 5],
+    })
+
+    expect(formatRepeatTaskEditFormData({
+      name: "Weekly Report",
+      prompt: "Summarize project state",
+      intervalMinutes: 60,
+      enabled: false,
+      profileId: "agent-1",
+      runOnStartup: true,
+      speakOnTrigger: true,
+      continueInSession: true,
+      lastSessionId: "session-1",
+      maxIterations: 4,
+      runContinuously: false,
+      schedule: { type: "weekly", times: ["10:00"], daysOfWeek: [2] },
+    })).toEqual({
+      name: "Weekly Report",
+      prompt: "Summarize project state",
+      intervalMinutes: "60",
+      enabled: false,
+      profileId: "agent-1",
+      runOnStartup: true,
+      speakOnTrigger: true,
+      continueInSession: true,
+      lastSessionId: "session-1",
+      maxIterations: "4",
+      scheduleMode: "weekly",
+      scheduleTimes: ["10:00"],
+      scheduleDaysOfWeek: [2],
+    })
   })
 
   it("builds repeat task schedules from editable drafts", () => {

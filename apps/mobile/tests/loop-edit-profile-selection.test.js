@@ -29,12 +29,12 @@ test('keeps LoopEdit profile options full-width and touch-friendly for narrow sc
 });
 
 test('exposes desktop repeat task execution options on mobile', () => {
-  assert.match(screenSource, /DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS/);
-  assert.match(screenSource, /runOnStartup:\s*loop\.runOnStartup \?\? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS\.runOnStartup/);
-  assert.match(screenSource, /speakOnTrigger:\s*loop\.speakOnTrigger \?\? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS\.speakOnTrigger/);
-  assert.match(screenSource, /continueInSession:\s*loop\.continueInSession \?\? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS\.continueInSession/);
-  assert.match(screenSource, /lastSessionId:\s*loop\.lastSessionId \|\| ''/);
-  assert.match(screenSource, /maxIterations:\s*loop\.maxIterations \? String\(loop\.maxIterations\) : ''/);
+  assert.match(screenSource, /DEFAULT_REPEAT_TASK_EDIT_FORM_DATA/);
+  assert.match(screenSource, /formatRepeatTaskEditFormData\(loopFromRoute\)/);
+  assert.match(screenSource, /formatRepeatTaskEditFormData\(loop\)/);
+  assert.match(screenSource, /RepeatTaskEditFormData/);
+  assert.doesNotMatch(screenSource, /type LoopFormData/);
+  assert.doesNotMatch(screenSource, /const defaultFormData/);
   assert.match(screenSource, /runOnStartup:\s*formData\.runOnStartup/);
   assert.match(screenSource, /speakOnTrigger:\s*formData\.speakOnTrigger/);
   assert.match(screenSource, /continueInSession:\s*formData\.continueInSession/);

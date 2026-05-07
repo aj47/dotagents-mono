@@ -34,71 +34,15 @@ import {
 } from '@dotagents/shared/agent-session-candidates';
 import {
   buildRepeatTaskScheduleFromDraft,
-  DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
+  DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
   DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
   DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
-  DEFAULT_REPEAT_TASK_WEEKDAYS,
   REPEAT_TASK_DAY_LABELS,
-  getLoopScheduleDaysOfWeek,
-  getLoopScheduleMode,
-  getLoopScheduleTimes,
+  formatRepeatTaskEditFormData,
   parseLoopIntervalDraft,
   resolveRepeatTaskIntervalMinutesDraft,
-  type RepeatTaskScheduleMode,
+  type RepeatTaskEditFormData,
 } from '@dotagents/shared/repeat-task-utils';
-
-type LoopFormData = {
-  name: string;
-  prompt: string;
-  intervalMinutes: string;
-  enabled: boolean;
-  profileId: string;
-  runOnStartup: boolean;
-  speakOnTrigger: boolean;
-  continueInSession: boolean;
-  lastSessionId: string;
-  maxIterations: string;
-  scheduleMode: RepeatTaskScheduleMode;
-  scheduleTimes: string[];
-  scheduleDaysOfWeek: number[];
-};
-
-const defaultFormData: LoopFormData = {
-  name: '',
-  prompt: '',
-  intervalMinutes: String(DEFAULT_REPEAT_TASK_INTERVAL_MINUTES),
-  enabled: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled,
-  profileId: '',
-  runOnStartup: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runOnStartup,
-  speakOnTrigger: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.speakOnTrigger,
-  continueInSession: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.continueInSession,
-  lastSessionId: '',
-  maxIterations: '',
-  scheduleMode: 'interval',
-  scheduleTimes: [...DEFAULT_REPEAT_TASK_SCHEDULE_TIMES],
-  scheduleDaysOfWeek: [...DEFAULT_REPEAT_TASK_WEEKDAYS],
-};
-
-function loopToFormData(loop: Loop): LoopFormData {
-  const scheduleMode = getLoopScheduleMode(loop);
-  const scheduleTimes = getLoopScheduleTimes(loop);
-  const scheduleDaysOfWeek = getLoopScheduleDaysOfWeek(loop);
-  return {
-    name: loop.name,
-    prompt: loop.prompt,
-    intervalMinutes: String(loop.intervalMinutes),
-    enabled: loop.enabled,
-    profileId: loop.profileId || '',
-    runOnStartup: loop.runOnStartup ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runOnStartup,
-    speakOnTrigger: loop.speakOnTrigger ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.speakOnTrigger,
-    continueInSession: loop.continueInSession ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.continueInSession,
-    lastSessionId: loop.lastSessionId || '',
-    maxIterations: loop.maxIterations ? String(loop.maxIterations) : '',
-    scheduleMode,
-    scheduleTimes,
-    scheduleDaysOfWeek,
-  };
-}
 
 function formatMobileSessionCandidateTime(candidate: AgentSessionCandidateOption): string {
   return formatAgentSessionCandidateTime(candidate, {
@@ -121,8 +65,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
   const effectiveLoopId = loopId ?? loopFromRoute?.id;
   const isEditing = !!effectiveLoopId;
 
-  const [formData, setFormData] = useState<LoopFormData>(() =>
-    loopFromRoute ? loopToFormData(loopFromRoute) : defaultFormData
+  const [formData, setFormData] = useState<RepeatTaskEditFormData>(() =>
+    loopFromRoute ? formatRepeatTaskEditFormData(loopFromRoute) : DEFAULT_REPEAT_TASK_EDIT_FORM_DATA
   );
   const [existingLoopIntervalMinutes, setExistingLoopIntervalMinutes] = useState<number | null>(() =>
     loopFromRoute?.intervalMinutes ?? null
@@ -220,7 +164,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           setError('Loop not found');
           return;
         }
-        setFormData(loopToFormData(loop));
+        setFormData(formatRepeatTaskEditFormData(loop));
         setExistingLoopIntervalMinutes(loop.intervalMinutes);
       })
       .catch((err: Error) => {
@@ -235,7 +179,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
     return () => { cancelled = true; };
   }, [effectiveLoopId, isEditing, loopFromRoute, settingsClient]);
 
-  const updateField = useCallback(<K extends keyof LoopFormData>(key: K, value: LoopFormData[K]) => {
+  const updateField = useCallback(<K extends keyof RepeatTaskEditFormData>(key: K, value: RepeatTaskEditFormData[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
 
