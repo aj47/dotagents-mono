@@ -66,6 +66,7 @@ import {
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_ERRORS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
+  OPERATOR_MCP_SERVERS_PANEL_METADATA,
   OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
   formatOperatorAuditDetails as formatAuditDetails,
@@ -1299,9 +1300,13 @@ export default function OperationsScreen({ navigation }: any) {
 
           {mcpServers.length > 0 && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>MCP servers</Text>
+              <Text style={styles.panelTitle}>{OPERATOR_MCP_SERVERS_PANEL_METADATA.panelTitle}</Text>
               <Text style={styles.detailText}>
-                {mcpServers.filter((s) => s.connected).length}/{mcpServers.length} connected • {mcpServers.reduce((sum, s) => sum + s.toolCount, 0)} tools
+                {OPERATOR_MCP_SERVERS_PANEL_METADATA.formatSummary(
+                  mcpServers.filter((s) => s.connected).length,
+                  mcpServers.length,
+                  mcpServers.reduce((sum, s) => sum + s.toolCount, 0),
+                )}
               </Text>
               {mcpServers.map((s) => {
                 const startAction = `mcp-start:${s.name}`;
@@ -1326,7 +1331,7 @@ export default function OperationsScreen({ navigation }: any) {
                     <View style={styles.mcpServerRow}>
                       <View style={styles.mcpServerCopy}>
                         <Text style={styles.detailText}>
-                          {s.connected ? '✓' : s.enabled ? '✗' : '○'} {s.name}: {s.toolCount} tools{!s.enabled ? ' (disabled)' : ''}
+                          {s.connected ? '✓' : s.enabled ? '✗' : '○'} {s.name}: {s.toolCount} tools{!s.enabled ? OPERATOR_MCP_SERVERS_PANEL_METADATA.disabledSuffix : ''}
                         </Text>
                         {s.error ? <Text style={styles.warningText}>{s.error}</Text> : null}
                       </View>
@@ -1342,15 +1347,17 @@ export default function OperationsScreen({ navigation }: any) {
                               onPress={() => void runAction(restartAction, async () => {
                                 const response = await settingsClient.restartMCPServer(s.name);
                                 return response.success
-                                  ? { ...response, message: `Restarted ${s.name}` }
+                                  ? { ...response, message: OPERATOR_MCP_SERVERS_PANEL_METADATA.formatRestartedMessage(s.name) }
                                   : response;
                               })}
                               disabled={restartDisabled}
                               accessibilityRole="button"
-                              accessibilityLabel={createButtonAccessibilityLabel(`Restart ${s.name} MCP server`)}
+                              accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatRestartAccessibilityLabel(s.name))}
                             >
                               <Text style={styles.secondaryActionText}>
-                                {pendingAction === restartAction ? 'Restarting...' : 'Restart'}
+                                {pendingAction === restartAction
+                                  ? OPERATOR_MCP_SERVERS_PANEL_METADATA.restartPendingLabel
+                                  : OPERATOR_MCP_SERVERS_PANEL_METADATA.restartButtonLabel}
                               </Text>
                             </TouchableOpacity>
                             <TouchableOpacity
@@ -1360,18 +1367,20 @@ export default function OperationsScreen({ navigation }: any) {
                                 stopDisabled && styles.actionButtonDisabled,
                               ]}
                               onPress={() => confirmAction(
-                                'Stop MCP Server',
-                                `Stop ${s.name} on the desktop app? Its tools will be hidden until the server is started again.`,
-                                'Stop Server',
+                                OPERATOR_MCP_SERVERS_PANEL_METADATA.stopConfirmTitle,
+                                OPERATOR_MCP_SERVERS_PANEL_METADATA.formatStopConfirmMessage(s.name),
+                                OPERATOR_MCP_SERVERS_PANEL_METADATA.stopConfirmButtonLabel,
                                 false,
                                 () => runAction(stopAction, () => settingsClient.stopMCPServer(s.name)),
                               )}
                               disabled={stopDisabled}
                               accessibilityRole="button"
-                              accessibilityLabel={createButtonAccessibilityLabel(`Stop ${s.name} MCP server`)}
+                              accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatStopAccessibilityLabel(s.name))}
                             >
                               <Text style={styles.secondaryActionText}>
-                                {pendingAction === stopAction ? 'Stopping...' : 'Stop'}
+                                {pendingAction === stopAction
+                                  ? OPERATOR_MCP_SERVERS_PANEL_METADATA.stopPendingLabel
+                                  : OPERATOR_MCP_SERVERS_PANEL_METADATA.stopButtonLabel}
                               </Text>
                             </TouchableOpacity>
                           </>
@@ -1385,10 +1394,12 @@ export default function OperationsScreen({ navigation }: any) {
                             onPress={() => void runAction(startAction, () => settingsClient.startMCPServer(s.name))}
                             disabled={startDisabled}
                             accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Start ${s.name} MCP server`)}
+                            accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatStartAccessibilityLabel(s.name))}
                           >
                             <Text style={styles.secondaryActionText}>
-                              {pendingAction === startAction ? 'Starting...' : 'Start'}
+                              {pendingAction === startAction
+                                ? OPERATOR_MCP_SERVERS_PANEL_METADATA.startPendingLabel
+                                : OPERATOR_MCP_SERVERS_PANEL_METADATA.startButtonLabel}
                             </Text>
                           </TouchableOpacity>
                         )}
@@ -1403,9 +1414,7 @@ export default function OperationsScreen({ navigation }: any) {
                             return response.success
                               ? {
                                 success: true,
-                                message: typeof response.toolCount === 'number'
-                                  ? `Connection test passed for ${s.name} (${response.toolCount} tools)`
-                                  : `Connection test passed for ${s.name}`,
+                                message: OPERATOR_MCP_SERVERS_PANEL_METADATA.formatTestSuccessMessage(s.name, response.toolCount),
                               }
                               : {
                                 success: false,
@@ -1415,10 +1424,12 @@ export default function OperationsScreen({ navigation }: any) {
                           }, false)}
                           disabled={controlsDisabled}
                           accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Test ${s.name} MCP server connection`)}
+                          accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatTestAccessibilityLabel(s.name))}
                         >
                           <Text style={styles.secondaryActionText}>
-                            {pendingAction === testAction ? 'Testing...' : 'Test'}
+                            {pendingAction === testAction
+                              ? OPERATOR_MCP_SERVERS_PANEL_METADATA.testPendingLabel
+                              : OPERATOR_MCP_SERVERS_PANEL_METADATA.testButtonLabel}
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -1430,10 +1441,14 @@ export default function OperationsScreen({ navigation }: any) {
                           onPress={() => toggleMcpLogsForServer(s.name)}
                           disabled={controlsDisabled}
                           accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`${logsExpanded ? 'Hide' : 'Show'} ${s.name} MCP server logs`)}
+                          accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatLogsAccessibilityLabel(s.name, logsExpanded))}
                         >
                           <Text style={styles.secondaryActionText}>
-                            {pendingAction === logsAction ? 'Loading...' : logsExpanded ? 'Hide logs' : 'Logs'}
+                            {pendingAction === logsAction
+                              ? OPERATOR_MCP_SERVERS_PANEL_METADATA.logsPendingLabel
+                              : logsExpanded
+                                ? OPERATOR_MCP_SERVERS_PANEL_METADATA.logsExpandedButtonLabel
+                                : OPERATOR_MCP_SERVERS_PANEL_METADATA.logsButtonLabel}
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -1445,10 +1460,14 @@ export default function OperationsScreen({ navigation }: any) {
                           onPress={() => toggleMcpToolsForServer(s.name)}
                           disabled={controlsDisabled}
                           accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`${toolsExpanded ? 'Hide' : 'Show'} ${s.name} MCP server tools`)}
+                          accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatToolsAccessibilityLabel(s.name, toolsExpanded))}
                         >
                           <Text style={styles.secondaryActionText}>
-                            {pendingAction === toolsAction ? 'Loading...' : toolsExpanded ? 'Hide tools' : 'Tools'}
+                            {pendingAction === toolsAction
+                              ? OPERATOR_MCP_SERVERS_PANEL_METADATA.toolsPendingLabel
+                              : toolsExpanded
+                                ? OPERATOR_MCP_SERVERS_PANEL_METADATA.toolsExpandedButtonLabel
+                                : OPERATOR_MCP_SERVERS_PANEL_METADATA.toolsButtonLabel}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -1456,7 +1475,7 @@ export default function OperationsScreen({ navigation }: any) {
                     {logsExpanded ? (
                       <View style={styles.mcpLogsPanel}>
                         <View style={styles.logHeader}>
-                          <Text style={styles.sectionCaption}>Server logs</Text>
+                          <Text style={styles.sectionCaption}>{OPERATOR_MCP_SERVERS_PANEL_METADATA.logsSectionTitle}</Text>
                           <TouchableOpacity
                             style={[
                               styles.mcpClearLogsButton,
@@ -1464,9 +1483,9 @@ export default function OperationsScreen({ navigation }: any) {
                               (controlsDisabled || logs.length === 0) && styles.actionButtonDisabled,
                             ]}
                             onPress={() => confirmAction(
-                              'Clear MCP Logs',
-                              `Clear logs for ${s.name} on the desktop app?`,
-                              'Clear Logs',
+                              OPERATOR_MCP_SERVERS_PANEL_METADATA.clearLogsConfirmTitle,
+                              OPERATOR_MCP_SERVERS_PANEL_METADATA.formatClearLogsConfirmMessage(s.name),
+                              OPERATOR_MCP_SERVERS_PANEL_METADATA.clearLogsConfirmButtonLabel,
                               true,
                               () => runAction(clearLogsAction, async () => {
                                 const response = await settingsClient.clearOperatorMCPServerLogs(s.name);
@@ -1478,20 +1497,22 @@ export default function OperationsScreen({ navigation }: any) {
                             )}
                             disabled={controlsDisabled || logs.length === 0}
                             accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Clear ${s.name} MCP server logs`)}
+                            accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatClearLogsAccessibilityLabel(s.name))}
                           >
                             <Text style={styles.secondaryActionText}>
-                              {pendingAction === clearLogsAction ? 'Clearing...' : 'Clear'}
+                              {pendingAction === clearLogsAction
+                                ? OPERATOR_MCP_SERVERS_PANEL_METADATA.clearLogsPendingLabel
+                                : OPERATOR_MCP_SERVERS_PANEL_METADATA.clearLogsButtonLabel}
                             </Text>
                           </TouchableOpacity>
                         </View>
                         {pendingAction === logsAction ? (
                           <View style={styles.loadingRow}>
                             <ActivityIndicator size="small" color={theme.colors.primary} />
-                            <Text style={styles.mutedText}>Loading MCP logs...</Text>
+                            <Text style={styles.mutedText}>{OPERATOR_MCP_SERVERS_PANEL_METADATA.logsLoadingText}</Text>
                           </View>
                         ) : logs.length === 0 ? (
-                          <Text style={styles.mutedText}>No logs returned for this server.</Text>
+                          <Text style={styles.mutedText}>{OPERATOR_MCP_SERVERS_PANEL_METADATA.logsEmptyText}</Text>
                         ) : (
                           logs.map((entry, index) => (
                             <View key={`${entry.timestamp}-${index}`} style={styles.logItem}>
@@ -1504,14 +1525,14 @@ export default function OperationsScreen({ navigation }: any) {
                     ) : null}
                     {toolsExpanded ? (
                       <View style={styles.mcpToolsPanel}>
-                        <Text style={styles.sectionCaption}>Server tools</Text>
+                        <Text style={styles.sectionCaption}>{OPERATOR_MCP_SERVERS_PANEL_METADATA.toolsSectionTitle}</Text>
                         {pendingAction === toolsAction ? (
                           <View style={styles.loadingRow}>
                             <ActivityIndicator size="small" color={theme.colors.primary} />
-                            <Text style={styles.mutedText}>Loading MCP tools...</Text>
+                            <Text style={styles.mutedText}>{OPERATOR_MCP_SERVERS_PANEL_METADATA.toolsLoadingText}</Text>
                           </View>
                         ) : tools.length === 0 ? (
-                          <Text style={styles.mutedText}>No tools returned for this server.</Text>
+                          <Text style={styles.mutedText}>{OPERATOR_MCP_SERVERS_PANEL_METADATA.toolsEmptyText}</Text>
                         ) : (
                           tools.map((tool) => {
                             const toolAction = `mcp-tool-toggle:${tool.name}`;
@@ -1526,14 +1547,14 @@ export default function OperationsScreen({ navigation }: any) {
                                     <Text style={styles.helperText}>{tool.sourceLabel}</Text>
                                   )}
                                   {!tool.serverEnabled ? (
-                                    <Text style={styles.mutedText}>Server disabled</Text>
+                                    <Text style={styles.mutedText}>{OPERATOR_MCP_SERVERS_PANEL_METADATA.serverDisabledText}</Text>
                                   ) : null}
                                 </View>
                                 <Switch
                                   value={tool.enabled}
                                   onValueChange={(nextEnabled) => void setMcpToolEnabled(s.name, tool.name, nextEnabled)}
                                   disabled={toolDisabled}
-                                  accessibilityLabel={createSwitchAccessibilityLabel(`Enable ${tool.name} MCP tool`)}
+                                  accessibilityLabel={createSwitchAccessibilityLabel(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatToolAccessibilityLabel(tool.name))}
                                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                                   thumbColor={tool.enabled ? theme.colors.primaryForeground : theme.colors.background}
                                 />

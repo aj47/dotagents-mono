@@ -6,6 +6,7 @@ import {
   OPERATOR_EMPTY_VALUE_LABEL,
   OPERATOR_ERRORS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
+  OPERATOR_MCP_SERVERS_PANEL_METADATA,
   OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
   formatOperatorAuditDetails,
@@ -100,6 +101,78 @@ describe("operator display utils", () => {
       stopAccessibilityLabel: "Stop tunnel",
       helperText: "The remote server must be running before a tunnel can start.",
     })
+  })
+
+  it("exports operator MCP server panel metadata", () => {
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA).toEqual({
+      panelTitle: "MCP servers",
+      formatSummary: expect.any(Function),
+      disabledSuffix: " (disabled)",
+      restartPendingLabel: "Restarting...",
+      restartButtonLabel: "Restart",
+      formatRestartAccessibilityLabel: expect.any(Function),
+      formatRestartedMessage: expect.any(Function),
+      stopConfirmTitle: "Stop MCP Server",
+      formatStopConfirmMessage: expect.any(Function),
+      stopConfirmButtonLabel: "Stop Server",
+      stopPendingLabel: "Stopping...",
+      stopButtonLabel: "Stop",
+      formatStopAccessibilityLabel: expect.any(Function),
+      startPendingLabel: "Starting...",
+      startButtonLabel: "Start",
+      formatStartAccessibilityLabel: expect.any(Function),
+      testPendingLabel: "Testing...",
+      testButtonLabel: "Test",
+      formatTestAccessibilityLabel: expect.any(Function),
+      formatTestSuccessMessage: expect.any(Function),
+      logsPendingLabel: "Loading...",
+      logsExpandedButtonLabel: "Hide logs",
+      logsButtonLabel: "Logs",
+      formatLogsAccessibilityLabel: expect.any(Function),
+      toolsPendingLabel: "Loading...",
+      toolsExpandedButtonLabel: "Hide tools",
+      toolsButtonLabel: "Tools",
+      formatToolsAccessibilityLabel: expect.any(Function),
+      logsSectionTitle: "Server logs",
+      clearLogsConfirmTitle: "Clear MCP Logs",
+      formatClearLogsConfirmMessage: expect.any(Function),
+      clearLogsConfirmButtonLabel: "Clear Logs",
+      clearLogsPendingLabel: "Clearing...",
+      clearLogsButtonLabel: "Clear",
+      formatClearLogsAccessibilityLabel: expect.any(Function),
+      logsLoadingText: "Loading MCP logs...",
+      logsEmptyText: "No logs returned for this server.",
+      toolsSectionTitle: "Server tools",
+      toolsLoadingText: "Loading MCP tools...",
+      toolsEmptyText: "No tools returned for this server.",
+      serverDisabledText: "Server disabled",
+      formatToolAccessibilityLabel: expect.any(Function),
+    })
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatSummary(2, 3, 9)).toBe("2/3 connected • 9 tools")
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatRestartAccessibilityLabel("filesystem")).toBe("Restart filesystem MCP server")
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatRestartedMessage("filesystem")).toBe("Restarted filesystem")
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatStopConfirmMessage("filesystem")).toBe(
+      "Stop filesystem on the desktop app? Its tools will be hidden until the server is started again.",
+    )
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatTestSuccessMessage("filesystem", 2)).toBe(
+      "Connection test passed for filesystem (2 tools)",
+    )
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatTestSuccessMessage("filesystem")).toBe(
+      "Connection test passed for filesystem",
+    )
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatLogsAccessibilityLabel("filesystem", true)).toBe(
+      "Hide filesystem MCP server logs",
+    )
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatToolsAccessibilityLabel("filesystem", false)).toBe(
+      "Show filesystem MCP server tools",
+    )
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatClearLogsConfirmMessage("filesystem")).toBe(
+      "Clear logs for filesystem on the desktop app?",
+    )
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatClearLogsAccessibilityLabel("filesystem")).toBe(
+      "Clear filesystem MCP server logs",
+    )
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatToolAccessibilityLabel("search")).toBe("Enable search MCP tool")
   })
 
   it("formats timestamps with the empty fallback", () => {

@@ -146,6 +146,99 @@ export const OPERATOR_TUNNEL_STATUS_PANEL_METADATA: OperatorTunnelStatusPanelMet
   helperText: "The remote server must be running before a tunnel can start.",
 }
 
+export type OperatorMcpServersPanelMetadata = {
+  panelTitle: string
+  formatSummary: (connectedCount: number, serverCount: number, toolCount: number) => string
+  disabledSuffix: string
+  restartPendingLabel: string
+  restartButtonLabel: string
+  formatRestartAccessibilityLabel: (serverName: string) => string
+  formatRestartedMessage: (serverName: string) => string
+  stopConfirmTitle: string
+  formatStopConfirmMessage: (serverName: string) => string
+  stopConfirmButtonLabel: string
+  stopPendingLabel: string
+  stopButtonLabel: string
+  formatStopAccessibilityLabel: (serverName: string) => string
+  startPendingLabel: string
+  startButtonLabel: string
+  formatStartAccessibilityLabel: (serverName: string) => string
+  testPendingLabel: string
+  testButtonLabel: string
+  formatTestAccessibilityLabel: (serverName: string) => string
+  formatTestSuccessMessage: (serverName: string, toolCount?: number) => string
+  logsPendingLabel: string
+  logsExpandedButtonLabel: string
+  logsButtonLabel: string
+  formatLogsAccessibilityLabel: (serverName: string, expanded: boolean) => string
+  toolsPendingLabel: string
+  toolsExpandedButtonLabel: string
+  toolsButtonLabel: string
+  formatToolsAccessibilityLabel: (serverName: string, expanded: boolean) => string
+  logsSectionTitle: string
+  clearLogsConfirmTitle: string
+  formatClearLogsConfirmMessage: (serverName: string) => string
+  clearLogsConfirmButtonLabel: string
+  clearLogsPendingLabel: string
+  clearLogsButtonLabel: string
+  formatClearLogsAccessibilityLabel: (serverName: string) => string
+  logsLoadingText: string
+  logsEmptyText: string
+  toolsSectionTitle: string
+  toolsLoadingText: string
+  toolsEmptyText: string
+  serverDisabledText: string
+  formatToolAccessibilityLabel: (toolName: string) => string
+}
+
+export const OPERATOR_MCP_SERVERS_PANEL_METADATA: OperatorMcpServersPanelMetadata = {
+  panelTitle: "MCP servers",
+  formatSummary: (connectedCount, serverCount, toolCount) => `${connectedCount}/${serverCount} connected • ${toolCount} tools`,
+  disabledSuffix: " (disabled)",
+  restartPendingLabel: "Restarting...",
+  restartButtonLabel: "Restart",
+  formatRestartAccessibilityLabel: (serverName) => `Restart ${serverName} MCP server`,
+  formatRestartedMessage: (serverName) => `Restarted ${serverName}`,
+  stopConfirmTitle: "Stop MCP Server",
+  formatStopConfirmMessage: (serverName) => `Stop ${serverName} on the desktop app? Its tools will be hidden until the server is started again.`,
+  stopConfirmButtonLabel: "Stop Server",
+  stopPendingLabel: "Stopping...",
+  stopButtonLabel: "Stop",
+  formatStopAccessibilityLabel: (serverName) => `Stop ${serverName} MCP server`,
+  startPendingLabel: "Starting...",
+  startButtonLabel: "Start",
+  formatStartAccessibilityLabel: (serverName) => `Start ${serverName} MCP server`,
+  testPendingLabel: "Testing...",
+  testButtonLabel: "Test",
+  formatTestAccessibilityLabel: (serverName) => `Test ${serverName} MCP server connection`,
+  formatTestSuccessMessage: (serverName, toolCount) =>
+    typeof toolCount === "number"
+      ? `Connection test passed for ${serverName} (${toolCount} tools)`
+      : `Connection test passed for ${serverName}`,
+  logsPendingLabel: "Loading...",
+  logsExpandedButtonLabel: "Hide logs",
+  logsButtonLabel: "Logs",
+  formatLogsAccessibilityLabel: (serverName, expanded) => `${expanded ? "Hide" : "Show"} ${serverName} MCP server logs`,
+  toolsPendingLabel: "Loading...",
+  toolsExpandedButtonLabel: "Hide tools",
+  toolsButtonLabel: "Tools",
+  formatToolsAccessibilityLabel: (serverName, expanded) => `${expanded ? "Hide" : "Show"} ${serverName} MCP server tools`,
+  logsSectionTitle: "Server logs",
+  clearLogsConfirmTitle: "Clear MCP Logs",
+  formatClearLogsConfirmMessage: (serverName) => `Clear logs for ${serverName} on the desktop app?`,
+  clearLogsConfirmButtonLabel: "Clear Logs",
+  clearLogsPendingLabel: "Clearing...",
+  clearLogsButtonLabel: "Clear",
+  formatClearLogsAccessibilityLabel: (serverName) => `Clear ${serverName} MCP server logs`,
+  logsLoadingText: "Loading MCP logs...",
+  logsEmptyText: "No logs returned for this server.",
+  toolsSectionTitle: "Server tools",
+  toolsLoadingText: "Loading MCP tools...",
+  toolsEmptyText: "No tools returned for this server.",
+  serverDisabledText: "Server disabled",
+  formatToolAccessibilityLabel: (toolName) => `Enable ${toolName} MCP tool`,
+}
+
 export function formatOperatorTimestamp(timestamp?: number): string {
   if (!timestamp) return OPERATOR_EMPTY_VALUE_LABEL
   return new Date(timestamp).toLocaleString()
