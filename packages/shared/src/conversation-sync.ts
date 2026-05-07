@@ -5,7 +5,7 @@ import type {
   ServerConversationMessage,
   UpdateConversationRequest,
 } from './api-types';
-import type { Session, SessionChatMessage } from './session';
+import { generateSessionId, type Session, type SessionChatMessage } from './session';
 
 export interface SyncResult {
   pulled: number;
@@ -104,14 +104,6 @@ export type ConversationBuildResult =
   | { ok: false; statusCode: 400; error: string };
 
 export type ServerConversationMessageIdFactory = (timestamp: number, index: number) => string;
-
-function createSyncedMessageId(timestamp: number, index: number): string {
-  return `msg_${timestamp}_${index}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
-function createSyncedSessionId(): string {
-  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
 
 export function createServerConversationMessageId(timestamp: number, index: number): string {
   return `msg_${timestamp}_${index}_${Math.random().toString(36).substr(2, 9)}`;
@@ -531,7 +523,7 @@ export function fromServerConversationMessage(msg: ServerConversationMessage, in
   // Use nullish coalescing so timestamp=0 is not treated as "missing".
   const timestamp = msg.timestamp ?? Date.now();
   return {
-    id: createSyncedMessageId(timestamp, index),
+    id: createServerConversationMessageId(timestamp, index),
     role: msg.role,
     content: msg.content,
     timestamp,
@@ -545,7 +537,7 @@ export function fromServerConversationMessage(msg: ServerConversationMessage, in
  */
 export function serverConversationToSession(conv: ServerConversationFull): Session {
   return {
-    id: createSyncedSessionId(),
+    id: generateSessionId(),
     title: conv.title,
     createdAt: conv.createdAt,
     updatedAt: conv.updatedAt,
@@ -560,7 +552,7 @@ export function serverConversationToSession(conv: ServerConversationFull): Sessi
  */
 export function serverConversationToStubSession(item: ServerConversation): Session {
   return {
-    id: createSyncedSessionId(),
+    id: generateSessionId(),
     title: item.title,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
