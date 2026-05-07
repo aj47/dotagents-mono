@@ -75,6 +75,7 @@ import {
   connectOperatorWhatsAppAction,
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
+  createOperatorAuditRouteActions,
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueRouteActions,
   createOperatorObservabilityRouteActions,
@@ -1411,6 +1412,13 @@ describe("operator action API helpers", () => {
     }
 
     expect(getOperatorAuditAction(1, options)).toEqual({
+      statusCode: 200,
+      body: {
+        count: 1,
+        entries: [auditEntries[1]],
+      },
+    })
+    expect(createOperatorAuditRouteActions(options).getOperatorAudit(1)).toEqual({
       statusCode: 200,
       body: {
         count: 1,

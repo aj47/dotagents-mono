@@ -76,6 +76,10 @@ export interface OperatorAuditActionOptions {
   diagnostics: OperatorAuditActionDiagnostics
 }
 
+export interface OperatorAuditRouteActions {
+  getOperatorAudit(count: string | number | undefined): OperatorAuditActionResult
+}
+
 export type OperatorMcpRestartRequest = {
   server: string
 }
@@ -1337,6 +1341,14 @@ export function getOperatorAuditAction(
   } catch (caughtError) {
     options.diagnostics.logError("operator-audit-actions", "Failed to build operator audit response", caughtError)
     return operatorAuditActionResult(500, { error: "Failed to build operator audit response" })
+  }
+}
+
+export function createOperatorAuditRouteActions(
+  options: OperatorAuditActionOptions,
+): OperatorAuditRouteActions {
+  return {
+    getOperatorAudit: (count) => getOperatorAuditAction(count, options),
   }
 }
 

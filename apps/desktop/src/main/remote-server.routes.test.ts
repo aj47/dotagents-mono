@@ -624,6 +624,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain('from "@dotagents/shared/remote-server-route-contracts"')
     expect(operatorRouteDesktopActionsSource).toContain("...operatorAgentRouteActions")
     expect(operatorRouteDesktopActionsSource).toContain("...operatorObservabilityRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("...operatorAuditRouteActions")
     expect(operatorRouteDesktopActionsSource).toContain("recordOperatorAuditEvent")
     expect(injectedMcpRoutesSource).not.toContain('from "./injected-mcp-actions"')
     expect(injectedMcpRoutesSource).not.toContain("export interface InjectedMcpRouteActions")
@@ -1509,8 +1510,14 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.getOperatorAudit(query.count)")
     expect(controllerSource).toContain("adapters.recordOperatorResponseAuditEvent(req, reply)")
     expect(desktopAdaptersSource).toContain("recordOperatorResponseAuditEvent")
-    expect(operatorAuditActionsSource).toContain("getOperatorAuditAction(count, operatorAuditActionOptions)")
+    expect(operatorAuditActionsSource).toContain(
+      "export const operatorAuditRouteActions = createOperatorAuditRouteActions(operatorAuditActionOptions)",
+    )
+    expect(operatorAuditActionsSource).not.toContain("getOperatorAuditAction(count, operatorAuditActionOptions)")
     expect(sharedOperatorActionsSource).toContain("export function getOperatorAuditAction(")
+    expect(sharedOperatorActionsSource).toContain("export interface OperatorAuditRouteActions")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorAuditRouteActions")
+    expect(sharedOperatorActionsSource).toContain("getOperatorAudit: (count) => getOperatorAuditAction(count, options)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorAuditResponse(options.getEntries(), count)")
     expect(operatorAuditActionsSource).toContain("buildOperatorResponseAuditContext(request, reply, getOperatorAuditContext(request))")
     expect(operatorAuditActionsSource).toContain("recordOperatorAuditEvent(request, auditContext)")
@@ -1669,7 +1676,9 @@ describe("remote-server route registration", () => {
     expect(operatorAuditActionsSource).toContain("getOperatorAuditDeviceId(request)")
     expect(operatorAuditActionsSource).toContain("getOperatorAuditSource(request)")
     expect(operatorAuditActionsSource).toContain("function recordOperatorAuditEvent")
-    expect(operatorAuditActionsSource).toContain("getOperatorAuditAction(count, operatorAuditActionOptions)")
+    expect(operatorAuditActionsSource).toContain(
+      "export const operatorAuditRouteActions = createOperatorAuditRouteActions(operatorAuditActionOptions)",
+    )
     expect(operatorTaskSchedulerSection).toContain("adapters.scheduleTaskAfterReply(reply, () => {")
     expect(desktopAdaptersSource).toContain("reply.raw.once(\"finish\", run)")
     expect(operatorLifecycleSection).toContain("void restartRemoteServer().catch")

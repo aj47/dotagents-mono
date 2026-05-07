@@ -6,7 +6,7 @@ import {
   buildOperatorAuditEventEntry,
   buildOperatorResponseAuditContext,
   buildRejectedOperatorDeviceAuditEntry,
-  getOperatorAuditAction,
+  createOperatorAuditRouteActions,
   getOperatorAuditDeviceId,
   getOperatorAuditPath,
   getOperatorAuditSource,
@@ -57,6 +57,8 @@ const operatorAuditActionOptions: OperatorAuditActionOptions = {
   getEntries: () => operatorAuditLogStore.getEntries(),
   diagnostics: diagnosticsService,
 }
+
+export const operatorAuditRouteActions = createOperatorAuditRouteActions(operatorAuditActionOptions)
 
 export function recordRejectedOperatorDeviceAttempt(request: FastifyRequest, failureReason: string): void {
   operatorAuditLogStore.append(buildRejectedOperatorDeviceAuditEntry({
@@ -109,8 +111,4 @@ export function recordOperatorResponseAuditEvent(request: FastifyRequest, reply:
   if (auditContext) {
     recordOperatorAuditEvent(request, auditContext)
   }
-}
-
-export function getOperatorAudit(count: string | number | undefined): OperatorAuditActionResult {
-  return getOperatorAuditAction(count, operatorAuditActionOptions)
 }
