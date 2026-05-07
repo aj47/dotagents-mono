@@ -75,6 +75,12 @@ function getAgentSessionActionsSource(): string {
   return readFileSync(agentSessionActionsPath, "utf8")
 }
 
+function getConversationServiceSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const conversationServicePath = path.join(testDir, "conversation-service.ts")
+  return readFileSync(conversationServicePath, "utf8")
+}
+
 function getSharedAgentRunUtilsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedAgentRunUtilsPath = path.join(testDir, "../../../../packages/shared/src/agent-run-utils.ts")
@@ -1618,6 +1624,7 @@ describe("remote-server route registration", () => {
     const sharedRemoteServerRouteContractsSource = getSharedRemoteServerRouteContractsSource()
     const sharedConversationSyncSource = getSharedConversationSyncSource()
     const sharedConversationMediaAssetsSource = getSharedConversationMediaAssetsSource()
+    const conversationServiceSource = getConversationServiceSource()
 
     expectRegisteredApiRoute(source, "GET", "conversation")
     expectRegisteredApiRoute(source, "GET", "conversationImageAsset")
@@ -1694,6 +1701,9 @@ describe("remote-server route registration", () => {
     expect(sharedConversationSyncSource).toContain("buildServerConversationDeleteResponse(conversationId)")
     expect(sharedConversationSyncSource).toContain("buildServerConversationsDeleteAllResponse()")
     expect(sharedConversationSyncSource).not.toContain('from "./conversation-service"')
+    expect(conversationServiceSource).toContain("buildNewServerConversation(")
+    expect(conversationServiceSource).toContain("buildServerConversationTitle(undefined")
+    expect(conversationServiceSource).not.toContain("title: generateConversationTitleFromMessage")
     expect(mobileApiDesktopActionsSource).toContain("const conversationImageAssetActionOptions: ConversationImageAssetActionOptions")
     expect(mobileApiDesktopActionsSource).toContain(
       "const conversationImageAssetRouteActions = createConversationImageAssetRouteActions(conversationImageAssetActionOptions)",

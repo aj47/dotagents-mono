@@ -8,7 +8,12 @@ import type {
   ServerConversationMessage,
   UpdateConversationRequest,
 } from './api-types';
-import { generateSessionId, type Session, type SessionChatMessage } from './session';
+import {
+  generateConversationTitleFromMessage,
+  generateSessionId,
+  type Session,
+  type SessionChatMessage,
+} from './session';
 
 export interface SyncResult {
   pulled: number;
@@ -293,11 +298,11 @@ export function buildServerConversationTitle(
   }
 
   const firstMessageContent = messages[0]?.content || '';
-  if (firstMessageContent.length > 50) {
-    return `${firstMessageContent.slice(0, 50)}...`;
+  if (!firstMessageContent) {
+    return 'New Conversation';
   }
 
-  return firstMessageContent || 'New Conversation';
+  return generateConversationTitleFromMessage(firstMessageContent);
 }
 
 export function buildServerConversationMessages(

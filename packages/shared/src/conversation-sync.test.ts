@@ -5,6 +5,7 @@ import {
   buildNewServerConversation,
   buildBranchedServerConversation,
   buildNewServerConversationFromUpdateRequest,
+  buildServerConversationTitle,
   buildServerConversationDeleteResponse,
   buildServerConversationFullResponse,
   buildServerConversationsDeleteAllResponse,
@@ -115,6 +116,23 @@ describe('server conversation API helpers', () => {
         { id: 'msg-30-1', role: 'assistant', content: 'hello', timestamp: 30, toolCalls: undefined, toolResults: undefined },
       ],
     });
+  });
+
+  it('builds image-aware conversation titles from shared creation helpers', () => {
+    expect(buildServerConversationTitle(undefined, [{
+      role: 'user',
+      content: '![Screen selection](assets://conversation-image/conv_1/screen.png)',
+    }])).toBe('Screen selection');
+    expect(buildServerConversationTitle(undefined, [])).toBe('New Conversation');
+
+    const conversation = buildNewServerConversation(
+      'conv-image',
+      { messages: [{ role: 'user', content: '![](data:image/png;base64,abc)' }] },
+      10,
+      messageIdFactory,
+    );
+
+    expect(conversation.title).toBe('Image');
   });
 
   it('returns route-compatible validation errors for bad create and update bodies', () => {

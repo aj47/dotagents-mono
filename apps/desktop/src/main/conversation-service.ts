@@ -13,7 +13,11 @@ import type {
   ConversationHistoryItem,
   LoadedConversation,
 } from "@dotagents/shared/conversation-domain"
-import { buildBranchedServerConversation } from "@dotagents/shared/conversation-sync"
+import {
+  buildBranchedServerConversation,
+  buildNewServerConversation,
+  buildServerConversationTitle,
+} from "@dotagents/shared/conversation-sync"
 import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "@dotagents/shared/conversation-context-builder"
 import {
@@ -25,7 +29,6 @@ import { filterVisibleChatMessages } from "@dotagents/shared/chat-utils"
 import {
   buildConversationPreview,
   generateMessageId,
-  generateConversationTitleFromMessage,
   normalizeConversationTitleText,
 } from "@dotagents/shared/session"
 import {
@@ -284,7 +287,7 @@ export class ConversationService {
       return null
     }
 
-    const fallbackTitle = generateConversationTitleFromMessage(firstUserMessage)
+    const fallbackTitle = buildServerConversationTitle(undefined, [{ role: "user", content: firstUserMessage }])
     const currentTitle = normalizeConversationTitleText(conversation.title, { maxChars: MAX_SESSION_TITLE_CHARS })
     if (currentTitle !== normalizeConversationTitleText(fallbackTitle, { maxChars: MAX_SESSION_TITLE_CHARS })) {
       return null
@@ -1170,24 +1173,15 @@ export class ConversationService {
   ): Promise<Conversation> {
     // Validate and sanitize the externally-provided conversation ID
     const validatedId = this.validateConversationId(conversationId)
-    const messageId = generateMessageId()
     const now = Date.now()
     const storedFirstMessage = await this.materializeInlineDataImagesInContent(validatedId, firstMessage)
 
-    const message: ConversationMessage = {
-      id: messageId,
-      role,
-      content: storedFirstMessage,
-      timestamp: now,
-    }
-
-    const conversation: Conversation = {
-      id: validatedId,
-      title: generateConversationTitleFromMessage(storedFirstMessage),
-      createdAt: now,
-      updatedAt: now,
-      messages: [message],
-    }
+    const conversation = buildNewServerConversation(
+      validatedId,
+      { messages: [{ role, content: storedFirstMessage }] },
+      now,
+      () => generateMessageId(),
+    ) as Conversation
 
     await this.enqueueConversationMutation(validatedId, async () => {
       await this.saveConversationUnlocked(conversation)
