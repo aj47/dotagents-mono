@@ -6,6 +6,7 @@ import {
   appendServerConversationMessage,
   buildNewServerConversation,
   buildBranchedServerConversation,
+  buildServerConversationCompactionCheckpointMetadata,
   buildServerConversationHistoryItem,
   buildNewServerConversationFromUpdateRequest,
   buildServerConversationTitle,
@@ -19,6 +20,7 @@ import {
   createConversationRouteActions,
   deleteAllConversationsAction,
   deleteConversationAction,
+  estimateServerConversationCompactionTokensFromText,
   fetchFullConversation,
   fromServerConversationMessage,
   getConversationAction,
@@ -26,6 +28,9 @@ import {
   getRepresentedServerConversationMessageCount,
   getRepresentedServerConversationMessageSliceCount,
   getStoredServerConversationMessages,
+  getValidServerConversationCompactionTimestamp,
+  hasPersistedServerConversationCompactionCheckpoint,
+  normalizeServerConversationSummarizedMessageCount,
   parseCreateConversationRequestBody,
   parseBranchConversationRequestBody,
   parseUpdateConversationRequestBody,
@@ -364,6 +369,94 @@ describe('server conversation API helpers', () => {
       partialReason: undefined,
     });
     expect(syncServerConversationStorageMetadata(rawWithoutSummary)).toBe(false);
+  });
+
+  it('builds portable compaction checkpoint metadata', () => {
+    const rawMessages = Array.from({ length: 25 }, (_, index) => ({
+      id: `m${index}`,
+      role: index % 2 === 0 ? 'user' as const : 'assistant' as const,
+      content: index === 2
+        ? 'Remember the analytics repo is Bin-Huang/youtube-analytics-cli.'
+        : `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }));
+    const summaryMessage = {
+      id: 'summary-1',
+      role: 'assistant' as const,
+      content: 'The user mentioned Bin-Huang/youtube-analytics-cli.',
+      timestamp: 1_700_000_000_100,
+      isSummary: true,
+      summarizedMessageCount: 15,
+    };
+
+    const metadata = buildServerConversationCompactionCheckpointMetadata({
+      fullMessageHistory: rawMessages,
+      summaryMessage,
+      summarizedMessageCount: summaryMessage.summarizedMessageCount,
+      tokensBefore: estimateServerConversationCompactionTokensFromText(
+        rawMessages.slice(0, 15).map((message) => message.content).join('\n'),
+      ),
+      compactedAt: getValidServerConversationCompactionTimestamp(
+        Number.NaN,
+        summaryMessage.timestamp,
+        rawMessages[0]?.timestamp,
+      ),
+    });
+
+    expect(metadata).toMatchObject({
+      rawHistoryPreserved: true,
+      storedRawMessageCount: 25,
+      representedMessageCount: 25,
+      compactedAt: summaryMessage.timestamp,
+      summary: summaryMessage.content,
+      summaryMessageId: summaryMessage.id,
+      firstKeptMessageId: 'm15',
+      firstKeptMessageIndex: 15,
+      summarizedMessageCount: 15,
+      summarizedRange: {
+        startMessageId: 'm0',
+        endMessageId: 'm14',
+        startIndex: 0,
+        endIndex: 14,
+      },
+    });
+    expect(metadata.tokensBefore).toBeGreaterThan(0);
+    expect(metadata.extractedFacts?.[0]).toMatchObject({
+      sourceMessageId: 'm2',
+      repoSlugs: ['Bin-Huang/youtube-analytics-cli'],
+    });
+    expect(hasPersistedServerConversationCompactionCheckpoint(metadata)).toBe(true);
+  });
+
+  it('clamps portable compaction checkpoint ranges to preserved raw history', () => {
+    const rawMessages = Array.from({ length: 3 }, (_, index) => ({
+      id: undefined as any,
+      role: 'user' as const,
+      content: `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }));
+
+    expect(normalizeServerConversationSummarizedMessageCount(99, rawMessages.length)).toBe(3);
+    const metadata = buildServerConversationCompactionCheckpointMetadata({
+      fullMessageHistory: rawMessages,
+      summaryMessage: {
+        id: undefined as any,
+        role: 'assistant',
+        content: 'Summary',
+        timestamp: 1_700_000_000_010,
+        isSummary: true,
+        summarizedMessageCount: 99,
+      },
+      summarizedMessageCount: 99,
+      tokensBefore: 12,
+      compactedAt: 1_700_000_000_010,
+    });
+
+    expect(metadata.summarizedMessageCount).toBe(3);
+    expect(metadata.firstKeptMessageId).toBeUndefined();
+    expect(metadata.firstKeptMessageIndex).toBeUndefined();
+    expect(metadata.summarizedRange).toMatchObject({ startIndex: 0, endIndex: 2 });
+    expect(hasPersistedServerConversationCompactionCheckpoint(metadata)).toBe(true);
   });
 
   it('limits loaded conversation messages without returning raw history payloads', () => {

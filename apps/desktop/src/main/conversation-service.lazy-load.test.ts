@@ -260,35 +260,4 @@ describe("conversation lazy loading", () => {
     expect(loaded?.compaction?.firstKeptMessageIndex).toBe(15)
     expect(saveSpy).not.toHaveBeenCalled()
   })
-
-  it("clamps checkpoint summarized counts to the preserved raw history bounds", async () => {
-    const service = await setupConversationServiceTest()
-    const rawMessages = Array.from({ length: 3 }, (_, index) => ({
-      id: `m${index}`,
-      role: "user" as const,
-      content: `Message ${index}`,
-      timestamp: 1_700_000_000_000 + index,
-    }))
-
-    const metadata = (service as any).buildCompactionCheckpointMetadata(
-      undefined,
-      rawMessages,
-      {
-        id: "summary-1",
-        role: "assistant",
-        content: "Summary",
-        timestamp: 1_700_000_000_010,
-        isSummary: true,
-        summarizedMessageCount: 99,
-      },
-      99,
-      12,
-      1_700_000_000_010,
-    )
-
-    expect(metadata.summarizedMessageCount).toBe(3)
-    expect(metadata.firstKeptMessageId).toBeUndefined()
-    expect(metadata.firstKeptMessageIndex).toBeUndefined()
-    expect(metadata.summarizedRange).toMatchObject({ startIndex: 0, endIndex: 2 })
-  })
 })

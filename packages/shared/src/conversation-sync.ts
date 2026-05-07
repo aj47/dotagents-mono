@@ -10,6 +10,7 @@ import type {
 } from './api-types';
 import { filterVisibleChatMessages } from './chat-utils';
 import type { ConversationCompactionMetadata } from './conversation-domain';
+import { extractHighSignalFactsFromConversationMessages } from './conversation-context-builder';
 import { sanitizeMessageContentForDisplay } from './message-display-utils';
 import {
   buildConversationPreview,
@@ -198,6 +199,16 @@ export type RenameServerConversationTitleResult<TConversation extends ServerConv
 export interface BuildServerConversationHistoryItemOptions {
   maxLastMessageChars?: number;
   maxPreviewChars?: number;
+}
+
+export interface BuildServerConversationCompactionCheckpointMetadataOptions {
+  existing?: ConversationCompactionMetadata;
+  fullMessageHistory: ServerConversationRecordMessage[];
+  summaryMessage: ServerConversationRecordMessage;
+  summarizedMessageCount?: number;
+  tokensBefore: number;
+  compactedAt?: number;
+  maxExtractedFacts?: number;
 }
 
 export type LimitedServerConversationRecord<TConversation extends ServerConversationRecord<any>> = TConversation & {
@@ -419,6 +430,87 @@ export function getRepresentedServerConversationMessageCount<TConversation exten
   }
 
   return getStoredServerConversationMessages(conversation).length;
+}
+
+export function estimateServerConversationCompactionTokensFromText(text: string): number {
+  return Math.max(1, Math.ceil(text.length / 4));
+}
+
+export function getValidServerConversationCompactionTimestamp(...candidates: Array<number | undefined>): number {
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'number' || !Number.isFinite(candidate)) continue;
+    if (!Number.isFinite(new Date(candidate).getTime())) continue;
+    return candidate;
+  }
+  return Date.now();
+}
+
+export function normalizeServerConversationSummarizedMessageCount(
+  count: number | undefined,
+  rawMessageCount: number,
+): number {
+  if (typeof count !== 'number' || !Number.isFinite(count)) return 0;
+  return Math.min(Math.max(0, Math.floor(count)), rawMessageCount);
+}
+
+export function hasPersistedServerConversationCompactionCheckpoint(
+  compaction: ConversationCompactionMetadata | undefined,
+): boolean {
+  return !!(
+    compaction?.summary?.trim() &&
+    (
+      compaction.firstKeptMessageId ||
+      typeof compaction.firstKeptMessageIndex === 'number' ||
+      compaction.summarizedRange
+    )
+  );
+}
+
+export function buildServerConversationCompactionCheckpointMetadata(
+  options: BuildServerConversationCompactionCheckpointMetadataOptions,
+): ConversationCompactionMetadata {
+  const {
+    existing,
+    fullMessageHistory,
+    summaryMessage,
+    summarizedMessageCount,
+    tokensBefore,
+    compactedAt = Date.now(),
+    maxExtractedFacts = 8,
+  } = options;
+  const normalizedSummarizedMessageCount = normalizeServerConversationSummarizedMessageCount(
+    summarizedMessageCount,
+    fullMessageHistory.length,
+  );
+  const summarizedMessages = fullMessageHistory.slice(0, normalizedSummarizedMessageCount);
+  const firstKeptMessage = fullMessageHistory[normalizedSummarizedMessageCount];
+  const firstSummarizedMessage = summarizedMessages[0];
+  const lastSummarizedMessage = summarizedMessages[summarizedMessages.length - 1];
+
+  return {
+    ...existing,
+    rawHistoryPreserved: true,
+    storedRawMessageCount: fullMessageHistory.length,
+    representedMessageCount: fullMessageHistory.length,
+    compactedAt,
+    summary: summaryMessage.content,
+    summaryMessageId: summaryMessage.id,
+    firstKeptMessageId: firstKeptMessage?.id,
+    firstKeptMessageIndex: firstKeptMessage ? normalizedSummarizedMessageCount : undefined,
+    summarizedRange: summarizedMessages.length > 0
+      ? {
+        startMessageId: firstSummarizedMessage?.id,
+        endMessageId: lastSummarizedMessage?.id,
+        startIndex: 0,
+        endIndex: summarizedMessages.length - 1,
+      }
+      : undefined,
+    summarizedMessageCount: normalizedSummarizedMessageCount,
+    tokensBefore,
+    extractedFacts: extractHighSignalFactsFromConversationMessages(summarizedMessages, {
+      maxFacts: maxExtractedFacts,
+    }),
+  };
 }
 
 export function syncServerConversationStorageMetadata<TConversation extends ServerConversationRecord<any>>(
