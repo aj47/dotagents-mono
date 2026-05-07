@@ -92,6 +92,36 @@ export type InjectedMcpRuntimeToolLike = {
   inputSchema: unknown
 }
 
+export type InjectedMcpResolvedRequestContext<TProfileSnapshot = unknown> = {
+  appSessionId: string
+  profileSnapshot: TProfileSnapshot
+}
+
+export interface InjectedMcpRequestContextResolutionService<TProfileSnapshot = unknown> {
+  getAcpSessionForClientSessionToken(acpSessionToken: string): string | undefined
+  getAppSessionForAcpSession(acpSessionId: string): string | undefined
+  getPendingAppSessionForClientSessionToken(acpSessionToken: string): string | undefined
+  getActiveSessionProfileSnapshot(appSessionId: string): TProfileSnapshot | undefined
+  getTrackedSessionProfileSnapshot(appSessionId: string): TProfileSnapshot | undefined
+}
+
+export type InjectedMcpRuntimeToolSourceLike = {
+  name: string
+  description?: string
+  inputSchema?: unknown
+}
+
+export interface InjectedMcpRuntimeToolResolutionOptions<
+  TProfileSnapshot = unknown,
+  TTool extends InjectedMcpRuntimeToolSourceLike = InjectedMcpRuntimeToolSourceLike,
+> {
+  session: InjectedMcpRequestContextResolutionService<TProfileSnapshot>
+  tools: {
+    getAvailableToolsForProfile(profileSnapshot: TProfileSnapshot): TTool[]
+    isRuntimeToolName(toolName: string): boolean
+  }
+}
+
 export type InjectedMcpRuntimeToolsContext<TRequestContext = unknown> = {
   requestContext: TRequestContext
   tools: InjectedMcpRuntimeToolLike[]
@@ -1587,6 +1617,49 @@ export function createInjectedMcpToolRouteActions<
       return options.response.sendActionResult(reply, result)
     },
   }
+}
+
+export function resolveInjectedMcpRequestContext<TProfileSnapshot = unknown>(
+  acpSessionToken: string | undefined,
+  service: InjectedMcpRequestContextResolutionService<TProfileSnapshot>,
+): InjectedMcpResolvedRequestContext<TProfileSnapshot> | undefined {
+  if (!acpSessionToken) return undefined
+
+  const acpSessionId = service.getAcpSessionForClientSessionToken(acpSessionToken)
+  const appSessionId = (acpSessionId
+    ? service.getAppSessionForAcpSession(acpSessionId)
+    : undefined) ?? service.getPendingAppSessionForClientSessionToken(acpSessionToken)
+  if (!appSessionId) return undefined
+
+  const profileSnapshot = service.getActiveSessionProfileSnapshot(appSessionId)
+    ?? service.getTrackedSessionProfileSnapshot(appSessionId)
+  if (!profileSnapshot) return undefined
+
+  return {
+    appSessionId,
+    profileSnapshot,
+  }
+}
+
+export function resolveInjectedRuntimeToolsForAcpSession<
+  TProfileSnapshot = unknown,
+  TTool extends InjectedMcpRuntimeToolSourceLike = InjectedMcpRuntimeToolSourceLike,
+>(
+  acpSessionToken: string | undefined,
+  options: InjectedMcpRuntimeToolResolutionOptions<TProfileSnapshot, TTool>,
+): InjectedMcpRuntimeToolsContext<InjectedMcpResolvedRequestContext<TProfileSnapshot>> | undefined {
+  const requestContext = resolveInjectedMcpRequestContext(acpSessionToken, options.session)
+  if (!requestContext) return undefined
+
+  const tools = options.tools.getAvailableToolsForProfile(requestContext.profileSnapshot)
+    .filter((tool) => options.tools.isRuntimeToolName(tool.name))
+    .map((tool) => ({
+      name: tool.name,
+      description: tool.description ?? "",
+      inputSchema: tool.inputSchema,
+    }))
+
+  return { requestContext, tools }
 }
 
 type InjectedMcpProtocolTransportState<TServer, TTransport> = {

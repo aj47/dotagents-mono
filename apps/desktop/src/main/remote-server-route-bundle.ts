@@ -15,7 +15,10 @@ import {
   createInjectedMcpProtocolRouteAction,
   createInjectedMcpToolRouteActions,
   INJECTED_RUNTIME_TOOL_TRANSPORT_NAME,
+  resolveInjectedRuntimeToolsForAcpSession,
   type InjectedMcpActionOptions,
+  type InjectedMcpResolvedRequestContext,
+  type InjectedMcpRuntimeToolResolutionOptions,
 } from "@dotagents/shared/mcp-api"
 import type { RemoteServerRouteRegistrar } from "@dotagents/shared/remote-server-controller-contracts"
 import {
@@ -35,50 +38,31 @@ import { mcpService } from "./mcp-service"
 import { operatorRouteDesktopActions } from "./operator-route-desktop-actions"
 import { isRuntimeTool } from "./runtime-tools"
 
-interface AcpMcpRequestContext {
-  appSessionId: string
-  profileSnapshot: SessionProfileSnapshot
-}
+type AcpMcpRequestContext = InjectedMcpResolvedRequestContext<SessionProfileSnapshot>
 
 const INVALID_ACP_SESSION_CONTEXT_ERROR = "Unauthorized: invalid ACP session context"
 
-function getAcpMcpRequestContext(
-  acpSessionToken: string | undefined,
-): AcpMcpRequestContext | undefined {
-  if (!acpSessionToken) return undefined
-
-  const acpSessionId = getAcpSessionForClientSessionToken(acpSessionToken)
-  const appSessionId = (acpSessionId
-    ? getAppSessionForAcpSession(acpSessionId)
-    : undefined) ?? getPendingAppSessionForClientSessionToken(acpSessionToken)
-  if (!appSessionId) return undefined
-
-  const profileSnapshot = agentSessionStateManager.getSessionProfileSnapshot(appSessionId)
-    ?? agentSessionTracker.getSessionProfileSnapshot(appSessionId)
-
-  if (!profileSnapshot) return undefined
-
-  return {
-    appSessionId,
-    profileSnapshot,
-  }
+const injectedMcpRuntimeToolResolutionOptions: InjectedMcpRuntimeToolResolutionOptions<SessionProfileSnapshot> = {
+  session: {
+    getAcpSessionForClientSessionToken,
+    getAppSessionForAcpSession,
+    getPendingAppSessionForClientSessionToken,
+    getActiveSessionProfileSnapshot: (appSessionId) =>
+      agentSessionStateManager.getSessionProfileSnapshot(appSessionId),
+    getTrackedSessionProfileSnapshot: (appSessionId) =>
+      agentSessionTracker.getSessionProfileSnapshot(appSessionId),
+  },
+  tools: {
+    getAvailableToolsForProfile: (profileSnapshot) =>
+      mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig),
+    isRuntimeToolName: isRuntimeTool,
+  },
 }
 
 function getInjectedRuntimeToolsForAcpSession(
   acpSessionToken: string | undefined,
 ): { requestContext: AcpMcpRequestContext; tools: Array<{ name: string; description: string; inputSchema: unknown }> } | undefined {
-  const requestContext = getAcpMcpRequestContext(acpSessionToken)
-  if (!requestContext) return undefined
-
-  const tools = mcpService.getAvailableToolsForProfile(requestContext.profileSnapshot.mcpServerConfig)
-    .filter((tool) => isRuntimeTool(tool.name))
-    .map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      inputSchema: tool.inputSchema,
-    }))
-
-  return { requestContext, tools }
+  return resolveInjectedRuntimeToolsForAcpSession(acpSessionToken, injectedMcpRuntimeToolResolutionOptions)
 }
 
 function createInjectedMcpServer(acpSessionToken: string): MCPServer {

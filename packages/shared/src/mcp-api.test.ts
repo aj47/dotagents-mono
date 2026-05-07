@@ -56,6 +56,8 @@ import {
   stopOperatorMcpServerAction,
   testOperatorMcpServerAction,
   restartOperatorMcpServerAction,
+  resolveInjectedMcpRequestContext,
+  resolveInjectedRuntimeToolsForAcpSession,
   stripSamplingToolMarkerTokens,
   toggleMcpServerAction,
   upsertMcpServerConfigAction,
@@ -1352,6 +1354,112 @@ describe("MCP API helpers", () => {
       statusCode: 400,
       error: "Missing or invalid 'name' parameter",
     })
+  })
+
+  it("resolves injected MCP request contexts and runtime tools through shared adapters", () => {
+    type ProfileSnapshot = {
+      id: string
+      mcpServerConfig: { enabledServers: string[] }
+    }
+
+    const activeProfile: ProfileSnapshot = {
+      id: "active",
+      mcpServerConfig: { enabledServers: ["runtime", "docs"] },
+    }
+    const trackedProfile: ProfileSnapshot = {
+      id: "tracked",
+      mcpServerConfig: { enabledServers: ["runtime"] },
+    }
+    const calls: string[] = []
+    const session = {
+      getAcpSessionForClientSessionToken: (token: string) => {
+        calls.push(`acp:${token}`)
+        if (token === "linked-active") return "acp-active"
+        if (token === "linked-missing-profile") return "acp-missing-profile"
+        return undefined
+      },
+      getAppSessionForAcpSession: (acpSessionId: string) => {
+        calls.push(`app:${acpSessionId}`)
+        if (acpSessionId === "acp-active") return "app-active"
+        if (acpSessionId === "acp-missing-profile") return "app-missing-profile"
+        return undefined
+      },
+      getPendingAppSessionForClientSessionToken: (token: string) => {
+        calls.push(`pending:${token}`)
+        return token === "pending-tracked" ? "app-tracked" : undefined
+      },
+      getActiveSessionProfileSnapshot: (appSessionId: string) => {
+        calls.push(`active:${appSessionId}`)
+        return appSessionId === "app-active" ? activeProfile : undefined
+      },
+      getTrackedSessionProfileSnapshot: (appSessionId: string) => {
+        calls.push(`tracked:${appSessionId}`)
+        return appSessionId === "app-tracked" ? trackedProfile : undefined
+      },
+    }
+
+    expect(resolveInjectedMcpRequestContext(undefined, session)).toBeUndefined()
+    expect(resolveInjectedMcpRequestContext("missing", session)).toBeUndefined()
+    expect(resolveInjectedMcpRequestContext("linked-missing-profile", session)).toBeUndefined()
+    expect(resolveInjectedMcpRequestContext("linked-active", session)).toEqual({
+      appSessionId: "app-active",
+      profileSnapshot: activeProfile,
+    })
+    expect(resolveInjectedMcpRequestContext("pending-tracked", session)).toEqual({
+      appSessionId: "app-tracked",
+      profileSnapshot: trackedProfile,
+    })
+
+    expect(resolveInjectedRuntimeToolsForAcpSession("linked-active", {
+      session,
+      tools: {
+        getAvailableToolsForProfile: (profileSnapshot) => [{
+          name: "runtime.read_file",
+          description: `Read for ${profileSnapshot.id}`,
+          inputSchema: { type: "object" },
+        }, {
+          name: "docs.search",
+          description: "Docs",
+          inputSchema: { type: "object" },
+        }, {
+          name: "runtime.no_description",
+        }],
+        isRuntimeToolName: (toolName) => toolName.startsWith("runtime."),
+      },
+    })).toEqual({
+      requestContext: {
+        appSessionId: "app-active",
+        profileSnapshot: activeProfile,
+      },
+      tools: [{
+        name: "runtime.read_file",
+        description: "Read for active",
+        inputSchema: { type: "object" },
+      }, {
+        name: "runtime.no_description",
+        description: "",
+        inputSchema: undefined,
+      }],
+    })
+
+    expect(calls).toEqual([
+      "acp:missing",
+      "pending:missing",
+      "acp:linked-missing-profile",
+      "app:acp-missing-profile",
+      "active:app-missing-profile",
+      "tracked:app-missing-profile",
+      "acp:linked-active",
+      "app:acp-active",
+      "active:app-active",
+      "acp:pending-tracked",
+      "pending:pending-tracked",
+      "active:app-tracked",
+      "tracked:app-tracked",
+      "acp:linked-active",
+      "app:acp-active",
+      "active:app-active",
+    ])
   })
 
   it("runs injected MCP list and call shims through shared service adapters", async () => {
