@@ -211,6 +211,16 @@ export interface BuildServerConversationHistoryItemOptions {
   maxPreviewChars?: number;
 }
 
+export interface NormalizeServerConversationHistoryIndexOptions {
+  maxLastMessageChars?: number;
+  maxPreviewChars?: number;
+}
+
+export interface NormalizeServerConversationHistoryIndexResult<TItem> {
+  index: TItem[];
+  changed: boolean;
+}
+
 export interface BuildServerConversationCompactionCheckpointMetadataOptions {
   existing?: ConversationCompactionMetadata;
   fullMessageHistory: ServerConversationRecordMessage[];
@@ -431,6 +441,38 @@ export function toServerConversationHistorySnippet(value: string, maxChars: numb
   return sanitized.length > maxChars
     ? `${sanitized.slice(0, maxChars).trim()}…`
     : sanitized;
+}
+
+export function normalizeServerConversationHistoryIndex<TItem extends { lastMessage?: string; preview?: string }>(
+  index: TItem[],
+  options: NormalizeServerConversationHistoryIndexOptions = {},
+): NormalizeServerConversationHistoryIndexResult<TItem> {
+  const maxLastMessageChars = options.maxLastMessageChars ?? 500;
+  const maxPreviewChars = options.maxPreviewChars ?? 200;
+  let changed = false;
+  const normalizedIndex = index.map((item) => {
+    const normalizedLastMessage = toServerConversationHistorySnippet(
+      item.lastMessage || '',
+      maxLastMessageChars,
+    );
+    const normalizedPreview = toServerConversationHistorySnippet(
+      item.preview || '',
+      maxPreviewChars,
+    );
+
+    if (normalizedLastMessage !== item.lastMessage || normalizedPreview !== item.preview) {
+      changed = true;
+      return {
+        ...item,
+        lastMessage: normalizedLastMessage,
+        preview: normalizedPreview,
+      } as TItem;
+    }
+
+    return item;
+  });
+
+  return { index: normalizedIndex, changed };
 }
 
 export function getRepresentedServerConversationMessageCount<TConversation extends ServerConversationRecord<any>>(

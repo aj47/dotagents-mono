@@ -33,6 +33,7 @@ import {
   getStoredServerConversationMessages,
   getValidServerConversationCompactionTimestamp,
   hasPersistedServerConversationCompactionCheckpoint,
+  normalizeServerConversationHistoryIndex,
   normalizeServerConversationSummarizedMessageCount,
   parseCreateConversationRequestBody,
   parseBranchConversationRequestBody,
@@ -360,6 +361,45 @@ describe('server conversation API helpers', () => {
       ],
       rawMessages: [],
     })).toBe(6);
+  });
+
+  it('normalizes persisted conversation history index snippets', () => {
+    const index = [
+      {
+        id: 'conv-clean',
+        title: 'Clean',
+        createdAt: 1,
+        updatedAt: 2,
+        messageCount: 1,
+        lastMessage: 'clean',
+        preview: 'preview',
+      },
+      {
+        id: 'conv-long',
+        title: 'Long',
+        createdAt: 3,
+        updatedAt: 4,
+        messageCount: 2,
+        lastMessage: `A\n\n${'x'.repeat(20)}`,
+        preview: `Preview  ${'y'.repeat(20)}`,
+      },
+    ];
+
+    const normalized = normalizeServerConversationHistoryIndex(index, {
+      maxLastMessageChars: 8,
+      maxPreviewChars: 10,
+    });
+
+    expect(normalized.changed).toBe(true);
+    expect(normalized.index[0]).toBe(index[0]);
+    expect(normalized.index[1]).toMatchObject({
+      lastMessage: 'A xxxxxx…',
+      preview: 'Preview yy…',
+    });
+    expect(normalizeServerConversationHistoryIndex(normalized.index, {
+      maxLastMessageChars: 8,
+      maxPreviewChars: 10,
+    }).changed).toBe(false);
   });
 
   it('normalizes conversation storage metadata for raw and compacted histories', () => {

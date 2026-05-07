@@ -27,10 +27,10 @@ import {
   getStoredServerConversationMessages,
   getValidServerConversationCompactionTimestamp,
   hasPersistedServerConversationCompactionCheckpoint,
+  normalizeServerConversationHistoryIndex,
   normalizeServerConversationSummarizedMessageCount,
   renameServerConversationTitle,
   syncServerConversationStorageMetadata,
-  toServerConversationHistorySnippet,
 } from "@dotagents/shared/conversation-sync"
 import { summarizeContent } from "./context-budget"
 import {
@@ -377,30 +377,10 @@ export class ConversationService {
     index: ConversationHistoryItem[]
     changed: boolean
   } {
-    let changed = false
-    const normalizedIndex = index.map((item) => {
-      const normalizedLastMessage = toServerConversationHistorySnippet(
-        item.lastMessage || "",
-        MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
-      )
-      const normalizedPreview = toServerConversationHistorySnippet(
-        item.preview || "",
-        MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
-      )
-
-      if (normalizedLastMessage !== item.lastMessage || normalizedPreview !== item.preview) {
-        changed = true
-        return {
-          ...item,
-          lastMessage: normalizedLastMessage,
-          preview: normalizedPreview,
-        }
-      }
-
-      return item
+    return normalizeServerConversationHistoryIndex(index, {
+      maxLastMessageChars: MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
+      maxPreviewChars: MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
     })
-
-    return { index: normalizedIndex, changed }
   }
 
   private async parseConversationData(
