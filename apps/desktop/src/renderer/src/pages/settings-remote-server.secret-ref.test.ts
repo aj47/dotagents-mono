@@ -21,6 +21,7 @@ describe("remote server settings secret references", () => {
     expect(source).toContain("DEFAULT_REMOTE_SERVER_ENABLED")
     expect(source).toContain("DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL")
     expect(source).toContain("DEFAULT_REMOTE_SERVER_CORS_ORIGINS")
+    expect(source).toContain("REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA")
     expect(source).toContain("DEFAULT_REMOTE_SERVER_PORT")
     expect(source).toContain("REMOTE_SERVER_PORT_MIN")
     expect(source).toContain("REMOTE_SERVER_PORT_MAX")
@@ -28,6 +29,8 @@ describe("remote server settings secret references", () => {
     expect(source).toContain("DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED")
     expect(source).toContain("DEFAULT_STREAMER_MODE_ENABLED")
     expect(source).toContain("DEFAULT_CLOUDFLARE_TUNNEL_MODE")
+    expect(source).not.toContain('label="CORS Origins"')
+    expect(source).not.toContain('placeholder="* or http://localhost:8081')
   })
 
   it("uses the explicit pairing API key endpoint for copy and QR payloads", () => {

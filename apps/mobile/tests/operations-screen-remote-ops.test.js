@@ -17,8 +17,8 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Remote Server/);
   assert.match(operationsSource, /Bind Address/);
   assert.match(operationsSource, /Log Level/);
-  assert.match(operationsSource, /CORS Origins/);
   assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS/);
+  assert.match(operationsSource, /REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA/);
   assert.match(operationsSource, /REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_BIND_ADDRESS/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_ENABLED/);
@@ -53,6 +53,7 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /remoteServerLogLevel: option\.value/);
   assert.match(operationsSource, /Use \$\{option\.label\} remote server log level/);
   assert.match(operationsSource, /remoteServerCorsOrigins: origins\.length > 0 \? origins : \[\.\.\.DEFAULT_REMOTE_SERVER_CORS_ORIGINS\]/);
+  assert.doesNotMatch(operationsSource, /placeholder="\* or http:\/\/localhost:8081/);
   assert.match(operationsSource, /Auto-Show Panel/);
   assert.match(operationsSource, /Terminal QR/);
   assert.match(operationsSource, /Trusted operator devices/);

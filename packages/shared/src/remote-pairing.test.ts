@@ -56,6 +56,7 @@ import {
   parseDotAgentsConfigDeepLink,
   REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
+  REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_PORT_MAX,
@@ -122,6 +123,14 @@ describe('remote server config contracts', () => {
       { value: 'info', label: 'info', successMessage: 'Remote server log level saved as info.' },
       { value: 'debug', label: 'debug', successMessage: 'Remote server log level saved as debug.' },
     ]);
+    expect(REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA).toEqual({
+      key: 'remoteServerCorsOrigins',
+      label: 'CORS Origins',
+      tooltip: 'Allowed origins for CORS requests. Use * for all origins (development), or specify comma-separated URLs like http://localhost:8081.',
+      placeholder: '* or http://localhost:8081, http://example.com',
+      helperText: 'Use * for development or specify allowed origins separated by commas.',
+      accessibilityLabel: 'Remote server CORS origins',
+    });
     expect(DEFAULT_REMOTE_SERVER_CORS_ORIGINS).toEqual(['*']);
     expect(getDefaultRemoteServerCorsOrigins()).toEqual(['*']);
     expect(getDefaultRemoteServerCorsOrigins()).not.toBe(DEFAULT_REMOTE_SERVER_CORS_ORIGINS);

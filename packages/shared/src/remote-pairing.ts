@@ -37,6 +37,15 @@ export type RemoteServerLogLevelOption = {
   successMessage: string;
 };
 
+export type RemoteServerCorsOriginsFieldMetadata = {
+  key: 'remoteServerCorsOrigins';
+  label: string;
+  tooltip: string;
+  placeholder: string;
+  helperText: string;
+  accessibilityLabel: string;
+};
+
 export type CloudflareTunnelModeOption = {
   value: CloudflareTunnelMode;
   label: string;
@@ -67,6 +76,14 @@ export const REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS: readonly RemoteServerLogLe
   { value: 'info', label: 'info', successMessage: 'Remote server log level saved as info.' },
   { value: 'debug', label: 'debug', successMessage: 'Remote server log level saved as debug.' },
 ];
+export const REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA: RemoteServerCorsOriginsFieldMetadata = {
+  key: 'remoteServerCorsOrigins',
+  label: 'CORS Origins',
+  tooltip: 'Allowed origins for CORS requests. Use * for all origins (development), or specify comma-separated URLs like http://localhost:8081.',
+  placeholder: '* or http://localhost:8081, http://example.com',
+  helperText: 'Use * for development or specify allowed origins separated by commas.',
+  accessibilityLabel: 'Remote server CORS origins',
+};
 export const CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS: readonly CloudflareTunnelModeOption[] = [
   {
     value: 'quick',

@@ -77,6 +77,7 @@ import {
   DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED,
   isRemoteServerPortUpdateValue,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
+  REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
@@ -1840,7 +1841,7 @@ export default function OperationsScreen({ navigation }: any) {
                 })}
               </View>
 
-              <Text style={styles.label}>CORS Origins</Text>
+              <Text style={styles.label}>{REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.remoteServerCorsOrigins}
@@ -1856,11 +1857,11 @@ export default function OperationsScreen({ navigation }: any) {
                 editable={!controlsDisabled}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="* or http://localhost:8081"
+                placeholder={REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('Remote server CORS origins')}
+                accessibilityLabel={createTextInputAccessibilityLabel(REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA.accessibilityLabel)}
               />
-              <Text style={styles.helperText}>Use * for development or comma-separated allowed origins.</Text>
+              <Text style={styles.helperText}>{REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA.helperText}</Text>
 
               <Text style={styles.subsectionTitle}>Trusted operator devices</Text>
               <Text style={styles.helperText}>If this list is empty, any authenticated client can use operator/admin routes. Once set, non-loopback operator access requires a matching stable device ID.</Text>

@@ -37,6 +37,7 @@ import {
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
+  REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   type CloudflareTunnelMode,
   type RemoteServerBindAddress,
@@ -341,7 +342,15 @@ export function RemoteServerSettingsGroups({
                 </Select>
               </Control>
 
-              <Control label={<ControlLabel label="CORS Origins" tooltip="Allowed origins for CORS requests. Use * for all origins (development), or specify comma-separated URLs like http://localhost:8081" />} className="px-3">
+              <Control
+                label={(
+                  <ControlLabel
+                    label={REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA.label}
+                    tooltip={REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA.tooltip}
+                  />
+                )}
+                className="px-3"
+              >
                 <Input
                   type="text"
                   value={(cfg.remoteServerCorsOrigins || DEFAULT_REMOTE_SERVER_CORS_ORIGINS).join(", ")}
@@ -352,11 +361,11 @@ export function RemoteServerSettingsGroups({
                       .filter(Boolean)
                     saveConfig({ remoteServerCorsOrigins: origins.length > 0 ? origins : [...DEFAULT_REMOTE_SERVER_CORS_ORIGINS] })
                   }}
-                  placeholder="* or http://localhost:8081, http://example.com"
+                  placeholder={REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA.placeholder}
                   className="w-full"
                 />
                 <div className="mt-1 text-xs text-muted-foreground">
-                  Use * for development or specify allowed origins separated by commas
+                  {REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA.helperText}
                 </div>
               </Control>
 
