@@ -103,6 +103,7 @@ import {
   getOperatorTunnelAction,
   getOperatorTunnelSetupAction,
   getOperatorUpdaterAction,
+  getOperatorWhatsAppIntegrationSummaryAction,
   getSanitizedWhatsAppOperatorDetails,
   getSensitiveOperatorSettingsKeys,
   isLoopbackOperatorAccessIp,
@@ -1609,6 +1610,89 @@ describe("operator action API helpers", () => {
     })
 
     expect(mergeOperatorWhatsAppStatusPayload(summary, "not json")).toBe(summary)
+  })
+
+  it("builds WhatsApp integration summaries through a shared service adapter", async () => {
+    const warnings: string[] = []
+    let connected = false
+    let statusToolResult = {
+      isError: false,
+      content: [{ type: "text", text: JSON.stringify({ connected: true, hasCredentials: true }) }],
+    }
+    let shouldThrow = false
+    const options = {
+      serverName: "whatsapp",
+      diagnostics: {
+        logWarning: (_source: string, message: string) => { warnings.push(message) },
+        getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error),
+      },
+      service: {
+        getConfig: () => ({
+          whatsappEnabled: true,
+          whatsappAutoReply: true,
+          whatsappLogMessages: true,
+          whatsappAllowFrom: ["+15550001", "+15550002"],
+          mcpConfig: { mcpServers: { whatsapp: {} } },
+        }),
+        getServerStatus: () => ({
+          whatsapp: {
+            connected,
+            error: connected ? undefined : "server down",
+          },
+        }),
+        getServerLogs: () => [
+          { timestamp: 1, level: "info" },
+          { timestamp: 2, level: "error" },
+        ],
+        executeStatusTool: async () => {
+          if (shouldThrow) throw new Error("status failed")
+          return statusToolResult
+        },
+      },
+    }
+
+    expect(await getOperatorWhatsAppIntegrationSummaryAction(options)).toMatchObject({
+      enabled: true,
+      available: false,
+      connected: false,
+      serverConfigured: true,
+      serverConnected: false,
+      autoReplyEnabled: true,
+      logMessagesEnabled: true,
+      allowedSenderCount: 2,
+      lastError: "server down",
+      logs: {
+        total: 2,
+        errorCount: 1,
+      },
+    })
+
+    connected = true
+    expect(await getOperatorWhatsAppIntegrationSummaryAction(options)).toMatchObject({
+      available: true,
+      connected: true,
+      hasCredentials: true,
+    })
+
+    statusToolResult = {
+      isError: true,
+      content: [{ type: "text", text: "status unavailable" }],
+    }
+    expect(await getOperatorWhatsAppIntegrationSummaryAction(options)).toMatchObject({
+      available: true,
+      connected: false,
+      lastError: "status unavailable",
+    })
+
+    shouldThrow = true
+    expect(await getOperatorWhatsAppIntegrationSummaryAction(options)).toMatchObject({
+      available: true,
+      connected: false,
+      lastError: "status failed",
+    })
+    expect(warnings).toEqual([
+      "Failed to summarize WhatsApp integration status: status failed",
+    ])
   })
 
   it("runs integration route actions through a shared service adapter", async () => {

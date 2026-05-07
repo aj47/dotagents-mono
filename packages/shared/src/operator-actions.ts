@@ -603,6 +603,39 @@ export type OperatorWhatsAppIntegrationSummaryOptions = {
   logs: OperatorLogSummaryEntryLike[]
 }
 
+export type OperatorWhatsAppIntegrationConfigLike = {
+  whatsappEnabled?: boolean
+  whatsappAutoReply?: boolean
+  whatsappLogMessages?: boolean
+  whatsappAllowFrom?: unknown[]
+  mcpConfig?: {
+    mcpServers?: Record<string, unknown>
+  }
+}
+
+export type OperatorWhatsAppServerStatusLike = {
+  connected?: boolean
+  error?: string
+}
+
+export interface OperatorWhatsAppIntegrationSummaryActionDiagnostics {
+  logWarning(source: string, message: string): void
+  getErrorMessage(error: unknown): string
+}
+
+export interface OperatorWhatsAppIntegrationSummaryActionService {
+  getConfig(): OperatorWhatsAppIntegrationConfigLike
+  getServerStatus(): Record<string, OperatorWhatsAppServerStatusLike | undefined>
+  getServerLogs(serverName: string): OperatorLogSummaryEntryLike[]
+  executeStatusTool(): Promise<OperatorWhatsAppActionToolResultLike>
+}
+
+export interface OperatorWhatsAppIntegrationSummaryActionOptions {
+  serverName: string
+  diagnostics: OperatorWhatsAppIntegrationSummaryActionDiagnostics
+  service: OperatorWhatsAppIntegrationSummaryActionService
+}
+
 export type OperatorUpdaterStatusOptions = {
   currentVersion?: string
   updateInfo?: OperatorUpdateInfoLike
@@ -1485,6 +1518,58 @@ export function mergeOperatorWhatsAppStatusPayload(
     connected: !!parsed.connected,
     ...(typeof parsed.hasCredentials === "boolean" ? { hasCredentials: parsed.hasCredentials } : {}),
     ...(typeof parsed.lastError === "string" && parsed.lastError ? { lastError: parsed.lastError } : {}),
+  }
+}
+
+export async function getOperatorWhatsAppIntegrationSummaryAction(
+  options: OperatorWhatsAppIntegrationSummaryActionOptions,
+): Promise<OperatorWhatsAppIntegrationSummary> {
+  const cfg = options.service.getConfig()
+  const serverStatus = options.service.getServerStatus()[options.serverName]
+  const summary = buildOperatorWhatsAppIntegrationSummary({
+    enabled: !!cfg.whatsappEnabled,
+    serverConfigured: !!cfg.mcpConfig?.mcpServers?.[options.serverName],
+    serverConnected: !!serverStatus?.connected,
+    autoReplyEnabled: !!cfg.whatsappAutoReply,
+    logMessagesEnabled: !!cfg.whatsappLogMessages,
+    allowedSenderCount: Array.isArray(cfg.whatsappAllowFrom) ? cfg.whatsappAllowFrom.length : 0,
+    lastError: serverStatus?.error,
+    logs: options.service.getServerLogs(options.serverName),
+  })
+
+  if (!serverStatus?.connected) {
+    return summary
+  }
+
+  try {
+    const statusResult = await options.service.executeStatusTool()
+
+    if (statusResult.isError) {
+      const lastError = getOperatorMcpToolResultText(statusResult)
+
+      return {
+        ...summary,
+        ...(lastError ? { lastError } : {}),
+      }
+    }
+
+    const textPayload = getOperatorMcpToolResultText(statusResult)
+    if (!textPayload) {
+      return summary
+    }
+
+    return mergeOperatorWhatsAppStatusPayload(summary, textPayload)
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    options.diagnostics.logWarning(
+      "operator-integration-summary",
+      `Failed to summarize WhatsApp integration status: ${errorMessage}`,
+    )
+
+    return {
+      ...summary,
+      lastError: errorMessage,
+    }
   }
 }
 
