@@ -39,6 +39,7 @@ import {
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
+  REMOTE_SERVER_PORT_FIELD_METADATA,
   type CloudflareTunnelMode,
   type RemoteServerBindAddress,
   type RemoteServerLogLevel,
@@ -243,12 +244,21 @@ export function RemoteServerSettingsGroups({
                 />
               </Control>
 
-              <Control label={<ControlLabel label="Port" tooltip="HTTP port to listen on" />} className="px-3">
+              <Control
+                label={(
+                  <ControlLabel
+                    label={REMOTE_SERVER_PORT_FIELD_METADATA.label}
+                    tooltip={REMOTE_SERVER_PORT_FIELD_METADATA.tooltip}
+                  />
+                )}
+                className="px-3"
+              >
                 <Input
                   type="number"
                   min={REMOTE_SERVER_PORT_MIN}
                   max={REMOTE_SERVER_PORT_MAX}
                   value={cfg.remoteServerPort ?? DEFAULT_REMOTE_SERVER_PORT}
+                  placeholder={REMOTE_SERVER_PORT_FIELD_METADATA.placeholder}
                   onChange={(e) =>
                     saveConfig({ remoteServerPort: parseInt(e.currentTarget.value || String(DEFAULT_REMOTE_SERVER_PORT), 10) })
                   }

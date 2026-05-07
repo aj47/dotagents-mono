@@ -79,8 +79,7 @@ import {
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
-  REMOTE_SERVER_PORT_MAX,
-  REMOTE_SERVER_PORT_MIN,
+  REMOTE_SERVER_PORT_FIELD_METADATA,
 } from '@dotagents/shared/remote-pairing';
 import {
   buildOperatorRemoteAccessDrafts as buildDrafts,
@@ -653,7 +652,7 @@ export default function OperationsScreen({ navigation }: any) {
   const handleRemoteServerPortSave = useCallback(() => {
     const parsed = Number.parseInt(drafts.remoteServerPort.trim(), 10);
     if (!isRemoteServerPortUpdateValue(parsed)) {
-      Alert.alert('Invalid Port', `Enter a whole number between ${REMOTE_SERVER_PORT_MIN} and ${REMOTE_SERVER_PORT_MAX}.`);
+      Alert.alert(REMOTE_SERVER_PORT_FIELD_METADATA.invalidTitle, REMOTE_SERVER_PORT_FIELD_METADATA.invalidMessage);
       setDrafts((current) => ({
         ...current,
         remoteServerPort: String(settings?.remoteServerPort ?? DEFAULT_REMOTE_SERVER_PORT),
@@ -1768,7 +1767,7 @@ export default function OperationsScreen({ navigation }: any) {
                 />
               </View>
 
-              <Text style={styles.label}>Port</Text>
+              <Text style={styles.label}>{REMOTE_SERVER_PORT_FIELD_METADATA.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.remoteServerPort}
@@ -1776,9 +1775,9 @@ export default function OperationsScreen({ navigation }: any) {
                 onEndEditing={handleRemoteServerPortSave}
                 editable={!controlsDisabled}
                 keyboardType="number-pad"
-                placeholder={String(DEFAULT_REMOTE_SERVER_PORT)}
+                placeholder={REMOTE_SERVER_PORT_FIELD_METADATA.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('Remote server port')}
+                accessibilityLabel={createTextInputAccessibilityLabel(REMOTE_SERVER_PORT_FIELD_METADATA.accessibilityLabel)}
               />
               <Text style={styles.helperText}>Changing the port can temporarily disconnect this mobile session.</Text>
 

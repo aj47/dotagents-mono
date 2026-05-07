@@ -37,6 +37,16 @@ export type RemoteServerLogLevelOption = {
   successMessage: string;
 };
 
+export type RemoteServerPortFieldMetadata = {
+  key: 'remoteServerPort';
+  label: string;
+  tooltip: string;
+  placeholder: string;
+  accessibilityLabel: string;
+  invalidTitle: string;
+  invalidMessage: string;
+};
+
 export type RemoteServerCorsOriginsFieldMetadata = {
   key: 'remoteServerCorsOrigins';
   label: string;
@@ -57,6 +67,15 @@ export const DEFAULT_REMOTE_SERVER_BIND_ADDRESS: RemoteServerBindAddress = '127.
 export const DEFAULT_REMOTE_SERVER_PORT = 3210;
 export const DEFAULT_REMOTE_SERVER_LOG_LEVEL: RemoteServerLogLevel = 'info';
 export const DEFAULT_CLOUDFLARE_TUNNEL_MODE: CloudflareTunnelMode = 'quick';
+export const REMOTE_SERVER_PORT_FIELD_METADATA: RemoteServerPortFieldMetadata = {
+  key: 'remoteServerPort',
+  label: 'Port',
+  tooltip: 'HTTP port to listen on.',
+  placeholder: String(DEFAULT_REMOTE_SERVER_PORT),
+  accessibilityLabel: 'Remote server port',
+  invalidTitle: 'Invalid Port',
+  invalidMessage: `Enter a whole number between ${REMOTE_SERVER_PORT_MIN} and ${REMOTE_SERVER_PORT_MAX}.`,
+};
 export const REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS: readonly RemoteServerBindAddressOption[] = [
   {
     value: '127.0.0.1',
