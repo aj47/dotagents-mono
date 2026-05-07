@@ -8,6 +8,7 @@ import {
   buildServerConversationFullResponse,
   buildServerConversationsDeleteAllResponse,
   buildServerConversationsResponse,
+  branchConversationAction,
   createConversationAction,
   createConversationActionService,
   createConversationRouteActions,
@@ -18,6 +19,7 @@ import {
   getConversationAction,
   getConversationsAction,
   parseCreateConversationRequestBody,
+  parseBranchConversationRequestBody,
   parseUpdateConversationRequestBody,
   serverConversationToStubSession,
   syncConversations,
@@ -134,6 +136,15 @@ describe('server conversation API helpers', () => {
       ok: false,
       statusCode: 400,
       error: 'messages field must be an array',
+    });
+    expect(parseBranchConversationRequestBody({ messageIndex: 1 })).toEqual({
+      ok: true,
+      request: { messageIndex: 1 },
+    });
+    expect(parseBranchConversationRequestBody({ messageIndex: 1.5 })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: 'Missing or invalid messageIndex',
     });
   });
 
@@ -279,13 +290,14 @@ describe('server conversation API helpers', () => {
       metadata: { model: 'test' },
     };
     const savedConversations = new Map([[fullConversation.id, fullConversation]]);
+    const generatedConversationIds = ['conv-new', 'conv-branch'];
     const changed = vi.fn();
     const logs: unknown[] = [];
     const options = {
       service: {
         loadConversation: async (conversationId: string) => savedConversations.get(conversationId),
         getConversationHistory: async () => conversations,
-        generateConversationId: () => 'conv-new',
+        generateConversationId: () => generatedConversationIds.shift() ?? 'conv-extra',
         validateConversationId: () => null,
         getTimestamp: () => 10,
         saveConversation: async (conversation: typeof fullConversation) => {
@@ -335,6 +347,21 @@ describe('server conversation API helpers', () => {
         messages: [{ role: 'assistant', content: 'updated reply', timestamp: 10 }],
       },
     });
+    await expect(branchConversationAction('conv-1', {
+      messageIndex: 0,
+    }, changed, options)).resolves.toMatchObject({
+      statusCode: 201,
+      body: {
+        id: 'conv-branch',
+        title: 'Branch: Updated',
+        messages: [{ role: 'assistant', content: 'updated reply', timestamp: 10 }],
+      },
+    });
+    expect(savedConversations.get('conv-branch')?.branchSource).toEqual({
+      sourceConversationId: 'conv-1',
+      sourceMessageIndex: 0,
+      branchedAt: 10,
+    });
     await expect(deleteConversationAction('conv-1', changed, options)).resolves.toEqual({
       statusCode: 200,
       body: buildServerConversationDeleteResponse('conv-1'),
@@ -344,12 +371,13 @@ describe('server conversation API helpers', () => {
       statusCode: 200,
       body: buildServerConversationsDeleteAllResponse(),
     });
-    expect(changed).toHaveBeenCalledTimes(4);
+    expect(changed).toHaveBeenCalledTimes(5);
     expect(logs).toEqual([
       { level: 'info', source: 'conversation-actions', message: 'Listed 1 conversations' },
       { level: 'info', source: 'conversation-actions', message: 'Fetched conversation conv-1 for recovery' },
       { level: 'info', source: 'conversation-actions', message: 'Created conversation conv-new with 1 messages' },
       { level: 'info', source: 'conversation-actions', message: 'Updated conversation conv-1' },
+      { level: 'info', source: 'conversation-actions', message: 'Branched conversation conv-1 at message 0 -> conv-branch' },
       { level: 'info', source: 'conversation-actions', message: 'Deleted conversation conv-1' },
       { level: 'info', source: 'conversation-actions', message: 'Deleted all conversations' },
     ]);
@@ -374,12 +402,13 @@ describe('server conversation API helpers', () => {
       metadata: { model: 'test' },
     };
     const savedConversations = new Map([[fullConversation.id, fullConversation]]);
+    const generatedConversationIds = ['conv-new', 'conv-branch'];
     const changed = vi.fn();
     const options = {
       service: {
         loadConversation: async (conversationId: string) => savedConversations.get(conversationId),
         getConversationHistory: async () => conversations,
-        generateConversationId: () => 'conv-new',
+        generateConversationId: () => generatedConversationIds.shift() ?? 'conv-extra',
         validateConversationId: () => null,
         getTimestamp: () => 10,
         saveConversation: async (conversation: typeof fullConversation) => {
@@ -427,6 +456,15 @@ describe('server conversation API helpers', () => {
         title: 'Updated',
       },
     });
+    await expect(routeActions.branchConversation('conv-1', {
+      messageIndex: 0,
+    }, changed)).resolves.toMatchObject({
+      statusCode: 201,
+      body: {
+        id: 'conv-branch',
+        title: 'Branch: Updated',
+      },
+    });
     await expect(routeActions.deleteConversation('conv-1', changed)).resolves.toEqual({
       statusCode: 200,
       body: buildServerConversationDeleteResponse('conv-1'),
@@ -435,7 +473,7 @@ describe('server conversation API helpers', () => {
       statusCode: 200,
       body: buildServerConversationsDeleteAllResponse(),
     });
-    expect(changed).toHaveBeenCalledTimes(4);
+    expect(changed).toHaveBeenCalledTimes(5);
   });
 
   it('returns shared conversation sync validation and not-found errors', async () => {
@@ -481,6 +519,14 @@ describe('server conversation API helpers', () => {
     await expect(updateConversationAction('missing', {}, changed, options)).resolves.toEqual({
       statusCode: 400,
       body: { error: 'Conversation not found and no messages provided to create it' },
+    });
+    await expect(branchConversationAction('missing', { messageIndex: 0 }, changed, options)).resolves.toEqual({
+      statusCode: 404,
+      body: { error: 'Conversation not found' },
+    });
+    await expect(branchConversationAction('missing', { messageIndex: 'bad' }, changed, options)).resolves.toEqual({
+      statusCode: 400,
+      body: { error: 'Missing or invalid messageIndex' },
     });
     await expect(deleteConversationAction('missing', changed, options)).resolves.toEqual({
       statusCode: 404,

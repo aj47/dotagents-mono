@@ -100,6 +100,7 @@ export const REMOTE_SERVER_API_PATHS = {
   agentSessionCandidates: "/agent-sessions/candidates",
   agentSessionToolApprovalResponse: "/agent-sessions/tool-approvals/:approvalId/respond",
   conversation: "/conversations/:id",
+  conversationBranch: "/conversations/:id/branch",
   conversationImageAsset: "/conversations/:id/assets/images/:fileName",
   conversationVideoAsset: "/conversations/:id/assets/videos/:fileName",
   ttsSpeak: "/tts/speak",
@@ -248,6 +249,7 @@ export const REMOTE_SERVER_API_ROUTES = [
   { method: "POST", path: REMOTE_SERVER_API_PATHS.conversations },
   { method: "DELETE", path: REMOTE_SERVER_API_PATHS.conversations },
   { method: "PUT", path: REMOTE_SERVER_API_PATHS.conversation },
+  { method: "POST", path: REMOTE_SERVER_API_PATHS.conversationBranch },
   { method: "DELETE", path: REMOTE_SERVER_API_PATHS.conversation },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.emergencyStop },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.skills },
@@ -475,6 +477,9 @@ export const REMOTE_SERVER_API_BUILDERS = {
   },
   conversation(id: string): string {
     return `/conversations/${encodePathParam(id)}`;
+  },
+  conversationBranch(id: string): string {
+    return `/conversations/${encodePathParam(id)}/branch`;
   },
   conversationImageAsset(id: string, fileName: string): string {
     return `/conversations/${encodePathParam(id)}/assets/images/${encodePathParam(fileName)}`;

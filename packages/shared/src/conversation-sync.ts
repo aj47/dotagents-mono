@@ -1,4 +1,5 @@
 import type {
+  BranchConversationRequest,
   CreateConversationRequest,
   ConversationDeleteResponse,
   ConversationsDeleteAllResponse,
@@ -112,6 +113,11 @@ export interface ConversationRouteActions {
     body: unknown,
     onChanged: () => void,
   ): Promise<ConversationActionResult>;
+  branchConversation(
+    id: string | undefined,
+    body: unknown,
+    onChanged: () => void,
+  ): Promise<ConversationActionResult>;
   deleteConversation(
     id: string | undefined,
     onChanged: () => void,
@@ -133,6 +139,11 @@ export interface ServerConversationRecord<TMetadata = unknown> {
   updatedAt: number;
   messages: ServerConversationRecordMessage[];
   metadata?: TMetadata;
+  branchSource?: {
+    sourceConversationId: string;
+    sourceMessageIndex: number;
+    branchedAt: number;
+  };
 }
 
 export type ConversationRequestParseResult<T> =
@@ -247,6 +258,25 @@ export function parseUpdateConversationRequestBody(
   }
 
   return { ok: true, request };
+}
+
+export function parseBranchConversationRequestBody(
+  body: unknown,
+): ConversationRequestParseResult<BranchConversationRequest> {
+  if (!isRequestObject(body)) {
+    return { ok: false, statusCode: 400, error: 'Request body must be a JSON object' };
+  }
+
+  if (typeof body.messageIndex !== 'number' || !Number.isInteger(body.messageIndex)) {
+    return { ok: false, statusCode: 400, error: 'Missing or invalid messageIndex' };
+  }
+
+  return {
+    ok: true,
+    request: {
+      messageIndex: body.messageIndex,
+    },
+  };
 }
 
 export function buildServerConversationTitle(
@@ -538,6 +568,75 @@ export async function updateConversationAction<TConversation extends ServerConve
   }
 }
 
+export async function branchConversationAction<TConversation extends ServerConversationRecord<any>>(
+  id: string | undefined,
+  body: unknown,
+  onChanged: () => void,
+  options: ConversationActionOptions<TConversation>,
+): Promise<ConversationActionResult> {
+  try {
+    const conversationId = id;
+    const conversationIdError = getConversationIdActionError(conversationId, options);
+    if (conversationIdError) {
+      return conversationActionError(400, conversationIdError);
+    }
+    if (!conversationId) {
+      return conversationActionError(400, 'Missing or invalid conversation ID');
+    }
+
+    const parsedRequest = parseBranchConversationRequestBody(body);
+    if (parsedRequest.ok === false) {
+      return conversationActionError(parsedRequest.statusCode, parsedRequest.error);
+    }
+
+    const sourceConversation = await options.service.loadConversation(conversationId);
+    if (!sourceConversation) {
+      return conversationActionError(404, 'Conversation not found');
+    }
+
+    const messageIndex = parsedRequest.request.messageIndex;
+    if (messageIndex < 0 || messageIndex >= sourceConversation.messages.length) {
+      return conversationActionError(400, 'Invalid messageIndex');
+    }
+
+    const timestamp = options.service.getTimestamp();
+    const branchConversationId = options.service.generateConversationId();
+    const branchedMessages = sourceConversation.messages
+      .slice(0, messageIndex + 1)
+      .map((message, index) => ({
+        ...message,
+        id: createServerConversationMessageId(message.timestamp ?? timestamp, index),
+        timestamp: message.timestamp ?? timestamp,
+      }));
+
+    const branchedConversation = {
+      id: branchConversationId,
+      title: `Branch: ${sourceConversation.title}`,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      messages: branchedMessages,
+      branchSource: {
+        sourceConversationId: conversationId,
+        sourceMessageIndex: messageIndex,
+        branchedAt: timestamp,
+      },
+    } as TConversation;
+
+    await options.service.saveConversation(branchedConversation, true);
+    options.diagnostics.logInfo(
+      'conversation-actions',
+      `Branched conversation ${conversationId} at message ${messageIndex} -> ${branchConversationId}`,
+    );
+
+    onChanged();
+
+    return conversationActionOk(buildServerConversationFullResponse(branchedConversation), 201);
+  } catch (caughtError) {
+    options.diagnostics.logError('conversation-actions', 'Failed to branch conversation', caughtError);
+    return conversationActionError(500, getUnknownErrorMessage(caughtError, 'Failed to branch conversation'));
+  }
+}
+
 export async function deleteConversationAction<TConversation extends ServerConversationRecord<any>>(
   id: string | undefined,
   onChanged: () => void,
@@ -595,6 +694,7 @@ export function createConversationRouteActions<TConversation extends ServerConve
     getConversations: () => getConversationsAction(options),
     createConversation: (body, onChanged) => createConversationAction(body, onChanged, options),
     updateConversation: (id, body, onChanged) => updateConversationAction(id, body, onChanged, options),
+    branchConversation: (id, body, onChanged) => branchConversationAction(id, body, onChanged, options),
     deleteConversation: (id, onChanged) => deleteConversationAction(id, onChanged, options),
     deleteAllConversations: (onChanged) => deleteAllConversationsAction(onChanged, options),
   };

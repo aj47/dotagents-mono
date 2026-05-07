@@ -944,6 +944,10 @@ export interface UpdateConversationRequest {
   updatedAt?: number;
 }
 
+export interface BranchConversationRequest {
+  messageIndex: number;
+}
+
 export interface ConversationDeleteResponse {
   success: true;
   id: string;

@@ -321,6 +321,13 @@ export function registerMobileApiRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  // POST /v1/conversations/:id/branch - Branch an existing conversation at a message index
+  fastify.post(API_ROUTES.conversationBranch, async (req, reply) => {
+    const params = req.params as { id?: string };
+    const result = await actions.branchConversation(params.id, req.body, notifyConversationHistoryChanged);
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   // DELETE /v1/conversations/:id - Delete an existing conversation
   fastify.delete(API_ROUTES.conversation, async (req, reply) => {
     const params = req.params as { id?: string };

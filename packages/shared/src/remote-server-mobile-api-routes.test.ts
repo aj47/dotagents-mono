@@ -150,6 +150,7 @@ describe('remote server mobile API routes', () => {
       })),
       startAllRepeatTasks: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'start-all' } })),
       stopAllRepeatTasks: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'stop-all' } })),
+      branchConversation: vi.fn(() => ({ statusCode: 201, body: { id: 'conversation-branch' } })),
       deleteConversation: vi.fn(() => ({ statusCode: 200, body: { success: true, id: 'conversation-1' } })),
       deleteAllConversations: vi.fn(() => ({ statusCode: 200, body: { success: true } })),
     };
@@ -284,6 +285,19 @@ describe('remote server mobile API routes', () => {
       options.notifyConversationHistoryChanged,
     );
     expect(deleteConversationReply.body).toEqual({ success: true, id: 'conversation-1' });
+
+    const branchConversationReply = createReply();
+    const branchConversationBody = { messageIndex: 2 };
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.conversationBranch}`)!(
+      createRequest({ params: { id: 'conversation-1' }, body: branchConversationBody }),
+      branchConversationReply,
+    );
+    expect(actions.branchConversation).toHaveBeenCalledWith(
+      'conversation-1',
+      branchConversationBody,
+      options.notifyConversationHistoryChanged,
+    );
+    expect(branchConversationReply.body).toEqual({ id: 'conversation-branch' });
 
     const deleteAllConversationsReply = createReply();
     await routes.get(`DELETE ${REMOTE_SERVER_API_ROUTE_PATHS.conversations}`)!(

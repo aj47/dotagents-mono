@@ -110,6 +110,11 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
     body: unknown,
     notifyConversationHistoryChanged: () => void,
   ) => RemoteServerMaybePromise<MobileApiActionResult>;
+  branchConversation: (
+    id: string | undefined,
+    body: unknown,
+    notifyConversationHistoryChanged: () => void,
+  ) => RemoteServerMaybePromise<MobileApiActionResult>;
   deleteConversation: (
     id: string | undefined,
     notifyConversationHistoryChanged: () => void,
@@ -200,6 +205,7 @@ export interface MobileApiRouteActionGroups<Request = unknown, Reply = unknown> 
     | 'getConversations'
     | 'createConversation'
     | 'updateConversation'
+    | 'branchConversation'
     | 'deleteConversation'
     | 'deleteAllConversations'
   >;

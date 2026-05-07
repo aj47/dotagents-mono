@@ -183,6 +183,16 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /styles\.chatHomeShortcutActions/);
 });
 
+test('lets mobile branch linked desktop conversations from individual messages', () => {
+  assert.match(screenSource, /const \[branchingMessageIndex, setBranchingMessageIndex\] = useState<number \| null>\(null\);/);
+  assert.match(screenSource, /settingsClient\.branchConversation\(serverConversationId, \{ messageIndex \}\)/);
+  assert.match(screenSource, /await sessionStore\.syncWithServer\(settingsClient\)/);
+  assert.match(screenSource, /sessionStore\.findSessionByServerConversationId\(branchedConversation\.id\)/);
+  assert.match(screenSource, /const canBranchFromMessage =\s+!!currentSession\?\.serverConversationId &&\s+\(m\.role === 'user' \|\| m\.role === 'assistant'\);/);
+  assert.match(screenSource, /accessibilityLabel=\{`Branch conversation from \$\{m\.role\} message \$\{i \+ 1\}`\}/);
+  assert.match(screenSource, /styles\.messageActionsRow/);
+});
+
 test('loads predefined prompts, skills, and tasks directly into mobile quick-start launchers', () => {
   assert.match(screenSource, /settingsClient\.getSkills\(\)/);
   assert.match(screenSource, /settingsClient\.getLoops\(\)/);

@@ -54,6 +54,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionsClearInactive).toBe('/v1/operator/sessions/clear-inactive');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionsSnoozeAndHidePanel).toBe('/v1/operator/sessions/snooze-and-hide-panel');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.conversation).toBe('/v1/conversations/:id');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.conversationBranch).toBe('/v1/conversations/:id/branch');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.bundleExportableItems).toBe('/v1/bundles/exportable-items');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.bundleExport).toBe('/v1/bundles/export');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.bundleImportPreview).toBe('/v1/bundles/import/preview');
@@ -120,6 +121,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_BUILDERS.operatorMcpToolToggle('filesystem/local:read')).toBe('/operator/mcp/tools/filesystem%2Flocal%3Aread/toggle');
     expect(REMOTE_SERVER_API_BUILDERS.operatorMcpServerLogs('filesystem/local', 5)).toBe('/operator/mcp/filesystem%2Flocal/logs?count=5');
     expect(REMOTE_SERVER_API_BUILDERS.operatorMcpServerLogsClear('filesystem/local')).toBe('/operator/mcp/filesystem%2Flocal/logs/clear');
+    expect(REMOTE_SERVER_API_BUILDERS.conversationBranch('conv/name')).toBe('/conversations/conv%2Fname/branch');
     expect(REMOTE_SERVER_API_BUILDERS.skill('skill/name')).toBe('/skills/skill%2Fname');
     expect(REMOTE_SERVER_API_BUILDERS.skillExportMarkdown('skill/name')).toBe('/skills/skill%2Fname/export/markdown');
     expect(REMOTE_SERVER_API_BUILDERS.loopExportMarkdown('loop/name')).toBe('/loops/loop%2Fname/export/markdown');

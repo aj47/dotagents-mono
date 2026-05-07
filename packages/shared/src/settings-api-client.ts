@@ -167,6 +167,7 @@ import type {
   ApiAgentProfilesResponse,
   VerifyExternalAgentCommandRequest,
   VerifyExternalAgentCommandResponse,
+  BranchConversationRequest,
   CreateConversationRequest,
   ConversationDeleteResponse,
   ConversationsDeleteAllResponse,
@@ -1839,6 +1840,13 @@ export class SettingsApiClient {
   async updateConversation(id: string, data: UpdateConversationRequest): Promise<ServerConversationFull> {
     return this.request<ServerConversationFull>(API_BUILDERS.conversation(id), {
       method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async branchConversation(id: string, data: BranchConversationRequest): Promise<ServerConversationFull> {
+    return this.request<ServerConversationFull>(API_BUILDERS.conversationBranch(id), {
+      method: 'POST',
       body: JSON.stringify(data),
     });
   }

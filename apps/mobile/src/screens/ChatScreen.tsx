@@ -323,6 +323,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const [remoteTtsModel, setRemoteTtsModel] = useState<string | undefined>();
   const [remoteTtsRate, setRemoteTtsRate] = useState(1.0);
   const [pendingToolApprovalResponseId, setPendingToolApprovalResponseId] = useState<string | null>(null);
+  const [branchingMessageIndex, setBranchingMessageIndex] = useState<number | null>(null);
   // Effective TTS provider/voice/rate — local mobile config takes precedence over
   // any value pulled from the connected desktop's settings.
   const effectiveTtsProvider: RemoteDesktopTtsProvider =
@@ -607,6 +608,32 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!currentSessionId) return;
     void sessionStore.toggleSessionPinned(currentSessionId);
   }, [sessionStore]);
+
+  const handleBranchFromMessage = useCallback(async (messageIndex: number) => {
+    const serverConversationId = currentSession?.serverConversationId;
+    if (!settingsClient || !serverConversationId) {
+      Alert.alert('Branch Unavailable', 'This chat is not linked to a desktop conversation yet.');
+      return;
+    }
+
+    setBranchingMessageIndex(messageIndex);
+    try {
+      const branchedConversation = await settingsClient.branchConversation(serverConversationId, { messageIndex });
+      await sessionStore.syncWithServer(settingsClient);
+      const branchedSession = sessionStore.findSessionByServerConversationId(branchedConversation.id);
+      if (branchedSession) {
+        sessionStore.setCurrentSession(branchedSession.id);
+        navigation.navigate('Chat');
+        return;
+      }
+
+      Alert.alert('Branch Created', 'The branched chat will appear in the chat list after sync.');
+    } catch (error: any) {
+      Alert.alert('Branch Failed', error?.message || 'Failed to branch this conversation.');
+    } finally {
+      setBranchingMessageIndex(null);
+    }
+  }, [currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
 
   const headerConversationState = conversationState ?? (responding ? 'running' : null);
   const headerConversationLabel = headerConversationState
@@ -3237,6 +3264,9 @@ export default function ChatScreen({ route, navigation }: any) {
               visibleMessageContent.trim().length > 0 &&
               ttsEnabled &&
               (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
+            const canBranchFromMessage =
+              !!currentSession?.serverConversationId &&
+              (m.role === 'user' || m.role === 'assistant');
 
             const toolCalls = m.toolCalls ?? [];
             const toolResults = m.toolResults ?? [];
@@ -3636,6 +3666,24 @@ export default function ChatScreen({ route, navigation }: any) {
                           </View>
                         )}
                       </>
+                    )}
+                    {canBranchFromMessage && (
+                      <View style={styles.messageActionsRow}>
+                        <Pressable
+                          style={[
+                            styles.messageActionButton,
+                            branchingMessageIndex !== null && styles.messageActionButtonDisabled,
+                          ]}
+                          onPress={() => { void handleBranchFromMessage(i); }}
+                          disabled={branchingMessageIndex !== null}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Branch conversation from ${m.role} message ${i + 1}`}
+                        >
+                          <Text style={styles.messageActionButtonText}>
+                            {branchingMessageIndex === i ? 'Branching...' : 'Branch'}
+                          </Text>
+                        </Pressable>
+                      </View>
                     )}
                   </>
                 )}
@@ -5051,6 +5099,34 @@ function createStyles(theme: Theme, screenHeight: number) {
       lineHeight: 18,
       flex: 1,
       minWidth: 0,
+    },
+    messageActionsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      marginTop: 2,
+      gap: spacing.xs,
+    },
+    messageActionButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    messageActionButtonDisabled: {
+      opacity: 0.65,
+    },
+    messageActionButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '600',
     },
     // Per-message TTS button styles (#1078)
     speakButton: {
