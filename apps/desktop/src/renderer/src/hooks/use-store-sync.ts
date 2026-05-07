@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { reportConfigSaveError } from '@renderer/lib/config-save-error'
 import { rendererHandlers, tipcClient } from '@renderer/lib/tipc-client'
+import { desktopConfigClient } from '@renderer/lib/desktop-config-client'
 import { desktopMessageQueueClient } from '@renderer/lib/desktop-message-queue-client'
 import { useAgentStore, useConversationStore } from '@renderer/stores'
 import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress'
@@ -208,7 +209,7 @@ export function useStoreSync() {
 
     queryClient.fetchQuery<{ pinnedSessionIds?: string[] }>({
       queryKey: ['config'],
-      queryFn: async () => tipcClient.getConfig(),
+      queryFn: async () => desktopConfigClient.getConfig(),
     }).then((config) => {
       if (cancelled) return
 
@@ -259,10 +260,8 @@ export function useStoreSync() {
 
     let cancelled = false
 
-    tipcClient.saveConfig({
-      config: {
-        pinnedSessionIds: nextPinnedSessionIds,
-      },
+    desktopConfigClient.saveConfig({
+      pinnedSessionIds: nextPinnedSessionIds,
     }).then(() => {
       if (cancelled) return
 
@@ -298,7 +297,7 @@ export function useStoreSync() {
 
     queryClient.fetchQuery<{ archivedSessionIds?: string[] }>({
       queryKey: ['config'],
-      queryFn: async () => tipcClient.getConfig(),
+      queryFn: async () => desktopConfigClient.getConfig(),
     }).then((config) => {
       if (cancelled) return
 
@@ -350,10 +349,8 @@ export function useStoreSync() {
 
     let cancelled = false
 
-    tipcClient.saveConfig({
-      config: {
-        archivedSessionIds: nextArchivedSessionIds,
-      },
+    desktopConfigClient.saveConfig({
+      archivedSessionIds: nextArchivedSessionIds,
     }).then(() => {
       if (cancelled) return
 

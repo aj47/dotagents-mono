@@ -5,6 +5,7 @@ import {
   useQuery,
 } from "@tanstack/react-query"
 import { reportConfigSaveError } from "./config-save-error"
+import { desktopConfigClient } from "./desktop-config-client"
 import { desktopConversationsClient } from "./desktop-conversations-client"
 import { desktopPermissionsClient } from "./desktop-permissions-client"
 import { tipcClient } from "./tipc-client"
@@ -43,7 +44,7 @@ export const useConfigQuery = () =>
   useQuery({
     queryKey: ["config"],
     queryFn: async () => {
-      return tipcClient.getConfig()
+      return desktopConfigClient.getConfig()
     },
   })
 
@@ -184,7 +185,9 @@ export const useDeleteAllConversationsMutation = () =>
 
 export const useSaveConfigMutation = () =>
   useMutation({
-    mutationFn: tipcClient.saveConfig,
+    mutationFn: async ({ config }: { config: any }) => {
+      await desktopConfigClient.saveConfig(config)
+    },
     onSuccess() {
       queryClient.invalidateQueries({
         queryKey: ["config"],
@@ -196,7 +199,7 @@ export const useSaveConfigMutation = () =>
 export const useUpdateConfigMutation = () =>
   useMutation({
     mutationFn: async ({ config }: { config: any }) => {
-      await tipcClient.saveConfig({ config })
+      await desktopConfigClient.saveConfig(config)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["config"] })
