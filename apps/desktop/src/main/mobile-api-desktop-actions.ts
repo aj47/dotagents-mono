@@ -272,6 +272,7 @@ const conversationRouteActions = createConversationRouteActions(conversationActi
 
 const conversationVideoAssetActionOptions: ConversationVideoAssetActionOptions = {
   service: createConversationVideoAssetFileService({
+    validateConversationId: getConversationIdValidationError,
     resolveVideoAssetPath: getConversationVideoAssetPath,
     fileSystem: {
       getFileInfo: async (assetPath) => {
@@ -283,7 +284,6 @@ const conversationVideoAssetActionOptions: ConversationVideoAssetActionOptions =
         : fs.createReadStream(assetPath),
     },
   }),
-  validateConversationId: getConversationIdValidationError,
   diagnostics: diagnosticsService,
 }
 

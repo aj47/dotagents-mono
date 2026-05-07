@@ -717,8 +717,8 @@ describe('conversation video asset utilities', () => {
   it('builds reusable video asset action responses through an injected file service', async () => {
     const bodyRanges: Array<{ start: number; end: number } | undefined> = [];
     const options = {
-      validateConversationId: () => null,
       service: {
+        validateConversationId: () => null,
         getVideoAssetFile: async () => ({
           size: 1000,
           createBody: (range?: { start: number; end: number }) => {
@@ -770,6 +770,7 @@ describe('conversation video asset utilities', () => {
     ]);
     const readCalls: Array<{ filePath: string; range?: { start: number; end: number } }> = [];
     const service = createConversationVideoAssetFileService({
+      validateConversationId: () => null,
       resolveVideoAssetPath: (conversationId, fileName) => `/assets/${conversationId}/${fileName}`,
       fileSystem: {
         getFileInfo: async (filePath) => fileInfoByPath.get(filePath) ?? { size: 0, isFile: false },
@@ -780,6 +781,7 @@ describe('conversation video asset utilities', () => {
       },
     });
 
+    expect(service.validateConversationId('conv-1')).toBeNull();
     const assetFile = await service.getVideoAssetFile('conv-1', 'abcdef1234567890.mp4');
     expect(assetFile?.size).toBe(1000);
     expect(assetFile?.createBody({ start: 10, end: 19 })).toBe('stream:10-19');
@@ -793,8 +795,8 @@ describe('conversation video asset utilities', () => {
   it('creates reusable video asset route actions through an injected file service', async () => {
     const bodyRanges: Array<{ start: number; end: number } | undefined> = [];
     const routeActions = createConversationVideoAssetRouteActions({
-      validateConversationId: () => null,
       service: {
+        validateConversationId: () => null,
         getVideoAssetFile: async () => ({
           size: 1000,
           createBody: (range?: { start: number; end: number }) => {
@@ -829,8 +831,8 @@ describe('conversation video asset utilities', () => {
       'abcdef1234567890.mp4',
       undefined,
       {
-        validateConversationId: () => 'Invalid conversation id',
         service: {
+          validateConversationId: () => 'Invalid conversation id',
           getVideoAssetFile: async () => {
             throw new Error('should not resolve files for invalid ids');
           },
@@ -846,8 +848,8 @@ describe('conversation video asset utilities', () => {
       '../bad.mp4',
       undefined,
       {
-        validateConversationId: () => null,
         service: {
+          validateConversationId: () => null,
           getVideoAssetFile: async () => {
             throw new Error('Invalid conversation video asset filename');
           },
@@ -863,8 +865,8 @@ describe('conversation video asset utilities', () => {
       'abcdef1234567890.mp4',
       undefined,
       {
-        validateConversationId: () => null,
         service: {
+          validateConversationId: () => null,
           getVideoAssetFile: async () => null,
         },
       },
@@ -878,8 +880,8 @@ describe('conversation video asset utilities', () => {
       'abcdef1234567890.mp4',
       'bytes=1000-1001',
       {
-        validateConversationId: () => null,
         service: {
+          validateConversationId: () => null,
           getVideoAssetFile: async () => ({
             size: 1000,
             createBody: () => 'unused',

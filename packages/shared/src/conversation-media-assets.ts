@@ -189,6 +189,7 @@ export type ConversationVideoAssetActionFile<Body = unknown> = {
 };
 
 export interface ConversationVideoAssetActionService<Body = unknown> {
+  validateConversationId(conversationId: string): string | null | undefined;
   getVideoAssetFile(
     conversationId: string,
     fileName: string,
@@ -206,6 +207,7 @@ export interface ConversationVideoAssetFileSystemAdapter<Body = unknown> {
 }
 
 export interface ConversationVideoAssetFileServiceOptions<Body = unknown> {
+  validateConversationId(conversationId: string): string | null | undefined;
   resolveVideoAssetPath(conversationId: string, fileName: string): string;
   fileSystem: ConversationVideoAssetFileSystemAdapter<Body>;
 }
@@ -214,6 +216,7 @@ export function createConversationVideoAssetFileService<Body = unknown>(
   options: ConversationVideoAssetFileServiceOptions<Body>,
 ): ConversationVideoAssetActionService<Body> {
   return {
+    validateConversationId: (conversationId) => options.validateConversationId(conversationId),
     getVideoAssetFile: async (conversationId, fileName) => {
       const assetPath = options.resolveVideoAssetPath(conversationId, fileName);
       const fileInfo = await options.fileSystem.getFileInfo(assetPath);
@@ -232,7 +235,6 @@ export interface ConversationVideoAssetActionDiagnostics {
 
 export interface ConversationVideoAssetActionOptions<Body = unknown> {
   service: ConversationVideoAssetActionService<Body>;
-  validateConversationId(conversationId: string): string | null | undefined;
   diagnostics?: ConversationVideoAssetActionDiagnostics;
 }
 
@@ -1212,7 +1214,7 @@ export async function getConversationVideoAssetAction<Body = unknown>(
     const conversationId = id ?? '';
     const assetFileName = fileName ?? '';
 
-    const conversationIdError = options.validateConversationId(conversationId);
+    const conversationIdError = options.service.validateConversationId(conversationId);
     if (conversationIdError) {
       return buildConversationVideoAssetActionError(400, conversationIdError);
     }
