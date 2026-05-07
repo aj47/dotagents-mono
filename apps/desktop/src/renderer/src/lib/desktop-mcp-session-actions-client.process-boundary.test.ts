@@ -15,6 +15,7 @@ const sessionActionDialogSource = readFileSync(
   "utf8",
 )
 const panelPageSource = readFileSync(new URL("../pages/panel.tsx", import.meta.url), "utf8")
+const onboardingPageSource = readFileSync(new URL("../pages/onboarding.tsx", import.meta.url), "utf8")
 
 describe("desktop MCP session actions renderer client", () => {
   it("centralizes MCP text and voice continuation IPC", () => {
@@ -24,12 +25,13 @@ describe("desktop MCP session actions renderer client", () => {
     expect(clientSource).not.toContain("window.electron.ipcRenderer")
   })
 
-  it("keeps follow-up inputs, session dialog, and panel page off direct MCP session action IPC", () => {
+  it("keeps follow-up inputs, session dialog, panel page, and onboarding off direct MCP session action IPC", () => {
     const combinedSource = [
       overlayFollowUpInputSource,
       tileFollowUpInputSource,
       sessionActionDialogSource,
       panelPageSource,
+      onboardingPageSource,
     ].join("\n")
 
     expect(overlayFollowUpInputSource).toContain("desktopMcpSessionActionsClient.createMcpTextInput({")
@@ -40,6 +42,7 @@ describe("desktop MCP session actions renderer client", () => {
     expect(sessionActionDialogSource).toContain("desktopMcpSessionActionsClient.createMcpRecording({")
     expect(panelPageSource).toContain("desktopMcpSessionActionsClient.createMcpTextInput({")
     expect(panelPageSource).toContain("desktopMcpSessionActionsClient.createMcpRecording({")
+    expect(onboardingPageSource).toContain("desktopMcpSessionActionsClient.createMcpTextInput({")
     expect(combinedSource).not.toContain("tipcClient.createMcpTextInput(")
     expect(combinedSource).not.toContain("tipcClient.createMcpRecording(")
     expect(combinedSource).not.toContain("tipcClient.triggerMcpRecording(")

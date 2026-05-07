@@ -14,6 +14,9 @@ import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
 import { Config } from "@shared/types"
 import { useNavigate } from "react-router-dom"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
+import { desktopDictationClient } from "@renderer/lib/desktop-dictation-client"
+import { desktopMcpSessionActionsClient } from "@renderer/lib/desktop-mcp-session-actions-client"
 import { Recorder } from "@renderer/lib/recorder"
 import { useMutation } from "@tanstack/react-query"
 import { KeyRecorder } from "@renderer/components/key-recorder"
@@ -66,10 +69,10 @@ export function Component() {
       setIsTranscribing(true)
       // Fetch config synchronously to avoid race condition where configQuery.data
       // is undefined on early interactions (augment review feedback)
-      const config = await tipcClient.getConfig()
+      const config = await desktopConfigClient.getConfig()
       const isParakeet = config?.sttProviderId === "parakeet"
       const pcmRecording = isParakeet ? await decodeBlobToPcm(blob) : undefined
-      const result = await tipcClient.createRecording({
+      const result = await desktopDictationClient.createRecording({
         recording: await blob.arrayBuffer(),
         pcmRecording,
         duration,
@@ -145,7 +148,7 @@ export function Component() {
     setTranscriptionError(null)
     setMicError(null)
     try {
-      const config = await tipcClient.getConfig()
+      const config = await desktopConfigClient.getConfig()
       await recorderRef.current?.startRecording(config?.audioInputDeviceId)
     } catch (error: any) {
       console.error("Failed to start recording:", error)
@@ -594,7 +597,7 @@ function AgentStep({
     try {
       // Start agent session - this will run in the background
       // and show in the floating panel
-      await tipcClient.createMcpTextInput({
+      await desktopMcpSessionActionsClient.createMcpTextInput({
         text: agentPrompt.trim(),
       })
 

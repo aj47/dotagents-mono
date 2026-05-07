@@ -13,6 +13,7 @@ import { useAgentStore, useAgentProgress, useConversationStore } from "@renderer
 import { useConfigQuery, useConversationQuery, useCreateConversationMutation } from "@renderer/lib/queries"
 import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
 import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
+import { desktopDictationClient } from "@renderer/lib/desktop-dictation-client"
 import { desktopMcpSessionActionsClient } from "@renderer/lib/desktop-mcp-session-actions-client"
 import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
 import { PanelDragBar } from "@renderer/components/panel-drag-bar"
@@ -454,7 +455,7 @@ export function Component() {
       const config = await desktopConfigClient.getConfig()
       const isParakeet = config?.sttProviderId === "parakeet"
       const pcmRecording = isParakeet ? await decodeBlobToPcm(blob) : undefined
-      await tipcClient.createRecording({
+      await desktopDictationClient.createRecording({
         recording: await blob.arrayBuffer(),
         pcmRecording,
         duration,
@@ -547,7 +548,7 @@ export function Component() {
 
   const textInputMutation = useMutation({
     mutationFn: async ({ text }: { text: string }) => {
-      await tipcClient.createTextInput({ text })
+      await desktopDictationClient.createTextInput({ text })
     },
     onError(error) {
       setShowTextInput(false)
@@ -615,7 +616,7 @@ export function Component() {
     recorder.on("record-start", () => {
       // Pass mcpMode to main process so it knows we're in MCP toggle mode
       // This is critical for preventing panel close on key release in toggle mode
-      tipcClient.recordEvent({ type: "start", mcpMode: mcpModeRef.current })
+      void desktopDictationClient.recordEvent({ type: "start", mcpMode: mcpModeRef.current })
     })
 
     recorder.on("visualizer-data", (rms) => {
@@ -636,7 +637,7 @@ export function Component() {
       setRecording(false)
       recordingRef.current = false
       setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-      tipcClient.recordEvent({ type: "end" })
+      void desktopDictationClient.recordEvent({ type: "end" })
 
       if (!isConfirmedRef.current) {
         // Clear context from aborted runs so follow-up recordings start clean.
@@ -783,7 +784,7 @@ export function Component() {
       const sentUpTo = currentCount
       inflight = true
       try {
-        const result = await tipcClient.transcribeChunk({
+        const result = await desktopDictationClient.transcribeChunk({
           recording: await blob.arrayBuffer(),
         })
         // Advance the pointer so the next tick skips if no new audio arrived.

@@ -13,6 +13,7 @@ const sessionActionDialogSource = readFileSync(
   "utf8",
 )
 const panelPageSource = readFileSync(new URL("../pages/panel.tsx", import.meta.url), "utf8")
+const onboardingPageSource = readFileSync(new URL("../pages/onboarding.tsx", import.meta.url), "utf8")
 
 describe("desktop config renderer client", () => {
   it("centralizes config IPC channels", () => {
@@ -28,6 +29,7 @@ describe("desktop config renderer client", () => {
       agentProgressSource,
       sessionActionDialogSource,
       panelPageSource,
+      onboardingPageSource,
     ].join("\n")
 
     expect(queriesSource).toContain("desktopConfigClient.getConfig()")
@@ -37,6 +39,7 @@ describe("desktop config renderer client", () => {
     expect(agentProgressSource).toContain("desktopConfigClient.saveConfig({")
     expect(sessionActionDialogSource).toContain("desktopConfigClient.getConfig()")
     expect(panelPageSource).toContain("desktopConfigClient.getConfig()")
+    expect(onboardingPageSource).toContain("desktopConfigClient.getConfig()")
     expect(combinedSource).not.toContain("tipcClient.getConfig(")
     expect(combinedSource).not.toContain("tipcClient.saveConfig(")
   })
