@@ -7,15 +7,16 @@ const providersSource = readFileSync(new URL("../pages/settings-providers.tsx", 
 describe("local speech model renderer client", () => {
   it("centralizes desktop IPC channels behind shared provider ids", () => {
     expect(clientSource).toContain("LocalSpeechModelProviderId")
-    expect(clientSource).toContain("Record<LocalSpeechModelProviderId, string>")
-    expect(clientSource).toContain('parakeet: "getParakeetModelStatus"')
-    expect(clientSource).toContain('kitten: "getKittenModelStatus"')
-    expect(clientSource).toContain('supertonic: "getSupertonicModelStatus"')
-    expect(clientSource).toContain('parakeet: "downloadParakeetModel"')
-    expect(clientSource).toContain('kitten: "downloadKittenModel"')
-    expect(clientSource).toContain('supertonic: "downloadSupertonicModel"')
-    expect(clientSource).toContain('"synthesizeWithKitten"')
-    expect(clientSource).toContain('"synthesizeWithSupertonic"')
+    expect(clientSource).toContain("Record<LocalSpeechModelProviderId, () => Promise<")
+    expect(clientSource).toContain("tipcClient.getParakeetModelStatus()")
+    expect(clientSource).toContain("tipcClient.getKittenModelStatus()")
+    expect(clientSource).toContain("tipcClient.getSupertonicModelStatus()")
+    expect(clientSource).toContain("tipcClient.downloadParakeetModel()")
+    expect(clientSource).toContain("tipcClient.downloadKittenModel()")
+    expect(clientSource).toContain("tipcClient.downloadSupertonicModel()")
+    expect(clientSource).toContain("tipcClient.synthesizeWithKitten(request)")
+    expect(clientSource).toContain("tipcClient.synthesizeWithSupertonic(request)")
+    expect(clientSource).not.toContain("window.electron.ipcRenderer.invoke")
   })
 
   it("keeps provider settings UI off direct local speech status/download IPC calls", () => {
