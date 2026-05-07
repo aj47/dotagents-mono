@@ -9,6 +9,7 @@ import {
   buildSettingsUpdatePatch,
   buildSettingsUpdateResponse,
   createEmergencyStopRouteActions,
+  createSettingsActionService,
   createSettingsRouteActionBundle,
   createSettingsRouteActions,
   DOTAGENTS_DEVICE_ID_HEADER,
@@ -555,6 +556,50 @@ describe('SettingsApiClient', () => {
     });
   });
 
+  it('creates settings action services from config and lifecycle adapters', async () => {
+    let config: SettingsActionConfigLike = {
+      remoteServerEnabled: false,
+      remoteServerApiKey: 'secret',
+      discordEnabled: false,
+      modelPresets: [],
+    };
+    const lifecycleCalls: unknown[] = [];
+    const service = createSettingsActionService({
+      config: {
+        get: () => config,
+        save: async (nextConfig) => {
+          config = nextConfig;
+        },
+      },
+      getMaskedRemoteServerApiKey: (cfg) => `masked:${cfg.remoteServerApiKey ?? ''}`,
+      getMaskedDiscordBotToken: () => 'DISCORD-MASK',
+      getDiscordDefaultProfileId: () => 'agent-1',
+      getAcpxAgents: () => [{ name: 'agent', displayName: 'Agent' }],
+      getDiscordLifecycleAction: (prev, next) => (!prev.discordEnabled && next.discordEnabled ? 'start' : 'noop'),
+      applyDiscordLifecycleAction: async (action) => {
+        lifecycleCalls.push({ type: 'discord', action });
+      },
+      applyWhatsappToggle: async (prevEnabled, nextEnabled) => {
+        lifecycleCalls.push({ type: 'whatsapp', prevEnabled, nextEnabled });
+      },
+    });
+
+    expect(service.getConfig()).toBe(config);
+    expect(service.getMaskedRemoteServerApiKey(config)).toBe('masked:secret');
+    expect(service.getMaskedDiscordBotToken(config)).toBe('DISCORD-MASK');
+    expect(service.getDiscordDefaultProfileId(config)).toBe('agent-1');
+    expect(service.getAcpxAgents()).toEqual([{ name: 'agent', displayName: 'Agent' }]);
+    expect(service.getDiscordLifecycleAction(config, { ...config, discordEnabled: true })).toBe('start');
+    await service.applyDiscordLifecycleAction('start');
+    await service.applyWhatsappToggle(false, true);
+    await service.saveConfig({ ...config, remoteServerEnabled: true });
+    expect(config.remoteServerEnabled).toBe(true);
+    expect(lifecycleCalls).toEqual([
+      { type: 'discord', action: 'start' },
+      { type: 'whatsapp', prevEnabled: false, nextEnabled: true },
+    ]);
+  });
+
   it('runs shared settings actions through config and lifecycle adapters', async () => {
     let config: SettingsActionConfigLike = {
       remoteServerEnabled: false,
@@ -569,17 +614,13 @@ describe('SettingsApiClient', () => {
     const savedConfigs: SettingsActionConfigLike[] = [];
     const diagnosticsCalls: unknown[] = [];
     const lifecycleCalls: unknown[] = [];
-    const options: SettingsActionOptions = {
+    const service = createSettingsActionService({
       config: {
         get: () => config,
         save: async (nextConfig) => {
           config = nextConfig;
           savedConfigs.push(nextConfig);
         },
-      },
-      diagnostics: {
-        logInfo: (source, message) => diagnosticsCalls.push({ level: 'info', source, message }),
-        logError: (source, message, error) => diagnosticsCalls.push({ level: 'error', source, message, error }),
       },
       getMaskedRemoteServerApiKey: () => 'REMOTE-MASK',
       getMaskedDiscordBotToken: () => 'DISCORD-MASK',
@@ -604,6 +645,13 @@ describe('SettingsApiClient', () => {
           prevLaunchAtLogin: prev.launchAtLogin,
           nextLaunchAtLogin: next.launchAtLogin,
         });
+      },
+    });
+    const options: SettingsActionOptions = {
+      service,
+      diagnostics: {
+        logInfo: (source, message) => diagnosticsCalls.push({ level: 'info', source, message }),
+        logError: (source, message, error) => diagnosticsCalls.push({ level: 'error', source, message, error }),
       },
     };
 
@@ -680,17 +728,11 @@ describe('SettingsApiClient', () => {
       ttsEnabled: true,
       modelPresets: [],
     };
-    const routeActions = createSettingsRouteActions({
+    const service = createSettingsActionService({
       config: {
         get: () => config,
         save: async (nextConfig) => {
           config = nextConfig;
-        },
-      },
-      diagnostics: {
-        logInfo: () => undefined,
-        logError: () => {
-          throw new Error('unexpected error log');
         },
       },
       getMaskedRemoteServerApiKey: () => 'REMOTE-MASK',
@@ -700,6 +742,15 @@ describe('SettingsApiClient', () => {
       getDiscordLifecycleAction: () => 'noop',
       applyDiscordLifecycleAction: async () => undefined,
       applyWhatsappToggle: async () => undefined,
+    });
+    const routeActions = createSettingsRouteActions({
+      service,
+      diagnostics: {
+        logInfo: () => undefined,
+        logError: () => {
+          throw new Error('unexpected error log');
+        },
+      },
     });
 
     expect(routeActions.getSettings('MASKED')).toMatchObject({
@@ -730,21 +781,13 @@ describe('SettingsApiClient', () => {
   });
 
   it('returns shared settings action validation and failure audit responses', async () => {
-    const options: SettingsActionOptions = {
+    const service = createSettingsActionService({
       config: {
         get: () => ({
           remoteServerEnabled: false,
           modelPresets: [],
         }),
         save: async () => undefined,
-      },
-      diagnostics: {
-        logInfo: () => {
-          throw new Error('unexpected info log');
-        },
-        logError: () => {
-          throw new Error('unexpected error log');
-        },
       },
       getMaskedRemoteServerApiKey: () => '',
       getMaskedDiscordBotToken: () => '',
@@ -753,6 +796,17 @@ describe('SettingsApiClient', () => {
       getDiscordLifecycleAction: () => 'noop',
       applyDiscordLifecycleAction: async () => undefined,
       applyWhatsappToggle: async () => undefined,
+    });
+    const options: SettingsActionOptions = {
+      service,
+      diagnostics: {
+        logInfo: () => {
+          throw new Error('unexpected info log');
+        },
+        logError: () => {
+          throw new Error('unexpected error log');
+        },
+      },
     };
 
     await expect(updateSettingsAction({
@@ -771,12 +825,21 @@ describe('SettingsApiClient', () => {
     const loggedErrors: unknown[] = [];
     const failingOptions: SettingsActionOptions = {
       ...options,
-      config: {
-        get: () => {
-          throw caughtFailure;
+      service: createSettingsActionService({
+        config: {
+          get: () => {
+            throw caughtFailure;
+          },
+          save: async () => undefined,
         },
-        save: async () => undefined,
-      },
+        getMaskedRemoteServerApiKey: () => '',
+        getMaskedDiscordBotToken: () => '',
+        getDiscordDefaultProfileId: () => '',
+        getAcpxAgents: () => [],
+        getDiscordLifecycleAction: () => 'noop',
+        applyDiscordLifecycleAction: async () => undefined,
+        applyWhatsappToggle: async () => undefined,
+      }),
       diagnostics: {
         logInfo: () => undefined,
         logError: (source, message, error) => loggedErrors.push({ source, message, error }),
@@ -896,25 +959,27 @@ describe('SettingsApiClient', () => {
     };
     const routeActionBundle = createSettingsRouteActionBundle({
       settings: {
-        config: {
-          get: () => config,
-          save: async (nextConfig) => {
-            config = nextConfig;
+        service: createSettingsActionService({
+          config: {
+            get: () => config,
+            save: async (nextConfig) => {
+              config = nextConfig;
+            },
           },
-        },
+          getMaskedRemoteServerApiKey: () => 'REMOTE-MASK',
+          getMaskedDiscordBotToken: () => 'DISCORD-MASK',
+          getDiscordDefaultProfileId: () => '',
+          getAcpxAgents: () => [],
+          getDiscordLifecycleAction: () => 'noop',
+          applyDiscordLifecycleAction: async () => undefined,
+          applyWhatsappToggle: async () => undefined,
+        }),
         diagnostics: {
           logInfo: () => undefined,
           logError: () => {
             throw new Error('unexpected settings error log');
           },
         },
-        getMaskedRemoteServerApiKey: () => 'REMOTE-MASK',
-        getMaskedDiscordBotToken: () => 'DISCORD-MASK',
-        getDiscordDefaultProfileId: () => '',
-        getAcpxAgents: () => [],
-        getDiscordLifecycleAction: () => 'noop',
-        applyDiscordLifecycleAction: async () => undefined,
-        applyWhatsappToggle: async () => undefined,
       },
       emergencyStop: {
         stopAll: async () => ({ before: 2, after: 0 }),

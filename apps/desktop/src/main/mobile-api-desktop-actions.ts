@@ -60,6 +60,7 @@ import {
   type TtsActionOptions,
 } from "@dotagents/shared/tts-api"
 import {
+  createSettingsActionService,
   createSettingsRouteActionBundle,
   type EmergencyStopActionOptions,
   type SettingsActionOptions,
@@ -174,20 +175,22 @@ const emergencyStopActionOptions: EmergencyStopActionOptions = {
 }
 
 const settingsActionOptions: SettingsActionOptions<Config> = {
-  config: {
-    get: () => configStore.get(),
-    save: (config) => configStore.save(config),
-  },
+  service: createSettingsActionService<Config>({
+    config: {
+      get: () => configStore.get(),
+      save: (config) => configStore.save(config),
+    },
+    getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey),
+    getMaskedDiscordBotToken: (config) => getMaskedDiscordBotToken(config, process.env),
+    getDiscordDefaultProfileId: (config) => getDiscordResolvedDefaultProfileId(config, process.env).profileId ?? "",
+    getAcpxAgents: () => getEnabledAcpxAgentProfiles(agentProfileService.getAll())
+      .map(p => ({ name: p.name, displayName: p.displayName })),
+    getDiscordLifecycleAction: (prev, next) => getDiscordLifecycleAction(prev, next, process.env),
+    applyDiscordLifecycleAction: (action) => applyDiscordLifecycleActionToService(action, discordService),
+    applyWhatsappToggle: handleWhatsAppToggle,
+    applyDesktopShellSettings,
+  }),
   diagnostics: diagnosticsService,
-  getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey),
-  getMaskedDiscordBotToken: (config) => getMaskedDiscordBotToken(config, process.env),
-  getDiscordDefaultProfileId: (config) => getDiscordResolvedDefaultProfileId(config, process.env).profileId ?? "",
-  getAcpxAgents: () => getEnabledAcpxAgentProfiles(agentProfileService.getAll())
-    .map(p => ({ name: p.name, displayName: p.displayName })),
-  getDiscordLifecycleAction: (prev, next) => getDiscordLifecycleAction(prev, next, process.env),
-  applyDiscordLifecycleAction: (action) => applyDiscordLifecycleActionToService(action, discordService),
-  applyWhatsappToggle: handleWhatsAppToggle,
-  applyDesktopShellSettings,
 }
 
 const settingsRouteActionBundle = createSettingsRouteActionBundle({

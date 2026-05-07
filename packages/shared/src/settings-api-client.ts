@@ -315,8 +315,13 @@ export interface SettingsActionDiagnostics {
 }
 
 export interface SettingsActionOptions<TConfig extends SettingsActionConfigLike = SettingsActionConfigLike> {
-  config: SettingsActionConfigStore<TConfig>;
+  service: SettingsActionService<TConfig>;
   diagnostics: SettingsActionDiagnostics;
+}
+
+export interface SettingsActionService<TConfig extends SettingsActionConfigLike = SettingsActionConfigLike> {
+  getConfig(): TConfig;
+  saveConfig(config: TConfig): SettingsMaybePromise<void>;
   getMaskedRemoteServerApiKey(config: TConfig): string;
   getMaskedDiscordBotToken(config: TConfig): string;
   getDiscordDefaultProfileId(config: TConfig): string;
@@ -325,6 +330,40 @@ export interface SettingsActionOptions<TConfig extends SettingsActionConfigLike 
   applyDiscordLifecycleAction(action: SettingsLifecycleAction): SettingsMaybePromise<void>;
   applyWhatsappToggle(prevEnabled: boolean, nextEnabled: boolean): SettingsMaybePromise<void>;
   applyDesktopShellSettings?(prev: TConfig, next: TConfig): SettingsMaybePromise<void>;
+}
+
+export interface SettingsActionServiceOptions<TConfig extends SettingsActionConfigLike = SettingsActionConfigLike> {
+  config: SettingsActionConfigStore<TConfig>;
+  getMaskedRemoteServerApiKey(config: TConfig): string;
+  getMaskedDiscordBotToken(config: TConfig): string;
+  getDiscordDefaultProfileId(config: TConfig): string;
+  getAcpxAgents(): Settings['acpxAgents'];
+  getDiscordLifecycleAction(prev: TConfig, next: TConfig): SettingsLifecycleAction;
+  applyDiscordLifecycleAction(action: SettingsLifecycleAction): SettingsMaybePromise<void>;
+  applyWhatsappToggle(prevEnabled: boolean, nextEnabled: boolean): SettingsMaybePromise<void>;
+  applyDesktopShellSettings?(prev: TConfig, next: TConfig): SettingsMaybePromise<void>;
+}
+
+export function createSettingsActionService<TConfig extends SettingsActionConfigLike>(
+  options: SettingsActionServiceOptions<TConfig>,
+): SettingsActionService<TConfig> {
+  const service: SettingsActionService<TConfig> = {
+    getConfig: () => options.config.get(),
+    saveConfig: (config) => options.config.save(config),
+    getMaskedRemoteServerApiKey: (config) => options.getMaskedRemoteServerApiKey(config),
+    getMaskedDiscordBotToken: (config) => options.getMaskedDiscordBotToken(config),
+    getDiscordDefaultProfileId: (config) => options.getDiscordDefaultProfileId(config),
+    getAcpxAgents: () => options.getAcpxAgents(),
+    getDiscordLifecycleAction: (prev, next) => options.getDiscordLifecycleAction(prev, next),
+    applyDiscordLifecycleAction: (action) => options.applyDiscordLifecycleAction(action),
+    applyWhatsappToggle: (prevEnabled, nextEnabled) => options.applyWhatsappToggle(prevEnabled, nextEnabled),
+  };
+
+  if (options.applyDesktopShellSettings) {
+    service.applyDesktopShellSettings = (prev, next) => options.applyDesktopShellSettings?.(prev, next);
+  }
+
+  return service;
 }
 
 export interface SettingsRouteActions {
@@ -621,13 +660,13 @@ export function getSettingsAction<TConfig extends SettingsActionConfigLike>(
   options: SettingsActionOptions<TConfig>,
 ): SettingsActionResult {
   try {
-    const cfg = options.config.get();
+    const cfg = options.service.getConfig();
     return settingsActionOk(buildSettingsResponse(cfg, {
       providerSecretMask,
-      remoteServerApiKey: options.getMaskedRemoteServerApiKey(cfg),
-      discordBotToken: options.getMaskedDiscordBotToken(cfg),
-      discordDefaultProfileId: options.getDiscordDefaultProfileId(cfg),
-      acpxAgents: options.getAcpxAgents(),
+      remoteServerApiKey: options.service.getMaskedRemoteServerApiKey(cfg),
+      discordBotToken: options.service.getMaskedDiscordBotToken(cfg),
+      discordDefaultProfileId: options.service.getDiscordDefaultProfileId(cfg),
+      acpxAgents: options.service.getAcpxAgents(),
     }));
   } catch (caughtError) {
     options.diagnostics.logError('settings-actions', 'Failed to get settings', caughtError);
@@ -645,7 +684,7 @@ export async function updateSettingsAction<TConfig extends SettingsActionConfigL
   try {
     const requestBody = getSettingsUpdateRequestRecord(body);
     attemptedSensitiveSettingsKeys = getSensitiveOperatorSettingsKeys(requestBody);
-    const cfg = options.config.get();
+    const cfg = options.service.getConfig();
     const updates = buildSettingsUpdatePatch(requestBody, cfg, masks) as Partial<TConfig>;
 
     if (Object.keys(updates).length === 0) {
@@ -661,24 +700,24 @@ export async function updateSettingsAction<TConfig extends SettingsActionConfigL
     const nextConfig = { ...cfg, ...updates } as TConfig;
     const remoteServerLifecycleAction = getRemoteServerLifecycleAction(cfg, nextConfig);
     const sensitiveUpdatedKeys = getSensitiveOperatorSettingsKeys(updates);
-    await options.config.save(nextConfig);
+    await options.service.saveConfig(nextConfig);
     options.diagnostics.logInfo('settings-actions', `Updated settings: ${Object.keys(updates).join(', ')}`);
 
     if (updates.hideDockIcon !== undefined || updates.launchAtLogin !== undefined) {
       try {
-        await options.applyDesktopShellSettings?.(cfg, nextConfig);
+        await options.service.applyDesktopShellSettings?.(cfg, nextConfig);
       } catch {
         // Desktop shell changes are best-effort; saved config remains authoritative.
       }
     }
 
-    const discordLifecycleAction = options.getDiscordLifecycleAction(cfg, nextConfig);
-    await options.applyDiscordLifecycleAction(discordLifecycleAction);
+    const discordLifecycleAction = options.service.getDiscordLifecycleAction(cfg, nextConfig);
+    await options.service.applyDiscordLifecycleAction(discordLifecycleAction);
 
     if (updates.whatsappEnabled !== undefined) {
       try {
         const prevEnabled = cfg.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED;
-        await options.applyWhatsappToggle(prevEnabled, updates.whatsappEnabled);
+        await options.service.applyWhatsappToggle(prevEnabled, updates.whatsappEnabled);
       } catch {
         // lifecycle is best-effort
       }

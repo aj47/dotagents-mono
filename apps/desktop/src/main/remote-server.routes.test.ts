@@ -1006,6 +1006,10 @@ describe("remote-server route registration", () => {
     expect(settingsGetSection).toContain("reply.code(result.statusCode).send(result.body)")
     expect(mobileApiDesktopActionsSource).toContain("const settingsRouteActionBundle = createSettingsRouteActionBundle({")
     expect(mobileApiDesktopActionsSource).toContain("settings: settingsRouteActionBundle.settings")
+    expect(mobileApiDesktopActionsSource).toContain("service: createSettingsActionService<Config>({")
+    expect(mobileApiDesktopActionsSource).not.toContain(
+      "const settingsActionOptions: SettingsActionOptions<Config> = {\n  config: {",
+    )
     expect(mobileApiDesktopActionsSource).not.toContain("getSettingsAction(providerSecretMask, settingsActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain(
       "getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey)",
@@ -1029,6 +1033,10 @@ describe("remote-server route registration", () => {
     expect(sharedDiscordConfigSource).toContain('} else if (action === "restart")')
     expect(sharedDiscordConfigSource).toContain('} else if (action === "stop")')
     expect(sharedSettingsApiClientSource).toContain("export interface SettingsActionOptions")
+    expect(sharedSettingsApiClientSource).toContain("export interface SettingsActionService")
+    expect(sharedSettingsApiClientSource).toContain("export function createSettingsActionService")
+    expect(sharedSettingsApiClientSource).toContain("getConfig: () => options.config.get()")
+    expect(sharedSettingsApiClientSource).toContain("saveConfig: (config) => options.config.save(config)")
     expect(sharedSettingsApiClientSource).toContain("export interface SettingsRouteActions")
     expect(sharedSettingsApiClientSource).toContain("export function getSettingsAction")
     expect(sharedSettingsApiClientSource).toContain("export function createSettingsRouteActions")
@@ -1036,10 +1044,10 @@ describe("remote-server route registration", () => {
     expect(sharedSettingsApiClientSource).toContain("settings: createSettingsRouteActions(options.settings)")
     expect(sharedSettingsApiClientSource).toContain("getSettings: (providerSecretMask) => getSettingsAction(providerSecretMask, options)")
     expect(sharedSettingsApiClientSource).toContain("buildSettingsResponse(cfg, {")
-    expect(sharedSettingsApiClientSource).toContain("remoteServerApiKey: options.getMaskedRemoteServerApiKey(cfg)")
-    expect(sharedSettingsApiClientSource).toContain("discordBotToken: options.getMaskedDiscordBotToken(cfg)")
-    expect(sharedSettingsApiClientSource).toContain("discordDefaultProfileId: options.getDiscordDefaultProfileId(cfg)")
-    expect(sharedSettingsApiClientSource).toContain("acpxAgents: options.getAcpxAgents()")
+    expect(sharedSettingsApiClientSource).toContain("remoteServerApiKey: options.service.getMaskedRemoteServerApiKey(cfg)")
+    expect(sharedSettingsApiClientSource).toContain("discordBotToken: options.service.getMaskedDiscordBotToken(cfg)")
+    expect(sharedSettingsApiClientSource).toContain("discordDefaultProfileId: options.service.getDiscordDefaultProfileId(cfg)")
+    expect(sharedSettingsApiClientSource).toContain("acpxAgents: options.service.getAcpxAgents()")
 
     expect(settingsPatchSection).toContain("providerSecretMask")
     expect(settingsPatchSection).toContain("remoteServerSecretMask")
@@ -1055,9 +1063,9 @@ describe("remote-server route registration", () => {
     expect(sharedSettingsApiClientSource).toContain("const requestBody = getSettingsUpdateRequestRecord(body)")
     expect(sharedSettingsApiClientSource).toContain("buildSettingsUpdatePatch(requestBody, cfg, masks)")
     expect(sharedSettingsApiClientSource).toContain("const remoteServerLifecycleAction = getRemoteServerLifecycleAction(cfg, nextConfig)")
-    expect(sharedSettingsApiClientSource).toContain("options.getDiscordLifecycleAction(cfg, nextConfig)")
-    expect(sharedSettingsApiClientSource).toContain("await options.applyDiscordLifecycleAction(discordLifecycleAction)")
-    expect(sharedSettingsApiClientSource).toContain("await options.applyWhatsappToggle(prevEnabled, updates.whatsappEnabled)")
+    expect(sharedSettingsApiClientSource).toContain("options.service.getDiscordLifecycleAction(cfg, nextConfig)")
+    expect(sharedSettingsApiClientSource).toContain("await options.service.applyDiscordLifecycleAction(discordLifecycleAction)")
+    expect(sharedSettingsApiClientSource).toContain("await options.service.applyWhatsappToggle(prevEnabled, updates.whatsappEnabled)")
     expect(sharedSettingsApiClientSource).not.toContain('from "./config"')
   })
 
@@ -2419,7 +2427,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain(
       "getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey)",
     )
-    expect(sharedSettingsApiClientSource).toContain("remoteServerApiKey: options.getMaskedRemoteServerApiKey(cfg)")
+    expect(sharedSettingsApiClientSource).toContain("remoteServerApiKey: options.service.getMaskedRemoteServerApiKey(cfg)")
   })
 
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {
