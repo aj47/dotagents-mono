@@ -21,9 +21,11 @@ import { emitAgentProgress } from '../emit-agent-progress';
 import { skillsService } from '../skills-service';
 import { agentProfileService, createSessionSnapshotFromProfile } from '../agent-profile-service';
 import {
+  buildStatefulProfileHistoryForAgentRun,
   getExplicitAgentStopReason,
   getPreferredDelegationOutput,
   resolveAgentModeMaxIterations,
+  type AgentRunStatefulProfileHistoryMessage,
 } from '@dotagents/shared/agent-run-utils';
 import { configStore } from '../config';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acpx/acpx-session-state';
@@ -430,13 +432,7 @@ export async function runInternalSubSession(
   agentSessionStateManager.createSession(subSessionId, effectiveProfileSnapshot);
 
   // Load previous conversation history for stateful agents
-  let previousConversationHistory: Array<{
-    role: 'user' | 'assistant' | 'tool';
-    content: string;
-    displayContent?: string;
-    toolCalls?: MCPToolCall[];
-    toolResults?: MCPToolResult[];
-  }> | undefined;
+  let previousConversationHistory: AgentRunStatefulProfileHistoryMessage[] | undefined;
 
   // Track agent info for saving conversation after completion
   let statefulAgentId: string | undefined;
@@ -448,14 +444,7 @@ export async function runInternalSubSession(
     useAgentProfileService = true;
     const existingMessages = agentProfileService.getConversation(agentProfile.id);
     if (existingMessages.length > 0) {
-      // Convert ConversationMessage[] to the format expected by processTranscriptWithAgentMode
-      previousConversationHistory = existingMessages.map(msg => ({
-        role: msg.role,
-        content: msg.content,
-        ...(msg.displayContent ? { displayContent: msg.displayContent } : {}),
-        // Note: toolCalls and toolResults from ConversationMessage use different types
-        // but for context purposes, the content is sufficient
-      }));
+      previousConversationHistory = buildStatefulProfileHistoryForAgentRun(existingMessages);
       logSubSession(`Loaded ${existingMessages.length} messages from stateful AgentProfile "${agentProfile.name}" conversation history`);
     }
   }
@@ -467,14 +456,7 @@ export async function runInternalSubSession(
       useAgentProfileService = true;
       const existingMessages = agentProfileService.getConversation(unifiedProfile.id);
       if (existingMessages.length > 0) {
-        // Convert ConversationMessage[] to the format expected by processTranscriptWithAgentMode
-        previousConversationHistory = existingMessages.map(msg => ({
-          role: msg.role,
-          content: msg.content,
-          ...(msg.displayContent ? { displayContent: msg.displayContent } : {}),
-          // Note: toolCalls and toolResults from ConversationMessage use different types
-          // but for context purposes, the content is sufficient
-        }));
+        previousConversationHistory = buildStatefulProfileHistoryForAgentRun(existingMessages);
         logSubSession(`Loaded ${existingMessages.length} messages from stateful AgentProfile "${agentProfileName}" conversation history`);
       }
     }

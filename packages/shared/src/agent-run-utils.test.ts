@@ -8,6 +8,7 @@ import {
   SESSION_STOPPED_BY_KILL_SWITCH_REASON,
   appendAgentStopNote,
   buildPreviousConversationHistoryForAgentRun,
+  buildStatefulProfileHistoryForAgentRun,
   buildAgentStoppedProgressUpdate,
   buildProfileContext,
   calculateLlmRetryBackoffDelay,
@@ -447,6 +448,16 @@ describe('runRemoteAgentAction', () => {
         }],
         branchMessageIndex: 3,
       },
+    ])
+  })
+
+  it('builds stateful profile history without dropping the latest stored message', () => {
+    expect(buildStatefulProfileHistoryForAgentRun([
+      { role: 'user', content: 'first' },
+      { role: 'assistant', content: 'stored answer', displayContent: 'shown answer' },
+    ])).toEqual([
+      { role: 'user', content: 'first' },
+      { role: 'assistant', content: 'stored answer', displayContent: 'shown answer' },
     ])
   })
 

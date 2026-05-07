@@ -77,6 +77,11 @@ export type AgentRunPreviousConversationHistoryMessage = {
   branchMessageIndex?: number
 }
 
+export type AgentRunStatefulProfileHistoryMessage = Pick<
+  AgentRunPreviousConversationHistoryMessage,
+  'role' | 'content' | 'displayContent'
+>
+
 export type RemoteAgentSessionLike = {
   id?: string
   status?: string
@@ -217,6 +222,16 @@ export function buildPreviousConversationHistoryForAgentRun(
       isError: !result?.success,
     })),
     branchMessageIndex: branchMessageIndexMap[index],
+  }))
+}
+
+export function buildStatefulProfileHistoryForAgentRun(
+  messages: readonly AgentRunConversationHistorySourceMessage[],
+): AgentRunStatefulProfileHistoryMessage[] {
+  return messages.map((message) => ({
+    role: message.role,
+    content: message.content,
+    ...(message.displayContent ? { displayContent: message.displayContent } : {}),
   }))
 }
 
