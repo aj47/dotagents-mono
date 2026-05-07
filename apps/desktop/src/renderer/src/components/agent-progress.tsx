@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
+import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { desktopConversationsClient } from "@renderer/lib/desktop-conversations-client"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
@@ -3297,11 +3298,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     setIsKilling(true)
     try {
       if (progress?.sessionId) {
-        await tipcClient.stopAgentSession({ sessionId: progress.sessionId })
+        await desktopAgentSessionsClient.stopAgentSession(progress.sessionId)
       } else {
         // No session ID available, fall back to global emergency stop
         // so the kill switch always works regardless of state
-        await tipcClient.emergencyStopAgent()
+        await desktopAgentSessionsClient.emergencyStopAgent()
       }
       setShowKillConfirmation(false)
     } catch (error) {
@@ -3329,7 +3330,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     setFocusedSessionId(progress.sessionId)
 
     try {
-      await tipcClient.unsnoozeAgentSession({ sessionId: progress.sessionId })
+      await desktopAgentSessionsClient.unsnoozeAgentSession(progress.sessionId)
     } catch (error) {
       setSessionSnoozed(progress.sessionId, true)
       setFocusedSessionId(null)
@@ -3338,7 +3339,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
 
     try {
-      await tipcClient.focusAgentSession({ sessionId: progress.sessionId })
+      await desktopAgentSessionsClient.focusAgentSession(progress.sessionId)
     } catch (error) {
       console.error("Failed to update UI after unsnooze:", error)
     }
@@ -3369,10 +3370,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
       if (thisId && hasOtherVisible) {
         // Session-scoped dismiss: remove only this session's progress and keep panel open
-        await tipcClient.clearAgentSessionProgress({ sessionId: thisId })
+        await desktopAgentSessionsClient.clearAgentSessionProgress(thisId)
       } else {
         // Last visible session: exit agent mode and hide panel
-        await tipcClient.closeAgentModeAndHidePanelWindow()
+        await desktopAgentSessionsClient.closeAgentModeAndHidePanelWindow()
       }
     } catch (error) {
       console.error("Failed to close agent session/panel:", error)

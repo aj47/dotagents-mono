@@ -44,6 +44,22 @@ export const desktopAgentSessionsClient = {
     return tipcClient.clearAgentSessionProgress({ sessionId }) as Promise<void>
   },
 
+  emergencyStopAgent(): Promise<void> {
+    return tipcClient.emergencyStopAgent() as Promise<void>
+  },
+
+  unsnoozeAgentSession(sessionId: string): Promise<void> {
+    return tipcClient.unsnoozeAgentSession({ sessionId }) as Promise<void>
+  },
+
+  focusAgentSession(sessionId: string): Promise<void> {
+    return tipcClient.focusAgentSession({ sessionId }) as Promise<void>
+  },
+
+  closeAgentModeAndHidePanelWindow(): Promise<void> {
+    return tipcClient.closeAgentModeAndHidePanelWindow() as Promise<void>
+  },
+
   async focusAgentSessionInPanel(sessionId: string): Promise<void> {
     await tipcClient.focusAgentSession({ sessionId })
     await tipcClient.setPanelMode({ mode: "agent" })
