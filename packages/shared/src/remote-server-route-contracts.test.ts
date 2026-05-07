@@ -59,6 +59,7 @@ const actionKeys = [
   'exportSkillToMarkdown',
   'updateSkill',
   'deleteSkill',
+  'deleteSkills',
   'toggleProfileSkill',
   'getKnowledgeNotes',
   'getKnowledgeNote',
@@ -214,6 +215,7 @@ describe('remote server route contracts', () => {
         'exportSkillToMarkdown',
         'updateSkill',
         'deleteSkill',
+        'deleteSkills',
         'toggleProfileSkill',
       ),
       knowledgeNotes: pick(
