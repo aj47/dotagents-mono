@@ -661,6 +661,9 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain(
       "recordOperatorAuditEvent: operatorAuditEventRouteActions.recordOperatorAuditEvent",
     )
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "setOperatorAuditContext: operatorAuditContextRouteActions.setOperatorAuditContext",
+    )
     expect(injectedMcpRoutesSource).not.toContain('from "./injected-mcp-actions"')
     expect(injectedMcpRoutesSource).not.toContain("export interface InjectedMcpRouteActions")
     expect(injectedMcpRoutesSource).not.toContain("export interface RegisterInjectedMcpRoutesOptions")
@@ -1998,9 +2001,14 @@ describe("remote-server route registration", () => {
     expect(operatorAuditActionsSource).not.toContain("getOperatorAuditDeviceId(request)")
     expect(operatorAuditActionsSource).not.toContain("getOperatorAuditSource(request)")
     expect(sharedOperatorActionsSource).toContain("export function createOperatorAuditEventRouteActions")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorAuditContextRouteActions")
     expect(operatorAuditActionsSource).toContain(
       "export const operatorAuditEventRouteActions = createOperatorAuditEventRouteActions<FastifyRequest>(operatorAuditRecorder)",
     )
+    expect(operatorAuditActionsSource).toContain(
+      "export const operatorAuditContextRouteActions = createOperatorAuditContextRouteActions<FastifyRequest>({",
+    )
+    expect(operatorAuditActionsSource).not.toContain("function setOperatorAuditContext")
     expect(operatorAuditActionsSource).toContain(
       "export const operatorAuditRouteActions = createOperatorAuditRouteActions(operatorAuditActionOptions)",
     )

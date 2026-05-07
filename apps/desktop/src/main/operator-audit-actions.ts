@@ -4,6 +4,7 @@ import fs from "fs"
 import path from "path"
 import {
   createOperatorAuditRecorder,
+  createOperatorAuditContextRouteActions,
   createOperatorAuditEventRouteActions,
   createOperatorAuditRouteActions,
   type OperatorAuditActionOptions,
@@ -58,6 +59,10 @@ const operatorAuditRecorder = createOperatorAuditRecorder({
 
 export const operatorAuditEventRouteActions = createOperatorAuditEventRouteActions<FastifyRequest>(operatorAuditRecorder)
 
+export const operatorAuditContextRouteActions = createOperatorAuditContextRouteActions<FastifyRequest>({
+  getContext: getOperatorAuditContext,
+})
+
 export function recordRejectedOperatorDeviceAttempt(request: FastifyRequest, failureReason: string): void {
   operatorAuditRecorder.recordRejectedDeviceAttempt(request, failureReason)
 }
@@ -69,10 +74,6 @@ export function getOperatorAuditContext(request: FastifyRequest): OperatorAuditC
   }
 
   return rawRequest.operatorAuditContext
-}
-
-export function setOperatorAuditContext(request: FastifyRequest, context: Partial<OperatorAuditContext>): void {
-  Object.assign(getOperatorAuditContext(request), context)
 }
 
 export function recordOperatorResponseAuditEvent(request: FastifyRequest, reply: FastifyReply): void {

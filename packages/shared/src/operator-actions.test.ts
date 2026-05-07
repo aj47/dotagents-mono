@@ -78,6 +78,7 @@ import {
   createOperatorApiKeyActionService,
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
+  createOperatorAuditContextRouteActions,
   createOperatorAuditEventRouteActions,
   createOperatorAuditRecorder,
   createOperatorAuditRouteActions,
@@ -1690,6 +1691,25 @@ describe("operator action API helpers", () => {
       details: { keys: ["remoteServer"] },
       failureReason: "invalid-api-key",
     })])
+  })
+
+  it("creates operator audit context route actions from a context store", () => {
+    const auditContext = { details: { existing: true } }
+    const routeActions = createOperatorAuditContextRouteActions({
+      getContext: () => auditContext,
+    })
+
+    routeActions.setOperatorAuditContext({}, {
+      action: "settings-update",
+      success: true,
+      details: { keys: ["remoteServer"] },
+    })
+
+    expect(auditContext).toEqual({
+      action: "settings-update",
+      success: true,
+      details: { keys: ["remoteServer"] },
+    })
   })
 
   it("parses operator JSON records defensively", () => {

@@ -84,6 +84,14 @@ export interface OperatorAuditEventRouteActions<Request extends OperatorAuditReq
   recordOperatorAuditEvent(request: Request, options: OperatorAuditEventOptions): void
 }
 
+export interface OperatorAuditContextStore<Request> {
+  getContext(request: Request): OperatorResponseAuditContext
+}
+
+export interface OperatorAuditContextRouteActions<Request> {
+  setOperatorAuditContext(request: Request, context: OperatorResponseAuditContext): void
+}
+
 export type OperatorMcpRestartRequest = {
   server: string
 }
@@ -1682,6 +1690,16 @@ export function createOperatorAuditEventRouteActions<Request extends OperatorAud
 ): OperatorAuditEventRouteActions<Request> {
   return {
     recordOperatorAuditEvent: (request, options) => recorder.recordAuditEvent(request, options),
+  }
+}
+
+export function createOperatorAuditContextRouteActions<Request>(
+  store: OperatorAuditContextStore<Request>,
+): OperatorAuditContextRouteActions<Request> {
+  return {
+    setOperatorAuditContext: (request, context) => {
+      Object.assign(store.getContext(request), context)
+    },
   }
 }
 
