@@ -7,6 +7,7 @@ import {
   buildConversationImageMarkdownMessage,
   buildConversationImageMarkdownReference,
   buildConversationVideoAssetHttpUrl,
+  createConversationVideoAssetFileService,
   createConversationVideoAssetRouteActions,
   escapeMarkdownAltText,
   extractConversationImageMarkdownReferences,
@@ -760,6 +761,33 @@ describe('conversation video asset utilities', () => {
     });
 
     expect(bodyRanges).toEqual([undefined, { start: 10, end: 19 }]);
+  });
+
+  it('creates reusable video asset file services from filesystem adapters', async () => {
+    const fileInfoByPath = new Map<string, { size: number; isFile: boolean }>([
+      ['/assets/conv-1/abcdef1234567890.mp4', { size: 1000, isFile: true }],
+      ['/assets/conv-1/abcdef1234567890.webm', { size: 1000, isFile: false }],
+    ]);
+    const readCalls: Array<{ filePath: string; range?: { start: number; end: number } }> = [];
+    const service = createConversationVideoAssetFileService({
+      resolveVideoAssetPath: (conversationId, fileName) => `/assets/${conversationId}/${fileName}`,
+      fileSystem: {
+        getFileInfo: async (filePath) => fileInfoByPath.get(filePath) ?? { size: 0, isFile: false },
+        createReadBody: (filePath, range) => {
+          readCalls.push({ filePath, range });
+          return range ? `stream:${range.start}-${range.end}` : 'stream:full';
+        },
+      },
+    });
+
+    const assetFile = await service.getVideoAssetFile('conv-1', 'abcdef1234567890.mp4');
+    expect(assetFile?.size).toBe(1000);
+    expect(assetFile?.createBody({ start: 10, end: 19 })).toBe('stream:10-19');
+    await expect(service.getVideoAssetFile('conv-1', 'abcdef1234567890.webm')).resolves.toBeNull();
+    expect(readCalls).toEqual([{
+      filePath: '/assets/conv-1/abcdef1234567890.mp4',
+      range: { start: 10, end: 19 },
+    }]);
   });
 
   it('creates reusable video asset route actions through an injected file service', async () => {

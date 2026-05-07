@@ -195,6 +195,37 @@ export interface ConversationVideoAssetActionService<Body = unknown> {
   ): Promise<ConversationVideoAssetActionFile<Body> | null | undefined>;
 }
 
+export interface ConversationVideoAssetFileInfo {
+  size: number;
+  isFile: boolean;
+}
+
+export interface ConversationVideoAssetFileSystemAdapter<Body = unknown> {
+  getFileInfo(filePath: string): Promise<ConversationVideoAssetFileInfo>;
+  createReadBody(filePath: string, range?: { start: number; end: number }): Body;
+}
+
+export interface ConversationVideoAssetFileServiceOptions<Body = unknown> {
+  resolveVideoAssetPath(conversationId: string, fileName: string): string;
+  fileSystem: ConversationVideoAssetFileSystemAdapter<Body>;
+}
+
+export function createConversationVideoAssetFileService<Body = unknown>(
+  options: ConversationVideoAssetFileServiceOptions<Body>,
+): ConversationVideoAssetActionService<Body> {
+  return {
+    getVideoAssetFile: async (conversationId, fileName) => {
+      const assetPath = options.resolveVideoAssetPath(conversationId, fileName);
+      const fileInfo = await options.fileSystem.getFileInfo(assetPath);
+      if (!fileInfo.isFile) return null;
+      return {
+        size: fileInfo.size,
+        createBody: (range) => options.fileSystem.createReadBody(assetPath, range),
+      };
+    },
+  };
+}
+
 export interface ConversationVideoAssetActionDiagnostics {
   logError(source: string, message: string, error: unknown): void;
 }

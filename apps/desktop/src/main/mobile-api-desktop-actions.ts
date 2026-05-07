@@ -36,6 +36,7 @@ import {
 } from "@dotagents/shared/conversation-sync"
 import { getConversationIdValidationError } from "@dotagents/shared/conversation-id"
 import {
+  createConversationVideoAssetFileService,
   createConversationVideoAssetRouteActions,
   type ConversationVideoAssetActionOptions,
 } from "@dotagents/shared/conversation-media-assets"
@@ -253,19 +254,18 @@ const conversationActionOptions: ConversationActionOptions<DesktopConversationAc
 const conversationRouteActions = createConversationRouteActions(conversationActionOptions)
 
 const conversationVideoAssetActionOptions: ConversationVideoAssetActionOptions = {
-  service: {
-    getVideoAssetFile: async (conversationId, fileName) => {
-      const assetPath = getConversationVideoAssetPath(conversationId, fileName)
-      const stat = await fs.promises.stat(assetPath)
-      if (!stat.isFile()) return null
-      return {
-        size: stat.size,
-        createBody: (range) => range
-          ? fs.createReadStream(assetPath, { start: range.start, end: range.end })
-          : fs.createReadStream(assetPath),
-      }
+  service: createConversationVideoAssetFileService({
+    resolveVideoAssetPath: getConversationVideoAssetPath,
+    fileSystem: {
+      getFileInfo: async (assetPath) => {
+        const stat = await fs.promises.stat(assetPath)
+        return { size: stat.size, isFile: stat.isFile() }
+      },
+      createReadBody: (assetPath, range) => range
+        ? fs.createReadStream(assetPath, { start: range.start, end: range.end })
+        : fs.createReadStream(assetPath),
     },
-  },
+  }),
   validateConversationId: getConversationIdValidationError,
   diagnostics: diagnosticsService,
 }
