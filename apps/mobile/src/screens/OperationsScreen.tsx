@@ -67,6 +67,7 @@ import {
   OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA,
   OPERATOR_CONVERSATIONS_PANEL_METADATA,
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
+  OPERATOR_DISCORD_PANEL_METADATA,
   OPERATOR_ERRORS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
   OPERATOR_MCP_SERVERS_PANEL_METADATA,
@@ -76,6 +77,7 @@ import {
   OPERATOR_SYSTEM_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
   OPERATOR_UPDATER_PANEL_METADATA,
+  OPERATOR_WHATSAPP_PANEL_METADATA,
   formatOperatorActiveAgentSessionSummary as formatActiveAgentSessionSummary,
   formatOperatorAuditDetails as formatAuditDetails,
   formatOperatorAuditSource as formatAuditSource,
@@ -2554,17 +2556,15 @@ export default function OperationsScreen({ navigation }: any) {
 
           {discord && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Discord</Text>
-              <Text style={styles.detailText}>
-                Status: {discord.connected ? 'Connected' : discord.connecting ? 'Connecting' : discord.enabled ? 'Enabled, not connected' : 'Disabled'}
-              </Text>
-              <Text style={styles.detailText}>Available: {formatYesNo(discord.available)}</Text>
-              <Text style={styles.detailText}>Token configured: {formatYesNo(discord.tokenConfigured)}</Text>
-              <Text style={styles.detailText}>Bot username: {discord.botUsername || '—'}</Text>
-              <Text style={styles.detailText}>Default profile: {discord.defaultProfileName || discord.defaultProfileId || '—'}</Text>
-              <Text style={styles.detailText}>Logs: {formatLogSummary(discord.logs)}</Text>
-              <Text style={styles.detailText}>Last event: {formatTimestamp(discord.lastEventAt)}</Text>
-              {discord.lastError && <Text style={styles.warningText}>Last error: {discord.lastError}</Text>}
+              <Text style={styles.panelTitle}>{OPERATOR_DISCORD_PANEL_METADATA.panelTitle}</Text>
+              <Text style={styles.detailText}>{OPERATOR_DISCORD_PANEL_METADATA.formatStatus(discord)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_DISCORD_PANEL_METADATA.formatAvailable(discord.available)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_DISCORD_PANEL_METADATA.formatTokenConfigured(discord.tokenConfigured)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_DISCORD_PANEL_METADATA.formatBotUsername(discord.botUsername)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_DISCORD_PANEL_METADATA.formatDefaultProfile(discord.defaultProfileName, discord.defaultProfileId)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_DISCORD_PANEL_METADATA.formatLogs(discord.logs)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_DISCORD_PANEL_METADATA.formatLastEvent(discord.lastEventAt)}</Text>
+              {discord.lastError && <Text style={styles.warningText}>{OPERATOR_DISCORD_PANEL_METADATA.formatLastError(discord.lastError)}</Text>}
 
               <View style={styles.actionGrid}>
                 <TouchableOpacity
@@ -2576,9 +2576,9 @@ export default function OperationsScreen({ navigation }: any) {
                   onPress={() => void runAction('discord-connect', () => settingsClient.connectOperatorDiscord())}
                   disabled={controlsDisabled || discord.connected || discord.connecting}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Connect Discord')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_DISCORD_PANEL_METADATA.connectButton.accessibilityLabel)}
                 >
-                  <Text style={styles.secondaryActionText}>Connect Discord</Text>
+                  <Text style={styles.secondaryActionText}>{OPERATOR_DISCORD_PANEL_METADATA.connectButton.buttonLabel}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -2588,17 +2588,17 @@ export default function OperationsScreen({ navigation }: any) {
                     (controlsDisabled || !discord.connected) && styles.actionButtonDisabled,
                   ]}
                   onPress={() => confirmAction(
-                    'Disconnect Discord',
-                    'Disconnect the Discord bot from the desktop app now?',
-                    'Disconnect',
+                    OPERATOR_DISCORD_PANEL_METADATA.disconnectAction.confirmTitle,
+                    OPERATOR_DISCORD_PANEL_METADATA.disconnectAction.confirmMessage,
+                    OPERATOR_DISCORD_PANEL_METADATA.disconnectAction.confirmButtonLabel,
                     true,
                     () => runAction('discord-disconnect', () => settingsClient.disconnectOperatorDiscord()),
                   )}
                   disabled={controlsDisabled || !discord.connected}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Disconnect Discord')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_DISCORD_PANEL_METADATA.disconnectAction.accessibilityLabel)}
                 >
-                  <Text style={styles.secondaryActionText}>Disconnect</Text>
+                  <Text style={styles.secondaryActionText}>{OPERATOR_DISCORD_PANEL_METADATA.disconnectAction.buttonLabel}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -2608,23 +2608,23 @@ export default function OperationsScreen({ navigation }: any) {
                     (controlsDisabled || (discord.logs.total === 0 && discordLogs.length === 0)) && styles.actionButtonDisabled,
                   ]}
                   onPress={() => confirmAction(
-                    'Clear Discord Logs',
-                    'Clear the Discord operator log preview on the desktop app?',
-                    'Clear Logs',
+                    OPERATOR_DISCORD_PANEL_METADATA.clearLogsAction.confirmTitle,
+                    OPERATOR_DISCORD_PANEL_METADATA.clearLogsAction.confirmMessage,
+                    OPERATOR_DISCORD_PANEL_METADATA.clearLogsAction.confirmButtonLabel,
                     true,
                     () => runAction('discord-clear-logs', () => settingsClient.clearOperatorDiscordLogs()),
                   )}
                   disabled={controlsDisabled || (discord.logs.total === 0 && discordLogs.length === 0)}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Clear Discord logs')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_DISCORD_PANEL_METADATA.clearLogsAction.accessibilityLabel)}
                 >
-                  <Text style={styles.secondaryActionText}>Clear logs</Text>
+                  <Text style={styles.secondaryActionText}>{OPERATOR_DISCORD_PANEL_METADATA.clearLogsAction.buttonLabel}</Text>
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.sectionCaption}>Discord log preview</Text>
+              <Text style={styles.sectionCaption}>{OPERATOR_DISCORD_PANEL_METADATA.logsSectionTitle}</Text>
               {discordLogs.length === 0 ? (
-                <Text style={styles.mutedText}>No Discord log entries returned.</Text>
+                <Text style={styles.mutedText}>{OPERATOR_DISCORD_PANEL_METADATA.emptyLogsText}</Text>
               ) : (
                 discordLogs.map((entry) => (
                   <View key={entry.id} style={styles.logItem}>
@@ -2641,19 +2641,17 @@ export default function OperationsScreen({ navigation }: any) {
 
           {whatsApp && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>WhatsApp</Text>
-              <Text style={styles.detailText}>
-                Status: {whatsApp.connected ? 'Connected' : whatsApp.enabled ? 'Enabled, not connected' : 'Disabled'}
-              </Text>
-              <Text style={styles.detailText}>Server configured: {formatYesNo(whatsApp.serverConfigured)}</Text>
-              <Text style={styles.detailText}>Server connected: {formatYesNo(whatsApp.serverConnected)}</Text>
-              <Text style={styles.detailText}>Available: {formatYesNo(whatsApp.available)}</Text>
-              <Text style={styles.detailText}>Auto-reply: {formatYesNo(whatsApp.autoReplyEnabled)}</Text>
-              <Text style={styles.detailText}>Log messages: {formatYesNo(whatsApp.logMessagesEnabled)}</Text>
-              <Text style={styles.detailText}>Allowed senders: {whatsApp.allowedSenderCount}</Text>
-              <Text style={styles.detailText}>Credentials present: {formatYesNo(whatsApp.hasCredentials)}</Text>
-              <Text style={styles.detailText}>Logs: {formatLogSummary(whatsApp.logs)}</Text>
-              {whatsApp.lastError && <Text style={styles.warningText}>Last error: {whatsApp.lastError}</Text>}
+              <Text style={styles.panelTitle}>{OPERATOR_WHATSAPP_PANEL_METADATA.panelTitle}</Text>
+              <Text style={styles.detailText}>{OPERATOR_WHATSAPP_PANEL_METADATA.formatStatus(whatsApp)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_WHATSAPP_PANEL_METADATA.formatServerConfigured(whatsApp.serverConfigured)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_WHATSAPP_PANEL_METADATA.formatServerConnected(whatsApp.serverConnected)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_WHATSAPP_PANEL_METADATA.formatAvailable(whatsApp.available)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_WHATSAPP_PANEL_METADATA.formatAutoReply(whatsApp.autoReplyEnabled)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_WHATSAPP_PANEL_METADATA.formatLogMessages(whatsApp.logMessagesEnabled)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_WHATSAPP_PANEL_METADATA.formatAllowedSenders(whatsApp.allowedSenderCount)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_WHATSAPP_PANEL_METADATA.formatCredentialsPresent(whatsApp.hasCredentials)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_WHATSAPP_PANEL_METADATA.formatLogs(whatsApp.logs)}</Text>
+              {whatsApp.lastError && <Text style={styles.warningText}>{OPERATOR_WHATSAPP_PANEL_METADATA.formatLastError(whatsApp.lastError)}</Text>}
 
               <View style={styles.actionGrid}>
                 <TouchableOpacity
@@ -2665,9 +2663,9 @@ export default function OperationsScreen({ navigation }: any) {
                   onPress={() => void runAction('whatsapp-connect', () => settingsClient.connectOperatorWhatsApp())}
                   disabled={controlsDisabled || whatsApp.connected}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Connect WhatsApp')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_WHATSAPP_PANEL_METADATA.connectButton.accessibilityLabel)}
                 >
-                  <Text style={styles.secondaryActionText}>Connect WhatsApp</Text>
+                  <Text style={styles.secondaryActionText}>{OPERATOR_WHATSAPP_PANEL_METADATA.connectButton.buttonLabel}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -2677,17 +2675,17 @@ export default function OperationsScreen({ navigation }: any) {
                     (controlsDisabled || !whatsApp.connected) && styles.actionButtonDisabled,
                   ]}
                   onPress={() => confirmAction(
-                    'Log Out of WhatsApp',
-                    'Log out the active WhatsApp session on the desktop app?',
-                    'Log Out',
+                    OPERATOR_WHATSAPP_PANEL_METADATA.logoutAction.confirmTitle,
+                    OPERATOR_WHATSAPP_PANEL_METADATA.logoutAction.confirmMessage,
+                    OPERATOR_WHATSAPP_PANEL_METADATA.logoutAction.confirmButtonLabel,
                     true,
                     () => runAction('whatsapp-logout', () => settingsClient.logoutOperatorWhatsApp()),
                   )}
                   disabled={controlsDisabled || !whatsApp.connected}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Log out of WhatsApp')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_WHATSAPP_PANEL_METADATA.logoutAction.accessibilityLabel)}
                 >
-                  <Text style={styles.secondaryActionText}>Log out</Text>
+                  <Text style={styles.secondaryActionText}>{OPERATOR_WHATSAPP_PANEL_METADATA.logoutAction.buttonLabel}</Text>
                 </TouchableOpacity>
               </View>
             </View>

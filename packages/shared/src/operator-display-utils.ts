@@ -1,4 +1,9 @@
-import type { OperatorAuditEntry, OperatorRuntimeStatus } from "./api-types"
+import type {
+  OperatorAuditEntry,
+  OperatorDiscordIntegrationSummary,
+  OperatorRuntimeStatus,
+  OperatorWhatsAppIntegrationSummary,
+} from "./api-types"
 
 export const OPERATOR_EMPTY_VALUE_LABEL = "—"
 
@@ -67,6 +72,11 @@ export type OperatorConfirmedActionMetadata = {
 
 export type OperatorConfirmedActionButtonMetadata = OperatorConfirmedActionMetadata & {
   pendingLabel: string
+}
+
+export type OperatorSimpleActionMetadata = {
+  accessibilityLabel: string
+  buttonLabel: string
 }
 
 export type OperatorActionsPanelMetadata = {
@@ -537,6 +547,99 @@ export const OPERATOR_TUNNEL_STATUS_PANEL_METADATA: OperatorTunnelStatusPanelMet
   stopButtonLabel: "Stop tunnel",
   stopAccessibilityLabel: "Stop tunnel",
   helperText: "The remote server must be running before a tunnel can start.",
+}
+
+export type OperatorDiscordPanelMetadata = {
+  panelTitle: string
+  formatStatus: (discord: Pick<OperatorDiscordIntegrationSummary, "connected" | "connecting" | "enabled">) => string
+  formatAvailable: (available?: boolean) => string
+  formatTokenConfigured: (tokenConfigured?: boolean) => string
+  formatBotUsername: (botUsername?: string) => string
+  formatDefaultProfile: (defaultProfileName?: string, defaultProfileId?: string) => string
+  formatLogs: (logs?: OperatorDiscordIntegrationSummary["logs"]) => string
+  formatLastEvent: (lastEventAt?: number) => string
+  formatLastError: (lastError: string) => string
+  connectButton: OperatorSimpleActionMetadata
+  disconnectAction: OperatorConfirmedActionMetadata
+  clearLogsAction: OperatorConfirmedActionMetadata
+  logsSectionTitle: string
+  emptyLogsText: string
+}
+
+export const OPERATOR_DISCORD_PANEL_METADATA: OperatorDiscordPanelMetadata = {
+  panelTitle: "Discord",
+  formatStatus: (discord) =>
+    `Status: ${discord.connected ? "Connected" : discord.connecting ? "Connecting" : discord.enabled ? "Enabled, not connected" : "Disabled"}`,
+  formatAvailable: (available) => `Available: ${formatOperatorYesNo(available)}`,
+  formatTokenConfigured: (tokenConfigured) => `Token configured: ${formatOperatorYesNo(tokenConfigured)}`,
+  formatBotUsername: (botUsername) => `Bot username: ${botUsername || OPERATOR_EMPTY_VALUE_LABEL}`,
+  formatDefaultProfile: (defaultProfileName, defaultProfileId) =>
+    `Default profile: ${defaultProfileName || defaultProfileId || OPERATOR_EMPTY_VALUE_LABEL}`,
+  formatLogs: (logs) => `Logs: ${formatOperatorLogSummary(logs)}`,
+  formatLastEvent: (lastEventAt) => `Last event: ${formatOperatorTimestamp(lastEventAt)}`,
+  formatLastError: (lastError) => `Last error: ${lastError}`,
+  connectButton: {
+    accessibilityLabel: "Connect Discord",
+    buttonLabel: "Connect Discord",
+  },
+  disconnectAction: {
+    confirmTitle: "Disconnect Discord",
+    confirmMessage: "Disconnect the Discord bot from the desktop app now?",
+    confirmButtonLabel: "Disconnect",
+    accessibilityLabel: "Disconnect Discord",
+    buttonLabel: "Disconnect",
+  },
+  clearLogsAction: {
+    confirmTitle: "Clear Discord Logs",
+    confirmMessage: "Clear the Discord operator log preview on the desktop app?",
+    confirmButtonLabel: "Clear Logs",
+    accessibilityLabel: "Clear Discord logs",
+    buttonLabel: "Clear logs",
+  },
+  logsSectionTitle: "Discord log preview",
+  emptyLogsText: "No Discord log entries returned.",
+}
+
+export type OperatorWhatsAppPanelMetadata = {
+  panelTitle: string
+  formatStatus: (whatsApp: Pick<OperatorWhatsAppIntegrationSummary, "connected" | "enabled">) => string
+  formatServerConfigured: (serverConfigured?: boolean) => string
+  formatServerConnected: (serverConnected?: boolean) => string
+  formatAvailable: (available?: boolean) => string
+  formatAutoReply: (autoReplyEnabled?: boolean) => string
+  formatLogMessages: (logMessagesEnabled?: boolean) => string
+  formatAllowedSenders: (allowedSenderCount: number) => string
+  formatCredentialsPresent: (hasCredentials?: boolean) => string
+  formatLogs: (logs?: OperatorWhatsAppIntegrationSummary["logs"]) => string
+  formatLastError: (lastError: string) => string
+  connectButton: OperatorSimpleActionMetadata
+  logoutAction: OperatorConfirmedActionMetadata
+}
+
+export const OPERATOR_WHATSAPP_PANEL_METADATA: OperatorWhatsAppPanelMetadata = {
+  panelTitle: "WhatsApp",
+  formatStatus: (whatsApp) =>
+    `Status: ${whatsApp.connected ? "Connected" : whatsApp.enabled ? "Enabled, not connected" : "Disabled"}`,
+  formatServerConfigured: (serverConfigured) => `Server configured: ${formatOperatorYesNo(serverConfigured)}`,
+  formatServerConnected: (serverConnected) => `Server connected: ${formatOperatorYesNo(serverConnected)}`,
+  formatAvailable: (available) => `Available: ${formatOperatorYesNo(available)}`,
+  formatAutoReply: (autoReplyEnabled) => `Auto-reply: ${formatOperatorYesNo(autoReplyEnabled)}`,
+  formatLogMessages: (logMessagesEnabled) => `Log messages: ${formatOperatorYesNo(logMessagesEnabled)}`,
+  formatAllowedSenders: (allowedSenderCount) => `Allowed senders: ${allowedSenderCount}`,
+  formatCredentialsPresent: (hasCredentials) => `Credentials present: ${formatOperatorYesNo(hasCredentials)}`,
+  formatLogs: (logs) => `Logs: ${formatOperatorLogSummary(logs)}`,
+  formatLastError: (lastError) => `Last error: ${lastError}`,
+  connectButton: {
+    accessibilityLabel: "Connect WhatsApp",
+    buttonLabel: "Connect WhatsApp",
+  },
+  logoutAction: {
+    confirmTitle: "Log Out of WhatsApp",
+    confirmMessage: "Log out the active WhatsApp session on the desktop app?",
+    confirmButtonLabel: "Log Out",
+    accessibilityLabel: "Log out of WhatsApp",
+    buttonLabel: "Log out",
+  },
 }
 
 export type OperatorMcpServersPanelMetadata = {

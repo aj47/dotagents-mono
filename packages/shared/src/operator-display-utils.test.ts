@@ -6,6 +6,7 @@ import {
   OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA,
   OPERATOR_CONVERSATIONS_PANEL_METADATA,
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
+  OPERATOR_DISCORD_PANEL_METADATA,
   OPERATOR_EMPTY_VALUE_LABEL,
   OPERATOR_ERRORS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
@@ -16,6 +17,7 @@ import {
   OPERATOR_SYSTEM_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
   OPERATOR_UPDATER_PANEL_METADATA,
+  OPERATOR_WHATSAPP_PANEL_METADATA,
   formatOperatorActiveAgentSessionSummary,
   formatOperatorAuditDetails,
   formatOperatorAuditSource,
@@ -457,6 +459,98 @@ describe("operator display utils", () => {
       stopAccessibilityLabel: "Stop tunnel",
       helperText: "The remote server must be running before a tunnel can start.",
     })
+  })
+
+  it("exports operator Discord and WhatsApp panel metadata", () => {
+    expect(OPERATOR_DISCORD_PANEL_METADATA).toEqual({
+      panelTitle: "Discord",
+      formatStatus: expect.any(Function),
+      formatAvailable: expect.any(Function),
+      formatTokenConfigured: expect.any(Function),
+      formatBotUsername: expect.any(Function),
+      formatDefaultProfile: expect.any(Function),
+      formatLogs: expect.any(Function),
+      formatLastEvent: expect.any(Function),
+      formatLastError: expect.any(Function),
+      connectButton: {
+        accessibilityLabel: "Connect Discord",
+        buttonLabel: "Connect Discord",
+      },
+      disconnectAction: {
+        confirmTitle: "Disconnect Discord",
+        confirmMessage: "Disconnect the Discord bot from the desktop app now?",
+        confirmButtonLabel: "Disconnect",
+        accessibilityLabel: "Disconnect Discord",
+        buttonLabel: "Disconnect",
+      },
+      clearLogsAction: {
+        confirmTitle: "Clear Discord Logs",
+        confirmMessage: "Clear the Discord operator log preview on the desktop app?",
+        confirmButtonLabel: "Clear Logs",
+        accessibilityLabel: "Clear Discord logs",
+        buttonLabel: "Clear logs",
+      },
+      logsSectionTitle: "Discord log preview",
+      emptyLogsText: "No Discord log entries returned.",
+    })
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatStatus({ connected: true, connecting: false, enabled: true })).toBe(
+      "Status: Connected",
+    )
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatStatus({ connected: false, connecting: true, enabled: true })).toBe(
+      "Status: Connecting",
+    )
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatStatus({ connected: false, connecting: false, enabled: true })).toBe(
+      "Status: Enabled, not connected",
+    )
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatStatus({ connected: false, connecting: false, enabled: false })).toBe(
+      "Status: Disabled",
+    )
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatAvailable(true)).toBe("Available: Yes")
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatTokenConfigured(false)).toBe("Token configured: No")
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatBotUsername()).toBe(`Bot username: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatDefaultProfile(undefined, "profile-1")).toBe("Default profile: profile-1")
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatLogs({ total: 3, errorCount: 1 })).toBe("Logs: 3 total • 1 error")
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatLastEvent()).toBe(`Last event: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatLastError("token missing")).toBe("Last error: token missing")
+
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA).toEqual({
+      panelTitle: "WhatsApp",
+      formatStatus: expect.any(Function),
+      formatServerConfigured: expect.any(Function),
+      formatServerConnected: expect.any(Function),
+      formatAvailable: expect.any(Function),
+      formatAutoReply: expect.any(Function),
+      formatLogMessages: expect.any(Function),
+      formatAllowedSenders: expect.any(Function),
+      formatCredentialsPresent: expect.any(Function),
+      formatLogs: expect.any(Function),
+      formatLastError: expect.any(Function),
+      connectButton: {
+        accessibilityLabel: "Connect WhatsApp",
+        buttonLabel: "Connect WhatsApp",
+      },
+      logoutAction: {
+        confirmTitle: "Log Out of WhatsApp",
+        confirmMessage: "Log out the active WhatsApp session on the desktop app?",
+        confirmButtonLabel: "Log Out",
+        accessibilityLabel: "Log out of WhatsApp",
+        buttonLabel: "Log out",
+      },
+    })
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatStatus({ connected: true, enabled: true })).toBe("Status: Connected")
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatStatus({ connected: false, enabled: true })).toBe(
+      "Status: Enabled, not connected",
+    )
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatStatus({ connected: false, enabled: false })).toBe("Status: Disabled")
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatServerConfigured(true)).toBe("Server configured: Yes")
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatServerConnected(false)).toBe("Server connected: No")
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatAvailable()).toBe(`Available: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatAutoReply(true)).toBe("Auto-reply: Yes")
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatLogMessages(false)).toBe("Log messages: No")
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatAllowedSenders(2)).toBe("Allowed senders: 2")
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatCredentialsPresent()).toBe(`Credentials present: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatLogs({ total: 2, infoCount: 2 })).toBe("Logs: 2 total • 2 info")
+    expect(OPERATOR_WHATSAPP_PANEL_METADATA.formatLastError("not paired")).toBe("Last error: not paired")
   })
 
   it("exports operator MCP server panel metadata", () => {
