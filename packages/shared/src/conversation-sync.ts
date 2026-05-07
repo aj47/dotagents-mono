@@ -138,6 +138,7 @@ export interface ServerConversationRecord<TMetadata = unknown> {
   createdAt: number;
   updatedAt: number;
   messages: ServerConversationRecordMessage[];
+  rawMessages?: ServerConversationRecordMessage[];
   metadata?: TMetadata;
   branchSource?: {
     sourceConversationId: string;
@@ -594,14 +595,17 @@ export async function branchConversationAction<TConversation extends ServerConve
       return conversationActionError(404, 'Conversation not found');
     }
 
+    const sourceMessages = Array.isArray(sourceConversation.rawMessages) && sourceConversation.rawMessages.length > 0
+      ? sourceConversation.rawMessages
+      : sourceConversation.messages;
     const messageIndex = parsedRequest.request.messageIndex;
-    if (messageIndex < 0 || messageIndex >= sourceConversation.messages.length) {
+    if (messageIndex < 0 || messageIndex >= sourceMessages.length) {
       return conversationActionError(400, 'Invalid messageIndex');
     }
 
     const timestamp = options.service.getTimestamp();
     const branchConversationId = options.service.generateConversationId();
-    const branchedMessages = sourceConversation.messages
+    const branchedMessages = sourceMessages
       .slice(0, messageIndex + 1)
       .map((message, index) => ({
         ...message,

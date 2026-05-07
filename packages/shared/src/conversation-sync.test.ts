@@ -476,6 +476,58 @@ describe('server conversation API helpers', () => {
     expect(changed).toHaveBeenCalledTimes(5);
   });
 
+  it('branches raw conversation history when compacted messages carry raw messages', async () => {
+    const changed = vi.fn();
+    const savedConversations = new Map([[
+      'conv-compact',
+      {
+        id: 'conv-compact',
+        title: 'Compacted Chat',
+        createdAt: 1,
+        updatedAt: 2,
+        messages: [{ id: 'summary-1', role: 'assistant' as const, content: 'Summary', timestamp: 2 }],
+        rawMessages: [
+          { id: 'raw-1', role: 'user' as const, content: 'first', timestamp: 1 },
+          { id: 'raw-2', role: 'assistant' as const, content: 'second', timestamp: 2 },
+        ],
+      },
+    ]]);
+    const options = {
+      service: {
+        loadConversation: async (conversationId: string) => savedConversations.get(conversationId),
+        getConversationHistory: async () => [],
+        generateConversationId: () => 'conv-branch',
+        validateConversationId: () => null,
+        getTimestamp: () => 10,
+        saveConversation: async (conversation: any) => {
+          savedConversations.set(conversation.id, conversation);
+        },
+        deleteConversation: async () => undefined,
+        deleteAllConversations: async () => undefined,
+      },
+      diagnostics: {
+        logInfo: () => undefined,
+        logError: () => {
+          throw new Error('unexpected diagnostics log');
+        },
+      },
+    };
+
+    await expect(branchConversationAction('conv-compact', {
+      messageIndex: 1,
+    }, changed, options)).resolves.toMatchObject({
+      statusCode: 201,
+      body: {
+        id: 'conv-branch',
+        title: 'Branch: Compacted Chat',
+        messages: [
+          { role: 'user', content: 'first', timestamp: 1 },
+          { role: 'assistant', content: 'second', timestamp: 2 },
+        ],
+      },
+    });
+  });
+
   it('returns shared conversation sync validation and not-found errors', async () => {
     const changed = vi.fn();
     const options = {
