@@ -8,8 +8,8 @@ import { reportConfigSaveError } from "./config-save-error"
 import { desktopConfigClient } from "./desktop-config-client"
 import { desktopConversationsClient } from "./desktop-conversations-client"
 import { desktopMcpServerClient } from "./desktop-mcp-server-client"
+import { desktopModelsClient } from "./desktop-models-client"
 import { desktopPermissionsClient } from "./desktop-permissions-client"
-import { tipcClient } from "./tipc-client"
 
 focusManager.setEventListener((handleFocus) => {
   const handler = () => handleFocus()
@@ -98,7 +98,7 @@ export const useAvailableModelsQuery = (
         ? ["available-models", providerId, presetId]
         : ["available-models", providerId],
     queryFn: async () => {
-      return tipcClient.fetchAvailableModels({ providerId })
+      return desktopModelsClient.fetchAvailableModels(providerId)
     },
     enabled: enabled && !!providerId,
     staleTime: 5 * 60 * 1000,
