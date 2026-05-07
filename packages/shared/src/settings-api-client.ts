@@ -764,6 +764,16 @@ export interface EmergencyStopRouteActions {
   triggerEmergencyStop(): Promise<EmergencyStopActionResult>;
 }
 
+export interface SettingsRouteActionBundleOptions<TConfig extends SettingsActionConfigLike = SettingsActionConfigLike> {
+  settings: SettingsActionOptions<TConfig>;
+  emergencyStop: EmergencyStopActionOptions;
+}
+
+export interface SettingsRouteActionBundle {
+  settings: SettingsRouteActions;
+  emergencyStop: EmergencyStopRouteActions;
+}
+
 function emergencyStopActionOk(body: unknown): EmergencyStopActionResult {
   return {
     statusCode: 200,
@@ -808,6 +818,15 @@ export function createEmergencyStopRouteActions(
 ): EmergencyStopRouteActions {
   return {
     triggerEmergencyStop: () => triggerEmergencyStopAction(options),
+  };
+}
+
+export function createSettingsRouteActionBundle<TConfig extends SettingsActionConfigLike>(
+  options: SettingsRouteActionBundleOptions<TConfig>,
+): SettingsRouteActionBundle {
+  return {
+    settings: createSettingsRouteActions(options.settings),
+    emergencyStop: createEmergencyStopRouteActions(options.emergencyStop),
   };
 }
 

@@ -998,8 +998,8 @@ describe("remote-server route registration", () => {
     expect(source).toContain("langfuseSecretMask: PROVIDER_SECRET_MASK")
     expect(settingsGetSection).toContain("const result = actions.getSettings(providerSecretMask)")
     expect(settingsGetSection).toContain("reply.code(result.statusCode).send(result.body)")
-    expect(mobileApiDesktopActionsSource).toContain("const settingsRouteActions = createSettingsRouteActions(settingsActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("settings: settingsRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("const settingsRouteActionBundle = createSettingsRouteActionBundle({")
+    expect(mobileApiDesktopActionsSource).toContain("settings: settingsRouteActionBundle.settings")
     expect(mobileApiDesktopActionsSource).not.toContain("getSettingsAction(providerSecretMask, settingsActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain(
       "getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey)",
@@ -1026,6 +1026,8 @@ describe("remote-server route registration", () => {
     expect(sharedSettingsApiClientSource).toContain("export interface SettingsRouteActions")
     expect(sharedSettingsApiClientSource).toContain("export function getSettingsAction")
     expect(sharedSettingsApiClientSource).toContain("export function createSettingsRouteActions")
+    expect(sharedSettingsApiClientSource).toContain("export function createSettingsRouteActionBundle")
+    expect(sharedSettingsApiClientSource).toContain("settings: createSettingsRouteActions(options.settings)")
     expect(sharedSettingsApiClientSource).toContain("getSettings: (providerSecretMask) => getSettingsAction(providerSecretMask, options)")
     expect(sharedSettingsApiClientSource).toContain("buildSettingsResponse(cfg, {")
     expect(sharedSettingsApiClientSource).toContain("remoteServerApiKey: options.getMaskedRemoteServerApiKey(cfg)")
@@ -1107,16 +1109,15 @@ describe("remote-server route registration", () => {
 
     expectRegisteredApiRoute(source, "POST", "emergencyStop")
     expect(mobileApiRoutesSource).toContain("actions.triggerEmergencyStop()")
-    expect(mobileApiDesktopActionsSource).toContain(
-      "const emergencyStopRouteActions = createEmergencyStopRouteActions(emergencyStopActionOptions)",
-    )
-    expect(mobileApiDesktopActionsSource).toContain("emergencyStop: emergencyStopRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("emergencyStop: emergencyStopActionOptions")
+    expect(mobileApiDesktopActionsSource).toContain("emergencyStop: settingsRouteActionBundle.emergencyStop")
     expect(mobileApiDesktopActionsSource).not.toContain("triggerEmergencyStopAction(emergencyStopActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain("stopAll: emergencyStopAll")
     expect(sharedSettingsApiClientSource).toContain("export interface EmergencyStopActionOptions")
     expect(sharedSettingsApiClientSource).toContain("export interface EmergencyStopRouteActions")
     expect(sharedSettingsApiClientSource).toContain("export async function triggerEmergencyStopAction")
     expect(sharedSettingsApiClientSource).toContain("export function createEmergencyStopRouteActions")
+    expect(sharedSettingsApiClientSource).toContain("emergencyStop: createEmergencyStopRouteActions(options.emergencyStop)")
     expect(sharedSettingsApiClientSource).toContain("triggerEmergencyStop: () => triggerEmergencyStopAction(options)")
     expect(sharedSettingsApiClientSource).toContain("await options.stopAll()")
     expect(sharedSettingsApiClientSource).toContain("buildEmergencyStopResponse(before, after)")
@@ -2221,7 +2222,7 @@ describe("remote-server route registration", () => {
 
     expect(settingsPatchSection).toContain("if (result.auditContext)")
     expect(settingsPatchSection).toContain("actions.recordOperatorAuditEvent(req, result.auditContext)")
-    expect(mobileApiDesktopActionsSource).toContain("settings: settingsRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("settings: settingsRouteActionBundle.settings")
     expect(sharedSettingsApiClientSource).toContain("let attemptedSensitiveSettingsKeys: string[] = []")
     expect(sharedSettingsApiClientSource).toContain("getSensitiveOperatorSettingsKeys(requestBody)")
     expect(sharedSettingsApiClientSource).toContain("const sensitiveUpdatedKeys = getSensitiveOperatorSettingsKeys(updates)")

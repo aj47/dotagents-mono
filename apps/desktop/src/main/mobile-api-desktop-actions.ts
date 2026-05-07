@@ -54,8 +54,7 @@ import {
   type TtsActionOptions,
 } from "@dotagents/shared/tts-api"
 import {
-  createEmergencyStopRouteActions,
-  createSettingsRouteActions,
+  createSettingsRouteActionBundle,
   type EmergencyStopActionOptions,
   type SettingsActionOptions,
 } from "@dotagents/shared/settings-api-client"
@@ -164,8 +163,6 @@ const emergencyStopActionOptions: EmergencyStopActionOptions = {
   logger: console,
 }
 
-const emergencyStopRouteActions = createEmergencyStopRouteActions(emergencyStopActionOptions)
-
 const settingsActionOptions: SettingsActionOptions<Config> = {
   config: {
     get: () => configStore.get(),
@@ -183,7 +180,10 @@ const settingsActionOptions: SettingsActionOptions<Config> = {
   applyDesktopShellSettings,
 }
 
-const settingsRouteActions = createSettingsRouteActions(settingsActionOptions)
+const settingsRouteActionBundle = createSettingsRouteActionBundle({
+  settings: settingsActionOptions,
+  emergencyStop: emergencyStopActionOptions,
+})
 
 const pushActionOptions = {
   tokenStore: createPushConfigTokenStore({
@@ -431,14 +431,14 @@ export const mobileApiDesktopActions = createMobileApiRouteActions({
   profiles: profileRouteActionBundle.profiles,
   bundle: bundleRouteActions,
   mcp: mcpRouteActions,
-  settings: settingsRouteActions,
+  settings: settingsRouteActionBundle.settings,
   agentSessionCandidates: agentSessionCandidateRouteActions,
   audit: { recordOperatorAuditEvent },
   conversations: conversationRouteActions,
   conversationVideoAssets: conversationVideoAssetRouteActions,
   tts: ttsRouteActions,
   push: pushRouteActions,
-  emergencyStop: emergencyStopRouteActions,
+  emergencyStop: settingsRouteActionBundle.emergencyStop,
   skills: skillRouteActions,
   knowledgeNotes: knowledgeNoteRouteActions,
   agentProfiles: profileRouteActionBundle.agentProfiles,

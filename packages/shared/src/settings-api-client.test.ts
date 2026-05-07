@@ -9,6 +9,7 @@ import {
   buildSettingsUpdatePatch,
   buildSettingsUpdateResponse,
   createEmergencyStopRouteActions,
+  createSettingsRouteActionBundle,
   createSettingsRouteActions,
   DOTAGENTS_DEVICE_ID_HEADER,
   ExtendedSettingsApiClient,
@@ -877,6 +878,64 @@ describe('SettingsApiClient', () => {
     });
 
     await expect(routeActions.triggerEmergencyStop()).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        message: 'Emergency stop executed',
+        processesKilled: 2,
+        processesRemaining: 0,
+      },
+    });
+  });
+
+  it('creates settings route action bundles for settings and emergency stop', async () => {
+    let config: SettingsActionConfigLike = {
+      remoteServerEnabled: false,
+      ttsEnabled: true,
+      modelPresets: [],
+    };
+    const routeActionBundle = createSettingsRouteActionBundle({
+      settings: {
+        config: {
+          get: () => config,
+          save: async (nextConfig) => {
+            config = nextConfig;
+          },
+        },
+        diagnostics: {
+          logInfo: () => undefined,
+          logError: () => {
+            throw new Error('unexpected settings error log');
+          },
+        },
+        getMaskedRemoteServerApiKey: () => 'REMOTE-MASK',
+        getMaskedDiscordBotToken: () => 'DISCORD-MASK',
+        getDiscordDefaultProfileId: () => '',
+        getAcpxAgents: () => [],
+        getDiscordLifecycleAction: () => 'noop',
+        applyDiscordLifecycleAction: async () => undefined,
+        applyWhatsappToggle: async () => undefined,
+      },
+      emergencyStop: {
+        stopAll: async () => ({ before: 2, after: 0 }),
+        diagnostics: {
+          logInfo: () => undefined,
+          logError: () => {
+            throw new Error('unexpected emergency stop error log');
+          },
+        },
+      },
+    });
+
+    expect(routeActionBundle.settings.getSettings('MASKED')).toMatchObject({
+      statusCode: 200,
+      body: {
+        remoteServerApiKey: 'REMOTE-MASK',
+        discordBotToken: 'DISCORD-MASK',
+        ttsEnabled: true,
+      },
+    });
+    await expect(routeActionBundle.emergencyStop.triggerEmergencyStop()).resolves.toEqual({
       statusCode: 200,
       body: {
         success: true,
