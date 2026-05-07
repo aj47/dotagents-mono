@@ -37,6 +37,7 @@ import {
   getMostRecentServerConversationHistoryItem,
   getRepresentedServerConversationMessageCount,
   getRepresentedServerConversationMessageSliceCount,
+  getServerConversationDataFileName,
   getServerConversationIdFromDataFileName,
   getSortedServerConversationDataFileNames,
   getStoredServerConversationMessages,
@@ -148,6 +149,7 @@ describe('server conversation API helpers', () => {
     expect(isServerConversationDataFileName('conv-a.json')).toBe(true);
     expect(isServerConversationDataFileName(SERVER_CONVERSATION_INDEX_FILE_NAME)).toBe(false);
     expect(isServerConversationDataFileName('conv-c.json.tmp')).toBe(false);
+    expect(getServerConversationDataFileName('conv-a')).toBe('conv-a.json');
     expect(getServerConversationIdFromDataFileName('conv-a.json')).toBe('conv-a');
     expect(getServerConversationIdFromDataFileName(SERVER_CONVERSATION_INDEX_FILE_NAME)).toBeNull();
     expect(getSortedServerConversationDataFileNames(fileNames)).toEqual(['conv-a.json', 'conv-b.json']);

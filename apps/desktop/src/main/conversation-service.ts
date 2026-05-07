@@ -28,6 +28,7 @@ import {
   buildServerConversationHistoryItem,
   countServerConversationDataFileNames,
   getMostRecentServerConversationHistoryItem,
+  getServerConversationDataFileName,
   getServerConversationIdFromDataFileName,
   getSortedServerConversationDataFileNames,
   getStoredServerConversationMessages,
@@ -123,7 +124,7 @@ export class ConversationService {
   }
 
   private getConversationPath(conversationId: string): string {
-    const resolved = path.resolve(conversationsFolder, `${conversationId}.json`)
+    const resolved = path.resolve(conversationsFolder, getServerConversationDataFileName(conversationId))
     const resolvedFolder = path.resolve(conversationsFolder)
     if (!resolved.startsWith(resolvedFolder + path.sep)) {
       throw new Error(`Invalid conversation ID: path traversal detected`)

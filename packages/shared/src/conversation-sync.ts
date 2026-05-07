@@ -493,6 +493,10 @@ export function getServerConversationIdFromDataFileName(fileName: string): strin
   return fileName.slice(0, -SERVER_CONVERSATION_DATA_FILE_EXTENSION.length);
 }
 
+export function getServerConversationDataFileName(conversationId: string): string {
+  return `${conversationId}${SERVER_CONVERSATION_DATA_FILE_EXTENSION}`;
+}
+
 export function getSortedServerConversationDataFileNames(fileNames: readonly string[]): string[] {
   return fileNames.filter(isServerConversationDataFileName).sort();
 }
