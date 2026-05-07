@@ -8,6 +8,11 @@ function getSettingsGeneralSource(): string {
   return readFileSync(path.join(testDir, "settings-general.tsx"), "utf8")
 }
 
+function getAppLayoutSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  return readFileSync(path.join(testDir, "../components/app-layout.tsx"), "utf8")
+}
+
 function getSettingsGeneralClientSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   return readFileSync(path.join(testDir, "../lib/desktop-settings-general-client.ts"), "utf8")
@@ -16,6 +21,7 @@ function getSettingsGeneralClientSource(): string {
 describe("settings general process boundary", () => {
   it("centralizes settings-general desktop IPC channels behind a renderer client", () => {
     const source = getSettingsGeneralSource()
+    const appLayoutSource = getAppLayoutSource()
     const clientSource = getSettingsGeneralClientSource()
 
     expect(clientSource).toContain("tipcClient.isLangfuseInstalled()")
@@ -32,6 +38,8 @@ describe("settings general process boundary", () => {
     expect(source).toContain("desktopSettingsGeneralClient.resetFloatingPanel()")
     expect(source).toContain("desktopSettingsGeneralClient.stopAllTts()")
     expect(source).toContain("desktopSettingsGeneralClient.setPanelPosition(value)")
+    expect(appLayoutSource).toContain("desktopSettingsGeneralClient.stopAllTts()")
+    expect(appLayoutSource).not.toContain("tipcClient.stopAllTts(")
     expect(source).not.toContain("tipcClient.")
     expect(source).not.toContain('ipcRenderer.invoke("isLangfuseInstalled")')
   })

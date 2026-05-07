@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
-import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
+import { rendererHandlers } from "@renderer/lib/tipc-client"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
+import { desktopSettingsGeneralClient } from "@renderer/lib/desktop-settings-general-client"
 import { cn } from "@renderer/lib/utils"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom"
@@ -268,7 +269,7 @@ export const Component = () => {
       if (!nextEnabled) {
         ttsManager.stopAll("collapsed-sidebar-global-tts-disabled")
         try {
-          await tipcClient.stopAllTts()
+          await desktopSettingsGeneralClient.stopAllTts()
         } catch (error) {
           console.error("Failed to stop TTS in all windows:", error)
         }
@@ -286,13 +287,13 @@ export const Component = () => {
       setIsEmergencyStopping(true)
       ttsManager.stopAll("collapsed-sidebar-emergency-stop")
       try {
-        await tipcClient.stopAllTts()
+        await desktopSettingsGeneralClient.stopAllTts()
       } catch (error) {
         console.error("Failed to stop TTS in all windows:", error)
       }
 
       try {
-        await tipcClient.emergencyStopAgent()
+        await desktopAgentSessionsClient.emergencyStopAgent()
         setFocusedSessionId(null)
       } catch (error) {
         console.error("Failed to trigger emergency stop:", error)
