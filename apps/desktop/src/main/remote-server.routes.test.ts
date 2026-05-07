@@ -233,12 +233,6 @@ function getOperatorAuditActionsSource(): string {
   return readFileSync(operatorAuditActionsPath, "utf8")
 }
 
-function getOperatorApiKeyActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const operatorApiKeyActionsPath = path.join(testDir, "operator-api-key-actions.ts")
-  return readFileSync(operatorApiKeyActionsPath, "utf8")
-}
-
 function getSharedKnowledgeNoteFormSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedKnowledgeNoteFormPath = path.join(testDir, "../../../../packages/shared/src/knowledge-note-form.ts")
@@ -592,7 +586,10 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain("getModels")
     expect(mobileApiDesktopActionsSource).toContain("recordOperatorAuditEvent")
     expect(desktopAdaptersSource).toContain("authorizeRequest: authorizeRemoteServerRequest")
+    expect(desktopAdaptersSource).not.toContain('from "./operator-api-key-actions"')
     expect(desktopAdaptersSource).toContain("generateApiKey: generateRemoteServerApiKey")
+    expect(desktopAdaptersSource).toContain("function generateRemoteServerApiKey()")
+    expect(desktopAdaptersSource).toContain('crypto.randomBytes(32).toString("hex")')
     expect(desktopAdaptersSource).toContain("resolveApiKeyReference: readDotAgentsSecretReference")
     expect(desktopAdaptersSource).toContain("resolveConfiguredApiKey: getResolvedRemoteServerApiKey")
     expect(desktopAdaptersSource).toContain("printTerminalQRCode")
@@ -1233,7 +1230,6 @@ describe("remote-server route registration", () => {
     const operatorAuditActionsSource = getOperatorAuditActionsSource()
     const sharedOperatorAuditStoreSource = getSharedOperatorAuditStoreSource()
     const sharedOperatorActionsSource = getSharedOperatorActionsSource()
-    const operatorApiKeyActionsSource = getOperatorApiKeyActionsSource()
     const operatorRouteDesktopActionsSource = getOperatorRouteDesktopActionsSource()
 
     expect(operatorRoutesSource).toContain("actions.getOperatorStatus(getRemoteServerStatus())")
@@ -1397,9 +1393,8 @@ describe("remote-server route registration", () => {
     expect(operatorSection).toContain("scheduleRemoteServerRestartAfterReply(reply)")
     expect(operatorRouteDesktopActionsSource).toContain("rotateOperatorRemoteServerApiKeyAction(apiKeyActionOptions)")
     expect(operatorRouteDesktopActionsSource).toContain('generateApiKey: () => crypto.randomBytes(32).toString("hex")')
-    expect(operatorApiKeyActionsSource).not.toContain("rotateOperatorRemoteServerApiKeyAction")
-    expect(operatorApiKeyActionsSource).toContain("generateRemoteServerApiKey()")
     expect(desktopAdaptersSource).toContain("generateApiKey: generateRemoteServerApiKey")
+    expect(desktopAdaptersSource).toContain("function generateRemoteServerApiKey()")
     expect(sharedOperatorActionsSource).toContain("buildOperatorApiKeyRotationResponse(apiKey)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorApiKeyRotationAuditContext()")
     expect(sharedOperatorActionsSource).toContain("buildOperatorApiKeyRotationFailureAuditContext()")
