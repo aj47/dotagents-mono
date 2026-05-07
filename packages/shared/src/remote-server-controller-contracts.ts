@@ -48,6 +48,8 @@ export interface RemoteServerControllerAdapters<
   getNetworkAddresses: () => RemoteNetworkAddressLike[];
   getConnectableBaseUrlForMobilePairing: (bind: string, port: number) => string | undefined;
   printTerminalQRCode: (url: string, apiKey: string) => Promise<boolean>;
+  writeTerminalInfo: (message: string) => void;
+  writeTerminalWarning: (message: string) => void;
   recordRejectedOperatorDeviceAttempt: (request: Request, failureReason: string) => void;
   recordOperatorResponseAuditEvent: (request: Request, reply: Reply) => void;
 }

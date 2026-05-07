@@ -273,8 +273,8 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
         if (serverUrl) {
           await adapters.printTerminalQRCode(serverUrl, currentApiKey)
         } else {
-          console.warn(
-            `[Remote Server] Warning: Could not resolve a LAN-reachable URL for bind ${bind}. Skipping terminal QR code output.`
+          adapters.writeTerminalWarning(
+            `[Remote Server] Warning: Could not resolve a LAN-reachable URL for bind ${bind}. Skipping terminal QR code output.`,
           )
         }
       }
@@ -329,13 +329,15 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
     const cfg = configStore.get()
     const apiKey = adapters.resolveConfiguredApiKey(cfg)
     if (!server || !apiKey) {
-      console.log("[Remote Server] Cannot print QR code: server not running or no API key configured")
+      adapters.writeTerminalInfo(
+        "[Remote Server] Cannot print QR code: server not running or no API key configured",
+      )
       return false
     }
 
     // Suppress QR output when streamer mode is enabled to prevent credential leakage
     if (cfg.streamerModeEnabled) {
-      console.log("[Remote Server] Cannot print QR code: streamer mode is enabled")
+      adapters.writeTerminalInfo("[Remote Server] Cannot print QR code: streamer mode is enabled")
       return false
     }
 
@@ -348,7 +350,9 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
       const port = cfg.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
       const connectableBaseUrl = adapters.getConnectableBaseUrlForMobilePairing(bind, port)
       if (!connectableBaseUrl) {
-        console.log("[Remote Server] Cannot print QR code: unable to resolve a LAN-reachable URL for the current bind address")
+        adapters.writeTerminalInfo(
+          "[Remote Server] Cannot print QR code: unable to resolve a LAN-reachable URL for the current bind address",
+        )
         return false
       }
       serverUrl = connectableBaseUrl

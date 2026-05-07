@@ -71,6 +71,14 @@ function getRemoteNetworkAddresses() {
   return Object.values(os.networkInterfaces()).flatMap((addrs) => addrs ?? [])
 }
 
+function writeTerminalInfo(message: string): void {
+  console.log(message)
+}
+
+function writeTerminalWarning(message: string): void {
+  console.warn(message)
+}
+
 interface PairingBaseUrlOptions {
   warn?: boolean
 }
@@ -98,6 +106,8 @@ export const remoteServerDesktopAdapters: RemoteServerControllerAdapters<Fastify
   getNetworkAddresses: getRemoteNetworkAddresses,
   getConnectableBaseUrlForMobilePairing,
   printTerminalQRCode,
+  writeTerminalInfo,
+  writeTerminalWarning,
   recordRejectedOperatorDeviceAttempt,
   recordOperatorResponseAuditEvent,
 }
