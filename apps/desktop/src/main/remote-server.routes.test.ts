@@ -1158,6 +1158,12 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).not.toContain("exportBundleAction(body, bundleActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("previewBundleImportAction(body, bundleActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("importBundleAction(body, bundleActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain(
+      "return resolveBundleExportLayerDirs(globalAgentsFolder, resolveWorkspaceAgentsFolder())",
+    )
+    expect(mobileApiDesktopActionsSource).toContain(
+      "return resolveBundleImportTargetDir(globalAgentsFolder, resolveWorkspaceAgentsFolder())",
+    )
     expect(mobileApiDesktopActionsSource).toContain("getBundleExportableItemsFromLayers(getBundleLayerDirs())")
     expect(mobileApiDesktopActionsSource).toContain("exportBundleFromLayers(getBundleLayerDirs(), request)")
     expect(mobileApiDesktopActionsSource).toContain("const temporaryBundleImportService = createTemporaryBundleFileImportService({")
@@ -1174,6 +1180,8 @@ describe("remote-server route registration", () => {
     expect(sharedBundleApiSource).toContain("export async function exportBundleAction")
     expect(sharedBundleApiSource).toContain("export async function previewBundleImportAction")
     expect(sharedBundleApiSource).toContain("export async function importBundleAction")
+    expect(sharedBundleApiSource).toContain("export function resolveBundleExportLayerDirs(")
+    expect(sharedBundleApiSource).toContain("export function resolveBundleImportTargetDir(")
     expect(sharedBundleApiSource).toContain("export function createTemporaryBundleFileImportService(")
     expect(sharedBundleApiSource).toContain("export async function previewBundleImportFromTemporaryFile(")
     expect(sharedBundleApiSource).toContain("export async function importBundleFromTemporaryFile(")

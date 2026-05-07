@@ -27,7 +27,9 @@ import {
   parsePreviewBundleImportRequestBody,
   previewBundleImportAction,
   previewBundleImportFromTemporaryFile,
+  resolveBundleExportLayerDirs,
   resolveBundleComponentSelection,
+  resolveBundleImportTargetDir,
   type DotAgentsBundle,
   type ExportableBundleItems,
 } from "./bundle-api"
@@ -288,6 +290,16 @@ describe("bundle API helpers", () => {
       repeatTasks: [{ id: "task-1", name: "Task", action: "renamed" }],
       knowledgeNotes: [{ id: "note-1", name: "Note", action: "overwritten" }],
     })).toBe(3)
+  })
+
+  it("resolves layered bundle export and import target directories", () => {
+    expect(resolveBundleExportLayerDirs("/global/.agents")).toEqual(["/global/.agents"])
+    expect(resolveBundleExportLayerDirs("/global/.agents", "/workspace/.agents")).toEqual([
+      "/global/.agents",
+      "/workspace/.agents",
+    ])
+    expect(resolveBundleImportTargetDir("/global/.agents")).toBe("/global/.agents")
+    expect(resolveBundleImportTargetDir("/global/.agents", "/workspace/.agents")).toBe("/workspace/.agents")
   })
 
   it("runs bundle actions through service adapters", async () => {

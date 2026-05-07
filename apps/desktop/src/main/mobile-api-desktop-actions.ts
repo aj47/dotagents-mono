@@ -12,6 +12,8 @@ import { getEnabledAcpxAgentProfiles } from "@dotagents/shared/agent-profile-que
 import {
   createTemporaryBundleFileImportService,
   createBundleRouteActions,
+  resolveBundleExportLayerDirs,
+  resolveBundleImportTargetDir,
   type BundleActionOptions,
   type ExportBundleRequest,
 } from "@dotagents/shared/bundle-api"
@@ -205,14 +207,11 @@ const pushActionOptions = {
 const pushRouteActions = createPushRouteActions(pushActionOptions)
 
 function getBundleLayerDirs(): string[] {
-  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-  return workspaceAgentsFolder
-    ? [globalAgentsFolder, workspaceAgentsFolder]
-    : [globalAgentsFolder]
+  return resolveBundleExportLayerDirs(globalAgentsFolder, resolveWorkspaceAgentsFolder())
 }
 
 function getBundleImportTargetDir(): string {
-  return resolveWorkspaceAgentsFolder() ?? globalAgentsFolder
+  return resolveBundleImportTargetDir(globalAgentsFolder, resolveWorkspaceAgentsFolder())
 }
 
 const temporaryBundleImportService = createTemporaryBundleFileImportService({

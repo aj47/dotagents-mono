@@ -310,6 +310,22 @@ export function getBundleDependencyWarnings(
   })
 }
 
+export function resolveBundleExportLayerDirs(
+  globalAgentsFolder: string,
+  workspaceAgentsFolder?: string | null,
+): string[] {
+  return workspaceAgentsFolder
+    ? [globalAgentsFolder, workspaceAgentsFolder]
+    : [globalAgentsFolder]
+}
+
+export function resolveBundleImportTargetDir(
+  globalAgentsFolder: string,
+  workspaceAgentsFolder?: string | null,
+): string {
+  return workspaceAgentsFolder ?? globalAgentsFolder
+}
+
 export type BundleExportableItemsResponse = {
   success: true
   items: ExportableBundleItems
