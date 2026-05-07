@@ -582,6 +582,126 @@ export function buildExportableBundleKnowledgeNotes(
   }))
 }
 
+export function generateBundleImportUniqueId(baseId: string, existingIds: ReadonlySet<string>): string {
+  let counter = 1
+  let newId = `${baseId}_imported`
+  while (existingIds.has(newId)) {
+    counter++
+    newId = `${baseId}_imported_${counter}`
+  }
+  return newId
+}
+
+export type BuildBundleImportedRecordOptions = {
+  id: string
+  now?: number
+}
+
+export function buildAgentProfileFromBundleProfile(
+  bundleProfile: BundleAgentProfile,
+  options: BuildBundleImportedRecordOptions,
+): AgentProfile {
+  const now = options.now ?? Date.now()
+  const connection: AgentProfile["connection"] = {
+    type: bundleProfile.connection.type,
+  }
+  if (isNonEmptyString(bundleProfile.connection.command)) {
+    connection.command = bundleProfile.connection.command
+  }
+  if (Array.isArray(bundleProfile.connection.args)) {
+    connection.args = bundleProfile.connection.args
+      .filter((arg): arg is string => typeof arg === "string")
+  }
+  if (isNonEmptyString(bundleProfile.connection.cwd)) {
+    connection.cwd = bundleProfile.connection.cwd
+  }
+  if (isNonEmptyString(bundleProfile.connection.baseUrl)) {
+    connection.baseUrl = bundleProfile.connection.baseUrl
+  }
+
+  return {
+    id: options.id,
+    name: bundleProfile.name,
+    displayName: bundleProfile.displayName || bundleProfile.name,
+    description: bundleProfile.description,
+    systemPrompt: bundleProfile.systemPrompt,
+    guidelines: bundleProfile.guidelines,
+    connection,
+    role: bundleProfile.role,
+    enabled: bundleProfile.enabled,
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
+export function buildMcpServerConfigFromBundleServer(bundleServer: BundleMcpServer): Record<string, unknown> {
+  const serverConfig: Record<string, unknown> = {}
+  if (bundleServer.command) serverConfig.command = bundleServer.command
+  if (bundleServer.args) serverConfig.args = bundleServer.args
+  if (bundleServer.transport) serverConfig.transport = bundleServer.transport
+  if (bundleServer.enabled === false) serverConfig.disabled = true
+  return serverConfig
+}
+
+export function buildSkillFromBundleSkill(
+  bundleSkill: BundleSkill,
+  options: BuildBundleImportedRecordOptions,
+): AgentSkill {
+  const now = options.now ?? Date.now()
+
+  return {
+    id: options.id,
+    name: bundleSkill.name,
+    description: bundleSkill.description || "",
+    instructions: bundleSkill.instructions || "",
+    createdAt: now,
+    updatedAt: now,
+    source: "imported",
+  }
+}
+
+export function buildRepeatTaskFromBundleTask(
+  bundleTask: BundleRepeatTask,
+  options: BuildBundleImportedRecordOptions,
+): LoopConfig {
+  return {
+    id: options.id,
+    name: bundleTask.name,
+    prompt: bundleTask.prompt,
+    intervalMinutes: bundleTask.intervalMinutes,
+    enabled: bundleTask.enabled,
+    runOnStartup: bundleTask.runOnStartup,
+    speakOnTrigger: bundleTask.speakOnTrigger,
+    continueInSession: bundleTask.continueInSession,
+    runContinuously: bundleTask.runContinuously,
+    ...(bundleTask.runContinuously === true || !bundleTask.schedule
+      ? {}
+      : { schedule: bundleTask.schedule }),
+  }
+}
+
+export function buildKnowledgeNoteFromBundleNote(
+  bundleNote: BundleKnowledgeNote,
+  options: BuildBundleImportedRecordOptions,
+): KnowledgeNote {
+  const now = options.now ?? Date.now()
+
+  return {
+    id: options.id,
+    title: bundleNote.title,
+    context: bundleNote.context,
+    body: bundleNote.body,
+    summary: bundleNote.summary,
+    tags: bundleNote.tags || [],
+    references: bundleNote.references,
+    group: bundleNote.group,
+    series: bundleNote.series,
+    entryType: bundleNote.entryType,
+    createdAt: bundleNote.createdAt ?? now,
+    updatedAt: now,
+  }
+}
+
 function isReservedTopLevelBundleMcpKey(key: string): boolean {
   if (key === "mcpConfig" || key === "mcpServers") return true
   return (BUNDLE_TOP_LEVEL_MCP_CONFIG_KEYS as readonly string[]).includes(key)

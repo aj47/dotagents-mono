@@ -7,6 +7,7 @@ import {
   DEFAULT_BUNDLE_COMPONENT_SELECTION,
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
   EMPTY_BUNDLE_ITEM_SELECTION,
+  buildAgentProfileFromBundleProfile,
   buildBundleAgentProfilesFromProfiles,
   buildBundleExportResponse,
   buildBundleExportableItemsResponse,
@@ -22,11 +23,16 @@ import {
   buildExportableBundleMcpServers,
   buildExportableBundleRepeatTasks,
   buildExportableBundleSkills,
+  buildKnowledgeNoteFromBundleNote,
+  buildMcpServerConfigFromBundleServer,
+  buildRepeatTaskFromBundleTask,
+  buildSkillFromBundleSkill,
   createBundleItemSelection,
   createBundleRouteActions,
   createTemporaryBundleFileImportService,
   createTemporaryBundleFileName,
   exportBundleAction,
+  generateBundleImportUniqueId,
   getAvailableBundleComponentSelection,
   getBundleDependencyWarnings,
   getBundleExportableItemsAction,
@@ -603,6 +609,110 @@ describe("bundle API helpers", () => {
       context: "auto",
       summary: "Context summary",
     }])
+  })
+
+  it("builds imported app records from bundle items", () => {
+    expect(generateBundleImportUniqueId("agent", new Set(["agent", "agent_imported"]))).toBe("agent_imported_2")
+
+    expect(buildAgentProfileFromBundleProfile({
+      id: "agent",
+      name: "Agent",
+      enabled: true,
+      role: "external-agent",
+      systemPrompt: "You are helpful",
+      guidelines: "Be direct",
+      connection: {
+        type: "stdio",
+        command: "node",
+        args: ["agent.js"],
+        cwd: "/tmp/agent",
+        baseUrl: "https://agents.example.com",
+      },
+    }, {
+      id: "agent_imported_2",
+      now: 10,
+    })).toEqual({
+      id: "agent_imported_2",
+      name: "Agent",
+      displayName: "Agent",
+      enabled: true,
+      role: "external-agent",
+      systemPrompt: "You are helpful",
+      guidelines: "Be direct",
+      connection: {
+        type: "stdio",
+        command: "node",
+        args: ["agent.js"],
+        cwd: "/tmp/agent",
+        baseUrl: "https://agents.example.com",
+      },
+      createdAt: 10,
+      updatedAt: 10,
+    })
+    expect(buildMcpServerConfigFromBundleServer({
+      name: "filesystem",
+      command: "node",
+      args: ["server.js"],
+      transport: "stdio",
+      enabled: false,
+    })).toEqual({
+      command: "node",
+      args: ["server.js"],
+      transport: "stdio",
+      disabled: true,
+    })
+    expect(buildSkillFromBundleSkill({
+      id: "skill",
+      name: "Skill",
+    }, {
+      id: "skill_imported",
+      now: 11,
+    })).toEqual({
+      id: "skill_imported",
+      name: "Skill",
+      description: "",
+      instructions: "",
+      createdAt: 11,
+      updatedAt: 11,
+      source: "imported",
+    })
+    expect(buildRepeatTaskFromBundleTask({
+      id: "task",
+      name: "Task",
+      prompt: "Run it",
+      intervalMinutes: 30,
+      enabled: true,
+      runContinuously: true,
+      schedule: { type: "daily", times: ["09:00"] },
+    }, {
+      id: "task_imported",
+    })).toEqual({
+      id: "task_imported",
+      name: "Task",
+      prompt: "Run it",
+      intervalMinutes: 30,
+      enabled: true,
+      runContinuously: true,
+    })
+    expect(buildKnowledgeNoteFromBundleNote({
+      id: "note",
+      title: "Note",
+      context: "search-only",
+      body: "Useful context",
+      tags: [],
+      updatedAt: 1,
+    }, {
+      id: "note_imported",
+      now: 12,
+    })).toEqual({
+      id: "note_imported",
+      title: "Note",
+      context: "search-only",
+      body: "Useful context",
+      tags: [],
+      createdAt: 12,
+      updatedAt: 12,
+    })
   })
 
   it("builds DotAgents bundles with shared manifest defaults", () => {

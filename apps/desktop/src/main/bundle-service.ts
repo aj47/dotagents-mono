@@ -20,11 +20,6 @@ import {
   writeAgentsSkillFile,
   writeKnowledgeNoteFile,
   taskIdToFilePath,
-  type AgentProfile,
-  type AgentProfileConnection,
-  type AgentSkill,
-  type KnowledgeNote,
-  type LoopConfig,
 } from "@dotagents/core"
 import {
   buildHubBundleInstallUrl,
@@ -36,6 +31,7 @@ import {
 import {
   DEFAULT_BUNDLE_COMPONENT_SELECTION,
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
+  buildAgentProfileFromBundleProfile,
   buildBundleAgentProfilesFromProfiles,
   buildBundleImportPreviewConflicts,
   buildBundleKnowledgeNotesFromNotes,
@@ -48,6 +44,11 @@ import {
   buildExportableBundleMcpServers,
   buildExportableBundleRepeatTasks,
   buildExportableBundleSkills,
+  buildKnowledgeNoteFromBundleNote,
+  buildMcpServerConfigFromBundleServer,
+  buildRepeatTaskFromBundleTask,
+  buildSkillFromBundleSkill,
+  generateBundleImportUniqueId,
   getBundleBuildItems,
   mergeBundleBuildItems,
   mergeExportableBundleItems,
@@ -160,10 +161,6 @@ export interface BundlePreviewResult {
 
 const BUNDLE_FILE_EXTENSIONS = new Set([".dotagents", ".json"])
 const HUB_BUNDLE_FILE_EXTENSION = ".dotagents"
-
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0
-}
 
 // ============================================================================
 // Export
@@ -519,20 +516,6 @@ export async function previewBundleFromDialog(): Promise<{
 // ============================================================================
 
 /**
- * Generate a unique ID by appending a suffix.
- * Used when renaming conflicting items during import.
- */
-function generateUniqueId(baseId: string, existingIds: Set<string>): string {
-  let counter = 1
-  let newId = `${baseId}_imported`
-  while (existingIds.has(newId)) {
-    counter++
-    newId = `${baseId}_imported_${counter}`
-  }
-  return newId
-}
-
-/**
  * Import a bundle into the target .agents directory.
  * Handles conflicts according to the specified strategy.
  */
@@ -593,44 +576,14 @@ export async function importBundle(
         let action: ImportItemResult["action"] = "imported"
 
         if (exists && conflictStrategy === "rename") {
-          finalId = generateUniqueId(bundleProfile.id, existingIds)
+          finalId = generateBundleImportUniqueId(bundleProfile.id, existingIds)
           action = "renamed"
         } else if (exists && conflictStrategy === "overwrite") {
           action = "overwritten"
         }
 
-        // Convert bundle profile to full AgentProfile
         const now = Date.now()
-        const connection: AgentProfileConnection = {
-          type: bundleProfile.connection.type,
-        }
-        if (isNonEmptyString(bundleProfile.connection.command)) {
-          connection.command = bundleProfile.connection.command
-        }
-        if (Array.isArray(bundleProfile.connection.args)) {
-          connection.args = bundleProfile.connection.args
-            .filter((arg): arg is string => typeof arg === "string")
-        }
-        if (isNonEmptyString(bundleProfile.connection.cwd)) {
-          connection.cwd = bundleProfile.connection.cwd
-        }
-        if (isNonEmptyString(bundleProfile.connection.baseUrl)) {
-          connection.baseUrl = bundleProfile.connection.baseUrl
-        }
-
-        const fullProfile: AgentProfile = {
-          id: finalId,
-          name: bundleProfile.name,
-          displayName: bundleProfile.displayName || bundleProfile.name,
-          description: bundleProfile.description,
-          systemPrompt: bundleProfile.systemPrompt,
-          guidelines: bundleProfile.guidelines,
-          connection,
-          role: bundleProfile.role,
-          enabled: bundleProfile.enabled,
-          createdAt: now,
-          updatedAt: now,
-        }
+        const fullProfile = buildAgentProfileFromBundleProfile(bundleProfile, { id: finalId, now })
 
         writeAgentsProfileFiles(layer, fullProfile)
         existingIds.add(finalId)
@@ -680,20 +633,13 @@ export async function importBundle(
         let action: ImportItemResult["action"] = "imported"
 
         if (exists && conflictStrategy === "rename") {
-          finalName = generateUniqueId(bundleServer.name, existingNames)
+          finalName = generateBundleImportUniqueId(bundleServer.name, existingNames)
           action = "renamed"
         } else if (exists && conflictStrategy === "overwrite") {
           action = "overwritten"
         }
 
-        // Build server config
-        const serverConfig: Record<string, unknown> = {}
-        if (bundleServer.command) serverConfig.command = bundleServer.command
-        if (bundleServer.args) serverConfig.args = bundleServer.args
-        if (bundleServer.transport) serverConfig.transport = bundleServer.transport
-        if (bundleServer.enabled === false) serverConfig.disabled = true
-
-        mcpServers[finalName] = serverConfig
+        mcpServers[finalName] = buildMcpServerConfigFromBundleServer(bundleServer)
         existingNames.add(finalName)
         modified = true
 
@@ -741,22 +687,14 @@ export async function importBundle(
         let action: ImportItemResult["action"] = "imported"
 
         if (exists && conflictStrategy === "rename") {
-          finalId = generateUniqueId(bundleSkill.id, existingIds)
+          finalId = generateBundleImportUniqueId(bundleSkill.id, existingIds)
           action = "renamed"
         } else if (exists && conflictStrategy === "overwrite") {
           action = "overwritten"
         }
 
         const now = Date.now()
-        const fullSkill: AgentSkill = {
-          id: finalId,
-          name: bundleSkill.name,
-          description: bundleSkill.description || "",
-          instructions: bundleSkill.instructions || "",
-          createdAt: now,
-          updatedAt: now,
-          source: "imported",
-        }
+        const fullSkill = buildSkillFromBundleSkill(bundleSkill, { id: finalId, now })
 
         // Create skill directory and write file
         const skillDir = skillIdToDirPath(layer, finalId)
@@ -805,27 +743,13 @@ export async function importBundle(
         let action: ImportItemResult["action"] = "imported"
 
         if (exists && conflictStrategy === "rename") {
-          finalId = generateUniqueId(bundleTask.id, existingIds)
+          finalId = generateBundleImportUniqueId(bundleTask.id, existingIds)
           action = "renamed"
         } else if (exists && conflictStrategy === "overwrite") {
           action = "overwritten"
         }
 
-        const fullTask: LoopConfig = {
-          id: finalId,
-          name: bundleTask.name,
-          prompt: bundleTask.prompt,
-          intervalMinutes: bundleTask.intervalMinutes,
-          enabled: bundleTask.enabled,
-          runOnStartup: bundleTask.runOnStartup,
-          speakOnTrigger: bundleTask.speakOnTrigger,
-          continueInSession: bundleTask.continueInSession,
-          runContinuously: bundleTask.runContinuously,
-          ...(bundleTask.runContinuously === true || !bundleTask.schedule
-            ? {}
-            : { schedule: bundleTask.schedule }),
-          // profileId intentionally not imported — may not exist in target
-        }
+        const fullTask = buildRepeatTaskFromBundleTask(bundleTask, { id: finalId })
 
         writeTaskFile(layer, fullTask)
         existingIds.add(finalId)
@@ -871,27 +795,14 @@ export async function importBundle(
         let action: ImportItemResult["action"] = "imported"
 
         if (exists && conflictStrategy === "rename") {
-          finalId = generateUniqueId(bundleKnowledgeNote.id, existingIds)
+          finalId = generateBundleImportUniqueId(bundleKnowledgeNote.id, existingIds)
           action = "renamed"
         } else if (exists && conflictStrategy === "overwrite") {
           action = "overwritten"
         }
 
         const now = Date.now()
-        const fullNote: KnowledgeNote = {
-          id: finalId,
-          title: bundleKnowledgeNote.title,
-          context: bundleKnowledgeNote.context,
-          body: bundleKnowledgeNote.body,
-          summary: bundleKnowledgeNote.summary,
-          tags: bundleKnowledgeNote.tags || [],
-          references: bundleKnowledgeNote.references,
-          group: bundleKnowledgeNote.group,
-          series: bundleKnowledgeNote.series,
-          entryType: bundleKnowledgeNote.entryType,
-          createdAt: bundleKnowledgeNote.createdAt ?? now,
-          updatedAt: now,
-        }
+        const fullNote = buildKnowledgeNoteFromBundleNote(bundleKnowledgeNote, { id: finalId, now })
 
         writeKnowledgeNoteFile(layer, fullNote, { slug: finalId })
         existingIds.add(finalId)
