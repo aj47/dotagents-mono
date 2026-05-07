@@ -1,7 +1,7 @@
 import crypto from "crypto"
 import { app } from "electron"
 import os from "os"
-import type { OperatorRouteActions } from "./operator-routes"
+import type { OperatorRouteActions } from "@dotagents/shared/remote-server-route-contracts"
 import type { Config } from "../shared/types"
 import type {
   LocalSpeechModelProviderId,
