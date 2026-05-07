@@ -432,16 +432,13 @@ const mcpRouteActions = createMcpRouteActions({
   config: mcpServerConfigActionOptions,
 })
 
-function cleanupDeletedSkillReferences(): void {
+function cleanupDeletedSkillReferences(validSkillIds: string[]): void {
   const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
   const layers = workspaceAgentsFolder
     ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
     : [getAgentsLayerPaths(globalAgentsFolder)]
 
-  cleanupInvalidSkillReferencesInLayers(
-    layers,
-    skillsService.getSkills().map((skill) => skill.id),
-  )
+  cleanupInvalidSkillReferencesInLayers(layers, validSkillIds)
   agentProfileService.reload()
 }
 
@@ -454,19 +451,16 @@ const skillActionOptions: SkillActionOptions = {
     importSkillFromGitHub: (repoIdentifier) => skillsService.importSkillFromGitHub(repoIdentifier),
     exportSkillToMarkdown: (id) => skillsService.exportSkillToMarkdown(id),
     updateSkill: (id, updates) => skillsService.updateSkill(id, updates),
-    deleteSkill: (id) => {
-      const success = skillsService.deleteSkill(id)
-      if (success) {
-        cleanupDeletedSkillReferences()
-      }
-      return success
-    },
+    deleteSkill: (id) => skillsService.deleteSkill(id),
     getCurrentProfile: () => agentProfileService.getCurrentProfile(),
     enableSkillForCurrentProfile: (skillId) => agentProfileService.enableSkillForCurrentProfile(skillId),
     toggleProfileSkill: (profileId, skillId, allSkillIds) =>
       agentProfileService.toggleProfileSkill(profileId, skillId, allSkillIds),
   },
   diagnostics: diagnosticsService,
+  onSkillDeleted: ({ availableSkillIds }) => {
+    cleanupDeletedSkillReferences(availableSkillIds)
+  },
 }
 
 const skillRouteActions = createSkillRouteActions(skillActionOptions)

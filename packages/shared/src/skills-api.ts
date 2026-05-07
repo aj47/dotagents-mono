@@ -46,6 +46,12 @@ export interface SkillActionDiagnostics {
   logError(source: string, message: string, error: unknown): void
 }
 
+export type SkillDeletedContext = {
+  skillId: string
+  availableSkills: SkillApiLike[]
+  availableSkillIds: string[]
+}
+
 export interface SkillActionService {
   getSkills(): SkillApiLike[]
   getSkill(id: string): SkillApiLike | undefined
@@ -66,6 +72,7 @@ export interface SkillActionService {
 export interface SkillActionOptions {
   service: SkillActionService
   diagnostics: SkillActionDiagnostics
+  onSkillDeleted?(context: SkillDeletedContext): void
 }
 
 export interface SkillRouteActions {
@@ -720,6 +727,15 @@ export function deleteSkillAction(
     const success = options.service.deleteSkill(skillId)
     if (!success) {
       return skillActionError(404, "Skill not found")
+    }
+
+    if (options.onSkillDeleted) {
+      const availableSkills = options.service.getSkills()
+      options.onSkillDeleted({
+        skillId,
+        availableSkills,
+        availableSkillIds: availableSkills.map((skill) => skill.id),
+      })
     }
 
     return skillActionOk(buildSkillDeleteResponse(skillId))

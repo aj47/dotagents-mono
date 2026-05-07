@@ -41,6 +41,7 @@ import {
   validateGitHubSkillRef,
   validateGitHubSkillSubPath,
   type SkillActionService,
+  type SkillDeletedContext,
   type RuntimeSkillLike,
   type RuntimeSkillRegistryLike,
 } from "./skills-api"
@@ -307,6 +308,7 @@ describe("skills API helpers", () => {
       description: "Updated description",
       updatedAt: 6,
     }
+    const deletedContexts: SkillDeletedContext[] = []
     const service = createSkillActionService({
       getCurrentProfile: () => profile,
       createSkill: (name: string, description: string, instructions: string) => {
@@ -383,10 +385,21 @@ describe("skills API helpers", () => {
       statusCode: 200,
       body: buildSkillMutationResponse(updated, profile),
     })
-    expect(deleteSkillAction("research", { service, diagnostics })).toEqual({
+    expect(deleteSkillAction("research", {
+      service,
+      diagnostics,
+      onSkillDeleted: (context) => {
+        deletedContexts.push(context)
+      },
+    })).toEqual({
       statusCode: 200,
       body: buildSkillDeleteResponse("research"),
     })
+    expect(deletedContexts).toEqual([{
+      skillId: "research",
+      availableSkills: skills,
+      availableSkillIds: ["research", "writing"],
+    }])
 
     const routeActions = createSkillRouteActions({ service, diagnostics })
     expect(routeActions.getSkill("research")).toEqual({
