@@ -16,8 +16,8 @@ import {
 } from "lucide-react"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import { tipcClient } from "@renderer/lib/tipc-client"
-import type { ModelsDevModel } from "@dotagents/shared/api-types"
+import { desktopModelsClient } from "@renderer/lib/desktop-models-client"
+import type { ModelInfo, ModelsDevModel } from "@dotagents/shared/api-types"
 
 interface PresetModelSelectorProps {
   presetId: string
@@ -58,7 +58,7 @@ export function PresetModelSelector({
   disabled = false,
 }: PresetModelSelectorProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [models, setModels] = useState<Array<{ id: string; name: string }>>([])
+  const [models, setModels] = useState<ModelInfo[]>([])
   const [error, setError] = useState<string | null>(null)
   const [modelsDevData, setModelsDevData] = useState<
     Record<string, ModelsDevModel>
@@ -78,10 +78,7 @@ export function PresetModelSelector({
     setError(null)
 
     try {
-      const result = await tipcClient.fetchModelsForPreset({
-        baseUrl,
-        apiKey,
-      })
+      const result = await desktopModelsClient.fetchModelsForPreset(baseUrl, apiKey)
       setModels(result || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch models")
@@ -103,7 +100,7 @@ export function PresetModelSelector({
         models.map(async (model) => {
           try {
             // Use backend fuzzy matching - no providerId to search across ALL providers
-            const info = await tipcClient.getModelInfo({ modelId: model.id })
+            const info = await desktopModelsClient.getModelInfo(model.id)
             if (info) {
               enrichedData[model.id] = info
             }
@@ -192,7 +189,7 @@ export function PresetModelSelector({
   })()
 
   /** Render model item with pricing and capabilities */
-  const renderModelItem = (model: { id: string; name: string }) => {
+  const renderModelItem = (model: ModelInfo) => {
     const info = getModelInfo(model.id)
     const inputPrice = formatPrice(info?.cost?.input)
     const outputPrice = formatPrice(info?.cost?.output)
