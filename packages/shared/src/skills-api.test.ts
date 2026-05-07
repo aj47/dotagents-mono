@@ -8,6 +8,8 @@ import {
   buildSkillImportGitHubResponse,
   buildSkillMutationResponse,
   buildSkillResponse,
+  DEFAULT_SKILL_EDIT_FORM_DATA,
+  formatSkillEditFormData,
   getSkillsAction,
   buildSkillsResponse,
   buildSkillToggleResponse,
@@ -102,6 +104,23 @@ describe("skills API helpers", () => {
     expect(slugifySkillName("Code / Review Assistant", 8)).toBe("code-rev")
     expect(createSkillIdFromName("Research Helper", () => "fallback")).toBe("research-helper")
     expect(createSkillIdFromName("!!!", () => "fallback")).toBe("fallback")
+  })
+
+  it("formats skills for shared edit forms", () => {
+    expect(DEFAULT_SKILL_EDIT_FORM_DATA).toEqual({
+      name: "",
+      description: "",
+      instructions: "",
+    })
+    expect(formatSkillEditFormData({
+      name: "Research",
+      description: "Find context",
+      instructions: undefined,
+    })).toEqual({
+      name: "Research",
+      description: "Find context",
+      instructions: "",
+    })
   })
 
   it("enables all skills when a profile has default skill semantics", () => {

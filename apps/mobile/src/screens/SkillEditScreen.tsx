@@ -11,24 +11,11 @@ import type {
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel } from '@dotagents/shared/accessibility-utils';
 import { useConfigContext } from '../store/config';
-
-type SkillFormData = {
-  name: string;
-  description: string;
-  instructions: string;
-};
-
-const defaultFormData: SkillFormData = {
-  name: '',
-  description: '',
-  instructions: '',
-};
-
-const toFormData = (skill: Skill): SkillFormData => ({
-  name: skill.name,
-  description: skill.description ?? '',
-  instructions: skill.instructions ?? '',
-});
+import {
+  DEFAULT_SKILL_EDIT_FORM_DATA,
+  formatSkillEditFormData,
+  type SkillEditFormData,
+} from '@dotagents/shared/skills-api';
 
 export default function SkillEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
@@ -40,8 +27,8 @@ export default function SkillEditScreen({ navigation, route }: any) {
   const effectiveSkillId = skillId ?? skillFromRoute?.id;
   const isEditing = !!effectiveSkillId;
 
-  const [formData, setFormData] = useState<SkillFormData>(() =>
-    skillFromRoute ? toFormData(skillFromRoute) : defaultFormData
+  const [formData, setFormData] = useState<SkillEditFormData>(() =>
+    skillFromRoute ? formatSkillEditFormData(skillFromRoute) : DEFAULT_SKILL_EDIT_FORM_DATA
   );
   const [isLoading, setIsLoading] = useState(isEditing && !skillFromRoute);
   const [isSaving, setIsSaving] = useState(false);
@@ -79,7 +66,7 @@ export default function SkillEditScreen({ navigation, route }: any) {
     settingsClient.getSkill(effectiveSkillId)
       .then((res) => {
         if (cancelled) return;
-        setFormData(toFormData(res.skill));
+        setFormData(formatSkillEditFormData(res.skill));
       })
       .catch((err: Error) => {
         if (!cancelled) {
@@ -93,7 +80,7 @@ export default function SkillEditScreen({ navigation, route }: any) {
     return () => { cancelled = true; };
   }, [effectiveSkillId, isEditing, skillFromRoute, settingsClient]);
 
-  const updateField = useCallback(<K extends keyof SkillFormData>(key: K, value: SkillFormData[K]) => {
+  const updateField = useCallback(<K extends keyof SkillEditFormData>(key: K, value: SkillEditFormData[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
 

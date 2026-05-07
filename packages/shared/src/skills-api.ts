@@ -26,6 +26,18 @@ export type SkillApiLike = {
   updatedAt: number
 }
 
+export type SkillEditFormData = {
+  name: string
+  description: string
+  instructions: string
+}
+
+export const DEFAULT_SKILL_EDIT_FORM_DATA: SkillEditFormData = {
+  name: "",
+  description: "",
+  instructions: "",
+}
+
 export type SkillProfileLike = {
   id?: string
   skillsConfig?: {
@@ -213,6 +225,14 @@ export function slugifySkillName(name: string, maxLength = 64): string {
 
 export function createSkillIdFromName(name: string, createFallbackId: SkillIdGenerator): string {
   return slugifySkillName(name) || createFallbackId()
+}
+
+export function formatSkillEditFormData(skill: Pick<SkillApiLike, "name" | "description" | "instructions">): SkillEditFormData {
+  return {
+    name: skill.name,
+    description: skill.description ?? "",
+    instructions: skill.instructions ?? "",
+  }
 }
 
 export function isGitHubSkillMarkdownFileName(filename: string): boolean {
