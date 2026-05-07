@@ -81,7 +81,7 @@ import {
 import {
   DEFAULT_THEME_PREFERENCE,
   THEME_PREFERENCE_CHANGED_EVENT,
-  THEME_PREFERENCE_VALUES,
+  THEME_PREFERENCE_OPTIONS,
   isThemePreference,
   saveThemePreference,
   type ThemePreferenceValue,
@@ -640,9 +640,9 @@ export function Component() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {THEME_PREFERENCE_VALUES.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value === "system" ? "System" : value === "light" ? "Light" : "Dark"}
+                {THEME_PREFERENCE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -31,8 +31,8 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /DEFAULT_LAUNCH_AT_LOGIN/);
   assert.match(operationsSource, /DEFAULT_TEXT_INPUT_ENABLED/);
   assert.match(operationsSource, /DEFAULT_THEME_PREFERENCE/);
-  assert.match(operationsSource, /THEME_PREFERENCE_VALUES/);
-  assert.match(operationsSource, /DESKTOP_THEME_OPTIONS/);
+  assert.match(operationsSource, /THEME_PREFERENCE_OPTIONS/);
+  assert.doesNotMatch(operationsSource, /DESKTOP_THEME_OPTIONS/);
   assert.match(operationsSource, /DEFAULT_FLOATING_PANEL_AUTO_SHOW/);
   assert.match(operationsSource, /DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED/);
   assert.match(operationsSource, /DEFAULT_PANEL_DRAG_ENABLED/);

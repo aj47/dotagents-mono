@@ -12,7 +12,7 @@ describe("settings general theme preference", () => {
   it("uses shared theme preference options and default", () => {
     const source = getSettingsGeneralSource()
 
-    expect(source).toContain("THEME_PREFERENCE_VALUES")
+    expect(source).toContain("THEME_PREFERENCE_OPTIONS")
     expect(source).toContain("DEFAULT_THEME_PREFERENCE")
     expect(source).toContain("type ThemePreferenceValue")
   })

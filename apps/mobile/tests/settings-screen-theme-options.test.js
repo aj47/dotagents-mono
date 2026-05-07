@@ -13,9 +13,9 @@ const themeProviderSource = fs.readFileSync(
 );
 
 test('uses shared theme preference values in mobile settings', () => {
-  assert.match(settingsSource, /THEME_PREFERENCE_VALUES/);
-  assert.match(settingsSource, /THEME_OPTION_LABELS/);
-  assert.match(settingsSource, /THEME_PREFERENCE_VALUES\.map/);
+  assert.match(settingsSource, /THEME_PREFERENCE_OPTIONS/);
+  assert.match(settingsSource, /THEME_PREFERENCE_OPTIONS\.map/);
+  assert.doesNotMatch(settingsSource, /THEME_OPTION_LABELS/);
   assert.doesNotMatch(settingsSource, /\u2600\uFE0F|\u{1F319}|\u2699\uFE0F/u);
 });
 

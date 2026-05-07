@@ -3,8 +3,18 @@ import type { ThemePreference } from "./api-types"
 export type ThemePreferenceValue = ThemePreference
 export type ResolvedThemePreference = "light" | "dark"
 
+export type ThemePreferenceOption = {
+  label: string
+  value: ThemePreferenceValue
+}
+
 export const THEME_PREFERENCE_VALUES: readonly ThemePreferenceValue[] = ["system", "light", "dark"]
 export const DEFAULT_THEME_PREFERENCE: ThemePreferenceValue = "system"
+export const THEME_PREFERENCE_OPTIONS: readonly ThemePreferenceOption[] = [
+  { label: "System", value: "system" },
+  { label: "Light", value: "light" },
+  { label: "Dark", value: "dark" },
+]
 export const DESKTOP_THEME_PREFERENCE_STORAGE_KEY = "theme-preference"
 export const MOBILE_THEME_PREFERENCE_STORAGE_KEY = "dotagents-theme-preference"
 export const THEME_PREFERENCE_CHANGED_EVENT = "theme-preference-changed"

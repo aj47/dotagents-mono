@@ -14,7 +14,7 @@ import {
 } from '../store/config';
 import { useSessionContext } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
-import { useTheme, ThemeMode } from '../ui/ThemeProvider';
+import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import { useProfile } from '../store/profile';
 import { usePushNotifications } from '../lib/pushNotifications';
@@ -178,7 +178,7 @@ import {
   buildRemoteSettingsInputDrafts,
 } from '@dotagents/shared/remote-settings-input-drafts';
 import { DEFAULT_STREAMER_MODE_ENABLED } from '@dotagents/shared/remote-pairing';
-import { THEME_PREFERENCE_VALUES } from '@dotagents/shared/theme-preference';
+import { THEME_PREFERENCE_OPTIONS } from '@dotagents/shared/theme-preference';
 import {
   DEFAULT_SUPERTONIC_TTS_LANGUAGE,
   DEFAULT_SUPERTONIC_TTS_STEPS,
@@ -330,17 +330,6 @@ const DISCORD_LIST_SETTING_SECTIONS: Array<{
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-const THEME_OPTION_LABELS: Record<ThemeMode, string> = {
-  light: 'Light',
-  dark: 'Dark',
-  system: 'System',
-};
-
-const THEME_OPTIONS: { label: string; value: ThemeMode }[] = THEME_PREFERENCE_VALUES.map((value) => ({
-  label: THEME_OPTION_LABELS[value],
-  value,
-}));
 
 export default function SettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -2886,7 +2875,7 @@ export default function SettingsScreen({ navigation }: any) {
 
         <Text style={styles.sectionTitle}>Appearance</Text>
         <View style={styles.themeSelector}>
-          {THEME_OPTIONS.map((option) => (
+          {THEME_PREFERENCE_OPTIONS.map((option) => (
             <Pressable
               key={option.value}
               style={[
