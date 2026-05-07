@@ -90,6 +90,7 @@ export interface RemoteServerControllerOptions<
   discordSecretMask: string;
   langfuseSecretMask: string;
   getAppVersion: () => string;
+  isHeadlessEnvironment: () => boolean;
   relaunchApp: () => void;
   quitApp: () => void;
   runAgent: RemoteServerRunAgentExecutor;

@@ -478,6 +478,8 @@ describe("remote-server route registration", () => {
     expect(source).toContain("createRemoteServerController({")
     expect(source).toContain("registerRoutes: registerDesktopRemoteServerRoutes")
     expect(source).toContain("adapters: remoteServerDesktopAdapters")
+    expect(source).toContain("isHeadlessEnvironment: () =>")
+    expect(source).toContain("isHeadlessRemoteServerEnvironment({")
     expect(source).toContain("return remoteServerController.startRemoteServer()")
     expect(source).toContain("return remoteServerController.printQRCodeToTerminal(urlOverride)")
     expect(source).not.toContain('from "fastify"')
@@ -504,6 +506,9 @@ describe("remote-server route registration", () => {
     expect(controllerSource).toContain(
       "export type RemoteServerRouteRegistrar = SharedRemoteServerRouteRegistrar<FastifyInstance, FastifyReply>",
     )
+    expect(controllerSource).not.toContain("process.platform")
+    expect(controllerSource).not.toContain("process.env")
+    expect(controllerSource).toContain("headlessEnvironment: isHeadlessEnvironment()")
     expect(controllerSource).toContain("adapters.authorizeRequest(req, {")
     expect(controllerSource).toContain("adapters.resolveConfiguredApiKey(current)")
     expect(controllerSource).toContain("adapters.recordOperatorResponseAuditEvent(req, reply)")
@@ -598,6 +603,7 @@ describe("remote-server route registration", () => {
     expect(sharedControllerContractsSource).toContain("Reply = unknown")
     expect(sharedControllerContractsSource).toContain("export type RemoteServerRouteRegistrar<Server = unknown, Reply = unknown>")
     expect(sharedControllerContractsSource).toContain("export interface RemoteServerControllerOptions<")
+    expect(sharedControllerContractsSource).toContain("isHeadlessEnvironment: () => boolean")
     expect(sharedControllerContractsSource).toContain("export type RemoteServerRunAgentExecutor = AgentRunExecutor")
     expect(sharedControllerContractsSource).toContain("export interface RemoteServerController")
     expect(sharedControllerContractsSource).not.toContain("Fastify")

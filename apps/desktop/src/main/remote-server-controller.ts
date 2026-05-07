@@ -23,7 +23,6 @@ import {
   ensureRemoteServerV1BaseUrl,
   getRemoteServerPairingApiKey as getRemoteServerPairingApiKeyFromConfig,
   getRemoteServerStartupPlan,
-  isHeadlessRemoteServerEnvironment,
   shouldAutoPrintRemoteServerPairingQr,
 } from "@dotagents/shared/remote-pairing"
 
@@ -62,6 +61,7 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
     discordSecretMask,
     langfuseSecretMask,
     getAppVersion,
+    isHeadlessEnvironment,
     relaunchApp,
     quitApp,
     runAgent,
@@ -266,10 +266,7 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
         skipAutoPrintQR,
         apiKey: currentApiKey,
         streamerModeEnabled: currentCfg.streamerModeEnabled,
-        headlessEnvironment: isHeadlessRemoteServerEnvironment({
-          platform: process.platform,
-          env: process.env,
-        }),
+        headlessEnvironment: isHeadlessEnvironment(),
         terminalQrEnabled: currentCfg.remoteServerTerminalQrEnabled,
       })) {
         const serverUrl = adapters.getConnectableBaseUrlForMobilePairing(bind, port)

@@ -11,6 +11,7 @@ import { remoteServerDesktopAdapters } from "./remote-server-desktop-adapters"
 import { registerDesktopRemoteServerRoutes } from "./remote-server-route-bundle"
 import {
   DEFAULT_REMOTE_SERVER_SECRET_MASK,
+  isHeadlessRemoteServerEnvironment,
 } from "@dotagents/shared/remote-pairing"
 
 const REMOTE_SERVER_SECRET_MASK = DEFAULT_REMOTE_SERVER_SECRET_MASK
@@ -28,6 +29,11 @@ const remoteServerController = createRemoteServerController({
   discordSecretMask: DISCORD_SECRET_MASK,
   langfuseSecretMask: PROVIDER_SECRET_MASK,
   getAppVersion: () => app.getVersion(),
+  isHeadlessEnvironment: () =>
+    isHeadlessRemoteServerEnvironment({
+      platform: process.platform,
+      env: process.env,
+    }),
   relaunchApp: () => app.relaunch(),
   quitApp: () => app.quit(),
   runAgent,
