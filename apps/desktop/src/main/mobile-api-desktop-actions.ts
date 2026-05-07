@@ -35,7 +35,7 @@ import {
 } from "@dotagents/shared/conversation-sync"
 import { getConversationIdValidationError } from "@dotagents/shared/conversation-id"
 import {
-  getConversationVideoAssetAction,
+  createConversationVideoAssetRouteActions,
   type ConversationVideoAssetActionOptions,
 } from "@dotagents/shared/conversation-media-assets"
 import {
@@ -337,6 +337,8 @@ const conversationVideoAssetActionOptions: ConversationVideoAssetActionOptions =
   diagnostics: diagnosticsService,
 }
 
+const conversationVideoAssetRouteActions = createConversationVideoAssetRouteActions(conversationVideoAssetActionOptions)
+
 const profileActionOptions: ProfileActionOptions<DesktopProfileActionProfile> = {
   service: {
     getUserProfiles: () => agentProfileService.getUserProfiles(),
@@ -516,19 +518,6 @@ const skillActionOptions: SkillActionOptions = {
 
 const skillRouteActions = createSkillRouteActions(skillActionOptions)
 
-async function getConversationVideoAsset(
-  id: string | undefined,
-  fileName: string | undefined,
-  rangeHeader: string | undefined,
-) {
-  return getConversationVideoAssetAction(
-    id,
-    fileName,
-    rangeHeader,
-    conversationVideoAssetActionOptions,
-  )
-}
-
 export const mobileApiDesktopActions: MobileApiRouteActions = {
   handleChatCompletionRequest,
   ...modelRouteActions,
@@ -539,7 +528,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   ...agentSessionCandidateRouteActions,
   recordOperatorAuditEvent,
   ...conversationRouteActions,
-  getConversationVideoAsset,
+  ...conversationVideoAssetRouteActions,
   ...ttsRouteActions,
   ...pushRouteActions,
   ...emergencyStopRouteActions,

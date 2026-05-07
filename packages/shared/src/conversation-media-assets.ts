@@ -192,6 +192,14 @@ export interface ConversationVideoAssetActionOptions<Body = unknown> {
   diagnostics?: ConversationVideoAssetActionDiagnostics;
 }
 
+export interface ConversationVideoAssetRouteActions<Body = unknown> {
+  getConversationVideoAsset(
+    id: string | undefined,
+    fileName: string | undefined,
+    rangeHeader: string | string[] | undefined,
+  ): Promise<ConversationVideoAssetActionResult<Body>>;
+}
+
 export type RespondToUserLocalAssetResolution = {
   resolvedPath: string;
   fileBytes: number;
@@ -1097,4 +1105,13 @@ export async function getConversationVideoAssetAction<Body = unknown>(
       getConversationVideoAssetActionErrorMessage(caughtError, 'Failed to stream video asset'),
     );
   }
+}
+
+export function createConversationVideoAssetRouteActions<Body = unknown>(
+  options: ConversationVideoAssetActionOptions<Body>,
+): ConversationVideoAssetRouteActions<Body> {
+  return {
+    getConversationVideoAsset: (id, fileName, rangeHeader) =>
+      getConversationVideoAssetAction(id, fileName, rangeHeader, options),
+  };
 }

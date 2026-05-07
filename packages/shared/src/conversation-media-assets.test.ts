@@ -6,6 +6,7 @@ import {
   buildConversationImageMarkdownMessage,
   buildConversationImageMarkdownReference,
   buildConversationVideoAssetHttpUrl,
+  createConversationVideoAssetRouteActions,
   escapeMarkdownAltText,
   extractConversationImageMarkdownReferences,
   extractDataImageMarkdownReferences,
@@ -729,6 +730,39 @@ describe('conversation video asset utilities', () => {
     });
 
     expect(bodyRanges).toEqual([undefined, { start: 10, end: 19 }]);
+  });
+
+  it('creates reusable video asset route actions through an injected file service', async () => {
+    const bodyRanges: Array<{ start: number; end: number } | undefined> = [];
+    const routeActions = createConversationVideoAssetRouteActions({
+      validateConversationId: () => null,
+      service: {
+        getVideoAssetFile: async () => ({
+          size: 1000,
+          createBody: (range?: { start: number; end: number }) => {
+            bodyRanges.push(range);
+            return range ? `stream:${range.start}-${range.end}` : 'stream:full';
+          },
+        }),
+      },
+    });
+
+    await expect(routeActions.getConversationVideoAsset(
+      'conv-1',
+      'abcdef1234567890.webm',
+      'bytes=10-19',
+    )).resolves.toEqual({
+      statusCode: 206,
+      headers: {
+        'Accept-Ranges': 'bytes',
+        'Content-Type': 'video/webm',
+        'Content-Length': '10',
+        'Content-Range': 'bytes 10-19/1000',
+      },
+      body: 'stream:10-19',
+    });
+
+    expect(bodyRanges).toEqual([{ start: 10, end: 19 }]);
   });
 
   it('builds video asset action errors for invalid ids, invalid files, missing files, and ranges', async () => {
