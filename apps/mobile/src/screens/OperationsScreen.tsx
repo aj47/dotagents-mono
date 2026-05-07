@@ -80,6 +80,7 @@ import {
   REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
   REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
+  REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA,
   REMOTE_SERVER_PORT_FIELD_METADATA,
 } from '@dotagents/shared/remote-pairing';
 import {
@@ -1813,7 +1814,7 @@ export default function OperationsScreen({ navigation }: any) {
               </View>
               <Text style={styles.helperText}>{REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.helperText}</Text>
 
-              <Text style={styles.label}>Log Level</Text>
+              <Text style={styles.label}>{REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA.label}</Text>
               <View style={styles.chipRow}>
                 {REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS.map((option) => {
                   const selected = (settings.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL) === option.value;
@@ -1833,7 +1834,7 @@ export default function OperationsScreen({ navigation }: any) {
                       disabled={controlsDisabled}
                       accessibilityRole="button"
                       accessibilityState={{ selected, disabled: controlsDisabled }}
-                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.label} remote server log level`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.label} ${REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA.accessibilityLabel}`)}
                     >
                       <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>{option.label}</Text>
                     </TouchableOpacity>

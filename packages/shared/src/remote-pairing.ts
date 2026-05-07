@@ -46,6 +46,13 @@ export type RemoteServerLogLevelOption = {
   successMessage: string;
 };
 
+export type RemoteServerLogLevelFieldMetadata = {
+  key: 'remoteServerLogLevel';
+  label: string;
+  tooltip: string;
+  accessibilityLabel: string;
+};
+
 export type RemoteServerPortFieldMetadata = {
   key: 'remoteServerPort';
   label: string;
@@ -92,6 +99,12 @@ export const REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA: RemoteServerBindAddressF
   helperText: 'Use 0.0.0.0 for LAN/mobile access. 127.0.0.1 keeps the server on the desktop only.',
   lanWarningText: 'Warning: Exposes the server on your local network. Keep your API key secure.',
   accessibilityLabel: 'remote server bind address',
+};
+export const REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA: RemoteServerLogLevelFieldMetadata = {
+  key: 'remoteServerLogLevel',
+  label: 'Log Level',
+  tooltip: 'Fastify logger level.',
+  accessibilityLabel: 'remote server log level',
 };
 export const REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS: readonly RemoteServerBindAddressOption[] = [
   {

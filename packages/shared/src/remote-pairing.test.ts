@@ -58,6 +58,7 @@ import {
   REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
+  REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_PORT_FIELD_METADATA,
@@ -137,6 +138,12 @@ describe('remote server config contracts', () => {
     });
     expect(DEFAULT_REMOTE_SERVER_LOG_LEVEL).toBe('info');
     expect(REMOTE_SERVER_LOG_LEVEL_OPTIONS).toEqual(['error', 'info', 'debug']);
+    expect(REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA).toEqual({
+      key: 'remoteServerLogLevel',
+      label: 'Log Level',
+      tooltip: 'Fastify logger level.',
+      accessibilityLabel: 'remote server log level',
+    });
     expect(REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS).toEqual([
       { value: 'error', label: 'error', successMessage: 'Remote server log level saved as error.' },
       { value: 'info', label: 'info', successMessage: 'Remote server log level saved as info.' },

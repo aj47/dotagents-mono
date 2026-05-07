@@ -39,6 +39,7 @@ import {
   REMOTE_SERVER_PORT_MIN,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
+  REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_PORT_FIELD_METADATA,
   type CloudflareTunnelMode,
@@ -343,7 +344,15 @@ export function RemoteServerSettingsGroups({
                 )}
               </Control>
 
-              <Control label={<ControlLabel label="Log Level" tooltip="Fastify logger level" />} className="px-3">
+              <Control
+                label={(
+                  <ControlLabel
+                    label={REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA.label}
+                    tooltip={REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA.tooltip}
+                  />
+                )}
+                className="px-3"
+              >
                 <Select
                   value={cfg.remoteServerLogLevel || DEFAULT_REMOTE_SERVER_LOG_LEVEL}
                   onValueChange={(value: RemoteServerLogLevel) => saveConfig({ remoteServerLogLevel: value })}
