@@ -1,4 +1,5 @@
-import { tipcClient } from "@renderer/lib/tipc-client"
+import type { RendererHandlers } from "@shared/renderer-handlers"
+import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 
 export interface DesktopAgentSessionRecord {
   id: string
@@ -41,6 +42,10 @@ export interface DesktopRespondToToolApprovalResult {
 }
 
 export const desktopAgentSessionsClient = {
+  onAgentSessionsUpdated(listener: RendererHandlers["agentSessionsUpdated"]): () => void {
+    return rendererHandlers.agentSessionsUpdated.listen(listener)
+  },
+
   getAgentSessions(): Promise<DesktopAgentSessionsResponse> {
     return tipcClient.getAgentSessions() as Promise<DesktopAgentSessionsResponse>
   },

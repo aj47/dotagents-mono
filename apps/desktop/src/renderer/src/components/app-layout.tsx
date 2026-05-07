@@ -103,7 +103,7 @@ export const Component = () => {
     })
 
   useEffect(() => {
-    const unlisten = rendererHandlers.agentSessionsUpdated.listen(() => {
+    const unlisten = desktopAgentSessionsClient.onAgentSessionsUpdated(() => {
       if (isCollapsed) {
         refetchSessionData()
       }

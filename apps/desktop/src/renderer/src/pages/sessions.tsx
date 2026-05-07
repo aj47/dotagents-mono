@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { useParams, useOutletContext, useLocation, useNavigate } from "react-router-dom"
-import { rendererHandlers } from "@renderer/lib/tipc-client"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { desktopConversationsClient } from "@renderer/lib/desktop-conversations-client"
 import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
@@ -440,7 +439,7 @@ export function Component() {
   })
 
   useEffect(() => {
-    const unlisten = rendererHandlers.agentSessionsUpdated.listen(() => {
+    const unlisten = desktopAgentSessionsClient.onAgentSessionsUpdated(() => {
       void refetchSessionData()
     })
     return unlisten

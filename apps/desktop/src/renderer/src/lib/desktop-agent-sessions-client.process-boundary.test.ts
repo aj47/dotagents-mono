@@ -23,6 +23,7 @@ const tileFollowUpInputSource = readFileSync(
 
 describe("desktop agent sessions renderer client", () => {
   it("centralizes agent-session list and cleanup IPC channels", () => {
+    expect(clientSource).toContain("rendererHandlers.agentSessionsUpdated.listen(listener)")
     expect(clientSource).toContain("tipcClient.getAgentSessions()")
     expect(clientSource).toContain("tipcClient.clearInactiveSessions()")
     expect(clientSource).toContain("tipcClient.stopAgentSession({ sessionId })")
@@ -55,6 +56,10 @@ describe("desktop agent sessions renderer client", () => {
     expect(appLayoutSource).toContain("desktopAgentSessionsClient.getAgentSessions()")
     expect(pastSessionsDialogSource).toContain("desktopAgentSessionsClient.getAgentSessions()")
     expect(sessionsPageSource).toContain("desktopAgentSessionsClient.getAgentSessions()")
+    expect(activeAgentsSidebarSource).toContain("desktopAgentSessionsClient.onAgentSessionsUpdated(")
+    expect(appLayoutSource).toContain("desktopAgentSessionsClient.onAgentSessionsUpdated(")
+    expect(pastSessionsDialogSource).toContain("desktopAgentSessionsClient.onAgentSessionsUpdated(")
+    expect(sessionsPageSource).toContain("desktopAgentSessionsClient.onAgentSessionsUpdated(")
     expect(sessionsPageSource).toContain("desktopAgentSessionsClient.clearInactiveSessions()")
     expect(activeAgentsSidebarSource).toContain("desktopAgentSessionsClient.stopAgentSession(sessionId)")
     expect(activeAgentsSidebarSource).toContain("desktopAgentSessionsClient.clearAgentSessionProgress(sessionId)")
@@ -75,6 +80,7 @@ describe("desktop agent sessions renderer client", () => {
     expect(tileFollowUpInputSource).toContain("desktopAgentSessionsClient.emergencyStopAgent()")
     expect(tileFollowUpInputSource).toContain("desktopAgentSessionsClient.stopAgentSession(sessionId)")
     expect(combinedSource).not.toContain("tipcClient.getAgentSessions(")
+    expect(combinedSource).not.toContain("rendererHandlers.agentSessionsUpdated")
     expect(combinedSource).not.toContain("tipcClient.clearInactiveSessions(")
     expect(combinedSource).not.toContain("tipcClient.stopAgentSession(")
     expect(combinedSource).not.toContain("tipcClient.clearAgentSessionProgress(")

@@ -11,7 +11,6 @@ import {
   getLatestUserFacingResponse,
   getSidebarActivityPresentation,
 } from "@dotagents/shared/sidebar-sessions"
-import { rendererHandlers } from "@renderer/lib/tipc-client"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import {
   useSavedConversationsQuery,
@@ -194,7 +193,7 @@ export function SavedConversationsDialog({
   useEffect(() => {
     if (!open) return undefined
 
-    const unlisten = rendererHandlers.agentSessionsUpdated.listen(() => {
+    const unlisten = desktopAgentSessionsClient.onAgentSessionsUpdated(() => {
       void refetchActiveConversations()
     })
 

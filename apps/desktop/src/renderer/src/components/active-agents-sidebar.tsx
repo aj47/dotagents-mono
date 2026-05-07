@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { rendererHandlers } from "@renderer/lib/tipc-client"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { desktopConversationsClient } from "@renderer/lib/desktop-conversations-client"
 import { desktopLoopsClient } from "@renderer/lib/desktop-loops-client"
@@ -211,11 +210,9 @@ export function ActiveAgentsSidebar({
   })
 
   useEffect(() => {
-    const unlisten = rendererHandlers.agentSessionsUpdated.listen(
-      (updatedData) => {
-        refetch()
-      },
-    )
+    const unlisten = desktopAgentSessionsClient.onAgentSessionsUpdated(() => {
+      refetch()
+    })
     return unlisten
   }, [refetch])
 
