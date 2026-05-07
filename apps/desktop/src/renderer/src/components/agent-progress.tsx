@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
+import { desktopConversationsClient } from "@renderer/lib/desktop-conversations-client"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
 import { useAvailableModelsQuery, useConfigQuery, queryClient } from "@renderer/lib/queries"
@@ -796,10 +797,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     e.stopPropagation()
     if (!conversationId || branchMessageIndex == null) return
     try {
-      const branched = await tipcClient.branchConversation({
-        conversationId,
-        messageIndex: branchMessageIndex,
-      })
+      const branched = await desktopConversationsClient.branchConversation(conversationId, branchMessageIndex)
       if (branched) {
         queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
         navigate(`/${branched.id}`)
@@ -4395,10 +4393,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
 
     try {
-      const updatedConversation = await tipcClient.renameConversationTitle({
-        conversationId,
-        title: nextTitle,
-      })
+      const updatedConversation = await desktopConversationsClient.renameConversationTitle(conversationId, nextTitle)
       const updatedTitle = updatedConversation?.title || nextTitle
       const currentProgress = useAgentStore.getState().agentProgressById.get(progress.sessionId) ?? progress
       useAgentStore.getState().updateSessionProgress({

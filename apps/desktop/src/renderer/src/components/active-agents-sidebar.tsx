@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
+import { desktopConversationsClient } from "@renderer/lib/desktop-conversations-client"
 import { desktopLoopsClient } from "@renderer/lib/desktop-loops-client"
 import {
   CheckCircle2,
@@ -750,10 +751,7 @@ export function ActiveAgentsSidebar({
       }
 
       try {
-        const updatedConversation = await tipcClient.renameConversationTitle({
-          conversationId,
-          title: nextTitle,
-        })
+        const updatedConversation = await desktopConversationsClient.renameConversationTitle(conversationId, nextTitle)
         const updatedTitle = updatedConversation?.title || nextTitle
         const currentProgress = useAgentStore.getState().agentProgressById.get(session.id)
         if (currentProgress) {

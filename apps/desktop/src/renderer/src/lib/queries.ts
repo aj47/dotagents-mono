@@ -5,6 +5,7 @@ import {
   useQuery,
 } from "@tanstack/react-query"
 import { reportConfigSaveError } from "./config-save-error"
+import { desktopConversationsClient } from "./desktop-conversations-client"
 import { desktopPermissionsClient } from "./desktop-permissions-client"
 import { tipcClient } from "./tipc-client"
 
@@ -50,7 +51,7 @@ export const useConversationHistoryQuery = (enabled: boolean = true) =>
   useQuery({
     queryKey: SAVED_CONVERSATIONS_QUERY_KEY,
     queryFn: async () => {
-      const result = await tipcClient.getConversationHistory()
+      const result = await desktopConversationsClient.getConversationHistory()
       return result
     },
     enabled,
@@ -62,7 +63,7 @@ export const useConversationQuery = (conversationId: string | null) =>
     queryKey: ["conversation", conversationId],
     queryFn: async () => {
       if (!conversationId) return null
-      const result = await tipcClient.loadConversation({ conversationId })
+      const result = await desktopConversationsClient.loadConversation({ conversationId })
       return result
     },
     enabled: !!conversationId,
@@ -105,7 +106,7 @@ export const useAvailableModelsQuery = (
 export const useSaveConversationMutation = () =>
   useMutation({
     mutationFn: async ({ conversation }: { conversation: any }) => {
-      await tipcClient.saveConversation({ conversation })
+      await desktopConversationsClient.saveConversation(conversation)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SAVED_CONVERSATIONS_QUERY_KEY })
@@ -121,7 +122,7 @@ export const useCreateConversationMutation = () =>
       firstMessage: string
       role?: "user" | "assistant"
     }) => {
-      const result = await tipcClient.createConversation({ firstMessage, role })
+      const result = await desktopConversationsClient.createConversation({ firstMessage, role })
       return result
     },
     onSuccess: () => {
@@ -144,7 +145,7 @@ export const useAddMessageToConversationMutation = () =>
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
     }) => {
-      return tipcClient.addMessageToConversation({
+      return desktopConversationsClient.addMessageToConversation({
         conversationId,
         content,
         role,
@@ -163,7 +164,7 @@ export const useAddMessageToConversationMutation = () =>
 export const useDeleteConversationMutation = () =>
   useMutation({
     mutationFn: async (conversationId: string) => {
-      return tipcClient.deleteConversation({ conversationId })
+      return desktopConversationsClient.deleteConversation(conversationId)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SAVED_CONVERSATIONS_QUERY_KEY })
@@ -173,7 +174,7 @@ export const useDeleteConversationMutation = () =>
 export const useDeleteAllConversationsMutation = () =>
   useMutation({
     mutationFn: async () => {
-      return tipcClient.deleteAllConversations()
+      return desktopConversationsClient.deleteAllConversations()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SAVED_CONVERSATIONS_QUERY_KEY })

@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { useParams, useOutletContext, useLocation, useNavigate } from "react-router-dom"
-import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
+import { rendererHandlers } from "@renderer/lib/tipc-client"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
+import { desktopConversationsClient } from "@renderer/lib/desktop-conversations-client"
 import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
 import { AgentProgress } from "@renderer/components/agent-progress"
 import { MessageCircle, Mic, Plus, CheckCircle2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
@@ -171,7 +172,7 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
     queryKey: savedConversationQueryKey,
     queryFn: async () => {
       if (!conversationIdForHydration) return null
-      return tipcClient.loadConversation({
+      return desktopConversationsClient.loadConversation({
         conversationId: conversationIdForHydration,
         ...(shouldHydrateFromConversation ? {} : { messageLimit: activeHistoryMessageLimit }),
       })
@@ -666,7 +667,7 @@ export function Component() {
     queryKey: ["conversation", pendingResumeConversationId, pendingResumeHistoryMessageLimit],
     queryFn: async () => {
       if (!pendingResumeConversationId) return null
-      return tipcClient.loadConversation({
+      return desktopConversationsClient.loadConversation({
         conversationId: pendingResumeConversationId,
         messageLimit: pendingResumeHistoryMessageLimit,
       })
