@@ -1,6 +1,8 @@
 import crypto from "crypto"
 import type { OperatorRouteActions } from "./operator-routes"
 import type { Config } from "../shared/types"
+import type { AgentRunExecutor } from "@dotagents/shared/agent-run-utils"
+import { getErrorMessage } from "@dotagents/shared/error-utils"
 import {
   createOperatorModelPresetAction,
   deleteOperatorModelPresetAction,
@@ -8,10 +10,6 @@ import {
   updateOperatorModelPresetAction,
   type ModelPresetActionOptions,
 } from "@dotagents/shared/model-presets"
-import {
-  runOperatorAgent,
-  stopOperatorAgentSession,
-} from "./operator-agent-actions"
 import {
   clearOperatorMcpServerLogs,
   getOperatorMcpServerLogs,
@@ -70,14 +68,18 @@ import {
   openOperatorReleasesPageAction,
   openOperatorUpdateAssetAction,
   revealOperatorUpdateAssetAction,
+  runOperatorAgentAction,
   restartOperatorAppAction as restartOperatorApp,
   restartOperatorRemoteServerAction as restartOperatorRemoteServer,
   startOperatorTunnelAction,
+  stopOperatorAgentSessionAction,
   stopOperatorTunnelAction,
+  type OperatorAgentActionOptions,
   type OperatorTunnelActionOptions,
   type OperatorUpdaterActionOptions,
 } from "@dotagents/shared/operator-actions"
 import { rotateOperatorRemoteServerApiKey } from "./operator-api-key-actions"
+import { stopAgentSessionById } from "./agent-session-actions"
 import {
   checkCloudflaredInstalled,
   checkCloudflaredLoggedIn,
@@ -109,6 +111,17 @@ const modelPresetActionOptions: ModelPresetActionOptions<Config> = {
   now: () => Date.now(),
 }
 
+const agentActionOptions: OperatorAgentActionOptions = {
+  diagnostics: {
+    logInfo: (...args) => diagnosticsService.logInfo(...args),
+    logError: (...args) => diagnosticsService.logError(...args),
+    getErrorMessage,
+  },
+  service: {
+    stopAgentSessionById,
+  },
+}
+
 const tunnelActionOptions: OperatorTunnelActionOptions = {
   config: {
     get: () => configStore.get(),
@@ -134,6 +147,14 @@ const updaterActionOptions: OperatorUpdaterActionOptions = {
     openDownloadedReleaseAsset,
     openManualReleasesPage,
   },
+}
+
+async function runOperatorAgent(body: unknown, runAgent: AgentRunExecutor) {
+  return runOperatorAgentAction(body, runAgent, agentActionOptions)
+}
+
+async function stopOperatorAgentSession(sessionIdParam: string | undefined) {
+  return stopOperatorAgentSessionAction(sessionIdParam, agentActionOptions)
 }
 
 async function getOperatorModelPresets(secretMask: string) {

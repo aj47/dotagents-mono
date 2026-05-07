@@ -251,12 +251,6 @@ function getMessageQueueServiceSource(): string {
   return readFileSync(messageQueueServicePath, "utf8")
 }
 
-function getOperatorAgentActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const operatorAgentActionsPath = path.join(testDir, "operator-agent-actions.ts")
-  return readFileSync(operatorAgentActionsPath, "utf8")
-}
-
 function getOperatorObservabilityActionsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const operatorObservabilityActionsPath = path.join(testDir, "operator-observability-actions.ts")
@@ -658,7 +652,6 @@ describe("remote-server route registration", () => {
 
   it("keeps remote route action result contracts shared", () => {
     const operatorActionSources = [
-      getOperatorAgentActionsSource(),
       getOperatorApiKeyActionsSource(),
       getOperatorAuditActionsSource(),
       getOperatorIntegrationActionsSource(),
@@ -1465,20 +1458,18 @@ describe("remote-server route registration", () => {
     expect(agentRunActionsSource).toContain("runRemoteAgentAction(options, actionOptions)")
     expect(agentRunActionsSource).toContain("processWithAgentMode(")
     expect(agentRunActionsSource).toContain("runOptions,")
-    const operatorAgentActionsSource = getOperatorAgentActionsSource()
     expect(operatorRoutesSource).toContain("actions.runOperatorAgent(req.body, runAgent)")
-    expect(operatorAgentActionsSource).toContain('from "@dotagents/shared/agent-run-utils"')
-    expect(operatorAgentActionsSource).toContain("export type OperatorRunAgentExecutor = AgentRunExecutor")
-    expect(operatorAgentActionsSource).toContain("runOperatorAgentAction(body, runAgent, agentActionOptions)")
-    expect(operatorAgentActionsSource).toContain("service: {")
+    expect(operatorRouteDesktopActionsSource).toContain('from "@dotagents/shared/agent-run-utils"')
+    expect(operatorRouteDesktopActionsSource).toContain("runOperatorAgentAction(body, runAgent, agentActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("service: {")
     expect(sharedOperatorActionsSource).toContain("export async function runOperatorAgentAction(")
     expect(sharedOperatorActionsSource).toContain("parseOperatorRunAgentRequestBody(body)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorRunAgentResponse(agentResult)")
     // Agent session controls
     expectRegisteredApiRoute(source, "POST", "operatorAgentSessionStop")
     expect(operatorRoutesSource).toContain("actions.stopOperatorAgentSession(params.sessionId)")
-    expect(operatorAgentActionsSource).toContain("stopAgentSessionById")
-    expect(operatorAgentActionsSource).toContain("stopOperatorAgentSessionAction(sessionIdParam, agentActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("stopAgentSessionById")
+    expect(operatorRouteDesktopActionsSource).toContain("stopOperatorAgentSessionAction(sessionIdParam, agentActionOptions)")
     expect(sharedOperatorActionsSource).toContain("export async function stopOperatorAgentSessionAction(")
     expect(sharedOperatorActionsSource).toContain("buildOperatorAgentSessionStopResponse(stopResult.sessionId, stopResult.conversationId)")
     // Message queue operator endpoints
