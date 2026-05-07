@@ -21,7 +21,7 @@ import {
 import {
   DEFAULT_MAIN_AGENT_MODE,
   getSelectableMainAcpAgents,
-  MAIN_AGENT_MODE_OPTIONS,
+  MAIN_AGENT_MODE_DISPLAY_OPTIONS,
   type MainAgentMode,
 } from "@dotagents/shared/main-agent-selection"
 import { DEFAULT_DISCORD_ENABLED } from "@dotagents/shared/discord-config"
@@ -448,9 +448,9 @@ export function Component() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {MAIN_AGENT_MODE_OPTIONS.map((mode) => (
-                  <SelectItem key={mode} value={mode}>
-                    {mode === DEFAULT_MAIN_AGENT_MODE ? "API (OpenAI, Groq, Gemini)" : "acpx Agent"}
+                {MAIN_AGENT_MODE_DISPLAY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>

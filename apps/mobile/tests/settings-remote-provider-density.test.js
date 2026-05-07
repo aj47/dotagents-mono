@@ -125,8 +125,8 @@ test('lets mobile manage OpenAI-compatible desktop endpoints without echoing sec
   assert.match(profileModelSection, /openPresetEditor\('create'\)/);
   assert.match(profileModelSection, />New Endpoint</);
   assert.match(profileModelSection, /'Key set'/);
-  assert.match(settingsSource, /settingsClient\.createModelPreset\(payload\)/);
-  assert.match(settingsSource, /settingsClient\.updateModelPreset\(presetDraft\.id, payload\)/);
+  assert.match(settingsSource, /settingsClient\.createModelPreset\(draftPayload\.payload\)/);
+  assert.match(settingsSource, /settingsClient\.updateModelPreset\(presetDraft\.id, draftPayload\.payload\)/);
   assert.match(settingsSource, /settingsClient\.deleteModelPreset\(presetDraft\.id!\)/);
   assert.match(settingsSource, /refreshRemoteSettingsSnapshot/);
   assert.match(presetEditorSection, /placeholder=\{presetDraft\.hasApiKey \? 'Configured' : 'sk-\.\.\.'\}/);
@@ -220,10 +220,11 @@ test('uses shared main agent mode options in mobile desktop settings', () => {
     '<CollapsibleSection id="skills" title="Skills">'
   );
 
-  assert.match(settingsSource, /MAIN_AGENT_MODE_OPTIONS/);
+  assert.match(settingsSource, /MAIN_AGENT_MODE_DISPLAY_OPTIONS/);
   assert.match(settingsSource, /DEFAULT_MAIN_AGENT_MODE/);
-  assert.match(agentSettingsSection, /handleRemoteSettingUpdate\('mainAgentMode', mode as MainAgentMode\)/);
+  assert.match(agentSettingsSection, /handleRemoteSettingUpdate\('mainAgentMode', option\.value\)/);
   assert.match(agentSettingsSection, /\(remoteSettings\.mainAgentMode \?\? DEFAULT_MAIN_AGENT_MODE\) === 'acpx'/);
+  assert.match(agentSettingsSection, /option\.compactLabel/);
 });
 
 test('uses shared MCP defaults in mobile desktop settings', () => {

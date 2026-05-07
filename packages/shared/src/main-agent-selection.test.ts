@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   DEFAULT_MAIN_AGENT_MODE,
+  MAIN_AGENT_MODE_DISPLAY_OPTIONS,
   MAIN_AGENT_MODE_OPTIONS,
   getAcpxMainAgentOptions,
   getSelectableMainAcpAgents,
@@ -29,6 +30,10 @@ describe("main agent config contracts", () => {
   it("describes main agent mode defaults and update values", () => {
     expect(DEFAULT_MAIN_AGENT_MODE).toBe("api")
     expect(MAIN_AGENT_MODE_OPTIONS).toEqual(["api", "acpx"])
+    expect(MAIN_AGENT_MODE_DISPLAY_OPTIONS).toEqual([
+      { value: "api", label: "API (OpenAI, Groq, Gemini)", compactLabel: "API" },
+      { value: "acpx", label: "acpx Agent", compactLabel: "ACPX" },
+    ])
     expect(isMainAgentModeUpdateValue("api")).toBe(true)
     expect(isMainAgentModeUpdateValue("acpx")).toBe(true)
     expect(isMainAgentModeUpdateValue("acp")).toBe(false)

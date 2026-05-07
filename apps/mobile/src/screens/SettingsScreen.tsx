@@ -107,8 +107,7 @@ import {
 } from '@dotagents/shared/stt-models';
 import {
   DEFAULT_MAIN_AGENT_MODE,
-  MAIN_AGENT_MODE_OPTIONS,
-  type MainAgentMode,
+  MAIN_AGENT_MODE_DISPLAY_OPTIONS,
 } from '@dotagents/shared/main-agent-selection';
 import {
   CODEX_TEXT_VERBOSITY_OPTIONS,
@@ -4112,20 +4111,20 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="agentSettings" title="Agent Settings">
                 <Text style={styles.label}>Main Agent Mode</Text>
                 <View style={styles.providerSelector}>
-                  {MAIN_AGENT_MODE_OPTIONS.map((mode) => (
+                  {MAIN_AGENT_MODE_DISPLAY_OPTIONS.map((option) => (
                     <Pressable
-                      key={mode}
+                      key={option.value}
                       style={[
                         styles.providerOption,
-                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === mode && styles.providerOptionActive,
+                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === option.value && styles.providerOptionActive,
                       ]}
-                      onPress={() => handleRemoteSettingUpdate('mainAgentMode', mode as MainAgentMode)}
+                      onPress={() => handleRemoteSettingUpdate('mainAgentMode', option.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === mode && styles.providerOptionTextActive,
+                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === option.value && styles.providerOptionTextActive,
                       ]}>
-                        {mode.toUpperCase()}
+                        {option.compactLabel}
                       </Text>
                     </Pressable>
                   ))}

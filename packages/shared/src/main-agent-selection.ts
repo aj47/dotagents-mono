@@ -9,6 +9,17 @@ export type MainAgentMode = (typeof MAIN_AGENT_MODE_OPTIONS)[number]
 export type LegacyMainAgentMode = MainAgentMode | "acp"
 export const DEFAULT_MAIN_AGENT_MODE: MainAgentMode = "api"
 
+export type MainAgentModeOption = {
+  value: MainAgentMode
+  label: string
+  compactLabel: string
+}
+
+export const MAIN_AGENT_MODE_DISPLAY_OPTIONS: readonly MainAgentModeOption[] = [
+  { value: "api", label: "API (OpenAI, Groq, Gemini)", compactLabel: "API" },
+  { value: "acpx", label: "acpx Agent", compactLabel: "ACPX" },
+]
+
 export interface MainAgentConfig {
   mainAgentMode?: MainAgentMode
   mainAgentName?: string

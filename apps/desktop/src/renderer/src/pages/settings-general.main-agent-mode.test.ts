@@ -12,7 +12,7 @@ describe("settings general main agent mode", () => {
   it("uses shared main agent mode options and default", () => {
     const source = getSettingsGeneralSource()
 
-    expect(source).toContain("MAIN_AGENT_MODE_OPTIONS")
+    expect(source).toContain("MAIN_AGENT_MODE_DISPLAY_OPTIONS")
     expect(source).toContain("DEFAULT_MAIN_AGENT_MODE")
     expect(source).toContain("type MainAgentMode")
   })
