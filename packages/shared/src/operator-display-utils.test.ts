@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   OPERATOR_ACTIONS_PANEL_METADATA,
   OPERATOR_AGENT_SESSIONS_PANEL_METADATA,
+  OPERATOR_ALERT_METADATA,
   OPERATOR_AUDIT_PANEL_METADATA,
   OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA,
   OPERATOR_CONVERSATIONS_PANEL_METADATA,
@@ -52,6 +53,30 @@ describe("operator display utils", () => {
     )
     expect(OPERATOR_STATUS_PANEL_METADATA.formatIntegrationSummary(2, 3)).toBe("Push tokens: 2 • Recent errors: 3")
     expect(OPERATOR_STATUS_PANEL_METADATA.formatPendingSettingText("remote server")).toBe("Saving remote server…")
+
+    expect(OPERATOR_ALERT_METADATA).toEqual({
+      actionFailedTitle: "Action Failed",
+      updateFailedTitle: "Update Failed",
+      connectionRequiredTitle: "Connection Required",
+      promptRequiredTitle: "Prompt Required",
+      promptRequiredMessage: "Enter a prompt for the desktop agent to run.",
+      cancelButtonLabel: "Cancel",
+      connectionRequiredMessages: {
+        rotateApiKey: "Configure your desktop server connection before rotating the API key.",
+        operatorActions: "Configure your desktop server connection before using operator actions.",
+        mcpLogs: "Configure your desktop server connection before viewing MCP logs.",
+        mcpTools: "Configure your desktop server connection before viewing MCP tools.",
+        mcpToolChange: "Configure your desktop server connection before changing MCP tools.",
+        runAgent: "Configure your desktop server connection before running an agent.",
+        settingsSave: "Load the connected desktop settings before saving operator changes.",
+      },
+      defaultApiKeyRotationFailureMessage: "API key rotation failed",
+      defaultActionFailureMessage: "Action failed",
+      defaultActionCompletedMessage: "Action completed",
+      defaultMcpToolToggleFailureMessage: "Tool toggle failed",
+      defaultAgentRunFailureMessage: "Agent run failed",
+      connectionSettlingSuffix: "Connection details may take a moment to settle.",
+    })
 
     const system = {
       platform: "darwin",

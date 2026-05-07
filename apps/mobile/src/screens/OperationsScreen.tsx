@@ -64,6 +64,7 @@ import {
 import {
   OPERATOR_ACTIONS_PANEL_METADATA,
   OPERATOR_AGENT_SESSIONS_PANEL_METADATA,
+  OPERATOR_ALERT_METADATA,
   OPERATOR_AUDIT_PANEL_METADATA,
   OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA,
   OPERATOR_CONVERSATIONS_PANEL_METADATA,
@@ -389,7 +390,7 @@ export default function OperationsScreen({ navigation }: any) {
   ) => {
     const runConfirmedAction = () => {
       void Promise.resolve(onConfirm()).catch((actionError) => {
-        Alert.alert('Action Failed', getErrorMessage(actionError));
+        Alert.alert(OPERATOR_ALERT_METADATA.actionFailedTitle, getErrorMessage(actionError));
       });
     };
 
@@ -403,7 +404,7 @@ export default function OperationsScreen({ navigation }: any) {
     }
 
     Alert.alert(title, message, [
-      { text: 'Cancel', style: 'cancel' },
+      { text: OPERATOR_ALERT_METADATA.cancelButtonLabel, style: 'cancel' },
       { text: confirmLabel, style: destructive ? 'destructive' : 'default', onPress: runConfirmedAction },
     ]);
   }, []);
@@ -420,7 +421,7 @@ export default function OperationsScreen({ navigation }: any) {
 
   const rotateApiKey = useCallback(async () => {
     if (!settingsClient) {
-      Alert.alert('Connection Required', 'Configure your desktop server connection before rotating the API key.');
+      Alert.alert(OPERATOR_ALERT_METADATA.connectionRequiredTitle, OPERATOR_ALERT_METADATA.connectionRequiredMessages.rotateApiKey);
       return;
     }
 
@@ -430,7 +431,7 @@ export default function OperationsScreen({ navigation }: any) {
     try {
       const response = await settingsClient.rotateOperatorApiKey();
       if (!response.success) {
-        throw new Error(response.error || response.message || 'API key rotation failed');
+        throw new Error(response.error || response.message || OPERATOR_ALERT_METADATA.defaultApiKeyRotationFailureMessage);
       }
 
       const nextConfig = {
@@ -446,7 +447,7 @@ export default function OperationsScreen({ navigation }: any) {
           : 'API key rotated and saved locally.',
       );
     } catch (actionError) {
-      Alert.alert('Action Failed', getErrorMessage(actionError));
+      Alert.alert(OPERATOR_ALERT_METADATA.actionFailedTitle, getErrorMessage(actionError));
     } finally {
       setPendingAction(null);
     }
@@ -458,7 +459,7 @@ export default function OperationsScreen({ navigation }: any) {
     refreshAfter: boolean = true,
   ) => {
     if (!settingsClient) {
-      Alert.alert('Connection Required', 'Configure your desktop server connection before using operator actions.');
+      Alert.alert(OPERATOR_ALERT_METADATA.connectionRequiredTitle, OPERATOR_ALERT_METADATA.connectionRequiredMessages.operatorActions);
       return;
     }
 
@@ -467,10 +468,10 @@ export default function OperationsScreen({ navigation }: any) {
     try {
       const response = await request();
       if (!response.success) {
-        throw new Error(response.error || response.message || 'Action failed');
+        throw new Error(response.error || response.message || OPERATOR_ALERT_METADATA.defaultActionFailureMessage);
       }
 
-      setActionFeedback(response.message || 'Action completed');
+      setActionFeedback(response.message || OPERATOR_ALERT_METADATA.defaultActionCompletedMessage);
 
       if (refreshAfter) {
         setTimeout(() => {
@@ -478,7 +479,7 @@ export default function OperationsScreen({ navigation }: any) {
         }, ACTION_REFRESH_DELAY_MS);
       }
     } catch (actionError) {
-      Alert.alert('Action Failed', getErrorMessage(actionError));
+      Alert.alert(OPERATOR_ALERT_METADATA.actionFailedTitle, getErrorMessage(actionError));
     } finally {
       setPendingAction(null);
     }
@@ -486,7 +487,7 @@ export default function OperationsScreen({ navigation }: any) {
 
   const loadDiagnosticReport = useCallback(async () => {
     if (!settingsClient) {
-      Alert.alert('Connection Required', 'Configure your desktop server connection before using operator actions.');
+      Alert.alert(OPERATOR_ALERT_METADATA.connectionRequiredTitle, OPERATOR_ALERT_METADATA.connectionRequiredMessages.operatorActions);
       return;
     }
 
@@ -497,7 +498,7 @@ export default function OperationsScreen({ navigation }: any) {
       setDiagnosticReport(report);
       setActionFeedback(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatGeneratedMessage(report.errors.length));
     } catch (actionError) {
-      Alert.alert('Action Failed', getErrorMessage(actionError));
+      Alert.alert(OPERATOR_ALERT_METADATA.actionFailedTitle, getErrorMessage(actionError));
     } finally {
       setPendingAction(null);
     }
@@ -505,7 +506,7 @@ export default function OperationsScreen({ navigation }: any) {
 
   const fetchMcpLogsForServer = useCallback(async (serverName: string) => {
     if (!settingsClient) {
-      Alert.alert('Connection Required', 'Configure your desktop server connection before viewing MCP logs.');
+      Alert.alert(OPERATOR_ALERT_METADATA.connectionRequiredTitle, OPERATOR_ALERT_METADATA.connectionRequiredMessages.mcpLogs);
       return;
     }
 
@@ -515,7 +516,7 @@ export default function OperationsScreen({ navigation }: any) {
       const response = await settingsClient.getOperatorMCPServerLogs(serverName, MCP_LOG_PREVIEW_COUNT);
       setMcpServerLogs((current) => ({ ...current, [serverName]: response.logs }));
     } catch (actionError) {
-      Alert.alert('Action Failed', getErrorMessage(actionError));
+      Alert.alert(OPERATOR_ALERT_METADATA.actionFailedTitle, getErrorMessage(actionError));
     } finally {
       setPendingAction(null);
     }
@@ -536,7 +537,7 @@ export default function OperationsScreen({ navigation }: any) {
 
   const fetchMcpToolsForServer = useCallback(async (serverName: string) => {
     if (!settingsClient) {
-      Alert.alert('Connection Required', 'Configure your desktop server connection before viewing MCP tools.');
+      Alert.alert(OPERATOR_ALERT_METADATA.connectionRequiredTitle, OPERATOR_ALERT_METADATA.connectionRequiredMessages.mcpTools);
       return;
     }
 
@@ -546,7 +547,7 @@ export default function OperationsScreen({ navigation }: any) {
       const response = await settingsClient.getOperatorMCPTools(serverName);
       setMcpServerTools((current) => ({ ...current, [serverName]: response.tools }));
     } catch (actionError) {
-      Alert.alert('Action Failed', getErrorMessage(actionError));
+      Alert.alert(OPERATOR_ALERT_METADATA.actionFailedTitle, getErrorMessage(actionError));
     } finally {
       setPendingAction(null);
     }
@@ -567,7 +568,7 @@ export default function OperationsScreen({ navigation }: any) {
 
   const setMcpToolEnabled = useCallback(async (serverName: string, toolName: string, enabled: boolean) => {
     if (!settingsClient) {
-      Alert.alert('Connection Required', 'Configure your desktop server connection before changing MCP tools.');
+      Alert.alert(OPERATOR_ALERT_METADATA.connectionRequiredTitle, OPERATOR_ALERT_METADATA.connectionRequiredMessages.mcpToolChange);
       return;
     }
 
@@ -576,7 +577,7 @@ export default function OperationsScreen({ navigation }: any) {
     try {
       const response = await settingsClient.setOperatorMCPToolEnabled(toolName, enabled);
       if (!response.success) {
-        throw new Error(response.error || response.message || 'Tool toggle failed');
+        throw new Error(response.error || response.message || OPERATOR_ALERT_METADATA.defaultMcpToolToggleFailureMessage);
       }
       setMcpServerTools((current) => ({
         ...current,
@@ -586,7 +587,7 @@ export default function OperationsScreen({ navigation }: any) {
       }));
       setActionFeedback(response.message);
     } catch (actionError) {
-      Alert.alert('Action Failed', getErrorMessage(actionError));
+      Alert.alert(OPERATOR_ALERT_METADATA.actionFailedTitle, getErrorMessage(actionError));
       void fetchMcpToolsForServer(serverName);
     } finally {
       setPendingAction(null);
@@ -595,13 +596,13 @@ export default function OperationsScreen({ navigation }: any) {
 
   const runOperatorAgent = useCallback(async () => {
     if (!settingsClient) {
-      Alert.alert('Connection Required', 'Configure your desktop server connection before running an agent.');
+      Alert.alert(OPERATOR_ALERT_METADATA.connectionRequiredTitle, OPERATOR_ALERT_METADATA.connectionRequiredMessages.runAgent);
       return;
     }
 
     const prompt = operatorAgentPrompt.trim();
     if (!prompt) {
-      Alert.alert('Prompt Required', 'Enter a prompt for the desktop agent to run.');
+      Alert.alert(OPERATOR_ALERT_METADATA.promptRequiredTitle, OPERATOR_ALERT_METADATA.promptRequiredMessage);
       return;
     }
 
@@ -610,7 +611,7 @@ export default function OperationsScreen({ navigation }: any) {
     try {
       const response = await settingsClient.runOperatorAgent({ prompt });
       if (!response.success) {
-        throw new Error(response.error || 'Agent run failed');
+        throw new Error(response.error || OPERATOR_ALERT_METADATA.defaultAgentRunFailureMessage);
       }
 
       const preview = response.content.trim().replace(/\s+/g, ' ').slice(0, 140);
@@ -622,7 +623,7 @@ export default function OperationsScreen({ navigation }: any) {
         void loadOperatorData(true);
       }, ACTION_REFRESH_DELAY_MS);
     } catch (actionError) {
-      Alert.alert('Action Failed', getErrorMessage(actionError));
+      Alert.alert(OPERATOR_ALERT_METADATA.actionFailedTitle, getErrorMessage(actionError));
     } finally {
       setPendingAction(null);
     }
@@ -634,7 +635,7 @@ export default function OperationsScreen({ navigation }: any) {
     successMessage: string,
   ) => {
     if (!settingsClient || !settings) {
-      Alert.alert('Connection Required', 'Load the connected desktop settings before saving operator changes.');
+      Alert.alert(OPERATOR_ALERT_METADATA.connectionRequiredTitle, OPERATOR_ALERT_METADATA.connectionRequiredMessages.settingsSave);
       return;
     }
 
@@ -652,7 +653,7 @@ export default function OperationsScreen({ navigation }: any) {
       await settingsClient.updateSettings(updates);
       setActionFeedback(
         touchesConnection
-          ? `${successMessage} Connection details may take a moment to settle.`
+          ? `${successMessage} ${OPERATOR_ALERT_METADATA.connectionSettlingSuffix}`
           : successMessage,
       );
 
@@ -663,7 +664,7 @@ export default function OperationsScreen({ navigation }: any) {
       }
     } catch (updateError) {
       setSettings(previousSettings);
-      Alert.alert('Update Failed', getErrorMessage(updateError));
+      Alert.alert(OPERATOR_ALERT_METADATA.updateFailedTitle, getErrorMessage(updateError));
       void loadOperatorData(true);
     } finally {
       setPendingSetting(null);

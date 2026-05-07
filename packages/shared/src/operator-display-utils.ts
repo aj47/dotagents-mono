@@ -37,6 +37,54 @@ export const OPERATOR_STATUS_PANEL_METADATA: OperatorStatusPanelMetadata = {
   formatPendingSettingText: (settingName) => `Saving ${settingName}…`,
 }
 
+export type OperatorAlertMetadata = {
+  actionFailedTitle: string
+  updateFailedTitle: string
+  connectionRequiredTitle: string
+  promptRequiredTitle: string
+  promptRequiredMessage: string
+  cancelButtonLabel: string
+  connectionRequiredMessages: {
+    rotateApiKey: string
+    operatorActions: string
+    mcpLogs: string
+    mcpTools: string
+    mcpToolChange: string
+    runAgent: string
+    settingsSave: string
+  }
+  defaultApiKeyRotationFailureMessage: string
+  defaultActionFailureMessage: string
+  defaultActionCompletedMessage: string
+  defaultMcpToolToggleFailureMessage: string
+  defaultAgentRunFailureMessage: string
+  connectionSettlingSuffix: string
+}
+
+export const OPERATOR_ALERT_METADATA: OperatorAlertMetadata = {
+  actionFailedTitle: "Action Failed",
+  updateFailedTitle: "Update Failed",
+  connectionRequiredTitle: "Connection Required",
+  promptRequiredTitle: "Prompt Required",
+  promptRequiredMessage: "Enter a prompt for the desktop agent to run.",
+  cancelButtonLabel: "Cancel",
+  connectionRequiredMessages: {
+    rotateApiKey: "Configure your desktop server connection before rotating the API key.",
+    operatorActions: "Configure your desktop server connection before using operator actions.",
+    mcpLogs: "Configure your desktop server connection before viewing MCP logs.",
+    mcpTools: "Configure your desktop server connection before viewing MCP tools.",
+    mcpToolChange: "Configure your desktop server connection before changing MCP tools.",
+    runAgent: "Configure your desktop server connection before running an agent.",
+    settingsSave: "Load the connected desktop settings before saving operator changes.",
+  },
+  defaultApiKeyRotationFailureMessage: "API key rotation failed",
+  defaultActionFailureMessage: "Action failed",
+  defaultActionCompletedMessage: "Action completed",
+  defaultMcpToolToggleFailureMessage: "Tool toggle failed",
+  defaultAgentRunFailureMessage: "Agent run failed",
+  connectionSettlingSuffix: "Connection details may take a moment to settle.",
+}
+
 export type OperatorSystemPanelMetadata = {
   panelTitle: string
   formatPlatformSummary: (system: OperatorRuntimeStatus["system"]) => string
