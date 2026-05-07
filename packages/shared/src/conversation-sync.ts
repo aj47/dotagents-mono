@@ -137,6 +137,8 @@ export interface ConversationRouteActions {
 }
 
 const VALID_ROLES = ['user', 'assistant', 'tool'] as const;
+export const DEFAULT_SERVER_CONVERSATION_REPAIR_MAX_PARSE_ATTEMPTS = 50;
+export const DEFAULT_SERVER_CONVERSATION_REPAIR_MAX_BYTES = 5 * 1024 * 1024;
 
 export interface ServerConversationRecordMessage extends ServerConversationMessage {
   id: string;
@@ -160,6 +162,21 @@ export interface ServerConversationRecord<TMetadata = unknown> {
     sourceMessageIndex: number;
     branchedAt: number;
   };
+}
+
+export type RepairServerConversationJsonFailureReason =
+  | 'too_large'
+  | 'missing_object_start'
+  | 'no_valid_candidate';
+
+export type RepairServerConversationJsonResult<TConversation extends ServerConversationRecord<any>> =
+  | { ok: true; conversation: TConversation; attempts: number; bytes: number }
+  | { ok: false; reason: RepairServerConversationJsonFailureReason; attempts: number; bytes: number };
+
+export interface RepairServerConversationJsonOptions<TConversation extends ServerConversationRecord<any>> {
+  maxBytes?: number;
+  maxParseAttempts?: number;
+  validateConversationShape?: (value: unknown) => value is TConversation;
 }
 
 export type ConversationRequestParseResult<T> =
@@ -245,6 +262,63 @@ export type LimitedServerConversationRecord<TConversation extends ServerConversa
 
 export function createServerConversationMessageId(timestamp: number, index: number): string {
   return `msg_${timestamp}_${index}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+export function isValidServerConversationRecordShape(value: unknown): value is ServerConversationRecord<any> {
+  if (!value || typeof value !== 'object') return false;
+  const maybe = value as Partial<ServerConversationRecord<any>>;
+  return (
+    typeof maybe.id === 'string' &&
+    typeof maybe.title === 'string' &&
+    typeof maybe.createdAt === 'number' &&
+    typeof maybe.updatedAt === 'number' &&
+    Array.isArray(maybe.messages)
+  );
+}
+
+export function repairServerConversationJsonData<
+  TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>,
+>(
+  raw: string,
+  options: RepairServerConversationJsonOptions<TConversation> = {},
+): RepairServerConversationJsonResult<TConversation> {
+  const bytes = raw.length;
+  const maxBytes = options.maxBytes ?? DEFAULT_SERVER_CONVERSATION_REPAIR_MAX_BYTES;
+  const maxParseAttempts = options.maxParseAttempts ?? DEFAULT_SERVER_CONVERSATION_REPAIR_MAX_PARSE_ATTEMPTS;
+  const validateConversationShape =
+    options.validateConversationShape ?? ((value: unknown): value is TConversation => isValidServerConversationRecordShape(value));
+
+  if (bytes > maxBytes) {
+    return { ok: false, reason: 'too_large', attempts: 0, bytes };
+  }
+
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('{')) {
+    return { ok: false, reason: 'missing_object_start', attempts: 0, bytes };
+  }
+
+  let attempts = 0;
+  for (let i = trimmed.length - 1; i >= 0; i--) {
+    if (trimmed[i] !== '}') {
+      continue;
+    }
+    attempts++;
+    if (attempts > maxParseAttempts) {
+      break;
+    }
+
+    const candidate = trimmed.slice(0, i + 1);
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (validateConversationShape(parsed)) {
+        return { ok: true, conversation: parsed, attempts, bytes };
+      }
+    } catch {
+      // Keep scanning earlier object boundaries.
+    }
+  }
+
+  return { ok: false, reason: 'no_valid_candidate', attempts, bytes };
 }
 
 function isRequestObject(body: unknown): body is Record<string, unknown> {

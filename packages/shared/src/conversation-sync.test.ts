@@ -33,12 +33,14 @@ import {
   getStoredServerConversationMessages,
   getValidServerConversationCompactionTimestamp,
   hasPersistedServerConversationCompactionCheckpoint,
+  isValidServerConversationRecordShape,
   normalizeServerConversationHistoryIndex,
   normalizeServerConversationSummarizedMessageCount,
   parseCreateConversationRequestBody,
   parseBranchConversationRequestBody,
   parseUpdateConversationRequestBody,
   renameServerConversationTitle,
+  repairServerConversationJsonData,
   serverConversationToStubSession,
   syncConversations,
   syncServerConversationStorageMetadata,
@@ -400,6 +402,45 @@ describe('server conversation API helpers', () => {
       maxLastMessageChars: 8,
       maxPreviewChars: 10,
     }).changed).toBe(false);
+  });
+
+  it('repairs conversation JSON with trailing garbage using shared shape validation', () => {
+    const validConversation = {
+      id: 'conv-repair',
+      title: 'Repair',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'm1', role: 'user' as const, content: 'hello', timestamp: 2 }],
+    };
+    expect(isValidServerConversationRecordShape(validConversation)).toBe(true);
+    expect(isValidServerConversationRecordShape({ ...validConversation, messages: undefined })).toBe(false);
+
+    const repaired = repairServerConversationJsonData(`${JSON.stringify(validConversation)}}} trailing`);
+    expect(repaired).toMatchObject({
+      ok: true,
+      conversation: validConversation,
+      attempts: 3,
+    });
+
+    expect(repairServerConversationJsonData('[]')).toMatchObject({
+      ok: false,
+      reason: 'missing_object_start',
+      attempts: 0,
+    });
+    expect(repairServerConversationJsonData(`${JSON.stringify(validConversation)}}`, {
+      maxParseAttempts: 0,
+    })).toMatchObject({
+      ok: false,
+      reason: 'no_valid_candidate',
+      attempts: 1,
+    });
+    expect(repairServerConversationJsonData(JSON.stringify(validConversation), {
+      maxBytes: 5,
+    })).toMatchObject({
+      ok: false,
+      reason: 'too_large',
+      attempts: 0,
+    });
   });
 
   it('normalizes conversation storage metadata for raw and compacted histories', () => {

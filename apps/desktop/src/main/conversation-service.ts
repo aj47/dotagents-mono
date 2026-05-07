@@ -27,9 +27,11 @@ import {
   getStoredServerConversationMessages,
   getValidServerConversationCompactionTimestamp,
   hasPersistedServerConversationCompactionCheckpoint,
+  isValidServerConversationRecordShape,
   normalizeServerConversationHistoryIndex,
   normalizeServerConversationSummarizedMessageCount,
   renameServerConversationTitle,
+  repairServerConversationJsonData,
   syncServerConversationStorageMetadata,
 } from "@dotagents/shared/conversation-sync"
 import { summarizeContent } from "./context-budget"
@@ -71,12 +73,6 @@ const COMPACTION_KEEP_LAST = 10
 
 // Debounce delay for writing the conversation index to disk (ms)
 const INDEX_WRITE_DEBOUNCE_MS = 500
-// On parse failures, try a bounded number of prefix candidates to recover a valid JSON object.
-// Keep low to avoid blocking the Electron main process on large/corrupted files.
-const CONVERSATION_REPAIR_MAX_PARSE_ATTEMPTS = 50
-// Skip repair entirely for files larger than this (bytes). Large corrupted files would
-// cause too many JSON.parse calls scanning for '}' characters (including inside strings).
-const CONVERSATION_REPAIR_MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 const MAX_SESSION_TITLE_CHARS = 80
 const MAX_AGENT_SESSION_TITLE_WORDS = 10
 const MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS = 500
@@ -608,15 +604,7 @@ export class ConversationService {
    * Validate minimal shape before accepting parsed JSON as a conversation.
    */
   private isValidConversationShape(value: unknown): value is Conversation {
-    if (!value || typeof value !== "object") return false
-    const maybe = value as Partial<Conversation>
-    return (
-      typeof maybe.id === "string" &&
-      typeof maybe.title === "string" &&
-      typeof maybe.createdAt === "number" &&
-      typeof maybe.updatedAt === "number" &&
-      Array.isArray(maybe.messages)
-    )
+    return isValidServerConversationRecordShape(value)
   }
 
   /**
@@ -624,37 +612,16 @@ export class ConversationService {
    * This is only used when the file failed normal JSON.parse().
    */
   private tryRepairConversationFromCorruptedData(raw: string): Conversation | null {
-    if (raw.length > CONVERSATION_REPAIR_MAX_FILE_SIZE) {
-      logApp(`[ConversationService] Skipping repair: file too large (${raw.length} bytes)`)
+    const result = repairServerConversationJsonData<Conversation>(raw, {
+      validateConversationShape: (value): value is Conversation => this.isValidConversationShape(value),
+    })
+    if (result.ok) {
+      return result.conversation
+    }
+    if (result.reason === "too_large") {
+      logApp(`[ConversationService] Skipping repair: file too large (${result.bytes} bytes)`)
       return null
     }
-
-    const trimmed = raw.trim()
-    if (!trimmed.startsWith("{")) {
-      return null
-    }
-
-    let attempts = 0
-    for (let i = trimmed.length - 1; i >= 0; i--) {
-      if (trimmed[i] !== "}") {
-        continue
-      }
-      attempts++
-      if (attempts > CONVERSATION_REPAIR_MAX_PARSE_ATTEMPTS) {
-        break
-      }
-
-      const candidate = trimmed.slice(0, i + 1)
-      try {
-        const parsed = JSON.parse(candidate) as unknown
-        if (this.isValidConversationShape(parsed)) {
-          return parsed
-        }
-      } catch {
-        // Keep scanning earlier object boundaries.
-      }
-    }
-
     return null
   }
 
