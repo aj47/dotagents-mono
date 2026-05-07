@@ -23,6 +23,7 @@ import {
   buildRejectedOperatorDeviceAuditEntry,
   buildOperatorChatGptWebAuthActionResponse,
   buildOperatorConversationsResponse,
+  buildOperatorDesktopWindowActionResponse,
   buildOperatorDiscordClearLogsActionResponse,
   buildOperatorDiscordConnectActionResponse,
   buildOperatorDiscordDisconnectActionResponse,
@@ -89,6 +90,8 @@ import {
   createOperatorAgentRouteActions,
   createOperatorChatGptWebAuthActionService,
   createOperatorChatGptWebAuthRouteActions,
+  createOperatorDesktopWindowActionService,
+  createOperatorDesktopWindowRouteActions,
   createOperatorAuditContextRouteActions,
   createOperatorAuditEventRouteActions,
   createOperatorAuditRecorder,
@@ -117,6 +120,7 @@ import {
   getOperatorIntegrationsAction,
   getOperatorMessageQueuesAction,
   getOperatorWhatsAppAction,
+  hideOperatorPanelWindowAction,
   getRemoteServerBearerToken,
   getOperatorAuditDeviceId,
   getOperatorAuditPath,
@@ -171,6 +175,8 @@ import {
   saveOperatorDiagnosticReportAction,
   serializeOperatorAuditLogEntries,
   setOperatorAgentSessionSnoozedAction,
+  showOperatorMainWindowAction,
+  showOperatorPanelWindowAction,
   showOperatorAgentSessionAction,
   stopOperatorTtsPlaybackAction,
   stopOperatorAgentSessionAction,
@@ -180,6 +186,7 @@ import {
   type OperatorApiKeyActionOptions,
   type OperatorAuditActionOptions,
   type OperatorChatGptWebAuthActionOptions,
+  type OperatorDesktopWindowActionOptions,
   type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
   type OperatorObservabilityActionOptions,
@@ -328,6 +335,88 @@ describe("operator action API helpers", () => {
       "stop-tts",
       "stop-tts",
       "error:Failed to stop desktop speech playback: renderer gone",
+    ])
+  })
+
+  it("runs desktop window route actions through a shared service adapter", () => {
+    const calls: string[] = []
+    const service = createOperatorDesktopWindowActionService({
+      showMainWindow: () => { calls.push("show-main") },
+      showPanelWindow: () => { calls.push("show-panel") },
+      hidePanelWindow: () => { calls.push("hide-panel") },
+    })
+    const options: OperatorDesktopWindowActionOptions = {
+      diagnostics: {
+        logError: (_source, message) => { calls.push(`error:${message}`) },
+        getErrorMessage: (error) => error instanceof Error ? error.message : String(error),
+      },
+      service,
+    }
+
+    expect(buildOperatorDesktopWindowActionResponse("desktop-main-window-show")).toEqual({
+      success: true,
+      action: "desktop-main-window-show",
+      message: "Showing desktop app window",
+    })
+    expect(showOperatorMainWindowAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "desktop-main-window-show",
+      },
+      auditContext: {
+        action: "desktop-main-window-show",
+        success: true,
+      },
+    })
+    expect(showOperatorPanelWindowAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "desktop-panel-window-show",
+      },
+    })
+    expect(hideOperatorPanelWindowAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "desktop-panel-window-hide",
+      },
+    })
+
+    const routeActions = createOperatorDesktopWindowRouteActions(options)
+    expect(routeActions.showOperatorMainWindow()).toMatchObject({
+      statusCode: 200,
+      body: { action: "desktop-main-window-show" },
+    })
+
+    const failingOptions: OperatorDesktopWindowActionOptions = {
+      ...options,
+      service: createOperatorDesktopWindowActionService({
+        showMainWindow: () => { throw new Error("window missing") },
+        showPanelWindow: () => { throw new Error("panel missing") },
+        hidePanelWindow: () => { throw new Error("panel missing") },
+      }),
+    }
+    expect(showOperatorMainWindowAction(failingOptions)).toMatchObject({
+      statusCode: 500,
+      body: {
+        success: false,
+        action: "desktop-main-window-show",
+        error: "Failed to show desktop app window: window missing",
+      },
+      auditContext: {
+        action: "desktop-main-window-show",
+        success: false,
+        failureReason: "Failed to show desktop app window: window missing",
+      },
+    })
+    expect(calls).toEqual([
+      "show-main",
+      "show-panel",
+      "hide-panel",
+      "show-main",
+      "error:Failed to show desktop app window: window missing",
     ])
   })
 

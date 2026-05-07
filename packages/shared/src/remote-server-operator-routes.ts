@@ -367,6 +367,30 @@ export function registerOperatorRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  fastify.post(API_ROUTES.operatorDesktopMainWindowShow, async (req, reply) => {
+    const result = await actions.showOperatorMainWindow();
+    if (result.auditContext) {
+      actions.setOperatorAuditContext(req, result.auditContext);
+    }
+    return reply.code(result.statusCode).send(result.body);
+  });
+
+  fastify.post(API_ROUTES.operatorDesktopPanelWindowShow, async (req, reply) => {
+    const result = await actions.showOperatorPanelWindow();
+    if (result.auditContext) {
+      actions.setOperatorAuditContext(req, result.auditContext);
+    }
+    return reply.code(result.statusCode).send(result.body);
+  });
+
+  fastify.post(API_ROUTES.operatorDesktopPanelWindowHide, async (req, reply) => {
+    const result = await actions.hideOperatorPanelWindow();
+    if (result.auditContext) {
+      actions.setOperatorAuditContext(req, result.auditContext);
+    }
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   fastify.post(API_ROUTES.operatorAgentSessionStop, async (req, reply) => {
     const params = req.params as { sessionId?: string };
     const result = await actions.stopOperatorAgentSession(params.sessionId);

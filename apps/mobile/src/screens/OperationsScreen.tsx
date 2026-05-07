@@ -1541,6 +1541,42 @@ export default function OperationsScreen({ navigation }: any) {
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                onPress={() => void runAction('desktop-main-window-show', () => settingsClient.showOperatorMainWindow(), false)}
+                disabled={pendingAction !== null}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Show desktop app window')}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {pendingAction === 'desktop-main-window-show' ? 'Showing app…' : 'Show app'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                onPress={() => void runAction('desktop-panel-window-show', () => settingsClient.showOperatorPanelWindow(), false)}
+                disabled={pendingAction !== null}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Show desktop floating panel')}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {pendingAction === 'desktop-panel-window-show' ? 'Showing panel…' : 'Show panel'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                onPress={() => void runAction('desktop-panel-window-hide', () => settingsClient.hideOperatorPanelWindow(), false)}
+                disabled={pendingAction !== null}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Hide desktop floating panel')}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {pendingAction === 'desktop-panel-window-hide' ? 'Hiding panel…' : 'Hide panel'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                 onPress={() => confirmAction(
                   'Restart Remote Server',
                   'Restart the desktop remote server? Mobile clients may reconnect automatically after a short interruption.',

@@ -47,6 +47,8 @@ import {
   createOperatorAgentRouteActions,
   createOperatorChatGptWebAuthActionService,
   createOperatorChatGptWebAuthRouteActions,
+  createOperatorDesktopWindowActionService,
+  createOperatorDesktopWindowRouteActions,
   createOperatorIntegrationActionService,
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueActionService,
@@ -65,6 +67,7 @@ import {
   type OperatorApiKeyActionOptions,
   type OperatorAgentActionOptions,
   type OperatorChatGptWebAuthActionOptions,
+  type OperatorDesktopWindowActionOptions,
   type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
   type OperatorObservabilityActionOptions,
@@ -112,7 +115,9 @@ import {
 } from "./updater"
 import {
   getWindowRendererHandlers,
+  hideFloatingPanelWindow,
   setPanelMode,
+  showMainWindow,
   showPanelWindow,
 } from "./window"
 import { stopAllTtsPlayback } from "./tts-playback-actions"
@@ -239,6 +244,20 @@ const ttsPlaybackActionOptions: OperatorTtsPlaybackActionOptions = {
 }
 
 const operatorTtsPlaybackRouteActions = createOperatorTtsPlaybackRouteActions(ttsPlaybackActionOptions)
+
+const desktopWindowActionOptions: OperatorDesktopWindowActionOptions = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+    getErrorMessage,
+  },
+  service: createOperatorDesktopWindowActionService({
+    showMainWindow: () => showMainWindow(),
+    showPanelWindow: () => showPanelWindow({}),
+    hidePanelWindow: () => hideFloatingPanelWindow(),
+  }),
+}
+
+const operatorDesktopWindowRouteActions = createOperatorDesktopWindowRouteActions(desktopWindowActionOptions)
 
 const localSpeechModelService = createLocalSpeechModelActionService({
   diagnostics: {
@@ -468,6 +487,7 @@ const operatorRestartRouteActions = createOperatorRestartRouteActions()
 export const operatorRouteDesktopActions = createOperatorRouteActions({
   agent: operatorAgentRouteActions,
   ttsPlayback: operatorTtsPlaybackRouteActions,
+  desktopWindow: operatorDesktopWindowRouteActions,
   apiKey: operatorApiKeyRouteActions,
   mcp: operatorMcpRouteActions,
   localSpeechModels: operatorLocalSpeechModelRouteActions,

@@ -101,6 +101,9 @@ const actionKeys = [
 const operatorActionKeys = [
   'runOperatorAgent',
   'stopOperatorTtsPlayback',
+  'showOperatorMainWindow',
+  'showOperatorPanelWindow',
+  'hideOperatorPanelWindow',
   'showOperatorAgentSession',
   'stopOperatorAgentSession',
   'snoozeOperatorAgentSession',
@@ -305,6 +308,7 @@ describe('remote server route contracts', () => {
         'clearOperatorAgentSession',
       ),
       ttsPlayback: pick('stopOperatorTtsPlayback'),
+      desktopWindow: pick('showOperatorMainWindow', 'showOperatorPanelWindow', 'hideOperatorPanelWindow'),
       apiKey: pick('rotateOperatorRemoteServerApiKey'),
       mcp: pick(
         'clearOperatorMcpServerLogs',

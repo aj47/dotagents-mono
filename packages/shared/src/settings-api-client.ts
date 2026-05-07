@@ -1764,6 +1764,24 @@ export class SettingsApiClient {
     });
   }
 
+  async showOperatorMainWindow(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorDesktopMainWindowShow, {
+      method: 'POST',
+    });
+  }
+
+  async showOperatorPanelWindow(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorDesktopPanelWindowShow, {
+      method: 'POST',
+    });
+  }
+
+  async hideOperatorPanelWindow(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorDesktopPanelWindowHide, {
+      method: 'POST',
+    });
+  }
+
   async rotateOperatorApiKey(): Promise<OperatorApiKeyRotationResponse> {
     return this.request<OperatorApiKeyRotationResponse>(API_PATHS.operatorRotateApiKey, {
       method: 'POST',

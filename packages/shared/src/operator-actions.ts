@@ -753,6 +753,50 @@ export interface OperatorTtsPlaybackRouteActions {
   stopOperatorTtsPlayback(): OperatorTtsPlaybackActionResult
 }
 
+export type OperatorDesktopWindowActionResult = {
+  statusCode: number
+  body: unknown
+  auditContext?: OperatorActionAuditContext
+}
+
+export type OperatorDesktopWindowAction =
+  | "desktop-main-window-show"
+  | "desktop-panel-window-show"
+  | "desktop-panel-window-hide"
+
+export interface OperatorDesktopWindowActionService {
+  showMainWindow(): void
+  showPanelWindow(): void
+  hidePanelWindow(): void
+}
+
+export interface OperatorDesktopWindowActionServiceOptions {
+  showMainWindow(): void
+  showPanelWindow(): void
+  hidePanelWindow(): void
+}
+
+export function createOperatorDesktopWindowActionService(
+  options: OperatorDesktopWindowActionServiceOptions,
+): OperatorDesktopWindowActionService {
+  return {
+    showMainWindow: () => options.showMainWindow(),
+    showPanelWindow: () => options.showPanelWindow(),
+    hidePanelWindow: () => options.hidePanelWindow(),
+  }
+}
+
+export interface OperatorDesktopWindowActionOptions {
+  diagnostics: Pick<OperatorAgentActionDiagnostics, "logError" | "getErrorMessage">
+  service: OperatorDesktopWindowActionService
+}
+
+export interface OperatorDesktopWindowRouteActions {
+  showOperatorMainWindow(): OperatorDesktopWindowActionResult
+  showOperatorPanelWindow(): OperatorDesktopWindowActionResult
+  hideOperatorPanelWindow(): OperatorDesktopWindowActionResult
+}
+
 export type RunAgentResultLike = AgentRunResult
 
 export type OperatorHealthLike = Pick<OperatorHealthSnapshot, "overall" | "checks">
@@ -2409,6 +2453,31 @@ export function buildOperatorStopTtsPlaybackResponse(
   }
 }
 
+export function buildOperatorDesktopWindowActionResponse(
+  action: OperatorDesktopWindowAction,
+): OperatorActionResponse {
+  switch (action) {
+    case "desktop-main-window-show":
+      return {
+        success: true,
+        action,
+        message: "Showing desktop app window",
+      }
+    case "desktop-panel-window-show":
+      return {
+        success: true,
+        action,
+        message: "Showing desktop floating panel",
+      }
+    case "desktop-panel-window-hide":
+      return {
+        success: true,
+        action,
+        message: "Hid desktop floating panel",
+      }
+  }
+}
+
 export function buildOperatorAgentSessionSnoozedResponse(
   sessionId: string,
   isSnoozed: boolean,
@@ -2795,6 +2864,79 @@ export function createOperatorTtsPlaybackRouteActions(
 ): OperatorTtsPlaybackRouteActions {
   return {
     stopOperatorTtsPlayback: () => stopOperatorTtsPlaybackAction(options),
+  }
+}
+
+function operatorDesktopWindowActionResult(
+  statusCode: number,
+  body: unknown,
+  auditContext?: OperatorActionAuditContext,
+): OperatorDesktopWindowActionResult {
+  return {
+    statusCode,
+    body,
+    ...(auditContext ? { auditContext } : {}),
+  }
+}
+
+function runOperatorDesktopWindowAction(
+  action: OperatorDesktopWindowAction,
+  label: string,
+  run: () => void,
+  options: OperatorDesktopWindowActionOptions,
+): OperatorDesktopWindowActionResult {
+  try {
+    run()
+    const response = buildOperatorDesktopWindowActionResponse(action)
+    return operatorDesktopWindowActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    const response = buildOperatorActionErrorResponse(action, `Failed to ${label}: ${errorMessage}`)
+    options.diagnostics.logError("operator-desktop-window-actions", `Failed to ${label}: ${errorMessage}`, caughtError)
+    return operatorDesktopWindowActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
+export function showOperatorMainWindowAction(
+  options: OperatorDesktopWindowActionOptions,
+): OperatorDesktopWindowActionResult {
+  return runOperatorDesktopWindowAction(
+    "desktop-main-window-show",
+    "show desktop app window",
+    () => options.service.showMainWindow(),
+    options,
+  )
+}
+
+export function showOperatorPanelWindowAction(
+  options: OperatorDesktopWindowActionOptions,
+): OperatorDesktopWindowActionResult {
+  return runOperatorDesktopWindowAction(
+    "desktop-panel-window-show",
+    "show desktop floating panel",
+    () => options.service.showPanelWindow(),
+    options,
+  )
+}
+
+export function hideOperatorPanelWindowAction(
+  options: OperatorDesktopWindowActionOptions,
+): OperatorDesktopWindowActionResult {
+  return runOperatorDesktopWindowAction(
+    "desktop-panel-window-hide",
+    "hide desktop floating panel",
+    () => options.service.hidePanelWindow(),
+    options,
+  )
+}
+
+export function createOperatorDesktopWindowRouteActions(
+  options: OperatorDesktopWindowActionOptions,
+): OperatorDesktopWindowRouteActions {
+  return {
+    showOperatorMainWindow: () => showOperatorMainWindowAction(options),
+    showOperatorPanelWindow: () => showOperatorPanelWindowAction(options),
+    hideOperatorPanelWindow: () => hideOperatorPanelWindowAction(options),
   }
 }
 

@@ -93,7 +93,13 @@ test('surfaces recent operator audit entries and rotates the API key using the s
   assert.match(operationsSource, /settingsClient\.openOperatorUpdateAsset\(\)/);
   assert.match(operationsSource, /settingsClient\.openOperatorReleasesPage\(\)/);
   assert.match(operationsSource, /settingsClient\.stopOperatorTtsPlayback\(\)/);
+  assert.match(operationsSource, /settingsClient\.showOperatorMainWindow\(\)/);
+  assert.match(operationsSource, /settingsClient\.showOperatorPanelWindow\(\)/);
+  assert.match(operationsSource, /settingsClient\.hideOperatorPanelWindow\(\)/);
   assert.match(operationsSource, /Stop speech/);
+  assert.match(operationsSource, /Show app/);
+  assert.match(operationsSource, /Show panel/);
+  assert.match(operationsSource, /Hide panel/);
   assert.match(operationsSource, /setConfig\(nextConfig\)/);
   assert.match(operationsSource, /saveConfig\(nextConfig\)/);
 });

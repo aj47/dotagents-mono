@@ -158,6 +158,9 @@ describe('remote server operator routes', () => {
       })),
       runOperatorAgent: vi.fn(() => ({ statusCode: 202, body: { sessionId: 'session-1' } })),
       stopOperatorTtsPlayback: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'stop-tts-playback' } })),
+      showOperatorMainWindow: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'desktop-main-window-show' } })),
+      showOperatorPanelWindow: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'desktop-panel-window-show' } })),
+      hideOperatorPanelWindow: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'desktop-panel-window-hide' } })),
       showOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-show' } })),
       snoozeOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-snooze' } })),
       unsnoozeOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-unsnooze' } })),
@@ -263,6 +266,24 @@ describe('remote server operator routes', () => {
       createReply(),
     );
     expect(actions.stopOperatorTtsPlayback).toHaveBeenCalledTimes(1);
+
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorDesktopMainWindowShow}`)!(
+      createRequest(),
+      createReply(),
+    );
+    expect(actions.showOperatorMainWindow).toHaveBeenCalledTimes(1);
+
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorDesktopPanelWindowShow}`)!(
+      createRequest(),
+      createReply(),
+    );
+    expect(actions.showOperatorPanelWindow).toHaveBeenCalledTimes(1);
+
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorDesktopPanelWindowHide}`)!(
+      createRequest(),
+      createReply(),
+    );
+    expect(actions.hideOperatorPanelWindow).toHaveBeenCalledTimes(1);
 
     await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionShow}`)!(
       createRequest({ params: { sessionId: 'session-1' } }),
