@@ -366,6 +366,11 @@
       "import": "./dist/remote-server-api.mjs",
       "require": "./dist/remote-server-api.js"
     },
+    "./remote-server-controller": {
+      "types": "./dist/remote-server-controller.d.ts",
+      "import": "./dist/remote-server-controller.mjs",
+      "require": "./dist/remote-server-controller.js"
+    },
     "./remote-server-controller-contracts": {
       "types": "./dist/remote-server-controller-contracts.d.ts",
       "import": "./dist/remote-server-controller-contracts.mjs",

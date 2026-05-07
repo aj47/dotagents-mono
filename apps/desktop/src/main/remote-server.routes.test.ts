@@ -18,9 +18,15 @@ function getRemoteServerSource(): string {
   return readFileSync(remoteServerPath, "utf8")
 }
 
-function getRemoteServerControllerSource(): string {
+function getDesktopRemoteServerControllerSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const remoteServerControllerPath = path.join(testDir, "remote-server-controller.ts")
+  return readFileSync(remoteServerControllerPath, "utf8")
+}
+
+function getRemoteServerControllerSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const remoteServerControllerPath = path.join(testDir, "../../../../packages/shared/src/remote-server-controller.ts")
   return readFileSync(remoteServerControllerPath, "utf8")
 }
 
@@ -464,6 +470,7 @@ describe("remote-server route registration", () => {
 
   it("keeps the Electron remote server facade free of direct Fastify wiring", () => {
     const source = getRemoteServerSource()
+    const desktopControllerSource = getDesktopRemoteServerControllerSource()
     const controllerSource = getRemoteServerControllerSource()
     const routeBundleSource = getRemoteServerRouteBundleSource()
     const desktopAdaptersSource = getRemoteServerDesktopAdaptersSource()
@@ -489,6 +496,19 @@ describe("remote-server route registration", () => {
     expect(source).not.toContain("registerInjectedMcpRoutes(")
     expect(source).not.toContain("fastify.get(")
     expect(source).not.toContain("fastify.post(")
+    expect(desktopControllerSource).toContain(
+      'export { createRemoteServerController } from "@dotagents/shared/remote-server-controller"',
+    )
+    expect(desktopControllerSource).toContain('from "@dotagents/shared/remote-server-controller-contracts"')
+    expect(desktopControllerSource).toContain("export type RemoteServerControllerConfig = RemoteServerControllerConfigLike")
+    expect(desktopControllerSource).toContain(
+      "export type RemoteServerRouteRegistrar = SharedRemoteServerRouteRegistrar<FastifyInstance, FastifyReply>",
+    )
+    expect(desktopControllerSource).not.toContain("getRemoteServerStartupPlan")
+    expect(desktopControllerSource).not.toContain("adapters.createHttpServer")
+    expect(desktopControllerSource).not.toContain("buildRemoteServerStatusSnapshot")
+    expect(controllerSource).not.toContain("Fastify")
+    expect(controllerSource).not.toContain("Electron")
     expect(controllerSource).not.toContain("import Fastify")
     expect(controllerSource).not.toContain('from "@fastify/cors"')
     expect(controllerSource).not.toContain("Fastify({")
@@ -512,13 +532,8 @@ describe("remote-server route registration", () => {
     expect(controllerSource).not.toContain('from "./remote-server-pairing-actions"')
     expect(controllerSource).not.toContain('from "./chat-completion-actions"')
     expect(controllerSource).not.toContain('from "../shared/types"')
-    expect(controllerSource).toContain('from "@dotagents/shared/remote-server-controller-contracts"')
+    expect(controllerSource).toContain("from './remote-server-controller-contracts'")
     expect(controllerSource).not.toContain('from "@dotagents/shared/agent-run-utils"')
-    expect(controllerSource).toContain("export type RemoteServerControllerConfig = RemoteServerControllerConfigLike")
-    expect(controllerSource).toContain("RemoteServerRunAgentExecutor,")
-    expect(controllerSource).toContain(
-      "export type RemoteServerRouteRegistrar = SharedRemoteServerRouteRegistrar<FastifyInstance, FastifyReply>",
-    )
     expect(controllerSource).not.toContain("process.platform")
     expect(controllerSource).not.toContain("process.env")
     expect(controllerSource).not.toContain("console.")
@@ -1715,7 +1730,7 @@ describe("remote-server route registration", () => {
     expect(sharedRemotePairingSource).toContain("resolveDotAgentsSecretReference(value, secrets)")
     expect(controllerSource).toContain("const startupPlan = getRemoteServerStartupPlan(cfg, {")
     expect(controllerSource).toContain("resolveApiKey: adapters.resolveApiKeyReference")
-    expect(controllerSource).toContain("startupPlan.apiKeyAction === \"generate\"")
+    expect(controllerSource).toContain("startupPlan.apiKeyAction === 'generate'")
     expect(controllerSource).toContain("Remote server API key is configured but could not be resolved; preserving configured value")
     expect(controllerSource).toContain("adapters.authorizeRequest(req, {")
     expect(controllerSource).toContain("currentApiKey: adapters.resolveConfiguredApiKey(current)")
