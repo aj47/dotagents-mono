@@ -1164,6 +1164,28 @@ export function buildServerConversationHistoryItem<TConversation extends ServerC
   };
 }
 
+export function upsertServerConversationHistoryIndex<
+  TItem extends { id: string },
+  TConversation extends ServerConversationRecord<any>,
+>(
+  index: TItem[],
+  conversation: TConversation,
+  options: BuildServerConversationHistoryItemOptions = {},
+): TItem[] {
+  const indexItem = buildServerConversationHistoryItem(conversation, options) as unknown as TItem;
+  return [
+    indexItem,
+    ...index.filter((item) => item.id !== conversation.id),
+  ];
+}
+
+export function removeServerConversationHistoryIndexItem<TItem extends { id: string }>(
+  index: TItem[],
+  conversationId: string,
+): TItem[] {
+  return index.filter((item) => item.id !== conversationId);
+}
+
 export function getBranchableServerConversationMessages<TConversation extends ServerConversationRecord<any>>(
   conversation: TConversation,
 ): ServerConversationRecordMessage[] {

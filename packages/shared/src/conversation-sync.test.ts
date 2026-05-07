@@ -48,6 +48,7 @@ import {
   parseBranchConversationRequestBody,
   parseUpdateConversationRequestBody,
   renameServerConversationTitle,
+  removeServerConversationHistoryIndexItem,
   repairServerConversationJsonData,
   resolveServerConversationGeneratedTitle,
   serverConversationToStubSession,
@@ -57,6 +58,7 @@ import {
   toServerConversationHistorySnippet,
   toServerConversationMessage,
   updateConversationAction,
+  upsertServerConversationHistoryIndex,
 } from './conversation-sync';
 
 function createLocalSession(overrides: Partial<Session> = {}): Session {
@@ -469,6 +471,54 @@ describe('server conversation API helpers', () => {
       lastMessage: 'second raw',
       preview: 'user: first raw | assistant: second raw',
     });
+  });
+
+  it('upserts and removes persisted conversation history index entries', () => {
+    const existingIndex = [
+      {
+        id: 'conv-existing',
+        title: 'Existing',
+        createdAt: 1,
+        updatedAt: 2,
+        messageCount: 1,
+        lastMessage: 'old',
+        preview: 'old',
+      },
+      {
+        id: 'conv-other',
+        title: 'Other',
+        createdAt: 3,
+        updatedAt: 4,
+        messageCount: 1,
+        lastMessage: 'other',
+        preview: 'other',
+      },
+    ];
+
+    const upserted = upsertServerConversationHistoryIndex(existingIndex, {
+      id: 'conv-existing',
+      title: 'Updated',
+      createdAt: 1,
+      updatedAt: 9,
+      messages: [{ id: 'msg-1', role: 'user' as const, content: 'new message', timestamp: 9 }],
+    });
+
+    expect(upserted).toEqual([
+      {
+        id: 'conv-existing',
+        title: 'Updated',
+        createdAt: 1,
+        updatedAt: 9,
+        messageCount: 1,
+        lastMessage: 'new message',
+        preview: 'user: new message',
+      },
+      existingIndex[1],
+    ]);
+    expect(existingIndex[0].title).toBe('Existing');
+
+    expect(removeServerConversationHistoryIndexItem(upserted, 'conv-existing')).toEqual([existingIndex[1]]);
+    expect(removeServerConversationHistoryIndexItem(upserted, 'missing')).toEqual(upserted);
   });
 
   it('normalizes history snippets for compact server lists', () => {

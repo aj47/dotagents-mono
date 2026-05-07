@@ -34,9 +34,11 @@ import {
   materializeServerConversationCreateRequest,
   normalizeServerConversationHistoryIndex,
   renameServerConversationTitle,
+  removeServerConversationHistoryIndexItem,
   repairServerConversationJsonData,
   sortServerConversationHistoryByUpdatedAt,
   syncServerConversationStorageMetadata,
+  upsertServerConversationHistoryIndex,
 } from "@dotagents/shared/conversation-sync"
 import { summarizeContent } from "./context-budget"
 import {
@@ -482,14 +484,10 @@ export class ConversationService {
       try {
         let index = await this.ensureIndexLoaded()
 
-        // Remove existing entry if it exists
-        index = index.filter((item) => item.id !== conversation.id)
-
-        // Create new index entry
-        const indexItem = this.buildConversationHistoryItem(conversation)
-
-        // Add to beginning of array (most recent first)
-        index.unshift(indexItem)
+        index = upsertServerConversationHistoryIndex(index, conversation, {
+          maxLastMessageChars: MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
+          maxPreviewChars: MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
+        }) as ConversationHistoryItem[]
 
         // Update in-memory cache immediately
         this.indexCache = index
@@ -807,9 +805,8 @@ export class ConversationService {
 
       await this.enqueueIndexMutation(async () => {
         // Update in-memory index cache
-        let index = await this.ensureIndexLoaded()
-        index = index.filter((item) => item.id !== conversationId)
-        this.indexCache = index
+        const index = await this.ensureIndexLoaded()
+        this.indexCache = removeServerConversationHistoryIndexItem(index, conversationId)
 
         // Flush to disk immediately for deletes (important for consistency)
         await this.flushIndexWrite()
