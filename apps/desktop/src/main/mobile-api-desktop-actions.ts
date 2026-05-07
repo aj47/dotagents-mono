@@ -82,6 +82,7 @@ import {
   type RepeatTaskActionOptions,
   type RepeatTaskLoopService,
 } from "@dotagents/shared/repeat-task-utils"
+import { resolveAgentProfileReferenceCleanupLayers } from "@dotagents/shared/agent-profile-reference-cleanup"
 import type { Config } from "../shared/types"
 import {
   exportBundleFromLayers,
@@ -384,11 +385,16 @@ const mcpServerActionOptions = {
   diagnostics: diagnosticsService,
 }
 
+function getAgentProfileReferenceCleanupLayers() {
+  return resolveAgentProfileReferenceCleanupLayers(
+    globalAgentsFolder,
+    resolveWorkspaceAgentsFolder(),
+    getAgentsLayerPaths,
+  )
+}
+
 function cleanupInvalidAgentProfileMcpReferences(validServerNames: string[]): void {
-  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-  const layers = workspaceAgentsFolder
-    ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-    : [getAgentsLayerPaths(globalAgentsFolder)]
+  const layers = getAgentProfileReferenceCleanupLayers()
   const cleanupResult = cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)
 
   if (cleanupResult.updatedProfileIds.length > 0) {
@@ -421,10 +427,7 @@ const mcpRouteActions = createMcpRouteActions({
 })
 
 function cleanupDeletedSkillReferences(validSkillIds: string[]): void {
-  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-  const layers = workspaceAgentsFolder
-    ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-    : [getAgentsLayerPaths(globalAgentsFolder)]
+  const layers = getAgentProfileReferenceCleanupLayers()
 
   cleanupInvalidSkillReferencesInLayers(layers, validSkillIds)
   agentProfileService.reload()

@@ -4,9 +4,22 @@ import {
   cleanupInvalidMcpServerReferencesInProfiles,
   cleanupInvalidSkillReferencesInProfileLayers,
   cleanupInvalidSkillReferencesInProfiles,
+  resolveAgentProfileReferenceCleanupLayers,
 } from './agent-profile-reference-cleanup'
 
 describe('agent profile reference cleanup', () => {
+  it('resolves global and optional workspace cleanup layers', () => {
+    const resolveLayer = (folder: string) => ({ folder, profiles: [] })
+
+    expect(resolveAgentProfileReferenceCleanupLayers('/global/.agents', undefined, resolveLayer)).toEqual([
+      { folder: '/global/.agents', profiles: [] },
+    ])
+    expect(resolveAgentProfileReferenceCleanupLayers('/global/.agents', '/workspace/.agents', resolveLayer)).toEqual([
+      { folder: '/global/.agents', profiles: [] },
+      { folder: '/workspace/.agents', profiles: [] },
+    ])
+  })
+
   it('removes invalid MCP server references from profiles', () => {
     const unchanged = {
       id: 'agent-b',

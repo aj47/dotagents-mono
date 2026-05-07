@@ -123,6 +123,7 @@ import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-uti
 import { hasRepeatTaskTitlePrefix } from "@dotagents/shared/repeat-task-utils"
 import { stopAgentSessionById } from "./agent-session-actions"
 import { describeAgentSessionId } from "@dotagents/shared/agent-run-utils"
+import { resolveAgentProfileReferenceCleanupLayers } from "@dotagents/shared/agent-profile-reference-cleanup"
 
 export { runAgentLoopSession } from "./agent-loop-runner"
 
@@ -2114,10 +2115,11 @@ export const router = {
         const { getAgentsLayerPaths } = await import("@dotagents/core")
         const { cleanupInvalidMcpServerReferencesInLayers } = await import("./agent-profile-mcp-cleanup")
 
-        const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-        const layers = workspaceAgentsFolder
-          ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-          : [getAgentsLayerPaths(globalAgentsFolder)]
+        const layers = resolveAgentProfileReferenceCleanupLayers(
+          globalAgentsFolder,
+          resolveWorkspaceAgentsFolder(),
+          getAgentsLayerPaths,
+        )
 
         const validServerNames = Object.keys(merged.mcpConfig?.mcpServers || {})
         const cleanupResult = cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)
@@ -3618,10 +3620,11 @@ export const router = {
       const { getAgentsLayerPaths } = await import("@dotagents/core")
       const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
 
-      const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-      const layers = workspaceAgentsFolder
-        ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-        : [getAgentsLayerPaths(globalAgentsFolder)]
+      const layers = resolveAgentProfileReferenceCleanupLayers(
+        globalAgentsFolder,
+        resolveWorkspaceAgentsFolder(),
+        getAgentsLayerPaths,
+      )
 
       cleanupInvalidSkillReferencesInLayers(layers, skillsService.getSkills().map(skill => skill.id))
       agentProfileService.reload()
@@ -3643,10 +3646,11 @@ export const router = {
         const { getAgentsLayerPaths } = await import("@dotagents/core")
         const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
 
-        const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-        const layers = workspaceAgentsFolder
-          ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-          : [getAgentsLayerPaths(globalAgentsFolder)]
+        const layers = resolveAgentProfileReferenceCleanupLayers(
+          globalAgentsFolder,
+          resolveWorkspaceAgentsFolder(),
+          getAgentsLayerPaths,
+        )
 
         cleanupInvalidSkillReferencesInLayers(layers, skillsService.getSkills().map(skill => skill.id))
         agentProfileService.reload()
@@ -3661,10 +3665,11 @@ export const router = {
     const { getAgentsLayerPaths } = await import("@dotagents/core")
     const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
 
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const layers = workspaceAgentsFolder
-      ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-      : [getAgentsLayerPaths(globalAgentsFolder)]
+    const layers = resolveAgentProfileReferenceCleanupLayers(
+      globalAgentsFolder,
+      resolveWorkspaceAgentsFolder(),
+      getAgentsLayerPaths,
+    )
 
     const result = cleanupInvalidSkillReferencesInLayers(layers, skillsService.getSkills().map(skill => skill.id))
     if (result.updatedProfileIds.length > 0) {
@@ -3678,10 +3683,11 @@ export const router = {
     const { getAgentsLayerPaths } = await import("@dotagents/core")
     const { cleanupInvalidMcpServerReferencesInLayers } = await import("./agent-profile-mcp-cleanup")
 
-    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-    const layers = workspaceAgentsFolder
-      ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
-      : [getAgentsLayerPaths(globalAgentsFolder)]
+    const layers = resolveAgentProfileReferenceCleanupLayers(
+      globalAgentsFolder,
+      resolveWorkspaceAgentsFolder(),
+      getAgentsLayerPaths,
+    )
 
     const validServerNames = Object.keys(configStore.get().mcpConfig?.mcpServers || {})
     const result = cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)

@@ -75,6 +75,15 @@ function getSharedAgentRunUtilsSource(): string {
   return readFileSync(sharedAgentRunUtilsPath, "utf8")
 }
 
+function getSharedAgentProfileReferenceCleanupSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedAgentProfileReferenceCleanupPath = path.join(
+    testDir,
+    "../../../../packages/shared/src/agent-profile-reference-cleanup.ts",
+  )
+  return readFileSync(sharedAgentProfileReferenceCleanupPath, "utf8")
+}
+
 function getSharedRemoteServerRouteContractsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedRemoteServerRouteContractsPath = path.join(
@@ -894,6 +903,7 @@ describe("remote-server route registration", () => {
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedSkillsApiSource = getSharedSkillsApiSource()
+    const sharedAgentProfileReferenceCleanupSource = getSharedAgentProfileReferenceCleanupSource()
 
     expectRegisteredApiRoute(source, "GET", "skills")
     expectRegisteredApiRoute(source, "GET", "skill")
@@ -925,8 +935,13 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).not.toContain("deleteSkillAction(skillId, skillActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("toggleProfileSkillAction(skillId, skillActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain("onSkillDeleted: ({ availableSkillIds }) => {")
+    expect(mobileApiDesktopActionsSource).toContain("const layers = getAgentProfileReferenceCleanupLayers()")
+    expect(mobileApiDesktopActionsSource).not.toContain("const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()")
     expect(mobileApiDesktopActionsSource).toContain("cleanupInvalidSkillReferencesInLayers(")
     expect(mobileApiDesktopActionsSource).toContain("agentProfileService.reload()")
+    expect(sharedAgentProfileReferenceCleanupSource).toContain(
+      "export function resolveAgentProfileReferenceCleanupLayers",
+    )
     expect(sharedSkillsApiSource).toContain("export interface SkillActionOptions")
     expect(sharedSkillsApiSource).toContain("onSkillDeleted?(context: SkillDeletedContext): void")
     expect(sharedSkillsApiSource).toContain("export interface SkillRouteActions")
@@ -1283,6 +1298,7 @@ describe("remote-server route registration", () => {
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedMcpApiSource = getSharedMcpApiSource()
+    const sharedAgentProfileReferenceCleanupSource = getSharedAgentProfileReferenceCleanupSource()
     const sharedChatUtilsSource = getSharedChatUtilsSource()
     const sharedTtsApiSource = getSharedTtsApiSource()
     const pushNotificationServiceSource = getPushNotificationServiceSource()
@@ -1345,8 +1361,13 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).not.toContain("importMcpServerConfigsAction(body, mcpServerConfigActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("exportMcpServerConfigsAction(mcpServerConfigActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain("onMcpServerDeleted: ({ availableServerNames }) => {")
+    expect(mobileApiDesktopActionsSource).toContain("function getAgentProfileReferenceCleanupLayers()")
+    expect(mobileApiDesktopActionsSource).toContain("resolveAgentProfileReferenceCleanupLayers(")
     expect(mobileApiDesktopActionsSource).toContain("cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)")
     expect(mobileApiDesktopActionsSource).toContain("agentProfileService.reload()")
+    expect(sharedAgentProfileReferenceCleanupSource).toContain(
+      "export function resolveAgentProfileReferenceCleanupLayers",
+    )
     expect(sharedMcpApiSource).toContain("export interface McpServerActionService")
     expect(sharedMcpApiSource).toContain("export interface McpServerConfigActionService")
     expect(sharedMcpApiSource).toContain("onMcpServerDeleted?(context: McpServerDeletedContext): void")

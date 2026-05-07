@@ -27,6 +27,20 @@ export type AgentProfileReferenceCleanupLayerStore<TLayer, TProfile extends { id
   writeProfile(layer: TLayer, profile: TProfile): void
 }
 
+export type AgentProfileReferenceCleanupLayerResolver<TLayer> = (agentsFolder: string) => TLayer
+
+export function resolveAgentProfileReferenceCleanupLayers<TLayer>(
+  globalAgentsFolder: string,
+  workspaceAgentsFolder: string | null | undefined,
+  resolveLayer: AgentProfileReferenceCleanupLayerResolver<TLayer>,
+): TLayer[] {
+  const layers = [resolveLayer(globalAgentsFolder)]
+  if (workspaceAgentsFolder) {
+    layers.push(resolveLayer(workspaceAgentsFolder))
+  }
+  return layers
+}
+
 function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b))
 }
