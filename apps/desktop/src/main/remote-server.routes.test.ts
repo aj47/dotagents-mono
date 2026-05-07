@@ -622,7 +622,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain("export const operatorRouteDesktopActions")
     expect(operatorRouteDesktopActionsSource).not.toContain('from "./operator-routes"')
     expect(operatorRouteDesktopActionsSource).toContain('from "@dotagents/shared/remote-server-route-contracts"')
-    expect(operatorRouteDesktopActionsSource).toContain("runOperatorAgent")
+    expect(operatorRouteDesktopActionsSource).toContain("...operatorAgentRouteActions")
     expect(operatorRouteDesktopActionsSource).toContain("...operatorObservabilityRouteActions")
     expect(operatorRouteDesktopActionsSource).toContain("recordOperatorAuditEvent")
     expect(injectedMcpRoutesSource).not.toContain('from "./injected-mcp-actions"')
@@ -1716,9 +1716,18 @@ describe("remote-server route registration", () => {
     expect(agentRunActionsSource).toContain("processWithAgentMode(")
     expect(agentRunActionsSource).toContain("runOptions,")
     expect(operatorRoutesSource).toContain("actions.runOperatorAgent(req.body, runAgent)")
-    expect(operatorRouteDesktopActionsSource).toContain('from "@dotagents/shared/agent-run-utils"')
-    expect(operatorRouteDesktopActionsSource).toContain("runOperatorAgentAction(body, runAgent, agentActionOptions)")
+    expect(operatorRouteDesktopActionsSource).not.toContain('from "@dotagents/shared/agent-run-utils"')
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "const operatorAgentRouteActions = createOperatorAgentRouteActions(agentActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain("...operatorAgentRouteActions")
+    expect(operatorRouteDesktopActionsSource).not.toContain("runOperatorAgentAction(body, runAgent, agentActionOptions)")
     expect(operatorRouteDesktopActionsSource).toContain("service: {")
+    expect(sharedOperatorActionsSource).toContain("export interface OperatorAgentRouteActions")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorAgentRouteActions")
+    expect(sharedOperatorActionsSource).toContain(
+      "runOperatorAgent: (body, runAgent) => runOperatorAgentAction(body, runAgent, options)",
+    )
     expect(sharedOperatorActionsSource).toContain("export async function runOperatorAgentAction(")
     expect(sharedOperatorActionsSource).toContain("parseOperatorRunAgentRequestBody(body)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorRunAgentResponse(agentResult)")
@@ -1726,7 +1735,10 @@ describe("remote-server route registration", () => {
     expectRegisteredApiRoute(source, "POST", "operatorAgentSessionStop")
     expect(operatorRoutesSource).toContain("actions.stopOperatorAgentSession(params.sessionId)")
     expect(operatorRouteDesktopActionsSource).toContain("stopAgentSessionById")
-    expect(operatorRouteDesktopActionsSource).toContain("stopOperatorAgentSessionAction(sessionIdParam, agentActionOptions)")
+    expect(operatorRouteDesktopActionsSource).not.toContain("stopOperatorAgentSessionAction(sessionIdParam, agentActionOptions)")
+    expect(sharedOperatorActionsSource).toContain(
+      "stopOperatorAgentSession: (sessionIdParam) => stopOperatorAgentSessionAction(sessionIdParam, options)",
+    )
     expect(sharedOperatorActionsSource).toContain("export async function stopOperatorAgentSessionAction(")
     expect(sharedOperatorActionsSource).toContain("buildOperatorAgentSessionStopResponse(stopResult.sessionId, stopResult.conversationId)")
     // Message queue operator endpoints

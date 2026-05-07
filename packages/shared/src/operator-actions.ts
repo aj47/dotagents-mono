@@ -357,6 +357,11 @@ export interface OperatorAgentActionOptions {
   service: OperatorAgentActionService
 }
 
+export interface OperatorAgentRouteActions {
+  runOperatorAgent(body: unknown, runAgent: AgentRunExecutor): Promise<OperatorAgentActionResult>
+  stopOperatorAgentSession(sessionIdParam: string | undefined): Promise<OperatorAgentActionResult>
+}
+
 export type RunAgentResultLike = AgentRunResult
 
 export type OperatorHealthLike = Pick<OperatorHealthSnapshot, "overall" | "checks">
@@ -1806,6 +1811,15 @@ export async function stopOperatorAgentSessionAction(
     const response = buildOperatorActionErrorResponse("agent-session-stop", `Failed to stop agent session: ${errorMessage}`)
     options.diagnostics.logError("operator-agent-actions", `Failed to stop agent session ${sessionId}: ${errorMessage}`, caughtError)
     return operatorAgentActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
+export function createOperatorAgentRouteActions(
+  options: OperatorAgentActionOptions,
+): OperatorAgentRouteActions {
+  return {
+    runOperatorAgent: (body, runAgent) => runOperatorAgentAction(body, runAgent, options),
+    stopOperatorAgentSession: (sessionIdParam) => stopOperatorAgentSessionAction(sessionIdParam, options),
   }
 }
 

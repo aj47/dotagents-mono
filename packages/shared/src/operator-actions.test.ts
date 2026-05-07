@@ -73,6 +73,7 @@ import {
   clearOperatorDiscordLogsAction,
   connectOperatorDiscordAction,
   connectOperatorWhatsAppAction,
+  createOperatorAgentRouteActions,
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueRouteActions,
   createOperatorObservabilityRouteActions,
@@ -274,6 +275,23 @@ describe("operator action API helpers", () => {
         action: "agent-session-stop",
         success: false,
         failureReason: "Missing session ID",
+      },
+    })
+
+    const routeActions = createOperatorAgentRouteActions(options)
+    expect(await routeActions.runOperatorAgent({ prompt: "Route run" }, runAgent)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "run-agent",
+        content: "Done",
+      },
+    })
+    expect(await routeActions.stopOperatorAgentSession("session-1")).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "agent-session-stop",
       },
     })
 

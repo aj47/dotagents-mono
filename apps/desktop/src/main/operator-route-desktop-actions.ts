@@ -7,7 +7,6 @@ import type {
   LocalSpeechModelProviderId,
   LocalSpeechModelStatus,
 } from "@dotagents/shared/api-types"
-import type { AgentRunExecutor } from "@dotagents/shared/agent-run-utils"
 import { getErrorMessage } from "@dotagents/shared/error-utils"
 import {
   createOperatorLocalSpeechModelRouteActions,
@@ -50,16 +49,15 @@ import {
   buildOperatorMcpStopFailureAuditContext,
   buildOperatorMcpTestAuditContext,
   buildOperatorMcpTestFailureAuditContext,
+  createOperatorAgentRouteActions,
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueRouteActions,
   createOperatorObservabilityRouteActions,
   createOperatorTunnelRouteActions,
   createOperatorUpdaterRouteActions,
-  runOperatorAgentAction,
   restartOperatorAppAction as restartOperatorApp,
   restartOperatorRemoteServerAction as restartOperatorRemoteServer,
   rotateOperatorRemoteServerApiKeyAction,
-  stopOperatorAgentSessionAction,
   type OperatorActionAuditContext,
   type OperatorApiKeyActionOptions,
   type OperatorAgentActionOptions,
@@ -156,6 +154,8 @@ const agentActionOptions: OperatorAgentActionOptions = {
     stopAgentSessionById,
   },
 }
+
+const operatorAgentRouteActions = createOperatorAgentRouteActions(agentActionOptions)
 
 async function getLocalSpeechModelStatus(providerId: LocalSpeechModelProviderId): Promise<LocalSpeechModelStatus> {
   if (providerId === "parakeet") {
@@ -366,14 +366,6 @@ const updaterActionOptions: OperatorUpdaterActionOptions = {
 
 const operatorUpdaterRouteActions = createOperatorUpdaterRouteActions(MANUAL_RELEASES_URL, updaterActionOptions)
 
-async function runOperatorAgent(body: unknown, runAgent: AgentRunExecutor) {
-  return runOperatorAgentAction(body, runAgent, agentActionOptions)
-}
-
-async function stopOperatorAgentSession(sessionIdParam: string | undefined) {
-  return stopOperatorAgentSessionAction(sessionIdParam, agentActionOptions)
-}
-
 function getOperatorMcpStatus() {
   return getOperatorMcpStatusAction(operatorMcpReadActionOptions)
 }
@@ -421,8 +413,7 @@ function rotateOperatorRemoteServerApiKey() {
 }
 
 export const operatorRouteDesktopActions: OperatorRouteActions = {
-  runOperatorAgent,
-  stopOperatorAgentSession,
+  ...operatorAgentRouteActions,
   clearOperatorMcpServerLogs,
   getOperatorMcpServerLogs,
   getOperatorMcpStatus,
