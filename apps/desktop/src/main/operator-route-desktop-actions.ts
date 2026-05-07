@@ -10,6 +10,7 @@ import {
   type LocalSpeechModelActionOptions,
 } from "@dotagents/shared/local-speech-models"
 import {
+  createCustomModelPresetId,
   createOperatorModelPresetRouteActions,
   type ModelPresetActionOptions,
 } from "@dotagents/shared/model-presets"
@@ -115,7 +116,7 @@ const modelPresetActionOptions: ModelPresetActionOptions<Config> = {
     save: (config) => configStore.save(config),
   },
   diagnostics: diagnosticsService,
-  createPresetId: () => `custom-${crypto.randomUUID()}`,
+  createPresetId: () => createCustomModelPresetId(crypto.randomUUID),
   now: () => Date.now(),
 }
 

@@ -122,6 +122,10 @@ export interface ModelPresetActionOptions<TConfig extends ModelPresetActionConfi
   now(): number;
 }
 
+export function createCustomModelPresetId(createUniqueId: () => string): string {
+  return `custom-${createUniqueId()}`;
+}
+
 export interface OperatorModelPresetRouteActions {
   getOperatorModelPresets(secretMask: string): Promise<ModelPresetActionResult>;
   createOperatorModelPreset(body: unknown, secretMask: string): Promise<ModelPresetActionResult>;

@@ -12,6 +12,7 @@ import {
   buildModelPresetUpdatePatch,
   buildModelPresetUpdateAuditContext,
   buildModelPresetsResponse,
+  createCustomModelPresetId,
   createOperatorModelPresetAction,
   createOperatorModelPresetRouteActions,
   deleteOperatorModelPresetAction,
@@ -39,6 +40,10 @@ import {
 import { DEFAULT_AGENT_PROVIDER_ID, DEFAULT_MODEL_PRESET_ID, type ModelPreset } from './providers';
 
 describe('model preset helpers', () => {
+  it('creates custom model preset ids from injected unique ids', () => {
+    expect(createCustomModelPresetId(() => 'preset-uuid')).toBe('custom-preset-uuid');
+  });
+
   it('merges built-in presets with saved overrides and custom presets', () => {
     const presets = getMergedModelPresets({
       openaiApiKey: 'sk-legacy',

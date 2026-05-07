@@ -2152,8 +2152,9 @@ describe("remote-server route registration", () => {
       "getOperatorModelPresetsAction(secretMask, modelPresetActionOptions)",
     )
     expect(operatorRouteDesktopActionsSource).toContain(
-      "createPresetId: () => `custom-${crypto.randomUUID()}`",
+      "createPresetId: () => createCustomModelPresetId(crypto.randomUUID)",
     )
+    expect(operatorRouteDesktopActionsSource).not.toContain("`custom-${crypto.randomUUID()}`")
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "createOperatorModelPresetAction(body, secretMask, modelPresetActionOptions)",
     )
@@ -2165,6 +2166,7 @@ describe("remote-server route registration", () => {
     )
     expect(source).toContain("PROVIDER_SECRET_MASK")
     expect(sharedModelPresetsSource).toContain("export interface ModelPresetActionOptions")
+    expect(sharedModelPresetsSource).toContain("export function createCustomModelPresetId(")
     expect(sharedModelPresetsSource).toContain("export interface OperatorModelPresetRouteActions")
     expect(sharedModelPresetsSource).toContain("export function createOperatorModelPresetRouteActions")
     expect(sharedModelPresetsSource).toContain("getOperatorModelPresets: (secretMask) => getOperatorModelPresetsAction(secretMask, options)")
