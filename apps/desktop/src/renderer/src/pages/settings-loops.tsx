@@ -15,7 +15,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@renderer/components/ui/card"
 import { Badge } from "@renderer/components/ui/badge"
 import { Trash2, Plus, Edit2, Save, X, Play, Clock, FileText } from "lucide-react"
-import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { rendererHandlers } from "@renderer/lib/tipc-client"
+import { desktopLoopsClient } from "@renderer/lib/desktop-loops-client"
 import { cn } from "@renderer/lib/utils"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import type { LoopConfig } from "@dotagents/shared/types"
@@ -25,7 +26,7 @@ import {
   formatAgentSessionCandidateLabel,
   type AgentSessionCandidateOption,
 } from "@dotagents/shared/agent-session-candidates"
-import type { AgentSessionCandidatesResponse } from "@dotagents/shared/api-types"
+import type { AgentSessionCandidatesResponse, LoopRuntimeStatus } from "@dotagents/shared/api-types"
 import {
   buildRepeatTaskScheduleFromDraft,
   DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
@@ -57,13 +58,6 @@ interface EditingLoop {
   scheduleMode: RepeatTaskScheduleMode
   scheduleTimes: string[]       // HH:MM entries (used by daily + weekly)
   scheduleDaysOfWeek: number[]  // 0-6 Sun..Sat (used by weekly)
-}
-
-interface LoopRuntimeStatus {
-  id: string
-  isRunning: boolean
-  nextRunAt?: number
-  lastRunAt?: number
 }
 
 const emptyLoop: EditingLoop = {
@@ -141,18 +135,18 @@ export function SettingsLoops() {
 
   const loopsQuery = useQuery({
     queryKey: ["loops"],
-    queryFn: async () => tipcClient.getLoops() as Promise<LoopConfig[]>,
+    queryFn: async () => desktopLoopsClient.getLoops(),
   })
 
   const loopStatusesQuery = useQuery({
     queryKey: ["loop-statuses"],
-    queryFn: async () => tipcClient.getLoopStatuses() as Promise<LoopRuntimeStatus[]>,
+    queryFn: async () => desktopLoopsClient.getLoopStatuses(),
     refetchInterval: 5000,
   })
 
   const sessionCandidatesQuery = useQuery({
     queryKey: ["loop-session-candidates"],
-    queryFn: async () => tipcClient.listAgentSessionCandidates({ limit: 20 }),
+    queryFn: async () => desktopLoopsClient.listAgentSessionCandidates(20),
     refetchOnWindowFocus: true,
   })
 
@@ -205,7 +199,7 @@ export function SettingsLoops() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this repeat task?")) return
     try {
-      await tipcClient.deleteLoop({ loopId: id })
+      await desktopLoopsClient.deleteLoop(id)
       queryClient.invalidateQueries({ queryKey: ["loops"] })
       queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
       toast.success("Task deleted")
@@ -262,7 +256,7 @@ export function SettingsLoops() {
     }
 
     try {
-      const saveResult = await tipcClient.saveLoop({ loop: loopData })
+      const saveResult = await desktopLoopsClient.saveLoop(loopData)
       if (saveResult?.success === false) {
         toast.error("Failed to save task")
         return
@@ -274,9 +268,9 @@ export function SettingsLoops() {
 
       // Start/stop loop based on enabled state
       if (loopData.enabled) {
-        await tipcClient.startLoop?.({ loopId: loopData.id })
+        await desktopLoopsClient.startLoop(loopData.id)
       } else {
-        await tipcClient.stopLoop?.({ loopId: loopData.id })
+        await desktopLoopsClient.stopLoop(loopData.id)
       }
       queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
     } catch {
@@ -287,7 +281,7 @@ export function SettingsLoops() {
   const handleToggleEnabled = async (loop: LoopConfig) => {
     const updatedLoop = { ...loop, enabled: !loop.enabled }
     try {
-      const saveResult = await tipcClient.saveLoop({ loop: updatedLoop })
+      const saveResult = await desktopLoopsClient.saveLoop(updatedLoop)
       if (saveResult?.success === false) {
         toast.error("Failed to update task")
         return
@@ -295,9 +289,9 @@ export function SettingsLoops() {
       queryClient.invalidateQueries({ queryKey: ["loops"] })
 
       if (updatedLoop.enabled) {
-        await tipcClient.startLoop?.({ loopId: loop.id })
+        await desktopLoopsClient.startLoop(loop.id)
       } else {
-        await tipcClient.stopLoop?.({ loopId: loop.id })
+        await desktopLoopsClient.stopLoop(loop.id)
       }
       queryClient.invalidateQueries({ queryKey: ["loop-statuses"] })
       toast.success(updatedLoop.enabled ? "Task enabled" : "Task disabled")
@@ -308,7 +302,7 @@ export function SettingsLoops() {
 
   const handleRunNow = async (loop: LoopConfig) => {
     try {
-      const result = await tipcClient.triggerLoop?.({ loopId: loop.id })
+      const result = await desktopLoopsClient.runLoop(loop.id)
       if (result && !result.success) {
         toast.error(`Could not trigger "${loop.name}" right now`)
         return
@@ -321,7 +315,7 @@ export function SettingsLoops() {
 
   const handleOpenTaskFile = async (loop: LoopConfig) => {
     try {
-      const result = await tipcClient.openLoopTaskFile({ loopId: loop.id })
+      const result = await desktopLoopsClient.openLoopTaskFile(loop.id)
       if (!result?.success) {
         toast.error(result?.error || "Failed to reveal task file")
       }

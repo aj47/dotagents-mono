@@ -1,0 +1,44 @@
+import { readFileSync } from "node:fs"
+import { describe, expect, it } from "vitest"
+
+const clientSource = readFileSync(new URL("./desktop-loops-client.ts", import.meta.url), "utf8")
+const settingsLoopsSource = readFileSync(new URL("../pages/settings-loops.tsx", import.meta.url), "utf8")
+
+describe("desktop loops renderer client", () => {
+  it("centralizes repeat-task IPC channels behind shared loop types", () => {
+    expect(clientSource).toContain("LoopConfig")
+    expect(clientSource).toContain("LoopRuntimeStatus")
+    expect(clientSource).toContain("AgentSessionCandidatesResponse")
+    expect(clientSource).toContain("tipcClient.getLoops()")
+    expect(clientSource).toContain("tipcClient.getLoopStatuses()")
+    expect(clientSource).toContain("tipcClient.listAgentSessionCandidates({ limit })")
+    expect(clientSource).toContain("tipcClient.saveLoop({ loop })")
+    expect(clientSource).toContain("tipcClient.deleteLoop({ loopId })")
+    expect(clientSource).toContain("tipcClient.startLoop?.({ loopId })")
+    expect(clientSource).toContain("tipcClient.stopLoop?.({ loopId })")
+    expect(clientSource).toContain("tipcClient.triggerLoop?.({ loopId })")
+    expect(clientSource).toContain("tipcClient.openLoopTaskFile({ loopId })")
+    expect(clientSource).not.toContain("window.electron.ipcRenderer")
+  })
+
+  it("keeps the settings loops UI off direct repeat-task IPC channels", () => {
+    expect(settingsLoopsSource).toContain("desktopLoopsClient.getLoops()")
+    expect(settingsLoopsSource).toContain("desktopLoopsClient.getLoopStatuses()")
+    expect(settingsLoopsSource).toContain("desktopLoopsClient.listAgentSessionCandidates(20)")
+    expect(settingsLoopsSource).toContain("desktopLoopsClient.saveLoop(loopData)")
+    expect(settingsLoopsSource).toContain("desktopLoopsClient.deleteLoop(id)")
+    expect(settingsLoopsSource).toContain("desktopLoopsClient.startLoop(loopData.id)")
+    expect(settingsLoopsSource).toContain("desktopLoopsClient.stopLoop(loopData.id)")
+    expect(settingsLoopsSource).toContain("desktopLoopsClient.runLoop(loop.id)")
+    expect(settingsLoopsSource).toContain("desktopLoopsClient.openLoopTaskFile(loop.id)")
+    expect(settingsLoopsSource).not.toContain("tipcClient.getLoops()")
+    expect(settingsLoopsSource).not.toContain("tipcClient.getLoopStatuses()")
+    expect(settingsLoopsSource).not.toContain("tipcClient.listAgentSessionCandidates(")
+    expect(settingsLoopsSource).not.toContain("tipcClient.saveLoop(")
+    expect(settingsLoopsSource).not.toContain("tipcClient.deleteLoop(")
+    expect(settingsLoopsSource).not.toContain("tipcClient.startLoop")
+    expect(settingsLoopsSource).not.toContain("tipcClient.stopLoop")
+    expect(settingsLoopsSource).not.toContain("tipcClient.triggerLoop")
+    expect(settingsLoopsSource).not.toContain("tipcClient.openLoopTaskFile(")
+  })
+})

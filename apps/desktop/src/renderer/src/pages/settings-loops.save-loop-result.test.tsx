@@ -17,7 +17,7 @@ describe("desktop repeat-task save result handling", () => {
   it("does not treat create persistence failures as successful saves", () => {
     const handleSaveSection = getSection(settingsLoopsSource, "  const handleSave = async () => {", "  const handleToggleEnabled = async")
 
-    expect(handleSaveSection).toContain("const saveResult = await tipcClient.saveLoop({ loop: loopData })")
+    expect(handleSaveSection).toContain("const saveResult = await desktopLoopsClient.saveLoop(loopData)")
     expect(handleSaveSection).toContain("if (saveResult?.success === false) {")
     expect(handleSaveSection).toContain('toast.error("Failed to save task")')
 
@@ -31,7 +31,7 @@ describe("desktop repeat-task save result handling", () => {
   it("does not treat toggle persistence failures as successful updates", () => {
     const toggleSection = getSection(settingsLoopsSource, "  const handleToggleEnabled = async (loop: LoopConfig) => {", "  const handleRunNow = async")
 
-    expect(toggleSection).toContain("const saveResult = await tipcClient.saveLoop({ loop: updatedLoop })")
+    expect(toggleSection).toContain("const saveResult = await desktopLoopsClient.saveLoop(updatedLoop)")
     expect(toggleSection).toContain("if (saveResult?.success === false) {")
     expect(toggleSection).toContain('toast.error("Failed to update task")')
 
