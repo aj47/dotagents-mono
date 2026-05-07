@@ -83,7 +83,7 @@ import {
   parseMcpServerConfigImportRequestBody,
 } from "@dotagents/shared/mcp-api"
 import { conversationService } from "./conversation-service"
-import { RendererHandlers } from "./renderer-handlers"
+import type { RendererHandlers } from "@shared/renderer-handlers"
 import {
   postProcessTranscript,
   processTranscriptWithTools,

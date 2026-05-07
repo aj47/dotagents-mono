@@ -2,7 +2,7 @@ import { createMessageQueueStore } from "@dotagents/shared/message-queue-store"
 import type { MessageQueue, QueuedMessage } from "@dotagents/shared/message-queue-utils"
 import { logApp } from "./debug"
 import { getRendererHandlers } from "@egoist/tipc/main"
-import { RendererHandlers } from "./renderer-handlers"
+import type { RendererHandlers } from "@shared/renderer-handlers"
 import { WINDOWS } from "./window"
 
 /**

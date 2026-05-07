@@ -1,6 +1,6 @@
 import { createClient, createEventHandlers } from "@egoist/tipc/renderer"
 import type { Router } from "../../../main/tipc"
-import type { RendererHandlers } from "../../../main/renderer-handlers"
+import type { RendererHandlers } from "@shared/renderer-handlers"
 
 const rawClient = createClient<Router>({
   // pass ipcRenderer.invoke function to the client

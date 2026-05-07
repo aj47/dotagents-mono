@@ -1,6 +1,6 @@
 import { getRendererHandlers } from "@egoist/tipc/main"
 import { agentSessionTracker } from "./agent-session-tracker"
-import { RendererHandlers } from "./renderer-handlers"
+import type { RendererHandlers } from "@shared/renderer-handlers"
 import { WINDOWS, minimizeAgentModeAndHidePanelWindow } from "./window"
 
 function broadcastSessionSnoozed(sessionId: string, isSnoozed: boolean): void {

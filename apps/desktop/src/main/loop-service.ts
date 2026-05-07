@@ -24,7 +24,7 @@ import {
   type SessionProfileSnapshot,
 } from "@dotagents/core"
 import { formatRepeatTaskTitle } from "@dotagents/shared/repeat-task-utils"
-import type { RendererHandlers } from "./renderer-handlers"
+import type { RendererHandlers } from "@shared/renderer-handlers"
 import { WINDOWS } from "./window"
 import { getAgentsLayerPaths } from "@dotagents/core"
 import {

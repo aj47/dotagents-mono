@@ -3,7 +3,8 @@
  * Tracks only active agent sessions for visibility in sidebar
  */
 
-import type { RendererHandlers } from "./renderer-handlers"
+import type { AgentSession } from "@shared/agent-session-types"
+import type { RendererHandlers } from "@shared/renderer-handlers"
 import { join } from "path"
 import { logApp } from "./debug"
 import { WINDOWS } from "./window"
@@ -13,25 +14,7 @@ import { clearSessionUserResponse } from "./session-user-response-store"
 import { dataFolder } from "./config"
 import { loadPersistedJson, savePersistedJson } from "./session-persistence"
 
-export interface AgentSession {
-  id: string
-  conversationId?: string
-  conversationTitle?: string
-  status: "active" | "completed" | "error" | "stopped"
-  startTime: number
-  endTime?: number
-  currentIteration?: number
-  maxIterations?: number
-  lastActivity?: string
-  errorMessage?: string
-  isSnoozed?: boolean // When true, session runs in background without stealing focus
-  isRepeatTask?: boolean // True for sessions created by repeat-task/loop execution
-  /**
-   * Profile snapshot captured at session creation time.
-   * This ensures session isolation - changes to the global profile don't affect running sessions.
-   */
-  profileSnapshot?: SessionProfileSnapshot
-}
+export type { AgentSession } from "@shared/agent-session-types"
 
 type PersistedAgentSessionState = {
   version: 1

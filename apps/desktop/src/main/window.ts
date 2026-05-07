@@ -7,7 +7,7 @@ import {
 } from "electron"
 import path from "path"
 import { getRendererHandlers } from "@egoist/tipc/main"
-import { RendererHandlers } from "./renderer-handlers"
+import type { RendererHandlers } from "@shared/renderer-handlers"
 import { logApp, logUI } from "./debug"
 import { ensureAppSwitcherPresence, showAndFocusMainWindow } from "./app-switcher"
 import { configStore } from "./config"

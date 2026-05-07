@@ -1,6 +1,6 @@
 import { getRendererHandlers } from "@egoist/tipc/main"
 import { diagnosticsService } from "./diagnostics"
-import type { RendererHandlers } from "./renderer-handlers"
+import type { RendererHandlers } from "@shared/renderer-handlers"
 import { WINDOWS } from "./window"
 
 // Track webContents IDs that already have a pending did-finish-load notification queued,
