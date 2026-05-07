@@ -3026,7 +3026,7 @@ export default function SettingsScreen({ navigation }: any) {
                         styles.providerOption,
                         getAgentProvider() === provider.value && styles.providerOptionActive,
                       ]}
-                      onPress={() => handleProviderChange(provider.value as 'openai' | 'groq' | 'gemini' | 'chatgpt-web')}
+                      onPress={() => handleProviderChange(provider.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
@@ -3223,20 +3223,20 @@ export default function SettingsScreen({ navigation }: any) {
                 {/* Model Settings */}
                 <Text style={styles.label}>Provider</Text>
                 <View style={styles.providerSelector}>
-                  {(['openai', 'groq', 'gemini', 'chatgpt-web'] as const).map((provider) => (
+                  {CHAT_PROVIDERS.map((provider) => (
                     <Pressable
-                      key={provider}
+                      key={provider.value}
                       style={[
                         styles.providerOption,
-                        getAgentProvider() === provider && styles.providerOptionActive,
+                        getAgentProvider() === provider.value && styles.providerOptionActive,
                       ]}
-                      onPress={() => handleProviderChange(provider)}
+                      onPress={() => handleProviderChange(provider.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        getAgentProvider() === provider && styles.providerOptionTextActive,
+                        getAgentProvider() === provider.value && styles.providerOptionTextActive,
                       ]}>
-                        {provider === 'chatgpt-web' ? 'OpenAI Codex' : provider.charAt(0).toUpperCase() + provider.slice(1)}
+                        {provider.label}
                       </Text>
                     </Pressable>
                   ))}

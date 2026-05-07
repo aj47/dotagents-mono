@@ -88,6 +88,8 @@ test('keeps profile/model actions text-first and explicitly labeled', () => {
   assert.match(settingsSource, /CODEX_TEXT_VERBOSITY_OPTIONS/);
   assert.match(settingsSource, /DEFAULT_CODEX_REASONING_EFFORT/);
   assert.match(settingsSource, /DEFAULT_CODEX_TEXT_VERBOSITY/);
+  assert.match(profileModelSection, /CHAT_PROVIDERS\.map/);
+  assert.doesNotMatch(settingsSource, /\(\['openai', 'groq', 'gemini', 'chatgpt-web'\] as const\)/);
   assert.match(profileModelSection, />Codex Options</);
   assert.match(profileModelSection, /getAgentProvider\(\) === 'chatgpt-web'/);
   assert.match(profileModelSection, /remoteSettings\.openaiReasoningEffort \|\| DEFAULT_CODEX_REASONING_EFFORT/);
