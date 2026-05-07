@@ -20,6 +20,7 @@ import {
 } from "@renderer/components/ui/dropdown-menu"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { desktopSkillsClient } from "@renderer/lib/desktop-skills-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
 import type { LegacyProfileRecord as Profile } from "@dotagents/shared/agent-profile-legacy-converters"
@@ -52,7 +53,7 @@ export function Component() {
   const skillsQuery = useQuery({
     queryKey: ["skills"],
     queryFn: async () => {
-      return await tipcClient.getSkills()
+      return await desktopSkillsClient.getSkills()
     },
   })
 
@@ -93,7 +94,7 @@ export function Component() {
     const unsubscribe = rendererHandlers.skillsFolderChanged.listen(async () => {
       try {
         // Auto-scan and refresh skills when folder changes
-        const importedSkills = await tipcClient.scanSkillsFolder()
+        const importedSkills = await desktopSkillsClient.scanSkillsFolder()
         queryClient.invalidateQueries({ queryKey: ["skills"] })
         if (importedSkills && importedSkills.length > 0) {
           toast.success(`Auto-imported ${importedSkills.length} skill(s)`)
@@ -108,7 +109,7 @@ export function Component() {
 
   const createSkillMutation = useMutation({
     mutationFn: async ({ name, description, instructions }: { name: string; description: string; instructions: string }) => {
-      return await tipcClient.createSkill({ name, description, instructions })
+      return await desktopSkillsClient.createSkill({ name, description, instructions })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
@@ -123,7 +124,7 @@ export function Component() {
 
   const updateSkillMutation = useMutation({
     mutationFn: async ({ id, name, description, instructions }: { id: string; name?: string; description?: string; instructions?: string }) => {
-      return await tipcClient.updateSkill({ id, name, description, instructions })
+      return await desktopSkillsClient.updateSkill({ id, name, description, instructions })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
@@ -138,7 +139,7 @@ export function Component() {
 
   const deleteSkillMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await tipcClient.deleteSkill({ id })
+      return await desktopSkillsClient.deleteSkill(id)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
@@ -151,7 +152,7 @@ export function Component() {
 
   const toggleProfileSkillMutation = useMutation({
     mutationFn: async ({ profileId, skillId }: ToggleProfileSkillVariables) => {
-      return await tipcClient.toggleProfileSkill({ profileId, skillId })
+      return await desktopSkillsClient.toggleProfileSkill(profileId, skillId)
     },
     onSuccess: (_profile, { willEnable, skillName }) => {
       queryClient.invalidateQueries({ queryKey: ["currentProfile"] })
@@ -165,7 +166,7 @@ export function Component() {
 
   const deleteSkillsMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      return await tipcClient.deleteSkills({ ids })
+      return await desktopSkillsClient.deleteSkills(ids)
     },
     onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
@@ -183,7 +184,7 @@ export function Component() {
 
   const importSkillMutation = useMutation({
     mutationFn: async () => {
-      return await tipcClient.importSkillFile()
+      return await desktopSkillsClient.importSkillFile()
     },
     onSuccess: (skill: AgentSkill | null) => {
       if (skill) {
@@ -199,7 +200,7 @@ export function Component() {
   // Import a single skill folder containing SKILL.md
   const importSkillFolderMutation = useMutation({
     mutationFn: async () => {
-      return await tipcClient.importSkillFolder()
+      return await desktopSkillsClient.importSkillFolder()
     },
     onSuccess: (skill: AgentSkill | null) => {
       if (skill) {
@@ -215,7 +216,7 @@ export function Component() {
   // Bulk import all skill folders from a parent directory
   const importSkillsFromParentFolderMutation = useMutation({
     mutationFn: async () => {
-      return await tipcClient.importSkillsFromParentFolder()
+      return await desktopSkillsClient.importSkillsFromParentFolder()
     },
     onSuccess: (result: { imported: AgentSkill[]; skipped: string[]; errors: Array<{ folder: string; error: string }> } | null) => {
       if (result) {
@@ -249,7 +250,7 @@ export function Component() {
 
   const exportSkillMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await tipcClient.saveSkillFile({ id })
+      return await desktopSkillsClient.exportSkillFile(id)
     },
     onSuccess: (success: boolean) => {
       if (success) {
@@ -293,7 +294,7 @@ export function Component() {
 
   const openSkillFileMutation = useMutation({
     mutationFn: async (skillId: string) => {
-      return await tipcClient.openSkillFile({ skillId })
+      return await desktopSkillsClient.openSkillFile(skillId)
     },
     onSuccess: (result) => {
       if (!result?.success) {
@@ -307,7 +308,7 @@ export function Component() {
 
   const openSkillsFolderMutation = useMutation({
     mutationFn: async () => {
-      return await tipcClient.openSkillsFolder()
+      return await desktopSkillsClient.openSkillsFolder()
     },
     onSuccess: (result) => {
       if (!result?.success) {
@@ -321,7 +322,7 @@ export function Component() {
 
   const openWorkspaceSkillsFolderMutation = useMutation({
     mutationFn: async () => {
-      return await tipcClient.openWorkspaceSkillsFolder()
+      return await desktopSkillsClient.openWorkspaceSkillsFolder()
     },
     onSuccess: (result) => {
       if (!result?.success) {
@@ -335,7 +336,7 @@ export function Component() {
 
   const scanSkillsFolderMutation = useMutation({
     mutationFn: async () => {
-      return await tipcClient.scanSkillsFolder()
+      return await desktopSkillsClient.scanSkillsFolder()
     },
     onSuccess: (importedSkills: AgentSkill[]) => {
       queryClient.invalidateQueries({ queryKey: ["skills"] })
@@ -353,7 +354,7 @@ export function Component() {
   // Import skill from GitHub repository
   const importSkillFromGitHubMutation = useMutation({
     mutationFn: async (repoIdentifier: string) => {
-      return await tipcClient.importSkillFromGitHub({ repoIdentifier })
+      return await desktopSkillsClient.importSkillFromGitHub(repoIdentifier)
     },
     onSuccess: (result) => {
       if (result) {
