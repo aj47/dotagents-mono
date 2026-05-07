@@ -32,7 +32,7 @@ import {
   Power,
   PowerOff,
 } from "lucide-react"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopMcpToolsClient } from "@renderer/lib/desktop-mcp-tools-client"
 import { toast } from "sonner"
 import type { DetailedToolInfo } from "@dotagents/shared/mcp-utils"
 
@@ -53,7 +53,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
   useEffect(() => {
     const fetchTools = async () => {
       try {
-        const toolList = await tipcClient.getMcpDetailedToolList({})
+        const toolList = await desktopMcpToolsClient.getDetailedToolList()
         setTools(toolList as any)
       } catch (error) {}
     }
@@ -113,7 +113,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
       )
 
       // Call the backend API
-      const result = await tipcClient.setMcpToolEnabled({ toolName, enabled })
+      const result = await desktopMcpToolsClient.setToolEnabled(toolName, enabled)
 
       if ((result as any).success) {
         // Call the callback if provided
@@ -171,7 +171,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
 
     // Track promises for all backend calls
     const promises = sourceTools.map((tool) =>
-      tipcClient.setMcpToolEnabled({ toolName: tool.name, enabled: enable }),
+      desktopMcpToolsClient.setToolEnabled(tool.name, enable),
     )
 
     try {
