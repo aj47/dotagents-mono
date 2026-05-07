@@ -3,6 +3,7 @@ import { Image, Platform, Pressable, StyleSheet, Text, View, type ImageStyle, ty
 import Markdown from 'react-native-markdown-display';
 import {
   buildConversationImageAssetHttpUrl,
+  isAllowedMarkdownImageUrl,
   isAllowedMarkdownLinkUrl,
   parseConversationImageAssetUrl,
 } from '@dotagents/shared/conversation-media-assets';
@@ -21,8 +22,9 @@ interface MarkdownRendererProps {
 const ThinkSection: React.FC<{
   content: string;
   markdownStyles: any;
+  markdownRules: any;
   styles: any;
-}> = ({ content, markdownStyles, styles }) => {
+}> = ({ content, markdownStyles, markdownRules, styles }) => {
   const [collapsed, setCollapsed] = React.useState(true);
 
   return (
@@ -40,7 +42,7 @@ const ThinkSection: React.FC<{
       </Pressable>
       {!collapsed && content.trim().length > 0 && (
         <View style={styles.content}>
-          <Markdown style={markdownStyles} onLinkPress={isAllowedMarkdownLinkUrl}>
+          <Markdown style={markdownStyles} rules={markdownRules} onLinkPress={isAllowedMarkdownLinkUrl}>
             {content}
           </Markdown>
         </View>
@@ -341,12 +343,16 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   const markdownRules = React.useMemo(() => ({
     image: (node: any) => {
       const src = String(node.attributes?.src || '');
+      const alt = typeof node.attributes?.alt === 'string' ? node.attributes.alt : undefined;
       if (!src) return null;
+      if (!isAllowedMarkdownImageUrl(src)) {
+        return <Text key={node.key}>{alt || 'Image'}</Text>;
+      }
       return (
         <MarkdownImage
           key={node.key}
           sourceUrl={src}
-          alt={node.attributes?.alt}
+          alt={alt}
           assetBaseUrl={assetBaseUrl}
           authToken={assetAuthToken}
           style={markdownStyles.image}
@@ -376,6 +382,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               key={`think-${index}`}
               content={part.content}
               markdownStyles={markdownStyles}
+              markdownRules={markdownRules}
               styles={thinkStyles}
             />
           );
