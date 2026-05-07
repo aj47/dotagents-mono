@@ -21,29 +21,23 @@ import {
   Layers,
   Edit2,
 } from "lucide-react"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import {
+  desktopSandboxClient,
+  type DesktopSandboxState,
+  type DesktopSandboxSlot,
+} from "@renderer/lib/desktop-sandbox-client"
 import { toast } from "sonner"
 import { cn } from "@renderer/lib/utils"
 
-interface SandboxSlot {
-  name: string
-  createdAt: string
-  updatedAt: string
-  isDefault: boolean
-  sourceBundleName?: string
-}
-
-interface SandboxState {
-  activeSlot: string | null
-  slots: SandboxSlot[]
-}
+type SandboxSlot = DesktopSandboxSlot
+type SandboxState = DesktopSandboxState
 
 const SANDBOX_QUERY_KEY = ["sandbox-state"]
 
 function useSandboxState() {
   return useQuery<SandboxState>({
     queryKey: SANDBOX_QUERY_KEY,
-    queryFn: () => tipcClient.getSandboxState(),
+    queryFn: () => desktopSandboxClient.getSandboxState(),
     staleTime: 5_000,
   })
 }
@@ -67,7 +61,7 @@ export function SandboxSlotSwitcher() {
   const handleSaveBaseline = async () => {
     setSaving(true)
     try {
-      const result = await tipcClient.saveBaseline()
+      const result = await desktopSandboxClient.saveBaseline()
       if (result.success) {
         toast.success("Baseline saved")
         invalidate()
@@ -84,7 +78,7 @@ export function SandboxSlotSwitcher() {
   const handleSwitchSlot = async (slotName: string) => {
     setSwitching(slotName)
     try {
-      const result = await tipcClient.switchToSlot({ name: slotName })
+      const result = await desktopSandboxClient.switchToSlot(slotName)
       if (result.success) {
         toast.success(`Switched to "${slotName}"`)
         invalidate()
@@ -101,7 +95,7 @@ export function SandboxSlotSwitcher() {
   const handleRestoreBaseline = async () => {
     setSwitching("default")
     try {
-      const result = await tipcClient.restoreBaseline()
+      const result = await desktopSandboxClient.restoreBaseline()
       if (result.success) {
         toast.success("Restored to baseline")
         invalidate()
@@ -134,7 +128,7 @@ export function SandboxSlotSwitcher() {
 
     setSaving(true)
     try {
-      const result = await tipcClient.saveCurrentAsSlot({ name: newSlotName.trim() })
+      const result = await desktopSandboxClient.saveCurrentAsSlot(newSlotName.trim())
       if (result.success) {
         toast.success(`Slot "${result.slot?.name ?? newSlotName.trim()}" created`)
         setShowNewSlotDialog(false)
@@ -152,7 +146,7 @@ export function SandboxSlotSwitcher() {
 
   const handleDeleteSlot = async (slotName: string) => {
     try {
-      const result = await tipcClient.deleteSlot({ name: slotName })
+      const result = await desktopSandboxClient.deleteSlot(slotName)
       if (result.success) {
         toast.success(`Slot "${slotName}" deleted`)
         setShowDeleteConfirm(null)
@@ -168,7 +162,7 @@ export function SandboxSlotSwitcher() {
   const handleRenameSlot = async (oldName: string) => {
     if (!renameValue.trim()) return
     try {
-      const result = await tipcClient.renameSlot({ oldName, newName: renameValue.trim() })
+      const result = await desktopSandboxClient.renameSlot(oldName, renameValue.trim())
       if (result.success) {
         toast.success(`Slot renamed to "${result.slot?.name ?? renameValue.trim()}"`)
         setRenamingSlot(null)
@@ -448,7 +442,7 @@ export function SandboxSlotIndicator() {
   const handleRestore = async () => {
     setRestoring(true)
     try {
-      const result = await tipcClient.restoreBaseline()
+      const result = await desktopSandboxClient.restoreBaseline()
       if (result.success) {
         toast.success("Restored to baseline")
         queryClient.invalidateQueries({ queryKey: SANDBOX_QUERY_KEY })
