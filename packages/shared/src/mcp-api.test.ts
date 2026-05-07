@@ -32,6 +32,7 @@ import {
   buildMcpServerToggleResponse,
   buildOperatorMcpStatusResponse,
   callInjectedMcpToolAction,
+  createInjectedMcpProtocolRouteAction,
   clearOperatorMcpServerLogsAction,
   createInjectedMcpToolRouteActions,
   createMcpRouteActions,
@@ -1501,6 +1502,239 @@ describe("MCP API helpers", () => {
     ])
     expect(logs).toContain("Denied injected MCP tools/list request without valid ACP session context")
     expect(logs).toContain("Denied injected MCP tools/call request without valid ACP session context")
+  })
+
+  it("runs injected MCP protocol sessions through shared protocol adapters", async () => {
+    type ProtocolRequest = {
+      method: string
+      headers: Record<string, string | string[] | undefined>
+      body?: unknown
+      raw: { id: string }
+    }
+    type ProtocolReply = {
+      statusCode?: number
+      body?: unknown
+      sent: boolean
+      hijacked: boolean
+      raw: { id: string }
+    }
+    type TestServer = {
+      token: string
+      closed: boolean
+    }
+    type TestTransport = {
+      sessionId?: string
+      onclose?: () => Promise<void>
+      requests: Array<{ rawRequest: unknown; rawReply: unknown; body?: unknown }>
+      handleRequest(rawRequest: unknown, rawReply: unknown, body?: unknown): Promise<void>
+    }
+
+    const logs: string[] = []
+    const serverEvents: string[] = []
+    const transports: TestTransport[] = []
+    const createReply = (): ProtocolReply => ({
+      sent: false,
+      hijacked: false,
+      raw: { id: `reply-${Math.random()}` },
+    })
+    const createRequest = (
+      method: string,
+      body?: unknown,
+      headers: Record<string, string | string[] | undefined> = {},
+    ): ProtocolRequest => ({
+      method,
+      body,
+      headers,
+      raw: { id: `${method.toLowerCase()}-${transports.length}` },
+    })
+
+    const handleInjectedMcpProtocolRequest = createInjectedMcpProtocolRouteAction<
+      ProtocolRequest,
+      ProtocolReply,
+      TestServer,
+      TestTransport,
+      { appSessionId: string }
+    >({
+      action: {
+        invalidSessionContextError: "Unauthorized: invalid ACP session context",
+        service: {
+          getInjectedRuntimeTools: (token: string | undefined) =>
+            token === "valid" || token === "throw-connect"
+              ? {
+                requestContext: { appSessionId: "app-1" },
+                tools: [],
+              }
+              : undefined,
+          executeInjectedRuntimeTool: async () => null,
+        },
+        diagnostics: {
+          logWarning: (_source, message) => { logs.push(`warn:${message}`) },
+          logError: (_source, message, error) => {
+            logs.push(`error:${message}:${error instanceof Error ? error.message : String(error)}`)
+          },
+          getErrorMessage: (error) => error instanceof Error ? error.message : String(error),
+        },
+      },
+      protocol: {
+        createServer: (token) => {
+          serverEvents.push(`server:${token}`)
+          return { token, closed: false }
+        },
+        createTransport: (transportOptions) => {
+          const transport: TestTransport = {
+            requests: [],
+            async handleRequest(rawRequest, rawReply, body) {
+              this.requests.push({ rawRequest, rawReply, body })
+              if (!this.sessionId) {
+                this.sessionId = transportOptions.sessionIdGenerator()
+                transportOptions.onsessioninitialized(this.sessionId)
+              }
+            },
+          }
+          transports.push(transport)
+          return transport
+        },
+        createSessionId: () => `session-${transports.length}`,
+        isInitializeRequest: (body) =>
+          !!body && typeof body === "object" && (body as { method?: unknown }).method === "initialize",
+      },
+      server: {
+        connect: (server) => {
+          serverEvents.push(`connect:${server.token}`)
+          if (server.token === "throw-connect") {
+            throw new Error("connect denied")
+          }
+        },
+        close: (server) => {
+          server.closed = true
+          serverEvents.push(`close:${server.token}`)
+        },
+      },
+      transport: {
+        getSessionId: (transport) => transport.sessionId,
+        setOnClose: (transport, onClose) => { transport.onclose = onClose },
+        handleRequest: (transport, rawRequest, rawReply, body) =>
+          transport.handleRequest(rawRequest, rawReply, body),
+      },
+      request: {
+        getMethod: (request) => request.method,
+        getHeader: (request, headerName) => request.headers[headerName],
+        getBody: (request) => request.body,
+        getRawRequest: (request) => request.raw,
+      },
+      response: {
+        send: (reply, statusCode, body) => {
+          reply.statusCode = statusCode
+          reply.body = body
+          reply.sent = true
+          return reply
+        },
+        hijack: (reply) => {
+          reply.hijacked = true
+          reply.sent = true
+          return reply
+        },
+        getRawReply: (reply) => reply.raw,
+        isSent: (reply) => reply.sent,
+      },
+    })
+
+    const missingTokenReply = createReply()
+    await expect(
+      handleInjectedMcpProtocolRequest(createRequest("POST", { method: "initialize" }), missingTokenReply, " "),
+    ).resolves.toBe(missingTokenReply)
+    expect(missingTokenReply.statusCode).toBe(400)
+    expect(missingTokenReply.body).toEqual({ error: "Missing ACP session token" })
+
+    const invalidContextReply = createReply()
+    await expect(
+      handleInjectedMcpProtocolRequest(createRequest("POST", { method: "initialize" }), invalidContextReply, "invalid"),
+    ).resolves.toBe(invalidContextReply)
+    expect(invalidContextReply.statusCode).toBe(401)
+    expect(invalidContextReply.body).toEqual({ error: "Unauthorized: invalid ACP session context" })
+
+    const missingSessionReply = createReply()
+    await handleInjectedMcpProtocolRequest(createRequest("POST", { method: "tools/list" }), missingSessionReply, "valid")
+    expect(missingSessionReply.statusCode).toBe(400)
+    expect(missingSessionReply.body).toEqual({
+      jsonrpc: "2.0",
+      error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+      id: null,
+    })
+
+    const invalidSessionReply = createReply()
+    await handleInjectedMcpProtocolRequest(
+      createRequest("POST", { method: "tools/list" }, { "mcp-session-id": "missing" }),
+      invalidSessionReply,
+      "valid",
+    )
+    expect(invalidSessionReply.statusCode).toBe(404)
+    expect(invalidSessionReply.body).toEqual({
+      jsonrpc: "2.0",
+      error: { code: -32001, message: "Invalid MCP session ID" },
+      id: null,
+    })
+
+    const initializeReply = createReply()
+    await expect(
+      handleInjectedMcpProtocolRequest(createRequest("POST", { method: "initialize" }), initializeReply, "valid"),
+    ).resolves.toBe(initializeReply)
+    expect(initializeReply.hijacked).toBe(true)
+    expect(transports).toHaveLength(1)
+    expect(transports[0].sessionId).toBe("session-1")
+    expect(transports[0].requests[0].body).toEqual({ method: "initialize" })
+
+    const existingPostReply = createReply()
+    await handleInjectedMcpProtocolRequest(
+      createRequest("POST", { method: "tools/list" }, { "mcp-session-id": "session-1" }),
+      existingPostReply,
+      "valid",
+    )
+    expect(existingPostReply.hijacked).toBe(true)
+    expect(transports).toHaveLength(1)
+    expect(transports[0].requests[1].body).toEqual({ method: "tools/list" })
+
+    const existingGetReply = createReply()
+    await handleInjectedMcpProtocolRequest(
+      createRequest("GET", undefined, { "mcp-session-id": ["session-1"] }),
+      existingGetReply,
+      "valid",
+    )
+    expect(existingGetReply.hijacked).toBe(true)
+    expect(transports[0].requests[2].body).toBeUndefined()
+
+    await transports[0].onclose?.()
+    const closedSessionReply = createReply()
+    await handleInjectedMcpProtocolRequest(
+      createRequest("GET", undefined, { "mcp-session-id": "session-1" }),
+      closedSessionReply,
+      "valid",
+    )
+    expect(closedSessionReply.statusCode).toBe(404)
+    expect(closedSessionReply.body).toEqual({ error: "Invalid MCP session ID" })
+
+    const connectErrorReply = createReply()
+    await handleInjectedMcpProtocolRequest(
+      createRequest("POST", { method: "initialize" }),
+      connectErrorReply,
+      "throw-connect",
+    )
+    expect(connectErrorReply.statusCode).toBe(500)
+    expect(connectErrorReply.body).toEqual({
+      jsonrpc: "2.0",
+      error: { code: -32603, message: "connect denied" },
+      id: null,
+    })
+
+    expect(logs).toContain("warn:Denied injected MCP POST request without valid ACP session context")
+    expect(logs).toContain("error:Injected MCP POST error:connect denied")
+    expect(serverEvents).toEqual([
+      "server:valid",
+      "connect:valid",
+      "close:valid",
+      "server:throw-connect",
+      "connect:throw-connect",
+    ])
   })
 
   it("builds injected MCP tool call responses", () => {

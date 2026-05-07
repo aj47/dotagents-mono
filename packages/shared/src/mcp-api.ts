@@ -149,6 +149,64 @@ export interface InjectedMcpToolRouteActions<TRequest = unknown, TReply = unknow
   ): Promise<unknown>
 }
 
+export type InjectedMcpProtocolTransportFactoryOptions = {
+  sessionIdGenerator(): string
+  enableJsonResponse: true
+  onsessioninitialized(sessionId: string): void
+}
+
+export interface InjectedMcpProtocolService<TServer = unknown, TTransport = unknown> {
+  createServer(acpSessionToken: string): TServer
+  createTransport(options: InjectedMcpProtocolTransportFactoryOptions): TTransport
+  createSessionId(): string
+  isInitializeRequest(body: unknown): boolean
+}
+
+export interface InjectedMcpProtocolServerAdapter<TServer = unknown, TTransport = unknown> {
+  connect(server: TServer, transport: TTransport): Promise<void> | void
+  close(server: TServer): Promise<void> | void
+}
+
+export interface InjectedMcpProtocolTransportAdapter<TTransport = unknown> {
+  getSessionId(transport: TTransport): string | undefined
+  setOnClose(transport: TTransport, onClose: () => Promise<void>): void
+  handleRequest(
+    transport: TTransport,
+    rawRequest: unknown,
+    rawReply: unknown,
+    body?: unknown,
+  ): Promise<void> | void
+}
+
+export interface InjectedMcpProtocolRouteRequestAdapter<TRequest = unknown> {
+  getMethod(request: TRequest): string
+  getHeader(request: TRequest, headerName: string): string | string[] | undefined
+  getBody(request: TRequest): unknown
+  getRawRequest(request: TRequest): unknown
+}
+
+export interface InjectedMcpProtocolRouteReplyAdapter<TReply = unknown> {
+  send(reply: TReply, statusCode: number, body: unknown): unknown
+  hijack(reply: TReply): unknown
+  getRawReply(reply: TReply): unknown
+  isSent(reply: TReply): boolean
+}
+
+export interface InjectedMcpProtocolRouteActionOptions<
+  TRequest = unknown,
+  TReply = unknown,
+  TServer = unknown,
+  TTransport = unknown,
+  TRequestContext = unknown,
+> {
+  action: InjectedMcpActionOptions<TRequestContext>
+  protocol: InjectedMcpProtocolService<TServer, TTransport>
+  server: InjectedMcpProtocolServerAdapter<TServer, TTransport>
+  transport: InjectedMcpProtocolTransportAdapter<TTransport>
+  request: InjectedMcpProtocolRouteRequestAdapter<TRequest>
+  response: InjectedMcpProtocolRouteReplyAdapter<TReply>
+}
+
 export type McpServerStatusLike = {
   connected: boolean
   toolCount: number
@@ -1528,6 +1586,154 @@ export function createInjectedMcpToolRouteActions<
       )
       return options.response.sendActionResult(reply, result)
     },
+  }
+}
+
+type InjectedMcpProtocolTransportState<TServer, TTransport> = {
+  server: TServer
+  transport: TTransport
+}
+
+function getInjectedMcpProtocolSessionId(rawSessionId: string | string[] | undefined): string | undefined {
+  return Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId
+}
+
+export function createInjectedMcpProtocolRouteAction<
+  TRequest = unknown,
+  TReply = unknown,
+  TServer = unknown,
+  TTransport = unknown,
+  TRequestContext = unknown,
+>(
+  options: InjectedMcpProtocolRouteActionOptions<TRequest, TReply, TServer, TTransport, TRequestContext>,
+): (req: TRequest, reply: TReply, acpSessionToken?: string) => Promise<unknown> {
+  const transportsByToken = new Map<string, Map<string, InjectedMcpProtocolTransportState<TServer, TTransport>>>()
+
+  const getTransportSessionMap = (acpSessionToken: string) => {
+    const existing = transportsByToken.get(acpSessionToken)
+    if (existing) return existing
+
+    const created = new Map<string, InjectedMcpProtocolTransportState<TServer, TTransport>>()
+    transportsByToken.set(acpSessionToken, created)
+    return created
+  }
+
+  return async (req, reply, acpSessionToken) => {
+    const token = acpSessionToken?.trim()
+    if (!token) {
+      return options.response.send(reply, 400, { error: "Missing ACP session token" })
+    }
+
+    const method = options.request.getMethod(req)
+    const injectedRuntimeTools = options.action.service.getInjectedRuntimeTools(token)
+    if (!injectedRuntimeTools) {
+      options.action.diagnostics.logWarning(
+        "remote-server",
+        `Denied injected MCP ${method} request without valid ACP session context`,
+      )
+      return options.response.send(reply, 401, { error: options.action.invalidSessionContextError })
+    }
+
+    const sessionId = getInjectedMcpProtocolSessionId(options.request.getHeader(req, "mcp-session-id"))
+    const sessions = getTransportSessionMap(token)
+
+    try {
+      if (method === "POST") {
+        const sessionState = sessionId ? sessions.get(sessionId) : undefined
+
+        if (!sessionState) {
+          if (sessionId) {
+            return options.response.send(reply, 404, {
+              jsonrpc: "2.0",
+              error: { code: -32001, message: "Invalid MCP session ID" },
+              id: null,
+            })
+          }
+
+          const body = options.request.getBody(req)
+          if (!options.protocol.isInitializeRequest(body)) {
+            return options.response.send(reply, 400, {
+              jsonrpc: "2.0",
+              error: { code: -32000, message: "Bad Request: No valid session ID provided" },
+              id: null,
+            })
+          }
+
+          const server = options.protocol.createServer(token)
+          let transport!: TTransport
+          transport = options.protocol.createTransport({
+            sessionIdGenerator: options.protocol.createSessionId,
+            enableJsonResponse: true,
+            onsessioninitialized: (createdSessionId) => {
+              getTransportSessionMap(token).set(createdSessionId, {
+                server,
+                transport,
+              })
+            },
+          })
+
+          options.transport.setOnClose(transport, async () => {
+            const activeSessionId = options.transport.getSessionId(transport)
+            if (activeSessionId) {
+              sessions.delete(activeSessionId)
+            }
+            if (sessions.size === 0) {
+              transportsByToken.delete(token)
+            }
+            await Promise.resolve(options.server.close(server)).catch(() => undefined)
+          })
+
+          await options.server.connect(server, transport)
+          options.response.hijack(reply)
+          await options.transport.handleRequest(
+            transport,
+            options.request.getRawRequest(req),
+            options.response.getRawReply(reply),
+            body,
+          )
+          return reply
+        }
+
+        options.response.hijack(reply)
+        await options.transport.handleRequest(
+          sessionState.transport,
+          options.request.getRawRequest(req),
+          options.response.getRawReply(reply),
+          options.request.getBody(req),
+        )
+        return reply
+      }
+
+      if (!sessionId) {
+        return options.response.send(reply, 400, { error: "Missing MCP session ID" })
+      }
+
+      const sessionState = sessions.get(sessionId)
+      if (!sessionState) {
+        return options.response.send(reply, 404, { error: "Invalid MCP session ID" })
+      }
+
+      options.response.hijack(reply)
+      await options.transport.handleRequest(
+        sessionState.transport,
+        options.request.getRawRequest(req),
+        options.response.getRawReply(reply),
+      )
+      return reply
+    } catch (caughtError) {
+      options.action.diagnostics.logError("remote-server", `Injected MCP ${method} error`, caughtError)
+      if (!options.response.isSent(reply)) {
+        return options.response.send(reply, 500, {
+          jsonrpc: "2.0",
+          error: {
+            code: -32603,
+            message: options.action.diagnostics.getErrorMessage(caughtError) || "Internal server error",
+          },
+          id: null,
+        })
+      }
+      return reply
+    }
   }
 }
 

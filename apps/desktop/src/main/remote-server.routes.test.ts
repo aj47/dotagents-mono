@@ -653,7 +653,11 @@ describe("remote-server route registration", () => {
     expect(sharedInjectedMcpRoutesSource).not.toContain("Fastify")
     expect(sharedInjectedMcpRoutesSource).not.toContain("Electron")
     expect(routeBundleSource).toContain("const injectedMcpDesktopActions")
-    expect(routeBundleSource).toContain("handleInjectedMcpProtocolRequest")
+    expect(routeBundleSource).toContain("const handleInjectedMcpProtocolRequest = createInjectedMcpProtocolRouteAction<")
+    expect(routeBundleSource).toContain("createTransport: (options) => new StreamableHTTPServerTransport(options)")
+    expect(routeBundleSource).toContain("isInitializeRequest,")
+    expect(routeBundleSource).not.toContain("const injectedMcpTransportsByToken")
+    expect(routeBundleSource).not.toContain("getInjectedMcpTransportSessionMap")
     expect(routeBundleSource).toContain("const injectedMcpToolRouteActions = createInjectedMcpToolRouteActions<")
     expect(routeBundleSource).toContain("const injectedMcpDesktopActions = createInjectedMcpRouteActions<")
     expect(routeBundleSource).toContain("protocol: { handleInjectedMcpProtocolRequest }")
@@ -2153,7 +2157,11 @@ describe("remote-server route registration", () => {
     const sharedInjectedMcpRoutesSource = getSharedInjectedMcpRoutesSource()
     const injectedMcpActionsSource = getRemoteServerRouteBundleSource()
     const sharedMcpApiSource = getSharedMcpApiSource()
-    const streamableMcpSection = getSection(injectedMcpActionsSource, "async function handleInjectedMcpProtocolRequest", "if (!reply.sent)")
+    const streamableMcpSection = getSection(
+      injectedMcpActionsSource,
+      "const handleInjectedMcpProtocolRequest = createInjectedMcpProtocolRouteAction",
+      "const injectedMcpDesktopActions",
+    )
 
     expect(injectedMcpActionsSource).toContain("function getAcpMcpRequestContext")
     expect(injectedMcpActionsSource).toContain("function getInjectedRuntimeToolsForAcpSession")
@@ -2175,7 +2183,8 @@ describe("remote-server route registration", () => {
     expect(sharedInjectedMcpRoutesSource).toContain("actions.callInjectedMcpTool(req, reply, getOptionalStringQuery(req, 'acpSessionToken'))")
     expect(injectedMcpActionsSource).toContain("INVALID_ACP_SESSION_CONTEXT_ERROR")
     expect(injectedMcpActionsSource).toContain("StreamableHTTPServerTransport")
-    expect(injectedMcpActionsSource).toContain("isInitializeRequest(req.body)")
+    expect(injectedMcpActionsSource).toContain("createInjectedMcpProtocolRouteAction<")
+    expect(injectedMcpActionsSource).toContain("isInitializeRequest,")
     expect(injectedMcpActionsSource).toContain("const injectedMcpToolRouteActions = createInjectedMcpToolRouteActions<")
     expect(injectedMcpActionsSource).toContain("const injectedMcpDesktopActions = createInjectedMcpRouteActions<")
     expect(injectedMcpActionsSource).toContain("protocol: { handleInjectedMcpProtocolRequest }")
@@ -2192,6 +2201,11 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain("export async function callInjectedMcpToolAction<")
     expect(sharedMcpApiSource).toContain("export interface InjectedMcpToolRouteActions")
     expect(sharedMcpApiSource).toContain("export function createInjectedMcpToolRouteActions")
+    expect(sharedMcpApiSource).toContain("export function createInjectedMcpProtocolRouteAction<")
+    expect(sharedMcpApiSource).toContain("const transportsByToken = new Map")
+    expect(sharedMcpApiSource).toContain("options.protocol.isInitializeRequest(body)")
+    expect(sharedMcpApiSource).toContain("options.transport.handleRequest(")
+    expect(sharedMcpApiSource).toContain("options.response.hijack(reply)")
     expect(sharedMcpApiSource).toContain("listInjectedMcpToolsAction(acpSessionToken, options.action)")
     expect(sharedMcpApiSource).toContain("options.request.getBody(request)")
     expect(sharedMcpApiSource).toContain("options.response.sendActionResult(reply, result)")
@@ -2203,9 +2217,12 @@ describe("remote-server route registration", () => {
     expect(injectedMcpActionsSource).toContain("requestContext.appSessionId")
     expect(injectedMcpActionsSource).toContain("requestContext.profileSnapshot.mcpServerConfig")
     expect(injectedMcpActionsSource).not.toContain("profileSnapshot?.mcpServerConfig")
-    expect(streamableMcpSection).toContain("new StreamableHTTPServerTransport")
-    expect(streamableMcpSection).toContain("reply.hijack()")
-    expect(streamableMcpSection).toContain("transport.handleRequest(req.raw, reply.raw, req.body)")
+    expect(streamableMcpSection).toContain("createTransport: (options) => new StreamableHTTPServerTransport(options)")
+    expect(streamableMcpSection).toContain("setOnClose: (transport, onClose) => { transport.onclose = onClose }")
+    expect(streamableMcpSection).toContain("transport.handleRequest(rawRequest as any, rawReply as any, body)")
+    expect(streamableMcpSection).toContain("getRawRequest: (req) => req.raw")
+    expect(streamableMcpSection).toContain("getRawReply: (reply) => reply.raw")
+    expect(streamableMcpSection).toContain("hijack: (reply) => reply.hijack()")
   })
 
   it("registers note-only knowledge routes", () => {
