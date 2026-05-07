@@ -186,6 +186,15 @@ function getInjectedMcpRoutesSource(): string {
   return readFileSync(injectedMcpRoutesPath, "utf8")
 }
 
+function getSharedInjectedMcpRoutesSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedInjectedMcpRoutesPath = path.join(
+    testDir,
+    "../../../../packages/shared/src/remote-server-injected-mcp-routes.ts",
+  )
+  return readFileSync(sharedInjectedMcpRoutesPath, "utf8")
+}
+
 function getRemoteServerRouteRegistrationSource(): string {
   return [
     getRemoteServerSource(),
@@ -194,6 +203,7 @@ function getRemoteServerRouteRegistrationSource(): string {
     getOperatorRoutesSource(),
     getMobileApiRoutesSource(),
     getInjectedMcpRoutesSource(),
+    getSharedInjectedMcpRoutesSource(),
   ].join("\n")
 }
 
@@ -384,6 +394,7 @@ function expectRegisteredApiRoute(source: string, method: string, key: RemoteSer
     getOperatorRoutesSource(),
     getMobileApiRoutesSource(),
     getInjectedMcpRoutesSource(),
+    getSharedInjectedMcpRoutesSource(),
   ].join("\n")
   expect(getRegisteredRoutes(routeSource)).toEqual(expect.arrayContaining([
     expect.objectContaining({
@@ -413,6 +424,7 @@ function expectRegisteredMcpRoute(source: string, method: string, key: RemoteSer
     getOperatorRoutesSource(),
     getMobileApiRoutesSource(),
     getInjectedMcpRoutesSource(),
+    getSharedInjectedMcpRoutesSource(),
   ].join("\n")
   expect(getRegisteredRoutes(routeSource)).toEqual(expect.arrayContaining([
     expect.objectContaining({
@@ -477,6 +489,7 @@ describe("remote-server route registration", () => {
     const operatorRoutesSource = getOperatorRoutesSource()
     const operatorRouteDesktopActionsSource = getOperatorRouteDesktopActionsSource()
     const injectedMcpRoutesSource = getInjectedMcpRoutesSource()
+    const sharedInjectedMcpRoutesSource = getSharedInjectedMcpRoutesSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedRouteContractsSource = getSharedRemoteServerRouteContractsSource()
@@ -578,7 +591,10 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain("getOperatorStatus")
     expect(operatorRouteDesktopActionsSource).toContain("recordOperatorAuditEvent")
     expect(injectedMcpRoutesSource).not.toContain('from "./injected-mcp-actions"')
-    expect(injectedMcpRoutesSource).toContain('from "@dotagents/shared/remote-server-route-contracts"')
+    expect(injectedMcpRoutesSource).toContain('from "@dotagents/shared/remote-server-injected-mcp-routes"')
+    expect(injectedMcpRoutesSource).toContain(
+      "registerInjectedMcpRoutes as registerSharedInjectedMcpRoutes",
+    )
     expect(injectedMcpRoutesSource).toContain(
       "export type InjectedMcpRouteActions = SharedInjectedMcpRouteActions<FastifyRequest, FastifyReply>",
     )
@@ -587,6 +603,17 @@ describe("remote-server route registration", () => {
     )
     expect(injectedMcpRoutesSource).not.toContain("export interface InjectedMcpRouteActions")
     expect(injectedMcpRoutesSource).not.toContain("export interface RegisterInjectedMcpRoutesOptions")
+    expect(sharedInjectedMcpRoutesSource).toContain("from './remote-server-route-contracts'")
+    expect(sharedInjectedMcpRoutesSource).toContain("export interface RemoteServerInjectedMcpRouteServer")
+    expect(sharedInjectedMcpRoutesSource).toContain("fastify.post(MCP_ROUTES.session")
+    expect(sharedInjectedMcpRoutesSource).toContain("fastify.get(MCP_ROUTES.session")
+    expect(sharedInjectedMcpRoutesSource).toContain("fastify.delete(MCP_ROUTES.session")
+    expect(sharedInjectedMcpRoutesSource).toContain("fastify.post(MCP_ROUTES.toolsList")
+    expect(sharedInjectedMcpRoutesSource).toContain("fastify.post(MCP_ROUTES.sessionToolsList")
+    expect(sharedInjectedMcpRoutesSource).toContain("fastify.post(MCP_ROUTES.toolsCall")
+    expect(sharedInjectedMcpRoutesSource).toContain("fastify.post(MCP_ROUTES.sessionToolsCall")
+    expect(sharedInjectedMcpRoutesSource).not.toContain("Fastify")
+    expect(sharedInjectedMcpRoutesSource).not.toContain("Electron")
     expect(routeBundleSource).toContain("const injectedMcpDesktopActions")
     expect(routeBundleSource).toContain("handleInjectedMcpProtocolRequest")
     expect(routeBundleSource).toContain("listInjectedMcpTools")
@@ -1754,6 +1781,7 @@ describe("remote-server route registration", () => {
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {
     const source = getRemoteServerSource()
     const injectedMcpRoutesSource = getInjectedMcpRoutesSource()
+    const sharedInjectedMcpRoutesSource = getSharedInjectedMcpRoutesSource()
     const injectedMcpActionsSource = getRemoteServerRouteBundleSource()
     const sharedMcpApiSource = getSharedMcpApiSource()
     const listInjectedMcpToolsSection = getSection(injectedMcpActionsSource, "async function listInjectedMcpTools", "async function callInjectedMcpTool")
@@ -1771,12 +1799,13 @@ describe("remote-server route registration", () => {
     expectRegisteredMcpRoute(source, "POST", "sessionToolsList")
     expectRegisteredMcpRoute(source, "POST", "toolsCall")
     expectRegisteredMcpRoute(source, "POST", "sessionToolsCall")
-    expect(injectedMcpRoutesSource).toContain(getMcpRouteRegistrationMarker(injectedMcpRoutesSource, "POST", "session"))
-    expect(injectedMcpRoutesSource).toContain(getMcpRouteRegistrationMarker(injectedMcpRoutesSource, "POST", "sessionToolsList"))
-    expect(injectedMcpRoutesSource).toContain(getMcpRouteRegistrationMarker(injectedMcpRoutesSource, "POST", "sessionToolsCall"))
-    expect(injectedMcpRoutesSource).toContain("actions.handleInjectedMcpProtocolRequest(req, reply, params?.acpSessionToken)")
-    expect(injectedMcpRoutesSource).toContain("actions.listInjectedMcpTools(query?.acpSessionToken, reply)")
-    expect(injectedMcpRoutesSource).toContain("actions.callInjectedMcpTool(req, reply, query?.acpSessionToken)")
+    expect(injectedMcpRoutesSource).toContain("registerSharedInjectedMcpRoutes")
+    expect(sharedInjectedMcpRoutesSource).toContain(getMcpRouteRegistrationMarker(sharedInjectedMcpRoutesSource, "POST", "session"))
+    expect(sharedInjectedMcpRoutesSource).toContain(getMcpRouteRegistrationMarker(sharedInjectedMcpRoutesSource, "POST", "sessionToolsList"))
+    expect(sharedInjectedMcpRoutesSource).toContain(getMcpRouteRegistrationMarker(sharedInjectedMcpRoutesSource, "POST", "sessionToolsCall"))
+    expect(sharedInjectedMcpRoutesSource).toContain("actions.handleInjectedMcpProtocolRequest(req, reply, getOptionalStringParam(req, 'acpSessionToken'))")
+    expect(sharedInjectedMcpRoutesSource).toContain("actions.listInjectedMcpTools(getOptionalStringQuery(req, 'acpSessionToken'), reply)")
+    expect(sharedInjectedMcpRoutesSource).toContain("actions.callInjectedMcpTool(req, reply, getOptionalStringQuery(req, 'acpSessionToken'))")
     expect(injectedMcpActionsSource).toContain("INVALID_ACP_SESSION_CONTEXT_ERROR")
     expect(injectedMcpActionsSource).toContain("StreamableHTTPServerTransport")
     expect(injectedMcpActionsSource).toContain("isInitializeRequest(req.body)")

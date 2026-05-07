@@ -361,6 +361,11 @@
       "import": "./dist/qr-scanner-activation.mjs",
       "require": "./dist/qr-scanner-activation.js"
     },
+    "./remote-server-injected-mcp-routes": {
+      "types": "./dist/remote-server-injected-mcp-routes.d.ts",
+      "import": "./dist/remote-server-injected-mcp-routes.mjs",
+      "require": "./dist/remote-server-injected-mcp-routes.js"
+    },
     "./remote-server-api": {
       "types": "./dist/remote-server-api.d.ts",
       "import": "./dist/remote-server-api.mjs",

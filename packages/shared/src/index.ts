@@ -93,6 +93,7 @@ export * from './conversation-sync';
 export * from './config-list-input';
 export * from './remote-pairing';
 export * from './qr-scanner-activation';
+export * from './remote-server-injected-mcp-routes';
 export * from './remote-server-api';
 export * from './remote-server-controller';
 export * from './remote-server-controller-contracts';

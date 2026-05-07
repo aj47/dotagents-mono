@@ -73,6 +73,7 @@ export default defineConfig({
     'config-list-input': 'src/config-list-input.ts',
     'remote-pairing': 'src/remote-pairing.ts',
     'qr-scanner-activation': 'src/qr-scanner-activation.ts',
+    'remote-server-injected-mcp-routes': 'src/remote-server-injected-mcp-routes.ts',
     'remote-server-api': 'src/remote-server-api.ts',
     'remote-server-controller': 'src/remote-server-controller.ts',
     'remote-server-controller-contracts': 'src/remote-server-controller-contracts.ts',
