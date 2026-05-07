@@ -1,5 +1,6 @@
 import type {
   KnowledgeNote,
+  KnowledgeNoteContext,
   KnowledgeNoteCreateRequest,
   KnowledgeNoteDeleteResponse,
   KnowledgeNoteMutationResponse,
@@ -30,6 +31,28 @@ const KNOWLEDGE_NOTE_SORTS = new Set<KnowledgeNoteSearchSort>([
 ])
 
 export type KnowledgeNoteReferenceInputFormat = "comma" | "line"
+
+export type KnowledgeNoteEditFormData = {
+  noteId: string
+  title: string
+  context: KnowledgeNoteContext
+  summary: string
+  body: string
+  tagsInput: string
+  referencesInput: string
+}
+
+export const DEFAULT_KNOWLEDGE_NOTE_CONTEXT: KnowledgeNoteContext = "search-only"
+
+export const DEFAULT_KNOWLEDGE_NOTE_EDIT_FORM_DATA: KnowledgeNoteEditFormData = {
+  noteId: "",
+  title: "",
+  context: DEFAULT_KNOWLEDGE_NOTE_CONTEXT,
+  summary: "",
+  body: "",
+  tagsInput: "",
+  referencesInput: "",
+}
 
 export type KnowledgeNoteCreateParseResult =
   | { ok: true; request: KnowledgeNoteCreateRequest }
@@ -163,6 +186,21 @@ export function parseKnowledgeNoteTagsInput(input: string): string[] {
 
 export function parseKnowledgeNoteReferencesInput(input: string): string[] {
   return uniqueTrimmed(input.split(/[\n,]/))
+}
+
+export function formatKnowledgeNoteEditFormData(
+  note: KnowledgeNote,
+  options?: { referencesInputFormat?: KnowledgeNoteReferenceInputFormat },
+): KnowledgeNoteEditFormData {
+  return {
+    noteId: note.id,
+    title: note.title,
+    context: note.context ?? DEFAULT_KNOWLEDGE_NOTE_CONTEXT,
+    summary: note.summary ?? "",
+    body: note.body,
+    tagsInput: formatKnowledgeNoteTagsInput(note.tags),
+    referencesInput: formatKnowledgeNoteReferencesInput(note.references, options?.referencesInputFormat),
+  }
 }
 
 export function serializeKnowledgeNoteForApi(note: KnowledgeNote): KnowledgeNote {

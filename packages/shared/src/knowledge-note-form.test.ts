@@ -14,7 +14,9 @@ import {
   deleteAllKnowledgeNotesAction,
   deleteKnowledgeNoteAction,
   deleteMultipleKnowledgeNotesAction,
+  DEFAULT_KNOWLEDGE_NOTE_EDIT_FORM_DATA,
   formatKnowledgeNoteReferencesInput,
+  formatKnowledgeNoteEditFormData,
   formatKnowledgeNoteTagsInput,
   getKnowledgeNoteAction,
   getKnowledgeNotesAction,
@@ -35,6 +37,38 @@ describe("knowledge note form helpers", () => {
     expect(formatKnowledgeNoteTagsInput(["project", "preference"])).toBe("project, preference")
     expect(formatKnowledgeNoteReferencesInput(["docs/a.md", "https://example.com"])).toBe("docs/a.md\nhttps://example.com")
     expect(formatKnowledgeNoteReferencesInput(["docs/a.md", "https://example.com"], "comma")).toBe("docs/a.md, https://example.com")
+  })
+
+  it("formats knowledge notes for shared edit forms", () => {
+    const note: KnowledgeNote = {
+      id: "note-1",
+      title: "Title",
+      body: "Body",
+      summary: "Summary",
+      tags: ["project", "preference"],
+      references: ["docs/a.md", "https://example.com"],
+      createdAt: 1,
+      updatedAt: 2,
+    }
+
+    expect(DEFAULT_KNOWLEDGE_NOTE_EDIT_FORM_DATA).toEqual({
+      noteId: "",
+      title: "",
+      context: "search-only",
+      summary: "",
+      body: "",
+      tagsInput: "",
+      referencesInput: "",
+    })
+    expect(formatKnowledgeNoteEditFormData(note, { referencesInputFormat: "comma" })).toEqual({
+      noteId: "note-1",
+      title: "Title",
+      context: "search-only",
+      summary: "Summary",
+      body: "Body",
+      tagsInput: "project, preference",
+      referencesInput: "docs/a.md, https://example.com",
+    })
   })
 
   it("parses comma-separated tags with trimming and de-duping", () => {

@@ -15,6 +15,13 @@ test('explains note context using knowledge-note terminology', () => {
   assert.match(screenSource, /Canonical files live at \.agents\/knowledge\/&lt;slug&gt;\/&lt;slug&gt;\.md\./);
 });
 
+test('uses shared knowledge note edit form defaults and formatting', () => {
+  assert.match(screenSource, /DEFAULT_KNOWLEDGE_NOTE_EDIT_FORM_DATA/);
+  assert.match(screenSource, /formatKnowledgeNoteEditFormData\(note, \{ referencesInputFormat: 'comma' \}\)/);
+  assert.match(screenSource, /KnowledgeNoteEditFormData/);
+  assert.doesNotMatch(screenSource, /const defaultFormData/);
+});
+
 test('exposes knowledge-note context choices as selected-state buttons', () => {
   assert.match(screenSource, /accessibilityRole="button"[\s\S]*?createButtonAccessibilityLabel\(`Set note context to \$\{option\.label\}`\)/);
   assert.match(screenSource, /accessibilityState=\{\{ selected: isSelected, disabled: isSaving \}\}/);

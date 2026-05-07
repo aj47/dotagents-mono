@@ -13,10 +13,11 @@ import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '@dotagents/shared/accessibility-utils';
 import { useConfigContext } from '../store/config';
 import {
-  formatKnowledgeNoteReferencesInput,
-  formatKnowledgeNoteTagsInput,
+  DEFAULT_KNOWLEDGE_NOTE_EDIT_FORM_DATA,
+  formatKnowledgeNoteEditFormData,
   parseKnowledgeNoteReferencesInput,
   parseKnowledgeNoteTagsInput,
+  type KnowledgeNoteEditFormData,
 } from '@dotagents/shared/knowledge-note-form';
 
 const CONTEXT_OPTIONS: { label: string; value: KnowledgeNoteContext; description: string }[] = [
@@ -24,35 +25,8 @@ const CONTEXT_OPTIONS: { label: string; value: KnowledgeNoteContext; description
   { label: 'Auto', value: 'auto', description: 'Allow this note to be considered for automatic runtime loading.' },
 ];
 
-type KnowledgeNoteFormData = {
-  noteId: string;
-  title: string;
-  context: KnowledgeNoteContext;
-  summary: string;
-  body: string;
-  tagsInput: string;
-  referencesInput: string;
-};
-
-const defaultFormData: KnowledgeNoteFormData = {
-  noteId: '',
-  title: '',
-  context: 'search-only',
-  summary: '',
-  body: '',
-  tagsInput: '',
-  referencesInput: '',
-};
-
-const toFormData = (note: KnowledgeNote): KnowledgeNoteFormData => ({
-  noteId: note.id,
-  title: note.title,
-  context: note.context ?? 'search-only',
-  summary: note.summary ?? '',
-  body: note.body,
-  tagsInput: formatKnowledgeNoteTagsInput(note.tags),
-  referencesInput: formatKnowledgeNoteReferencesInput(note.references, 'comma'),
-});
+const toFormData = (note: KnowledgeNote): KnowledgeNoteEditFormData =>
+  formatKnowledgeNoteEditFormData(note, { referencesInputFormat: 'comma' });
 
 export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
@@ -64,8 +38,8 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
   const effectiveNoteId = noteId ?? noteFromRoute?.id;
   const isEditing = !!effectiveNoteId;
 
-  const [formData, setFormData] = useState<KnowledgeNoteFormData>(() =>
-    noteFromRoute ? toFormData(noteFromRoute) : defaultFormData
+  const [formData, setFormData] = useState<KnowledgeNoteEditFormData>(() =>
+    noteFromRoute ? toFormData(noteFromRoute) : DEFAULT_KNOWLEDGE_NOTE_EDIT_FORM_DATA
   );
   const [isLoading, setIsLoading] = useState(isEditing && !noteFromRoute);
   const [isSaving, setIsSaving] = useState(false);
@@ -117,7 +91,7 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
     return () => { cancelled = true; };
   }, [effectiveNoteId, isEditing, noteFromRoute, settingsClient]);
 
-  const updateField = useCallback(<K extends keyof KnowledgeNoteFormData>(key: K, value: KnowledgeNoteFormData[K]) => {
+  const updateField = useCallback(<K extends keyof KnowledgeNoteEditFormData>(key: K, value: KnowledgeNoteEditFormData[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   }, []);
 
