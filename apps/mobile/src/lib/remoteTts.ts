@@ -6,6 +6,7 @@ import {
 } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
 import { getAudioFileExtensionFromMimeType } from '@dotagents/shared/tts-api';
+import { clampTextToSpeechPlaybackRate } from '@dotagents/shared/text-to-speech-settings';
 import { createExtendedSettingsApiClient } from './settingsApi';
 
 // Remote TTS client. Audio synthesis happens on the paired desktop's
@@ -116,7 +117,7 @@ function startWebPlayback(
   currentPlayback = playback;
 
   try {
-    const rate = Math.min(2.0, Math.max(0.5, options.rate ?? 1.0));
+    const rate = clampTextToSpeechPlaybackRate(options.rate, 'edge');
     audio.playbackRate = rate;
   } catch {
     // Some browsers restrict playbackRate changes; playback still works at 1x.
@@ -162,7 +163,7 @@ function startNativePlayback(
 
   const player = createAudioPlayer({ uri: file.uri });
 
-  const desiredRate = Math.min(2.0, Math.max(0.5, options.rate ?? 1.0));
+  const desiredRate = clampTextToSpeechPlaybackRate(options.rate, 'edge');
   try {
     player.playbackRate = desiredRate;
   } catch {

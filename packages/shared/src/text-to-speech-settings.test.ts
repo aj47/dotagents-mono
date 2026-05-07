@@ -17,6 +17,7 @@ import {
   MIN_SUPERTONIC_TTS_STEPS,
   OPENAI_TTS_RESPONSE_FORMATS,
   TEXT_TO_SPEECH_SPEED_SETTING_KEYS,
+  clampTextToSpeechPlaybackRate,
   formatLocalSpeechModelProgress,
   getTextToSpeechModelDefault,
   getTextToSpeechModelValue,
@@ -170,6 +171,14 @@ describe("text to speech settings helpers", () => {
     expect(getTextToSpeechPlaybackRate({ ttsProviderId: "edge" })).toBe(1.0)
     expect(getTextToSpeechPlaybackRate({ ttsProviderId: "supertonic" })).toBe(1.05)
     expect(getTextToSpeechPlaybackRate(undefined)).toBe(1.0)
+  })
+
+  it("clamps playback rates using provider speed bounds", () => {
+    expect(clampTextToSpeechPlaybackRate(0.1, "edge")).toBe(0.5)
+    expect(clampTextToSpeechPlaybackRate(2.5, "edge")).toBe(2.0)
+    expect(clampTextToSpeechPlaybackRate(1.25, "edge")).toBe(1.25)
+    expect(clampTextToSpeechPlaybackRate(undefined, "supertonic")).toBe(1.05)
+    expect(clampTextToSpeechPlaybackRate(Number.NaN, "openai")).toBe(1.0)
   })
 
   it("formats local speech model progress for compact mobile status labels", () => {

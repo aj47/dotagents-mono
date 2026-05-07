@@ -188,6 +188,15 @@ export function getTextToSpeechPlaybackRate(settings?: TextToSpeechConfig | null
   return speedSetting?.defaultValue ?? getTextToSpeechSpeedDefault()
 }
 
+export function clampTextToSpeechPlaybackRate(value?: number, providerId?: string | null): number {
+  const speedSetting = getTextToSpeechSpeedSetting(providerId)
+  const minimumValue = speedSetting?.minimumValue ?? 0.5
+  const maximumValue = speedSetting?.maximumValue ?? 2.0
+  const defaultValue = speedSetting?.defaultValue ?? getTextToSpeechSpeedDefault(providerId)
+  const speed = typeof value === "number" && Number.isFinite(value) ? value : defaultValue
+  return Math.min(maximumValue, Math.max(minimumValue, speed))
+}
+
 export function formatLocalSpeechModelProgress(status?: LocalSpeechModelStatus): string {
   if (!status) return "Unknown"
   if (status.downloaded) return "Ready"

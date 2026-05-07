@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { createRequire } from "node:module"
 import { DEFAULT_EDGE_TTS_VOICE } from "@dotagents/shared/providers"
+import { clampTextToSpeechPlaybackRate } from "@dotagents/shared/text-to-speech-settings"
 import type { Config } from "../shared/types"
 
 const localRequire = createRequire(import.meta.url)
@@ -99,7 +100,7 @@ export async function generateEdgeTTS(
   const _model = input.model || config.edgeTtsModel || "edge-tts"
   const voice = input.voice || config.edgeTtsVoice || DEFAULT_EDGE_TTS_VOICE
   const speed = input.speed || config.edgeTtsRate || 1.0
-  const clampedSpeed = Math.min(2.0, Math.max(0.5, speed))
+  const clampedSpeed = clampTextToSpeechPlaybackRate(speed, "edge")
   const ratePercent = Math.round((clampedSpeed - 1) * 100)
   const rate = `${ratePercent >= 0 ? "+" : ""}${ratePercent}%`
 
