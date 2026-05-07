@@ -55,22 +55,16 @@ import {
   buildOperatorMcpStopFailureAuditContext,
   buildOperatorMcpTestAuditContext,
   buildOperatorMcpTestFailureAuditContext,
-  clearOperatorMessageQueueAction,
   createOperatorIntegrationRouteActions,
+  createOperatorMessageQueueRouteActions,
   createOperatorObservabilityRouteActions,
   createOperatorTunnelRouteActions,
   createOperatorUpdaterRouteActions,
-  getOperatorMessageQueuesAction,
-  pauseOperatorMessageQueueAction,
-  removeOperatorQueuedMessageAction,
-  resumeOperatorMessageQueueAction,
-  retryOperatorQueuedMessageAction,
   runOperatorAgentAction,
   restartOperatorAppAction as restartOperatorApp,
   restartOperatorRemoteServerAction as restartOperatorRemoteServer,
   rotateOperatorRemoteServerApiKeyAction,
   stopOperatorAgentSessionAction,
-  updateOperatorQueuedMessageAction,
   type OperatorActionAuditContext,
   type OperatorApiKeyActionOptions,
   type OperatorAgentActionOptions,
@@ -321,6 +315,8 @@ const messageQueueActionOptions: OperatorMessageQueueActionOptions = {
   },
 }
 
+const operatorMessageQueueRouteActions = createOperatorMessageQueueRouteActions(messageQueueActionOptions)
+
 const observabilityActionOptions: OperatorObservabilityActionOptions = {
   manualReleasesUrl: MANUAL_RELEASES_URL,
   diagnostics: diagnosticsService,
@@ -433,38 +429,6 @@ async function restartOperatorMcpServer(body: unknown) {
   return restartOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)
 }
 
-function getOperatorMessageQueues() {
-  return getOperatorMessageQueuesAction(messageQueueActionOptions)
-}
-
-function clearOperatorMessageQueue(conversationIdParam: string | undefined) {
-  return clearOperatorMessageQueueAction(conversationIdParam, messageQueueActionOptions)
-}
-
-function pauseOperatorMessageQueue(conversationIdParam: string | undefined) {
-  return pauseOperatorMessageQueueAction(conversationIdParam, messageQueueActionOptions)
-}
-
-function resumeOperatorMessageQueue(conversationIdParam: string | undefined) {
-  return resumeOperatorMessageQueueAction(conversationIdParam, messageQueueActionOptions)
-}
-
-function removeOperatorQueuedMessage(conversationIdParam: string | undefined, messageIdParam: string | undefined) {
-  return removeOperatorQueuedMessageAction(conversationIdParam, messageIdParam, messageQueueActionOptions)
-}
-
-function retryOperatorQueuedMessage(conversationIdParam: string | undefined, messageIdParam: string | undefined) {
-  return retryOperatorQueuedMessageAction(conversationIdParam, messageIdParam, messageQueueActionOptions)
-}
-
-function updateOperatorQueuedMessage(
-  conversationIdParam: string | undefined,
-  messageIdParam: string | undefined,
-  body: unknown,
-) {
-  return updateOperatorQueuedMessageAction(conversationIdParam, messageIdParam, body, messageQueueActionOptions)
-}
-
 async function getOperatorModelPresets(secretMask: string) {
   return getOperatorModelPresetsAction(secretMask, modelPresetActionOptions)
 }
@@ -511,13 +475,7 @@ export const operatorRouteDesktopActions: OperatorRouteActions = {
   ...operatorTunnelRouteActions,
   ...operatorUpdaterRouteActions,
   ...operatorIntegrationRouteActions,
-  clearOperatorMessageQueue,
-  getOperatorMessageQueues,
-  pauseOperatorMessageQueue,
-  removeOperatorQueuedMessage,
-  resumeOperatorMessageQueue,
-  retryOperatorQueuedMessage,
-  updateOperatorQueuedMessage,
+  ...operatorMessageQueueRouteActions,
   ...operatorObservabilityRouteActions,
   getOperatorAudit,
   recordOperatorAuditEvent,

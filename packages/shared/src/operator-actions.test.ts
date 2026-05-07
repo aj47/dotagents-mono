@@ -74,6 +74,7 @@ import {
   connectOperatorDiscordAction,
   connectOperatorWhatsAppAction,
   createOperatorIntegrationRouteActions,
+  createOperatorMessageQueueRouteActions,
   createOperatorObservabilityRouteActions,
   createOperatorTunnelRouteActions,
   createOperatorUpdaterRouteActions,
@@ -2362,6 +2363,39 @@ describe("operator action API helpers", () => {
       "retry:conv-1:msg-1",
       "update:conv-1:msg-1:edited",
     ])
+
+    const routeActions = createOperatorMessageQueueRouteActions(options)
+    expect(routeActions.getOperatorMessageQueues()).toMatchObject({
+      statusCode: 200,
+      body: {
+        count: 1,
+        totalMessages: 1,
+      },
+    })
+    expect(routeActions.clearOperatorMessageQueue("conv-1").body).toMatchObject({
+      success: true,
+      action: "message-queue-clear",
+    })
+    expect(routeActions.pauseOperatorMessageQueue("conv-1").body).toMatchObject({
+      success: true,
+      action: "message-queue-pause",
+    })
+    expect(routeActions.resumeOperatorMessageQueue("conv-1").body).toMatchObject({
+      success: true,
+      action: "message-queue-resume",
+    })
+    expect(routeActions.removeOperatorQueuedMessage("conv-1", "msg-1").body).toMatchObject({
+      success: true,
+      action: "message-queue-message-remove",
+    })
+    expect(routeActions.retryOperatorQueuedMessage("conv-1", "msg-1").body).toMatchObject({
+      success: true,
+      action: "message-queue-message-retry",
+    })
+    expect(routeActions.updateOperatorQueuedMessage("conv-1", "msg-1", { text: "updated" }).body).toMatchObject({
+      success: true,
+      action: "message-queue-message-update",
+    })
   })
 
   it("builds system metrics from raw process and OS values", () => {

@@ -127,6 +127,26 @@ export interface OperatorMessageQueueActionOptions {
   service: OperatorMessageQueueActionService
 }
 
+export interface OperatorMessageQueueRouteActions {
+  getOperatorMessageQueues(): OperatorMessageQueueActionResult
+  clearOperatorMessageQueue(conversationIdParam: string | undefined): OperatorMessageQueueActionResult
+  pauseOperatorMessageQueue(conversationIdParam: string | undefined): OperatorMessageQueueActionResult
+  resumeOperatorMessageQueue(conversationIdParam: string | undefined): OperatorMessageQueueActionResult
+  removeOperatorQueuedMessage(
+    conversationIdParam: string | undefined,
+    messageIdParam: string | undefined,
+  ): OperatorMessageQueueActionResult
+  retryOperatorQueuedMessage(
+    conversationIdParam: string | undefined,
+    messageIdParam: string | undefined,
+  ): OperatorMessageQueueActionResult
+  updateOperatorQueuedMessage(
+    conversationIdParam: string | undefined,
+    messageIdParam: string | undefined,
+    body: unknown,
+  ): OperatorMessageQueueActionResult
+}
+
 export type OperatorRestartActionResult = {
   statusCode: number
   body: unknown
@@ -2075,6 +2095,26 @@ export function updateOperatorQueuedMessageAction(
     queueResult.processingStarted ?? false,
   )
   return operatorMessageQueueResponseResult(response.success ? 200 : 409, response)
+}
+
+export function createOperatorMessageQueueRouteActions(
+  options: OperatorMessageQueueActionOptions,
+): OperatorMessageQueueRouteActions {
+  return {
+    getOperatorMessageQueues: () => getOperatorMessageQueuesAction(options),
+    clearOperatorMessageQueue: (conversationIdParam) =>
+      clearOperatorMessageQueueAction(conversationIdParam, options),
+    pauseOperatorMessageQueue: (conversationIdParam) =>
+      pauseOperatorMessageQueueAction(conversationIdParam, options),
+    resumeOperatorMessageQueue: (conversationIdParam) =>
+      resumeOperatorMessageQueueAction(conversationIdParam, options),
+    removeOperatorQueuedMessage: (conversationIdParam, messageIdParam) =>
+      removeOperatorQueuedMessageAction(conversationIdParam, messageIdParam, options),
+    retryOperatorQueuedMessage: (conversationIdParam, messageIdParam) =>
+      retryOperatorQueuedMessageAction(conversationIdParam, messageIdParam, options),
+    updateOperatorQueuedMessage: (conversationIdParam, messageIdParam, body) =>
+      updateOperatorQueuedMessageAction(conversationIdParam, messageIdParam, body, options),
+  }
 }
 
 export function buildOperatorApiKeyRotationResponse(apiKey: string): OperatorApiKeyRotationResponse {
