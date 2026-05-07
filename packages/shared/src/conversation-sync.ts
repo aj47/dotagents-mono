@@ -9,6 +9,7 @@ import type {
   UpdateConversationRequest,
 } from './api-types';
 import { filterVisibleChatMessages } from './chat-utils';
+import type { ConversationCompactionMetadata } from './conversation-domain';
 import { sanitizeMessageContentForDisplay } from './message-display-utils';
 import {
   buildConversationPreview,
@@ -151,6 +152,7 @@ export interface ServerConversationRecord<TMetadata = unknown> {
   updatedAt: number;
   messages: ServerConversationRecordMessage[];
   rawMessages?: ServerConversationRecordMessage[];
+  compaction?: ConversationCompactionMetadata;
   metadata?: TMetadata;
   branchSource?: {
     sourceConversationId: string;
@@ -417,6 +419,61 @@ export function getRepresentedServerConversationMessageCount<TConversation exten
   }
 
   return getStoredServerConversationMessages(conversation).length;
+}
+
+export function syncServerConversationStorageMetadata<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+): boolean {
+  let changed = false;
+
+  if (Array.isArray(conversation.rawMessages) && conversation.rawMessages.length === 0) {
+    delete conversation.rawMessages;
+    changed = true;
+  }
+
+  const hasSummaryMessages = conversation.messages.some((message) => message.isSummary);
+  const hasRawMessages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0;
+  const isLegacyPartial = hasSummaryMessages && !hasRawMessages;
+
+  if (!hasSummaryMessages && !hasRawMessages) {
+    if (conversation.compaction) {
+      delete conversation.compaction;
+      changed = true;
+    }
+    return changed;
+  }
+
+  const nextCompaction: ConversationCompactionMetadata = {
+    ...conversation.compaction,
+    rawHistoryPreserved: !isLegacyPartial,
+    storedRawMessageCount: hasRawMessages ? conversation.rawMessages?.length : undefined,
+    representedMessageCount: getRepresentedServerConversationMessageCount(conversation),
+    partialReason: isLegacyPartial ? 'legacy_summary_without_raw_messages' : undefined,
+  };
+
+  if (!hasSummaryMessages) {
+    delete nextCompaction.compactedAt;
+    delete nextCompaction.summary;
+    delete nextCompaction.summaryMessageId;
+    delete nextCompaction.firstKeptMessageId;
+    delete nextCompaction.firstKeptMessageIndex;
+    delete nextCompaction.summarizedRange;
+    delete nextCompaction.summarizedMessageCount;
+    delete nextCompaction.tokensBefore;
+    delete nextCompaction.extractedFacts;
+  }
+
+  const previousCompactionJson = conversation.compaction
+    ? JSON.stringify(conversation.compaction)
+    : null;
+  const nextCompactionJson = JSON.stringify(nextCompaction);
+
+  if (previousCompactionJson !== nextCompactionJson) {
+    conversation.compaction = nextCompaction;
+    changed = true;
+  }
+
+  return changed;
 }
 
 export function getRepresentedServerConversationMessageSliceCount(

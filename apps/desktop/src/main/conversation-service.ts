@@ -23,6 +23,7 @@ import {
   getRepresentedServerConversationMessageCount,
   getStoredServerConversationMessages,
   renameServerConversationTitle,
+  syncServerConversationStorageMetadata,
   toServerConversationHistorySnippet,
 } from "@dotagents/shared/conversation-sync"
 import { summarizeContent } from "./context-budget"
@@ -797,56 +798,7 @@ export class ConversationService {
   }
 
   private syncConversationStorageMetadata(conversation: Conversation): boolean {
-    let changed = false
-
-    if (Array.isArray(conversation.rawMessages) && conversation.rawMessages.length === 0) {
-      delete conversation.rawMessages
-      changed = true
-    }
-
-    const hasSummaryMessages = this.hasSummaryMessages(conversation.messages)
-    const hasRawMessages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
-    const isLegacyPartial = hasSummaryMessages && !hasRawMessages
-
-    if (!hasSummaryMessages && !hasRawMessages) {
-      if (conversation.compaction) {
-        delete conversation.compaction
-        changed = true
-      }
-      return changed
-    }
-
-    const nextCompaction: ConversationCompactionMetadata = {
-      ...conversation.compaction,
-      rawHistoryPreserved: !isLegacyPartial,
-      storedRawMessageCount: hasRawMessages ? conversation.rawMessages?.length : undefined,
-      representedMessageCount: this.getRepresentedMessageCount(conversation),
-      partialReason: isLegacyPartial ? "legacy_summary_without_raw_messages" : undefined,
-    }
-
-    if (!hasSummaryMessages) {
-      delete nextCompaction.compactedAt
-      delete nextCompaction.summary
-      delete nextCompaction.summaryMessageId
-      delete nextCompaction.firstKeptMessageId
-      delete nextCompaction.firstKeptMessageIndex
-      delete nextCompaction.summarizedRange
-      delete nextCompaction.summarizedMessageCount
-      delete nextCompaction.tokensBefore
-      delete nextCompaction.extractedFacts
-    }
-
-    const previousCompactionJson = conversation.compaction
-      ? JSON.stringify(conversation.compaction)
-      : null
-    const nextCompactionJson = JSON.stringify(nextCompaction)
-
-    if (previousCompactionJson !== nextCompactionJson) {
-      conversation.compaction = nextCompaction
-      changed = true
-    }
-
-    return changed
+    return syncServerConversationStorageMetadata(conversation)
   }
 
   private estimateCompactionTokensFromText(text: string): number {

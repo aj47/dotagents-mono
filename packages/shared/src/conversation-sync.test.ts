@@ -32,6 +32,7 @@ import {
   renameServerConversationTitle,
   serverConversationToStubSession,
   syncConversations,
+  syncServerConversationStorageMetadata,
   toServerConversationHistorySnippet,
   toServerConversationMessage,
   updateConversationAction,
@@ -304,6 +305,65 @@ describe('server conversation API helpers', () => {
       ],
       rawMessages: [],
     })).toBe(6);
+  });
+
+  it('normalizes conversation storage metadata for raw and compacted histories', () => {
+    const emptyRaw: any = {
+      id: 'conv-empty-raw',
+      title: 'Empty Raw',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'msg-1', role: 'user' as const, content: 'hello', timestamp: 2 }],
+      rawMessages: [],
+      compaction: {
+        rawHistoryPreserved: true,
+        representedMessageCount: 1,
+      },
+    };
+    expect(syncServerConversationStorageMetadata(emptyRaw)).toBe(true);
+    expect(emptyRaw).not.toHaveProperty('rawMessages');
+    expect(emptyRaw).not.toHaveProperty('compaction');
+
+    const legacySummary: any = {
+      id: 'conv-legacy-summary',
+      title: 'Legacy Summary',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [
+        { id: 'summary-1', role: 'assistant' as const, content: 'Summary', timestamp: 2, isSummary: true, summarizedMessageCount: 4 },
+        { id: 'tail-1', role: 'user' as const, content: 'tail', timestamp: 3 },
+      ],
+    };
+    expect(syncServerConversationStorageMetadata(legacySummary)).toBe(true);
+    expect(legacySummary.compaction).toEqual({
+      rawHistoryPreserved: false,
+      storedRawMessageCount: undefined,
+      representedMessageCount: 5,
+      partialReason: 'legacy_summary_without_raw_messages',
+    });
+
+    const rawWithoutSummary: any = {
+      id: 'conv-raw',
+      title: 'Raw',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'msg-1', role: 'user' as const, content: 'hello', timestamp: 2 }],
+      rawMessages: [{ id: 'raw-1', role: 'user' as const, content: 'hello', timestamp: 2 }],
+      compaction: {
+        rawHistoryPreserved: true,
+        representedMessageCount: 99,
+        summary: 'stale',
+        summarizedMessageCount: 10,
+      },
+    };
+    expect(syncServerConversationStorageMetadata(rawWithoutSummary)).toBe(true);
+    expect(rawWithoutSummary.compaction).toEqual({
+      rawHistoryPreserved: true,
+      storedRawMessageCount: 1,
+      representedMessageCount: 1,
+      partialReason: undefined,
+    });
+    expect(syncServerConversationStorageMetadata(rawWithoutSummary)).toBe(false);
   });
 
   it('limits loaded conversation messages without returning raw history payloads', () => {
