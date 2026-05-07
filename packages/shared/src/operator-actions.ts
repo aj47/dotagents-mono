@@ -214,6 +214,13 @@ export interface OperatorTunnelActionOptions {
   service: OperatorTunnelActionService
 }
 
+export interface OperatorTunnelRouteActions {
+  getOperatorTunnel(): OperatorTunnelActionResult
+  getOperatorTunnelSetup(): Promise<OperatorTunnelActionResult>
+  startOperatorTunnel(remoteServerRunning: boolean): Promise<OperatorTunnelActionResult>
+  stopOperatorTunnel(): Promise<OperatorTunnelActionResult>
+}
+
 export type OperatorObservabilityActionResult = {
   statusCode: number
   body: unknown
@@ -2494,6 +2501,17 @@ export async function stopOperatorTunnelAction(
       success: false,
       failureReason: "tunnel-stop-route-error",
     })
+  }
+}
+
+export function createOperatorTunnelRouteActions(
+  options: OperatorTunnelActionOptions,
+): OperatorTunnelRouteActions {
+  return {
+    getOperatorTunnel: () => getOperatorTunnelAction(options),
+    getOperatorTunnelSetup: () => getOperatorTunnelSetupAction(options),
+    startOperatorTunnel: (remoteServerRunning) => startOperatorTunnelAction(remoteServerRunning, options),
+    stopOperatorTunnel: () => stopOperatorTunnelAction(options),
   }
 }
 

@@ -60,9 +60,8 @@ import {
   downloadLatestOperatorUpdateAssetAction,
   createOperatorIntegrationRouteActions,
   createOperatorObservabilityRouteActions,
+  createOperatorTunnelRouteActions,
   getOperatorMessageQueuesAction,
-  getOperatorTunnelAction,
-  getOperatorTunnelSetupAction,
   getOperatorUpdaterAction,
   openOperatorReleasesPageAction,
   openOperatorUpdateAssetAction,
@@ -75,9 +74,7 @@ import {
   restartOperatorAppAction as restartOperatorApp,
   restartOperatorRemoteServerAction as restartOperatorRemoteServer,
   rotateOperatorRemoteServerApiKeyAction,
-  startOperatorTunnelAction,
   stopOperatorAgentSessionAction,
-  stopOperatorTunnelAction,
   updateOperatorQueuedMessageAction,
   type OperatorActionAuditContext,
   type OperatorApiKeyActionOptions,
@@ -364,6 +361,8 @@ const tunnelActionOptions: OperatorTunnelActionOptions = {
   },
 }
 
+const operatorTunnelRouteActions = createOperatorTunnelRouteActions(tunnelActionOptions)
+
 const updaterActionOptions: OperatorUpdaterActionOptions = {
   service: {
     getUpdateInfo,
@@ -493,22 +492,6 @@ function rotateOperatorRemoteServerApiKey() {
   return rotateOperatorRemoteServerApiKeyAction(apiKeyActionOptions)
 }
 
-function getOperatorTunnel() {
-  return getOperatorTunnelAction(tunnelActionOptions)
-}
-
-async function getOperatorTunnelSetup() {
-  return getOperatorTunnelSetupAction(tunnelActionOptions)
-}
-
-async function startOperatorTunnel(remoteServerRunning: boolean) {
-  return startOperatorTunnelAction(remoteServerRunning, tunnelActionOptions)
-}
-
-async function stopOperatorTunnel() {
-  return stopOperatorTunnelAction(tunnelActionOptions)
-}
-
 function getOperatorUpdater(currentVersion: string) {
   return getOperatorUpdaterAction(currentVersion, MANUAL_RELEASES_URL, updaterActionOptions)
 }
@@ -552,10 +535,7 @@ export const operatorRouteDesktopActions: OperatorRouteActions = {
   deleteOperatorModelPreset,
   getOperatorModelPresets,
   updateOperatorModelPreset,
-  getOperatorTunnel,
-  getOperatorTunnelSetup,
-  startOperatorTunnel,
-  stopOperatorTunnel,
+  ...operatorTunnelRouteActions,
   checkOperatorUpdater,
   downloadLatestOperatorUpdateAsset,
   getOperatorUpdater,

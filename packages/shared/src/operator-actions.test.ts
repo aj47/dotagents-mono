@@ -75,6 +75,7 @@ import {
   connectOperatorWhatsAppAction,
   createOperatorIntegrationRouteActions,
   createOperatorObservabilityRouteActions,
+  createOperatorTunnelRouteActions,
   getConfiguredCloudflareTunnelStartPlan,
   getOperatorAuditAction,
   getOperatorDiscordAction,
@@ -1039,6 +1040,43 @@ describe("operator action API helpers", () => {
       "named:tunnel-1:agent.example.com:/tmp/creds.json",
       "stop",
     ])
+
+    const routeActions = createOperatorTunnelRouteActions(options)
+    expect(routeActions.getOperatorTunnel()).toMatchObject({
+      statusCode: 200,
+      body: {
+        running: true,
+        mode: "named",
+      },
+    })
+    expect(await routeActions.getOperatorTunnelSetup()).toMatchObject({
+      statusCode: 200,
+      body: {
+        installed: true,
+        loggedIn: true,
+      },
+    })
+    expect(await routeActions.startOperatorTunnel(false)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: false,
+        action: "tunnel-start",
+      },
+    })
+    expect(await routeActions.startOperatorTunnel(true)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "tunnel-start",
+      },
+    })
+    expect(await routeActions.stopOperatorTunnel()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "tunnel-stop",
+      },
+    })
 
     const failingOptions: OperatorTunnelActionOptions = {
       ...options,
