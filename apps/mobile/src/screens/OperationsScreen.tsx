@@ -68,6 +68,7 @@ import {
   OPERATOR_ERRORS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
   OPERATOR_MCP_SERVERS_PANEL_METADATA,
+  OPERATOR_MESSAGE_QUEUES_PANEL_METADATA,
   OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
   formatOperatorActiveAgentSessionSummary as formatActiveAgentSessionSummary,
@@ -1042,9 +1043,12 @@ export default function OperationsScreen({ navigation }: any) {
 
           {messageQueues.length > 0 && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Desktop message queues</Text>
+              <Text style={styles.panelTitle}>{OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.panelTitle}</Text>
               <Text style={styles.detailText}>
-                {messageQueues.reduce((sum, queue) => sum + queue.messageCount, 0)} queued messages across {messageQueues.length} conversations
+                {OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatSummary(
+                  messageQueues.reduce((sum, queue) => sum + queue.messageCount, 0),
+                  messageQueues.length,
+                )}
               </Text>
               {messageQueues.map((queue) => {
                 const clearAction = `message-queue-clear:${queue.conversationId}`;
@@ -1055,7 +1059,7 @@ export default function OperationsScreen({ navigation }: any) {
                   <View key={queue.conversationId} style={styles.agentSessionRow}>
                     <View style={styles.agentSessionCopy}>
                       <Text style={styles.detailText}>
-                        {queue.conversationId}: {queue.messageCount} queued{queue.isPaused ? ' (paused)' : ''}
+                        {OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatQueueSummary(queue.conversationId, queue.messageCount, queue.isPaused)}
                       </Text>
                       <View style={styles.queueMessageList}>
                         {queue.messages.map((message) => {
@@ -1077,7 +1081,7 @@ export default function OperationsScreen({ navigation }: any) {
                                     value={editedText}
                                     onChangeText={(text) => setEditingQueuedMessage({ conversationId: queue.conversationId, messageId: message.id, text })}
                                     multiline
-                                    accessibilityLabel={createTextInputAccessibilityLabel(`Queued message ${message.id}`)}
+                                    accessibilityLabel={createTextInputAccessibilityLabel(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatMessageInputAccessibilityLabel(message.id))}
                                   />
                                 ) : (
                                   <>
@@ -1101,9 +1105,9 @@ export default function OperationsScreen({ navigation }: any) {
                                       onPress={() => setEditingQueuedMessage(null)}
                                       disabled={controlsDisabled}
                                       accessibilityRole="button"
-                                      accessibilityLabel={createButtonAccessibilityLabel(`Cancel editing queued message ${message.id}`)}
+                                      accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatCancelEditAccessibilityLabel(message.id))}
                                     >
-                                      <Text style={styles.secondaryActionText}>Cancel</Text>
+                                      <Text style={styles.secondaryActionText}>{OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.cancelEditButtonLabel}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                       style={[
@@ -1132,10 +1136,12 @@ export default function OperationsScreen({ navigation }: any) {
                                       })}
                                       disabled={controlsDisabled || !editedText.trim()}
                                       accessibilityRole="button"
-                                      accessibilityLabel={createButtonAccessibilityLabel(`Save queued message ${message.id}`)}
+                                      accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatSaveMessageAccessibilityLabel(message.id))}
                                     >
                                       <Text style={styles.secondaryActionText}>
-                                        {pendingAction === updateAction ? 'Saving...' : 'Save'}
+                                        {pendingAction === updateAction
+                                          ? OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.saveMessagePendingLabel
+                                          : OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.saveMessageButtonLabel}
                                       </Text>
                                     </TouchableOpacity>
                                   </>
@@ -1167,10 +1173,12 @@ export default function OperationsScreen({ navigation }: any) {
                                         })}
                                         disabled={controlsDisabled}
                                         accessibilityRole="button"
-                                        accessibilityLabel={createButtonAccessibilityLabel(`Retry queued message ${message.id}`)}
+                                        accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatRetryMessageAccessibilityLabel(message.id))}
                                       >
                                         <Text style={styles.secondaryActionText}>
-                                          {pendingAction === retryAction ? 'Retrying...' : 'Retry'}
+                                          {pendingAction === retryAction
+                                            ? OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.retryMessagePendingLabel
+                                            : OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.retryMessageButtonLabel}
                                         </Text>
                                       </TouchableOpacity>
                                     ) : null}
@@ -1180,18 +1188,18 @@ export default function OperationsScreen({ navigation }: any) {
                                         onPress={() => setEditingQueuedMessage({ conversationId: queue.conversationId, messageId: message.id, text: message.text })}
                                         disabled={controlsDisabled}
                                         accessibilityRole="button"
-                                        accessibilityLabel={createButtonAccessibilityLabel(`Edit queued message ${message.id}`)}
+                                        accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatEditMessageAccessibilityLabel(message.id))}
                                       >
-                                        <Text style={styles.secondaryActionText}>Edit</Text>
+                                        <Text style={styles.secondaryActionText}>{OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.editMessageButtonLabel}</Text>
                                       </TouchableOpacity>
                                     ) : null}
                                     {canMutateMessage ? (
                                       <TouchableOpacity
                                         style={[styles.queueMessageButton, styles.secondaryActionButton, controlsDisabled && styles.actionButtonDisabled]}
                                         onPress={() => confirmAction(
-                                          'Remove Queued Message',
-                                          `Remove queued message ${message.id} from ${queue.conversationId}?`,
-                                          'Remove',
+                                          OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.removeMessageConfirmTitle,
+                                          OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatRemoveMessageConfirmMessage(message.id, queue.conversationId),
+                                          OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.removeMessageConfirmButtonLabel,
                                           true,
                                           () => runAction(removeAction, async () => {
                                             const response = await settingsClient.removeOperatorQueuedMessage(queue.conversationId, message.id);
@@ -1213,10 +1221,12 @@ export default function OperationsScreen({ navigation }: any) {
                                         )}
                                         disabled={controlsDisabled}
                                         accessibilityRole="button"
-                                        accessibilityLabel={createButtonAccessibilityLabel(`Remove queued message ${message.id}`)}
+                                        accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatRemoveMessageAccessibilityLabel(message.id))}
                                       >
                                         <Text style={styles.secondaryActionText}>
-                                          {pendingAction === removeAction ? 'Removing...' : 'Remove'}
+                                          {pendingAction === removeAction
+                                            ? OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.removeMessagePendingLabel
+                                            : OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.removeMessageButtonLabel}
                                         </Text>
                                       </TouchableOpacity>
                                     ) : null}
@@ -1249,10 +1259,12 @@ export default function OperationsScreen({ navigation }: any) {
                           })}
                           disabled={controlsDisabled}
                           accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Resume ${queue.conversationId} desktop message queue`)}
+                          accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatResumeQueueAccessibilityLabel(queue.conversationId))}
                         >
                           <Text style={styles.secondaryActionText}>
-                            {pendingAction === resumeAction ? 'Resuming...' : 'Resume'}
+                            {pendingAction === resumeAction
+                              ? OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.resumeQueuePendingLabel
+                              : OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.resumeQueueButtonLabel}
                           </Text>
                         </TouchableOpacity>
                       ) : (
@@ -1275,10 +1287,12 @@ export default function OperationsScreen({ navigation }: any) {
                           }, false)}
                           disabled={controlsDisabled || hasProcessingMessage}
                           accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Pause ${queue.conversationId} desktop message queue`)}
+                          accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatPauseQueueAccessibilityLabel(queue.conversationId))}
                         >
                           <Text style={styles.secondaryActionText}>
-                            {pendingAction === pauseAction ? 'Pausing...' : 'Pause'}
+                            {pendingAction === pauseAction
+                              ? OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.pauseQueuePendingLabel
+                              : OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.pauseQueueButtonLabel}
                           </Text>
                         </TouchableOpacity>
                       )}
@@ -1289,9 +1303,9 @@ export default function OperationsScreen({ navigation }: any) {
                           (controlsDisabled || hasProcessingMessage) && styles.actionButtonDisabled,
                         ]}
                         onPress={() => confirmAction(
-                          'Clear Message Queue',
-                          `Clear the queued desktop messages for ${queue.conversationId}? Processing messages cannot be cleared.`,
-                          'Clear Queue',
+                          OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.clearQueueConfirmTitle,
+                          OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatClearQueueConfirmMessage(queue.conversationId),
+                          OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.clearQueueConfirmButtonLabel,
                           true,
                           () => runAction(clearAction, async () => {
                             const response = await settingsClient.clearOperatorMessageQueue(queue.conversationId);
@@ -1303,10 +1317,12 @@ export default function OperationsScreen({ navigation }: any) {
                         )}
                         disabled={controlsDisabled || hasProcessingMessage}
                         accessibilityRole="button"
-                        accessibilityLabel={createButtonAccessibilityLabel(`Clear ${queue.conversationId} desktop message queue`)}
+                        accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatClearQueueAccessibilityLabel(queue.conversationId))}
                       >
                         <Text style={styles.secondaryActionText}>
-                          {pendingAction === clearAction ? 'Clearing...' : 'Clear'}
+                          {pendingAction === clearAction
+                            ? OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.clearQueuePendingLabel
+                            : OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.clearQueueButtonLabel}
                         </Text>
                       </TouchableOpacity>
                     </View>

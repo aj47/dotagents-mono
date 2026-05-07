@@ -319,7 +319,9 @@ test('displays system metrics and agent sessions from operator status', () => {
 test('displays desktop message queues from operator API', () => {
   assert.match(operationsSource, /getOperatorMessageQueues\(\)/);
   assert.match(operationsSource, /setMessageQueues/);
-  assert.match(operationsSource, /Desktop message queues/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.panelTitle/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatSummary/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatQueueSummary\(queue\.conversationId, queue\.messageCount, queue\.isPaused\)/);
   assert.match(operationsSource, /messageQueues\.map/);
   assert.match(operationsSource, /clearOperatorMessageQueue\(queue\.conversationId\)/);
   assert.match(operationsSource, /pauseOperatorMessageQueue\(queue\.conversationId\)/);
@@ -327,12 +329,20 @@ test('displays desktop message queues from operator API', () => {
   assert.match(operationsSource, /retryOperatorQueuedMessage\(queue\.conversationId, message\.id\)/);
   assert.match(operationsSource, /removeOperatorQueuedMessage\(queue\.conversationId, message\.id\)/);
   assert.match(operationsSource, /updateOperatorQueuedMessageText\(queue\.conversationId, message\.id, editedText\)/);
-  assert.match(operationsSource, /Clear \$\{queue\.conversationId\} desktop message queue/);
-  assert.match(operationsSource, /Pause \$\{queue\.conversationId\} desktop message queue/);
-  assert.match(operationsSource, /Resume \$\{queue\.conversationId\} desktop message queue/);
-  assert.match(operationsSource, /Retry queued message \$\{message\.id\}/);
-  assert.match(operationsSource, /Edit queued message \$\{message\.id\}/);
-  assert.match(operationsSource, /Remove queued message \$\{message\.id\}/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatClearQueueAccessibilityLabel\(queue\.conversationId\)/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatPauseQueueAccessibilityLabel\(queue\.conversationId\)/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatResumeQueueAccessibilityLabel\(queue\.conversationId\)/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatRetryMessageAccessibilityLabel\(message\.id\)/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatEditMessageAccessibilityLabel\(message\.id\)/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatRemoveMessageAccessibilityLabel\(message\.id\)/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatMessageInputAccessibilityLabel\(message\.id\)/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatCancelEditAccessibilityLabel\(message\.id\)/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatSaveMessageAccessibilityLabel\(message\.id\)/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatRemoveMessageConfirmMessage\(message\.id, queue\.conversationId\)/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatClearQueueConfirmMessage\(queue\.conversationId\)/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Desktop message queues<\/Text>/);
+  assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\(`Clear \$\{queue\.conversationId\} desktop message queue`\)/);
+  assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\(`Retry queued message \$\{message\.id\}`\)/);
 });
 
 test('auto-refreshes operator data periodically', () => {

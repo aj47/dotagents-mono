@@ -158,6 +158,79 @@ export const OPERATOR_AGENT_SESSIONS_PANEL_METADATA: OperatorAgentSessionsPanelM
   noActiveSessionsText: "No active agent sessions",
 }
 
+export type OperatorMessageQueuesPanelMetadata = {
+  panelTitle: string
+  formatSummary: (queuedMessageCount: number, conversationCount: number) => string
+  formatQueueSummary: (conversationId: string, messageCount: number, isPaused: boolean) => string
+  formatMessageInputAccessibilityLabel: (messageId: string) => string
+  formatCancelEditAccessibilityLabel: (messageId: string) => string
+  cancelEditButtonLabel: string
+  formatSaveMessageAccessibilityLabel: (messageId: string) => string
+  saveMessagePendingLabel: string
+  saveMessageButtonLabel: string
+  formatRetryMessageAccessibilityLabel: (messageId: string) => string
+  retryMessagePendingLabel: string
+  retryMessageButtonLabel: string
+  formatEditMessageAccessibilityLabel: (messageId: string) => string
+  editMessageButtonLabel: string
+  removeMessageConfirmTitle: string
+  formatRemoveMessageConfirmMessage: (messageId: string, conversationId: string) => string
+  removeMessageConfirmButtonLabel: string
+  formatRemoveMessageAccessibilityLabel: (messageId: string) => string
+  removeMessagePendingLabel: string
+  removeMessageButtonLabel: string
+  formatResumeQueueAccessibilityLabel: (conversationId: string) => string
+  resumeQueuePendingLabel: string
+  resumeQueueButtonLabel: string
+  formatPauseQueueAccessibilityLabel: (conversationId: string) => string
+  pauseQueuePendingLabel: string
+  pauseQueueButtonLabel: string
+  clearQueueConfirmTitle: string
+  formatClearQueueConfirmMessage: (conversationId: string) => string
+  clearQueueConfirmButtonLabel: string
+  formatClearQueueAccessibilityLabel: (conversationId: string) => string
+  clearQueuePendingLabel: string
+  clearQueueButtonLabel: string
+}
+
+export const OPERATOR_MESSAGE_QUEUES_PANEL_METADATA: OperatorMessageQueuesPanelMetadata = {
+  panelTitle: "Desktop message queues",
+  formatSummary: (queuedMessageCount, conversationCount) =>
+    `${queuedMessageCount} queued messages across ${conversationCount} conversations`,
+  formatQueueSummary: (conversationId, messageCount, isPaused) =>
+    `${conversationId}: ${messageCount} queued${isPaused ? " (paused)" : ""}`,
+  formatMessageInputAccessibilityLabel: (messageId) => `Queued message ${messageId}`,
+  formatCancelEditAccessibilityLabel: (messageId) => `Cancel editing queued message ${messageId}`,
+  cancelEditButtonLabel: "Cancel",
+  formatSaveMessageAccessibilityLabel: (messageId) => `Save queued message ${messageId}`,
+  saveMessagePendingLabel: "Saving...",
+  saveMessageButtonLabel: "Save",
+  formatRetryMessageAccessibilityLabel: (messageId) => `Retry queued message ${messageId}`,
+  retryMessagePendingLabel: "Retrying...",
+  retryMessageButtonLabel: "Retry",
+  formatEditMessageAccessibilityLabel: (messageId) => `Edit queued message ${messageId}`,
+  editMessageButtonLabel: "Edit",
+  removeMessageConfirmTitle: "Remove Queued Message",
+  formatRemoveMessageConfirmMessage: (messageId, conversationId) => `Remove queued message ${messageId} from ${conversationId}?`,
+  removeMessageConfirmButtonLabel: "Remove",
+  formatRemoveMessageAccessibilityLabel: (messageId) => `Remove queued message ${messageId}`,
+  removeMessagePendingLabel: "Removing...",
+  removeMessageButtonLabel: "Remove",
+  formatResumeQueueAccessibilityLabel: (conversationId) => `Resume ${conversationId} desktop message queue`,
+  resumeQueuePendingLabel: "Resuming...",
+  resumeQueueButtonLabel: "Resume",
+  formatPauseQueueAccessibilityLabel: (conversationId) => `Pause ${conversationId} desktop message queue`,
+  pauseQueuePendingLabel: "Pausing...",
+  pauseQueueButtonLabel: "Pause",
+  clearQueueConfirmTitle: "Clear Message Queue",
+  formatClearQueueConfirmMessage: (conversationId) =>
+    `Clear the queued desktop messages for ${conversationId}? Processing messages cannot be cleared.`,
+  clearQueueConfirmButtonLabel: "Clear Queue",
+  formatClearQueueAccessibilityLabel: (conversationId) => `Clear ${conversationId} desktop message queue`,
+  clearQueuePendingLabel: "Clearing...",
+  clearQueueButtonLabel: "Clear",
+}
+
 export type OperatorRuntimeStatusPanelMetadata = {
   panelTitle: string
   configuredLabel: string

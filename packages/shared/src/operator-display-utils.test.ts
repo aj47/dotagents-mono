@@ -8,6 +8,7 @@ import {
   OPERATOR_ERRORS_PANEL_METADATA,
   OPERATOR_LOGS_PANEL_METADATA,
   OPERATOR_MCP_SERVERS_PANEL_METADATA,
+  OPERATOR_MESSAGE_QUEUES_PANEL_METADATA,
   OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
   formatOperatorActiveAgentSessionSummary,
@@ -128,6 +129,83 @@ describe("operator display utils", () => {
     )
     expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatDismissAccessibilityLabel("Build release")).toBe(
       "Dismiss Build release agent session progress on desktop",
+    )
+  })
+
+  it("exports operator message queues panel metadata", () => {
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA).toEqual({
+      panelTitle: "Desktop message queues",
+      formatSummary: expect.any(Function),
+      formatQueueSummary: expect.any(Function),
+      formatMessageInputAccessibilityLabel: expect.any(Function),
+      formatCancelEditAccessibilityLabel: expect.any(Function),
+      cancelEditButtonLabel: "Cancel",
+      formatSaveMessageAccessibilityLabel: expect.any(Function),
+      saveMessagePendingLabel: "Saving...",
+      saveMessageButtonLabel: "Save",
+      formatRetryMessageAccessibilityLabel: expect.any(Function),
+      retryMessagePendingLabel: "Retrying...",
+      retryMessageButtonLabel: "Retry",
+      formatEditMessageAccessibilityLabel: expect.any(Function),
+      editMessageButtonLabel: "Edit",
+      removeMessageConfirmTitle: "Remove Queued Message",
+      formatRemoveMessageConfirmMessage: expect.any(Function),
+      removeMessageConfirmButtonLabel: "Remove",
+      formatRemoveMessageAccessibilityLabel: expect.any(Function),
+      removeMessagePendingLabel: "Removing...",
+      removeMessageButtonLabel: "Remove",
+      formatResumeQueueAccessibilityLabel: expect.any(Function),
+      resumeQueuePendingLabel: "Resuming...",
+      resumeQueueButtonLabel: "Resume",
+      formatPauseQueueAccessibilityLabel: expect.any(Function),
+      pauseQueuePendingLabel: "Pausing...",
+      pauseQueueButtonLabel: "Pause",
+      clearQueueConfirmTitle: "Clear Message Queue",
+      formatClearQueueConfirmMessage: expect.any(Function),
+      clearQueueConfirmButtonLabel: "Clear Queue",
+      formatClearQueueAccessibilityLabel: expect.any(Function),
+      clearQueuePendingLabel: "Clearing...",
+      clearQueueButtonLabel: "Clear",
+    })
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatSummary(4, 2)).toBe("4 queued messages across 2 conversations")
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatQueueSummary("conversation-1", 3, false)).toBe(
+      "conversation-1: 3 queued",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatQueueSummary("conversation-1", 3, true)).toBe(
+      "conversation-1: 3 queued (paused)",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatMessageInputAccessibilityLabel("message-1")).toBe(
+      "Queued message message-1",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatCancelEditAccessibilityLabel("message-1")).toBe(
+      "Cancel editing queued message message-1",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatSaveMessageAccessibilityLabel("message-1")).toBe(
+      "Save queued message message-1",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatRetryMessageAccessibilityLabel("message-1")).toBe(
+      "Retry queued message message-1",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatEditMessageAccessibilityLabel("message-1")).toBe(
+      "Edit queued message message-1",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatRemoveMessageConfirmMessage("message-1", "conversation-1")).toBe(
+      "Remove queued message message-1 from conversation-1?",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatRemoveMessageAccessibilityLabel("message-1")).toBe(
+      "Remove queued message message-1",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatResumeQueueAccessibilityLabel("conversation-1")).toBe(
+      "Resume conversation-1 desktop message queue",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatPauseQueueAccessibilityLabel("conversation-1")).toBe(
+      "Pause conversation-1 desktop message queue",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatClearQueueConfirmMessage("conversation-1")).toBe(
+      "Clear the queued desktop messages for conversation-1? Processing messages cannot be cleared.",
+    )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatClearQueueAccessibilityLabel("conversation-1")).toBe(
+      "Clear conversation-1 desktop message queue",
     )
   })
 
