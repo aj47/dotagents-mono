@@ -9,18 +9,11 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { generateMessageId } from '@dotagents/shared/session';
 import {
-  buildQueuedMessage,
-  clearQueuedMessages,
-  enqueueQueuedMessage,
-  getQueuedMessages,
-  hasQueuedMessages as hasMessageQueueItems,
-  markQueuedMessageFailed,
-  markQueuedMessageProcessed,
-  markQueuedMessageProcessing,
-  peekNextQueuedMessage,
-  removeQueuedMessage,
-  resetQueuedMessageToPending,
-  updateQueuedMessageText,
+  createMessageQueueStore,
+  type MessageQueueStore as SharedMessageQueueStore,
+} from '@dotagents/shared/message-queue-store';
+import {
+  type MessageQueue,
   type MessageQueueMap,
   type QueuedMessage,
 } from '@dotagents/shared/message-queue-utils';
@@ -63,100 +56,91 @@ export interface MessageQueueStore {
   hasQueuedMessages: (conversationId: string) => boolean;
 }
 
-export function useMessageQueue(): MessageQueueStore {
-  const [queues, setQueues] = useState<Map<string, QueuedMessage[]>>(new Map());
-  const queuesRef = useRef<Map<string, QueuedMessage[]>>(queues);
+function buildQueueSnapshot(queues: MessageQueue[]): MessageQueueMap {
+  return new Map(queues.map((queue) => [queue.conversationId, queue.messages]));
+}
 
-  const replaceQueues = useCallback((newValue: MessageQueueMap) => {
-    queuesRef.current = newValue;
-    setQueues(newValue);
-  }, []);
+export function useMessageQueue(): MessageQueueStore {
+  const [queues, setQueues] = useState<MessageQueueMap>(new Map());
+  const storeRef = useRef<SharedMessageQueueStore | null>(null);
+
+  if (!storeRef.current) {
+    storeRef.current = createMessageQueueStore({
+      idFactory: () => generateMessageId(),
+      onQueueChanged: () => {
+        const store = storeRef.current;
+        if (!store) return;
+        setQueues(buildQueueSnapshot(store.getAllQueues()));
+      },
+    });
+  }
+
+  const queueStore = storeRef.current;
 
   const enqueue = useCallback((conversationId: string, text: string): QueuedMessage => {
-    const message = buildQueuedMessage({
-      id: generateMessageId(),
-      conversationId,
-      text,
-      createdAt: Date.now(),
-    });
-    const result = enqueueQueuedMessage(queuesRef.current, message);
-    replaceQueues(result.queues);
-
+    const message = queueStore.enqueue(conversationId, text);
     console.log('[MessageQueue] Enqueued message:', message.id);
     return message;
-  }, [replaceQueues]);
+  }, [queueStore]);
   
   const getQueue = useCallback((conversationId: string): QueuedMessage[] => {
-    return getQueuedMessages(queuesRef.current, conversationId);
-  }, []);
+    return queueStore.getQueue(conversationId);
+  }, [queueStore]);
   
   const removeFromQueue = useCallback((conversationId: string, messageId: string): boolean => {
-    const result = removeQueuedMessage(queuesRef.current, conversationId, messageId);
-    if (!result.ok) return false;
+    const result = queueStore.removeFromQueue(conversationId, messageId);
+    if (!result.success) return false;
 
-    replaceQueues(result.queues);
     console.log('[MessageQueue] Removed message:', messageId);
     return true;
-  }, [replaceQueues]);
+  }, [queueStore]);
 
   const clearQueue = useCallback((conversationId: string): void => {
-    const result = clearQueuedMessages(queuesRef.current, conversationId);
-    if (result.ok) {
-      replaceQueues(result.queues);
+    const result = queueStore.clearQueue(conversationId);
+    if (result.success && result.changed) {
       console.log('[MessageQueue] Cleared queue for:', conversationId);
     }
-  }, [replaceQueues]);
+  }, [queueStore]);
 
   const updateText = useCallback((conversationId: string, messageId: string, text: string): boolean => {
-    const result = updateQueuedMessageText(queuesRef.current, conversationId, messageId, text);
-    if (!result.ok) return false;
-
-    replaceQueues(result.queues);
-    return true;
-  }, [replaceQueues]);
+    return queueStore.updateMessageText(conversationId, messageId, text).success;
+  }, [queueStore]);
   
   const peek = useCallback((conversationId: string): QueuedMessage | null => {
-    return peekNextQueuedMessage(queuesRef.current, conversationId);
-  }, []);
+    return queueStore.peek(conversationId);
+  }, [queueStore]);
 
   const markProcessing = useCallback((conversationId: string, messageId: string): boolean => {
-    const result = markQueuedMessageProcessing(queuesRef.current, conversationId, messageId);
-    if (!result.ok) return false;
-
-    replaceQueues(result.queues);
-    return true;
-  }, [replaceQueues]);
+    return queueStore.markProcessing(conversationId, messageId).success;
+  }, [queueStore]);
 
   const markProcessed = useCallback((conversationId: string, messageId: string): boolean => {
-    const result = markQueuedMessageProcessed(queuesRef.current, conversationId, messageId);
-    if (!result.ok) return false;
+    const result = queueStore.markProcessed(conversationId, messageId);
+    if (!result.success) return false;
 
-    replaceQueues(result.queues);
     console.log('[MessageQueue] Marked processed:', messageId);
     return true;
-  }, [replaceQueues]);
+  }, [queueStore]);
 
   const markFailed = useCallback((conversationId: string, messageId: string, errorMessage: string): boolean => {
-    const result = markQueuedMessageFailed(queuesRef.current, conversationId, messageId, errorMessage);
-    if (!result.ok) return false;
+    const result = queueStore.markFailed(conversationId, messageId, errorMessage);
+    if (!result.success) return false;
 
-    replaceQueues(result.queues);
     console.log('[MessageQueue] Marked failed:', messageId, errorMessage);
     return true;
-  }, [replaceQueues]);
+  }, [queueStore]);
 
   const resetToPending = useCallback((conversationId: string, messageId: string): boolean => {
-    const result = resetQueuedMessageToPending(queuesRef.current, conversationId, messageId);
-    if (!result.ok) return false;
+    const result = queueStore.resetToPending(conversationId, messageId);
+    if (!result.success) return false;
 
-    replaceQueues(result.queues);
     console.log('[MessageQueue] Reset to pending:', messageId);
     return true;
-  }, [replaceQueues]);
+  }, [queueStore]);
 
   const hasQueuedMessages = useCallback((conversationId: string): boolean => {
-    return hasMessageQueueItems(queuesRef.current, conversationId);
-  }, []);
+    return queueStore.hasQueuedMessages(conversationId);
+  }, [queueStore]);
 
   return {
     queues,
