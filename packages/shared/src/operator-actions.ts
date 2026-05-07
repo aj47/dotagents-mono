@@ -663,6 +663,10 @@ export interface OperatorAgentActionService {
   clearInactiveAgentSessions(): {
     clearedCount?: number
   }
+  clearAgentSessionProgress(sessionId: string): {
+    sessionId: string
+    removed?: boolean
+  }
 }
 
 export interface OperatorAgentActionServiceOptions {
@@ -680,6 +684,10 @@ export interface OperatorAgentActionServiceOptions {
   clearInactiveAgentSessions(): {
     clearedCount?: number
   }
+  clearAgentSessionProgress(sessionId: string): {
+    sessionId: string
+    removed?: boolean
+  }
 }
 
 export function createOperatorAgentActionService(
@@ -690,6 +698,7 @@ export function createOperatorAgentActionService(
     stopAgentSessionById: (sessionId) => options.stopAgentSessionById(sessionId),
     setAgentSessionSnoozed: (sessionId, isSnoozed) => options.setAgentSessionSnoozed(sessionId, isSnoozed),
     clearInactiveAgentSessions: () => options.clearInactiveAgentSessions(),
+    clearAgentSessionProgress: (sessionId) => options.clearAgentSessionProgress(sessionId),
   }
 }
 
@@ -705,6 +714,7 @@ export interface OperatorAgentRouteActions {
   snoozeOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
   unsnoozeOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
   clearInactiveOperatorAgentSessions(): OperatorAgentActionResult
+  clearOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
 }
 
 export type OperatorTtsPlaybackActionResult = {
@@ -970,6 +980,7 @@ export type OperatorSessionSummaryLike = {
   conversationTitle?: string
   status: string
   startTime: number
+  endTime?: number
   currentIteration?: number
   maxIterations?: number
   isSnoozed?: boolean
@@ -2425,6 +2436,21 @@ export function buildOperatorAgentSessionsClearInactiveResponse(
   }
 }
 
+export function buildOperatorAgentSessionClearResponse(
+  sessionId: string,
+  removed?: boolean,
+): OperatorActionResponse {
+  return {
+    success: true,
+    action: "agent-session-clear",
+    message: `Cleared agent session ${sessionId}`,
+    details: {
+      sessionId,
+      ...(typeof removed === "boolean" ? { removed } : {}),
+    },
+  }
+}
+
 export function buildOperatorMessageQueueClearResponse(
   conversationId: string,
   success: boolean,
@@ -2688,6 +2714,35 @@ export function clearInactiveOperatorAgentSessionsAction(
   }
 }
 
+export function clearOperatorAgentSessionAction(
+  sessionIdParam: string | undefined,
+  options: OperatorAgentActionOptions,
+): OperatorAgentActionResult {
+  const sessionId = normalizeOperatorPathParam(sessionIdParam)
+  if (!sessionId) {
+    const response = buildOperatorActionErrorResponse("agent-session-clear", "Missing session ID")
+    return operatorAgentActionResult(400, response, buildOperatorActionAuditContext(response))
+  }
+
+  try {
+    const result = options.service.clearAgentSessionProgress(sessionId)
+    const response = buildOperatorAgentSessionClearResponse(result.sessionId, result.removed)
+    return operatorAgentActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    const response = buildOperatorActionErrorResponse(
+      "agent-session-clear",
+      `Failed to clear agent session: ${errorMessage}`,
+    )
+    options.diagnostics.logError(
+      "operator-agent-actions",
+      `Failed to clear agent session ${sessionId}: ${errorMessage}`,
+      caughtError,
+    )
+    return operatorAgentActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
 export function createOperatorAgentRouteActions(
   options: OperatorAgentActionOptions,
 ): OperatorAgentRouteActions {
@@ -2700,6 +2755,7 @@ export function createOperatorAgentRouteActions(
     unsnoozeOperatorAgentSession: (sessionIdParam) =>
       setOperatorAgentSessionSnoozedAction(sessionIdParam, false, options),
     clearInactiveOperatorAgentSessions: () => clearInactiveOperatorAgentSessionsAction(options),
+    clearOperatorAgentSession: (sessionIdParam) => clearOperatorAgentSessionAction(sessionIdParam, options),
   }
 }
 
@@ -3958,6 +4014,13 @@ export function buildOperatorSessionsSummary(
       currentIteration: session.currentIteration,
       maxIterations: session.maxIterations,
       ...(typeof session.isSnoozed === "boolean" ? { isSnoozed: session.isSnoozed } : {}),
+    })),
+    recentSessionDetails: recentSessions.map((session) => ({
+      id: session.id,
+      title: session.conversationTitle,
+      status: session.status,
+      startTime: session.startTime,
+      ...(typeof session.endTime === "number" ? { endTime: session.endTime } : {}),
     })),
   }
 }

@@ -4,9 +4,11 @@ import {
   appendOperatorAuditLogEntry,
   authorizeRemoteServerRequest,
   clearInactiveOperatorAgentSessionsAction,
+  clearOperatorAgentSessionAction,
   clearOperatorMessageQueueAction,
   buildOperatorActionErrorResponse,
   buildOperatorActionAuditContext,
+  buildOperatorAgentSessionClearResponse,
   buildOperatorAgentSessionsClearInactiveResponse,
   buildOperatorAgentSessionShowResponse,
   buildOperatorAgentSessionStopResponse,
@@ -243,6 +245,10 @@ describe("operator action API helpers", () => {
         calls.push("clear-inactive")
         return { clearedCount: 2 }
       },
+      clearAgentSessionProgress: (sessionId) => {
+        calls.push(`clear:${sessionId}`)
+        return { sessionId, removed: true }
+      },
     })
 
     await expect(service.stopAgentSessionById("session-1")).resolves.toEqual({
@@ -257,7 +263,8 @@ describe("operator action API helpers", () => {
       isSnoozed: true,
     })
     expect(service.clearInactiveAgentSessions()).toEqual({ clearedCount: 2 })
-    expect(calls).toEqual(["stop:session-1", "show:session-1", "snooze:session-1", "clear-inactive"])
+    expect(service.clearAgentSessionProgress("session-1")).toEqual({ sessionId: "session-1", removed: true })
+    expect(calls).toEqual(["stop:session-1", "show:session-1", "snooze:session-1", "clear-inactive", "clear:session-1"])
   })
 
   it("runs TTS playback route actions through a shared service adapter", () => {
@@ -348,6 +355,10 @@ describe("operator action API helpers", () => {
         clearInactiveAgentSessions: () => {
           calls.push("clear-inactive")
           return { clearedCount: 3 }
+        },
+        clearAgentSessionProgress: (sessionId) => {
+          calls.push(`clear:${sessionId}`)
+          return { sessionId, removed: true }
         },
       },
     }
@@ -498,6 +509,34 @@ describe("operator action API helpers", () => {
         success: true,
       },
     })
+    expect(clearOperatorAgentSessionAction(" session-1 ", options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "agent-session-clear",
+        details: {
+          sessionId: "session-1",
+          removed: true,
+        },
+      },
+      auditContext: {
+        action: "agent-session-clear",
+        success: true,
+      },
+    })
+    expect(clearOperatorAgentSessionAction(" ", options)).toMatchObject({
+      statusCode: 400,
+      body: {
+        success: false,
+        action: "agent-session-clear",
+        error: "Missing session ID",
+      },
+      auditContext: {
+        action: "agent-session-clear",
+        success: false,
+        failureReason: "Missing session ID",
+      },
+    })
 
     const routeActions = createOperatorAgentRouteActions(options)
     expect(await routeActions.runOperatorAgent({ prompt: "Route run" }, runAgent)).toMatchObject({
@@ -536,6 +575,13 @@ describe("operator action API helpers", () => {
         action: "agent-sessions-clear-inactive",
       },
     })
+    expect(routeActions.clearOperatorAgentSession("session-1")).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "agent-session-clear",
+      },
+    })
 
     const failingStopOptions: OperatorAgentActionOptions = {
       ...options,
@@ -544,6 +590,7 @@ describe("operator action API helpers", () => {
         stopAgentSessionById: async () => { throw new Error("missing session") },
         setAgentSessionSnoozed: () => { throw new Error("missing session") },
         clearInactiveAgentSessions: () => { throw new Error("missing session") },
+        clearAgentSessionProgress: () => { throw new Error("missing session") },
       },
     }
     expect(await stopOperatorAgentSessionAction("session-404", failingStopOptions)).toMatchObject({
@@ -572,6 +619,19 @@ describe("operator action API helpers", () => {
         failureReason: "Failed to clear inactive agent sessions: missing session",
       },
     })
+    expect(clearOperatorAgentSessionAction("session-404", failingStopOptions)).toMatchObject({
+      statusCode: 500,
+      body: {
+        success: false,
+        action: "agent-session-clear",
+        error: "Failed to clear agent session: missing session",
+      },
+      auditContext: {
+        action: "agent-session-clear",
+        success: false,
+        failureReason: "Failed to clear agent session: missing session",
+      },
+    })
     expect(calls).toEqual(expect.arrayContaining([
       "info:Operator run-agent: 5 chars (conversation conv-1)",
       "run:Do it:conv-1:profile-1",
@@ -581,8 +641,10 @@ describe("operator action API helpers", () => {
       "snooze:session-1",
       "unsnooze:session-1",
       "clear-inactive",
+      "clear:session-1",
       "error:Failed to stop agent session session-404: missing session",
       "error:Failed to clear inactive agent sessions: missing session",
+      "error:Failed to clear agent session session-404: missing session",
     ]))
   })
 
@@ -2811,6 +2873,16 @@ describe("operator action API helpers", () => {
       },
     })
 
+    expect(buildOperatorAgentSessionClearResponse("session-1", true)).toEqual({
+      success: true,
+      action: "agent-session-clear",
+      message: "Cleared agent session session-1",
+      details: {
+        sessionId: "session-1",
+        removed: true,
+      },
+    })
+
     expect(buildOperatorMessageQueueClearResponse("conv-1", true)).toEqual({
       success: true,
       action: "message-queue-clear",
@@ -3448,8 +3520,10 @@ describe("operator action API helpers", () => {
     ], [
       {
         id: "session-2",
+        conversationTitle: "Done",
         status: "completed",
         startTime: 0,
+        endTime: 4,
       },
       {
         id: "session-3",
@@ -3468,6 +3542,20 @@ describe("operator action API helpers", () => {
         maxIterations: 5,
         isSnoozed: true,
       }],
+      recentSessionDetails: [
+        {
+          id: "session-2",
+          title: "Done",
+          status: "completed",
+          startTime: 0,
+          endTime: 4,
+        },
+        {
+          id: "session-3",
+          status: "error",
+          startTime: 3,
+        },
+      ],
     })
   })
 

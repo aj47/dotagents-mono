@@ -54,6 +54,7 @@ export const REMOTE_SERVER_API_PATHS = {
   operatorAgentSessionStop: "/operator/sessions/:sessionId/stop",
   operatorAgentSessionSnooze: "/operator/sessions/:sessionId/snooze",
   operatorAgentSessionUnsnooze: "/operator/sessions/:sessionId/unsnooze",
+  operatorAgentSessionClear: "/operator/sessions/:sessionId/clear",
   operatorAgentSessionsClearInactive: "/operator/sessions/clear-inactive",
   operatorMessageQueues: "/operator/message-queues",
   operatorMessageQueueClear: "/operator/message-queues/:conversationId/clear",
@@ -181,6 +182,7 @@ export const REMOTE_SERVER_API_ROUTES = [
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorAgentSessionStop },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorAgentSessionSnooze },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorAgentSessionUnsnooze },
+  { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorAgentSessionClear },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorAgentSessionsClearInactive },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.operatorMessageQueues },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorMessageQueueClear },
@@ -386,6 +388,9 @@ export const REMOTE_SERVER_API_BUILDERS = {
   },
   operatorAgentSessionUnsnooze(sessionId: string): string {
     return `/operator/sessions/${encodePathParam(sessionId)}/unsnooze`;
+  },
+  operatorAgentSessionClear(sessionId: string): string {
+    return `/operator/sessions/${encodePathParam(sessionId)}/clear`;
   },
   operatorMessageQueueClear(conversationId: string): string {
     return `/operator/message-queues/${encodePathParam(conversationId)}/clear`;

@@ -498,6 +498,13 @@ export interface OperatorSessionsSummary {
     maxIterations?: number;
     isSnoozed?: boolean;
   }>;
+  recentSessionDetails: Array<{
+    id: string;
+    title?: string;
+    status: string;
+    startTime: number;
+    endTime?: number;
+  }>;
 }
 
 export interface OperatorRuntimeStatus {

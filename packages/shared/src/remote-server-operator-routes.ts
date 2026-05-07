@@ -403,6 +403,15 @@ export function registerOperatorRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  fastify.post(API_ROUTES.operatorAgentSessionClear, async (req, reply) => {
+    const params = req.params as { sessionId?: string };
+    const result = await actions.clearOperatorAgentSession(params.sessionId);
+    if (result.auditContext) {
+      actions.setOperatorAuditContext(req, result.auditContext);
+    }
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   fastify.post(API_ROUTES.operatorAgentSessionsClearInactive, async (req, reply) => {
     const result = await actions.clearInactiveOperatorAgentSessions();
     if (result.auditContext) {

@@ -161,6 +161,7 @@ describe('remote server operator routes', () => {
       showOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-show' } })),
       snoozeOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-snooze' } })),
       unsnoozeOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-unsnooze' } })),
+      clearOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-clear' } })),
       clearInactiveOperatorAgentSessions: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-sessions-clear-inactive' } })),
       getOperatorMcpServerLogs: vi.fn(() => ({ statusCode: 200, body: { logs: [] } })),
       setOperatorAuditContext: vi.fn(),
@@ -280,6 +281,12 @@ describe('remote server operator routes', () => {
       createReply(),
     );
     expect(actions.unsnoozeOperatorAgentSession).toHaveBeenCalledWith('session-1');
+
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionClear}`)!(
+      createRequest({ params: { sessionId: 'session-1' } }),
+      createReply(),
+    );
+    expect(actions.clearOperatorAgentSession).toHaveBeenCalledWith('session-1');
 
     await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionsClearInactive}`)!(
       createRequest(),

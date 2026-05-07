@@ -97,6 +97,7 @@ describe('SettingsApiClient operator endpoints', () => {
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-show', message: 'showing' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-snooze', message: 'snoozed' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-unsnooze', message: 'unsnoozed' }))
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-clear', message: 'cleared session' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-sessions-clear-inactive', message: 'cleared' }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -123,6 +124,7 @@ describe('SettingsApiClient operator endpoints', () => {
     await client.showOperatorAgentSession('session/1');
     await client.snoozeOperatorAgentSession('session/1');
     await client.unsnoozeOperatorAgentSession('session/1');
+    await client.clearOperatorAgentSession('session/1');
     await client.clearInactiveOperatorAgentSessions();
 
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
@@ -147,10 +149,11 @@ describe('SettingsApiClient operator endpoints', () => {
       'https://example.com/v1/operator/sessions/session%2F1/show',
       'https://example.com/v1/operator/sessions/session%2F1/snooze',
       'https://example.com/v1/operator/sessions/session%2F1/unsnooze',
+      'https://example.com/v1/operator/sessions/session%2F1/clear',
       'https://example.com/v1/operator/sessions/clear-inactive',
     ]);
 
-    for (const index of [2, 3, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]) {
+    for (const index of [2, 3, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]) {
       expect(fetchMock.mock.calls[index]?.[1]?.method).toBe('POST');
     }
     expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(JSON.stringify({ filePath: '/tmp/report.json' }));

@@ -116,6 +116,7 @@ import {
   showPanelWindow,
 } from "./window"
 import { stopAllTtsPlayback } from "./tts-playback-actions"
+import { clearSessionUserResponse } from "./session-user-response-store"
 
 const getOperatorSystemMetrics = createOperatorSystemMetricsCollector({
   getPlatform: () => os.platform(),
@@ -205,6 +206,22 @@ const agentActionOptions: OperatorAgentActionOptions = {
         }
       }
       return { clearedCount }
+    },
+    clearAgentSessionProgress: (sessionId) => {
+      clearSessionUserResponse(sessionId)
+      const removed = agentSessionTracker.removeCompletedSession(sessionId)
+      for (const id of ["main", "panel"] as const) {
+        try {
+          getWindowRendererHandlers(id)?.clearAgentSessionProgress?.send(sessionId)
+        } catch (error) {
+          diagnosticsService.logError(
+            "operator-route-desktop-actions",
+            `Failed to notify ${id} window after clearing agent session ${sessionId}`,
+            error,
+          )
+        }
+      }
+      return { sessionId, removed }
     },
   }),
 }

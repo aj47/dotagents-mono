@@ -892,6 +892,49 @@ export default function OperationsScreen({ navigation }: any) {
                   </View>
                 );
               })}
+              {(status.sessions.recentSessionDetails ?? []).length > 0 && (
+                <>
+                  <Text style={styles.mutedText}>Recent sessions</Text>
+                  {(status.sessions.recentSessionDetails ?? []).map((s) => {
+                    const clearAction = `agent-session-clear:${s.id}`;
+                    return (
+                      <View key={s.id} style={styles.agentSessionRow}>
+                        <View style={styles.agentSessionCopy}>
+                          <Text style={styles.detailText}>
+                            {s.title ?? s.id} — {s.status}
+                          </Text>
+                          <Text style={styles.mutedText}>
+                            {s.endTime ? `Ended ${formatTimestamp(s.endTime)}` : `Started ${formatTimestamp(s.startTime)}`}
+                          </Text>
+                        </View>
+                        <View style={styles.mcpActionRow}>
+                          <TouchableOpacity
+                            style={[
+                              styles.sessionStopButton,
+                              styles.secondaryActionButton,
+                              controlsDisabled && styles.actionButtonDisabled,
+                            ]}
+                            onPress={() => confirmAction(
+                              'Dismiss Agent Session',
+                              `Dismiss ${s.title ?? s.id} from desktop agent progress?`,
+                              'Dismiss',
+                              false,
+                              () => runAction(clearAction, () => settingsClient.clearOperatorAgentSession(s.id)),
+                            )}
+                            disabled={controlsDisabled}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Dismiss ${s.title ?? s.id} agent session progress on desktop`)}
+                          >
+                            <Text style={styles.secondaryActionText}>
+                              {pendingAction === clearAction ? 'Dismissing...' : 'Dismiss'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
               {status.sessions.activeSessions === 0 && (
                 <Text style={styles.mutedText}>No active agent sessions</Text>
               )}
