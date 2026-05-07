@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   TTS_SPEAK_MAX_TEXT_BYTES,
+  createTtsRouteActions,
   generateGeminiTTS,
   generateGroqTTS,
   generateOpenAITTS,
@@ -206,6 +207,54 @@ describe('synthesizeSpeechAction', () => {
       message: 'TTS request failed',
       caughtError: error,
     }]);
+  });
+
+  it('creates route actions that delegate to shared TTS synthesis', async () => {
+    const config = { ttsProviderId: 'custom' };
+    const encodedBody = { encoded: true };
+    const calls: unknown[] = [];
+    const routeActions = createTtsRouteActions({
+      getConfig: () => config,
+      generateSpeech: async (request, actionConfig) => {
+        calls.push({ request, actionConfig });
+        return {
+          audio: arrayBufferFromBytes([4, 5, 6]),
+          mimeType: 'audio/mpeg',
+          processedText: 'Hello.',
+          provider: request.providerId ?? 'fallback',
+        };
+      },
+      encodeAudioBody: (audio) => {
+        expect(Array.from(new Uint8Array(audio))).toEqual([4, 5, 6]);
+        return encodedBody;
+      },
+      diagnostics: {
+        logError: () => {
+          throw new Error('unexpected diagnostics log');
+        },
+      },
+    });
+
+    const result = await routeActions.synthesizeSpeech({ text: 'Hello', providerId: 'openai' });
+
+    expect(calls).toEqual([{
+      request: {
+        text: 'Hello',
+        providerId: 'openai',
+        voice: undefined,
+        model: undefined,
+        speed: undefined,
+      },
+      actionConfig: config,
+    }]);
+    expect(result).toEqual({
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'audio/mpeg',
+        'X-TTS-Provider': 'openai',
+      },
+      body: encodedBody,
+    });
   });
 });
 

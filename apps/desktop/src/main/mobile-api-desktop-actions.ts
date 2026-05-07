@@ -61,7 +61,7 @@ import {
 import type { MCPConfig } from "@dotagents/shared/mcp-utils"
 import { getMaskedRemoteServerApiKey } from "@dotagents/shared/remote-pairing"
 import {
-  synthesizeSpeechAction,
+  createTtsRouteActions,
   type TtsActionOptions,
 } from "@dotagents/shared/tts-api"
 import {
@@ -206,6 +206,8 @@ const ttsActionOptions: TtsActionOptions<Config> = {
   encodeAudioBody: (audio) => Buffer.from(audio),
   diagnostics: diagnosticsService,
 }
+
+const ttsRouteActions = createTtsRouteActions(ttsActionOptions)
 
 const emergencyStopActionOptions: EmergencyStopActionOptions = {
   stopAll: emergencyStopAll,
@@ -520,10 +522,6 @@ function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
 
-async function synthesizeSpeech(body: unknown) {
-  return synthesizeSpeechAction(body, ttsActionOptions)
-}
-
 async function triggerEmergencyStop() {
   return triggerEmergencyStopAction(emergencyStopActionOptions)
 }
@@ -625,7 +623,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   recordOperatorAuditEvent,
   getConversation,
   getConversationVideoAsset,
-  synthesizeSpeech,
+  ...ttsRouteActions,
   ...pushRouteActions,
   getConversations,
   createConversation,

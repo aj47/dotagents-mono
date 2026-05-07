@@ -138,6 +138,10 @@ export interface TtsActionOptions<TConfig extends GenerateTtsConfigLike = Genera
   diagnostics: TtsActionDiagnostics;
 }
 
+export interface TtsRouteActions {
+  synthesizeSpeech(body: unknown): Promise<TtsActionResult>;
+}
+
 function getUtf8ByteLength(value: string): number {
   return new TextEncoder().encode(value).length;
 }
@@ -236,6 +240,14 @@ export async function synthesizeSpeechAction<TConfig extends GenerateTtsConfigLi
     const message = getUnknownErrorMessage(caughtError, 'TTS generation failed');
     return ttsActionError(getTtsSpeakFailureStatusCode(message), message);
   }
+}
+
+export function createTtsRouteActions<TConfig extends GenerateTtsConfigLike>(
+  options: TtsActionOptions<TConfig>,
+): TtsRouteActions {
+  return {
+    synthesizeSpeech: (body) => synthesizeSpeechAction(body, options),
+  };
 }
 
 export function getOpenAITTSMimeType(responseFormat: OpenAITtsResponseFormat): string {
