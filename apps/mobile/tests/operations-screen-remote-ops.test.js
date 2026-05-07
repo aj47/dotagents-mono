@@ -27,6 +27,11 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_CORS_ORIGINS/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_PORT/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED/);
+  assert.match(operationsSource, /DEFAULT_FLOATING_PANEL_AUTO_SHOW/);
+  assert.match(operationsSource, /DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED/);
+  assert.match(operationsSource, /DEFAULT_PANEL_DRAG_ENABLED/);
+  assert.match(operationsSource, /DEFAULT_PANEL_POSITION/);
+  assert.match(operationsSource, /PANEL_POSITION_OPTIONS/);
   assert.match(operationsSource, /REMOTE_SERVER_PORT_MIN/);
   assert.match(operationsSource, /REMOTE_SERVER_PORT_MAX/);
   assert.match(operationsSource, /isRemoteServerPortUpdateValue/);
@@ -42,6 +47,15 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Trusted operator devices/);
   assert.match(operationsSource, /Current device ID:/);
   assert.match(operationsSource, /Trust this device/);
+  assert.match(operationsSource, /Desktop floating panel/);
+  assert.match(operationsSource, /Auto-Show Floating Panel/);
+  assert.match(operationsSource, /Hide When Main Focused/);
+  assert.match(operationsSource, /Enable Dragging/);
+  assert.match(operationsSource, /Default Position/);
+  assert.match(operationsSource, /floatingPanelAutoShow: value/);
+  assert.match(operationsSource, /hidePanelWhenMainFocused: value/);
+  assert.match(operationsSource, /panelDragEnabled: value/);
+  assert.match(operationsSource, /panelPosition: option\.value/);
   assert.match(operationsSource, /Tunnel Mode/);
   assert.match(operationsSource, /CLOUDFLARE_TUNNEL_MODE_OPTIONS/);
   assert.match(operationsSource, /DEFAULT_CLOUDFLARE_TUNNEL_MODE/);

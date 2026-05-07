@@ -20,7 +20,11 @@ import {
   createTextInputAccessibilityLabel,
 } from '@dotagents/shared/accessibility-utils';
 import { getDeviceIdentity } from '../lib/deviceIdentity';
-import type {
+import {
+  DEFAULT_FLOATING_PANEL_AUTO_SHOW,
+  DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED,
+  DEFAULT_PANEL_DRAG_ENABLED,
+  DEFAULT_PANEL_POSITION,
   OperatorAuditEntry,
   OperatorConversationItem,
   OperatorDiagnosticReport,
@@ -36,6 +40,7 @@ import type {
   OperatorWhatsAppIntegrationSummary,
   Settings,
   SettingsUpdate,
+  type PanelPosition,
 } from '@dotagents/shared/api-types';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { saveConfig, useConfigContext } from '../store/config';
@@ -84,6 +89,15 @@ const DISCORD_LOG_PREVIEW_COUNT = 6;
 const MCP_LOG_PREVIEW_COUNT = 20;
 const ACTION_REFRESH_DELAY_MS = 1200;
 const AUTO_REFRESH_INTERVAL_MS = 30_000;
+const PANEL_POSITION_OPTIONS: Array<{ value: PanelPosition; label: string }> = [
+  { value: 'top-left', label: 'Top Left' },
+  { value: 'top-center', label: 'Top Center' },
+  { value: 'top-right', label: 'Top Right' },
+  { value: 'bottom-left', label: 'Bottom Left' },
+  { value: 'bottom-center', label: 'Bottom Center' },
+  { value: 'bottom-right', label: 'Bottom Right' },
+  { value: 'custom', label: 'Custom' },
+];
 
 export default function OperationsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -1872,6 +1886,93 @@ export default function OperationsScreen({ navigation }: any) {
                 >
                   <Text style={styles.secondaryActionText}>{currentDeviceTrusted ? 'This device is trusted' : 'Trust this device'}</Text>
                 </TouchableOpacity>
+              </View>
+
+              <Text style={styles.subsectionTitle}>Desktop floating panel</Text>
+              <View style={styles.row}>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.label}>Auto-Show Floating Panel</Text>
+                  <Text style={styles.helperText}>Show the desktop panel during agent sessions.</Text>
+                </View>
+                <Switch
+                  value={settings.floatingPanelAutoShow ?? DEFAULT_FLOATING_PANEL_AUTO_SHOW}
+                  onValueChange={(value) => void applySettingsUpdate(
+                    { floatingPanelAutoShow: value },
+                    'floating panel auto-show',
+                    'Floating panel auto-show updated.',
+                  )}
+                  disabled={controlsDisabled}
+                  accessibilityLabel={createSwitchAccessibilityLabel('Auto-Show Floating Panel')}
+                  trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                  thumbColor={(settings.floatingPanelAutoShow ?? DEFAULT_FLOATING_PANEL_AUTO_SHOW) ? theme.colors.primaryForeground : theme.colors.background}
+                />
+              </View>
+
+              <View style={styles.row}>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.label}>Hide When Main Focused</Text>
+                  <Text style={styles.helperText}>Keep the panel out of the way while the desktop window is active.</Text>
+                </View>
+                <Switch
+                  value={settings.hidePanelWhenMainFocused ?? DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED}
+                  onValueChange={(value) => void applySettingsUpdate(
+                    { hidePanelWhenMainFocused: value },
+                    'hide panel when main focused',
+                    'Panel focus behavior updated.',
+                  )}
+                  disabled={controlsDisabled}
+                  accessibilityLabel={createSwitchAccessibilityLabel('Hide Panel When Main Focused')}
+                  trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                  thumbColor={(settings.hidePanelWhenMainFocused ?? DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED) ? theme.colors.primaryForeground : theme.colors.background}
+                />
+              </View>
+
+              <View style={styles.row}>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.label}>Enable Dragging</Text>
+                  <Text style={styles.helperText}>Allow manual panel placement from the desktop panel handle.</Text>
+                </View>
+                <Switch
+                  value={settings.panelDragEnabled ?? DEFAULT_PANEL_DRAG_ENABLED}
+                  onValueChange={(value) => void applySettingsUpdate(
+                    { panelDragEnabled: value },
+                    'panel dragging',
+                    'Panel dragging updated.',
+                  )}
+                  disabled={controlsDisabled}
+                  accessibilityLabel={createSwitchAccessibilityLabel('Enable Floating Panel Dragging')}
+                  trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                  thumbColor={(settings.panelDragEnabled ?? DEFAULT_PANEL_DRAG_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                />
+              </View>
+
+              <Text style={styles.label}>Default Position</Text>
+              <View style={styles.chipRow}>
+                {PANEL_POSITION_OPTIONS.map((option) => {
+                  const isActive = (settings.panelPosition ?? DEFAULT_PANEL_POSITION) === option.value;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.chipButton,
+                        isActive && styles.chipButtonActive,
+                        controlsDisabled && styles.actionButtonDisabled,
+                      ]}
+                      onPress={() => void applySettingsUpdate(
+                        { panelPosition: option.value },
+                        'panel position',
+                        `Panel position set to ${option.label}.`,
+                      )}
+                      disabled={controlsDisabled}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`Set floating panel position to ${option.label}`)}
+                    >
+                      <Text style={[styles.chipButtonText, isActive && styles.chipButtonTextActive]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               <View style={styles.row}>
