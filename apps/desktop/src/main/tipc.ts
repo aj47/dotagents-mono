@@ -54,6 +54,9 @@ import {
   Conversation,
   ConversationCompactionMetadata,
   ConversationHistoryItem,
+  DesktopTTSPlaybackCommand,
+  DesktopTTSPlaybackRequest,
+  DesktopTTSPlaybackState,
   AgentProgressUpdate,
   SessionProfileSnapshot,
   LoopConfig,
@@ -75,8 +78,9 @@ import {
   constrainPositionToScreen,
   PanelPosition,
 } from "./panel-position"
-import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "./state"
+import { state, agentProcessManager, suppressPanelAutoShow, toolApprovalManager, agentSessionStateManager } from "./state"
 import { generateTTS } from "./tts-service"
+import { desktopTTSPlaybackCoordinator } from "./tts-playback-coordinator"
 
 
 import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus, getRemoteServerPairingApiKey } from "./remote-server"
@@ -341,9 +345,11 @@ async function processWithAgentMode(
   text: string,
   conversationId?: string,
   existingSessionId?: string, // Optional: reuse existing session instead of creating new one
-  startSnoozed: boolean = false, // Whether to start session snoozed (default: false to show panel)
+  launchStateOrStartSnoozed: boolean | AgentLaunchState = false, // Defaults to foreground/panel-focused work.
   maxIterationsOverride?: number,
 ): Promise<string> {
+  const launchState = normalizeAgentLaunchState(launchStateOrStartSnoozed)
+  const { startSnoozed } = launchState
   const config = configStore.get()
   const maxIterationsFromOverride = typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)
     ? maxIterationsOverride
@@ -404,6 +410,10 @@ async function processWithAgentMode(
     // Start tracking this agent session (or reuse existing one)
     const sessionId = existingSessionId
       || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
+    agentSessionTracker.updateSession(sessionId, {
+      isSnoozed: startSnoozed,
+      suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow,
+    })
     const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
 
     try {
@@ -449,8 +459,13 @@ async function processWithAgentMode(
 
   // Start tracking this agent session (or reuse existing one)
   let conversationTitle = text
-  // When creating a new session from keybind/UI, start unsnoozed so panel shows immediately
+  // When creating a new session from keybind/UI, start unsnoozed unless the
+  // caller explicitly requested true background/snoozed work.
   const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
+  agentSessionTracker.updateSession(sessionId, {
+    isSnoozed: startSnoozed,
+    suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow,
+  })
   const runId = agentSessionStateManager.startSessionRun(sessionId, profileSnapshot)
 
   try {
@@ -586,9 +601,9 @@ async function processWithAgentMode(
       logLLM(`[tipc.ts processWithAgentMode] No conversationId provided, starting fresh conversation`)
     }
 
-    // Focus interactive sessions in the panel window.
-    // Background/snoozed sessions (e.g. scheduled loops) should not steal focus.
-    if (!startSnoozed) {
+    // Focus only callers that explicitly want panel session selection. A tile
+    // send can be foreground/audible without forcing the floating panel open.
+    if (launchState.shouldFocusPanelSession) {
       try {
         getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)
       } catch (e) {
@@ -664,6 +679,59 @@ import { summarizationService } from "./summarization-service"
 import { updateTrayIcon } from "./tray"
 import { isAccessibilityGranted } from "./utils"
 import { writeText, writeTextWithFocusRestore } from "./keyboard"
+
+type AgentLaunchStateInput = {
+  /** Origin hint: the action came from an in-app/session tile. */
+  fromTile?: boolean
+  /** True background mode: keep the session quiet/hidden and disable TTS autoplay. */
+  startSnoozed?: boolean
+  /** Prevent floating-panel auto-show without implying background/snoozed work. */
+  suppressPanelAutoShow?: boolean
+  /** Select this session in the panel renderer when it starts. */
+  focusPanelSession?: boolean
+}
+
+type AgentLaunchState = {
+  startSnoozed: boolean
+  shouldSuppressPanelAutoShow: boolean
+  shouldFocusPanelSession: boolean
+}
+
+function resolveAgentLaunchState(input: AgentLaunchStateInput = {}): AgentLaunchState {
+  const startSnoozed = input.startSnoozed ?? false
+  const shouldSuppressPanelAutoShow =
+    startSnoozed || input.suppressPanelAutoShow === true || input.fromTile === true
+  const shouldFocusPanelSession =
+    input.focusPanelSession ?? (!startSnoozed && !shouldSuppressPanelAutoShow)
+
+  return {
+    startSnoozed,
+    shouldSuppressPanelAutoShow,
+    shouldFocusPanelSession,
+  }
+}
+
+function normalizeAgentLaunchState(
+  launchStateOrStartSnoozed: boolean | AgentLaunchState = false,
+): AgentLaunchState {
+  if (typeof launchStateOrStartSnoozed === "boolean") {
+    return resolveAgentLaunchState({
+      startSnoozed: launchStateOrStartSnoozed,
+      suppressPanelAutoShow: launchStateOrStartSnoozed,
+      focusPanelSession: !launchStateOrStartSnoozed,
+    })
+  }
+
+  return launchStateOrStartSnoozed
+}
+
+function serializeAgentLaunchState(launchState: AgentLaunchState) {
+  return {
+    startSnoozed: launchState.startSnoozed,
+    suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow,
+    focusPanelSession: launchState.shouldFocusPanelSession,
+  }
+}
 
 
 
@@ -937,13 +1005,22 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
           messageQueueService.markAddedToHistory(conversationId, queuedMessage.id)
         }
 
-        // Determine if we should start snoozed based on panel visibility
-        // If the panel is currently visible, the user is actively watching - don't snooze
-        // If the panel is hidden, process in background to avoid unwanted pop-ups
+        // Preserve the launch semantics from the UI action that queued this
+        // message. Falling back to panel visibility is only for older/untyped
+        // enqueue sites that did not capture launch state.
         const panelWindow = WINDOWS.get("panel")
         const isPanelVisible = panelWindow?.isVisible() ?? false
-        const shouldStartSnoozed = !isPanelVisible
-        logLLM(`[processQueuedMessages] Panel visible: ${isPanelVisible}, startSnoozed: ${shouldStartSnoozed}`)
+        const queuedLaunchState = queuedMessage.launchState
+          ? resolveAgentLaunchState(queuedMessage.launchState)
+          : resolveAgentLaunchState({
+            startSnoozed: !isPanelVisible,
+            suppressPanelAutoShow: !isPanelVisible,
+            focusPanelSession: isPanelVisible,
+          })
+        if (queuedLaunchState.shouldSuppressPanelAutoShow) {
+          suppressPanelAutoShow(2000)
+        }
+        logLLM(`[processQueuedMessages] Panel visible: ${isPanelVisible}, launchState: ${JSON.stringify(serializeAgentLaunchState(queuedLaunchState))}`)
 
         // Prefer the exact session captured at enqueue time for strict same-session semantics.
         // If revive fails, fall back to conversation lookup for backward compatibility and continuity.
@@ -955,11 +1032,10 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
         )
 
         for (const candidateSessionId of candidateSessionIds) {
-          // Only start snoozed if panel is not visible
-          const revived = agentSessionTracker.reviveSession(candidateSessionId, shouldStartSnoozed)
+          const revived = agentSessionTracker.reviveSession(candidateSessionId, queuedLaunchState.startSnoozed)
           if (revived) {
             existingSessionId = candidateSessionId
-            logLLM(`[processQueuedMessages] Revived session ${existingSessionId} for conversation ${conversationId}, snoozed: ${shouldStartSnoozed}`)
+            logLLM(`[processQueuedMessages] Revived session ${existingSessionId} for conversation ${conversationId}, snoozed: ${queuedLaunchState.startSnoozed}`)
             break
           }
 
@@ -968,10 +1044,7 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
           }
         }
 
-        // Process with agent mode
-        // If panel is visible, user is watching - show the execution
-        // If panel is hidden, run in background without pop-ups
-        await processWithAgentMode(queuedMessage.text, conversationId, existingSessionId, shouldStartSnoozed)
+        await processWithAgentMode(queuedMessage.text, conversationId, existingSessionId, queuedLaunchState)
 
         // Only remove the message after successful processing
         messageQueueService.markProcessed(conversationId, queuedMessage.id)
@@ -1012,6 +1085,81 @@ function revealFileInFolder(filePath: string): OpenFileResult {
       path: filePath,
       error: error instanceof Error ? error.message : String(error),
     }
+  }
+}
+
+function broadcastTTSPlaybackState(state: DesktopTTSPlaybackState): number {
+  let windowsNotified = 0
+  logApp("[tipc][TTS] Broadcasting playback state", {
+    playbackId: state.playbackId,
+    status: state.status,
+    sessionId: state.sessionId,
+    source: state.source,
+    totalWindows: WINDOWS.size,
+    error: state.error,
+  })
+  for (const [id, win] of WINDOWS.entries()) {
+    try {
+      getRendererHandlers<RendererHandlers>(win.webContents).ttsPlaybackStateChanged?.send(state)
+      windowsNotified += 1
+    } catch (e) {
+      logApp(`[tipc] ttsPlaybackStateChanged send to ${id} failed:`, e)
+    }
+  }
+  return windowsNotified
+}
+
+function sendTTSPlaybackCommandToHost(command: DesktopTTSPlaybackCommand): boolean {
+  const main = WINDOWS.get("main")
+  logApp("[tipc][TTS] Routing playback command to main host", {
+    command,
+    mainAvailable: !!main,
+  })
+  if (!main) {
+    logApp("[tipc] Main window unavailable for TTS playback command", { command })
+    return false
+  }
+
+  try {
+    getRendererHandlers<RendererHandlers>(main.webContents).ttsPlaybackCommand?.send(command)
+    return true
+  } catch (error) {
+    logApp("[tipc] Failed to route TTS playback command to main renderer:", error)
+    return false
+  }
+}
+
+function sendTTSPlaybackRequestToHost(request: DesktopTTSPlaybackRequest): boolean {
+  const main = WINDOWS.get("main")
+  logApp("[tipc][TTS] Routing playback request to main host", {
+    playbackId: request.playbackId,
+    sessionId: request.sessionId,
+    source: request.source,
+    autoPlay: request.autoPlay,
+    keyCount: request.ttsKeys?.length ?? 0,
+    audioByteLength: request.audio instanceof ArrayBuffer
+      ? request.audio.byteLength
+      : ArrayBuffer.isView(request.audio)
+        ? request.audio.byteLength
+        : Array.isArray(request.audio)
+          ? request.audio.length
+          : undefined,
+    mainAvailable: !!main,
+  })
+  if (!main) {
+    logApp("[tipc] Main window unavailable for TTS playback request", {
+      playbackId: request.playbackId,
+      sessionId: request.sessionId,
+    })
+    return false
+  }
+
+  try {
+    getRendererHandlers<RendererHandlers>(main.webContents).ttsPlaybackRequest?.send(request)
+    return true
+  } catch (error) {
+    logApp("[tipc] Failed to route TTS playback request to main renderer:", error)
+    return false
   }
 }
 
@@ -1177,7 +1325,125 @@ export const router = {
     return { success: true, message: "Agent mode emergency stopped" }
   }),
 
+  claimTTSPlaybackKeys: t.procedure
+    .input<{ ttsKeys?: string[]; sessionId?: string; forced?: boolean }>()
+    .action(async ({ input }) => {
+      logApp("[tipc][TTS] claimTTSPlaybackKeys", {
+        sessionId: input.sessionId,
+        forced: input.forced ?? false,
+        keys: input.ttsKeys,
+      })
+      const claimed = desktopTTSPlaybackCoordinator.claimAutoPlayKeys(input.ttsKeys, {
+        sessionId: input.sessionId,
+        forced: input.forced ?? false,
+      })
+      logApp("[tipc][TTS] claimTTSPlaybackKeys result", {
+        claimed,
+        sessionId: input.sessionId,
+      })
+      return { claimed }
+    }),
+
+  releaseTTSPlaybackKeys: t.procedure
+    .input<{ ttsKeys?: string[] }>()
+    .action(async ({ input }) => {
+      logApp("[tipc][TTS] releaseTTSPlaybackKeys", { keys: input.ttsKeys })
+      desktopTTSPlaybackCoordinator.releaseAutoPlayKeys(input.ttsKeys)
+      return { success: true }
+    }),
+
+  getTTSPlaybackState: t.procedure.action(async () => {
+    return desktopTTSPlaybackCoordinator.getState()
+  }),
+
+  requestTTSPlayback: t.procedure
+    .input<DesktopTTSPlaybackRequest>()
+    .action(async ({ input }) => {
+      logApp("[tipc][TTS] requestTTSPlayback received", {
+        playbackId: input.playbackId,
+        sessionId: input.sessionId,
+        source: input.source,
+        autoPlay: input.autoPlay,
+        keyCount: input.ttsKeys?.length ?? 0,
+        mimeType: input.mimeType,
+        audioOutputDeviceId: input.audioOutputDeviceId,
+      })
+      const state = desktopTTSPlaybackCoordinator.setState({
+        playbackId: input.playbackId,
+        sourceWindowId: input.sourceWindowId,
+        source: input.source,
+        sessionId: input.sessionId,
+        ttsKey: input.ttsKeys?.[0],
+        textPreview: input.textPreview ?? input.text.slice(0, 120),
+        status: "loading",
+        currentTime: 0,
+        duration: 0,
+        audioOutputDeviceId: input.audioOutputDeviceId,
+        error: undefined,
+      })
+      broadcastTTSPlaybackState(state)
+
+      const routed = sendTTSPlaybackRequestToHost(input)
+      if (!routed) {
+        const failedState = desktopTTSPlaybackCoordinator.setState({
+          playbackId: input.playbackId,
+          status: "error",
+          error: "Main playback host is unavailable",
+        })
+        broadcastTTSPlaybackState(failedState)
+        logApp("[tipc][TTS] requestTTSPlayback failed to route", {
+          playbackId: input.playbackId,
+          sessionId: input.sessionId,
+        })
+        return { success: false, error: failedState.error }
+      }
+
+      logApp("[tipc][TTS] requestTTSPlayback routed", {
+        playbackId: input.playbackId,
+        sessionId: input.sessionId,
+      })
+      return { success: true }
+    }),
+
+  controlTTSPlayback: t.procedure
+    .input<DesktopTTSPlaybackCommand>()
+    .action(async ({ input }) => {
+      logApp("[tipc][TTS] controlTTSPlayback received", { command: input })
+      const routed = sendTTSPlaybackCommandToHost(input)
+
+      if (input.type === "stop" || !routed) {
+        const state = input.type === "stop"
+          ? desktopTTSPlaybackCoordinator.reset(input.reason)
+          : desktopTTSPlaybackCoordinator.setState({ status: "error", error: "Main playback host is unavailable" })
+        broadcastTTSPlaybackState(state)
+      }
+
+      logApp("[tipc][TTS] controlTTSPlayback routed", { command: input, routed })
+      return { success: routed }
+    }),
+
+  publishTTSPlaybackState: t.procedure
+    .input<DesktopTTSPlaybackState>()
+    .action(async ({ input }) => {
+      logApp("[tipc][TTS] publishTTSPlaybackState received", {
+        playbackId: input.playbackId,
+        status: input.status,
+        sessionId: input.sessionId,
+        source: input.source,
+        currentTime: input.currentTime,
+        duration: input.duration,
+        error: input.error,
+      })
+      const state = desktopTTSPlaybackCoordinator.setState(input)
+      const windowsNotified = broadcastTTSPlaybackState(state)
+      return { success: true, windowsNotified }
+    }),
+
   stopAllTts: t.procedure.action(async () => {
+    sendTTSPlaybackCommandToHost({ type: "stop", reason: "stopAllTts" })
+    const state = desktopTTSPlaybackCoordinator.reset("stopAllTts")
+    broadcastTTSPlaybackState(state)
+
     let windowsNotified = 0
     for (const [id, win] of WINDOWS.entries()) {
       try {
@@ -1216,6 +1482,7 @@ export const router = {
       // Session is being explicitly dismissed from UI; clear persisted
       // respond_to_user state for this session.
       clearSessionUserResponse(input.sessionId)
+      desktopTTSPlaybackCoordinator.clearSessionKeys(input.sessionId)
 
       // Also remove from the tracker's completed sessions list so it
       // doesn't re-appear in the sidebar on the next agentSessionsUpdated.
@@ -1236,7 +1503,9 @@ export const router = {
     // Clear completed sessions from the tracker
     agentSessionTracker.clearCompletedSessions((session) => {
       if (!session.conversationId) return true
-      return messageQueueService.getQueue(session.conversationId).length === 0
+      const shouldClear = messageQueueService.getQueue(session.conversationId).length === 0
+      if (shouldClear) desktopTTSPlaybackCoordinator.clearSessionKeys(session.id)
+      return shouldClear
     })
 
     // Send to all windows so both main and panel can update their state
@@ -2030,26 +2299,29 @@ export const router = {
       text: string
       conversationId?: string
       sessionId?: string
-      fromTile?: boolean // When true, session runs in background (snoozed) - panel won't show
+      fromTile?: boolean // Origin hint: suppress floating-panel auto-show, but do not imply snoozed/background work.
+      startSnoozed?: boolean // True background mode: keep hidden/quiet and disable TTS autoplay.
+      suppressPanelAutoShow?: boolean
+      focusPanelSession?: boolean
     }>()
     .action(async ({ input }) => {
       const config = configStore.get()
       const queueEnabled = config.mcpMessageQueueEnabled !== false
+      const launchState = resolveAgentLaunchState(input)
 
       logApp("[createMcpTextInput] Request received", {
         conversationId: input.conversationId ?? null,
         sessionId: input.sessionId ?? null,
         sessionKind: describeAgentSessionId(input.sessionId),
         fromTile: input.fromTile ?? false,
+        ...serializeAgentLaunchState(launchState),
         messageLength: input.text.length,
         queueEnabled,
       })
 
-      // Defensive guard: when the caller explicitly asks for a snoozed session
-      // (fromTile=true, e.g. SessionActionDialog inside the main window), also
-      // time-suppress panel auto-show so an early progress update cannot race
-      // the snoozed flag and briefly surface the floating panel.
-      if (input.fromTile === true) {
+      // Panel suppression is separate from snoozing. Tile-originated sessions
+      // can stay foreground/audible while still avoiding floating-panel popups.
+      if (launchState.shouldSuppressPanelAutoShow) {
         suppressPanelAutoShow(2000)
       }
 
@@ -2117,7 +2389,12 @@ export const router = {
             if (session && session.status === "active") {
               const queuedText = await conversationService.materializeInlineDataImagesInContent(conversationId, input.text)
               // Queue the message instead of starting a new session
-              const queuedMessage = messageQueueService.enqueue(conversationId, queuedText, activeSessionId)
+              const queuedMessage = messageQueueService.enqueue(
+                conversationId,
+                queuedText,
+                activeSessionId,
+                serializeAgentLaunchState(launchState),
+              )
               logApp("[createMcpTextInput] Queued message for active session", {
                 conversationId,
                 queuedMessageId: queuedMessage.id,
@@ -2159,8 +2436,7 @@ export const router = {
           ? requestedSessionId
           : agentSessionTracker.findSessionByConversationId(input.conversationId)
         if (foundSessionId) {
-          // Pass fromTile to reviveSession so it stays snoozed when continuing from a tile
-          const revived = agentSessionTracker.reviveSession(foundSessionId, input.fromTile ?? false)
+          const revived = agentSessionTracker.reviveSession(foundSessionId, launchState.startSnoozed)
           if (revived) {
             existingSessionId = foundSessionId
             logApp("[createMcpTextInput] Revived existing session", {
@@ -2188,8 +2464,7 @@ export const router = {
       // Fire-and-forget: Start agent processing without blocking
       // This allows multiple sessions to run concurrently
       // Pass existingSessionId to reuse the session if found
-      // When fromTile=true, start snoozed so the floating panel doesn't appear
-      processWithAgentMode(agentInputText, conversationId, existingSessionId, input.fromTile ?? false)
+      processWithAgentMode(agentInputText, conversationId, existingSessionId, launchState)
         .then((finalResponse) => {
           // Save to history after completion
           const history = getRecordingHistory()
@@ -2245,13 +2520,17 @@ export const router = {
       conversationId?: string
       sessionId?: string
       screenshot?: ScreenshotAttachmentInput
-      fromTile?: boolean // When true, session runs in background (snoozed) - panel won't show
+      fromTile?: boolean // Origin hint: suppress floating-panel auto-show, but do not imply snoozed/background work.
+      startSnoozed?: boolean // True background mode: keep hidden/quiet and disable TTS autoplay.
+      suppressPanelAutoShow?: boolean
+      focusPanelSession?: boolean
     }>()
     .action(async ({ input }) => {
-      // Defensive guard: see matching comment in createMcpTextInput. When a
-      // caller asks for a snoozed session, time-suppress panel auto-show to
-      // cover the window where progress updates may race the snoozed flag.
-      if (input.fromTile === true) {
+      const launchState = resolveAgentLaunchState(input)
+
+      // Panel suppression is separate from snoozing. Tile-originated recordings
+      // can stay foreground/audible while still hiding the waveform panel after capture.
+      if (launchState.shouldSuppressPanelAutoShow) {
         suppressPanelAutoShow(2000)
       }
 
@@ -2345,7 +2624,12 @@ export const router = {
             const queuedText = await conversationService.materializeInlineDataImagesInContent(input.conversationId, messageText)
 
             // Queue the transcript instead of processing immediately
-            const queuedMessage = messageQueueService.enqueue(input.conversationId, queuedText, activeSessionId)
+            const queuedMessage = messageQueueService.enqueue(
+              input.conversationId,
+              queuedText,
+              activeSessionId,
+              serializeAgentLaunchState(launchState),
+            )
             logApp(`[createMcpRecording] Queued voice transcript ${queuedMessage.id} for active session ${activeSessionId}`)
 
             return { conversationId: input.conversationId, queued: true, queuedMessageId: queuedMessage.id }
@@ -2387,8 +2671,7 @@ export const router = {
       // If sessionId is provided, try to revive that session.
       // Otherwise, if conversationId is provided, try to find and revive a session for that conversation.
       // This handles the case where user continues from history (only conversationId is set).
-      // When fromTile=true, sessions start snoozed so the floating panel doesn't appear.
-      const startSnoozed = input.fromTile ?? false
+      const startSnoozed = launchState.startSnoozed
       let sessionId: string
       if (input.sessionId) {
         // Try to revive the existing session by ID
@@ -2430,6 +2713,11 @@ export const router = {
         // No sessionId or conversationId provided, create a new session with profile snapshot
         sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
       }
+
+      agentSessionTracker.updateSession(sessionId, {
+        isSnoozed: startSnoozed,
+        suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow,
+      })
 
       try {
         // Emit initial "initializing" progress update
@@ -2569,9 +2857,9 @@ export const router = {
       )
 
         // Fire-and-forget: Start agent processing without blocking.
-        // Preserve the tile/background snooze state after transcription so
-        // voice follow-ups from a session tile do not re-focus the panel.
-        processWithAgentMode(agentInputText, conversationId, sessionId, startSnoozed)
+        // Preserve the explicit launch state after transcription so tile voice
+        // follow-ups remain audible without re-focusing the floating panel.
+        processWithAgentMode(agentInputText, conversationId, sessionId, launchState)
         .then((finalResponse) => {
           // Save to history after completion
           const history = getRecordingHistory()

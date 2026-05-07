@@ -132,11 +132,11 @@ describe("sessions in-app actions", () => {
     expect(agentProgressSource).not.toContain('Conversation branched — find it in Saved Conversations')
   })
 
-  it("forces sessions started from SessionActionDialog to stay snoozed so the hover panel never auto-shows", () => {
+  it("keeps SessionActionDialog sessions audible while suppressing hover-panel auto-show", () => {
     // The dialog description literally promises "without opening the hover panel",
-    // so both text and voice submit paths must hardcode fromTile: true regardless
-    // of the prop value. Guards against the regression where sidebar + modal
-    // submits would surface the floating panel and drop the app from Cmd+Tab.
+    // but interactive submits should still be foreground/audible for TTS.
+    // So both text and voice submit paths should keep fromTile:true while
+    // explicitly sending startSnoozed:false.
     const textSubmitIndex = sessionActionDialogSource.indexOf("const handleTextSubmit")
     const voiceCreateIndex = sessionActionDialogSource.indexOf("tipcClient.createMcpRecording")
     expect(textSubmitIndex).toBeGreaterThan(-1)
@@ -145,22 +145,32 @@ describe("sessions in-app actions", () => {
     const textSubmitBlock = sessionActionDialogSource.slice(textSubmitIndex, textSubmitIndex + 800)
     expect(textSubmitBlock).toContain("tipcClient.createMcpTextInput")
     expect(textSubmitBlock).toContain("fromTile: true")
+    expect(textSubmitBlock).toContain("startSnoozed: false")
 
     const voiceSubmitBlock = sessionActionDialogSource.slice(voiceCreateIndex, voiceCreateIndex + 600)
     expect(voiceSubmitBlock).toContain("fromTile: true")
+    expect(voiceSubmitBlock).toContain("startSnoozed: false")
 
     // The fromTile prop must NOT be destructured into a local variable — the
-    // dialog always ignores it in favor of the hardcoded snoozed flag.
+    // dialog should always preserve the hardcoded panel-suppression hint.
     expect(sessionActionDialogSource).not.toContain("fromTile = false,")
     // Sanity: both submit paths must not pass a plain `fromTile` identifier,
     // which would bypass the hardcoded true.
     expect(textSubmitBlock).not.toContain("fromTile,\n      })")
   })
 
-  it("time-suppresses panel auto-show in createMcpTextInput/createMcpRecording when fromTile is true", () => {
-    // Defensive safety net: even with the session starting snoozed, an early
-    // progress update can race the flag on the main process. suppressPanelAutoShow
-    // closes that window so the floating panel cannot briefly flash.
+  it("decouples tile origin from background snooze state", () => {
+    expect(tileFollowUpSource).toContain("fromTile: true, startSnoozed: false")
+    expect(tipcSource).toContain("fromTile?: boolean // Origin hint")
+    expect(tipcSource).toContain("startSnoozed?: boolean // True background mode")
+    expect(tipcSource).toContain("startSnoozed || input.suppressPanelAutoShow === true || input.fromTile === true")
+    expect(tipcSource).toContain("suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow")
+    expect(tipcSource).toContain("processWithAgentMode(agentInputText, conversationId, existingSessionId, launchState)")
+  })
+
+  it("time-suppresses panel auto-show from explicit launch state without forcing snooze", () => {
+    // Defensive safety net: panel suppression is a separate launch-state axis.
+    // It can be true for tile-origin sessions even when startSnoozed is false.
     const textInputIndex = tipcSource.indexOf("createMcpTextInput: t.procedure")
     const recordingIndex = tipcSource.indexOf("createMcpRecording: t.procedure")
     expect(textInputIndex).toBeGreaterThan(-1)
@@ -169,9 +179,11 @@ describe("sessions in-app actions", () => {
     const textInputBlock = tipcSource.slice(textInputIndex, textInputIndex + 2000)
     const recordingBlock = tipcSource.slice(recordingIndex, recordingIndex + 2000)
 
-    expect(textInputBlock).toContain("if (input.fromTile === true) {")
+    expect(textInputBlock).toContain("const launchState = resolveAgentLaunchState(input)")
+    expect(textInputBlock).toContain("if (launchState.shouldSuppressPanelAutoShow) {")
     expect(textInputBlock).toContain("suppressPanelAutoShow(2000)")
-    expect(recordingBlock).toContain("if (input.fromTile === true) {")
+    expect(recordingBlock).toContain("const launchState = resolveAgentLaunchState(input)")
+    expect(recordingBlock).toContain("if (launchState.shouldSuppressPanelAutoShow) {")
     expect(recordingBlock).toContain("suppressPanelAutoShow(2000)")
   })
 

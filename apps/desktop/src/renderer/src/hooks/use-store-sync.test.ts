@@ -295,6 +295,7 @@ function createAgentStoreState() {
     setSessionSnoozed: vi.fn(),
     setScrollToSessionId: vi.fn(),
     setFloatingPanelVisible: vi.fn(),
+    setTTSPlaybackState: vi.fn(),
     updateMessageQueue: vi.fn(),
     pinnedSessionIds: new Set<string>(),
     pinnedSessionIdsRevision: 0,
@@ -320,6 +321,7 @@ async function loadUseStoreSync(
   const tipcClient = {
     getAllMessageQueues: vi.fn().mockResolvedValue([]),
     getFloatingPanelVisibility: vi.fn().mockResolvedValue({ visible: false }),
+    getTTSPlaybackState: vi.fn().mockResolvedValue({ playbackId: null, status: 'idle', currentTime: 0, duration: 0, volume: 1, muted: false, updatedAt: 1 }),
     getConfig: vi.fn().mockImplementation(() => Promise.resolve(config)),
     saveConfig: vi.fn().mockResolvedValue(undefined),
   }
@@ -343,6 +345,7 @@ async function loadUseStoreSync(
       clearAgentSessionProgress: { listen },
       clearInactiveSessions: { listen },
       stopAllTts: { listen },
+      ttsPlaybackStateChanged: { listen },
       panelVisibilityChanged: { listen },
       focusAgentSession: { listen },
       setAgentSessionSnoozed: { listen },
@@ -373,8 +376,8 @@ async function loadUseStoreSync(
   }
   vi.doMock('@renderer/lib/tts-manager', () => ttsManagerMock)
   vi.doMock('../lib/tts-manager', () => ttsManagerMock)
-  vi.doMock('@renderer/lib/tts-tracking', () => ({ __esModule: true, clearSessionTTSTracking: vi.fn() }))
-  vi.doMock('../lib/tts-tracking', () => ({ __esModule: true, clearSessionTTSTracking: vi.fn() }))
+  vi.doMock('@renderer/lib/tts-tracking', () => ({ __esModule: true, clearSessionTTSTracking: vi.fn(), markSessionForcedAutoPlay: vi.fn() }))
+  vi.doMock('../lib/tts-tracking', () => ({ __esModule: true, clearSessionTTSTracking: vi.fn(), markSessionForcedAutoPlay: vi.fn() }))
   vi.doMock('@renderer/lib/debug', () => ({ __esModule: true, logUI: vi.fn() }))
   vi.doMock('../lib/debug', () => ({ __esModule: true, logUI: vi.fn() }))
   vi.doMock('@renderer/lib/config-save-error', () => ({ __esModule: true, reportConfigSaveError }))

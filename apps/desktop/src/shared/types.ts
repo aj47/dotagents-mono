@@ -1456,6 +1456,51 @@ export type Config = {
   loops?: LoopConfig[]  // Scheduled repeat tasks that run at intervals
 }
 
+// Centralized desktop TTS playback state shared between main and renderer.
+export type DesktopTTSPlaybackStatus = "idle" | "loading" | "playing" | "paused" | "ended" | "error"
+
+export type DesktopTTSPlaybackSource = "main" | "panel" | "tile" | "overlay" | "unknown" | string
+
+export interface DesktopTTSPlaybackState {
+  playbackId: string | null
+  sourceWindowId?: string
+  source?: DesktopTTSPlaybackSource
+  sessionId?: string
+  ttsKey?: string
+  textPreview?: string
+  status: DesktopTTSPlaybackStatus
+  currentTime: number
+  duration: number
+  volume: number
+  muted: boolean
+  audioOutputDeviceId?: string
+  error?: string
+  updatedAt: number
+}
+
+export interface DesktopTTSPlaybackRequest {
+  playbackId: string
+  sourceWindowId?: string
+  source: DesktopTTSPlaybackSource
+  sessionId?: string
+  ttsKeys?: string[]
+  text: string
+  textPreview?: string
+  audio: ArrayBuffer | Uint8Array | number[]
+  mimeType: string
+  autoPlay: boolean
+  audioOutputDeviceId?: string
+}
+
+export type DesktopTTSPlaybackCommand =
+  | { type: "play"; playbackId?: string; reason?: string }
+  | { type: "pause"; playbackId?: string; reason?: string }
+  | { type: "stop"; playbackId?: string; reason?: string }
+  | { type: "seek"; playbackId?: string; currentTime: number; reason?: string }
+  | { type: "set-volume"; playbackId?: string; volume: number; reason?: string }
+  | { type: "set-muted"; playbackId?: string; muted: boolean; reason?: string }
+  | { type: "set-output-device"; playbackId?: string; audioOutputDeviceId?: string; reason?: string }
+
 // Push Notification Token (from mobile clients)
 export interface PushNotificationToken {
   token: string

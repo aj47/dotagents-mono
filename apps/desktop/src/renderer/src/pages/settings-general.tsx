@@ -16,7 +16,6 @@ import {
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
-import { ttsManager } from "@renderer/lib/tts-manager"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { ExternalLink, FolderOpen, FolderUp, FileText, Search, X } from "lucide-react"
 import { toast } from "sonner"
@@ -1114,8 +1113,8 @@ export function Component() {
               defaultChecked={configQuery.data.ttsEnabled ?? false}
               onCheckedChange={async (value) => {
                 if (!value) {
-                  ttsManager.stopAll("settings-global-tts-disabled")
                   try {
+                    await tipcClient.controlTTSPlayback({ type: "stop", reason: "settings-global-tts-disabled" })
                     await tipcClient.stopAllTts()
                   } catch (error) {
                     console.error("Failed to stop TTS in all windows:", error)

@@ -6,7 +6,7 @@ const agentProgressSource = readFileSync(new URL("./agent-progress.tsx", import.
 describe("agent progress TTS guardrails", () => {
   it("disables overlay auto-play generation when the session is snoozed", () => {
     expect(agentProgressSource).toContain('function shouldAutoPlayTTSForVariant')
-    expect(agentProgressSource).toContain('if (variant === "tile") return isFocused && !isFloatingPanelVisible')
+    expect(agentProgressSource).toContain('focus no\n  // longer decides whether a tile may request auto-play')
     expect(agentProgressSource).toContain('return !isSnoozed')
   })
 
@@ -25,21 +25,29 @@ describe("agent progress TTS guardrails", () => {
     expect(spinnerIndex).toBeGreaterThan(backgroundIconIndex)
   })
 
-  it("suppresses tile auto-play while the floating panel is visible so the same session is not spoken twice", () => {
-    expect(agentProgressSource).toContain('if (variant === "tile") return isFocused && !isFloatingPanelVisible')
-    expect(agentProgressSource).toContain('shouldAutoPlayTTSForVariant(messageVariant, isSnoozed, isFocused, isFloatingPanelVisible)')
-    expect(agentProgressSource).toContain('const isFloatingPanelVisible = useAgentStore((s) => s.isFloatingPanelVisible)')
+  it("lets unfocused tiles request auto-play while central claims prevent duplicate speech", () => {
+    expect(agentProgressSource).toContain('focus no\n  // longer decides whether a tile may request auto-play')
+    expect(agentProgressSource).toContain('shouldAutoPlayTTSForVariant(messageVariant, isSnoozed)')
+    expect(agentProgressSource).toContain('tipcClient.claimTTSPlaybackKeys')
+    expect(agentProgressSource).toContain('tipcClient.requestTTSPlayback({')
   })
 
   it("keeps response-linked assistant messages replayable but only auto-plays the latest assistant message", () => {
-    expect(agentProgressSource).toContain('(isComplete || !!message.responseEvent)')
+    expect(agentProgressSource).toContain('const canUseTTSForAssistantMessage =')
+    expect(agentProgressSource).toContain('isThoughtEligibleForTTS')
+    expect(agentProgressSource).toContain('isAssistantThought: true')
+    expect(agentProgressSource).toContain('(!message.isAssistantThought || isThoughtEligibleForTTS)')
+    expect(agentProgressSource).toContain('!message.isThinking &&')
     expect(agentProgressSource).toContain('const shouldAutoPlayTTS = shouldShowTTSButton && isLast')
     expect(agentProgressSource).toContain('isLast &&')
+    expect(agentProgressSource).toContain('!ttsKeys.some((key) => hasTTSPlayed(key)) &&')
   })
 
   it("suppresses auto-play for historical sessions that mount with progress already complete", () => {
     expect(agentProgressSource).toContain('const observedLiveProgressRef = useRef(false)')
-    expect(agentProgressSource).toContain('if (!observedLiveProgressRef.current) {')
+    expect(agentProgressSource).toContain('parentObservedLiveProgress')
+    expect(agentProgressSource).toContain('const hasObservedLiveProgress = observedLiveProgressRef.current || parentObservedLiveProgress || !isComplete')
+    expect(agentProgressSource).toContain('if (!hasObservedLiveProgress) {')
     expect(agentProgressSource).toContain('consumeSessionForcedAutoPlay(sessionId)')
   })
 

@@ -636,8 +636,14 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    // Queue message for the target agent's conversation
-    const queuedMessage = messageQueueService.enqueue(session.conversationId, message, sessionId)
+    // Queue message for the target agent's conversation while preserving the
+    // target session's foreground/background state for the eventual continuation.
+    const startSnoozed = session.isSnoozed ?? false
+    const queuedMessage = messageQueueService.enqueue(session.conversationId, message, sessionId, {
+      startSnoozed,
+      suppressPanelAutoShow: startSnoozed,
+      focusPanelSession: !startSnoozed,
+    })
 
     return {
       content: [

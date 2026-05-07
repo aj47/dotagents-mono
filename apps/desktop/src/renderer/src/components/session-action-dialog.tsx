@@ -22,9 +22,9 @@ interface SessionActionDialogProps {
   initialText?: string
   conversationId?: string
   sessionId?: string
-  // Retained for prop compatibility; the dialog always starts sessions snoozed
-  // because it runs inside the main window. Submit handlers force fromTile=true
-  // when calling createMcpTextInput/createMcpRecording regardless of this prop.
+  // Retained for prop compatibility; the dialog now uses fromTile-style launch
+  // semantics so it can suppress hover-panel auto-show without forcing the
+  // session into background/silent mode.
   fromTile?: boolean
   continueConversationTitle?: string | null
   agentName?: string | null
@@ -93,13 +93,14 @@ export function SessionActionDialog({
     try {
       // SessionActionDialog is rendered inside the main app window and its
       // description explicitly promises "without opening the hover panel".
-      // Force the session snoozed regardless of the fromTile prop so the
-      // floating panel never auto-shows from this dialog's submit path.
+      // Keep the session foreground/audible for TTS autoplay while still
+      // suppressing floating-panel auto-show via the tile-origin hint.
       const result = await tipcClient.createMcpTextInput({
         text,
         conversationId,
         sessionId,
         fromTile: true,
+        startSnoozed: false,
       })
 
       if (sessionId && !result?.queued) {
@@ -165,9 +166,8 @@ export function SessionActionDialog({
             ? await decodeBlobToPcm(blob)
             : undefined
 
-          // Match handleTextSubmit: always start voice sessions snoozed so the
-          // floating panel never auto-shows while the user is interacting with
-          // the in-app dialog. See comment in handleTextSubmit above.
+          // Match handleTextSubmit: keep the session foreground/audible for
+          // TTS autoplay while still suppressing hover-panel auto-show.
           await tipcClient.createMcpRecording({
             recording: await blob.arrayBuffer(),
             pcmRecording,
@@ -175,6 +175,7 @@ export function SessionActionDialog({
             conversationId,
             sessionId,
             fromTile: true,
+            startSnoozed: false,
           })
 
           await invalidateConversationQueries(conversationId)

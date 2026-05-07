@@ -1,5 +1,5 @@
 import { UpdateDownloadedEvent } from "electron-updater"
-import { AgentProgressUpdate, ElicitationRequest, SamplingRequest, QueuedMessage } from "../shared/types"
+import { AgentProgressUpdate, DesktopTTSPlaybackCommand, DesktopTTSPlaybackRequest, DesktopTTSPlaybackState, ElicitationRequest, SamplingRequest, QueuedMessage } from "../shared/types"
 import type { AgentSession } from "./agent-session-tracker"
 
 export type RendererHandlers = {
@@ -25,6 +25,12 @@ export type RendererHandlers = {
 
   // Stop all in-progress TTS playback in this renderer window
   stopAllTts: () => void
+
+  // Centralized TTS playback host/control messages. Requests and commands are
+  // routed to the main renderer host; state changes are broadcast to all windows.
+  ttsPlaybackRequest: (request: DesktopTTSPlaybackRequest) => void
+  ttsPlaybackCommand: (command: DesktopTTSPlaybackCommand) => void
+  ttsPlaybackStateChanged: (state: DesktopTTSPlaybackState) => void
 
   // Floating panel visibility changed (broadcast to all windows)
   panelVisibilityChanged: (data: { visible: boolean }) => void

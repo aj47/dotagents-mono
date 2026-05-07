@@ -16,7 +16,7 @@ import {
   useConfigQuery,
   useSaveConfigMutation,
 } from "@renderer/lib/query-client"
-import { ttsManager } from "@renderer/lib/tts-manager"
+import { useTTSPlaybackController } from "@renderer/lib/tts-playback-controller"
 import { applySelectedAgentToNextSession as applySelectedAgentForNextSession } from "@renderer/lib/apply-selected-agent"
 import { hasUnreadAgentResponse } from "@renderer/lib/sidebar-sessions"
 import { useAgentStore } from "@renderer/stores"
@@ -67,6 +67,7 @@ type SessionActionDialogState = {
 }
 
 export const Component = () => {
+  useTTSPlaybackController()
   const navigate = useNavigate()
   const location = useLocation()
   const [settingsExpanded, setSettingsExpanded] = useState(true)
@@ -262,8 +263,8 @@ export const Component = () => {
 
       const nextEnabled = !(configQuery.data?.ttsEnabled ?? true)
       if (!nextEnabled) {
-        ttsManager.stopAll("collapsed-sidebar-global-tts-disabled")
         try {
+          await tipcClient.controlTTSPlayback({ type: "stop", reason: "collapsed-sidebar-global-tts-disabled" })
           await tipcClient.stopAllTts()
         } catch (error) {
           console.error("Failed to stop TTS in all windows:", error)
@@ -280,8 +281,8 @@ export const Component = () => {
       if (isEmergencyStopping) return
 
       setIsEmergencyStopping(true)
-      ttsManager.stopAll("collapsed-sidebar-emergency-stop")
       try {
+        await tipcClient.controlTTSPlayback({ type: "stop", reason: "collapsed-sidebar-emergency-stop" })
         await tipcClient.stopAllTts()
       } catch (error) {
         console.error("Failed to stop TTS in all windows:", error)

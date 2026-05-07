@@ -21,7 +21,8 @@ describe("audio player layout", () => {
     expect(audioPlayerSource).toContain('"shrink-0 rounded p-1 transition-colors hover:bg-muted"')
     expect(audioPlayerSource).toContain("Autoplay blocked — press any key or click to listen")
     expect(audioPlayerSource).toContain("Press any key or click once to start playback")
-    expect(audioPlayerSource).toContain("<audio ref={audioRef} />")
+    expect(audioPlayerSource).toContain("tipcClient.requestTTSPlayback")
+    expect(audioPlayerSource).not.toContain("<audio ref={audioRef} />")
   })
 
   it("wraps full audio controls and protects secondary controls under zoom", () => {
