@@ -13,6 +13,9 @@ const elicitationDialogSource = readFileSync(
 
 describe("desktop MCP dialogs renderer client", () => {
   it("centralizes MCP dialog response IPC channels", () => {
+    expect(clientSource).toContain('rendererHandlers["mcp:sampling-request"].listen(listener)')
+    expect(clientSource).toContain('rendererHandlers["mcp:elicitation-request"].listen(listener)')
+    expect(clientSource).toContain('rendererHandlers["mcp:elicitation-complete"].listen(listener)')
     expect(clientSource).toContain("tipcClient.resolveSampling({ requestId, approved })")
     expect(clientSource).toContain("tipcClient.resolveElicitation({")
     expect(clientSource).not.toContain("window.electron.ipcRenderer")
@@ -22,6 +25,15 @@ describe("desktop MCP dialogs renderer client", () => {
     const combinedSource = [samplingDialogSource, elicitationDialogSource].join("\n")
 
     expect(samplingDialogSource).toContain(
+      "desktopMcpDialogsClient.onSamplingRequest(",
+    )
+    expect(elicitationDialogSource).toContain(
+      "desktopMcpDialogsClient.onElicitationRequest(",
+    )
+    expect(elicitationDialogSource).toContain(
+      "desktopMcpDialogsClient.onElicitationComplete(",
+    )
+    expect(samplingDialogSource).toContain(
       "desktopMcpDialogsClient.resolveSampling(request.requestId, approved)",
     )
     expect(elicitationDialogSource).toContain(
@@ -29,5 +41,6 @@ describe("desktop MCP dialogs renderer client", () => {
     )
     expect(combinedSource).not.toContain("tipcClient.resolveSampling(")
     expect(combinedSource).not.toContain("tipcClient.resolveElicitation(")
+    expect(combinedSource).not.toContain('rendererHandlers["mcp:')
   })
 })

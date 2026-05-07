@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react"
 import { desktopMcpDialogsClient } from "@renderer/lib/desktop-mcp-dialogs-client"
-import { rendererHandlers } from "@renderer/lib/tipc-client"
 import {
   Dialog,
   DialogContent,
@@ -37,7 +36,7 @@ function McpElicitationDialog() {
 
   // Listen for elicitation requests
   useEffect(() => {
-    const unlisten = rendererHandlers["mcp:elicitation-request"].listen(
+    const unlisten = desktopMcpDialogsClient.onElicitationRequest(
       (req: ElicitationRequest) => {
         setRequest(req)
         // Initialize form values with defaults
@@ -65,7 +64,7 @@ function McpElicitationDialog() {
 
   // Listen for elicitation complete (for URL mode auto-close)
   useEffect(() => {
-    const unlisten = rendererHandlers["mcp:elicitation-complete"].listen(
+    const unlisten = desktopMcpDialogsClient.onElicitationComplete(
       (data: { elicitationId: string; requestId: string }) => {
         if (request && request.requestId === data.requestId) {
           setIsOpen(false)

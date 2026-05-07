@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react"
 import { desktopMcpDialogsClient } from "@renderer/lib/desktop-mcp-dialogs-client"
-import { rendererHandlers } from "@renderer/lib/tipc-client"
 import {
   Dialog,
   DialogContent,
@@ -17,7 +16,7 @@ export default function McpSamplingDialog() {
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
-    const unlisten = rendererHandlers["mcp:sampling-request"].listen(
+    const unlisten = desktopMcpDialogsClient.onSamplingRequest(
       (samplingRequest: SamplingRequest) => {
         setRequest(samplingRequest)
         setIsOpen(true)
