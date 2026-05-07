@@ -1488,6 +1488,12 @@ export function finalizeBundleImportResult(result: BundleImportResult): BundleIm
   }
 }
 
+export function createBundleImportErrorResult(error: string): BundleImportResult {
+  const result = createBundleImportResult()
+  result.errors.push(error)
+  return finalizeBundleImportResult(result)
+}
+
 export interface BundleImportItemCollectionOptions<TItem> {
   result: BundleImportResult
   resultItems: BundleImportItemResult[]
@@ -1568,6 +1574,122 @@ export function importBundleMcpServersIntoConfig(
     modified,
     mcpConfig: modified ? writeCanonicalBundleMcpConfig(options.mcpConfig, mcpServers) : options.mcpConfig,
   }
+}
+
+export interface DotAgentsBundleImportHandlers {
+  loadExistingAgentProfileIds(): readonly string[] | Promise<readonly string[]>
+  importAgentProfile(
+    bundleProfile: BundleAgentProfile,
+    action: BundleImportItemActionResolution,
+  ): void | Promise<void>
+  loadMcpConfig(): Record<string, unknown> | Promise<Record<string, unknown>>
+  saveMcpConfig(mcpConfig: Record<string, unknown>): void | Promise<void>
+  loadExistingSkillIds(): readonly string[] | Promise<readonly string[]>
+  importSkill(
+    bundleSkill: BundleSkill,
+    action: BundleImportItemActionResolution,
+  ): void | Promise<void>
+  loadExistingRepeatTaskIds(): readonly string[] | Promise<readonly string[]>
+  importRepeatTask(
+    bundleTask: BundleRepeatTask,
+    action: BundleImportItemActionResolution,
+  ): void | Promise<void>
+  loadExistingKnowledgeNoteIds(): readonly string[] | Promise<readonly string[]>
+  importKnowledgeNote(
+    bundleKnowledgeNote: BundleKnowledgeNote,
+    action: BundleImportItemActionResolution,
+  ): void | Promise<void>
+}
+
+export interface ImportDotAgentsBundleOptions {
+  conflictStrategy: BundleImportConflictStrategy
+  components?: BundleComponentSelection
+  handlers: DotAgentsBundleImportHandlers
+}
+
+export async function importDotAgentsBundle(
+  bundle: DotAgentsBundle,
+  options: ImportDotAgentsBundleOptions,
+): Promise<BundleImportResult> {
+  const result = createBundleImportResult()
+  const components = resolveBundleComponentSelection(options.components)
+  const { conflictStrategy, handlers } = options
+
+  if (components.agentProfiles) {
+    await importBundleItemCollection({
+      result,
+      resultItems: result.agentProfiles,
+      items: bundle.agentProfiles,
+      existingIds: new Set(await handlers.loadExistingAgentProfileIds()),
+      conflictStrategy,
+      componentLabel: "Agent profile",
+      getId: (bundleProfile) => bundleProfile.id,
+      getName: (bundleProfile) => bundleProfile.name,
+      importItem: handlers.importAgentProfile,
+    })
+  }
+
+  if (components.mcpServers) {
+    try {
+      const mcpImport = importBundleMcpServersIntoConfig({
+        result,
+        mcpConfig: await handlers.loadMcpConfig(),
+        bundleServers: bundle.mcpServers,
+        conflictStrategy,
+      })
+
+      if (mcpImport.modified) {
+        await handlers.saveMcpConfig(mcpImport.mcpConfig)
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      result.errors.push(`MCP servers import failed: ${msg}`)
+    }
+  }
+
+  if (components.skills) {
+    await importBundleItemCollection({
+      result,
+      resultItems: result.skills,
+      items: bundle.skills,
+      existingIds: new Set(await handlers.loadExistingSkillIds()),
+      conflictStrategy,
+      componentLabel: "Skill",
+      getId: (bundleSkill) => bundleSkill.id,
+      getName: (bundleSkill) => bundleSkill.name,
+      importItem: handlers.importSkill,
+    })
+  }
+
+  if (components.repeatTasks) {
+    await importBundleItemCollection({
+      result,
+      resultItems: result.repeatTasks,
+      items: bundle.repeatTasks,
+      existingIds: new Set(await handlers.loadExistingRepeatTaskIds()),
+      conflictStrategy,
+      componentLabel: "Repeat task",
+      getId: (bundleTask) => bundleTask.id,
+      getName: (bundleTask) => bundleTask.name,
+      importItem: handlers.importRepeatTask,
+    })
+  }
+
+  if (components.knowledgeNotes) {
+    await importBundleItemCollection({
+      result,
+      resultItems: result.knowledgeNotes,
+      items: bundle.knowledgeNotes,
+      existingIds: new Set(await handlers.loadExistingKnowledgeNoteIds()),
+      conflictStrategy,
+      componentLabel: "Knowledge note",
+      getId: (bundleKnowledgeNote) => bundleKnowledgeNote.id,
+      getName: (bundleKnowledgeNote) => bundleKnowledgeNote.title,
+      importItem: handlers.importKnowledgeNote,
+    })
+  }
+
+  return finalizeBundleImportResult(result)
 }
 
 export function hasBundleImportConflicts(

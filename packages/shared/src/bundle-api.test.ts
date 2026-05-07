@@ -33,6 +33,7 @@ import {
   buildRepeatTaskFromBundleTask,
   buildSkillFromBundleSkill,
   createBundleItemSelection,
+  createBundleImportErrorResult,
   createBundleImportResult,
   createBundleRouteActions,
   createTemporaryBundleFileImportService,
@@ -51,6 +52,7 @@ import {
   hasSelectedBundleComponent,
   importBundleAction,
   importBundleFromTemporaryFile,
+  importDotAgentsBundle,
   importBundleItemCollection,
   importBundleMcpServersIntoConfig,
   isHubBundleHandoffFilePath,
@@ -828,6 +830,95 @@ describe("bundle API helpers", () => {
     })
     expect(importCalls).toBe(0)
     expect(skipResult.agentProfiles).toEqual([{ id: "agent", name: "Agent", action: "skipped" }])
+
+    expect(createBundleImportErrorResult("Failed to parse bundle file")).toMatchObject({
+      success: false,
+      errors: ["Failed to parse bundle file"],
+    })
+
+    const componentImportBundle: DotAgentsBundle = {
+      ...bundle,
+      manifest: {
+        ...bundle.manifest,
+        components: {
+          agentProfiles: 1,
+          mcpServers: 1,
+          skills: 1,
+          repeatTasks: 1,
+          knowledgeNotes: 1,
+        },
+      },
+      mcpServers: [{ name: "server-1", command: "new-server" }],
+      repeatTasks: [{
+        id: "task-1",
+        name: "Task",
+        prompt: "Run",
+        intervalMinutes: 15,
+        enabled: true,
+      }],
+      knowledgeNotes: [{
+        id: "note-1",
+        title: "Note",
+        context: "search-only",
+        body: "Body",
+        tags: [],
+        updatedAt: 123,
+      }],
+    }
+    const componentImports: string[] = []
+    const savedMcpConfigs: Record<string, unknown>[] = []
+    const componentImportResult = await importDotAgentsBundle(componentImportBundle, {
+      conflictStrategy: "rename",
+      components: { knowledgeNotes: false },
+      handlers: {
+        loadExistingAgentProfileIds: () => ["agent-1"],
+        importAgentProfile: (_profile, action) => {
+          componentImports.push(`agent:${action.finalId}`)
+        },
+        loadMcpConfig: () => ({
+          mcpConfig: {
+            mcpServers: {
+              "server-1": { command: "old-server" },
+            },
+          },
+        }),
+        saveMcpConfig: (mcpConfig) => {
+          savedMcpConfigs.push(mcpConfig)
+        },
+        loadExistingSkillIds: () => [],
+        importSkill: (_skill, action) => {
+          componentImports.push(`skill:${action.finalId}`)
+        },
+        loadExistingRepeatTaskIds: () => ["task-1"],
+        importRepeatTask: (_task, action) => {
+          componentImports.push(`task:${action.finalId}`)
+        },
+        loadExistingKnowledgeNoteIds: () => {
+          throw new Error("knowledge notes should be disabled")
+        },
+        importKnowledgeNote: () => {
+          throw new Error("knowledge notes should be disabled")
+        },
+      },
+    })
+    expect(componentImports).toEqual(["agent:agent-1_imported", "skill:skill-1", "task:task-1_imported"])
+    expect(savedMcpConfigs[0]).toEqual({
+      mcpConfig: {
+        mcpServers: {
+          "server-1": { command: "old-server" },
+          "server-1_imported": { command: "new-server" },
+        },
+      },
+    })
+    expect(componentImportResult).toMatchObject({
+      success: true,
+      agentProfiles: [{ id: "agent-1", name: "agent", action: "renamed", newId: "agent-1_imported" }],
+      mcpServers: [{ id: "server-1", name: "server-1", action: "renamed", newId: "server-1_imported" }],
+      skills: [{ id: "skill-1", name: "Skill", action: "imported" }],
+      repeatTasks: [{ id: "task-1", name: "Task", action: "renamed", newId: "task-1_imported" }],
+      knowledgeNotes: [],
+      errors: [],
+    })
 
     expect(buildAgentProfileFromBundleProfile({
       id: "agent",

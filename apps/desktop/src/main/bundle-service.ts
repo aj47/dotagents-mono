@@ -27,7 +27,6 @@ import {
   type HubPublishPayload,
 } from "@dotagents/shared/hub"
 import {
-  DEFAULT_BUNDLE_COMPONENT_SELECTION,
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
   buildAgentProfileFromBundleProfile,
   buildBundleAgentProfilesFromProfiles,
@@ -46,11 +45,9 @@ import {
   buildKnowledgeNoteFromBundleNote,
   buildRepeatTaskFromBundleTask,
   buildSkillFromBundleSkill,
-  createBundleImportResult,
-  finalizeBundleImportResult,
+  createBundleImportErrorResult,
   getBundleExportableItemsFromLayerDirs,
-  importBundleItemCollection,
-  importBundleMcpServersIntoConfig,
+  importDotAgentsBundle,
   isHubBundleHandoffFilePath,
   isSupportedBundleFilePath,
   buildBundleFromLayerDirs,
@@ -482,143 +479,60 @@ export async function importBundle(
   targetAgentsDir: string,
   options: ImportOptions
 ): Promise<ImportBundleResult> {
-  const result = createBundleImportResult()
-
-  // Parse bundle
   const bundle = previewBundle(filePath)
   if (!bundle) {
-    result.errors.push("Failed to parse bundle file")
-    return finalizeBundleImportResult(result)
+    return createBundleImportErrorResult("Failed to parse bundle file")
   }
 
   const layer = getAgentsLayerPaths(targetAgentsDir)
-  const { conflictStrategy } = options
-  const components = options.components ?? DEFAULT_BUNDLE_COMPONENT_SELECTION
 
-  // Ensure directories exist
   fs.mkdirSync(targetAgentsDir, { recursive: true })
 
-  // Import agent profiles
-  if (components.agentProfiles !== false) {
-    const existingProfiles = loadAgentProfilesLayer(layer)
-    const existingIds = new Set(existingProfiles.profiles.map(p => p.id))
-
-    await importBundleItemCollection({
-      result,
-      resultItems: result.agentProfiles,
-      items: bundle.agentProfiles,
-      existingIds,
-      conflictStrategy,
-      componentLabel: "Agent profile",
-      getId: (bundleProfile) => bundleProfile.id,
-      getName: (bundleProfile) => bundleProfile.name,
-      importItem: (bundleProfile, importAction) => {
+  const finalResult = await importDotAgentsBundle(bundle, {
+    conflictStrategy: options.conflictStrategy,
+    components: options.components,
+    handlers: {
+      loadExistingAgentProfileIds: () => loadAgentProfilesLayer(layer).profiles.map((profile) => profile.id),
+      importAgentProfile: (bundleProfile, importAction) => {
         const now = Date.now()
         const fullProfile = buildAgentProfileFromBundleProfile(bundleProfile, { id: importAction.finalId, now })
 
         writeAgentsProfileFiles(layer, fullProfile)
       },
-    })
-  }
-
-  // Import MCP servers
-  if (components.mcpServers !== false) {
-    try {
-      const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
+      loadMcpConfig: () => safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
         defaultValue: {},
-      })
-      const mcpImport = importBundleMcpServersIntoConfig({
-        result,
-        mcpConfig,
-        bundleServers: bundle.mcpServers,
-        conflictStrategy,
-      })
-
-      if (mcpImport.modified) {
-        safeWriteJsonFileSync(layer.mcpJsonPath, mcpImport.mcpConfig, {
+      }),
+      saveMcpConfig: (mcpConfig) => {
+        safeWriteJsonFileSync(layer.mcpJsonPath, mcpConfig, {
           backupDir: layer.backupsDir,
           maxBackups: 10,
           pretty: true,
         })
-      }
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error)
-      result.errors.push(`MCP servers import failed: ${msg}`)
-    }
-  }
-
-  // Import skills
-  if (components.skills !== false) {
-    const existingSkills = loadAgentsSkillsLayer(layer)
-    const existingIds = new Set(existingSkills.skills.map(s => s.id))
-
-    await importBundleItemCollection({
-      result,
-      resultItems: result.skills,
-      items: bundle.skills,
-      existingIds,
-      conflictStrategy,
-      componentLabel: "Skill",
-      getId: (bundleSkill) => bundleSkill.id,
-      getName: (bundleSkill) => bundleSkill.name,
-      importItem: (bundleSkill, importAction) => {
+      },
+      loadExistingSkillIds: () => loadAgentsSkillsLayer(layer).skills.map((skill) => skill.id),
+      importSkill: (bundleSkill, importAction) => {
         const now = Date.now()
         const fullSkill = buildSkillFromBundleSkill(bundleSkill, { id: importAction.finalId, now })
 
-        // Create skill directory and write file
         const skillDir = skillIdToDirPath(layer, importAction.finalId)
         fs.mkdirSync(skillDir, { recursive: true })
         writeAgentsSkillFile(layer, fullSkill)
       },
-    })
-  }
-
-  // Import repeat tasks
-  if (components.repeatTasks !== false) {
-    const existingTasks = loadTasksLayer(layer)
-    const existingIds = new Set(existingTasks.tasks.map(t => t.id))
-
-    await importBundleItemCollection({
-      result,
-      resultItems: result.repeatTasks,
-      items: bundle.repeatTasks,
-      existingIds,
-      conflictStrategy,
-      componentLabel: "Repeat task",
-      getId: (bundleTask) => bundleTask.id,
-      getName: (bundleTask) => bundleTask.name,
-      importItem: (bundleTask, importAction) => {
+      loadExistingRepeatTaskIds: () => loadTasksLayer(layer).tasks.map((task) => task.id),
+      importRepeatTask: (bundleTask, importAction) => {
         const fullTask = buildRepeatTaskFromBundleTask(bundleTask, { id: importAction.finalId })
 
         writeTaskFile(layer, fullTask)
       },
-    })
-  }
-
-  // Import knowledge notes
-  if (components.knowledgeNotes !== false) {
-    const existingKnowledgeNotes = loadAgentsKnowledgeNotesLayer(layer)
-    const existingIds = new Set(existingKnowledgeNotes.notes.map(note => note.id))
-
-    await importBundleItemCollection({
-      result,
-      resultItems: result.knowledgeNotes,
-      items: bundle.knowledgeNotes,
-      existingIds,
-      conflictStrategy,
-      componentLabel: "Knowledge note",
-      getId: (bundleKnowledgeNote) => bundleKnowledgeNote.id,
-      getName: (bundleKnowledgeNote) => bundleKnowledgeNote.title,
-      importItem: (bundleKnowledgeNote, importAction) => {
+      loadExistingKnowledgeNoteIds: () => loadAgentsKnowledgeNotesLayer(layer).notes.map((note) => note.id),
+      importKnowledgeNote: (bundleKnowledgeNote, importAction) => {
         const now = Date.now()
         const fullNote = buildKnowledgeNoteFromBundleNote(bundleKnowledgeNote, { id: importAction.finalId, now })
 
         writeKnowledgeNoteFile(layer, fullNote, { slug: importAction.finalId })
       },
-    })
-  }
-
-  const finalResult = finalizeBundleImportResult(result)
+    },
+  })
 
   logApp("[bundle-service] Import completed", {
     success: finalResult.success,
