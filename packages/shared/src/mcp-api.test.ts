@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  MCP_AUTO_PASTE_DELAY_MAX,
+  MCP_AUTO_PASTE_DELAY_MIN,
   DEFAULT_MCP_AUTO_PASTE_DELAY,
   DEFAULT_MCP_AUTO_PASTE_ENABLED,
   DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED,
@@ -45,14 +47,17 @@ import {
   createOperatorMcpReadActionService,
   createOperatorMcpRouteActions,
   createOperatorMcpTestActionService,
+  formatMcpAutoPasteDelayValidationMessage,
   formatMcpMaxIterationsValidationMessage,
   getMcpServersAction,
   getOperatorMcpServerLogsAction,
   getOperatorMcpStatusAction,
   getOperatorMcpToolsAction,
   listInjectedMcpToolsAction,
+  normalizeMcpAutoPasteDelayValue,
   normalizeMcpMaxIterationsValue,
   parseInjectedMcpToolCallRequestBody,
+  parseMcpAutoPasteDelayDraft,
   parseMcpMaxIterationsDraft,
   parseMcpServerConfigImportRequestBody,
   parseMcpServerToggleRequestBody,
@@ -174,6 +179,8 @@ describe("MCP API helpers", () => {
     expect(DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED).toBe(true)
     expect(DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED).toBe(true)
     expect(DEFAULT_MCP_PARALLEL_TOOL_EXECUTION).toBe(true)
+    expect(MCP_AUTO_PASTE_DELAY_MIN).toBe(0)
+    expect(MCP_AUTO_PASTE_DELAY_MAX).toBe(60000)
     expect(DEFAULT_MCP_AUTO_PASTE_ENABLED).toBe(false)
     expect(DEFAULT_MCP_AUTO_PASTE_DELAY).toBe(1000)
 
@@ -187,6 +194,18 @@ describe("MCP API helpers", () => {
     expect(normalizeMcpMaxIterationsValue(101)).toBeUndefined()
     expect(normalizeMcpMaxIterationsValue("10")).toBeUndefined()
     expect(formatMcpMaxIterationsValidationMessage()).toBe("Max Iterations must be between 1 and 100 before saving.")
+
+    expect(parseMcpAutoPasteDelayDraft("0")).toBe(0)
+    expect(parseMcpAutoPasteDelayDraft("60000")).toBe(60000)
+    expect(parseMcpAutoPasteDelayDraft("-1")).toBeNull()
+    expect(parseMcpAutoPasteDelayDraft("60001")).toBeNull()
+    expect(parseMcpAutoPasteDelayDraft("abc")).toBeNull()
+
+    expect(normalizeMcpAutoPasteDelayValue(1250.6)).toBe(1251)
+    expect(normalizeMcpAutoPasteDelayValue(0)).toBe(0)
+    expect(normalizeMcpAutoPasteDelayValue(60001)).toBeUndefined()
+    expect(normalizeMcpAutoPasteDelayValue("1000")).toBeUndefined()
+    expect(formatMcpAutoPasteDelayValidationMessage()).toBe("Auto-Paste Delay must be between 0 and 60000 ms before saving.")
   })
 
   it("parses MCP server toggle requests", () => {

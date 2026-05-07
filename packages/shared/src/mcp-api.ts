@@ -741,6 +741,8 @@ export function stripSamplingToolMarkerTokens(content: string | undefined | null
 export const MCP_MAX_ITERATIONS_MIN = 1
 export const MCP_MAX_ITERATIONS_MAX = 100
 export const MCP_MAX_ITERATIONS_DEFAULT = 10
+export const MCP_AUTO_PASTE_DELAY_MIN = 0
+export const MCP_AUTO_PASTE_DELAY_MAX = 60000
 export const DEFAULT_MCP_MESSAGE_QUEUE_ENABLED = true
 export const DEFAULT_MCP_REQUIRE_APPROVAL_BEFORE_TOOL_CALL = false
 export const DEFAULT_MCP_VERIFY_COMPLETION_ENABLED = true
@@ -886,6 +888,28 @@ export function normalizeMcpMaxIterationsValue(value: unknown): number | undefin
 
 export function formatMcpMaxIterationsValidationMessage(): string {
   return `Max Iterations must be between ${MCP_MAX_ITERATIONS_MIN} and ${MCP_MAX_ITERATIONS_MAX} before saving.`
+}
+
+export function parseMcpAutoPasteDelayDraft(value: string): number | null {
+  const parsedValue = Number.parseInt(value, 10)
+  if (Number.isNaN(parsedValue)) return null
+  if (parsedValue < MCP_AUTO_PASTE_DELAY_MIN || parsedValue > MCP_AUTO_PASTE_DELAY_MAX) return null
+  return parsedValue
+}
+
+export function normalizeMcpAutoPasteDelayValue(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined
+  }
+
+  const normalizedValue = Math.round(value)
+  return normalizedValue >= MCP_AUTO_PASTE_DELAY_MIN && normalizedValue <= MCP_AUTO_PASTE_DELAY_MAX
+    ? normalizedValue
+    : undefined
+}
+
+export function formatMcpAutoPasteDelayValidationMessage(): string {
+  return `Auto-Paste Delay must be between ${MCP_AUTO_PASTE_DELAY_MIN} and ${MCP_AUTO_PASTE_DELAY_MAX} ms before saving.`
 }
 
 export function parseMcpServerToggleRequestBody(body: unknown): McpRequestParseResult<McpServerToggleRequest> {

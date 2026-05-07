@@ -134,6 +134,8 @@ import {
   type RequiredBundleComponentSelection,
 } from '@dotagents/shared/bundle-api';
 import {
+  DEFAULT_MCP_AUTO_PASTE_DELAY,
+  DEFAULT_MCP_AUTO_PASTE_ENABLED,
   DEFAULT_MCP_CONTEXT_REDUCTION_ENABLED,
   DEFAULT_MCP_FINAL_SUMMARY_ENABLED,
   DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
@@ -143,8 +145,10 @@ import {
   DEFAULT_MCP_UNLIMITED_ITERATIONS,
   DEFAULT_MCP_VERIFY_COMPLETION_ENABLED,
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
+  formatMcpAutoPasteDelayValidationMessage,
   formatMcpMaxIterationsValidationMessage,
   MCP_MAX_ITERATIONS_DEFAULT,
+  parseMcpAutoPasteDelayDraft,
   parseMcpServerConfigImportRequestBody,
   parseMcpMaxIterationsDraft,
   type McpOAuthStatusResponse,
@@ -2662,6 +2666,13 @@ export default function SettingsScreen({ navigation }: any) {
           }
           updates.mcpMaxIterations = parsedIterations;
         }
+        if (pendingKeys.has('mcpAutoPasteDelay')) {
+          const parsedDelay = parseMcpAutoPasteDelayDraft(inputDrafts.mcpAutoPasteDelay ?? '');
+          if (parsedDelay === null) {
+            throw new Error(formatMcpAutoPasteDelayValidationMessage());
+          }
+          updates.mcpAutoPasteDelay = parsedDelay;
+        }
         if (pendingKeys.has('whatsappAllowFrom')) {
           updates.whatsappAllowFrom = parseConfigListInput(inputDrafts.whatsappAllowFrom ?? '');
         }
@@ -4323,6 +4334,41 @@ export default function SettingsScreen({ navigation }: any) {
                 </View>
                 <Text style={styles.helperText}>
                   Generate a summary after completing a task
+                </Text>
+
+                <View style={styles.row}>
+                  <Text style={styles.label}>Auto-Paste Response</Text>
+                  <Switch
+                    value={remoteSettings.mcpAutoPasteEnabled ?? DEFAULT_MCP_AUTO_PASTE_ENABLED}
+                    onValueChange={(v) => handleRemoteSettingToggle('mcpAutoPasteEnabled', v)}
+                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                    thumbColor={(remoteSettings.mcpAutoPasteEnabled ?? DEFAULT_MCP_AUTO_PASTE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                  />
+                </View>
+                <Text style={styles.helperText}>
+                  Paste completed agent responses into the desktop app that was focused before the request
+                </Text>
+
+                <Text style={styles.label}>Auto-Paste Delay</Text>
+                <TextInput
+                  style={styles.input}
+                  value={inputDrafts.mcpAutoPasteDelay ?? String(DEFAULT_MCP_AUTO_PASTE_DELAY)}
+                  onChangeText={(v) => {
+                    markRemotePending('mcpAutoPasteDelay');
+                    setSaveStatusMessage(null);
+                    const num = parseMcpAutoPasteDelayDraft(v);
+                    if (num !== null) {
+                      handleRemoteSettingUpdate('mcpAutoPasteDelay', num);
+                    } else {
+                      setInputDrafts(prev => ({ ...prev, mcpAutoPasteDelay: v }));
+                    }
+                  }}
+                  placeholder={String(DEFAULT_MCP_AUTO_PASTE_DELAY)}
+                  placeholderTextColor={theme.colors.mutedForeground}
+                  keyboardType="number-pad"
+                />
+                <Text style={styles.helperText}>
+                  Delay in milliseconds before pasting
                 </Text>
 
                 <Text style={styles.label}>Max Iterations</Text>

@@ -47,6 +47,7 @@ import {
   DEFAULT_MCP_UNLIMITED_ITERATIONS,
   DEFAULT_MCP_VERIFY_COMPLETION_ENABLED,
   MCP_MAX_ITERATIONS_DEFAULT,
+  normalizeMcpAutoPasteDelayValue,
   normalizeMcpMaxIterationsValue,
   type McpOAuthRevokeResponse,
   type McpOAuthStartResponse,
@@ -1049,12 +1050,8 @@ export function buildSettingsUpdatePatch(
   if (typeof requestBody.mcpToolResponseProcessingEnabled === 'boolean') updates.mcpToolResponseProcessingEnabled = requestBody.mcpToolResponseProcessingEnabled;
   if (typeof requestBody.mcpParallelToolExecution === 'boolean') updates.mcpParallelToolExecution = requestBody.mcpParallelToolExecution;
   if (typeof requestBody.mcpAutoPasteEnabled === 'boolean') updates.mcpAutoPasteEnabled = requestBody.mcpAutoPasteEnabled;
-  if (typeof requestBody.mcpAutoPasteDelay === 'number' && Number.isFinite(requestBody.mcpAutoPasteDelay)) {
-    const mcpAutoPasteDelay = Math.round(requestBody.mcpAutoPasteDelay);
-    if (mcpAutoPasteDelay >= 0 && mcpAutoPasteDelay <= 60000) {
-      updates.mcpAutoPasteDelay = mcpAutoPasteDelay;
-    }
-  }
+  const mcpAutoPasteDelay = normalizeMcpAutoPasteDelayValue(requestBody.mcpAutoPasteDelay);
+  if (mcpAutoPasteDelay !== undefined) updates.mcpAutoPasteDelay = mcpAutoPasteDelay;
   if (Array.isArray(requestBody.mcpRuntimeDisabledServers)) updates.mcpRuntimeDisabledServers = sanitizeConfigStringList(requestBody.mcpRuntimeDisabledServers);
   if (Array.isArray(requestBody.mcpDisabledTools)) updates.mcpDisabledTools = sanitizeConfigStringList(requestBody.mcpDisabledTools);
 

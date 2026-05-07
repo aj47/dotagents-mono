@@ -1,6 +1,6 @@
 import type { Settings } from "./api-types"
 import { formatConfigListInput } from "./config-list-input"
-import { MCP_MAX_ITERATIONS_DEFAULT } from "./mcp-api"
+import { DEFAULT_MCP_AUTO_PASTE_DELAY, MCP_MAX_ITERATIONS_DEFAULT } from "./mcp-api"
 
 export const REMOTE_SETTINGS_SECRET_MASK = "••••••••"
 
@@ -30,6 +30,7 @@ export function buildRemoteSettingsInputDrafts(
     transcriptPostProcessingGeminiModel: settings.transcriptPostProcessingGeminiModel || "",
     transcriptPostProcessingChatgptWebModel: settings.transcriptPostProcessingChatgptWebModel || "",
     mcpMaxIterations: String(settings.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
+    mcpAutoPasteDelay: String(settings.mcpAutoPasteDelay ?? DEFAULT_MCP_AUTO_PASTE_DELAY),
     whatsappAllowFrom: formatConfigListInput(settings.whatsappAllowFrom),
     discordBotToken: getRemoteSettingsSecretInputDraft(settings.discordBotToken, secretMask),
     discordAllowUserIds: formatConfigListInput(settings.discordAllowUserIds, { separator: "newline" }),

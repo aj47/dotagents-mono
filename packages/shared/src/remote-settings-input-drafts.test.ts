@@ -20,6 +20,7 @@ describe("remote settings input drafts", () => {
       transcriptPostProcessingGeminiModel: "gemini-2.5-flash",
       transcriptPostProcessingChatgptWebModel: "gpt-5",
       mcpMaxIterations: 42,
+      mcpAutoPasteDelay: 1250,
       whatsappAllowFrom: ["+15550001000", "+15550001001"],
       discordAllowUserIds: ["user-1", "user-2"],
       discordAllowGuildIds: ["guild-1"],
@@ -48,6 +49,7 @@ describe("remote settings input drafts", () => {
       transcriptPostProcessingGeminiModel: "gemini-2.5-flash",
       transcriptPostProcessingChatgptWebModel: "gpt-5",
       mcpMaxIterations: "42",
+      mcpAutoPasteDelay: "1250",
       whatsappAllowFrom: "+15550001000, +15550001001",
       discordAllowUserIds: "user-1\nuser-2",
       discordAllowGuildIds: "guild-1",
@@ -79,6 +81,7 @@ describe("remote settings input drafts", () => {
 
     expect(buildRemoteSettingsInputDrafts(settings)).toMatchObject({
       mcpMaxIterations: "10",
+      mcpAutoPasteDelay: "1000",
       whatsappAllowFrom: "",
       discordAllowUserIds: "",
       openaiApiKey: "",
