@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { desktopLoopsClient } from "@renderer/lib/desktop-loops-client"
 import {
   CheckCircle2,
@@ -199,7 +200,7 @@ export function ActiveAgentsSidebar({
   const { data, refetch } = useQuery<SidebarSessionsResponse>({
     queryKey: ["agentSessions"],
     queryFn: async () => {
-      return await tipcClient.getAgentSessions()
+      return await desktopAgentSessionsClient.getAgentSessions()
     },
   })
   const savedConversationsQuery = useSavedConversationsQuery(isExpanded)

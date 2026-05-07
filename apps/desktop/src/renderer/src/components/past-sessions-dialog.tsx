@@ -12,6 +12,7 @@ import {
   getSidebarActivityPresentation,
 } from "@dotagents/shared/sidebar-sessions"
 import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
+import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import {
   useSavedConversationsQuery,
   useDeleteSavedConversationMutation,
@@ -151,7 +152,7 @@ export function SavedConversationsDialog({
   const activeConversationsQuery = useQuery<SessionListResponse>({
     queryKey: ["agentSessions"],
     queryFn: async () => {
-      return await tipcClient.getAgentSessions()
+      return await desktopAgentSessionsClient.getAgentSessions()
     },
     enabled: open,
     refetchOnWindowFocus: false,

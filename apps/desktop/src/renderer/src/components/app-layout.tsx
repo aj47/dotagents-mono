@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
+import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { cn } from "@renderer/lib/utils"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom"
@@ -94,7 +95,7 @@ export const Component = () => {
     useQuery<SessionListResponse>({
       queryKey: ["agentSessions"],
       queryFn: async () => {
-        return await tipcClient.getAgentSessions()
+        return await desktopAgentSessionsClient.getAgentSessions()
       },
       enabled: isCollapsed,
       refetchOnWindowFocus: false,

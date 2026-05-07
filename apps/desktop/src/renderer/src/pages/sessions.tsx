@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { useParams, useOutletContext, useLocation, useNavigate } from "react-router-dom"
 import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
+import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { useAgentStore, useAgentSessionProgress } from "@renderer/stores"
 import { AgentProgress } from "@renderer/components/agent-progress"
 import { MessageCircle, Mic, Plus, CheckCircle2, Keyboard, Clock, Loader2, Pin } from "lucide-react"
@@ -434,7 +435,7 @@ export function Component() {
   const { data: sessionData, refetch: refetchSessionData } = useQuery<SessionListResponse>({
     queryKey: ["agentSessions"],
     queryFn: async () => {
-      return await tipcClient.getAgentSessions()
+      return await desktopAgentSessionsClient.getAgentSessions()
     },
     refetchOnWindowFocus: false,
   })
@@ -883,7 +884,7 @@ export function Component() {
       sessionIds: inactiveSessions,
     })
     try {
-      await tipcClient.clearInactiveSessions()
+      await desktopAgentSessionsClient.clearInactiveSessions()
       toast.success("Inactive sessions cleared")
     } catch (error) {
       toast.error("Failed to clear inactive sessions")
