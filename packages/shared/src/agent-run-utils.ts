@@ -82,6 +82,75 @@ export interface RemoteAgentRunActionService<TConversation extends RemoteAgentCo
   notifyConversationHistoryChanged(): void
 }
 
+export interface RemoteAgentRunConfigServiceAdapter {
+  getConfig(): RemoteAgentRunConfigLike
+}
+
+export interface RemoteAgentRunStateServiceAdapter {
+  setAgentModeState(state: RemoteAgentRunModeState): void
+}
+
+export interface RemoteAgentRunConversationServiceAdapter<
+  TConversation extends RemoteAgentConversationLike = RemoteAgentConversationLike,
+> {
+  addMessageToConversation(conversationId: string, prompt: string, role: 'user'): Promise<TConversation | null | undefined>
+  createConversationWithId(conversationId: string, prompt: string, role: 'user'): Promise<TConversation>
+  generateConversationId(): string
+  loadConversation(conversationId: string): Promise<TConversation | null | undefined>
+  notifyConversationHistoryChanged(): void
+}
+
+export interface RemoteAgentRunSessionServiceAdapter {
+  findSessionByConversationId(conversationId: string): string | undefined
+  getSession(sessionId: string): RemoteAgentSessionLike | undefined
+  reviveSession(sessionId: string, startSnoozed: boolean): boolean
+}
+
+export interface RemoteAgentRunProcessorAdapter<
+  TConversation extends RemoteAgentConversationLike = RemoteAgentConversationLike,
+> {
+  processAgentMode(
+    prompt: string,
+    conversationId: string,
+    existingSessionId: string | undefined,
+    startSnoozed: boolean,
+    options: Pick<AgentRunOptions, 'profileId' | 'onProgress'>,
+  ): Promise<string>
+}
+
+export interface RemoteAgentRunActionServiceOptions<
+  TConversation extends RemoteAgentConversationLike = RemoteAgentConversationLike,
+> {
+  config: RemoteAgentRunConfigServiceAdapter
+  state: RemoteAgentRunStateServiceAdapter
+  conversations: RemoteAgentRunConversationServiceAdapter<TConversation>
+  sessions: RemoteAgentRunSessionServiceAdapter
+  processor: RemoteAgentRunProcessorAdapter<TConversation>
+}
+
+export function createRemoteAgentRunActionService<
+  TConversation extends RemoteAgentConversationLike = RemoteAgentConversationLike,
+>(
+  options: RemoteAgentRunActionServiceOptions<TConversation>,
+): RemoteAgentRunActionService<TConversation> {
+  return {
+    getConfig: () => options.config.getConfig(),
+    setAgentModeState: (state) => options.state.setAgentModeState(state),
+    addMessageToConversation: (conversationId, prompt, role) =>
+      options.conversations.addMessageToConversation(conversationId, prompt, role),
+    createConversationWithId: (conversationId, prompt, role) =>
+      options.conversations.createConversationWithId(conversationId, prompt, role),
+    generateConversationId: () => options.conversations.generateConversationId(),
+    findSessionByConversationId: (conversationId) => options.sessions.findSessionByConversationId(conversationId),
+    getSession: (sessionId) => options.sessions.getSession(sessionId),
+    reviveSession: (sessionId, startSnoozed) => options.sessions.reviveSession(sessionId, startSnoozed),
+    loadConversation: (conversationId) => options.conversations.loadConversation(conversationId),
+    processAgentMode: (prompt, conversationId, existingSessionId, startSnoozed, runOptions) =>
+      options.processor.processAgentMode(prompt, conversationId, existingSessionId, startSnoozed, runOptions),
+    notifyConversationHistoryChanged: () => options.conversations.notifyConversationHistoryChanged(),
+  }
+}
+
 export interface RemoteAgentRunActionDiagnostics {
   logInfo(source: string, message: string): void
 }

@@ -3,9 +3,9 @@ import type {
   AgentRunResult,
 } from "@dotagents/shared/agent-run-utils"
 import {
+  createRemoteAgentRunActionService,
   createRemoteAgentRunExecutor,
   type RemoteAgentRunActionOptions,
-  type RemoteAgentRunActionService,
 } from "@dotagents/shared/agent-run-utils"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
@@ -18,38 +18,6 @@ import { notifyConversationHistoryChanged } from "./conversation-history-notifie
 export type RunAgentOptions = AgentRunOptions
 export type RunAgentResult = AgentRunResult
 
-function createRemoteAgentRunActionService(
-  notifyConversationHistoryChanged: () => void,
-): RemoteAgentRunActionService {
-  return {
-    getConfig: () => configStore.get(),
-    setAgentModeState: (nextState) => {
-      state.isAgentModeActive = nextState.isAgentModeActive
-      state.shouldStopAgent = nextState.shouldStopAgent
-      state.agentIterationCount = nextState.agentIterationCount
-    },
-    addMessageToConversation: (conversationId, prompt, role) =>
-      conversationService.addMessageToConversation(conversationId, prompt, role),
-    createConversationWithId: (conversationId, prompt, role) =>
-      conversationService.createConversationWithId(conversationId, prompt, role),
-    generateConversationId: () => conversationService.generateConversationIdPublic(),
-    findSessionByConversationId: (conversationId) => agentSessionTracker.findSessionByConversationId(conversationId),
-    getSession: (sessionId) => agentSessionTracker.getSession(sessionId),
-    reviveSession: (sessionId, startSnoozed) => agentSessionTracker.reviveSession(sessionId, startSnoozed),
-    loadConversation: (conversationId) => conversationService.loadConversation(conversationId),
-    processAgentMode: (prompt, conversationId, existingSessionId, startSnoozed, runOptions) =>
-      processWithAgentMode(
-        prompt,
-        conversationId,
-        existingSessionId,
-        startSnoozed,
-        undefined,
-        runOptions,
-      ),
-    notifyConversationHistoryChanged,
-  }
-}
-
 function createRemoteAgentRunActionOptions(
   notifyConversationHistoryChanged: () => void,
 ): RemoteAgentRunActionOptions {
@@ -57,7 +25,43 @@ function createRemoteAgentRunActionOptions(
     diagnostics: {
       logInfo: (source, message) => diagnosticsService.logInfo(source, message),
     },
-    service: createRemoteAgentRunActionService(notifyConversationHistoryChanged),
+    service: createRemoteAgentRunActionService({
+      config: {
+        getConfig: () => configStore.get(),
+      },
+      state: {
+        setAgentModeState: (nextState) => {
+          state.isAgentModeActive = nextState.isAgentModeActive
+          state.shouldStopAgent = nextState.shouldStopAgent
+          state.agentIterationCount = nextState.agentIterationCount
+        },
+      },
+      conversations: {
+        addMessageToConversation: (conversationId, prompt, role) =>
+          conversationService.addMessageToConversation(conversationId, prompt, role),
+        createConversationWithId: (conversationId, prompt, role) =>
+          conversationService.createConversationWithId(conversationId, prompt, role),
+        generateConversationId: () => conversationService.generateConversationIdPublic(),
+        loadConversation: (conversationId) => conversationService.loadConversation(conversationId),
+        notifyConversationHistoryChanged,
+      },
+      sessions: {
+        findSessionByConversationId: (conversationId) => agentSessionTracker.findSessionByConversationId(conversationId),
+        getSession: (sessionId) => agentSessionTracker.getSession(sessionId),
+        reviveSession: (sessionId, startSnoozed) => agentSessionTracker.reviveSession(sessionId, startSnoozed),
+      },
+      processor: {
+        processAgentMode: (prompt, conversationId, existingSessionId, startSnoozed, runOptions) =>
+          processWithAgentMode(
+            prompt,
+            conversationId,
+            existingSessionId,
+            startSnoozed,
+            undefined,
+            runOptions,
+          ),
+      },
+    }),
   }
 }
 

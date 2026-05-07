@@ -10,6 +10,7 @@ import {
   buildAgentStoppedProgressUpdate,
   buildProfileContext,
   calculateLlmRetryBackoffDelay,
+  createRemoteAgentRunActionService,
   createRemoteAgentRunExecutor,
   describeAgentSessionId,
   getExplicitAgentStopReason,
@@ -352,42 +353,87 @@ describe('runRemoteAgentAction', () => {
     const revived: Array<{ sessionId: string; startSnoozed: boolean }> = []
     const stateChanges: unknown[] = []
     const service: RemoteAgentRunActionService = {
-      getConfig: () => ({ remoteServerAutoShowPanel: false }),
-      setAgentModeState: (state) => { stateChanges.push(state) },
-      addMessageToConversation: async (conversationId, prompt, role) => {
-        calls.push(`add:${conversationId}:${prompt}:${role}`)
-        const conversation = conversations.get(conversationId)
-        if (!conversation) return null
-        conversation.messages.push({ role, content: prompt, timestamp: 3 })
-        return conversation
-      },
-      createConversationWithId: async (conversationId, prompt, role) => {
-        calls.push(`create:${conversationId}:${prompt}:${role}`)
-        const conversation = {
-          id: conversationId,
-          messages: [{ role, content: prompt, timestamp: 1 }],
-        }
-        conversations.set(conversationId, conversation)
-        return conversation
-      },
-      generateConversationId: () => 'generated-conv',
-      findSessionByConversationId: (conversationId) => conversationId === 'conv-1' ? 'session-1' : undefined,
-      getSession: () => ({ status: 'active', isSnoozed: true }),
-      reviveSession: (sessionId, startSnoozed) => {
-        revived.push({ sessionId, startSnoozed })
-        return true
-      },
-      loadConversation: async (conversationId) => conversations.get(conversationId),
-      processAgentMode: async (prompt, conversationId, existingSessionId, startSnoozed, options) => {
-        calls.push(`process:${prompt}:${conversationId}:${existingSessionId ?? 'new'}:${startSnoozed}:${options.profileId ?? ''}`)
-        return 'done'
-      },
-      notifyConversationHistoryChanged: () => { calls.push('notify') },
+      ...createRemoteAgentRunActionService({
+        config: {
+          getConfig: () => ({ remoteServerAutoShowPanel: false }),
+        },
+        state: {
+          setAgentModeState: (state) => { stateChanges.push(state) },
+        },
+        conversations: {
+          addMessageToConversation: async (conversationId, prompt, role) => {
+            calls.push(`add:${conversationId}:${prompt}:${role}`)
+            const conversation = conversations.get(conversationId)
+            if (!conversation) return null
+            conversation.messages.push({ role, content: prompt, timestamp: 3 })
+            return conversation
+          },
+          createConversationWithId: async (conversationId, prompt, role) => {
+            calls.push(`create:${conversationId}:${prompt}:${role}`)
+            const conversation = {
+              id: conversationId,
+              messages: [{ role, content: prompt, timestamp: 1 }],
+            }
+            conversations.set(conversationId, conversation)
+            return conversation
+          },
+          generateConversationId: () => 'generated-conv',
+          loadConversation: async (conversationId) => conversations.get(conversationId),
+          notifyConversationHistoryChanged: () => { calls.push('notify') },
+        },
+        sessions: {
+          findSessionByConversationId: (conversationId) => conversationId === 'conv-1' ? 'session-1' : undefined,
+          getSession: () => ({ status: 'active', isSnoozed: true }),
+          reviveSession: (sessionId, startSnoozed) => {
+            revived.push({ sessionId, startSnoozed })
+            return true
+          },
+        },
+        processor: {
+          processAgentMode: async (prompt, conversationId, existingSessionId, startSnoozed, options) => {
+            calls.push(`process:${prompt}:${conversationId}:${existingSessionId ?? 'new'}:${startSnoozed}:${options.profileId ?? ''}`)
+            return 'done'
+          },
+        },
+      }),
       ...overrides,
     }
 
     return { calls, conversations, revived, service, stateChanges }
   }
+
+  it('creates remote agent run action services from platform adapters', async () => {
+    const { calls, revived, service, stateChanges } = createRemoteAgentRunService()
+
+    expect(service.getConfig()).toEqual({ remoteServerAutoShowPanel: false })
+    service.setAgentModeState({ isAgentModeActive: true, shouldStopAgent: false, agentIterationCount: 1 })
+    await expect(service.addMessageToConversation('conv-1', 'adapter prompt', 'user')).resolves.toMatchObject({
+      id: 'conv-1',
+    })
+    await expect(service.createConversationWithId('conv-2', 'new prompt', 'user')).resolves.toMatchObject({
+      id: 'conv-2',
+    })
+    expect(service.generateConversationId()).toBe('generated-conv')
+    expect(service.findSessionByConversationId('conv-1')).toBe('session-1')
+    expect(service.getSession('session-1')).toEqual({ status: 'active', isSnoozed: true })
+    expect(service.reviveSession('session-1', true)).toBe(true)
+    await expect(service.loadConversation('conv-2')).resolves.toMatchObject({ id: 'conv-2' })
+    await expect(service.processAgentMode('process prompt', 'conv-2', 'session-1', true, {
+      profileId: 'profile-1',
+    })).resolves.toBe('done')
+    service.notifyConversationHistoryChanged()
+
+    expect(calls).toEqual([
+      'add:conv-1:adapter prompt:user',
+      'create:conv-2:new prompt:user',
+      'process:process prompt:conv-2:session-1:true:profile-1',
+      'notify',
+    ])
+    expect(revived).toEqual([{ sessionId: 'session-1', startSnoozed: true }])
+    expect(stateChanges).toEqual([
+      { isAgentModeActive: true, shouldStopAgent: false, agentIterationCount: 1 },
+    ])
+  })
 
   it('continues existing conversations, revives active sessions, and returns formatted history', async () => {
     const logMessages: string[] = []
