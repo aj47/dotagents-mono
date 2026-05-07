@@ -8,7 +8,10 @@ import type {
   ServerConversationMessage,
   UpdateConversationRequest,
 } from './api-types';
+import { filterVisibleChatMessages } from './chat-utils';
+import { sanitizeMessageContentForDisplay } from './message-display-utils';
 import {
+  buildConversationPreview,
   generateConversationTitleFromMessage,
   generateSessionId,
   normalizeConversationTitleText,
@@ -137,6 +140,8 @@ export interface ServerConversationRecordMessage extends ServerConversationMessa
   id: string;
   timestamp: number;
   displayContent?: string;
+  isSummary?: boolean;
+  summarizedMessageCount?: number;
 }
 
 export interface ServerConversationRecord<TMetadata = unknown> {
@@ -187,6 +192,11 @@ export interface AppendServerConversationMessageResult<TConversation extends Ser
 export type RenameServerConversationTitleResult<TConversation extends ServerConversationRecord<any>> =
   | { ok: true; conversation: TConversation; title: string; changed: boolean }
   | { ok: false; error: string };
+
+export interface BuildServerConversationHistoryItemOptions {
+  maxLastMessageChars?: number;
+  maxPreviewChars?: number;
+}
 
 export function createServerConversationMessageId(timestamp: number, index: number): string {
   return `msg_${timestamp}_${index}_${Math.random().toString(36).substr(2, 9)}`;
@@ -376,6 +386,52 @@ export function getStoredServerConversationMessages<TConversation extends Server
   return Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
     ? conversation.rawMessages
     : conversation.messages;
+}
+
+export function toServerConversationHistorySnippet(value: string, maxChars: number): string {
+  const sanitized = sanitizeMessageContentForDisplay(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return sanitized.length > maxChars
+    ? `${sanitized.slice(0, maxChars).trim()}…`
+    : sanitized;
+}
+
+export function getRepresentedServerConversationMessageCount<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+): number {
+  const summaryMessages = conversation.messages.filter((message) => message.isSummary);
+  if (summaryMessages.length > 0) {
+    const summarizedMessageCount = summaryMessages.reduce(
+      (total, message) => total + (message.summarizedMessageCount ?? 0),
+      0,
+    );
+    return summarizedMessageCount + conversation.messages.filter((message) => !message.isSummary).length;
+  }
+
+  return getStoredServerConversationMessages(conversation).length;
+}
+
+export function buildServerConversationHistoryItem<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+  options: BuildServerConversationHistoryItemOptions = {},
+): ServerConversation {
+  const maxLastMessageChars = options.maxLastMessageChars ?? 500;
+  const maxPreviewChars = options.maxPreviewChars ?? 200;
+  const storedMessages = getStoredServerConversationMessages(conversation);
+  const visibleMessages = filterVisibleChatMessages(storedMessages);
+  const lastMessage = visibleMessages[visibleMessages.length - 1] || storedMessages[storedMessages.length - 1];
+
+  return {
+    id: conversation.id,
+    title: conversation.title,
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+    messageCount: getRepresentedServerConversationMessageCount(conversation),
+    lastMessage: toServerConversationHistorySnippet(lastMessage?.content || '', maxLastMessageChars),
+    preview: buildConversationPreview(visibleMessages, { maxPreviewChars }),
+  };
 }
 
 export function getBranchableServerConversationMessages<TConversation extends ServerConversationRecord<any>>(

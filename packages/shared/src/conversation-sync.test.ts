@@ -5,6 +5,7 @@ import {
   appendServerConversationMessage,
   buildNewServerConversation,
   buildBranchedServerConversation,
+  buildServerConversationHistoryItem,
   buildNewServerConversationFromUpdateRequest,
   buildServerConversationTitle,
   buildServerConversationDeleteResponse,
@@ -21,6 +22,7 @@ import {
   fromServerConversationMessage,
   getConversationAction,
   getConversationsAction,
+  getRepresentedServerConversationMessageCount,
   getStoredServerConversationMessages,
   parseCreateConversationRequestBody,
   parseBranchConversationRequestBody,
@@ -28,6 +30,7 @@ import {
   renameServerConversationTitle,
   serverConversationToStubSession,
   syncConversations,
+  toServerConversationHistorySnippet,
   toServerConversationMessage,
   updateConversationAction,
 } from './conversation-sync';
@@ -253,6 +256,52 @@ describe('server conversation API helpers', () => {
       ok: false,
       error: 'Missing title',
     });
+  });
+
+  it('builds conversation history rows from visible stored history', () => {
+    const historyItem = buildServerConversationHistoryItem({
+      id: 'conv-history',
+      title: 'History',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [
+        { id: 'summary-1', role: 'assistant' as const, content: 'Summary', timestamp: 2, isSummary: true, summarizedMessageCount: 3 },
+        { id: 'display-1', role: 'assistant' as const, content: 'Hidden wrapper', timestamp: 3, toolCalls: [{ name: 'respond_to_user', arguments: { text: 'ignored' } }] },
+      ],
+      rawMessages: [
+        { id: 'raw-1', role: 'user' as const, content: 'first raw', timestamp: 1 },
+        { id: 'raw-2', role: 'assistant' as const, content: 'second raw', timestamp: 2 },
+      ],
+    }, {
+      maxLastMessageChars: 20,
+      maxPreviewChars: 80,
+    });
+
+    expect(historyItem).toEqual({
+      id: 'conv-history',
+      title: 'History',
+      createdAt: 1,
+      updatedAt: 2,
+      messageCount: 4,
+      lastMessage: 'second raw',
+      preview: 'user: first raw | assistant: second raw',
+    });
+  });
+
+  it('normalizes history snippets for compact server lists', () => {
+    expect(toServerConversationHistorySnippet('A\n\nB  C', 20)).toBe('A B C');
+    expect(toServerConversationHistorySnippet(`${'x'.repeat(25)} trailing`, 10)).toBe(`${'x'.repeat(10)}…`);
+    expect(getRepresentedServerConversationMessageCount({
+      id: 'conv-count',
+      title: 'Count',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [
+        { id: 'summary-1', role: 'assistant' as const, content: 'Summary', timestamp: 2, isSummary: true, summarizedMessageCount: 5 },
+        { id: 'msg-1', role: 'user' as const, content: 'tail', timestamp: 3 },
+      ],
+      rawMessages: [],
+    })).toBe(6);
   });
 
   it('appends messages and updates compacted raw history consistently', () => {

@@ -17,9 +17,12 @@ import {
   appendServerConversationMessage,
   buildBranchedServerConversation,
   buildNewServerConversation,
+  buildServerConversationHistoryItem,
   buildServerConversationTitle,
+  getRepresentedServerConversationMessageCount,
   getStoredServerConversationMessages,
   renameServerConversationTitle,
+  toServerConversationHistorySnippet,
 } from "@dotagents/shared/conversation-sync"
 import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "@dotagents/shared/conversation-context-builder"
@@ -28,9 +31,7 @@ import {
   generateConversationId,
   validateAndSanitizeConversationId,
 } from "@dotagents/shared/conversation-id"
-import { filterVisibleChatMessages } from "@dotagents/shared/chat-utils"
 import {
-  buildConversationPreview,
   generateMessageId,
   normalizeConversationTitleText,
 } from "@dotagents/shared/session"
@@ -378,34 +379,10 @@ export class ConversationService {
   }
 
   private buildConversationHistoryItem(conversation: Conversation): ConversationHistoryItem {
-    const storedMessages = this.getStoredRawMessages(conversation)
-    const visibleMessages = filterVisibleChatMessages(storedMessages)
-    const lastMessage = visibleMessages[visibleMessages.length - 1] || storedMessages[storedMessages.length - 1]
-
-    return {
-      id: conversation.id,
-      title: conversation.title,
-      createdAt: conversation.createdAt,
-      updatedAt: conversation.updatedAt,
-      messageCount: this.getRepresentedMessageCount(conversation),
-      lastMessage: this.toConversationHistorySnippet(
-        lastMessage?.content || "",
-        MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
-      ),
-      preview: buildConversationPreview(visibleMessages, {
-        maxPreviewChars: MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
-      }),
-    }
-  }
-
-  private toConversationHistorySnippet(value: string, maxChars: number): string {
-    const sanitized = sanitizeMessageContentForDisplay(value || "")
-      .replace(/\s+/g, " ")
-      .trim()
-
-    return sanitized.length > maxChars
-      ? `${sanitized.slice(0, maxChars).trim()}…`
-      : sanitized
+    return buildServerConversationHistoryItem(conversation, {
+      maxLastMessageChars: MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
+      maxPreviewChars: MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
+    }) as ConversationHistoryItem
   }
 
   private normalizeConversationHistoryIndex(index: ConversationHistoryItem[]): {
@@ -414,11 +391,11 @@ export class ConversationService {
   } {
     let changed = false
     const normalizedIndex = index.map((item) => {
-      const normalizedLastMessage = this.toConversationHistorySnippet(
+      const normalizedLastMessage = toServerConversationHistorySnippet(
         item.lastMessage || "",
         MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
       )
-      const normalizedPreview = this.toConversationHistorySnippet(
+      const normalizedPreview = toServerConversationHistorySnippet(
         item.preview || "",
         MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
       )
@@ -803,14 +780,6 @@ export class ConversationService {
     return messages.some((message) => message.isSummary)
   }
 
-  private getSummaryRepresentationCount(messages: ConversationMessage[]): number {
-    const summarizedMessageCount = messages
-      .filter((message) => message.isSummary)
-      .reduce((total, message) => total + (message.summarizedMessageCount ?? 0), 0)
-
-    return summarizedMessageCount + messages.filter((message) => !message.isSummary).length
-  }
-
   private getRepresentedCountForMessages(messages: ConversationMessage[]): number {
     return messages.reduce((total, message) => {
       if (message.isSummary) {
@@ -853,11 +822,7 @@ export class ConversationService {
   }
 
   private getRepresentedMessageCount(conversation: Conversation): number {
-    if (this.hasSummaryMessages(conversation.messages)) {
-      return this.getSummaryRepresentationCount(conversation.messages)
-    }
-
-    return this.getStoredRawMessages(conversation).length
+    return getRepresentedServerConversationMessageCount(conversation)
   }
 
   private syncConversationStorageMetadata(conversation: Conversation): boolean {
