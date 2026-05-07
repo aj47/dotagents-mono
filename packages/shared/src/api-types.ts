@@ -1314,3 +1314,10 @@ export interface LoopRuntimeActionResponse {
   id: string;
   status?: LoopRuntimeStatus;
 }
+
+export interface LoopBulkRuntimeActionResponse {
+  success: true;
+  action: 'start-all' | 'stop-all';
+  count: number;
+  statuses: LoopRuntimeStatus[];
+}

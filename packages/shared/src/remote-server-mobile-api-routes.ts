@@ -514,6 +514,18 @@ export function registerMobileApiRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  // POST /v1/loops/start-all - Start scheduling all enabled repeat tasks
+  fastify.post(API_ROUTES.loopStartAll, async (_req, reply) => {
+    const result = await actions.startAllRepeatTasks();
+    return reply.code(result.statusCode).send(result.body);
+  });
+
+  // POST /v1/loops/stop-all - Stop scheduling all active repeat tasks
+  fastify.post(API_ROUTES.loopStopAll, async (_req, reply) => {
+    const result = await actions.stopAllRepeatTasks();
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   // POST /v1/loops/:id/toggle - Toggle repeat task enabled state
   fastify.post(API_ROUTES.loopToggle, async (req, reply) => {
     const params = req.params as { id?: string };

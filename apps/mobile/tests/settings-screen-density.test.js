@@ -220,7 +220,12 @@ test('lets mobile start and stop desktop loop schedules through the shared clien
   assert.match(settingsSource, /formatRepeatTaskRuntimeTimestamp\(loop\.lastRunAt, MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT\)/);
   assert.match(settingsSource, /settingsClient\.startLoop\(loop\.id\)/);
   assert.match(settingsSource, /settingsClient\.stopLoop\(loop\.id\)/);
+  assert.match(settingsSource, /settingsClient\.startAllLoops\(\)/);
+  assert.match(settingsSource, /settingsClient\.stopAllLoops\(\)/);
   assert.match(settingsSource, /applyRepeatTaskRuntimeStatus\(item, result\.status\)/);
+  assert.match(settingsSource, /applyRepeatTaskRuntimeStatuses\(prev, result\.statuses\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Start all loop schedules'\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\('Stop all loop schedules'\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Start \$\{loop\.name\} loop schedule`\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Stop \$\{loop\.name\} loop schedule`\)/);
 });

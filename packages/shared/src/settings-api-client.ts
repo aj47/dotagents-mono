@@ -183,6 +183,7 @@ import type {
   LocalSpeechModelStatus,
   LocalSpeechModelStatusesResponse,
   Loop,
+  LoopBulkRuntimeActionResponse,
   LoopCreateRequest,
   LoopDeleteResponse,
   LoopExportMarkdownResponse,
@@ -2035,6 +2036,18 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
 
   async getLoopStatuses(): Promise<LoopStatusesResponse> {
     return this.request<LoopStatusesResponse>(API_PATHS.loopStatuses);
+  }
+
+  async startAllLoops(): Promise<LoopBulkRuntimeActionResponse> {
+    return this.request<LoopBulkRuntimeActionResponse>(API_PATHS.loopStartAll, {
+      method: 'POST',
+    });
+  }
+
+  async stopAllLoops(): Promise<LoopBulkRuntimeActionResponse> {
+    return this.request<LoopBulkRuntimeActionResponse>(API_PATHS.loopStopAll, {
+      method: 'POST',
+    });
   }
 
   async createLoop(data: LoopCreateRequest): Promise<{ loop: Loop }> {

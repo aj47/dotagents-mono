@@ -11,6 +11,7 @@ import {
   buildRepeatTaskDeleteResponse,
   buildRepeatTaskResponse,
   buildRepeatTaskFromCreateRequest,
+  buildRepeatTaskBulkRuntimeActionResponse,
   buildRepeatTaskRuntimeActionResponse,
   buildRepeatTaskRunResponse,
   buildRepeatTaskExportMarkdownResponse,
@@ -58,7 +59,9 @@ import {
   partitionRepeatTaskAndUserEntries,
   runRepeatTaskAction,
   sanitizeScheduleTimes,
+  startAllRepeatTasksAction,
   startRepeatTaskAction,
+  stopAllRepeatTasksAction,
   stopRepeatTaskAction,
   resolveRepeatTaskIntervalMinutesDraft,
   slugifyRepeatTaskName,
@@ -694,6 +697,22 @@ describe("repeat task schedule helpers", () => {
       success: true,
       id: "loop_1",
     })
+    expect(buildRepeatTaskBulkRuntimeActionResponse("start-all", 2, [{
+      id: "loop_1",
+      enabled: true,
+      isRunning: false,
+      nextRunAt: 300,
+    }])).toEqual({
+      success: true,
+      action: "start-all",
+      count: 2,
+      statuses: [{
+        id: "loop_1",
+        enabled: true,
+        isRunning: false,
+        nextRunAt: 300,
+      }],
+    })
     expect(buildRepeatTaskExportMarkdownResponse("loop_1", "---\nkind: task\n---\nRun")).toEqual({
       success: true,
       loopId: "loop_1",
@@ -828,6 +847,9 @@ describe("repeat task schedule helpers", () => {
     const started: string[] = []
     const stopped: string[] = []
     const triggered: string[] = []
+    let startAllCount = 0
+    let stopAllCount = 0
+    let resumeSchedulingCount = 0
     const loopService = {
       getLoops: () => Array.from(loopsById.values()),
       getLoopStatuses: () => statuses,
@@ -841,6 +863,15 @@ describe("repeat task schedule helpers", () => {
       },
       stopLoop: (id: string) => {
         stopped.push(id)
+      },
+      startAllLoops: () => {
+        startAllCount += 1
+      },
+      stopAllLoops: () => {
+        stopAllCount += 1
+      },
+      resumeScheduling: () => {
+        resumeSchedulingCount += 1
       },
       triggerLoop: (id: string) => {
         triggered.push(id)
@@ -887,6 +918,14 @@ describe("repeat task schedule helpers", () => {
       statusCode: 200,
       body: buildRepeatTaskRuntimeActionResponse("loop_1", statuses[0]),
     })
+    await expect(startAllRepeatTasksAction(options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskBulkRuntimeActionResponse("start-all", 1, statuses),
+    })
+    await expect(stopAllRepeatTasksAction(options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskBulkRuntimeActionResponse("stop-all", 1, statuses),
+    })
     await expect(toggleRepeatTaskAction("loop_1", options)).resolves.toEqual({
       statusCode: 200,
       body: buildRepeatTaskToggleResponse("loop_1", false),
@@ -928,12 +967,18 @@ describe("repeat task schedule helpers", () => {
     expect(started).toEqual(["loop_1", "loop_new", "loop_imported", "loop_1"])
     expect(stopped).toEqual(["loop_1", "loop_1", "loop_imported", "loop_1"])
     expect(triggered).toEqual(["loop_1"])
+    expect(startAllCount).toBe(1)
+    expect(stopAllCount).toBe(1)
+    expect(resumeSchedulingCount).toBe(1)
 
     loopsById.clear()
     loopsById.set(loop.id, loop)
     started.length = 0
     stopped.length = 0
     triggered.length = 0
+    startAllCount = 0
+    stopAllCount = 0
+    resumeSchedulingCount = 0
     const routeActions = createRepeatTaskRouteActions(options)
     await expect(routeActions.getRepeatTasks()).resolves.toEqual({
       statusCode: 200,
@@ -953,6 +998,14 @@ describe("repeat task schedule helpers", () => {
     await expect(routeActions.stopRepeatTask("loop_1")).resolves.toEqual({
       statusCode: 200,
       body: buildRepeatTaskRuntimeActionResponse("loop_1", statuses[0]),
+    })
+    await expect(routeActions.startAllRepeatTasks()).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskBulkRuntimeActionResponse("start-all", 1, statuses),
+    })
+    await expect(routeActions.stopAllRepeatTasks()).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskBulkRuntimeActionResponse("stop-all", 1, statuses),
     })
     await expect(routeActions.toggleRepeatTask("loop_1")).resolves.toEqual({
       statusCode: 200,
@@ -995,6 +1048,9 @@ describe("repeat task schedule helpers", () => {
     expect(started).toEqual(["loop_1", "loop_new", "loop_imported", "loop_1"])
     expect(stopped).toEqual(["loop_1", "loop_1", "loop_imported", "loop_1"])
     expect(triggered).toEqual(["loop_1"])
+    expect(startAllCount).toBe(1)
+    expect(stopAllCount).toBe(1)
+    expect(resumeSchedulingCount).toBe(1)
   })
 
   it("runs shared repeat task route actions against fallback config storage", async () => {
@@ -1039,6 +1095,14 @@ describe("repeat task schedule helpers", () => {
       body: { error: "Repeat task service is unavailable" },
     })
     await expect(stopRepeatTaskAction("loop_1", options)).resolves.toEqual({
+      statusCode: 503,
+      body: { error: "Repeat task service is unavailable" },
+    })
+    await expect(startAllRepeatTasksAction(options)).resolves.toEqual({
+      statusCode: 503,
+      body: { error: "Repeat task service is unavailable" },
+    })
+    await expect(stopAllRepeatTasksAction(options)).resolves.toEqual({
       statusCode: 503,
       body: { error: "Repeat task service is unavailable" },
     })

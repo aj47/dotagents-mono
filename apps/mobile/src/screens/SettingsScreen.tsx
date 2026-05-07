@@ -34,6 +34,7 @@ import type {
   LocalSpeechModelProviderId,
   LocalSpeechModelStatus,
   Loop,
+  LoopRuntimeStatus,
   MCPServer,
   ModelInfo,
   ModelPresetSummary,
@@ -244,6 +245,11 @@ type LoopRuntimeAction = {
   loopId: string;
   action: 'start' | 'stop';
 };
+
+function applyRepeatTaskRuntimeStatuses(loops: Loop[], statuses: LoopRuntimeStatus[]): Loop[] {
+  const statusesById = new Map(statuses.map(status => [status.id, status]));
+  return loops.map(loop => applyRepeatTaskRuntimeStatus(loop, statusesById.get(loop.id)));
+}
 
 const MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT = {
   dateTimeFormatOptions: { hour: 'numeric', minute: '2-digit' },
@@ -467,6 +473,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [isImportingLoopMarkdown, setIsImportingLoopMarkdown] = useState(false);
   const [isExportingLoopMarkdownId, setIsExportingLoopMarkdownId] = useState<string | null>(null);
   const [loopRuntimeAction, setLoopRuntimeAction] = useState<LoopRuntimeAction | null>(null);
+  const [loopBulkRuntimeAction, setLoopBulkRuntimeAction] = useState<'start-all' | 'stop-all' | null>(null);
   const [showLoopImportModal, setShowLoopImportModal] = useState(false);
   const [loopImportMarkdownText, setLoopImportMarkdownText] = useState('');
   const displaySkills = useMemo(() => [...skills].sort((a, b) => {
@@ -2243,6 +2250,42 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
+  const handleLoopStartAll = async () => {
+    if (!settingsClient) return;
+    setLoopBulkRuntimeAction('start-all');
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.startAllLoops();
+      setLoops(prev => applyRepeatTaskRuntimeStatuses(prev, result.statuses));
+      setSaveStatusMessage(`Started ${result.count} loop${result.count === 1 ? '' : 's'}`);
+      await fetchLoops();
+    } catch (error: any) {
+      console.error('[Settings] Failed to start all loops:', error);
+      setRemoteError(error.message || 'Failed to start all loops');
+      Alert.alert('Error', error.message || 'Failed to start all loops');
+    } finally {
+      setLoopBulkRuntimeAction(prev => (prev === 'start-all' ? null : prev));
+    }
+  };
+
+  const handleLoopStopAll = async () => {
+    if (!settingsClient) return;
+    setLoopBulkRuntimeAction('stop-all');
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.stopAllLoops();
+      setLoops(prev => applyRepeatTaskRuntimeStatuses(prev, result.statuses));
+      setSaveStatusMessage(`Stopped ${result.count} loop${result.count === 1 ? '' : 's'}`);
+      await fetchLoops();
+    } catch (error: any) {
+      console.error('[Settings] Failed to stop all loops:', error);
+      setRemoteError(error.message || 'Failed to stop all loops');
+      Alert.alert('Error', error.message || 'Failed to stop all loops');
+    } finally {
+      setLoopBulkRuntimeAction(prev => (prev === 'stop-all' ? null : prev));
+    }
+  };
+
   // Handle push notification toggle
   const handleNotificationToggle = async (enabled: boolean) => {
     if (!config.baseUrl || !config.apiKey) {
@@ -2822,6 +2865,8 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   if (!ready) return null;
+
+  const isLoopBulkRuntimeBusy = loopBulkRuntimeAction !== null;
 
   return (
     <>
@@ -5177,6 +5222,42 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4n. Agent Loops */}
             {isDotAgentsServer && (
               <CollapsibleSection id="agentLoops" title="Agent Loops">
+                {loops.length > 0 && (
+                  <View style={styles.sectionActionRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.createAgentButton,
+                        styles.sectionActionButton,
+                        isLoopBulkRuntimeBusy && styles.agentActionButtonDisabled,
+                      ]}
+                      onPress={handleLoopStartAll}
+                      disabled={isLoopBulkRuntimeBusy}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel('Start all loop schedules')}
+                      accessibilityHint="Starts scheduling every enabled loop on the desktop app."
+                    >
+                      <Text style={styles.createAgentButtonText}>
+                        {loopBulkRuntimeAction === 'start-all' ? 'Starting All...' : 'Start All'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.createAgentButton,
+                        styles.sectionActionButton,
+                        isLoopBulkRuntimeBusy && styles.agentActionButtonDisabled,
+                      ]}
+                      onPress={handleLoopStopAll}
+                      disabled={isLoopBulkRuntimeBusy}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel('Stop all loop schedules')}
+                      accessibilityHint="Stops every active loop schedule on the desktop app."
+                    >
+                      <Text style={styles.createAgentButtonText}>
+                        {loopBulkRuntimeAction === 'stop-all' ? 'Stopping All...' : 'Stop All'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
                 {isLoadingLoops ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : loops.length === 0 ? (
@@ -5188,7 +5269,7 @@ export default function SettingsScreen({ navigation }: any) {
                     });
                     const isLoopStarting = loopRuntimeAction?.loopId === loop.id && loopRuntimeAction.action === 'start';
                     const isLoopStopping = loopRuntimeAction?.loopId === loop.id && loopRuntimeAction.action === 'stop';
-                    const isLoopRuntimeBusy = isLoopStarting || isLoopStopping;
+                    const isLoopRuntimeBusy = isLoopStarting || isLoopStopping || isLoopBulkRuntimeBusy;
 
                     return (
                       <View key={loop.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>

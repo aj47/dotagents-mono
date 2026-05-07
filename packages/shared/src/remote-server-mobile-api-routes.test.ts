@@ -148,6 +148,8 @@ describe('remote server mobile API routes', () => {
         body: 'video-bytes',
         headers: { 'content-range': 'bytes 0-9/10' },
       })),
+      startAllRepeatTasks: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'start-all' } })),
+      stopAllRepeatTasks: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'stop-all' } })),
       deleteConversation: vi.fn(() => ({ statusCode: 200, body: { success: true, id: 'conversation-1' } })),
       deleteAllConversations: vi.fn(() => ({ statusCode: 200, body: { success: true } })),
     };
@@ -261,6 +263,16 @@ describe('remote server mobile API routes', () => {
     expect(videoReply.headers.get('content-range')).toBe('bytes 0-9/10');
     expect(videoReply.statusCode).toBe(206);
     expect(videoReply.body).toBe('video-bytes');
+
+    const startAllLoopsReply = createReply();
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.loopStartAll}`)!(createRequest(), startAllLoopsReply);
+    expect(actions.startAllRepeatTasks).toHaveBeenCalledWith();
+    expect(startAllLoopsReply.body).toEqual({ success: true, action: 'start-all' });
+
+    const stopAllLoopsReply = createReply();
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.loopStopAll}`)!(createRequest(), stopAllLoopsReply);
+    expect(actions.stopAllRepeatTasks).toHaveBeenCalledWith();
+    expect(stopAllLoopsReply.body).toEqual({ success: true, action: 'stop-all' });
 
     const deleteConversationReply = createReply();
     await routes.get(`DELETE ${REMOTE_SERVER_API_ROUTE_PATHS.conversation}`)!(

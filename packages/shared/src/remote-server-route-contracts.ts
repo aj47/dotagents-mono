@@ -146,6 +146,8 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   getRepeatTaskStatuses: () => RemoteServerMaybePromise<MobileApiActionResult>;
   toggleRepeatTask: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   runRepeatTask: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
+  startAllRepeatTasks: () => RemoteServerMaybePromise<MobileApiActionResult>;
+  stopAllRepeatTasks: () => RemoteServerMaybePromise<MobileApiActionResult>;
   startRepeatTask: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   stopRepeatTask: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   importRepeatTaskFromMarkdown: (body: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
@@ -250,6 +252,8 @@ export interface MobileApiRouteActionGroups<Request = unknown, Reply = unknown> 
     | 'getRepeatTaskStatuses'
     | 'toggleRepeatTask'
     | 'runRepeatTask'
+    | 'startAllRepeatTasks'
+    | 'stopAllRepeatTasks'
     | 'startRepeatTask'
     | 'stopRepeatTask'
     | 'importRepeatTaskFromMarkdown'

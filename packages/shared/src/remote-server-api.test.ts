@@ -61,6 +61,8 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_ROUTE_PATHS.agentProfilesReload).toBe('/v1/agent-profiles/reload');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.loopImportMarkdown).toBe('/v1/loops/import/markdown');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.loopStatuses).toBe('/v1/loops/statuses');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.loopStartAll).toBe('/v1/loops/start-all');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.loopStopAll).toBe('/v1/loops/stop-all');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.loopStart).toBe('/v1/loops/:id/start');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.loopStop).toBe('/v1/loops/:id/stop');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.loopExportMarkdown).toBe('/v1/loops/:id/export/markdown');
@@ -111,6 +113,8 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_BUILDERS.skill('skill/name')).toBe('/skills/skill%2Fname');
     expect(REMOTE_SERVER_API_BUILDERS.skillExportMarkdown('skill/name')).toBe('/skills/skill%2Fname/export/markdown');
     expect(REMOTE_SERVER_API_BUILDERS.loopExportMarkdown('loop/name')).toBe('/loops/loop%2Fname/export/markdown');
+    expect(REMOTE_SERVER_API_PATHS.loopStartAll).toBe('/loops/start-all');
+    expect(REMOTE_SERVER_API_PATHS.loopStopAll).toBe('/loops/stop-all');
     expect(REMOTE_SERVER_API_BUILDERS.loopStart('loop/name')).toBe('/loops/loop%2Fname/start');
     expect(REMOTE_SERVER_API_BUILDERS.loopStop('loop/name')).toBe('/loops/loop%2Fname/stop');
     expect(buildRemoteServerApiQueryPath(REMOTE_SERVER_API_PATHS.operatorErrors, {
