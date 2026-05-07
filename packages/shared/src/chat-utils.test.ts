@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   shouldCollapseMessage,
   getToolCallsSummary,
@@ -23,6 +23,7 @@ import {
   buildProviderModelsResponse,
   getModelsAction,
   getProviderModelsAction,
+  handleChatCompletionRequestAction,
   extractUserPromptFromChatCompletionBody,
   extractRespondToUserContentFromArgs,
   extractRespondToUserResponseEvents,
@@ -644,6 +645,144 @@ describe('buildChatCompletionSseHeaders', () => {
       .toBe('https://first.example')
     expect(normalizeServerSentEventOrigin([])).toBe('*')
     expect(normalizeServerSentEventOrigin(undefined)).toBe('*')
+  })
+})
+
+describe('handleChatCompletionRequestAction', () => {
+  function createReply() {
+    const reply: any = {
+      body: undefined,
+      rawHeaders: undefined,
+      rawWrites: [] as string[],
+      statusCode: undefined,
+    }
+    reply.raw = {
+      writeHead: vi.fn((statusCode: number, headers: unknown) => {
+        reply.statusCode = statusCode
+        reply.rawHeaders = headers
+      }),
+      write: vi.fn((chunk: string) => {
+        reply.rawWrites.push(chunk)
+      }),
+      end: vi.fn(),
+    }
+    reply.code = vi.fn((statusCode: number) => {
+      reply.statusCode = statusCode
+      return reply
+    })
+    reply.send = vi.fn((body?: unknown) => {
+      reply.body = body
+      return reply
+    })
+    return reply
+  }
+
+  function createActionOptions() {
+    return {
+      diagnostics: {
+        logInfo: vi.fn(),
+        logWarning: vi.fn(),
+        logError: vi.fn(),
+      },
+      getActiveModelConfig: () => ({
+        agentProviderId: 'openai',
+        agentOpenaiModel: 'gpt-test',
+      }),
+      validateConversationId: vi.fn(() => null),
+      recordHistory: vi.fn(),
+      isPushEnabled: vi.fn(() => true),
+      sendPushNotification: vi.fn(() => Promise.resolve()),
+      logger: {
+        log: vi.fn(),
+      },
+    }
+  }
+
+  it('runs non-streaming chat completions through shared response and push handling', async () => {
+    const reply = createReply()
+    const actionOptions = createActionOptions()
+    const runAgent = vi.fn(async (options: any) => ({
+      content: `Reply to ${options.prompt}`,
+      conversationId: options.conversationId,
+      conversationHistory: [{ role: 'assistant', content: 'Done' }],
+    }))
+
+    await handleChatCompletionRequestAction(
+      {
+        messages: [{ role: 'user', content: 'Hello mobile' }],
+        conversation_id: 'conv-1',
+        send_push_notification: true,
+        stream: false,
+      },
+      'https://mobile.example',
+      reply,
+      runAgent,
+      actionOptions,
+    )
+
+    expect(runAgent).toHaveBeenCalledWith({
+      prompt: 'Hello mobile',
+      conversationId: 'conv-1',
+      profileId: undefined,
+    })
+    expect(actionOptions.recordHistory).toHaveBeenCalledWith('Reply to Hello mobile')
+    expect(actionOptions.sendPushNotification).toHaveBeenCalledWith(
+      'conv-1',
+      'Hello mobile',
+      'Reply to Hello mobile',
+    )
+    expect(reply.body).toEqual(expect.objectContaining({
+      conversation_id: 'conv-1',
+      model: 'gpt-test',
+      choices: [expect.objectContaining({
+        message: { role: 'assistant', content: 'Reply to Hello mobile' },
+      })],
+    }))
+  })
+
+  it('streams progress and completion events through a generic raw reply adapter', async () => {
+    const reply = createReply()
+    const actionOptions = createActionOptions()
+    const progressUpdate = {
+      sessionId: 'session-1',
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+    }
+    const runAgent = vi.fn(async (options: any) => {
+      options.onProgress(progressUpdate)
+      return {
+        content: 'Streamed reply',
+        conversationId: 'conv-2',
+        conversationHistory: [{ role: 'assistant', content: 'Streamed reply' }],
+      }
+    })
+
+    await handleChatCompletionRequestAction(
+      {
+        messages: [{ role: 'user', content: 'Stream please' }],
+        conversation_id: 'conv-2',
+        stream: true,
+      },
+      ['https://mobile.example'],
+      reply,
+      runAgent,
+      actionOptions,
+    )
+
+    expect(reply.raw.writeHead).toHaveBeenCalledWith(200, buildChatCompletionSseHeaders('https://mobile.example'))
+    expect(reply.raw.end).toHaveBeenCalledTimes(1)
+    expect(parseChatCompletionSseEvent(reply.rawWrites.join(''))).toEqual([
+      { type: 'progress', update: progressUpdate },
+      {
+        type: 'complete',
+        content: 'Streamed reply',
+        conversationId: 'conv-2',
+        conversationHistory: [{ role: 'assistant', content: 'Streamed reply' }],
+        model: 'gpt-test',
+      },
+    ])
   })
 })
 

@@ -6,6 +6,7 @@
  */
 
 import type { AgentProgressUpdate, AgentUserResponseEvent } from './agent-progress';
+import type { AgentRunExecutor } from './agent-run-utils';
 import type { ModelInfo, ModelsResponse, OpenAICompatibleModelSummary, OpenAICompatibleModelsResponse } from './api-types';
 import { CHAT_PROVIDER_IDS, isChatProviderId, type CHAT_PROVIDER_ID } from './providers';
 import { resolveActiveModelId, type ActiveModelConfigLike } from './model-presets';
@@ -190,6 +191,42 @@ export type BuildChatCompletionDoneSsePayloadOptions = {
   conversationHistory?: ConversationHistoryMessage[];
   model?: string;
 };
+
+export interface ChatCompletionActionRawReplyLike {
+  writeHead(statusCode: number, headers: ChatCompletionSseHeaders): unknown;
+  write(chunk: string): unknown;
+  end(): unknown;
+}
+
+export interface ChatCompletionActionReplyLike {
+  raw: ChatCompletionActionRawReplyLike;
+  code(statusCode: number): { send(body?: unknown): unknown };
+  send(body?: unknown): unknown;
+}
+
+export interface ChatCompletionActionDiagnostics {
+  logInfo(source: string, message: string): void;
+  logWarning(source: string, message: string, error: unknown): void;
+  logError(source: string, message: string, error: unknown): void;
+}
+
+export interface ChatCompletionActionLogger {
+  log(message?: unknown, ...optionalParams: unknown[]): void;
+}
+
+export interface ChatCompletionActionOptions {
+  diagnostics: ChatCompletionActionDiagnostics;
+  getActiveModelConfig(): ActiveModelConfigLike;
+  validateConversationId?: ChatCompletionRequestValidationOptions['validateConversationId'];
+  recordHistory(transcript: string): void;
+  isPushEnabled(): boolean;
+  sendPushNotification(
+    conversationId: string,
+    conversationTitle: string,
+    content: string,
+  ): Promise<void>;
+  logger?: ChatCompletionActionLogger;
+}
 
 export type ToolArgumentEntry = {
   key: string;
@@ -669,6 +706,117 @@ export function buildChatCompletionSseHeaders(
     'Access-Control-Allow-Origin': normalizeServerSentEventOrigin(origin),
     'Access-Control-Allow-Credentials': 'true',
   };
+}
+
+function sendChatCompletionPushNotification(
+  request: ValidatedChatCompletionRequestBody,
+  conversationId: string,
+  content: string,
+  options: ChatCompletionActionOptions,
+): void {
+  const notificationPlan = buildChatCompletionPushNotificationPlan({
+    sendPushNotification: request.sendPushNotification,
+    pushEnabled: request.sendPushNotification ? options.isPushEnabled() : false,
+    prompt: request.prompt,
+    conversationId,
+    content,
+  });
+  if (!notificationPlan) {
+    return;
+  }
+
+  void options.sendPushNotification(
+    notificationPlan.conversationId,
+    notificationPlan.conversationTitle,
+    notificationPlan.content,
+  ).catch((caughtError) => {
+    options.diagnostics.logWarning('remote-server', 'Failed to send push notification', caughtError);
+  });
+}
+
+export async function handleChatCompletionRequestAction<Reply extends ChatCompletionActionReplyLike>(
+  body: unknown,
+  origin: string | string[] | undefined,
+  reply: Reply,
+  runAgent: AgentRunExecutor,
+  options: ChatCompletionActionOptions,
+): Promise<unknown> {
+  try {
+    const validatedRequest = validateChatCompletionRequestBody(body, {
+      validateConversationId: options.validateConversationId,
+    });
+    if (validatedRequest.ok === false) {
+      return reply.code(validatedRequest.statusCode).send(validatedRequest.body);
+    }
+
+    const chatRequest = validatedRequest.request;
+    const { prompt, conversationId, profileId, stream: isStreaming } = chatRequest;
+
+    options.logger?.log('[remote-server] Chat request:', {
+      conversationId: conversationId || 'new',
+      promptLength: prompt.length,
+      streaming: isStreaming,
+    });
+    options.diagnostics.logInfo(
+      'remote-server',
+      `Handling completion request${conversationId ? ` for conversation ${conversationId}` : ''}${isStreaming ? ' (streaming)' : ''}`,
+    );
+
+    if (isStreaming) {
+      reply.raw.writeHead(200, buildChatCompletionSseHeaders(origin));
+
+      const writeSSE = (data: object) => {
+        reply.raw.write(formatServerSentEventData(data));
+      };
+
+      const onProgress = (update: AgentProgressUpdate) => {
+        writeSSE(buildChatCompletionProgressSsePayload(update));
+      };
+
+      try {
+        const result = await runAgent({ prompt, conversationId, profileId, onProgress });
+        options.recordHistory(result.content);
+
+        const model = resolveActiveModelId(options.getActiveModelConfig());
+        writeSSE(buildChatCompletionDoneSsePayload({
+          content: result.content,
+          conversationId: result.conversationId,
+          conversationHistory: result.conversationHistory,
+          model,
+        }));
+
+        sendChatCompletionPushNotification(chatRequest, result.conversationId, result.content, options);
+      } catch (caughtError) {
+        writeSSE(buildChatCompletionErrorSsePayload(getUnknownErrorMessage(caughtError, 'Internal Server Error')));
+      } finally {
+        reply.raw.end();
+      }
+
+      return reply;
+    }
+
+    const result = await runAgent({ prompt, conversationId, profileId });
+    options.recordHistory(result.content);
+
+    const model = resolveActiveModelId(options.getActiveModelConfig());
+    const response = buildDotAgentsChatCompletionResponse({
+      content: result.content,
+      model,
+      conversationId: result.conversationId,
+      conversationHistory: result.conversationHistory,
+    });
+
+    options.logger?.log('[remote-server] Chat response:', {
+      conversationId: result.conversationId,
+      responseLength: result.content.length,
+    });
+    sendChatCompletionPushNotification(chatRequest, result.conversationId, result.content, options);
+
+    return reply.send(response);
+  } catch (caughtError) {
+    options.diagnostics.logError('remote-server', 'Handler error', caughtError);
+    return reply.code(500).send({ error: 'Internal Server Error' });
+  }
 }
 
 export function parseChatCompletionSseEvent(event: string): ParsedChatCompletionSseEvent[] {

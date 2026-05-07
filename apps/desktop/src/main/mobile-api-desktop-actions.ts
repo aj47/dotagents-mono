@@ -5,7 +5,6 @@ import path from "node:path"
 import type { FastifyReply } from "fastify"
 import type { MobileApiRouteActions } from "@dotagents/shared/remote-server-route-contracts"
 import { getAgentsLayerPaths, type LoopConfig } from "@dotagents/core"
-import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import type { AgentRunExecutor } from "@dotagents/shared/agent-run-utils"
 import {
   getAgentSessionCandidatesAction,
@@ -35,17 +34,11 @@ import {
   type KnowledgeNoteActionOptions,
 } from "@dotagents/shared/knowledge-note-form"
 import {
-  buildChatCompletionDoneSsePayload,
-  buildChatCompletionErrorSsePayload,
-  buildChatCompletionProgressSsePayload,
-  buildChatCompletionPushNotificationPlan,
-  buildChatCompletionSseHeaders,
-  buildDotAgentsChatCompletionResponse,
-  formatServerSentEventData,
   getModelsAction,
   getProviderModelsAction,
+  handleChatCompletionRequestAction,
+  type ChatCompletionActionOptions,
   type ModelActionOptions,
-  validateChatCompletionRequestBody,
 } from "@dotagents/shared/chat-utils"
 import {
   createConversationAction,
@@ -71,7 +64,6 @@ import {
   upsertMcpServerConfigAction,
 } from "@dotagents/shared/mcp-api"
 import type { MCPConfig } from "@dotagents/shared/mcp-utils"
-import { resolveActiveModelId } from "@dotagents/shared/model-presets"
 import { getMaskedRemoteServerApiKey } from "@dotagents/shared/remote-pairing"
 import {
   synthesizeSpeechAction,
@@ -176,7 +168,6 @@ type SettingsUpdateMasks = {
   discordSecretMask: string
   langfuseSecretMask: string
 }
-type ChatCompletionRunAgentExecutor = AgentRunExecutor
 
 const modelActionOptions: ModelActionOptions = {
   getConfig: () => configStore.get(),
@@ -215,114 +206,29 @@ function recordHistory(transcript: string) {
   }
 }
 
-function sendCompletionPushNotification(
-  shouldSend: boolean,
-  prompt: string,
-  conversationId: string,
-  content: string,
-): void {
-  const notificationPlan = buildChatCompletionPushNotificationPlan({
-    sendPushNotification: shouldSend,
-    pushEnabled: shouldSend ? isPushEnabled() : false,
-    prompt,
-    conversationId,
-    content,
-  })
-  if (!notificationPlan) {
-    return
-  }
-
-  void sendMessageNotification(
-    notificationPlan.conversationId,
-    notificationPlan.conversationTitle,
-    notificationPlan.content,
-  ).catch((caughtError) => {
-    diagnosticsService.logWarning("remote-server", "Failed to send push notification", caughtError)
-  })
+const chatCompletionActionOptions: ChatCompletionActionOptions = {
+  diagnostics: diagnosticsService,
+  getActiveModelConfig: () => configStore.get(),
+  validateConversationId: getConversationIdValidationError,
+  recordHistory,
+  isPushEnabled,
+  sendPushNotification: sendMessageNotification,
+  logger: console,
 }
 
 async function handleChatCompletionRequest(
   body: unknown,
   origin: string | string[] | undefined,
   reply: FastifyReply,
-  runAgent: ChatCompletionRunAgentExecutor,
+  runAgent: AgentRunExecutor,
 ) {
-  try {
-    const validatedRequest = validateChatCompletionRequestBody(body, {
-      validateConversationId: getConversationIdValidationError,
-    })
-    if (validatedRequest.ok === false) {
-      return reply.code(validatedRequest.statusCode).send(validatedRequest.body)
-    }
-
-    const chatRequest = validatedRequest.request
-    const { prompt, conversationId, profileId, stream: isStreaming } = chatRequest
-
-    console.log("[remote-server] Chat request:", { conversationId: conversationId || "new", promptLength: prompt.length, streaming: isStreaming })
-    diagnosticsService.logInfo("remote-server", `Handling completion request${conversationId ? ` for conversation ${conversationId}` : ""}${isStreaming ? " (streaming)" : ""}`)
-
-    if (isStreaming) {
-      reply.raw.writeHead(200, buildChatCompletionSseHeaders(origin))
-
-      const writeSSE = (data: object) => {
-        reply.raw.write(formatServerSentEventData(data))
-      }
-
-      const onProgress = (update: AgentProgressUpdate) => {
-        writeSSE(buildChatCompletionProgressSsePayload(update))
-      }
-
-      try {
-        const result = await runAgent({ prompt, conversationId, profileId, onProgress })
-        recordHistory(result.content)
-
-        const model = resolveActiveModelId(configStore.get())
-        writeSSE(buildChatCompletionDoneSsePayload({
-          content: result.content,
-          conversationId: result.conversationId,
-          conversationHistory: result.conversationHistory,
-          model,
-        }))
-
-        sendCompletionPushNotification(
-          chatRequest.sendPushNotification,
-          prompt,
-          result.conversationId,
-          result.content,
-        )
-      } catch (caughtError: any) {
-        writeSSE(buildChatCompletionErrorSsePayload(caughtError?.message || "Internal Server Error"))
-      } finally {
-        reply.raw.end()
-      }
-
-      return reply
-    }
-
-    const result = await runAgent({ prompt, conversationId, profileId })
-    recordHistory(result.content)
-
-    const model = resolveActiveModelId(configStore.get())
-    const response = buildDotAgentsChatCompletionResponse({
-      content: result.content,
-      model,
-      conversationId: result.conversationId,
-      conversationHistory: result.conversationHistory,
-    })
-
-    console.log("[remote-server] Chat response:", { conversationId: result.conversationId, responseLength: result.content.length })
-    sendCompletionPushNotification(
-      chatRequest.sendPushNotification,
-      prompt,
-      result.conversationId,
-      result.content,
-    )
-
-    return reply.send(response)
-  } catch (caughtError: any) {
-    diagnosticsService.logError("remote-server", "Handler error", caughtError)
-    return reply.code(500).send({ error: "Internal Server Error" })
-  }
+  return handleChatCompletionRequestAction(
+    body,
+    origin,
+    reply,
+    runAgent,
+    chatCompletionActionOptions,
+  )
 }
 
 const agentSessionCandidateActionOptions: AgentSessionCandidateActionOptions = {
