@@ -192,6 +192,24 @@ export interface AgentProfileRouteActions {
   deleteAgentProfile(id: string | undefined): AgentProfileActionResult
 }
 
+export interface ProfileRouteActionBundleOptions<
+  TProfile extends ProfileLike = ProfileLike,
+  TAgentProfile extends AgentProfileApiLike = AgentProfileApiLike,
+> {
+  services: {
+    profile: ProfileActionService<TProfile>
+    agentProfile: AgentProfileReloadActionService<TAgentProfile>
+    externalCommandVerification: ExternalAgentCommandVerificationActionService
+  }
+  diagnostics: ProfileActionDiagnostics
+  applyCurrentProfile?: (profile: TProfile) => void
+}
+
+export interface ProfileRouteActionBundle {
+  profiles: ProfileRouteActions
+  agentProfiles: AgentProfileRouteActions
+}
+
 function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {}
 }
@@ -646,6 +664,40 @@ export function createAgentProfileRouteActions<TProfile extends AgentProfileApiL
     createAgentProfile: (body) => createAgentProfileAction(body, options.agentProfile),
     updateAgentProfile: (id, body) => updateAgentProfileAction(id, body, options.agentProfile),
     deleteAgentProfile: (id) => deleteAgentProfileAction(id, options.agentProfile),
+  }
+}
+
+export function createProfileRouteActionBundle<
+  TProfile extends ProfileLike,
+  TAgentProfile extends AgentProfileApiLike,
+>(
+  options: ProfileRouteActionBundleOptions<TProfile, TAgentProfile>,
+): ProfileRouteActionBundle {
+  const profileOptions: ProfileActionOptions<TProfile> = {
+    service: options.services.profile,
+    diagnostics: options.diagnostics,
+    applyCurrentProfile: options.applyCurrentProfile,
+  }
+  const agentProfileOptions: AgentProfileActionOptions<TAgentProfile> = {
+    service: options.services.agentProfile,
+    diagnostics: options.diagnostics,
+  }
+  const agentProfileReloadOptions: AgentProfileReloadActionOptions<TAgentProfile> = {
+    service: options.services.agentProfile,
+    diagnostics: options.diagnostics,
+  }
+  const externalCommandVerificationOptions: ExternalAgentCommandVerificationActionOptions = {
+    service: options.services.externalCommandVerification,
+    diagnostics: options.diagnostics,
+  }
+
+  return {
+    profiles: createProfileRouteActions(profileOptions),
+    agentProfiles: createAgentProfileRouteActions({
+      agentProfile: agentProfileOptions,
+      reload: agentProfileReloadOptions,
+      externalCommandVerification: externalCommandVerificationOptions,
+    }),
   }
 }
 

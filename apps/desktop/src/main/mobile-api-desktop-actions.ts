@@ -69,12 +69,7 @@ import {
   type PushTokenRecord,
 } from "@dotagents/shared/push-notifications"
 import {
-  createAgentProfileRouteActions,
-  createProfileRouteActions,
-  type AgentProfileActionOptions,
-  type AgentProfileReloadActionOptions,
-  type ExternalAgentCommandVerificationActionOptions,
-  type ProfileActionOptions,
+  createProfileRouteActionBundle,
 } from "@dotagents/shared/profile-api"
 import {
   createRepeatTaskRuntimeId,
@@ -109,8 +104,6 @@ import { clearBadgeCount, isPushEnabled, sendMessageNotification } from "./push-
 import { skillsService } from "./skills-service"
 import { generateTTS } from "./tts-service"
 
-type DesktopProfileActionProfile = ReturnType<typeof agentProfileService.setCurrentProfileStrict>
-type DesktopAgentProfileActionProfile = NonNullable<ReturnType<typeof agentProfileService.getById>>
 type DesktopConversationActionConversation = NonNullable<Awaited<ReturnType<typeof conversationService.loadConversation>>>
 
 const modelActionOptions: ModelActionOptions = {
@@ -284,13 +277,26 @@ const conversationVideoAssetActionOptions: ConversationVideoAssetActionOptions =
 
 const conversationVideoAssetRouteActions = createConversationVideoAssetRouteActions(conversationVideoAssetActionOptions)
 
-const profileActionOptions: ProfileActionOptions<DesktopProfileActionProfile> = {
-  service: {
-    getUserProfiles: () => agentProfileService.getUserProfiles(),
-    getCurrentProfile: () => agentProfileService.getCurrentProfile(),
-    setCurrentProfileStrict: (profileId) => agentProfileService.setCurrentProfileStrict(profileId),
-    exportProfile: (profileId) => agentProfileService.exportProfile(profileId),
-    importProfile: (profileJson) => agentProfileService.importProfile(profileJson),
+const profileRouteActionBundle = createProfileRouteActionBundle({
+  services: {
+    profile: {
+      getUserProfiles: () => agentProfileService.getUserProfiles(),
+      getCurrentProfile: () => agentProfileService.getCurrentProfile(),
+      setCurrentProfileStrict: (profileId) => agentProfileService.setCurrentProfileStrict(profileId),
+      exportProfile: (profileId) => agentProfileService.exportProfile(profileId),
+      importProfile: (profileJson) => agentProfileService.importProfile(profileJson),
+    },
+    agentProfile: {
+      getAll: () => agentProfileService.getAll(),
+      getById: (profileId) => agentProfileService.getById(profileId),
+      create: (profile) => agentProfileService.create(profile),
+      update: (profileId, updates) => agentProfileService.update(profileId, updates),
+      deleteProfile: (profileId) => agentProfileService.delete(profileId),
+      reload: () => agentProfileService.reload(),
+    },
+    externalCommandVerification: {
+      verifyExternalAgentCommand: verifyExternalAgentCommandService,
+    },
   },
   diagnostics: diagnosticsService,
   applyCurrentProfile: (profile) => {
@@ -303,40 +309,6 @@ const profileActionOptions: ProfileActionOptions<DesktopProfileActionProfile> = 
       mcpServerConfig?.enabledRuntimeTools,
     )
   },
-}
-
-const agentProfileActionOptions: AgentProfileActionOptions<DesktopAgentProfileActionProfile> = {
-  service: {
-    getAll: () => agentProfileService.getAll(),
-    getById: (profileId) => agentProfileService.getById(profileId),
-    create: (profile) => agentProfileService.create(profile),
-    update: (profileId, updates) => agentProfileService.update(profileId, updates),
-    deleteProfile: (profileId) => agentProfileService.delete(profileId),
-  },
-  diagnostics: diagnosticsService,
-}
-
-const agentProfileReloadActionOptions: AgentProfileReloadActionOptions<DesktopAgentProfileActionProfile> = {
-  service: {
-    ...agentProfileActionOptions.service,
-    reload: () => agentProfileService.reload(),
-  },
-  diagnostics: diagnosticsService,
-}
-
-const externalAgentCommandVerificationActionOptions: ExternalAgentCommandVerificationActionOptions = {
-  service: {
-    verifyExternalAgentCommand: verifyExternalAgentCommandService,
-  },
-  diagnostics: diagnosticsService,
-}
-
-const profileRouteActions = createProfileRouteActions(profileActionOptions)
-
-const agentProfileRouteActions = createAgentProfileRouteActions({
-  agentProfile: agentProfileActionOptions,
-  reload: agentProfileReloadActionOptions,
-  externalCommandVerification: externalAgentCommandVerificationActionOptions,
 })
 
 const knowledgeNoteActionOptions: KnowledgeNoteActionOptions = {
@@ -459,7 +431,7 @@ const skillRouteActions = createSkillRouteActions(skillActionOptions)
 export const mobileApiDesktopActions = createMobileApiRouteActions({
   chatCompletion: chatCompletionRouteActions,
   models: modelRouteActions,
-  profiles: profileRouteActions,
+  profiles: profileRouteActionBundle.profiles,
   bundle: bundleRouteActions,
   mcp: mcpRouteActions,
   settings: settingsRouteActions,
@@ -472,6 +444,6 @@ export const mobileApiDesktopActions = createMobileApiRouteActions({
   emergencyStop: emergencyStopRouteActions,
   skills: skillRouteActions,
   knowledgeNotes: knowledgeNoteRouteActions,
-  agentProfiles: agentProfileRouteActions,
+  agentProfiles: profileRouteActionBundle.agentProfiles,
   repeatTasks: repeatTaskRouteActions,
 })

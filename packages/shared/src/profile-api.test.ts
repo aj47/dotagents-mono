@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   createAgentProfileAction,
   createAgentProfileRouteActions,
+  createProfileRouteActionBundle,
   createProfileRouteActions,
   deleteAgentProfileAction,
   buildAgentProfileDeleteResponse,
@@ -703,6 +704,84 @@ describe("profile API helpers", () => {
     ])
     expect(deletedProfileIds).toEqual(["agent-1"])
     expect(reloadCount).toBe(1)
+  })
+
+  it("creates profile route action bundles from shared service adapters", async () => {
+    const agentProfile = {
+      id: "agent-1",
+      name: "research-agent",
+      displayName: "Research Agent",
+      connection: { type: "internal" as const },
+      enabled: true,
+      isBuiltIn: false,
+      isUserProfile: false,
+      isAgentTarget: true,
+      createdAt: 10,
+      updatedAt: 20,
+    }
+    const appliedProfiles: unknown[] = []
+    const verifiedCommands: unknown[] = []
+    let reloadCount = 0
+    const diagnostics = {
+      logInfo: () => {},
+      logError: () => {
+        throw new Error("unexpected error log")
+      },
+    }
+
+    const routeActionBundle = createProfileRouteActionBundle({
+      services: {
+        profile: {
+          getUserProfiles: () => [profile],
+          getCurrentProfile: () => profile,
+          setCurrentProfileStrict: () => profile,
+          exportProfile: () => "{\"profile\":true}",
+          importProfile: () => profile,
+        },
+        agentProfile: {
+          getAll: () => [agentProfile],
+          getById: (profileId) => profileId === "agent-1" ? agentProfile : undefined,
+          create: () => agentProfile,
+          update: () => agentProfile,
+          deleteProfile: () => true,
+          reload: () => {
+            reloadCount += 1
+          },
+        },
+        externalCommandVerification: {
+          verifyExternalAgentCommand: async (request) => {
+            verifiedCommands.push(request)
+            return {
+              ok: true,
+              resolvedCommand: request.command,
+              details: "verified",
+            }
+          },
+        },
+      },
+      diagnostics,
+      applyCurrentProfile: (updatedProfile) => appliedProfiles.push(updatedProfile),
+    })
+
+    expect(routeActionBundle.profiles.setCurrentProfile({ profileId: "profile-1" })).toEqual({
+      statusCode: 200,
+      body: buildProfileMutationResponse(profile, { nameSource: "name" }),
+    })
+    expect(routeActionBundle.agentProfiles.reloadAgentProfiles()).toEqual({
+      statusCode: 200,
+      body: buildAgentProfilesReloadResponse([agentProfile]),
+    })
+    await expect(routeActionBundle.agentProfiles.verifyExternalAgentCommand({ command: "codex-acp" })).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        ok: true,
+        resolvedCommand: "codex-acp",
+        details: "verified",
+      },
+    })
+    expect(appliedProfiles).toEqual([profile])
+    expect(reloadCount).toBe(1)
+    expect(verifiedCommands).toEqual([{ command: "codex-acp" }])
   })
 
   it("runs external agent command verification through a shared action adapter", async () => {
