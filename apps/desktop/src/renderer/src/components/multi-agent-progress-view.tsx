@@ -4,7 +4,7 @@ import { AgentProgress } from "@renderer/components/agent-progress"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { useAgentStore } from "@renderer/stores"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { Minimize2 } from "lucide-react"
 import { Button } from "./ui/button"
 
@@ -108,9 +108,9 @@ export function MultiAgentProgressView({
   }
 
   const handleHidePanel = async () => {
-    await tipcClient.snoozeAgentSessionsAndHidePanelWindow({
-      sessionIds: activeSessions.map(([sessionId]) => sessionId),
-    })
+    await desktopAgentSessionsClient.snoozeAgentSessionsAndHidePanelWindow(
+      activeSessions.map(([sessionId]) => sessionId),
+    )
   }
 
 

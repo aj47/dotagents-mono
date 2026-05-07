@@ -7,6 +7,10 @@ const appLayoutSource = readFileSync(new URL("../components/app-layout.tsx", imp
 const pastSessionsDialogSource = readFileSync(new URL("../components/past-sessions-dialog.tsx", import.meta.url), "utf8")
 const agentProcessingViewSource = readFileSync(new URL("../components/agent-processing-view.tsx", import.meta.url), "utf8")
 const agentProgressSource = readFileSync(new URL("../components/agent-progress.tsx", import.meta.url), "utf8")
+const multiAgentProgressViewSource = readFileSync(
+  new URL("../components/multi-agent-progress-view.tsx", import.meta.url),
+  "utf8",
+)
 const sessionsPageSource = readFileSync(new URL("../pages/sessions.tsx", import.meta.url), "utf8")
 
 describe("desktop agent sessions renderer client", () => {
@@ -19,6 +23,7 @@ describe("desktop agent sessions renderer client", () => {
     expect(clientSource).toContain("tipcClient.unsnoozeAgentSession({ sessionId })")
     expect(clientSource).toContain("tipcClient.focusAgentSession({ sessionId })")
     expect(clientSource).toContain("tipcClient.closeAgentModeAndHidePanelWindow()")
+    expect(clientSource).toContain("tipcClient.snoozeAgentSessionsAndHidePanelWindow({")
     expect(clientSource).toContain('tipcClient.setPanelMode({ mode: "agent" })')
     expect(clientSource).toContain("tipcClient.showPanelWindow({})")
     expect(clientSource).not.toContain("window.electron.ipcRenderer")
@@ -31,6 +36,7 @@ describe("desktop agent sessions renderer client", () => {
       pastSessionsDialogSource,
       agentProcessingViewSource,
       agentProgressSource,
+      multiAgentProgressViewSource,
       sessionsPageSource,
     ].join("\n")
 
@@ -49,6 +55,7 @@ describe("desktop agent sessions renderer client", () => {
     expect(agentProgressSource).toContain("desktopAgentSessionsClient.focusAgentSession(progress.sessionId)")
     expect(agentProgressSource).toContain("desktopAgentSessionsClient.clearAgentSessionProgress(thisId)")
     expect(agentProgressSource).toContain("desktopAgentSessionsClient.closeAgentModeAndHidePanelWindow()")
+    expect(multiAgentProgressViewSource).toContain("desktopAgentSessionsClient.snoozeAgentSessionsAndHidePanelWindow(")
     expect(sessionsPageSource).toContain("desktopAgentSessionsClient.focusAgentSessionInPanel(sessionId)")
     expect(sessionsPageSource).toContain("desktopAgentSessionsClient.clearAgentSessionProgress(sessionId)")
     expect(combinedSource).not.toContain("tipcClient.getAgentSessions(")
@@ -59,6 +66,7 @@ describe("desktop agent sessions renderer client", () => {
     expect(agentProgressSource).not.toContain("tipcClient.emergencyStopAgent(")
     expect(agentProgressSource).not.toContain("tipcClient.unsnoozeAgentSession(")
     expect(agentProgressSource).not.toContain("tipcClient.closeAgentModeAndHidePanelWindow(")
+    expect(multiAgentProgressViewSource).not.toContain("tipcClient.snoozeAgentSessionsAndHidePanelWindow(")
     expect(appLayoutSource).not.toContain("tipcClient.emergencyStopAgent(")
   })
 })

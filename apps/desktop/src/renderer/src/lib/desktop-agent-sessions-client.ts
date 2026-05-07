@@ -27,6 +27,10 @@ export interface DesktopStopAgentSessionResult {
   error?: string
 }
 
+export interface DesktopSnoozeAgentSessionsResult {
+  success?: boolean
+}
+
 export const desktopAgentSessionsClient = {
   getAgentSessions(): Promise<DesktopAgentSessionsResponse> {
     return tipcClient.getAgentSessions() as Promise<DesktopAgentSessionsResponse>
@@ -58,6 +62,14 @@ export const desktopAgentSessionsClient = {
 
   closeAgentModeAndHidePanelWindow(): Promise<void> {
     return tipcClient.closeAgentModeAndHidePanelWindow() as Promise<void>
+  },
+
+  snoozeAgentSessionsAndHidePanelWindow(
+    sessionIds: string[],
+  ): Promise<DesktopSnoozeAgentSessionsResult> {
+    return tipcClient.snoozeAgentSessionsAndHidePanelWindow({
+      sessionIds,
+    }) as Promise<DesktopSnoozeAgentSessionsResult>
   },
 
   async focusAgentSessionInPanel(sessionId: string): Promise<void> {
