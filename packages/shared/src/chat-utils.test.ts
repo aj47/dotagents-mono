@@ -21,6 +21,7 @@ import {
   buildOpenAIChatCompletionResponse,
   buildOpenAICompatibleModelsResponse,
   buildProviderModelsResponse,
+  createModelRouteActions,
   getModelsAction,
   getProviderModelsAction,
   handleChatCompletionRequestAction,
@@ -408,6 +409,16 @@ describe('model actions', () => {
       body: buildOpenAICompatibleModelsResponse(['gpt-active']),
     })
     expect(await getProviderModelsAction('openai', options)).toEqual({
+      statusCode: 200,
+      body: buildProviderModelsResponse('openai', providerModels),
+    })
+
+    const routeActions = createModelRouteActions(options)
+    expect(routeActions.getModels()).toEqual({
+      statusCode: 200,
+      body: buildOpenAICompatibleModelsResponse(['gpt-active']),
+    })
+    expect(await routeActions.getProviderModels('openai')).toEqual({
       statusCode: 200,
       body: buildProviderModelsResponse('openai', providerModels),
     })

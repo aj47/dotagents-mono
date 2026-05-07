@@ -27,8 +27,7 @@ import {
   type KnowledgeNoteActionOptions,
 } from "@dotagents/shared/knowledge-note-form"
 import {
-  getModelsAction,
-  getProviderModelsAction,
+  createModelRouteActions,
   handleChatCompletionRequestAction,
   type ChatCompletionActionOptions,
   type ModelActionOptions,
@@ -137,6 +136,8 @@ const modelActionOptions: ModelActionOptions = {
   },
   diagnostics: diagnosticsService,
 }
+
+const modelRouteActions = createModelRouteActions(modelActionOptions)
 
 function recordHistory(transcript: string) {
   try {
@@ -519,14 +520,6 @@ function getAgentSessionCandidates(query: unknown) {
   return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
 }
 
-function getModels() {
-  return getModelsAction(modelActionOptions)
-}
-
-async function getProviderModels(providerId: string | undefined) {
-  return getProviderModelsAction(providerId, modelActionOptions)
-}
-
 async function synthesizeSpeech(body: unknown) {
   return synthesizeSpeechAction(body, ttsActionOptions)
 }
@@ -614,8 +607,7 @@ function deleteMcpServerConfig(serverName: string | undefined) {
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {
   handleChatCompletionRequest,
-  getModels,
-  getProviderModels,
+  ...modelRouteActions,
   ...profileRouteActions,
   getBundleExportableItems,
   exportBundle,

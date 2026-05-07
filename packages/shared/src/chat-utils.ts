@@ -137,6 +137,11 @@ export interface ModelActionOptions {
   diagnostics: ModelActionDiagnostics;
 }
 
+export interface ModelRouteActions {
+  getModels(): ModelActionResult;
+  getProviderModels(providerId: string | undefined): Promise<ModelActionResult>;
+}
+
 export type ParsedChatCompletionSseEvent =
   | { type: 'done' }
   | { type: 'progress'; update: AgentProgressUpdate }
@@ -654,6 +659,13 @@ export async function getProviderModelsAction(
     options.diagnostics.logError('model-actions', 'Failed to fetch models', caughtError);
     return modelActionError(500, getUnknownErrorMessage(caughtError, 'Failed to fetch models'));
   }
+}
+
+export function createModelRouteActions(options: ModelActionOptions): ModelRouteActions {
+  return {
+    getModels: () => getModelsAction(options),
+    getProviderModels: (providerId) => getProviderModelsAction(providerId, options),
+  };
 }
 
 export function buildChatCompletionProgressSsePayload(update: AgentProgressUpdate): DotAgentsChatCompletionProgressSsePayload {
