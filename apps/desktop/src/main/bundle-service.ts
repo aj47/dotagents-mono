@@ -25,21 +25,41 @@ import {
   type AgentSkill,
   type KnowledgeNote,
   type LoopConfig,
-  type AgentProfileConnectionType,
-  type AgentProfileRole,
 } from "@dotagents/core"
 import {
   buildHubBundleInstallUrl,
   buildHubPublishArtifactFileName,
   normalizeHubPublishArtifactUrl,
   normalizeHubPublishCatalogId,
-  type HubCatalogAuthor,
-  type HubCatalogCompatibility,
   type HubPublishPayload,
 } from "@dotagents/shared/hub"
 import {
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
   sanitizeBundlePublicMetadata,
+  type BundleAgentProfile,
+  type BundleComponentSelection,
+  type BundleImportConflictStrategy,
+  type BundleImportItemResult,
+  type BundleImportPreviewConflict,
+  type BundleImportPreviewConflicts,
+  type BundleImportResult,
+  type BundleItemSelectionOptions,
+  type BundleKnowledgeNote,
+  type BundleManifest,
+  type BundleMcpServer,
+  type BundlePublicMetadata,
+  type BundlePublicMetadataAuthor,
+  type BundlePublicMetadataCompatibility,
+  type BundleRepeatTask,
+  type BundleSkill,
+  type DotAgentsBundle,
+  type ExportableBundleAgentProfile,
+  type ExportableBundleItems,
+  type ExportableBundleKnowledgeNote,
+  type ExportableBundleMcpServer,
+  type ExportableBundleRepeatTask,
+  type ExportableBundleSkill,
+  type ExportBundleRequest,
 } from "@dotagents/shared/bundle-api"
 import { isAgentProfileConnectionTypeValue } from "@dotagents/shared/agent-profile-connection"
 import { isAgentProfileRole } from "@dotagents/shared/agent-profile-role"
@@ -51,107 +71,32 @@ import { logApp } from "./debug"
 // Types
 // ============================================================================
 
-export type BundlePublicMetadataAuthor = HubCatalogAuthor
-
-export type BundlePublicMetadataCompatibility = HubCatalogCompatibility
-
-export interface BundlePublicMetadata {
-  summary: string
-  author: BundlePublicMetadataAuthor
-  tags: string[]
-  compatibility?: BundlePublicMetadataCompatibility
+export type {
+  BundleAgentProfile,
+  BundleComponentSelection,
+  BundleItemSelectionOptions,
+  BundleKnowledgeNote,
+  BundleManifest,
+  BundlePublicMetadata,
+  BundlePublicMetadataAuthor,
+  BundlePublicMetadataCompatibility,
+  BundleRepeatTask,
+  BundleSkill,
+  DotAgentsBundle,
+  ExportableBundleAgentProfile,
+  ExportableBundleItems,
+  ExportableBundleKnowledgeNote,
+  ExportableBundleRepeatTask,
+  ExportableBundleSkill,
 }
 
-export interface BundleManifest {
-  version: 1
-  name: string
-  description?: string
-  createdAt: string
-  exportedFrom: string
-  publicMetadata?: BundlePublicMetadata
-  components: {
-    agentProfiles: number
-    mcpServers: number
-    skills: number
-    repeatTasks: number
-    knowledgeNotes: number
-  }
-}
-
-export interface BundleAgentProfile {
-  id: string
-  name: string
-  displayName?: string
-  description?: string
-  enabled: boolean
-  role?: AgentProfileRole
-  systemPrompt?: string
-  guidelines?: string
-  connection: {
-    type: AgentProfileConnectionType
-    // Preserve non-secret connection fields to keep imported external agents functional.
-    command?: string
-    args?: string[]
-    cwd?: string
-    baseUrl?: string
-  }
-}
-
-export interface BundleMCPServer {
-  name: string
-  command?: string
-  args?: string[]
-  transport?: string
-  // URL/keys stripped
-  enabled?: boolean
-}
-
-export interface BundleSkill {
-  id: string
-  name: string
-  description?: string
-  // Legacy v1 bundles may omit instructions (metadata-only skill entries).
-  instructions?: string
-  source?: string
-}
-
-export interface BundleRepeatTask {
-  id: string
-  name: string
-  prompt: string
-  intervalMinutes: number
-  enabled: boolean
-  runOnStartup?: boolean
-  speakOnTrigger?: boolean
-  continueInSession?: boolean
-  runContinuously?: boolean
-  schedule?: LoopConfig["schedule"]
-  // profileId omitted — the profile may not exist in the target environment
-  // lastSessionId omitted — installation-local, not meaningful across bundles
-}
-
-export interface BundleKnowledgeNote {
-  id: string
-  title: string
-  context: KnowledgeNote["context"]
-  body: string
-  summary?: string
-  tags: string[]
-  references?: string[]
-  createdAt?: number
-  updatedAt: number
-  group?: string
-  series?: string
-  entryType?: KnowledgeNote["entryType"]
-}
-
-export interface DotAgentsBundle {
-  manifest: BundleManifest
-  agentProfiles: BundleAgentProfile[]
-  mcpServers: BundleMCPServer[]
-  skills: BundleSkill[]
-  repeatTasks: BundleRepeatTask[]
-  knowledgeNotes: BundleKnowledgeNote[]
+export type BundleMCPServer = BundleMcpServer
+export type ExportableBundleMCPServer = ExportableBundleMcpServer
+export type ExportBundleOptions = ExportBundleRequest
+export type GeneratePublishPayloadOptions = ExportBundleRequest & {
+  publicMetadata: BundlePublicMetadata
+  catalogId?: string
+  artifactUrl?: string
 }
 
 export interface ExportBundleToFileResult {
@@ -161,137 +106,34 @@ export interface ExportBundleToFileResult {
   error?: string
 }
 
-export interface BundleComponentSelection {
-  agentProfiles?: boolean
-  mcpServers?: boolean
-  skills?: boolean
-  repeatTasks?: boolean
-  knowledgeNotes?: boolean
-}
-
-export interface BundleItemSelectionOptions {
-  agentProfileIds?: string[]
-  mcpServerNames?: string[]
-  skillIds?: string[]
-  repeatTaskIds?: string[]
-  knowledgeNoteIds?: string[]
-}
-
-export interface ExportableBundleAgentProfile {
-  id: string
-  name: string
-  displayName?: string
-  enabled: boolean
-  role?: AgentProfileRole
-  referencedMcpServerNames: string[]
-  referencedSkillIds: string[]
-}
-
-export interface ExportableBundleMCPServer {
-  name: string
-  transport?: string
-  enabled?: boolean
-}
-
-export interface ExportableBundleSkill {
-  id: string
-  name: string
-  description?: string
-}
-
-export interface ExportableBundleRepeatTask {
-  id: string
-  name: string
-  intervalMinutes: number
-  enabled: boolean
-}
-
-export interface ExportableBundleKnowledgeNote {
-  id: string
-  title: string
-  context: KnowledgeNote["context"]
-  summary?: string
-}
-
-export interface ExportableBundleItems {
-  agentProfiles: ExportableBundleAgentProfile[]
-  mcpServers: ExportableBundleMCPServer[]
-  skills: ExportableBundleSkill[]
-  repeatTasks: ExportableBundleRepeatTask[]
-  knowledgeNotes: ExportableBundleKnowledgeNote[]
-}
-
-export interface ExportBundleOptions extends BundleItemSelectionOptions {
-  name?: string
-  description?: string
-  publicMetadata?: BundlePublicMetadata
-  components?: BundleComponentSelection
-}
-
-export interface GeneratePublishPayloadOptions extends ExportBundleOptions {
-  publicMetadata: BundlePublicMetadata
-  catalogId?: string
-  artifactUrl?: string
-}
-
 // ============================================================================
 // Import Types
 // ============================================================================
 
-export type ImportConflictStrategy = "skip" | "overwrite" | "rename"
+export type ImportConflictStrategy = BundleImportConflictStrategy
 
 export interface ImportOptions {
   /** How to handle conflicts when an item with the same ID already exists */
   conflictStrategy: ImportConflictStrategy
   /** Components to import (defaults to all) */
-  components?: {
-    agentProfiles?: boolean
-    mcpServers?: boolean
-    skills?: boolean
-    repeatTasks?: boolean
-    knowledgeNotes?: boolean
-  }
+  components?: BundleComponentSelection
 }
 
-export interface ImportItemResult {
-  id: string
-  name: string
-  action: "imported" | "skipped" | "renamed" | "overwritten"
-  newId?: string // Only set if renamed
-  error?: string
-}
+export type ImportItemResult = BundleImportItemResult
 
-export interface ImportBundleResult {
-  success: boolean
-  agentProfiles: ImportItemResult[]
-  mcpServers: ImportItemResult[]
-  skills: ImportItemResult[]
-  repeatTasks: ImportItemResult[]
-  knowledgeNotes: ImportItemResult[]
-  errors: string[]
-}
+export type ImportBundleResult = BundleImportResult
 
 // ============================================================================
 // Preview Types
 // ============================================================================
 
-export interface PreviewConflict {
-  id: string
-  name: string
-  existingName?: string
-}
+export type PreviewConflict = BundleImportPreviewConflict
 
 export interface BundlePreviewResult {
   success: boolean
   filePath?: string
   bundle?: DotAgentsBundle
-  conflicts?: {
-    agentProfiles: PreviewConflict[]
-    mcpServers: PreviewConflict[]
-    skills: PreviewConflict[]
-    repeatTasks: PreviewConflict[]
-    knowledgeNotes: PreviewConflict[]
-  }
+  conflicts?: BundleImportPreviewConflicts
   error?: string
 }
 

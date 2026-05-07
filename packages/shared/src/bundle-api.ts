@@ -1,3 +1,8 @@
+import type { AgentProfileConnectionTypeValue } from "./agent-profile-connection"
+import type { AgentProfileRole } from "./agent-profile-role"
+import type { KnowledgeNoteContext, KnowledgeNoteEntryType } from "./knowledge-note-domain"
+import type { RepeatTaskSchedule } from "./repeat-task-utils"
+
 export type BundleComponentSelection = {
   agentProfiles?: boolean
   mcpServers?: boolean
@@ -72,11 +77,11 @@ export type BundleAgentProfile = {
   displayName?: string
   description?: string
   enabled: boolean
-  role?: string
+  role?: AgentProfileRole
   systemPrompt?: string
   guidelines?: string
   connection: {
-    type: string
+    type: AgentProfileConnectionTypeValue
     command?: string
     args?: string[]
     cwd?: string
@@ -110,13 +115,13 @@ export type BundleRepeatTask = {
   speakOnTrigger?: boolean
   continueInSession?: boolean
   runContinuously?: boolean
-  schedule?: unknown
+  schedule?: RepeatTaskSchedule
 }
 
 export type BundleKnowledgeNote = {
   id: string
   title: string
-  context: string
+  context: KnowledgeNoteContext
   body: string
   summary?: string
   tags: string[]
@@ -125,7 +130,7 @@ export type BundleKnowledgeNote = {
   updatedAt: number
   group?: string
   series?: string
-  entryType?: string
+  entryType?: KnowledgeNoteEntryType
 }
 
 export type DotAgentsBundle = {
@@ -201,7 +206,7 @@ export type ExportableBundleAgentProfile = {
   name: string
   displayName?: string
   enabled: boolean
-  role?: string
+  role?: AgentProfileRole
   referencedMcpServerNames: string[]
   referencedSkillIds: string[]
 }
@@ -228,7 +233,7 @@ export type ExportableBundleRepeatTask = {
 export type ExportableBundleKnowledgeNote = {
   id: string
   title: string
-  context: string
+  context: KnowledgeNoteContext
   summary?: string
 }
 
