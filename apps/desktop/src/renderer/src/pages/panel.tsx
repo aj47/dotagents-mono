@@ -6,11 +6,11 @@ import { playSound, setSoundOutputDevice } from "@renderer/lib/sound"
 import { cn } from "@renderer/lib/utils"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react"
-import { rendererHandlers } from "~/lib/tipc-client"
 import { TextInputPanel, TextInputPanelRef } from "@renderer/components/text-input-panel"
 import { PanelResizeWrapper } from "@renderer/components/panel-resize-wrapper"
 import { useAgentStore, useAgentProgress, useConversationStore } from "@renderer/stores"
 import { useConfigQuery, useConversationQuery, useCreateConversationMutation } from "@renderer/lib/queries"
+import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
 import { desktopAppShellClient } from "@renderer/lib/desktop-app-shell-client"
 import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
@@ -825,7 +825,7 @@ export function Component() {
   }, [recording, isPreviewEnabled, previewText])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.startRecording.listen((data) => {
+    const unlisten = desktopDictationClient.onStartRecording((data) => {
       // Ensure we are in normal dictation mode (not MCP/agent)
       setMcpMode(false)
       mcpModeRef.current = false
@@ -854,7 +854,7 @@ export function Component() {
   }, [])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.finishRecording.listen(() => {
+    const unlisten = desktopDictationClient.onFinishRecording(() => {
       isConfirmedRef.current = true
       recorderRef.current?.stopRecording()
     })
@@ -863,7 +863,7 @@ export function Component() {
   }, [])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.stopRecording.listen(() => {
+    const unlisten = desktopDictationClient.onStopRecording(() => {
       isConfirmedRef.current = false
       recorderRef.current?.stopRecording()
     })
@@ -872,7 +872,7 @@ export function Component() {
   }, [])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.startOrFinishRecording.listen((data) => {
+    const unlisten = desktopDictationClient.onStartOrFinishRecording((data) => {
       // Use recordingRef instead of recording state to avoid race condition
       // where listener recreation with recording=false could trigger a new recording
       if (recordingRef.current) {
@@ -908,7 +908,7 @@ export function Component() {
 
   // Text input handlers
   useEffect(() => {
-    const unlisten = rendererHandlers.showTextInput.listen((data) => {
+    const unlisten = desktopPanelClient.onShowTextInput((data) => {
       // Reset any previous pending state to ensure textarea is enabled
       textInputMutation.reset()
       mcpTextInputMutation.reset()
@@ -950,7 +950,7 @@ export function Component() {
   }, [endConversation, setCurrentConversationId])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.hideTextInput.listen(() => {
+    const unlisten = desktopPanelClient.onHideTextInput(() => {
       lastRequestedModeRef.current = "normal"
       setShowTextInput(false)
     })
@@ -996,7 +996,7 @@ export function Component() {
 
   // MCP handlers
   useEffect(() => {
-    const unlisten = rendererHandlers.startMcpRecording.listen((data) => {
+    const unlisten = desktopDictationClient.onStartMcpRecording((data) => {
       // Store the conversationId, sessionId, and fromTile flag for use when recording ends
       mcpConversationIdRef.current = data?.conversationId
       mcpSessionIdRef.current = data?.sessionId
@@ -1055,7 +1055,7 @@ export function Component() {
   }, [endConversation])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.finishMcpRecording.listen(() => {
+    const unlisten = desktopDictationClient.onFinishMcpRecording(() => {
       isConfirmedRef.current = true
       recorderRef.current?.stopRecording()
     })
@@ -1064,7 +1064,7 @@ export function Component() {
   }, [])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.startOrFinishMcpRecording.listen((data) => {
+    const unlisten = desktopDictationClient.onStartOrFinishMcpRecording((data) => {
       // Use recordingRef instead of recording state to avoid race condition
       // where listener recreation with recording=false could trigger a new recording
       if (recordingRef.current) {
@@ -1162,7 +1162,7 @@ export function Component() {
 
   // Clear agent progress handler
   useEffect(() => {
-    const unlisten = rendererHandlers.clearAgentProgress.listen(() => {
+    const unlisten = desktopAgentSessionsClient.onClearAgentProgress(() => {
       logUI("[Panel] clearAgentProgress received; stopping TTS and resetting local panel state")
       // Stop all TTS audio when clearing progress (ESC key pressed)
       ttsManager.stopAll("panel-clear-agent-progress")
@@ -1195,7 +1195,7 @@ export function Component() {
 
   // Emergency stop handler - stop all TTS audio and reset processing state
   useEffect(() => {
-    const unlisten = rendererHandlers.emergencyStopAgent.listen(() => {
+    const unlisten = desktopAgentSessionsClient.onEmergencyStopAgent(() => {
       logUI("[Panel] emergencyStopAgent received; stopping TTS and resetting local panel state")
       ttsManager.stopAll("panel-emergency-stop")
 

@@ -70,6 +70,10 @@ export const desktopAgentSessionsClient = {
     return rendererHandlers.setAgentSessionSnoozed.listen(listener)
   },
 
+  onEmergencyStopAgent(listener: RendererHandlers["emergencyStopAgent"]): () => void {
+    return rendererHandlers.emergencyStopAgent.listen(listener)
+  },
+
   getAgentSessions(): Promise<DesktopAgentSessionsResponse> {
     return tipcClient.getAgentSessions() as Promise<DesktopAgentSessionsResponse>
   },

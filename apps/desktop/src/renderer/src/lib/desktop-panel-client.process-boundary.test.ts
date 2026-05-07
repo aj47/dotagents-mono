@@ -24,6 +24,8 @@ describe("desktop panel renderer client", () => {
   it("centralizes panel IPC channels", () => {
     expect(clientSource).toContain("rendererHandlers.onPanelSizeChanged.listen(listener)")
     expect(clientSource).toContain("rendererHandlers.panelVisibilityChanged.listen(listener)")
+    expect(clientSource).toContain("rendererHandlers.showTextInput.listen(listener)")
+    expect(clientSource).toContain("rendererHandlers.hideTextInput.listen(listener)")
     expect(clientSource).toContain("tipcClient.setPanelFocusable(request)")
     expect(clientSource).toContain("tipcClient.getFloatingPanelVisibility()")
     expect(clientSource).toContain("tipcClient.getPanelPosition()")
@@ -95,9 +97,13 @@ describe("desktop panel renderer client", () => {
   })
 
   it("keeps panel page window visibility and text-input state off direct panel IPC", () => {
+    expect(panelPageSource).toContain("desktopPanelClient.onShowTextInput(")
+    expect(panelPageSource).toContain("desktopPanelClient.onHideTextInput(")
     expect(panelPageSource).toContain("desktopPanelClient.showPanelWindow()")
     expect(panelPageSource).toContain("desktopPanelClient.hidePanelWindow()")
     expect(panelPageSource).toContain("desktopPanelClient.clearTextInputState()")
+    expect(panelPageSource).not.toContain("rendererHandlers.showTextInput")
+    expect(panelPageSource).not.toContain("rendererHandlers.hideTextInput")
     expect(panelPageSource).not.toContain("tipcClient.showPanelWindow(")
     expect(panelPageSource).not.toContain("tipcClient.hidePanelWindow(")
     expect(panelPageSource).not.toContain("tipcClient.clearTextInputState(")

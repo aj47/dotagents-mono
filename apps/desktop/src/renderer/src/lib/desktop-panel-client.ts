@@ -26,6 +26,14 @@ export const desktopPanelClient = {
     return rendererHandlers.panelVisibilityChanged.listen(listener)
   },
 
+  onShowTextInput(listener: RendererHandlers["showTextInput"]): () => void {
+    return rendererHandlers.showTextInput.listen(listener)
+  },
+
+  onHideTextInput(listener: RendererHandlers["hideTextInput"]): () => void {
+    return rendererHandlers.hideTextInput.listen(listener)
+  },
+
   setPanelFocusable(request: DesktopPanelFocusableRequest): Promise<void> {
     return tipcClient.setPanelFocusable(request) as Promise<void>
   },

@@ -15,6 +15,7 @@ const overlayFollowUpInputSource = readFileSync(
   new URL("../components/overlay-follow-up-input.tsx", import.meta.url),
   "utf8",
 )
+const panelPageSource = readFileSync(new URL("../pages/panel.tsx", import.meta.url), "utf8")
 const sessionsPageSource = readFileSync(new URL("../pages/sessions.tsx", import.meta.url), "utf8")
 const useStoreSyncSource = readFileSync(new URL("../hooks/use-store-sync.ts", import.meta.url), "utf8")
 const tileFollowUpInputSource = readFileSync(
@@ -31,6 +32,7 @@ describe("desktop agent sessions renderer client", () => {
     expect(clientSource).toContain("rendererHandlers.clearInactiveSessions.listen(listener)")
     expect(clientSource).toContain("rendererHandlers.focusAgentSession.listen(listener)")
     expect(clientSource).toContain("rendererHandlers.setAgentSessionSnoozed.listen(listener)")
+    expect(clientSource).toContain("rendererHandlers.emergencyStopAgent.listen(listener)")
     expect(clientSource).toContain("tipcClient.getAgentSessions()")
     expect(clientSource).toContain("tipcClient.clearInactiveSessions()")
     expect(clientSource).toContain("tipcClient.stopAgentSession({ sessionId })")
@@ -55,6 +57,7 @@ describe("desktop agent sessions renderer client", () => {
       agentProgressSource,
       multiAgentProgressViewSource,
       overlayFollowUpInputSource,
+      panelPageSource,
       sessionsPageSource,
       useStoreSyncSource,
       tileFollowUpInputSource,
@@ -83,6 +86,8 @@ describe("desktop agent sessions renderer client", () => {
     expect(multiAgentProgressViewSource).toContain("desktopAgentSessionsClient.snoozeAgentSessionsAndHidePanelWindow(")
     expect(overlayFollowUpInputSource).toContain("desktopAgentSessionsClient.emergencyStopAgent()")
     expect(overlayFollowUpInputSource).toContain("desktopAgentSessionsClient.stopAgentSession(sessionId)")
+    expect(panelPageSource).toContain("desktopAgentSessionsClient.onClearAgentProgress(")
+    expect(panelPageSource).toContain("desktopAgentSessionsClient.onEmergencyStopAgent(")
     expect(sessionsPageSource).toContain("desktopAgentSessionsClient.focusAgentSessionInPanel(sessionId)")
     expect(sessionsPageSource).toContain("desktopAgentSessionsClient.clearAgentSessionProgress(sessionId)")
     expect(useStoreSyncSource).toContain("desktopAgentSessionsClient.onAgentProgressUpdate(")
@@ -101,6 +106,7 @@ describe("desktop agent sessions renderer client", () => {
     expect(combinedSource).not.toContain("rendererHandlers.clearInactiveSessions")
     expect(combinedSource).not.toContain("rendererHandlers.focusAgentSession")
     expect(combinedSource).not.toContain("rendererHandlers.setAgentSessionSnoozed")
+    expect(combinedSource).not.toContain("rendererHandlers.emergencyStopAgent")
     expect(combinedSource).not.toContain("tipcClient.clearInactiveSessions(")
     expect(combinedSource).not.toContain("tipcClient.stopAgentSession(")
     expect(combinedSource).not.toContain("tipcClient.clearAgentSessionProgress(")
