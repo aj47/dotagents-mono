@@ -87,6 +87,17 @@ export interface KnowledgeNoteActionOptions {
   diagnostics: KnowledgeNoteActionDiagnostics
 }
 
+export interface KnowledgeNoteRouteActions {
+  getKnowledgeNotes(query?: unknown): Promise<KnowledgeNoteActionResult>
+  getKnowledgeNote(id: string | undefined): Promise<KnowledgeNoteActionResult>
+  searchKnowledgeNotes(body: unknown): Promise<KnowledgeNoteActionResult>
+  deleteKnowledgeNote(id: string | undefined): Promise<KnowledgeNoteActionResult>
+  deleteMultipleKnowledgeNotes(body: unknown): Promise<KnowledgeNoteActionResult>
+  deleteAllKnowledgeNotes(): Promise<KnowledgeNoteActionResult>
+  createKnowledgeNote(body: unknown): Promise<KnowledgeNoteActionResult>
+  updateKnowledgeNote(id: string | undefined, body: unknown): Promise<KnowledgeNoteActionResult>
+}
+
 function isRequestObject(body: unknown): body is Record<string, unknown> {
   return !!body && typeof body === "object" && !Array.isArray(body)
 }
@@ -367,6 +378,21 @@ export async function updateKnowledgeNoteAction(
   } catch (caughtError) {
     options.diagnostics.logError("knowledge-note-actions", "Failed to update knowledge note", caughtError)
     return knowledgeNoteActionError(500, getUnknownErrorMessage(caughtError, "Failed to update knowledge note"))
+  }
+}
+
+export function createKnowledgeNoteRouteActions(
+  options: KnowledgeNoteActionOptions,
+): KnowledgeNoteRouteActions {
+  return {
+    getKnowledgeNotes: (query) => getKnowledgeNotesAction(query, options),
+    getKnowledgeNote: (id) => getKnowledgeNoteAction(id, options),
+    searchKnowledgeNotes: (body) => searchKnowledgeNotesAction(body, options),
+    deleteKnowledgeNote: (id) => deleteKnowledgeNoteAction(id, options),
+    deleteMultipleKnowledgeNotes: (body) => deleteMultipleKnowledgeNotesAction(body, options),
+    deleteAllKnowledgeNotes: () => deleteAllKnowledgeNotesAction(options),
+    createKnowledgeNote: (body) => createKnowledgeNoteAction(body, options),
+    updateKnowledgeNote: (id, body) => updateKnowledgeNoteAction(id, body, options),
   }
 }
 

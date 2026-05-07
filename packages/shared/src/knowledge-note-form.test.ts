@@ -9,6 +9,7 @@ import {
   buildKnowledgeNoteResponse,
   buildKnowledgeNotesResponse,
   createKnowledgeNoteAction,
+  createKnowledgeNoteRouteActions,
   deleteAllKnowledgeNotesAction,
   deleteKnowledgeNoteAction,
   deleteMultipleKnowledgeNotesAction,
@@ -337,6 +338,55 @@ describe("knowledge note form helpers", () => {
       body: buildKnowledgeNotesDeleteMultipleResponse(["note-3", "note-4"], 2),
     })
     await expect(deleteAllKnowledgeNotesAction(options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNotesDeleteAllResponse(1),
+    })
+
+    notesById.clear()
+    notesById.set(note.id, note)
+    const routeActions = createKnowledgeNoteRouteActions(options)
+    await expect(routeActions.getKnowledgeNotes({
+      context: "search-only",
+      dateFilter: "7d",
+      sort: "title-asc",
+      limit: "12",
+    })).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNotesResponse([note]),
+    })
+    await expect(routeActions.getKnowledgeNote("note-1")).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNoteResponse(note),
+    })
+    await expect(routeActions.searchKnowledgeNotes({
+      query: " body ",
+      context: "auto",
+      dateFilter: "30d",
+      sort: "updated-desc",
+      limit: 25,
+    })).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNotesResponse([note]),
+    })
+    await expect(routeActions.createKnowledgeNote({ body: " Created body " })).resolves.toEqual({
+      statusCode: 201,
+      body: buildKnowledgeNoteResponse(createdNote),
+    })
+    await expect(routeActions.updateKnowledgeNote("note-1", { title: " Updated " })).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNoteMutationResponse(updatedNote),
+    })
+    await expect(routeActions.deleteKnowledgeNote("note-2")).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNoteDeleteResponse("note-2"),
+    })
+    await expect(routeActions.deleteMultipleKnowledgeNotes({
+      ids: [" note-3 ", "note-4", "note-3"],
+    })).resolves.toEqual({
+      statusCode: 200,
+      body: buildKnowledgeNotesDeleteMultipleResponse(["note-3", "note-4"], 2),
+    })
+    await expect(routeActions.deleteAllKnowledgeNotes()).resolves.toEqual({
       statusCode: 200,
       body: buildKnowledgeNotesDeleteAllResponse(1),
     })

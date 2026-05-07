@@ -23,14 +23,7 @@ import {
   type PreviewBundleImportRequest,
 } from "@dotagents/shared/bundle-api"
 import {
-  createKnowledgeNoteAction,
-  deleteAllKnowledgeNotesAction,
-  deleteKnowledgeNoteAction,
-  deleteMultipleKnowledgeNotesAction,
-  getKnowledgeNoteAction,
-  getKnowledgeNotesAction,
-  searchKnowledgeNotesAction,
-  updateKnowledgeNoteAction,
+  createKnowledgeNoteRouteActions,
   type KnowledgeNoteActionOptions,
 } from "@dotagents/shared/knowledge-note-form"
 import {
@@ -437,6 +430,8 @@ const knowledgeNoteActionOptions: KnowledgeNoteActionOptions = {
   diagnostics: diagnosticsService,
 }
 
+const knowledgeNoteRouteActions = createKnowledgeNoteRouteActions(knowledgeNoteActionOptions)
+
 function getLoopProfileName(profileId?: string): string | undefined {
   return profileId ? agentProfileService.getById(profileId)?.displayName : undefined
 }
@@ -624,38 +619,6 @@ async function updateConversation(id: string | undefined, body: unknown, onChang
   return updateConversationAction(id, body, onChanged, conversationActionOptions)
 }
 
-async function getKnowledgeNotes(query?: unknown) {
-  return getKnowledgeNotesAction(query, knowledgeNoteActionOptions)
-}
-
-async function getKnowledgeNote(id: string | undefined) {
-  return getKnowledgeNoteAction(id, knowledgeNoteActionOptions)
-}
-
-async function searchKnowledgeNotes(body: unknown) {
-  return searchKnowledgeNotesAction(body, knowledgeNoteActionOptions)
-}
-
-async function deleteKnowledgeNote(id: string | undefined) {
-  return deleteKnowledgeNoteAction(id, knowledgeNoteActionOptions)
-}
-
-async function deleteMultipleKnowledgeNotes(body: unknown) {
-  return deleteMultipleKnowledgeNotesAction(body, knowledgeNoteActionOptions)
-}
-
-async function deleteAllKnowledgeNotes() {
-  return deleteAllKnowledgeNotesAction(knowledgeNoteActionOptions)
-}
-
-async function createKnowledgeNote(body: unknown) {
-  return createKnowledgeNoteAction(body, knowledgeNoteActionOptions)
-}
-
-async function updateKnowledgeNote(id: string | undefined, body: unknown) {
-  return updateKnowledgeNoteAction(id, body, knowledgeNoteActionOptions)
-}
-
 async function getRepeatTasks() {
   return getRepeatTasksAction(repeatTaskActionOptions)
 }
@@ -799,12 +762,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   updateSkill,
   deleteSkill,
   toggleProfileSkill,
-  getKnowledgeNotes,
-  getKnowledgeNote,
-  searchKnowledgeNotes,
-  deleteKnowledgeNote,
-  deleteMultipleKnowledgeNotes,
-  deleteAllKnowledgeNotes,
+  ...knowledgeNoteRouteActions,
   ...agentProfileRouteActions,
   getRepeatTasks,
   getRepeatTaskStatuses,
@@ -814,8 +772,6 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   stopRepeatTask,
   importRepeatTaskFromMarkdown,
   exportRepeatTaskToMarkdown,
-  createKnowledgeNote,
-  updateKnowledgeNote,
   createRepeatTask,
   updateRepeatTask,
   deleteRepeatTask,
