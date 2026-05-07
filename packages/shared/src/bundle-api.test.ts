@@ -7,12 +7,21 @@ import {
   DEFAULT_BUNDLE_COMPONENT_SELECTION,
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
   EMPTY_BUNDLE_ITEM_SELECTION,
+  buildBundleAgentProfilesFromProfiles,
   buildBundleExportResponse,
   buildBundleExportableItemsResponse,
   buildBundleImportPreviewConflicts,
   buildBundleImportPreviewResponse,
+  buildBundleKnowledgeNotesFromNotes,
   buildBundleMcpServersFromConfig,
+  buildBundleRepeatTasksFromTasks,
+  buildBundleSkillsFromSkills,
   buildDotAgentsBundle,
+  buildExportableBundleAgentProfiles,
+  buildExportableBundleKnowledgeNotes,
+  buildExportableBundleMcpServers,
+  buildExportableBundleRepeatTasks,
+  buildExportableBundleSkills,
   createBundleItemSelection,
   createBundleRouteActions,
   createTemporaryBundleFileImportService,
@@ -44,6 +53,9 @@ import {
   type DotAgentsBundle,
   type ExportableBundleItems,
 } from "./bundle-api"
+import type { AgentProfile } from "./agent-profile-domain"
+import type { KnowledgeNote } from "./knowledge-note-domain"
+import type { AgentSkill, LoopConfig } from "./types"
 
 const bundle: DotAgentsBundle = {
   manifest: {
@@ -416,6 +428,180 @@ describe("bundle API helpers", () => {
       args: undefined,
       transport: "http",
       enabled: true,
+    }])
+  })
+
+  it("builds bundle records from loaded app records", () => {
+    const profile: AgentProfile = {
+      id: "agent-1",
+      name: "agent",
+      displayName: "Agent",
+      description: "Runs work",
+      enabled: true,
+      role: "external-agent",
+      systemPrompt: "You are helpful",
+      guidelines: "Be direct",
+      connection: {
+        type: "stdio",
+        command: "node",
+        args: ["agent.js"],
+        cwd: "/tmp/agent",
+        baseUrl: "https://agents.example.com",
+        env: { API_KEY: "secret" },
+      },
+      toolConfig: { enabledServers: ["filesystem", ""] },
+      skillsConfig: { enabledSkillIds: ["research", ""] },
+      createdAt: 1,
+      updatedAt: 2,
+    }
+    const skill: AgentSkill = {
+      id: "skill-1",
+      name: "Skill",
+      description: "Skill description",
+      instructions: "Follow the instructions",
+      createdAt: 1,
+      updatedAt: 2,
+    }
+    const task: LoopConfig = {
+      id: "task-1",
+      name: "Task",
+      prompt: "Run it",
+      intervalMinutes: 30,
+      enabled: true,
+      profileId: "agent-1",
+      runOnStartup: true,
+      speakOnTrigger: false,
+      continueInSession: true,
+      runContinuously: true,
+      schedule: { type: "daily", times: ["09:00"] },
+    }
+    const note: KnowledgeNote = {
+      id: "note-1",
+      title: "Note",
+      context: "search-only",
+      body: "Useful context",
+      summary: "Context summary",
+      tags: ["context"],
+      references: ["https://example.com"],
+      createdAt: 1,
+      updatedAt: 2,
+      group: "work",
+      series: "weekly",
+      entryType: "note",
+    }
+
+    expect(buildBundleAgentProfilesFromProfiles([profile], [" agent-1 ", "missing", ""])).toEqual([{
+      id: "agent-1",
+      name: "agent",
+      displayName: "Agent",
+      description: "Runs work",
+      enabled: true,
+      role: "external-agent",
+      systemPrompt: "You are helpful",
+      guidelines: "Be direct",
+      connection: {
+        type: "stdio",
+        command: "node",
+        args: ["agent.js"],
+        cwd: "/tmp/agent",
+        baseUrl: "https://agents.example.com",
+      },
+    }])
+    expect(buildBundleSkillsFromSkills([skill], [" skill-1 "])).toEqual([{
+      id: "skill-1",
+      name: "Skill",
+      description: "Skill description",
+      instructions: "Follow the instructions",
+      source: "local",
+    }])
+    expect(buildBundleRepeatTasksFromTasks([task], ["task-1"])).toEqual([{
+      id: "task-1",
+      name: "Task",
+      prompt: "Run it",
+      intervalMinutes: 30,
+      enabled: true,
+      runOnStartup: true,
+      speakOnTrigger: false,
+      continueInSession: true,
+      runContinuously: true,
+    }])
+    expect(buildBundleKnowledgeNotesFromNotes([note], ["note-1"])).toEqual([note])
+  })
+
+  it("builds exportable item summaries from loaded app records", () => {
+    const profile: AgentProfile = {
+      id: "agent-1",
+      name: "agent",
+      displayName: "Agent",
+      enabled: true,
+      role: "chat-agent",
+      connection: { type: "internal" },
+      toolConfig: { enabledServers: ["filesystem", ""] },
+      skillsConfig: { enabledSkillIds: ["research", ""] },
+      createdAt: 1,
+      updatedAt: 2,
+    }
+    const skill: AgentSkill = {
+      id: "skill-1",
+      name: "Skill",
+      description: "Skill description",
+      instructions: "Follow the instructions",
+      createdAt: 1,
+      updatedAt: 2,
+      source: "imported",
+    }
+    const task: LoopConfig = {
+      id: "task-1",
+      name: "Task",
+      prompt: "Run it",
+      intervalMinutes: 30,
+      enabled: false,
+    }
+    const note: KnowledgeNote = {
+      id: "note-1",
+      title: "Note",
+      context: "auto",
+      body: "Useful context",
+      summary: "Context summary",
+      tags: [],
+      updatedAt: 2,
+    }
+
+    expect(buildExportableBundleAgentProfiles([profile])).toEqual([{
+      id: "agent-1",
+      name: "agent",
+      displayName: "Agent",
+      enabled: true,
+      role: "chat-agent",
+      referencedMcpServerNames: ["filesystem"],
+      referencedSkillIds: ["research"],
+    }])
+    expect(buildExportableBundleMcpServers([{
+      name: "filesystem",
+      command: "node",
+      transport: "stdio",
+      enabled: false,
+    }])).toEqual([{
+      name: "filesystem",
+      transport: "stdio",
+      enabled: false,
+    }])
+    expect(buildExportableBundleSkills([skill])).toEqual([{
+      id: "skill-1",
+      name: "Skill",
+      description: "Skill description",
+    }])
+    expect(buildExportableBundleRepeatTasks([task])).toEqual([{
+      id: "task-1",
+      name: "Task",
+      intervalMinutes: 30,
+      enabled: false,
+    }])
+    expect(buildExportableBundleKnowledgeNotes([note])).toEqual([{
+      id: "note-1",
+      title: "Note",
+      context: "auto",
+      summary: "Context summary",
     }])
   })
 

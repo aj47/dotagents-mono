@@ -2,9 +2,11 @@ import {
   isAgentProfileConnectionTypeValue,
   type AgentProfileConnectionTypeValue,
 } from "./agent-profile-connection"
+import type { AgentProfile } from "./agent-profile-domain"
 import { isAgentProfileRole, type AgentProfileRole } from "./agent-profile-role"
-import type { KnowledgeNoteContext, KnowledgeNoteEntryType } from "./knowledge-note-domain"
+import type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from "./knowledge-note-domain"
 import type { RepeatTaskSchedule } from "./repeat-task-utils"
+import type { AgentSkill, LoopConfig } from "./types"
 
 export type BundleComponentSelection = {
   agentProfiles?: boolean
@@ -417,6 +419,167 @@ function createBundleSelectionSet(values?: readonly string[]): Set<string> | nul
     .filter(Boolean)
 
   return normalized.length > 0 ? new Set(normalized) : null
+}
+
+export function buildBundleAgentProfilesFromProfiles(
+  profiles: readonly AgentProfile[],
+  selectedAgentProfileIds?: readonly string[],
+): BundleAgentProfile[] {
+  const selectedIds = createBundleSelectionSet(selectedAgentProfileIds)
+
+  return profiles
+    .filter((profile) => !selectedIds || selectedIds.has(profile.id))
+    .map((profile): BundleAgentProfile => {
+      const sanitizedConnection: BundleAgentProfile["connection"] = {
+        type: profile.connection?.type || "internal",
+      }
+      if (isNonEmptyString(profile.connection?.command)) {
+        sanitizedConnection.command = profile.connection.command
+      }
+      if (Array.isArray(profile.connection?.args)) {
+        sanitizedConnection.args = profile.connection.args
+          .filter((arg): arg is string => typeof arg === "string")
+      }
+      if (isNonEmptyString(profile.connection?.cwd)) {
+        sanitizedConnection.cwd = profile.connection.cwd
+      }
+      if (isNonEmptyString(profile.connection?.baseUrl)) {
+        sanitizedConnection.baseUrl = profile.connection.baseUrl
+      }
+
+      return {
+        id: profile.id,
+        name: profile.name,
+        displayName: profile.displayName,
+        description: profile.description,
+        enabled: profile.enabled,
+        role: profile.role,
+        systemPrompt: profile.systemPrompt,
+        guidelines: profile.guidelines,
+        connection: sanitizedConnection,
+      }
+    })
+}
+
+export function buildExportableBundleAgentProfiles(
+  profiles: readonly AgentProfile[],
+): ExportableBundleAgentProfile[] {
+  return profiles.map((profile) => ({
+    id: profile.id,
+    name: profile.name,
+    displayName: profile.displayName,
+    enabled: profile.enabled,
+    role: profile.role,
+    referencedMcpServerNames: (profile.toolConfig?.enabledServers ?? []).filter(isNonEmptyString),
+    referencedSkillIds: (profile.skillsConfig?.enabledSkillIds ?? []).filter(isNonEmptyString),
+  }))
+}
+
+export function buildExportableBundleMcpServers(
+  servers: readonly BundleMcpServer[],
+): ExportableBundleMcpServer[] {
+  return servers.map((server) => ({
+    name: server.name,
+    transport: server.transport,
+    enabled: server.enabled,
+  }))
+}
+
+export function buildBundleSkillsFromSkills(
+  skills: readonly AgentSkill[],
+  selectedSkillIds?: readonly string[],
+): BundleSkill[] {
+  const selectedIds = createBundleSelectionSet(selectedSkillIds)
+
+  return skills
+    .filter((skill) => !selectedIds || selectedIds.has(skill.id))
+    .map((skill): BundleSkill => ({
+      id: skill.id,
+      name: skill.name,
+      description: skill.description,
+      instructions: skill.instructions,
+      source: skill.source || "local",
+    }))
+}
+
+export function buildExportableBundleSkills(
+  skills: readonly AgentSkill[],
+): ExportableBundleSkill[] {
+  return skills.map((skill) => ({
+    id: skill.id,
+    name: skill.name,
+    description: skill.description,
+  }))
+}
+
+export function buildBundleRepeatTasksFromTasks(
+  tasks: readonly LoopConfig[],
+  selectedRepeatTaskIds?: readonly string[],
+): BundleRepeatTask[] {
+  const selectedIds = createBundleSelectionSet(selectedRepeatTaskIds)
+
+  return tasks
+    .filter((task) => !selectedIds || selectedIds.has(task.id))
+    .map((task): BundleRepeatTask =>
+      normalizeDotAgentsBundleRepeatTask({
+        id: task.id,
+        name: task.name,
+        prompt: task.prompt,
+        intervalMinutes: task.intervalMinutes,
+        enabled: task.enabled,
+        runOnStartup: task.runOnStartup,
+        speakOnTrigger: task.speakOnTrigger,
+        continueInSession: task.continueInSession,
+        runContinuously: task.runContinuously,
+        schedule: task.schedule,
+      })
+    )
+}
+
+export function buildExportableBundleRepeatTasks(
+  tasks: readonly LoopConfig[],
+): ExportableBundleRepeatTask[] {
+  return tasks.map((task) => ({
+    id: task.id,
+    name: task.name,
+    intervalMinutes: task.intervalMinutes,
+    enabled: task.enabled,
+  }))
+}
+
+export function buildBundleKnowledgeNotesFromNotes(
+  notes: readonly KnowledgeNote[],
+  selectedKnowledgeNoteIds?: readonly string[],
+): BundleKnowledgeNote[] {
+  const selectedIds = createBundleSelectionSet(selectedKnowledgeNoteIds)
+
+  return notes
+    .filter((note) => !selectedIds || selectedIds.has(note.id))
+    .map((note): BundleKnowledgeNote => ({
+      id: note.id,
+      title: note.title,
+      context: note.context,
+      body: note.body,
+      summary: note.summary,
+      tags: note.tags,
+      references: note.references,
+      createdAt: note.createdAt,
+      updatedAt: note.updatedAt,
+      group: note.group,
+      series: note.series,
+      entryType: note.entryType,
+    }))
+}
+
+export function buildExportableBundleKnowledgeNotes(
+  notes: readonly KnowledgeNote[],
+): ExportableBundleKnowledgeNote[] {
+  return notes.map((note) => ({
+    id: note.id,
+    title: note.title,
+    context: note.context,
+    summary: note.summary,
+  }))
 }
 
 function isReservedTopLevelBundleMcpKey(key: string): boolean {

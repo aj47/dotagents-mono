@@ -34,10 +34,20 @@ import {
   type HubPublishPayload,
 } from "@dotagents/shared/hub"
 import {
+  DEFAULT_BUNDLE_COMPONENT_SELECTION,
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
+  buildBundleAgentProfilesFromProfiles,
   buildBundleImportPreviewConflicts,
+  buildBundleKnowledgeNotesFromNotes,
   buildBundleMcpServersFromConfig,
+  buildBundleRepeatTasksFromTasks,
+  buildBundleSkillsFromSkills,
   buildDotAgentsBundle,
+  buildExportableBundleAgentProfiles,
+  buildExportableBundleKnowledgeNotes,
+  buildExportableBundleMcpServers,
+  buildExportableBundleRepeatTasks,
+  buildExportableBundleSkills,
   getBundleBuildItems,
   mergeBundleBuildItems,
   mergeExportableBundleItems,
@@ -159,67 +169,14 @@ function isNonEmptyString(value: unknown): value is string {
 // Export
 // ============================================================================
 
-function sanitizeAgentProfile(profile: AgentProfile): BundleAgentProfile {
-  const sanitizedConnection: BundleAgentProfile["connection"] = {
-    type: profile.connection?.type || "internal",
-  }
-  if (isNonEmptyString(profile.connection?.command)) {
-    sanitizedConnection.command = profile.connection.command
-  }
-  if (Array.isArray(profile.connection?.args)) {
-    sanitizedConnection.args = profile.connection.args
-      .filter((arg): arg is string => typeof arg === "string")
-  }
-  if (isNonEmptyString(profile.connection?.cwd)) {
-    sanitizedConnection.cwd = profile.connection.cwd
-  }
-  if (isNonEmptyString(profile.connection?.baseUrl)) {
-    sanitizedConnection.baseUrl = profile.connection.baseUrl
-  }
-
-  const sanitized: BundleAgentProfile = {
-    id: profile.id,
-    name: profile.name,
-    displayName: profile.displayName,
-    description: profile.description,
-    enabled: profile.enabled,
-    role: profile.role,
-    systemPrompt: profile.systemPrompt,
-    guidelines: profile.guidelines,
-    connection: sanitizedConnection,
-  }
-  return sanitized
-}
-
-function toSelectionSet(values?: string[]): Set<string> | null {
-  const normalized = (values ?? [])
-    .map((value) => value.trim())
-    .filter(Boolean)
-
-  return normalized.length > 0 ? new Set(normalized) : null
-}
-
-function summarizeAgentProfileForExport(profile: AgentProfile): ExportableBundleAgentProfile {
-  return {
-    id: profile.id,
-    name: profile.name,
-    displayName: profile.displayName,
-    enabled: profile.enabled,
-    role: profile.role,
-    referencedMcpServerNames: (profile.toolConfig?.enabledServers ?? []).filter(isNonEmptyString),
-    referencedSkillIds: (profile.skillsConfig?.enabledSkillIds ?? []).filter(isNonEmptyString),
-  }
-}
-
 function loadAgentProfilesForBundle(
   layer: AgentsLayerPaths,
   options?: BundleItemSelectionOptions
 ): BundleAgentProfile[] {
-  const selectedAgentProfileIds = toSelectionSet(options?.agentProfileIds)
-
-  return loadAgentProfilesLayer(layer).profiles
-    .filter((profile) => !selectedAgentProfileIds || selectedAgentProfileIds.has(profile.id))
-    .map(sanitizeAgentProfile)
+  return buildBundleAgentProfilesFromProfiles(
+    loadAgentProfilesLayer(layer).profiles,
+    options?.agentProfileIds
+  )
 }
 
 function loadMCPServersForBundle(
@@ -232,107 +189,34 @@ function loadMCPServersForBundle(
   return buildBundleMcpServersFromConfig(mcpConfig, options?.mcpServerNames)
 }
 
-const DEFAULT_EXPORT_COMPONENTS: Required<BundleComponentSelection> = {
-  agentProfiles: true,
-  mcpServers: true,
-  skills: true,
-  repeatTasks: true,
-  knowledgeNotes: true,
-}
-
 function loadSkillsForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleSkill[] {
-  const skillsResult = loadAgentsSkillsLayer(layer)
-  const selectedSkillIds = toSelectionSet(options?.skillIds)
-
-  return skillsResult.skills
-    .filter(skill => !selectedSkillIds || selectedSkillIds.has(skill.id))
-    .map((skill): BundleSkill => ({
-    id: skill.id,
-    name: skill.name,
-    description: skill.description,
-    instructions: skill.instructions,
-    source: skill.source || "local",
-    }))
-}
-
-function normalizeBundleRepeatTask(task: BundleRepeatTask): BundleRepeatTask {
-  const normalized = { ...task }
-  if (normalized.runContinuously === true) {
-    delete normalized.schedule
-  }
-  return normalized
+  return buildBundleSkillsFromSkills(
+    loadAgentsSkillsLayer(layer).skills,
+    options?.skillIds
+  )
 }
 
 function loadRepeatTasksForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleRepeatTask[] {
-  const tasksResult = loadTasksLayer(layer)
-  const selectedRepeatTaskIds = toSelectionSet(options?.repeatTaskIds)
-
-  return tasksResult.tasks
-    .filter((task) => !selectedRepeatTaskIds || selectedRepeatTaskIds.has(task.id))
-    .map((task): BundleRepeatTask =>
-      normalizeBundleRepeatTask({
-        id: task.id,
-        name: task.name,
-        prompt: task.prompt,
-        intervalMinutes: task.intervalMinutes,
-        enabled: task.enabled,
-        runOnStartup: task.runOnStartup,
-        speakOnTrigger: task.speakOnTrigger,
-        continueInSession: task.continueInSession,
-        runContinuously: task.runContinuously,
-        schedule: task.schedule,
-        // profileId intentionally omitted — may not exist in target environment
-      })
-    )
+  return buildBundleRepeatTasksFromTasks(
+    loadTasksLayer(layer).tasks,
+    options?.repeatTaskIds
+  )
 }
 
 function loadKnowledgeNotesForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleKnowledgeNote[] {
-  const knowledgeNotesResult = loadAgentsKnowledgeNotesLayer(layer)
-  const selectedKnowledgeNoteIds = toSelectionSet(options?.knowledgeNoteIds)
-
-  return knowledgeNotesResult.notes
-    .filter((note) => !selectedKnowledgeNoteIds || selectedKnowledgeNoteIds.has(note.id))
-    .map((note): BundleKnowledgeNote => ({
-      id: note.id,
-      title: note.title,
-      context: note.context,
-      body: note.body,
-      summary: note.summary,
-      tags: note.tags,
-      references: note.references,
-      createdAt: note.createdAt,
-      updatedAt: note.updatedAt,
-      group: note.group,
-      series: note.series,
-      entryType: note.entryType,
-    }))
+  return buildBundleKnowledgeNotesFromNotes(
+    loadAgentsKnowledgeNotesLayer(layer).notes,
+    options?.knowledgeNoteIds
+  )
 }
 
 function listExportableBundleItemsForLayer(layer: AgentsLayerPaths): ExportableBundleItems {
   return {
-    agentProfiles: loadAgentProfilesLayer(layer).profiles.map(summarizeAgentProfileForExport),
-    mcpServers: loadMCPServersForBundle(layer).map((server) => ({
-      name: server.name,
-      transport: server.transport,
-      enabled: server.enabled,
-    })),
-    skills: loadAgentsSkillsLayer(layer).skills.map((skill) => ({
-      id: skill.id,
-      name: skill.name,
-      description: skill.description,
-    })),
-    repeatTasks: loadTasksLayer(layer).tasks.map((task) => ({
-      id: task.id,
-      name: task.name,
-      intervalMinutes: task.intervalMinutes,
-      enabled: task.enabled,
-    })),
-    knowledgeNotes: loadAgentsKnowledgeNotesLayer(layer).notes.map((note) => ({
-      id: note.id,
-      title: note.title,
-      context: note.context,
-      summary: note.summary,
-    })),
+    agentProfiles: buildExportableBundleAgentProfiles(loadAgentProfilesLayer(layer).profiles),
+    mcpServers: buildExportableBundleMcpServers(loadMCPServersForBundle(layer)),
+    skills: buildExportableBundleSkills(loadAgentsSkillsLayer(layer).skills),
+    repeatTasks: buildExportableBundleRepeatTasks(loadTasksLayer(layer).tasks),
+    knowledgeNotes: buildExportableBundleKnowledgeNotes(loadAgentsKnowledgeNotesLayer(layer).notes),
   }
 }
 
@@ -364,7 +248,7 @@ export async function exportBundle(
   options?: ExportBundleOptions
 ): Promise<DotAgentsBundle> {
   const layer = getAgentsLayerPaths(agentsDir)
-  const components = { ...DEFAULT_EXPORT_COMPONENTS, ...options?.components }
+  const components = { ...DEFAULT_BUNDLE_COMPONENT_SELECTION, ...options?.components }
 
   const profiles = components.agentProfiles
     ? loadAgentProfilesForBundle(layer, options)
