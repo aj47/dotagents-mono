@@ -320,12 +320,18 @@ export function buildServerConversationMessages(
   }));
 }
 
-export function getBranchableServerConversationMessages<TConversation extends ServerConversationRecord<any>>(
+export function getStoredServerConversationMessages<TConversation extends ServerConversationRecord<any>>(
   conversation: TConversation,
 ): ServerConversationRecordMessage[] {
   return Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
     ? conversation.rawMessages
     : conversation.messages;
+}
+
+export function getBranchableServerConversationMessages<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+): ServerConversationRecordMessage[] {
+  return getStoredServerConversationMessages(conversation);
 }
 
 export function buildBranchedServerConversation<TConversation extends ServerConversationRecord<any>>(

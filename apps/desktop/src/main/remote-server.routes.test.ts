@@ -1703,6 +1703,7 @@ describe("remote-server route registration", () => {
     expect(sharedConversationSyncSource).not.toContain('from "./conversation-service"')
     expect(conversationServiceSource).toContain("buildNewServerConversation(")
     expect(conversationServiceSource).toContain("buildServerConversationTitle(undefined")
+    expect(conversationServiceSource).toContain("getStoredServerConversationMessages(conversation)")
     expect(conversationServiceSource).not.toContain("title: generateConversationTitleFromMessage")
     expect(mobileApiDesktopActionsSource).toContain("const conversationImageAssetActionOptions: ConversationImageAssetActionOptions")
     expect(mobileApiDesktopActionsSource).toContain(

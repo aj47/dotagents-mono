@@ -17,6 +17,7 @@ import {
   buildBranchedServerConversation,
   buildNewServerConversation,
   buildServerConversationTitle,
+  getStoredServerConversationMessages,
 } from "@dotagents/shared/conversation-sync"
 import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "@dotagents/shared/conversation-context-builder"
@@ -846,11 +847,7 @@ export class ConversationService {
   }
 
   private getStoredRawMessages(conversation: Conversation): ConversationMessage[] {
-    if (Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0) {
-      return conversation.rawMessages
-    }
-
-    return conversation.messages
+    return getStoredServerConversationMessages(conversation) as ConversationMessage[]
   }
 
   private getRepresentedMessageCount(conversation: Conversation): number {

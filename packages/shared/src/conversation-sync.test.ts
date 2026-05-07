@@ -20,6 +20,7 @@ import {
   fromServerConversationMessage,
   getConversationAction,
   getConversationsAction,
+  getStoredServerConversationMessages,
   parseCreateConversationRequestBody,
   parseBranchConversationRequestBody,
   parseUpdateConversationRequestBody,
@@ -496,6 +497,18 @@ describe('server conversation API helpers', () => {
   });
 
   it('branches raw conversation history when compacted messages carry raw messages', async () => {
+    expect(getStoredServerConversationMessages({
+      id: 'conv-compact',
+      title: 'Compacted Chat',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'summary-1', role: 'assistant' as const, content: 'Summary', timestamp: 2 }],
+      rawMessages: [
+        { id: 'raw-1', role: 'user' as const, content: 'first', timestamp: 1 },
+        { id: 'raw-2', role: 'assistant' as const, content: 'second', timestamp: 2 },
+      ],
+    }).map((message) => message.content)).toEqual(['first', 'second']);
+
     const directBuild = buildBranchedServerConversation({
       id: 'conv-compact',
       title: 'Compacted Chat',
