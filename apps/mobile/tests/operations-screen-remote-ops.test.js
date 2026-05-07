@@ -483,6 +483,7 @@ test('displays desktop message queues from operator API', () => {
   assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatSummary/);
   assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatQueueSummary\(queue\.conversationId, queue\.messageCount, queue\.isPaused\)/);
+  assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatMessageSummary\(message\.status, message\.text\)/);
   assert.match(operationsSource, /messageQueues\.map/);
   assert.match(operationsSource, /clearOperatorMessageQueue\(queue\.conversationId\)/);
   assert.match(operationsSource, /pauseOperatorMessageQueue\(queue\.conversationId\)/);
@@ -502,6 +503,7 @@ test('displays desktop message queues from operator API', () => {
   assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatRemoveMessageConfirmMessage\(message\.id, queue\.conversationId\)/);
   assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatClearQueueConfirmMessage\(queue\.conversationId\)/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Desktop message queues<\/Text>/);
+  assert.doesNotMatch(operationsSource, /\{message\.status\}: \{message\.text\}/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\(`Clear \$\{queue\.conversationId\} desktop message queue`\)/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\(`Retry queued message \$\{message\.id\}`\)/);
 });

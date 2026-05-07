@@ -511,6 +511,7 @@ export type OperatorMessageQueuesPanelMetadata = {
   panelTitle: string
   formatSummary: (queuedMessageCount: number, conversationCount: number) => string
   formatQueueSummary: (conversationId: string, messageCount: number, isPaused: boolean) => string
+  formatMessageSummary: (status: string, text: string) => string
   formatMessageInputAccessibilityLabel: (messageId: string) => string
   formatCancelEditAccessibilityLabel: (messageId: string) => string
   cancelEditButtonLabel: string
@@ -548,6 +549,7 @@ export const OPERATOR_MESSAGE_QUEUES_PANEL_METADATA: OperatorMessageQueuesPanelM
     `${queuedMessageCount} queued messages across ${conversationCount} conversations`,
   formatQueueSummary: (conversationId, messageCount, isPaused) =>
     `${conversationId}: ${messageCount} queued${isPaused ? " (paused)" : ""}`,
+  formatMessageSummary: (status, text) => `${status}: ${text}`,
   formatMessageInputAccessibilityLabel: (messageId) => `Queued message ${messageId}`,
   formatCancelEditAccessibilityLabel: (messageId) => `Cancel editing queued message ${messageId}`,
   cancelEditButtonLabel: "Cancel",

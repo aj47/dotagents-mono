@@ -427,6 +427,7 @@ describe("operator display utils", () => {
       panelTitle: "Desktop message queues",
       formatSummary: expect.any(Function),
       formatQueueSummary: expect.any(Function),
+      formatMessageSummary: expect.any(Function),
       formatMessageInputAccessibilityLabel: expect.any(Function),
       formatCancelEditAccessibilityLabel: expect.any(Function),
       cancelEditButtonLabel: "Cancel",
@@ -464,6 +465,7 @@ describe("operator display utils", () => {
     expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatQueueSummary("conversation-1", 3, true)).toBe(
       "conversation-1: 3 queued (paused)",
     )
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatMessageSummary("pending", "Ship it")).toBe("pending: Ship it")
     expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatMessageInputAccessibilityLabel("message-1")).toBe(
       "Queued message message-1",
     )

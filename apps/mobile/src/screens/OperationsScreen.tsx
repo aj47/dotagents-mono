@@ -1107,7 +1107,7 @@ export default function OperationsScreen({ navigation }: any) {
                                       style={message.status === 'failed' ? styles.warningText : styles.mutedText}
                                       numberOfLines={2}
                                     >
-                                      {message.status}: {message.text}
+                                      {OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatMessageSummary(message.status, message.text)}
                                     </Text>
                                     {message.errorMessage ? (
                                       <Text style={styles.warningText} numberOfLines={1}>{message.errorMessage}</Text>
