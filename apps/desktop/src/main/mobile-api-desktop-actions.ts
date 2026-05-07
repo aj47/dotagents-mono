@@ -99,19 +99,8 @@ import {
   type PushTokenRecord,
 } from "@dotagents/shared/push-notifications"
 import {
-  createAgentProfileAction,
-  deleteAgentProfileAction,
-  exportProfileAction,
-  getAgentProfileAction,
-  getAgentProfilesAction,
-  getCurrentProfileAction,
-  getProfilesAction,
-  importProfileAction,
-  reloadAgentProfilesAction,
-  setCurrentProfileAction,
-  toggleAgentProfileAction,
-  updateAgentProfileAction,
-  verifyExternalAgentCommandAction,
+  createAgentProfileRouteActions,
+  createProfileRouteActions,
   type AgentProfileActionOptions,
   type AgentProfileReloadActionOptions,
   type ExternalAgentCommandVerificationActionOptions,
@@ -425,6 +414,14 @@ const externalAgentCommandVerificationActionOptions: ExternalAgentCommandVerific
   diagnostics: diagnosticsService,
 }
 
+const profileRouteActions = createProfileRouteActions(profileActionOptions)
+
+const agentProfileRouteActions = createAgentProfileRouteActions({
+  agentProfile: agentProfileActionOptions,
+  reload: agentProfileReloadActionOptions,
+  externalCommandVerification: externalAgentCommandVerificationActionOptions,
+})
+
 const knowledgeNoteActionOptions: KnowledgeNoteActionOptions = {
   service: {
     getAllNotes: (filter) => knowledgeNotesService.getAllNotes(filter),
@@ -582,26 +579,6 @@ function clearPushBadge(body: unknown) {
   return clearPushBadgeAction(body, pushActionOptions)
 }
 
-function getProfiles() {
-  return getProfilesAction(profileActionOptions)
-}
-
-function getCurrentProfile() {
-  return getCurrentProfileAction(profileActionOptions)
-}
-
-function setCurrentProfile(body: unknown) {
-  return setCurrentProfileAction(body, profileActionOptions)
-}
-
-function exportProfile(id: string | undefined) {
-  return exportProfileAction(id, profileActionOptions)
-}
-
-function importProfile(body: unknown) {
-  return importProfileAction(body, profileActionOptions)
-}
-
 function getBundleExportableItems() {
   return getBundleExportableItemsAction(bundleActionOptions)
 }
@@ -645,38 +622,6 @@ async function createConversation(body: unknown, onChanged: () => void) {
 
 async function updateConversation(id: string | undefined, body: unknown, onChanged: () => void) {
   return updateConversationAction(id, body, onChanged, conversationActionOptions)
-}
-
-function getAgentProfiles(role: string | undefined) {
-  return getAgentProfilesAction(role, agentProfileActionOptions)
-}
-
-function reloadAgentProfiles() {
-  return reloadAgentProfilesAction(agentProfileReloadActionOptions)
-}
-
-function toggleAgentProfile(id: string | undefined) {
-  return toggleAgentProfileAction(id, agentProfileActionOptions)
-}
-
-function getAgentProfile(id: string | undefined) {
-  return getAgentProfileAction(id, agentProfileActionOptions)
-}
-
-function createAgentProfile(body: unknown) {
-  return createAgentProfileAction(body, agentProfileActionOptions)
-}
-
-function updateAgentProfile(id: string | undefined, body: unknown) {
-  return updateAgentProfileAction(id, body, agentProfileActionOptions)
-}
-
-function deleteAgentProfile(id: string | undefined) {
-  return deleteAgentProfileAction(id, agentProfileActionOptions)
-}
-
-function verifyExternalAgentCommand(body: unknown) {
-  return verifyExternalAgentCommandAction(body, externalAgentCommandVerificationActionOptions)
 }
 
 async function getKnowledgeNotes(query?: unknown) {
@@ -819,11 +764,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   handleChatCompletionRequest,
   getModels,
   getProviderModels,
-  getProfiles,
-  getCurrentProfile,
-  setCurrentProfile,
-  exportProfile,
-  importProfile,
+  ...profileRouteActions,
   getBundleExportableItems,
   exportBundle,
   previewBundleImport,
@@ -864,14 +805,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   deleteKnowledgeNote,
   deleteMultipleKnowledgeNotes,
   deleteAllKnowledgeNotes,
-  getAgentProfiles,
-  verifyExternalAgentCommand,
-  reloadAgentProfiles,
-  toggleAgentProfile,
-  getAgentProfile,
-  createAgentProfile,
-  updateAgentProfile,
-  deleteAgentProfile,
+  ...agentProfileRouteActions,
   getRepeatTasks,
   getRepeatTaskStatuses,
   toggleRepeatTask,

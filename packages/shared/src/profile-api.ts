@@ -173,6 +173,25 @@ export interface ExternalAgentCommandVerificationActionOptions {
   diagnostics: ProfileActionDiagnostics
 }
 
+export interface ProfileRouteActions {
+  getProfiles(): ProfileActionResult
+  getCurrentProfile(): ProfileActionResult
+  setCurrentProfile(body: unknown): ProfileActionResult
+  exportProfile(id: string | undefined): ProfileActionResult
+  importProfile(body: unknown): ProfileActionResult
+}
+
+export interface AgentProfileRouteActions {
+  getAgentProfiles(role: string | undefined): AgentProfileActionResult
+  verifyExternalAgentCommand(body: unknown): Promise<AgentProfileActionResult>
+  reloadAgentProfiles(): AgentProfileActionResult
+  toggleAgentProfile(id: string | undefined): AgentProfileActionResult
+  getAgentProfile(id: string | undefined): AgentProfileActionResult
+  createAgentProfile(body: unknown): AgentProfileActionResult
+  updateAgentProfile(id: string | undefined, body: unknown): AgentProfileActionResult
+  deleteAgentProfile(id: string | undefined): AgentProfileActionResult
+}
+
 function getRequestRecord(body: unknown): Record<string, unknown> {
   return body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {}
 }
@@ -595,6 +614,38 @@ export async function verifyExternalAgentCommandAction(
   } catch (caughtError) {
     options.diagnostics.logError("agent-profile-actions", "Failed to verify external agent command", caughtError)
     return profileActionError(500, getUnknownErrorMessage(caughtError, "Failed to verify external agent command"))
+  }
+}
+
+export function createProfileRouteActions<TProfile extends ProfileLike>(
+  options: ProfileActionOptions<TProfile>,
+): ProfileRouteActions {
+  return {
+    getProfiles: () => getProfilesAction(options),
+    getCurrentProfile: () => getCurrentProfileAction(options),
+    setCurrentProfile: (body) => setCurrentProfileAction(body, options),
+    exportProfile: (id) => exportProfileAction(id, options),
+    importProfile: (body) => importProfileAction(body, options),
+  }
+}
+
+export function createAgentProfileRouteActions<TProfile extends AgentProfileApiLike>(
+  options: {
+    agentProfile: AgentProfileActionOptions<TProfile>
+    reload: AgentProfileReloadActionOptions<TProfile>
+    externalCommandVerification: ExternalAgentCommandVerificationActionOptions
+  },
+): AgentProfileRouteActions {
+  return {
+    getAgentProfiles: (role) => getAgentProfilesAction(role, options.agentProfile),
+    verifyExternalAgentCommand: (body) =>
+      verifyExternalAgentCommandAction(body, options.externalCommandVerification),
+    reloadAgentProfiles: () => reloadAgentProfilesAction(options.reload),
+    toggleAgentProfile: (id) => toggleAgentProfileAction(id, options.agentProfile),
+    getAgentProfile: (id) => getAgentProfileAction(id, options.agentProfile),
+    createAgentProfile: (body) => createAgentProfileAction(body, options.agentProfile),
+    updateAgentProfile: (id, body) => updateAgentProfileAction(id, body, options.agentProfile),
+    deleteAgentProfile: (id) => deleteAgentProfileAction(id, options.agentProfile),
   }
 }
 

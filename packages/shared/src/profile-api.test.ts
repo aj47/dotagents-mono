@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   createAgentProfileAction,
+  createAgentProfileRouteActions,
+  createProfileRouteActions,
   deleteAgentProfileAction,
   buildAgentProfileDeleteResponse,
   buildAgentProfileDetailResponse,
@@ -328,6 +330,35 @@ describe("profile API helpers", () => {
       { level: "info", source: "profile-actions", message: "Switched to profile: Display Name" },
       { level: "info", source: "profile-actions", message: "Imported profile: Imported Profile" },
     ])
+
+    logs.length = 0
+    appliedProfiles.length = 0
+    const routeActions = createProfileRouteActions(options)
+    expect(routeActions.getProfiles()).toEqual({
+      statusCode: 200,
+      body: buildProfilesResponse([profile], profile),
+    })
+    expect(routeActions.getCurrentProfile()).toEqual({
+      statusCode: 200,
+      body: formatProfileForApi(profile, { includeDetails: true }),
+    })
+    expect(routeActions.setCurrentProfile({ profileId: "profile-1" })).toEqual({
+      statusCode: 200,
+      body: buildProfileMutationResponse(profile, { nameSource: "name" }),
+    })
+    expect(routeActions.exportProfile("profile-1")).toEqual({
+      statusCode: 200,
+      body: buildProfileExportResponse("{\"profile\":true}"),
+    })
+    expect(routeActions.importProfile({ profileJson: "{\"id\":\"imported-profile\"}" })).toEqual({
+      statusCode: 200,
+      body: buildProfileMutationResponse(importedProfile),
+    })
+    expect(appliedProfiles).toEqual([profile])
+    expect(logs).toEqual([
+      { level: "info", source: "profile-actions", message: "Switched to profile: Display Name" },
+      { level: "info", source: "profile-actions", message: "Imported profile: Imported Profile" },
+    ])
   })
 
   it("returns shared profile route validation and missing-current errors", () => {
@@ -511,7 +542,7 @@ describe("profile API helpers", () => {
     expect(buildAgentProfileDeleteResponse()).toEqual({ success: true })
   })
 
-  it("runs shared agent profile route actions through service adapters", () => {
+  it("runs shared agent profile route actions through service adapters", async () => {
     const agentProfile = {
       id: "agent-1",
       name: "research-agent",
@@ -605,6 +636,66 @@ describe("profile API helpers", () => {
     expect(deleteAgentProfileAction("agent-1", options)).toEqual({
       statusCode: 200,
       body: buildAgentProfileDeleteResponse(),
+    })
+    expect(updateRequests).toEqual([
+      { enabled: false },
+      { name: "Renamed Agent", displayName: "Renamed Agent" },
+    ])
+    expect(deletedProfileIds).toEqual(["agent-1"])
+    expect(reloadCount).toBe(1)
+
+    updateRequests.length = 0
+    deletedProfileIds.length = 0
+    reloadCount = 0
+    const routeActions = createAgentProfileRouteActions({
+      agentProfile: options,
+      reload: options,
+      externalCommandVerification: {
+        diagnostics,
+        service: {
+          verifyExternalAgentCommand: async (request) => ({
+            ok: true,
+            resolvedCommand: request.command,
+            details: "verified",
+          }),
+        },
+      },
+    })
+    expect(routeActions.getAgentProfiles("delegation-target")).toEqual({
+      statusCode: 200,
+      body: buildAgentProfilesResponse([agentProfile]),
+    })
+    expect(routeActions.getAgentProfile("agent-1")).toEqual({
+      statusCode: 200,
+      body: buildAgentProfileDetailResponse(agentProfile),
+    })
+    expect(routeActions.toggleAgentProfile("agent-1")).toEqual({
+      statusCode: 200,
+      body: buildAgentProfileToggleResponse("agent-1", false),
+    })
+    expect(routeActions.createAgentProfile({ displayName: " New Agent " })).toEqual({
+      statusCode: 201,
+      body: buildAgentProfileDetailResponse(createdProfile),
+    })
+    expect(routeActions.reloadAgentProfiles()).toEqual({
+      statusCode: 200,
+      body: buildAgentProfilesReloadResponse([agentProfile]),
+    })
+    expect(routeActions.updateAgentProfile("agent-1", { displayName: " Renamed Agent " })).toEqual({
+      statusCode: 200,
+      body: buildAgentProfileMutationDetailResponse(updatedProfile),
+    })
+    expect(routeActions.deleteAgentProfile("agent-1")).toEqual({
+      statusCode: 200,
+      body: buildAgentProfileDeleteResponse(),
+    })
+    await expect(routeActions.verifyExternalAgentCommand({ command: "codex-acp" })).resolves.toEqual({
+      statusCode: 200,
+      body: {
+        ok: true,
+        resolvedCommand: "codex-acp",
+        details: "verified",
+      },
     })
     expect(updateRequests).toEqual([
       { enabled: false },
