@@ -2,6 +2,7 @@ import { randomUUID } from "crypto"
 import fs from "fs"
 import os from "os"
 import path from "path"
+import type { ChatGptWebAuthStatus } from "@dotagents/shared/api-types"
 import type { OAuthTokens } from "@dotagents/shared/mcp-utils"
 import {
   extractConversationImageMarkdownReferences,
@@ -96,16 +97,6 @@ interface ResolvedChatGptWebAuth {
 interface CodexCliAuthFile {
   auth_mode?: string
   tokens?: Partial<OAuthTokens> & { id_token?: string }
-}
-
-export interface ChatGptWebAuthStatus {
-  authenticated: boolean
-  accountId?: string
-  email?: string
-  planType?: string
-  connectedAt?: number
-  expiresAt?: number
-  callbackUrl: string
 }
 
 interface ChatGptWebCompletedEventResponse {

@@ -730,6 +730,16 @@ export interface ChatGptWebAuthConfig {
   chatgptWebConnectedAt?: number;
 }
 
+export interface ChatGptWebAuthStatus {
+  authenticated: boolean;
+  accountId?: string;
+  email?: string;
+  planType?: string;
+  connectedAt?: number;
+  expiresAt?: number;
+  callbackUrl: string;
+}
+
 export type OpenAiReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
 export type CodexTextVerbosity = "low" | "medium" | "high";
 

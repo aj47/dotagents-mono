@@ -14,7 +14,7 @@ import {
   useConfigQuery,
   useSaveConfigMutation,
 } from "@renderer/lib/queries"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopChatGptWebClient } from "@renderer/lib/desktop-chatgpt-web-client"
 import {
   downloadLocalSpeechModel,
   getLocalSpeechModelStatus,
@@ -665,7 +665,7 @@ export function Component() {
   const configQuery = useConfigQuery()
   const chatgptWebAuthQuery = useQuery({
     queryKey: ["chatgpt-web-auth-status"],
-    queryFn: () => tipcClient.getChatGptWebAuthStatus(),
+    queryFn: () => desktopChatGptWebClient.getAuthStatus(),
   })
 
   const saveConfigMutation = useSaveConfigMutation()
@@ -745,7 +745,7 @@ export function Component() {
     setChatgptWebAuthBusy(true)
     setChatgptWebAuthError(null)
     try {
-      await tipcClient.loginChatGptWebOAuth()
+      await desktopChatGptWebClient.loginOAuth()
       await Promise.all([
         chatgptWebAuthQuery.refetch(),
         configQuery.refetch(),
@@ -761,7 +761,7 @@ export function Component() {
     setChatgptWebAuthBusy(true)
     setChatgptWebAuthError(null)
     try {
-      await tipcClient.logoutChatGptWebOAuth()
+      await desktopChatGptWebClient.logoutOAuth()
       await Promise.all([
         chatgptWebAuthQuery.refetch(),
         configQuery.refetch(),
