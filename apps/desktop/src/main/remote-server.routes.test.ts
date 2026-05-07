@@ -1855,12 +1855,20 @@ describe("remote-server route registration", () => {
     )
     expect(operatorRouteDesktopActionsSource).not.toContain("downloadLatestOperatorUpdateAssetAction(updaterActionOptions)")
     expect(operatorRouteDesktopActionsSource).not.toContain("openOperatorReleasesPageAction(updaterActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain("service: {")
+    expect(operatorRouteDesktopActionsSource).toContain("service: createOperatorUpdaterActionService({")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "const updaterActionOptions: OperatorUpdaterActionOptions = {\n  service: {\n    getUpdateInfo,",
+    )
     expect(operatorRouteDesktopActionsSource).toContain("checkForUpdatesAndDownload")
     expect(operatorRouteDesktopActionsSource).toContain("downloadLatestReleaseAsset")
     expect(operatorRouteDesktopActionsSource).toContain("revealDownloadedReleaseAsset")
     expect(operatorRouteDesktopActionsSource).toContain("openDownloadedReleaseAsset")
     expect(operatorRouteDesktopActionsSource).toContain("openManualReleasesPage")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorUpdaterActionService")
+    expect(sharedOperatorActionsSource).toContain("getUpdateInfo: () => options.getUpdateInfo()")
+    expect(sharedOperatorActionsSource).toContain(
+      "downloadLatestReleaseAsset: () => options.downloadLatestReleaseAsset()",
+    )
     expect(sharedOperatorActionsSource).toContain("export interface OperatorUpdaterRouteActions")
     expect(sharedOperatorActionsSource).toContain("export function createOperatorUpdaterRouteActions")
     expect(sharedOperatorActionsSource).toContain(

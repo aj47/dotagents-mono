@@ -88,6 +88,7 @@ import {
   createOperatorSystemMetricsCollector,
   createOperatorTunnelActionService,
   createOperatorTunnelRouteActions,
+  createOperatorUpdaterActionService,
   createOperatorUpdaterRouteActions,
   getConfiguredCloudflareTunnelStartPlan,
   getOperatorAuditAction,
@@ -2476,6 +2477,89 @@ describe("operator action API helpers", () => {
       message: "Updated queued message msg-1",
       details: { conversationId: "conv-1", messageId: "msg-1", processingStarted: false },
     })
+  })
+
+  it("creates operator updater action services from updater adapters", async () => {
+    const calls: string[] = []
+    const service = createOperatorUpdaterActionService({
+      getUpdateInfo: () => {
+        calls.push("status")
+        return {
+          currentVersion: "1.0.0",
+          updateAvailable: true,
+          lastCheckedAt: 10,
+        }
+      },
+      checkForUpdatesAndDownload: async () => {
+        calls.push("check")
+        return {
+          updateInfo: {
+            currentVersion: "1.0.0",
+            updateAvailable: false,
+            lastCheckedAt: 11,
+          },
+        }
+      },
+      downloadLatestReleaseAsset: async () => {
+        calls.push("download")
+        return {
+          downloadedAsset: {
+            name: "DotAgents.dmg",
+            filePath: "/tmp/DotAgents.dmg",
+          },
+          updateInfo: {
+            latestRelease: { tagName: "v1.2.3" },
+          },
+        }
+      },
+      revealDownloadedReleaseAsset: async () => {
+        calls.push("reveal")
+        return { name: "DotAgents.dmg", filePath: "/tmp/DotAgents.dmg" }
+      },
+      openDownloadedReleaseAsset: async () => {
+        calls.push("open")
+        return { name: "DotAgents.dmg", filePath: "/tmp/DotAgents.dmg" }
+      },
+      openManualReleasesPage: async () => {
+        calls.push("releases")
+        return { url: "https://example.com/releases" }
+      },
+    })
+
+    expect(service.getUpdateInfo()).toEqual({
+      currentVersion: "1.0.0",
+      updateAvailable: true,
+      lastCheckedAt: 10,
+    })
+    expect(await service.checkForUpdatesAndDownload()).toEqual({
+      updateInfo: {
+        currentVersion: "1.0.0",
+        updateAvailable: false,
+        lastCheckedAt: 11,
+      },
+    })
+    expect(await service.downloadLatestReleaseAsset()).toEqual({
+      downloadedAsset: {
+        name: "DotAgents.dmg",
+        filePath: "/tmp/DotAgents.dmg",
+      },
+      updateInfo: {
+        latestRelease: { tagName: "v1.2.3" },
+      },
+    })
+    expect(await service.revealDownloadedReleaseAsset()).toEqual({
+      name: "DotAgents.dmg",
+      filePath: "/tmp/DotAgents.dmg",
+    })
+    expect(await service.openDownloadedReleaseAsset()).toEqual({
+      name: "DotAgents.dmg",
+      filePath: "/tmp/DotAgents.dmg",
+    })
+    expect(await service.openManualReleasesPage()).toEqual({
+      url: "https://example.com/releases",
+    })
+
+    expect(calls).toEqual(["status", "check", "download", "reveal", "open", "releases"])
   })
 
   it("runs updater route actions through a shared service adapter", async () => {

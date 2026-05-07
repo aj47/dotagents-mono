@@ -250,6 +250,28 @@ export interface OperatorUpdaterActionService {
   openManualReleasesPage(): Promise<{ url: string }>
 }
 
+export interface OperatorUpdaterActionServiceOptions {
+  getUpdateInfo(): OperatorUpdateInfoLike
+  checkForUpdatesAndDownload(): Promise<{ updateInfo: OperatorUpdateInfoLike }>
+  downloadLatestReleaseAsset(): Promise<OperatorUpdaterDownloadLatestResultLike>
+  revealDownloadedReleaseAsset(): Promise<OperatorDownloadedReleaseAssetLike>
+  openDownloadedReleaseAsset(): Promise<OperatorDownloadedReleaseAssetLike>
+  openManualReleasesPage(): Promise<{ url: string }>
+}
+
+export function createOperatorUpdaterActionService(
+  options: OperatorUpdaterActionServiceOptions,
+): OperatorUpdaterActionService {
+  return {
+    getUpdateInfo: () => options.getUpdateInfo(),
+    checkForUpdatesAndDownload: () => options.checkForUpdatesAndDownload(),
+    downloadLatestReleaseAsset: () => options.downloadLatestReleaseAsset(),
+    revealDownloadedReleaseAsset: () => options.revealDownloadedReleaseAsset(),
+    openDownloadedReleaseAsset: () => options.openDownloadedReleaseAsset(),
+    openManualReleasesPage: () => options.openManualReleasesPage(),
+  }
+}
+
 export interface OperatorUpdaterActionOptions {
   service: OperatorUpdaterActionService
 }

@@ -51,6 +51,7 @@ import {
   createOperatorSystemMetricsCollector,
   createOperatorTunnelActionService,
   createOperatorTunnelRouteActions,
+  createOperatorUpdaterActionService,
   createOperatorUpdaterRouteActions,
   type OperatorActionAuditContext,
   type OperatorApiKeyActionOptions,
@@ -341,14 +342,14 @@ const tunnelActionOptions: OperatorTunnelActionOptions = {
 const operatorTunnelRouteActions = createOperatorTunnelRouteActions(tunnelActionOptions)
 
 const updaterActionOptions: OperatorUpdaterActionOptions = {
-  service: {
+  service: createOperatorUpdaterActionService({
     getUpdateInfo,
     checkForUpdatesAndDownload,
     downloadLatestReleaseAsset,
     revealDownloadedReleaseAsset,
     openDownloadedReleaseAsset,
     openManualReleasesPage,
-  },
+  }),
 }
 
 const operatorUpdaterRouteActions = createOperatorUpdaterRouteActions(MANUAL_RELEASES_URL, updaterActionOptions)
