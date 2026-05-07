@@ -235,6 +235,48 @@ export interface ChatCompletionActionLogger {
   log(message?: unknown, ...optionalParams: unknown[]): void;
 }
 
+export interface ChatCompletionActionService {
+  getActiveModelConfig(): ActiveModelConfigLike;
+  validateConversationId?: ChatCompletionRequestValidationOptions['validateConversationId'];
+  recordHistory(transcript: string): void;
+  isPushEnabled(): boolean;
+  sendPushNotification(
+    conversationId: string,
+    conversationTitle: string,
+    content: string,
+  ): Promise<void>;
+}
+
+export interface ChatCompletionActionServiceOptions {
+  getActiveModelConfig(): ActiveModelConfigLike;
+  validateConversationId?: ChatCompletionRequestValidationOptions['validateConversationId'];
+  recordHistory(transcript: string): void;
+  isPushEnabled(): boolean;
+  sendPushNotification(
+    conversationId: string,
+    conversationTitle: string,
+    content: string,
+  ): Promise<void>;
+}
+
+export function createChatCompletionActionService(
+  options: ChatCompletionActionServiceOptions,
+): ChatCompletionActionService {
+  const service: ChatCompletionActionService = {
+    getActiveModelConfig: () => options.getActiveModelConfig(),
+    recordHistory: (transcript) => options.recordHistory(transcript),
+    isPushEnabled: () => options.isPushEnabled(),
+    sendPushNotification: (conversationId, conversationTitle, content) =>
+      options.sendPushNotification(conversationId, conversationTitle, content),
+  };
+
+  if (options.validateConversationId) {
+    service.validateConversationId = (conversationId) => options.validateConversationId?.(conversationId);
+  }
+
+  return service;
+}
+
 export type ChatTranscriptHistoryItem = {
   id: string;
   createdAt: number;
@@ -257,15 +299,7 @@ export interface ChatTranscriptHistoryRecorderOptions {
 
 export interface ChatCompletionActionOptions {
   diagnostics: ChatCompletionActionDiagnostics;
-  getActiveModelConfig(): ActiveModelConfigLike;
-  validateConversationId?: ChatCompletionRequestValidationOptions['validateConversationId'];
-  recordHistory(transcript: string): void;
-  isPushEnabled(): boolean;
-  sendPushNotification(
-    conversationId: string,
-    conversationTitle: string,
-    content: string,
-  ): Promise<void>;
+  service: ChatCompletionActionService;
   logger?: ChatCompletionActionLogger;
 }
 
@@ -829,7 +863,7 @@ function sendChatCompletionPushNotification(
 ): void {
   const notificationPlan = buildChatCompletionPushNotificationPlan({
     sendPushNotification: request.sendPushNotification,
-    pushEnabled: request.sendPushNotification ? options.isPushEnabled() : false,
+    pushEnabled: request.sendPushNotification ? options.service.isPushEnabled() : false,
     prompt: request.prompt,
     conversationId,
     content,
@@ -838,7 +872,7 @@ function sendChatCompletionPushNotification(
     return;
   }
 
-  void options.sendPushNotification(
+  void options.service.sendPushNotification(
     notificationPlan.conversationId,
     notificationPlan.conversationTitle,
     notificationPlan.content,
@@ -856,7 +890,7 @@ export async function handleChatCompletionRequestAction<Reply extends ChatComple
 ): Promise<unknown> {
   try {
     const validatedRequest = validateChatCompletionRequestBody(body, {
-      validateConversationId: options.validateConversationId,
+      validateConversationId: options.service.validateConversationId,
     });
     if (validatedRequest.ok === false) {
       return reply.code(validatedRequest.statusCode).send(validatedRequest.body);
@@ -888,9 +922,9 @@ export async function handleChatCompletionRequestAction<Reply extends ChatComple
 
       try {
         const result = await runAgent({ prompt, conversationId, profileId, onProgress });
-        options.recordHistory(result.content);
+        options.service.recordHistory(result.content);
 
-        const model = resolveActiveModelId(options.getActiveModelConfig());
+        const model = resolveActiveModelId(options.service.getActiveModelConfig());
         writeSSE(buildChatCompletionDoneSsePayload({
           content: result.content,
           conversationId: result.conversationId,
@@ -909,9 +943,9 @@ export async function handleChatCompletionRequestAction<Reply extends ChatComple
     }
 
     const result = await runAgent({ prompt, conversationId, profileId });
-    options.recordHistory(result.content);
+    options.service.recordHistory(result.content);
 
-    const model = resolveActiveModelId(options.getActiveModelConfig());
+    const model = resolveActiveModelId(options.service.getActiveModelConfig());
     const response = buildDotAgentsChatCompletionResponse({
       content: result.content,
       model,

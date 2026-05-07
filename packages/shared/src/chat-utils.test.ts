@@ -17,6 +17,7 @@ import {
   buildChatCompletionPushNotificationPlan,
   buildChatCompletionRequestBody,
   buildChatCompletionSseHeaders,
+  createChatCompletionActionService,
   buildChatTranscriptHistoryItem,
   createChatTranscriptHistoryRecorder,
   buildDotAgentsChatCompletionResponse,
@@ -811,12 +812,7 @@ describe('handleChatCompletionRequestAction', () => {
   }
 
   function createActionOptions() {
-    return {
-      diagnostics: {
-        logInfo: vi.fn(),
-        logWarning: vi.fn(),
-        logError: vi.fn(),
-      },
+    const serviceAdapters = {
       getActiveModelConfig: () => ({
         agentProviderId: 'openai',
         agentOpenaiModel: 'gpt-test',
@@ -825,11 +821,48 @@ describe('handleChatCompletionRequestAction', () => {
       recordHistory: vi.fn(),
       isPushEnabled: vi.fn(() => true),
       sendPushNotification: vi.fn(() => Promise.resolve()),
+    }
+
+    return {
+      diagnostics: {
+        logInfo: vi.fn(),
+        logWarning: vi.fn(),
+        logError: vi.fn(),
+      },
+      service: createChatCompletionActionService(serviceAdapters),
+      serviceAdapters,
       logger: {
         log: vi.fn(),
       },
     }
   }
+
+  it('creates chat completion action services from platform adapters', async () => {
+    const sendPushNotification = vi.fn(() => Promise.resolve())
+    const recordHistory = vi.fn()
+    const validateConversationId = vi.fn(() => null)
+    const service = createChatCompletionActionService({
+      getActiveModelConfig: () => ({
+        agentProviderId: 'openai',
+        agentOpenaiModel: 'gpt-test',
+      }),
+      validateConversationId,
+      recordHistory,
+      isPushEnabled: () => true,
+      sendPushNotification,
+    })
+
+    expect(service.getActiveModelConfig()).toEqual({
+      agentProviderId: 'openai',
+      agentOpenaiModel: 'gpt-test',
+    })
+    expect(service.validateConversationId?.('conv-1')).toBeNull()
+    service.recordHistory('Reply')
+    expect(recordHistory).toHaveBeenCalledWith('Reply')
+    expect(service.isPushEnabled()).toBe(true)
+    await service.sendPushNotification('conv-1', 'Title', 'Body')
+    expect(sendPushNotification).toHaveBeenCalledWith('conv-1', 'Title', 'Body')
+  })
 
   it('runs non-streaming chat completions through shared response and push handling', async () => {
     const reply = createReply()
@@ -858,8 +891,8 @@ describe('handleChatCompletionRequestAction', () => {
       conversationId: 'conv-1',
       profileId: undefined,
     })
-    expect(actionOptions.recordHistory).toHaveBeenCalledWith('Reply to Hello mobile')
-    expect(actionOptions.sendPushNotification).toHaveBeenCalledWith(
+    expect(actionOptions.serviceAdapters.recordHistory).toHaveBeenCalledWith('Reply to Hello mobile')
+    expect(actionOptions.serviceAdapters.sendPushNotification).toHaveBeenCalledWith(
       'conv-1',
       'Hello mobile',
       'Reply to Hello mobile',
@@ -913,7 +946,7 @@ describe('handleChatCompletionRequestAction', () => {
     const routeActionBundle = createChatRouteActionBundle({
       models: {
         service: createModelActionService({
-          getConfig: actionOptions.getActiveModelConfig,
+          getConfig: actionOptions.service.getActiveModelConfig,
           fetchAvailableModels: vi.fn(async () => []),
         }),
         diagnostics: {

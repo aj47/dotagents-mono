@@ -24,6 +24,7 @@ import {
   type KnowledgeNoteActionOptions,
 } from "@dotagents/shared/knowledge-note-form"
 import {
+  createChatCompletionActionService,
   createChatTranscriptHistoryRecorder,
   createChatRouteActionBundle,
   createModelActionService,
@@ -138,11 +139,13 @@ const recordHistory = createChatTranscriptHistoryRecorder({
 
 const chatCompletionActionOptions: ChatCompletionActionOptions = {
   diagnostics: diagnosticsService,
-  getActiveModelConfig: () => configStore.get(),
-  validateConversationId: getConversationIdValidationError,
-  recordHistory,
-  isPushEnabled,
-  sendPushNotification: sendMessageNotification,
+  service: createChatCompletionActionService({
+    getActiveModelConfig: () => configStore.get(),
+    validateConversationId: getConversationIdValidationError,
+    recordHistory,
+    isPushEnabled,
+    sendPushNotification: sendMessageNotification,
+  }),
   logger: console,
 }
 
