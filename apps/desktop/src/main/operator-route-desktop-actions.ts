@@ -23,22 +23,38 @@ import {
   type ModelPresetActionOptions,
 } from "@dotagents/shared/model-presets"
 import {
-  clearOperatorMcpServerLogs,
-  getOperatorMcpServerLogs,
-  getOperatorMcpStatus,
-  getOperatorMcpTools,
-  restartOperatorMcpServer,
-  setOperatorMcpToolEnabled,
-  startOperatorMcpServer,
-  stopOperatorMcpServer,
-  testOperatorMcpServer,
-} from "./operator-mcp-actions"
+  clearOperatorMcpServerLogsAction,
+  getOperatorMcpServerLogsAction,
+  getOperatorMcpStatusAction,
+  getOperatorMcpToolsAction,
+  restartOperatorMcpServerAction,
+  setOperatorMcpToolEnabledAction,
+  startOperatorMcpServerAction,
+  stopOperatorMcpServerAction,
+  testOperatorMcpServerAction,
+  type OperatorMcpLifecycleActionOptions,
+  type OperatorMcpMutationActionOptions,
+  type OperatorMcpReadActionOptions,
+  type OperatorMcpTestActionOptions,
+} from "@dotagents/shared/mcp-api"
+import type { MCPServerConfig } from "@dotagents/shared/mcp-utils"
 import {
   getOperatorAudit,
   recordOperatorAuditEvent,
   setOperatorAuditContext,
 } from "./operator-audit-actions"
 import {
+  buildOperatorActionAuditContext,
+  buildOperatorMcpClearLogsAuditContext,
+  buildOperatorMcpClearLogsFailureAuditContext,
+  buildOperatorMcpRestartAuditContext,
+  buildOperatorMcpRestartFailureAuditContext,
+  buildOperatorMcpStartAuditContext,
+  buildOperatorMcpStartFailureAuditContext,
+  buildOperatorMcpStopAuditContext,
+  buildOperatorMcpStopFailureAuditContext,
+  buildOperatorMcpTestAuditContext,
+  buildOperatorMcpTestFailureAuditContext,
   checkOperatorUpdaterAction,
   clearOperatorMessageQueueAction,
   clearOperatorDiscordLogsAction,
@@ -75,6 +91,7 @@ import {
   stopOperatorAgentSessionAction,
   stopOperatorTunnelAction,
   updateOperatorQueuedMessageAction,
+  type OperatorActionAuditContext,
   type OperatorAgentActionOptions,
   type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
@@ -212,6 +229,72 @@ const localSpeechModelActionOptions: LocalSpeechModelActionOptions = {
   },
 }
 
+const operatorMcpReadActionOptions: OperatorMcpReadActionOptions = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+    getErrorMessage,
+  },
+  service: {
+    getServerStatus: () => mcpService.getServerStatus(),
+    getServerLogs: (serverName) => mcpService.getServerLogs(serverName),
+    getDetailedToolList: () => mcpService.getDetailedToolList(),
+  },
+}
+
+const operatorMcpMutationActionOptions: OperatorMcpMutationActionOptions<OperatorActionAuditContext> = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+    getErrorMessage,
+  },
+  service: {
+    getServerStatus: () => mcpService.getServerStatus(),
+    clearServerLogs: (serverName) => mcpService.clearServerLogs(serverName),
+    setToolEnabled: (toolName, enabled) => mcpService.setToolEnabled(toolName, enabled),
+  },
+  audit: {
+    buildClearLogsAuditContext: (serverName) => buildOperatorMcpClearLogsAuditContext(serverName),
+    buildClearLogsFailureAuditContext: (failureReason) => buildOperatorMcpClearLogsFailureAuditContext(failureReason),
+    buildToolToggleAuditContext: (response) => buildOperatorActionAuditContext(response),
+  },
+}
+
+const operatorMcpTestActionOptions: OperatorMcpTestActionOptions<MCPServerConfig, OperatorActionAuditContext> = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+    getErrorMessage,
+  },
+  service: {
+    getServerConfig: (serverName) => configStore.get().mcpConfig?.mcpServers?.[serverName] as MCPServerConfig | undefined,
+    testServerConnection: (serverName, serverConfig) => mcpService.testServerConnection(serverName, serverConfig),
+  },
+  audit: {
+    buildTestAuditContext: (response) => buildOperatorMcpTestAuditContext(response),
+    buildTestFailureAuditContext: (failureReason) => buildOperatorMcpTestFailureAuditContext(failureReason),
+  },
+}
+
+const operatorMcpLifecycleActionOptions: OperatorMcpLifecycleActionOptions<OperatorActionAuditContext> = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+    logInfo: (...args) => diagnosticsService.logInfo(...args),
+    getErrorMessage,
+  },
+  service: {
+    getServerStatus: () => mcpService.getServerStatus(),
+    setServerRuntimeEnabled: (serverName, enabled) => mcpService.setServerRuntimeEnabled(serverName, enabled),
+    restartServer: (serverName) => mcpService.restartServer(serverName),
+    stopServer: (serverName) => mcpService.stopServer(serverName),
+  },
+  audit: {
+    buildStartAuditContext: (serverName) => buildOperatorMcpStartAuditContext(serverName),
+    buildStartFailureAuditContext: (failureReason) => buildOperatorMcpStartFailureAuditContext(failureReason),
+    buildStopAuditContext: (serverName) => buildOperatorMcpStopAuditContext(serverName),
+    buildStopFailureAuditContext: (failureReason) => buildOperatorMcpStopFailureAuditContext(failureReason),
+    buildRestartAuditContext: (serverName) => buildOperatorMcpRestartAuditContext(serverName),
+    buildRestartFailureAuditContext: (failureReason) => buildOperatorMcpRestartFailureAuditContext(failureReason),
+  },
+}
+
 const integrationActionOptions: OperatorIntegrationActionOptions = {
   diagnostics: {
     logError: (...args) => diagnosticsService.logError(...args),
@@ -310,6 +393,48 @@ async function getOperatorLocalSpeechModelStatus(providerId: unknown) {
 
 async function downloadOperatorLocalSpeechModel(providerId: unknown) {
   return downloadOperatorLocalSpeechModelAction(providerId, localSpeechModelActionOptions)
+}
+
+function getOperatorMcpStatus() {
+  return getOperatorMcpStatusAction(operatorMcpReadActionOptions)
+}
+
+function getOperatorMcpServerLogs(
+  serverName: string | undefined,
+  count: string | number | undefined,
+) {
+  return getOperatorMcpServerLogsAction(serverName, count, operatorMcpReadActionOptions)
+}
+
+function clearOperatorMcpServerLogs(serverName: string | undefined) {
+  return clearOperatorMcpServerLogsAction(serverName, operatorMcpMutationActionOptions)
+}
+
+async function testOperatorMcpServer(serverName: string | undefined) {
+  return testOperatorMcpServerAction(serverName, operatorMcpTestActionOptions)
+}
+
+function getOperatorMcpTools(server: unknown) {
+  return getOperatorMcpToolsAction(server, operatorMcpReadActionOptions)
+}
+
+function setOperatorMcpToolEnabled(
+  toolName: string | undefined,
+  body: unknown,
+) {
+  return setOperatorMcpToolEnabledAction(toolName, body, operatorMcpMutationActionOptions)
+}
+
+async function startOperatorMcpServer(body: unknown) {
+  return startOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)
+}
+
+async function stopOperatorMcpServer(body: unknown) {
+  return stopOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)
+}
+
+async function restartOperatorMcpServer(body: unknown) {
+  return restartOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)
 }
 
 async function getOperatorIntegrations() {

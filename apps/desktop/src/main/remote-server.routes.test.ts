@@ -156,12 +156,6 @@ function getChatCompletionActionsSource(): string {
   return readFileSync(chatCompletionActionsPath, "utf8")
 }
 
-function getOperatorMcpActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const operatorMcpActionsPath = path.join(testDir, "operator-mcp-actions.ts")
-  return readFileSync(operatorMcpActionsPath, "utf8")
-}
-
 function getOperatorRoutesSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const operatorRoutesPath = path.join(testDir, "operator-routes.ts")
@@ -630,7 +624,6 @@ describe("remote-server route registration", () => {
     const operatorActionSources = [
       getOperatorApiKeyActionsSource(),
       getOperatorAuditActionsSource(),
-      getOperatorMcpActionsSource(),
     ]
 
     for (const source of operatorActionSources) {
@@ -1507,7 +1500,6 @@ describe("remote-server route registration", () => {
     expectRegisteredApiRoute(source, "GET", "operatorLogs")
     expect(operatorRoutesSource).toContain("query.level")
     // MCP operator endpoints
-    const operatorMcpActionsSource = getOperatorMcpActionsSource()
     const sharedMcpApiSource = getSharedMcpApiSource()
     expectRegisteredApiRoute(source, "GET", "operatorMcp")
     expectRegisteredApiRoute(source, "POST", "operatorMcpServerTest")
@@ -1527,24 +1519,24 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.startOperatorMcpServer(req.body)")
     expect(operatorRoutesSource).toContain("actions.stopOperatorMcpServer(req.body)")
     expect(operatorRoutesSource).toContain("actions.restartOperatorMcpServer(req.body)")
-    expect(operatorMcpActionsSource).toContain("getOperatorMcpStatusAction(operatorMcpReadActionOptions)")
-    expect(operatorMcpActionsSource).toContain("getOperatorMcpServerLogsAction(serverName, count, operatorMcpReadActionOptions)")
-    expect(operatorMcpActionsSource).toContain("getOperatorMcpToolsAction(server, operatorMcpReadActionOptions)")
-    expect(operatorMcpActionsSource).toContain("clearOperatorMcpServerLogsAction(serverName, operatorMcpMutationActionOptions)")
-    expect(operatorMcpActionsSource).toContain("setOperatorMcpToolEnabledAction(toolName, body, operatorMcpMutationActionOptions)")
-    expect(operatorMcpActionsSource).toContain("testOperatorMcpServerAction(serverName, operatorMcpTestActionOptions)")
-    expect(operatorMcpActionsSource).toContain("startOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)")
-    expect(operatorMcpActionsSource).toContain("stopOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)")
-    expect(operatorMcpActionsSource).toContain("restartOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)")
-    expect(operatorMcpActionsSource).toContain("getServerLogs: (serverName) => mcpService.getServerLogs(serverName)")
-    expect(operatorMcpActionsSource).toContain("getDetailedToolList: () => mcpService.getDetailedToolList()")
-    expect(operatorMcpActionsSource).toContain("clearServerLogs: (serverName) => mcpService.clearServerLogs(serverName)")
-    expect(operatorMcpActionsSource).toContain("setToolEnabled: (toolName, enabled) => mcpService.setToolEnabled(toolName, enabled)")
-    expect(operatorMcpActionsSource).toContain("getServerConfig: (serverName) => configStore.get().mcpConfig?.mcpServers?.[serverName]")
-    expect(operatorMcpActionsSource).toContain("testServerConnection: (serverName, serverConfig) => mcpService.testServerConnection(serverName, serverConfig)")
-    expect(operatorMcpActionsSource).toContain("setServerRuntimeEnabled: (serverName, enabled) => mcpService.setServerRuntimeEnabled(serverName, enabled)")
-    expect(operatorMcpActionsSource).toContain("restartServer: (serverName) => mcpService.restartServer(serverName)")
-    expect(operatorMcpActionsSource).toContain("stopServer: (serverName) => mcpService.stopServer(serverName)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorMcpStatusAction(operatorMcpReadActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorMcpServerLogsAction(serverName, count, operatorMcpReadActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorMcpToolsAction(server, operatorMcpReadActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("clearOperatorMcpServerLogsAction(serverName, operatorMcpMutationActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("setOperatorMcpToolEnabledAction(toolName, body, operatorMcpMutationActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("testOperatorMcpServerAction(serverName, operatorMcpTestActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("startOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("stopOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("restartOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getServerLogs: (serverName) => mcpService.getServerLogs(serverName)")
+    expect(operatorRouteDesktopActionsSource).toContain("getDetailedToolList: () => mcpService.getDetailedToolList()")
+    expect(operatorRouteDesktopActionsSource).toContain("clearServerLogs: (serverName) => mcpService.clearServerLogs(serverName)")
+    expect(operatorRouteDesktopActionsSource).toContain("setToolEnabled: (toolName, enabled) => mcpService.setToolEnabled(toolName, enabled)")
+    expect(operatorRouteDesktopActionsSource).toContain("getServerConfig: (serverName) => configStore.get().mcpConfig?.mcpServers?.[serverName]")
+    expect(operatorRouteDesktopActionsSource).toContain("testServerConnection: (serverName, serverConfig) => mcpService.testServerConnection(serverName, serverConfig)")
+    expect(operatorRouteDesktopActionsSource).toContain("setServerRuntimeEnabled: (serverName, enabled) => mcpService.setServerRuntimeEnabled(serverName, enabled)")
+    expect(operatorRouteDesktopActionsSource).toContain("restartServer: (serverName) => mcpService.restartServer(serverName)")
+    expect(operatorRouteDesktopActionsSource).toContain("stopServer: (serverName) => mcpService.stopServer(serverName)")
     expect(sharedMcpApiSource).toContain("export function getOperatorMcpStatusAction(")
     expect(sharedMcpApiSource).toContain("export function getOperatorMcpServerLogsAction(")
     expect(sharedMcpApiSource).toContain("export function getOperatorMcpToolsAction(")
