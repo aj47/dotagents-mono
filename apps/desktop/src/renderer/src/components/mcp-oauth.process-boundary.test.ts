@@ -9,14 +9,21 @@ function readComponent(relativePath: string): string {
 }
 
 describe("MCP OAuth renderer process boundary", () => {
-  it("uses the renderer TIPC client instead of the legacy electronAPI bridge", () => {
+  it("centralizes OAuth IPC behind the desktop MCP OAuth client", () => {
+    const clientSource = readComponent("../lib/desktop-mcp-oauth-client.ts")
     const managerSource = readComponent("mcp-config-manager.tsx")
     const oauthConfigSource = readComponent("OAuthServerConfig.tsx")
     const combinedSource = `${managerSource}\n${oauthConfigSource}`
 
-    expect(combinedSource).toContain("tipcClient.initiateOAuthFlow(")
-    expect(combinedSource).toContain("tipcClient.revokeOAuthTokens(")
-    expect(combinedSource).toContain("tipcClient.getOAuthStatus(")
+    expect(clientSource).toContain("tipcClient.initiateOAuthFlow(serverName)")
+    expect(clientSource).toContain("tipcClient.revokeOAuthTokens(serverName)")
+    expect(clientSource).toContain("tipcClient.getOAuthStatus(serverName)")
+    expect(combinedSource).toContain("desktopMcpOAuthClient.initiateFlow(")
+    expect(combinedSource).toContain("desktopMcpOAuthClient.revokeTokens(")
+    expect(combinedSource).toContain("desktopMcpOAuthClient.getStatus(")
+    expect(combinedSource).not.toContain("tipcClient.initiateOAuthFlow(")
+    expect(combinedSource).not.toContain("tipcClient.revokeOAuthTokens(")
+    expect(combinedSource).not.toContain("tipcClient.getOAuthStatus(")
     expect(combinedSource).toContain("tipcClient.testMcpServerConnection({")
     expect(combinedSource).not.toContain("window.electronAPI")
   })

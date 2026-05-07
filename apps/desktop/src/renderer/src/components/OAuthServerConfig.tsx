@@ -8,7 +8,10 @@ import { Switch } from "@renderer/components/ui/switch"
 import { Loader2, CheckCircle, XCircle, AlertCircle, ExternalLink, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import type { OAuthConfig } from "@dotagents/shared/mcp-utils"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import {
+  desktopMcpOAuthClient,
+  type DesktopMcpOAuthStatus,
+} from "@renderer/lib/desktop-mcp-oauth-client"
 
 interface OAuthServerConfigProps {
   serverName: string
@@ -18,13 +21,6 @@ interface OAuthServerConfigProps {
   onTestConnection?: () => Promise<void>
   onStartAuth?: () => Promise<void>
   onRevokeAuth?: () => Promise<void>
-}
-
-interface OAuthStatus {
-  configured: boolean
-  authenticated: boolean
-  tokenExpiry?: number
-  error?: string
 }
 
 export function OAuthServerConfig({
@@ -37,7 +33,7 @@ export function OAuthServerConfig({
   onRevokeAuth,
 }: OAuthServerConfigProps) {
   const [config, setConfig] = useState<OAuthConfig>(oauthConfig)
-  const [status, setStatus] = useState<OAuthStatus>({ configured: false, authenticated: false })
+  const [status, setStatus] = useState<DesktopMcpOAuthStatus>({ configured: false, authenticated: false })
   const [isLoading, setIsLoading] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [error, setError] = useState<string>("")
@@ -49,7 +45,7 @@ export function OAuthServerConfig({
 
   const loadOAuthStatus = async () => {
     try {
-      const result = await tipcClient.getOAuthStatus(serverName)
+      const result = await desktopMcpOAuthClient.getStatus(serverName)
       setStatus(result)
       if (result.error) {
         setError(result.error)

@@ -78,6 +78,7 @@ import {
   upsertMcpServerConfig,
 } from "@dotagents/shared/mcp-utils"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopMcpOAuthClient } from "@renderer/lib/desktop-mcp-oauth-client"
 import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
 import { OAUTH_MCP_EXAMPLES } from "@dotagents/shared/oauth-examples"
@@ -456,7 +457,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                     return
                   }
                   try {
-                    await tipcClient.initiateOAuthFlow(name)
+                    await desktopMcpOAuthClient.initiateFlow(name)
                     toast.success("OAuth authentication started. Please complete the flow in your browser.")
                   } catch (error) {
                     toast.error(`Failed to start OAuth flow: ${error instanceof Error ? error.message : String(error)}`)
@@ -465,7 +466,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                 onRevokeAuth={async () => {
                   if (!name) return
                   try {
-                    await tipcClient.revokeOAuthTokens(name)
+                    await desktopMcpOAuthClient.revokeTokens(name)
                     toast.success("OAuth tokens revoked successfully")
                   } catch (error) {
                     toast.error(`Failed to revoke OAuth tokens: ${error instanceof Error ? error.message : String(error)}`)
@@ -1016,14 +1017,14 @@ export function MCPConfigManager({
   const refreshOAuthStatus = async (serverName?: string) => {
     try {
       if (serverName) {
-        const status = await tipcClient.getOAuthStatus(serverName)
+        const status = await desktopMcpOAuthClient.getStatus(serverName)
         setOAuthStatus(prev => ({ ...prev, [serverName]: status }))
       } else {
         // Load status for all servers
         const newStatus: Record<string, any> = {}
         for (const [name, config] of Object.entries(servers)) {
           if (config.transport === "streamableHttp" && config.url) {
-            const status = await tipcClient.getOAuthStatus(name)
+            const status = await desktopMcpOAuthClient.getStatus(name)
             newStatus[name] = status
           }
         }
@@ -1526,7 +1527,7 @@ export function MCPConfigManager({
 
   const handleRevokeOAuth = async (serverName: string) => {
     try {
-      await tipcClient.revokeOAuthTokens(serverName)
+      await desktopMcpOAuthClient.revokeTokens(serverName)
       toast.success("OAuth authentication revoked")
       refreshOAuthStatus(serverName)
     } catch (error) {
@@ -1536,10 +1537,10 @@ export function MCPConfigManager({
 
   const handleInitiateOAuth = async (serverName: string) => {
     try {
-      await tipcClient.initiateOAuthFlow(serverName)
+      await desktopMcpOAuthClient.initiateFlow(serverName)
       toast.success("OAuth authentication started")
       const checkCompletion = setInterval(async () => {
-        const statusResult = await tipcClient.getOAuthStatus(serverName)
+        const statusResult = await desktopMcpOAuthClient.getStatus(serverName)
         if (statusResult.authenticated) {
           clearInterval(checkCompletion)
           refreshOAuthStatus(serverName)
