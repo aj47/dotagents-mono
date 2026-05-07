@@ -14,5 +14,8 @@ describe("settings general observability defaults", () => {
 
     expect(source).toContain("DEFAULT_LOCAL_TRACE_LOGGING_ENABLED")
     expect(source).toContain("DEFAULT_LANGFUSE_ENABLED")
+    expect(source).toContain("buildLangfuseDrafts")
+    expect(source).toContain("type LangfuseDraftKey")
+    expect(source).not.toContain("function getLangfuseDrafts")
   })
 })

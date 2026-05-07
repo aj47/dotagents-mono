@@ -27,8 +27,10 @@ import {
 import { DEFAULT_DISCORD_ENABLED } from "@dotagents/shared/discord-config"
 import { DEFAULT_WHATSAPP_ENABLED } from "@dotagents/shared/whatsapp-config"
 import {
+  buildLangfuseDrafts,
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
+  type LangfuseDraftKey,
 } from "@dotagents/shared/observability-config"
 import {
   DEFAULT_STT_PROVIDER_ID,
@@ -94,16 +96,6 @@ import { hasResolvedAudioInputDeviceLabel } from "@renderer/hooks/audio-input-de
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 
-type LangfuseDraftKey = "langfusePublicKey" | "langfuseSecretKey" | "langfuseBaseUrl"
-
-function getLangfuseDrafts(config: Config | undefined) {
-  return {
-    langfusePublicKey: config?.langfusePublicKey ?? "",
-    langfuseSecretKey: config?.langfuseSecretKey ?? "",
-    langfuseBaseUrl: config?.langfuseBaseUrl ?? "",
-  }
-}
-
 export function Component() {
   const configQuery = useConfigQuery()
   const navigate = useNavigate()
@@ -111,7 +103,7 @@ export function Component() {
 
   const saveConfigMutation = useSaveConfigMutation()
   const cfgRef = useRef<Config | undefined>(cfg)
-  const [langfuseDrafts, setLangfuseDrafts] = useState(() => getLangfuseDrafts(cfg))
+  const [langfuseDrafts, setLangfuseDrafts] = useState(() => buildLangfuseDrafts(cfg))
   const langfuseSaveTimeoutsRef = useRef<Partial<Record<LangfuseDraftKey, ReturnType<typeof setTimeout>>>>({})
   const [groqSttPromptDraft, setGroqSttPromptDraft] = useState(() => cfg?.groqSttPrompt ?? "")
   const groqSttPromptSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -251,7 +243,7 @@ export function Component() {
   }, [cfg])
 
   useEffect(() => {
-    setLangfuseDrafts(getLangfuseDrafts(cfg))
+    setLangfuseDrafts(buildLangfuseDrafts(cfg))
   }, [cfg?.langfusePublicKey, cfg?.langfuseSecretKey, cfg?.langfuseBaseUrl])
 
   useEffect(() => {

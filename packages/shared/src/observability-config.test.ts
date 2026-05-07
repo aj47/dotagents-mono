@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildLangfuseDrafts,
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
 } from './observability-config';
@@ -41,5 +42,22 @@ describe('observability config contracts', () => {
     assertType<ObservabilityConfig>(observabilityConfig);
     expect(observabilityConfig.langfuseBaseUrl).toBe('https://langfuse.example');
     expect(observabilityConfig.localTraceLogPath).toBe('/tmp/dotagents-traces');
+  });
+
+  it('builds Langfuse string drafts from optional config', () => {
+    expect(buildLangfuseDrafts(undefined)).toEqual({
+      langfusePublicKey: '',
+      langfuseSecretKey: '',
+      langfuseBaseUrl: '',
+    });
+    expect(buildLangfuseDrafts({
+      langfusePublicKey: 'pk-lf',
+      langfuseSecretKey: 'sk-lf',
+      langfuseBaseUrl: 'https://langfuse.example',
+    })).toEqual({
+      langfusePublicKey: 'pk-lf',
+      langfuseSecretKey: 'sk-lf',
+      langfuseBaseUrl: 'https://langfuse.example',
+    });
   });
 });
