@@ -8,7 +8,7 @@ import { Input } from "@renderer/components/ui/input"
 import { Label } from "@renderer/components/ui/label"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Download, AlertTriangle } from "lucide-react"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopBundleClient } from "@renderer/lib/desktop-bundle-client"
 import { toast } from "sonner"
 import {
   BundleDetailedSelectionCard,
@@ -32,7 +32,7 @@ export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogPro
   const [saving, setSaving] = useState(false)
   const exportableItemsQuery = useQuery({
     queryKey: ["bundle-exportable-items"],
-    queryFn: () => tipcClient.getBundleExportableItems(),
+    queryFn: () => desktopBundleClient.getExportableItems(),
     enabled: open,
   })
 
@@ -56,7 +56,7 @@ export function BundleExportDialog({ open, onOpenChange }: BundleExportDialogPro
   const saveBundle = async () => {
     setSaving(true)
     try {
-      const result = await tipcClient.exportBundle({
+      const result = await desktopBundleClient.exportBundle({
         name: form.name.trim() || undefined,
         description: form.description.trim() || undefined,
         components,

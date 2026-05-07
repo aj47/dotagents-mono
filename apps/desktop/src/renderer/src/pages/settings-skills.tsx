@@ -20,6 +20,7 @@ import {
 } from "@renderer/components/ui/dropdown-menu"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { desktopBundleClient } from "@renderer/lib/desktop-bundle-client"
 import { desktopSkillsClient } from "@renderer/lib/desktop-skills-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
@@ -264,7 +265,7 @@ export function Component() {
 
   const exportBundleMutation = useMutation({
     mutationFn: async ({ skillIds, name }: { skillIds: string[]; name: string }) => {
-      return await tipcClient.exportBundle({
+      return await desktopBundleClient.exportBundle({
         name,
         skillIds,
         components: {

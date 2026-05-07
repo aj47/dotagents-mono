@@ -9,7 +9,7 @@ import { Label } from "@renderer/components/ui/label"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Badge } from "@renderer/components/ui/badge"
 import { Loader2, Copy, Download, Globe, User, Tag, Info, AlertTriangle, FileJson } from "lucide-react"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopBundleClient } from "@renderer/lib/desktop-bundle-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import {
   buildHubBundlePublicMetadata,
@@ -44,7 +44,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
   const [preview, setPreview] = useState<PublishPreviewState | null>(null)
   const exportableItemsQuery = useQuery({
     queryKey: ["bundle-exportable-items"],
-    queryFn: () => tipcClient.getBundleExportableItems(),
+    queryFn: () => desktopBundleClient.getExportableItems(),
     enabled: open,
   })
 
@@ -70,7 +70,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
   const generate = async () => {
     setLoading(true)
     try {
-      const r = await tipcClient.generatePublishPayload({
+      const r = await desktopBundleClient.generatePublishPayload({
         name: form.name.trim(),
         catalogId: form.catalogId.trim() || undefined,
         artifactUrl: form.artifactUrl.trim() || undefined,
@@ -95,7 +95,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
   }
   const saveFile = async () => {
     try {
-      const r = await tipcClient.exportBundle({
+      const r = await desktopBundleClient.exportBundle({
         name: form.name.trim(),
         description: form.description.trim() || undefined,
         publicMetadata: buildHubBundlePublicMetadata(form),
@@ -112,7 +112,7 @@ export function BundlePublishDialog({ open, onOpenChange }: PublishDialogProps) 
   const saveSubmissionFile = async () => {
     if (!preview) return
     try {
-      const r = await tipcClient.saveHubPublishPayloadFile({
+      const r = await desktopBundleClient.saveHubPublishPayloadFile({
         catalogId: preview.catalogId,
         payloadJson: preview.submissionJson,
       })

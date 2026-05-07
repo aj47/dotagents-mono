@@ -13,7 +13,7 @@ import { Switch } from "@renderer/components/ui/switch"
 import { Badge } from "@renderer/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@renderer/components/ui/select"
 import { Loader2, AlertTriangle, Package, Bot, Server, Sparkles, Clock, Brain } from "lucide-react"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopBundleClient, type DesktopBundlePreview } from "@renderer/lib/desktop-bundle-client"
 import { toast } from "sonner"
 import {
   BUNDLE_COMPONENT_OPTIONS,
@@ -25,21 +25,11 @@ import {
   type BundleComponentKey,
   type BundleComponentSelection,
   type BundleImportConflictStrategy,
-  type BundleImportPreviewConflicts,
-  type BundleImportResult,
-  type DotAgentsBundle,
   type RequiredBundleComponentSelection,
 } from "@dotagents/shared/bundle-api"
 
 type BundleComponentsState = RequiredBundleComponentSelection
-
-interface BundlePreview {
-  success: boolean
-  filePath?: string
-  bundle?: DotAgentsBundle | null
-  conflicts?: BundleImportPreviewConflicts
-  error?: string
-}
+type BundlePreview = DesktopBundlePreview
 
 interface BundleImportDialogProps {
   open: boolean
@@ -53,7 +43,7 @@ interface BundleImportDialogProps {
 }
 
 export async function previewProvidedBundleFile(filePath: string): Promise<BundlePreview> {
-  return (await tipcClient.previewBundleWithConflicts({ filePath })) as BundlePreview
+  return desktopBundleClient.previewBundleWithConflicts(filePath)
 }
 
 const COMPONENT_ROW_DETAILS: Record<BundleComponentKey, {
@@ -121,7 +111,7 @@ export function BundleImportDialog({
     setLoading(true)
     try {
       // First, open file dialog and get basic preview
-      const dialogResult = await tipcClient.previewBundle()
+      const dialogResult = await desktopBundleClient.previewBundleFromDialog()
       if (previewRequestIdRef.current !== requestId || !isOpenRef.current) return
       if (!dialogResult) {
         // User cancelled file picker
@@ -162,11 +152,11 @@ export function BundleImportDialog({
     if (!preview?.filePath) return
     setImporting(true)
     try {
-      const result = await tipcClient.importBundle({
+      const result = await desktopBundleClient.importBundleFromFile({
         filePath: preview.filePath,
         conflictStrategy,
         components: normalizedComponents,
-      }) as BundleImportResult
+      })
       if (result.success) {
         const imported = getBundleImportChangedItemCount(result)
         toast.success(`Successfully imported ${imported} item(s)`)

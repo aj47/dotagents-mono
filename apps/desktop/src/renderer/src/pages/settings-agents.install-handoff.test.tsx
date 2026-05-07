@@ -86,10 +86,16 @@ async function loadBundleImportDialogHelper() {
   vi.doUnmock("react/jsx-runtime")
   vi.doUnmock("react/jsx-dev-runtime")
   const Null = () => null
-  const previewBundleWithConflicts = vi.fn(async ({ filePath }: { filePath: string }) => ({ filePath, bundle: null, manifest: { version: 1, name: "Hub Bundle", createdAt: "", exportedFrom: "", components: { agentProfiles: 1, mcpServers: 0, skills: 0, repeatTasks: 0, knowledgeNotes: 0 } }, conflicts: { agentProfiles: [], mcpServers: [], skills: [], repeatTasks: [], knowledgeNotes: [] } }))
-  const bundleTipcMock = { tipcClient: { previewBundleWithConflicts, previewBundleFromDialog: vi.fn(), importBundle: vi.fn() } }
-  vi.doMock("../lib/tipc-client", () => bundleTipcMock)
-  vi.doMock("@renderer/lib/tipc-client", () => bundleTipcMock)
+  const previewBundleWithConflicts = vi.fn(async (filePath: string) => ({ filePath, bundle: null, manifest: { version: 1, name: "Hub Bundle", createdAt: "", exportedFrom: "", components: { agentProfiles: 1, mcpServers: 0, skills: 0, repeatTasks: 0, knowledgeNotes: 0 } }, conflicts: { agentProfiles: [], mcpServers: [], skills: [], repeatTasks: [], knowledgeNotes: [] } }))
+  const bundleClientMock = {
+    desktopBundleClient: {
+      previewBundleWithConflicts,
+      previewBundleFromDialog: vi.fn(),
+      importBundleFromFile: vi.fn(),
+    },
+  }
+  vi.doMock("../lib/desktop-bundle-client", () => bundleClientMock)
+  vi.doMock("@renderer/lib/desktop-bundle-client", () => bundleClientMock)
   vi.doMock("../components/ui/dialog", () => ({ Dialog: Null, DialogContent: Null, DialogDescription: Null, DialogFooter: Null, DialogHeader: Null, DialogTitle: Null }))
   vi.doMock("../components/ui/button", () => ({ Button: Null }))
   vi.doMock("../components/ui/label", () => ({ Label: Null }))
@@ -153,6 +159,6 @@ describe("settings-agents Hub install handoff", () => {
     const { previewProvidedBundleFile, previewBundleWithConflicts } = await loadBundleImportDialogHelper()
     await previewProvidedBundleFile(bundlePath)
 
-    expect(previewBundleWithConflicts).toHaveBeenCalledWith({ filePath: bundlePath })
+    expect(previewBundleWithConflicts).toHaveBeenCalledWith(bundlePath)
   })
 })
