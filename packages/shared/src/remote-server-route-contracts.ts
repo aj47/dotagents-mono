@@ -147,6 +147,114 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   deleteRepeatTask: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
 }
 
+export interface MobileApiRouteActionGroups<Request = unknown, Reply = unknown> {
+  chatCompletion: Pick<MobileApiRouteActions<Request, Reply>, 'handleChatCompletionRequest'>;
+  models: Pick<MobileApiRouteActions<Request, Reply>, 'getModels' | 'getProviderModels'>;
+  profiles: Pick<
+    MobileApiRouteActions<Request, Reply>,
+    'getProfiles' | 'getCurrentProfile' | 'setCurrentProfile' | 'exportProfile' | 'importProfile'
+  >;
+  bundle: Pick<
+    MobileApiRouteActions<Request, Reply>,
+    'getBundleExportableItems' | 'exportBundle' | 'previewBundleImport' | 'importBundle'
+  >;
+  mcp: Pick<
+    MobileApiRouteActions<Request, Reply>,
+    | 'getMcpServers'
+    | 'toggleMcpServer'
+    | 'exportMcpServerConfigs'
+    | 'importMcpServerConfigs'
+    | 'upsertMcpServerConfig'
+    | 'deleteMcpServerConfig'
+  >;
+  settings: Pick<MobileApiRouteActions<Request, Reply>, 'getSettings' | 'updateSettings'>;
+  agentSessionCandidates: Pick<MobileApiRouteActions<Request, Reply>, 'getAgentSessionCandidates'>;
+  audit: Pick<MobileApiRouteActions<Request, Reply>, 'recordOperatorAuditEvent'>;
+  conversations: Pick<
+    MobileApiRouteActions<Request, Reply>,
+    'getConversation' | 'getConversations' | 'createConversation' | 'updateConversation'
+  >;
+  conversationVideoAssets: Pick<MobileApiRouteActions<Request, Reply>, 'getConversationVideoAsset'>;
+  tts: Pick<MobileApiRouteActions<Request, Reply>, 'synthesizeSpeech'>;
+  push: Pick<
+    MobileApiRouteActions<Request, Reply>,
+    'registerPushToken' | 'unregisterPushToken' | 'getPushStatus' | 'clearPushBadge'
+  >;
+  emergencyStop: Pick<MobileApiRouteActions<Request, Reply>, 'triggerEmergencyStop'>;
+  skills: Pick<
+    MobileApiRouteActions<Request, Reply>,
+    | 'getSkills'
+    | 'getSkill'
+    | 'createSkill'
+    | 'importSkillFromMarkdown'
+    | 'importSkillFromGitHub'
+    | 'exportSkillToMarkdown'
+    | 'updateSkill'
+    | 'deleteSkill'
+    | 'toggleProfileSkill'
+  >;
+  knowledgeNotes: Pick<
+    MobileApiRouteActions<Request, Reply>,
+    | 'getKnowledgeNotes'
+    | 'getKnowledgeNote'
+    | 'searchKnowledgeNotes'
+    | 'deleteKnowledgeNote'
+    | 'deleteMultipleKnowledgeNotes'
+    | 'deleteAllKnowledgeNotes'
+    | 'createKnowledgeNote'
+    | 'updateKnowledgeNote'
+  >;
+  agentProfiles: Pick<
+    MobileApiRouteActions<Request, Reply>,
+    | 'getAgentProfiles'
+    | 'verifyExternalAgentCommand'
+    | 'reloadAgentProfiles'
+    | 'toggleAgentProfile'
+    | 'getAgentProfile'
+    | 'createAgentProfile'
+    | 'updateAgentProfile'
+    | 'deleteAgentProfile'
+  >;
+  repeatTasks: Pick<
+    MobileApiRouteActions<Request, Reply>,
+    | 'getRepeatTasks'
+    | 'getRepeatTaskStatuses'
+    | 'toggleRepeatTask'
+    | 'runRepeatTask'
+    | 'startRepeatTask'
+    | 'stopRepeatTask'
+    | 'importRepeatTaskFromMarkdown'
+    | 'exportRepeatTaskToMarkdown'
+    | 'createRepeatTask'
+    | 'updateRepeatTask'
+    | 'deleteRepeatTask'
+  >;
+}
+
+export function createMobileApiRouteActions<Request = unknown, Reply = unknown>(
+  groups: MobileApiRouteActionGroups<Request, Reply>,
+): MobileApiRouteActions<Request, Reply> {
+  return {
+    ...groups.chatCompletion,
+    ...groups.models,
+    ...groups.profiles,
+    ...groups.bundle,
+    ...groups.mcp,
+    ...groups.settings,
+    ...groups.agentSessionCandidates,
+    ...groups.audit,
+    ...groups.conversations,
+    ...groups.conversationVideoAssets,
+    ...groups.tts,
+    ...groups.push,
+    ...groups.emergencyStop,
+    ...groups.skills,
+    ...groups.knowledgeNotes,
+    ...groups.agentProfiles,
+    ...groups.repeatTasks,
+  };
+}
+
 export interface MobileApiRouteOptions<Request = unknown, Reply = unknown> {
   actions: MobileApiRouteActions<Request, Reply>;
   providerSecretMask: string;

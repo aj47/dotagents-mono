@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import type { MobileApiRouteActions } from "@dotagents/shared/remote-server-route-contracts"
+import { createMobileApiRouteActions } from "@dotagents/shared/remote-server-route-contracts"
 import { getAgentsLayerPaths, type LoopConfig } from "@dotagents/core"
 import {
   createAgentSessionCandidateRouteActions,
@@ -503,22 +503,22 @@ const skillActionOptions: SkillActionOptions = {
 
 const skillRouteActions = createSkillRouteActions(skillActionOptions)
 
-export const mobileApiDesktopActions: MobileApiRouteActions = {
-  ...chatCompletionRouteActions,
-  ...modelRouteActions,
-  ...profileRouteActions,
-  ...bundleRouteActions,
-  ...mcpRouteActions,
-  ...settingsRouteActions,
-  ...agentSessionCandidateRouteActions,
-  recordOperatorAuditEvent,
-  ...conversationRouteActions,
-  ...conversationVideoAssetRouteActions,
-  ...ttsRouteActions,
-  ...pushRouteActions,
-  ...emergencyStopRouteActions,
-  ...skillRouteActions,
-  ...knowledgeNoteRouteActions,
-  ...agentProfileRouteActions,
-  ...repeatTaskRouteActions,
-}
+export const mobileApiDesktopActions = createMobileApiRouteActions({
+  chatCompletion: chatCompletionRouteActions,
+  models: modelRouteActions,
+  profiles: profileRouteActions,
+  bundle: bundleRouteActions,
+  mcp: mcpRouteActions,
+  settings: settingsRouteActions,
+  agentSessionCandidates: agentSessionCandidateRouteActions,
+  audit: { recordOperatorAuditEvent },
+  conversations: conversationRouteActions,
+  conversationVideoAssets: conversationVideoAssetRouteActions,
+  tts: ttsRouteActions,
+  push: pushRouteActions,
+  emergencyStop: emergencyStopRouteActions,
+  skills: skillRouteActions,
+  knowledgeNotes: knowledgeNoteRouteActions,
+  agentProfiles: agentProfileRouteActions,
+  repeatTasks: repeatTaskRouteActions,
+})

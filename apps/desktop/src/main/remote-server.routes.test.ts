@@ -659,12 +659,12 @@ describe("remote-server route registration", () => {
     expect(sharedMobileApiRoutesSource).toContain("fastify.delete(API_ROUTES.loop")
     expect(sharedMobileApiRoutesSource).not.toContain("Fastify")
     expect(sharedMobileApiRoutesSource).not.toContain("Electron")
-    expect(mobileApiDesktopActionsSource).toContain("export const mobileApiDesktopActions")
+    expect(mobileApiDesktopActionsSource).toContain("export const mobileApiDesktopActions = createMobileApiRouteActions({")
     expect(mobileApiDesktopActionsSource).not.toContain('from "./mobile-api-routes"')
     expect(mobileApiDesktopActionsSource).toContain('from "@dotagents/shared/remote-server-route-contracts"')
-    expect(mobileApiDesktopActionsSource).toContain("...chatCompletionRouteActions")
-    expect(mobileApiDesktopActionsSource).toContain("...modelRouteActions")
-    expect(mobileApiDesktopActionsSource).toContain("recordOperatorAuditEvent")
+    expect(mobileApiDesktopActionsSource).toContain("chatCompletion: chatCompletionRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("models: modelRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("audit: { recordOperatorAuditEvent }")
     expect(desktopAdaptersSource).toContain("authorizeRequest: authorizeRemoteServerRequest")
     expect(desktopAdaptersSource).not.toContain('from "./operator-api-key-actions"')
     expect(desktopAdaptersSource).not.toContain('from "./remote-server-pairing-actions"')
@@ -705,6 +705,9 @@ describe("remote-server route registration", () => {
     expect(desktopAdaptersSource).toContain("console.log(message)")
     expect(desktopAdaptersSource).toContain("console.warn(message)")
     expect(sharedRouteContractsSource).toContain("export interface MobileApiRouteActions<Request = unknown, Reply = unknown>")
+    expect(sharedRouteContractsSource).toContain("export interface MobileApiRouteActionGroups<Request = unknown, Reply = unknown>")
+    expect(sharedRouteContractsSource).toContain("export function createMobileApiRouteActions")
+    expect(sharedRouteContractsSource).toContain("...groups.chatCompletion")
     expect(sharedRouteContractsSource).toContain("export interface MobileApiRouteOptions<Request = unknown, Reply = unknown>")
     expect(sharedRouteContractsSource).toContain("export interface OperatorRouteActions<Request = unknown>")
     expect(sharedRouteContractsSource).toContain("export interface OperatorRouteOptions<Request = unknown, Reply = unknown>")
@@ -811,7 +814,7 @@ describe("remote-server route registration", () => {
     expect(sharedChatUtilsSource).toContain("buildChatCompletionProgressSsePayload(update)")
     expect(sharedChatUtilsSource).toContain("sendChatCompletionPushNotification(chatRequest, result.conversationId, result.content, options)")
     expect(mobileApiDesktopActionsSource).toContain("const chatCompletionRouteActions = createChatCompletionRouteActions(chatCompletionActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("...chatCompletionRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("chatCompletion: chatCompletionRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("handleChatCompletionRequestAction(")
     expect(mobileApiDesktopActionsSource).toContain("chatCompletionActionOptions")
     expect(mobileApiDesktopActionsSource).toContain("validateConversationId: getConversationIdValidationError")
@@ -851,7 +854,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.deleteSkill(params.id)")
     expect(mobileApiRoutesSource).toContain("actions.toggleProfileSkill(params.id)")
     expect(mobileApiDesktopActionsSource).toContain("const skillRouteActions = createSkillRouteActions(skillActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("...skillRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("skills: skillRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("getSkillsAction(skillActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("getSkillAction(skillId, skillActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("createSkillAction(body, skillActionOptions)")
@@ -915,7 +918,7 @@ describe("remote-server route registration", () => {
     expect(settingsGetSection).toContain("const result = actions.getSettings(providerSecretMask)")
     expect(settingsGetSection).toContain("reply.code(result.statusCode).send(result.body)")
     expect(mobileApiDesktopActionsSource).toContain("const settingsRouteActions = createSettingsRouteActions(settingsActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("...settingsRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("settings: settingsRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("getSettingsAction(providerSecretMask, settingsActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain(
       "getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey)",
@@ -972,7 +975,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain(
       "const agentSessionCandidateRouteActions = createAgentSessionCandidateRouteActions(agentSessionCandidateActionOptions)",
     )
-    expect(mobileApiDesktopActionsSource).toContain("...agentSessionCandidateRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("agentSessionCandidates: agentSessionCandidateRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain(
       "getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)",
     )
@@ -1000,7 +1003,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain(
       "const emergencyStopRouteActions = createEmergencyStopRouteActions(emergencyStopActionOptions)",
     )
-    expect(mobileApiDesktopActionsSource).toContain("...emergencyStopRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("emergencyStop: emergencyStopRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("triggerEmergencyStopAction(emergencyStopActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain("stopAll: emergencyStopAll")
     expect(sharedSettingsApiClientSource).toContain("export interface EmergencyStopActionOptions")
@@ -1032,7 +1035,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.exportProfile(params.id)")
     expect(mobileApiRoutesSource).toContain("actions.importProfile(req.body)")
     expect(mobileApiDesktopActionsSource).toContain("const profileRouteActions = createProfileRouteActions(profileActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("...profileRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("profiles: profileRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("getProfilesAction(profileActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("getCurrentProfileAction(profileActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("setCurrentProfileAction(body, profileActionOptions)")
@@ -1075,7 +1078,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.previewBundleImport(req.body)")
     expect(mobileApiRoutesSource).toContain("actions.importBundle(req.body)")
     expect(mobileApiDesktopActionsSource).toContain("const bundleRouteActions = createBundleRouteActions(bundleActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("...bundleRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("bundle: bundleRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("getBundleExportableItemsAction(bundleActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("exportBundleAction(body, bundleActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("previewBundleImportAction(body, bundleActionOptions)")
@@ -1128,7 +1131,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain("agentProfile: agentProfileActionOptions")
     expect(mobileApiDesktopActionsSource).toContain("reload: agentProfileReloadActionOptions")
     expect(mobileApiDesktopActionsSource).toContain("externalCommandVerification: externalAgentCommandVerificationActionOptions")
-    expect(mobileApiDesktopActionsSource).toContain("...agentProfileRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("agentProfiles: agentProfileRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("getAgentProfilesAction(role, agentProfileActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain(
       "verifyExternalAgentCommandAction(body, externalAgentCommandVerificationActionOptions)",
@@ -1203,7 +1206,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.getPushStatus()")
     expect(mobileApiRoutesSource).toContain("actions.clearPushBadge(req.body)")
     expect(mobileApiDesktopActionsSource).toContain("const modelRouteActions = createModelRouteActions(modelActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("...modelRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("models: modelRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("getModelsAction(modelActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("getProviderModelsAction(providerId, modelActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain("fetchAvailableModels: async (providerId) =>")
@@ -1221,7 +1224,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain("const mcpRouteActions = createMcpRouteActions({")
     expect(mobileApiDesktopActionsSource).toContain("server: mcpServerActionOptions")
     expect(mobileApiDesktopActionsSource).toContain("config: mcpServerConfigActionOptions")
-    expect(mobileApiDesktopActionsSource).toContain("...mcpRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("mcp: mcpRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("getMcpServersAction(mcpServerActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("toggleMcpServerAction(serverName, body, mcpServerActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain(
@@ -1265,7 +1268,7 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).not.toContain("mcpService")
     expect(sharedMcpApiSource).not.toContain("diagnosticsService")
     expect(mobileApiDesktopActionsSource).toContain("const ttsRouteActions = createTtsRouteActions(ttsActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("...ttsRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("tts: ttsRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("synthesizeSpeechAction(body, ttsActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain("generateSpeech: generateTTS")
     expect(mobileApiDesktopActionsSource).toContain("encodeAudioBody: (audio) => Buffer.from(audio)")
@@ -1280,7 +1283,7 @@ describe("remote-server route registration", () => {
     expect(sharedTtsApiSource).not.toContain("tts-service")
     expect(sharedTtsApiSource).not.toContain("configStore")
     expect(mobileApiDesktopActionsSource).toContain("const pushRouteActions = createPushRouteActions(pushActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("...pushRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("push: pushRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("registerPushTokenAction(body, pushActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("unregisterPushTokenAction(body, pushActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("getPushStatusAction(pushActionOptions)")
@@ -1328,7 +1331,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.createConversation(req.body, notifyConversationHistoryChanged)")
     expect(mobileApiRoutesSource).toContain("actions.updateConversation(params.id, req.body, notifyConversationHistoryChanged)")
     expect(mobileApiDesktopActionsSource).toContain("const conversationRouteActions = createConversationRouteActions(conversationActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("...conversationRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("conversations: conversationRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("getConversationAction(id, conversationActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("getConversationsAction(conversationActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain(
@@ -1361,7 +1364,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain(
       "const conversationVideoAssetRouteActions = createConversationVideoAssetRouteActions(conversationVideoAssetActionOptions)",
     )
-    expect(mobileApiDesktopActionsSource).toContain("...conversationVideoAssetRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("conversationVideoAssets: conversationVideoAssetRouteActions")
     expect(mobileApiDesktopActionsSource).toContain("getConversationVideoAssetPath(conversationId, fileName)")
     expect(mobileApiDesktopActionsSource).toContain("const stat = await fs.promises.stat(assetPath)")
     expect(mobileApiDesktopActionsSource).toContain("fs.createReadStream(assetPath, { start: range.start, end: range.end })")
@@ -2030,7 +2033,7 @@ describe("remote-server route registration", () => {
 
     expect(settingsPatchSection).toContain("if (result.auditContext)")
     expect(settingsPatchSection).toContain("actions.recordOperatorAuditEvent(req, result.auditContext)")
-    expect(mobileApiDesktopActionsSource).toContain("...settingsRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("settings: settingsRouteActions")
     expect(sharedSettingsApiClientSource).toContain("let attemptedSensitiveSettingsKeys: string[] = []")
     expect(sharedSettingsApiClientSource).toContain("getSensitiveOperatorSettingsKeys(requestBody)")
     expect(sharedSettingsApiClientSource).toContain("const sensitiveUpdatedKeys = getSensitiveOperatorSettingsKeys(updates)")
@@ -2169,7 +2172,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain(
       "const knowledgeNoteRouteActions = createKnowledgeNoteRouteActions(knowledgeNoteActionOptions)",
     )
-    expect(mobileApiDesktopActionsSource).toContain("...knowledgeNoteRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("knowledgeNotes: knowledgeNoteRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("getKnowledgeNotesAction(query, knowledgeNoteActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("getKnowledgeNoteAction(id, knowledgeNoteActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("searchKnowledgeNotesAction(body, knowledgeNoteActionOptions)")
@@ -2240,7 +2243,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain(
       "const repeatTaskRouteActions = createRepeatTaskRouteActions(repeatTaskActionOptions)",
     )
-    expect(mobileApiDesktopActionsSource).toContain("...repeatTaskRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("repeatTasks: repeatTaskRouteActions")
     expect(mobileApiDesktopActionsSource).not.toContain("getRepeatTasksAction(repeatTaskActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("getRepeatTaskStatusesAction(repeatTaskActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("importRepeatTaskFromMarkdownAction(body, repeatTaskActionOptions)")
