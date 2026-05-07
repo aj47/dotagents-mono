@@ -6,7 +6,10 @@ import { Button } from "@renderer/components/ui/button"
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import type { Config } from "@shared/types"
 import { AlertTriangle, Loader2, CheckCircle2, XCircle, RefreshCw, LogOut, QrCode as QrCodeIcon, EyeOff } from "lucide-react"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import {
+  desktopWhatsAppClient,
+  type DesktopWhatsAppStatus,
+} from "@renderer/lib/desktop-whatsapp-client"
 import { QRCodeSVG } from "qrcode.react"
 import { formatConfigListInput, parseConfigListInput } from "@dotagents/shared/config-list-input"
 import {
@@ -29,18 +32,6 @@ function maskPhoneNumber(phone: string | undefined): string {
 
 const WHATSAPP_ALLOWLIST_SAVE_DEBOUNCE_MS = 400
 
-interface WhatsAppStatus {
-  available: boolean
-  connected: boolean
-  phoneNumber?: string
-  userName?: string
-  hasQrCode?: boolean
-  qrCode?: string
-  hasCredentials?: boolean
-  lastError?: string
-  error?: string
-}
-
 export function Component() {
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
@@ -49,7 +40,7 @@ export function Component() {
   const cfgRef = useRef<Config | undefined>(cfg)
 
   // WhatsApp connection state
-  const [status, setStatus] = useState<WhatsAppStatus | null>(null)
+  const [status, setStatus] = useState<DesktopWhatsAppStatus | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
   const [qrCodeData, setQrCodeData] = useState<string | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
@@ -104,8 +95,8 @@ export function Component() {
   // Fetch WhatsApp status periodically
   const fetchStatus = useCallback(async (): Promise<void> => {
     try {
-      const result = await tipcClient.whatsappGetStatus()
-      setStatus(result as WhatsAppStatus)
+      const result = await desktopWhatsAppClient.getStatus()
+      setStatus(result)
       setStatusError(null)
 
       // Store QR code data if available
@@ -134,7 +125,7 @@ export function Component() {
     setIsConnecting(true)
     setStatusError(null)
     try {
-      const result = await tipcClient.whatsappConnect()
+      const result = await desktopWhatsAppClient.connect()
       if (!result.success) {
         setStatusError(result.error || "Failed to connect")
       } else if (result.qrCode) {
@@ -151,7 +142,7 @@ export function Component() {
 
   const handleDisconnect = async () => {
     try {
-      const result = await tipcClient.whatsappDisconnect()
+      const result = await desktopWhatsAppClient.disconnect()
       if (!result.success) {
         setStatusError(result.error || "Failed to disconnect")
       }
@@ -163,7 +154,7 @@ export function Component() {
 
   const handleLogout = async () => {
     try {
-      const result = await tipcClient.whatsappLogout()
+      const result = await desktopWhatsAppClient.logout()
       if (!result.success) {
         setStatusError(result.error || "Failed to logout")
       } else {
