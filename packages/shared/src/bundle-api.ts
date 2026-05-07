@@ -1398,6 +1398,14 @@ export type BundleImportExistingItems = {
   knowledgeNotes: BundleImportExistingItem[]
 }
 
+export type BundleImportExistingItemSources = {
+  agentProfiles: readonly Pick<AgentProfile, "id" | "name">[]
+  mcpServerNames: readonly string[]
+  skills: readonly Pick<AgentSkill, "id" | "name">[]
+  repeatTasks: readonly Pick<LoopConfig, "id" | "name">[]
+  knowledgeNotes: readonly Pick<KnowledgeNote, "id" | "title">[]
+}
+
 export type BundleImportPreview = {
   bundle: DotAgentsBundle
   conflicts: BundleImportPreviewConflicts
@@ -1587,6 +1595,18 @@ function createBundleImportExistingItemMap(
   items: readonly BundleImportExistingItem[],
 ): Map<string, BundleImportExistingItem> {
   return new Map(items.map((item) => [item.id, item]))
+}
+
+export function buildBundleImportExistingItems(
+  sources: BundleImportExistingItemSources,
+): BundleImportExistingItems {
+  return {
+    agentProfiles: sources.agentProfiles.map((profile) => ({ id: profile.id, name: profile.name })),
+    mcpServers: sources.mcpServerNames.map((name) => ({ id: name })),
+    skills: sources.skills.map((skill) => ({ id: skill.id, name: skill.name })),
+    repeatTasks: sources.repeatTasks.map((task) => ({ id: task.id, name: task.name })),
+    knowledgeNotes: sources.knowledgeNotes.map((note) => ({ id: note.id, name: note.title })),
+  }
 }
 
 export function buildBundleImportPreviewConflicts(

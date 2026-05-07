@@ -32,6 +32,7 @@ import {
   buildAgentProfileFromBundleProfile,
   buildBundleAgentProfilesFromProfiles,
   buildBundleFromComponentLoaders,
+  buildBundleImportExistingItems,
   buildBundleImportPreviewConflicts,
   buildBundleKnowledgeNotesFromNotes,
   buildBundleMcpServersFromConfig,
@@ -424,24 +425,19 @@ export function previewBundleWithConflicts(
 
   const layer = getAgentsLayerPaths(targetAgentsDir)
 
-  // Load existing items
-  const existingProfiles = loadAgentProfilesLayer(layer)
-  const existingSkills = loadAgentsSkillsLayer(layer)
-  const existingTasks = loadTasksLayer(layer)
-  const existingKnowledgeNotes = loadAgentsKnowledgeNotesLayer(layer)
-
-  // Load existing MCP servers
   const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
     defaultValue: {},
   })
-  const existingMcpServers = Object.keys(readBundleMcpServersFromConfig(mcpConfig))
-  const conflicts = buildBundleImportPreviewConflicts(bundle, {
-    agentProfiles: existingProfiles.profiles.map((profile) => ({ id: profile.id, name: profile.name })),
-    mcpServers: existingMcpServers.map((name) => ({ id: name })),
-    skills: existingSkills.skills.map((skill) => ({ id: skill.id, name: skill.name })),
-    repeatTasks: existingTasks.tasks.map((task) => ({ id: task.id, name: task.name })),
-    knowledgeNotes: existingKnowledgeNotes.notes.map((note) => ({ id: note.id, name: note.title })),
-  })
+  const conflicts = buildBundleImportPreviewConflicts(
+    bundle,
+    buildBundleImportExistingItems({
+      agentProfiles: loadAgentProfilesLayer(layer).profiles,
+      mcpServerNames: Object.keys(readBundleMcpServersFromConfig(mcpConfig)),
+      skills: loadAgentsSkillsLayer(layer).skills,
+      repeatTasks: loadTasksLayer(layer).tasks,
+      knowledgeNotes: loadAgentsKnowledgeNotesLayer(layer).notes,
+    }),
+  )
 
   return { success: true, filePath, bundle, conflicts }
 }

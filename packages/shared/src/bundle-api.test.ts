@@ -19,6 +19,7 @@ import {
   buildBundleSkillsFromSkills,
   buildBundleImportItemErrorResult,
   buildBundleImportItemResult,
+  buildBundleImportExistingItems,
   buildBundleFromLayerDirs,
   buildBundleFromComponentLoaders,
   buildDotAgentsBundle,
@@ -343,6 +344,33 @@ describe("bundle API helpers", () => {
       skills: [{ id: "skill-1", name: "Skill", existingName: "Existing Skill" }],
       repeatTasks: [{ id: "task-1", name: "Task", existingName: "Existing Task" }],
       knowledgeNotes: [{ id: "note-1", name: "Note", existingName: "Existing Note" }],
+    })
+
+    expect(buildBundleImportExistingItems({
+      agentProfiles: [{ id: "agent-1", name: "Existing Agent" }],
+      mcpServerNames: ["server-1"],
+      skills: [{ id: "skill-1", name: "Existing Skill" }],
+      repeatTasks: [{
+        id: "task-1",
+        name: "Existing Task",
+        prompt: "Run",
+        intervalMinutes: 15,
+        enabled: true,
+      }],
+      knowledgeNotes: [{
+        id: "note-1",
+        title: "Existing Note",
+        context: "search-only",
+        body: "Body",
+        tags: [],
+        updatedAt: 123,
+      }],
+    })).toEqual({
+      agentProfiles: [{ id: "agent-1", name: "Existing Agent" }],
+      mcpServers: [{ id: "server-1" }],
+      skills: [{ id: "skill-1", name: "Existing Skill" }],
+      repeatTasks: [{ id: "task-1", name: "Existing Task" }],
+      knowledgeNotes: [{ id: "note-1", name: "Existing Note" }],
     })
   })
 
