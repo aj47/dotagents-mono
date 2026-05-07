@@ -49,6 +49,7 @@ import {
   createOperatorObservabilityRouteActions,
   createOperatorRestartRouteActions,
   createOperatorSystemMetricsCollector,
+  createOperatorTunnelActionService,
   createOperatorTunnelRouteActions,
   createOperatorUpdaterRouteActions,
   type OperatorActionAuditContext,
@@ -326,15 +327,15 @@ const tunnelActionOptions: OperatorTunnelActionOptions = {
     get: () => configStore.get(),
   },
   diagnostics: diagnosticsService,
-  service: {
+  service: createOperatorTunnelActionService({
     getStatus: getCloudflareTunnelStatus,
     checkCloudflaredInstalled,
     checkCloudflaredLoggedIn,
     listCloudflareTunnels,
-    startQuickTunnel: startCloudflareTunnel,
-    startNamedTunnel: startNamedCloudflareTunnel,
-    stopTunnel: stopCloudflareTunnel,
-  },
+    startCloudflareTunnel,
+    startNamedCloudflareTunnel,
+    stopCloudflareTunnel,
+  }),
 }
 
 const operatorTunnelRouteActions = createOperatorTunnelRouteActions(tunnelActionOptions)

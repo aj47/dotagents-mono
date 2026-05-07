@@ -291,6 +291,34 @@ export interface OperatorTunnelActionService {
   stopTunnel(): Promise<void>
 }
 
+export interface OperatorTunnelActionServiceOptions {
+  getStatus(): OperatorTunnelStatusLike
+  checkCloudflaredInstalled(): Promise<boolean>
+  checkCloudflaredLoggedIn(): Promise<boolean>
+  listCloudflareTunnels(): Promise<OperatorTunnelSetupListResultLike>
+  startCloudflareTunnel(): Promise<OperatorActionResultLike & { url?: string }>
+  startNamedCloudflareTunnel(options: {
+    tunnelId: string
+    hostname: string
+    credentialsPath?: string
+  }): Promise<OperatorActionResultLike & { url?: string }>
+  stopCloudflareTunnel(): Promise<void>
+}
+
+export function createOperatorTunnelActionService(
+  options: OperatorTunnelActionServiceOptions,
+): OperatorTunnelActionService {
+  return {
+    getStatus: () => options.getStatus(),
+    checkCloudflaredInstalled: () => options.checkCloudflaredInstalled(),
+    checkCloudflaredLoggedIn: () => options.checkCloudflaredLoggedIn(),
+    listCloudflareTunnels: () => options.listCloudflareTunnels(),
+    startQuickTunnel: () => options.startCloudflareTunnel(),
+    startNamedTunnel: (tunnelOptions) => options.startNamedCloudflareTunnel(tunnelOptions),
+    stopTunnel: () => options.stopCloudflareTunnel(),
+  }
+}
+
 export interface OperatorTunnelActionOptions {
   config: OperatorTunnelActionConfigStore
   diagnostics: OperatorTunnelActionDiagnostics

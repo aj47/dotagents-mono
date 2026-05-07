@@ -86,6 +86,7 @@ import {
   createOperatorObservabilityRouteActions,
   createOperatorRestartRouteActions,
   createOperatorSystemMetricsCollector,
+  createOperatorTunnelActionService,
   createOperatorTunnelRouteActions,
   createOperatorUpdaterRouteActions,
   getConfiguredCloudflareTunnelStartPlan,
@@ -981,6 +982,73 @@ describe("operator action API helpers", () => {
       mode: "named",
       error: "Named tunnel requires cloudflareTunnelId and cloudflareTunnelHostname",
     })
+  })
+
+  it("creates operator tunnel action services from Cloudflare tunnel adapters", async () => {
+    const calls: string[] = []
+    const service = createOperatorTunnelActionService({
+      getStatus: () => {
+        calls.push("status")
+        return { running: false, starting: false, mode: null }
+      },
+      checkCloudflaredInstalled: async () => {
+        calls.push("installed")
+        return true
+      },
+      checkCloudflaredLoggedIn: async () => {
+        calls.push("logged-in")
+        return false
+      },
+      listCloudflareTunnels: async () => {
+        calls.push("list")
+        return {
+          success: true,
+          tunnels: [{ id: "tunnel-1", name: "agent", created_at: "2026-01-01T00:00:00Z" }],
+        }
+      },
+      startCloudflareTunnel: async () => {
+        calls.push("quick")
+        return { success: true, url: "https://quick.example.com" }
+      },
+      startNamedCloudflareTunnel: async (options) => {
+        calls.push(`named:${options.tunnelId}:${options.hostname}:${options.credentialsPath}`)
+        return { success: true, url: "https://agent.example.com" }
+      },
+      stopCloudflareTunnel: async () => {
+        calls.push("stop")
+      },
+    })
+
+    expect(service.getStatus()).toEqual({ running: false, starting: false, mode: null })
+    expect(await service.checkCloudflaredInstalled()).toBe(true)
+    expect(await service.checkCloudflaredLoggedIn()).toBe(false)
+    expect(await service.listCloudflareTunnels()).toEqual({
+      success: true,
+      tunnels: [{ id: "tunnel-1", name: "agent", created_at: "2026-01-01T00:00:00Z" }],
+    })
+    expect(await service.startQuickTunnel()).toEqual({
+      success: true,
+      url: "https://quick.example.com",
+    })
+    expect(await service.startNamedTunnel({
+      tunnelId: "tunnel-1",
+      hostname: "agent.example.com",
+      credentialsPath: "/tmp/creds.json",
+    })).toEqual({
+      success: true,
+      url: "https://agent.example.com",
+    })
+    await service.stopTunnel()
+
+    expect(calls).toEqual([
+      "status",
+      "installed",
+      "logged-in",
+      "list",
+      "quick",
+      "named:tunnel-1:agent.example.com:/tmp/creds.json",
+      "stop",
+    ])
   })
 
   it("runs tunnel route actions through a shared service adapter", async () => {
