@@ -1,13 +1,13 @@
 import { useMicrophoneStatusQuery } from "@renderer/lib/queries"
 import { Button } from "@renderer/components/ui/button"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopPermissionsClient } from "@renderer/lib/desktop-permissions-client"
 import { useQuery } from "@tanstack/react-query"
 
 export function Component() {
   const microphoneStatusQuery = useMicrophoneStatusQuery()
   const isAccessibilityGrantedQuery = useQuery({
     queryKey: ["setup-isAccessibilityGranted"],
-    queryFn: () => tipcClient.isAccessibilityGranted(),
+    queryFn: () => desktopPermissionsClient.isAccessibilityGranted(),
   })
 
   // Check if all required permissions are granted
@@ -36,7 +36,7 @@ export function Component() {
                 description={`We need Accessibility Access to capture keyboard events, so that you can hold Ctrl key to start recording, we don't log or store your keyboard events.`}
                 actionText="Enable in System Settings"
                 actionHandler={() => {
-                  tipcClient.requestAccesssbilityAccess()
+                  void desktopPermissionsClient.requestAccessibilityAccess()
                 }}
                 enabled={isAccessibilityGrantedQuery.data}
               />
@@ -51,9 +51,9 @@ export function Component() {
                   : "Request Access"
               }
               actionHandler={async () => {
-                const granted = await tipcClient.requestMicrophoneAccess()
+                const granted = await desktopPermissionsClient.requestMicrophoneAccess()
                 if (!granted) {
-                  tipcClient.openMicrophoneInSystemPreferences()
+                  await desktopPermissionsClient.openMicrophoneSettings()
                 }
               }}
               enabled={microphoneStatusQuery.data === "granted"}
@@ -80,7 +80,7 @@ export function Component() {
             variant={allPermissionsGranted ? "default" : "outline"}
             className={`gap-2 ${allPermissionsGranted ? "animate-pulse bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800" : ""}`}
             onClick={() => {
-              tipcClient.restartApp()
+              void desktopPermissionsClient.restartApp()
             }}
           >
             <span className="i-mingcute-refresh-2-line"></span>

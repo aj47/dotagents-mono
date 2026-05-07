@@ -5,6 +5,7 @@ import {
   useQuery,
 } from "@tanstack/react-query"
 import { reportConfigSaveError } from "./config-save-error"
+import { desktopPermissionsClient } from "./desktop-permissions-client"
 import { tipcClient } from "./tipc-client"
 
 focusManager.setEventListener((handleFocus) => {
@@ -33,7 +34,7 @@ export const useMicrophoneStatusQuery = () =>
   useQuery({
     queryKey: ["microphone-status"],
     queryFn: async () => {
-      return tipcClient.getMicrophoneStatus()
+      return desktopPermissionsClient.getMicrophoneStatus()
     },
   })
 
