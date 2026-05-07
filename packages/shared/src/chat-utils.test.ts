@@ -21,6 +21,7 @@ import {
   buildOpenAIChatCompletionResponse,
   buildOpenAICompatibleModelsResponse,
   buildProviderModelsResponse,
+  createChatCompletionRouteActions,
   createModelRouteActions,
   getModelsAction,
   getProviderModelsAction,
@@ -747,6 +748,40 @@ describe('handleChatCompletionRequestAction', () => {
       model: 'gpt-test',
       choices: [expect.objectContaining({
         message: { role: 'assistant', content: 'Reply to Hello mobile' },
+      })],
+    }))
+  })
+
+  it('creates route actions that delegate chat completions through shared handling', async () => {
+    const reply = createReply()
+    const actionOptions = createActionOptions()
+    const routeActions = createChatCompletionRouteActions(actionOptions)
+    const runAgent = vi.fn(async (options: any) => ({
+      content: `Reply to ${options.prompt}`,
+      conversationId: options.conversationId,
+      conversationHistory: [{ role: 'assistant', content: 'Done' }],
+    }))
+
+    await routeActions.handleChatCompletionRequest(
+      {
+        messages: [{ role: 'user', content: 'Hello route' }],
+        conversation_id: 'conv-1',
+        stream: false,
+      },
+      'https://mobile.example',
+      reply,
+      runAgent,
+    )
+
+    expect(runAgent).toHaveBeenCalledWith({
+      prompt: 'Hello route',
+      conversationId: 'conv-1',
+      profileId: undefined,
+    })
+    expect(reply.body).toEqual(expect.objectContaining({
+      conversation_id: 'conv-1',
+      choices: [expect.objectContaining({
+        message: { role: 'assistant', content: 'Reply to Hello route' },
       })],
     }))
   })

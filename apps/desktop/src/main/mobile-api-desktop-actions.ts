@@ -2,10 +2,8 @@ import { randomUUID } from "node:crypto"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import type { FastifyReply } from "fastify"
 import type { MobileApiRouteActions } from "@dotagents/shared/remote-server-route-contracts"
 import { getAgentsLayerPaths, type LoopConfig } from "@dotagents/core"
-import type { AgentRunExecutor } from "@dotagents/shared/agent-run-utils"
 import {
   createAgentSessionCandidateRouteActions,
   type AgentSessionCandidateActionOptions,
@@ -24,8 +22,8 @@ import {
   type KnowledgeNoteActionOptions,
 } from "@dotagents/shared/knowledge-note-form"
 import {
+  createChatCompletionRouteActions,
   createModelRouteActions,
-  handleChatCompletionRequestAction,
   type ChatCompletionActionOptions,
   type ModelActionOptions,
 } from "@dotagents/shared/chat-utils"
@@ -160,20 +158,7 @@ const chatCompletionActionOptions: ChatCompletionActionOptions = {
   logger: console,
 }
 
-async function handleChatCompletionRequest(
-  body: unknown,
-  origin: string | string[] | undefined,
-  reply: FastifyReply,
-  runAgent: AgentRunExecutor,
-) {
-  return handleChatCompletionRequestAction(
-    body,
-    origin,
-    reply,
-    runAgent,
-    chatCompletionActionOptions,
-  )
-}
+const chatCompletionRouteActions = createChatCompletionRouteActions(chatCompletionActionOptions)
 
 const agentSessionCandidateActionOptions: AgentSessionCandidateActionOptions = {
   service: {
@@ -519,7 +504,7 @@ const skillActionOptions: SkillActionOptions = {
 const skillRouteActions = createSkillRouteActions(skillActionOptions)
 
 export const mobileApiDesktopActions: MobileApiRouteActions = {
-  handleChatCompletionRequest,
+  ...chatCompletionRouteActions,
   ...modelRouteActions,
   ...profileRouteActions,
   ...bundleRouteActions,

@@ -233,6 +233,15 @@ export interface ChatCompletionActionOptions {
   logger?: ChatCompletionActionLogger;
 }
 
+export interface ChatCompletionRouteActions<Reply extends ChatCompletionActionReplyLike = ChatCompletionActionReplyLike> {
+  handleChatCompletionRequest(
+    body: unknown,
+    origin: string | string[] | undefined,
+    reply: Reply,
+    runAgent: AgentRunExecutor,
+  ): Promise<unknown>;
+}
+
 export type ToolArgumentEntry = {
   key: string;
   value: unknown;
@@ -829,6 +838,15 @@ export async function handleChatCompletionRequestAction<Reply extends ChatComple
     options.diagnostics.logError('remote-server', 'Handler error', caughtError);
     return reply.code(500).send({ error: 'Internal Server Error' });
   }
+}
+
+export function createChatCompletionRouteActions<Reply extends ChatCompletionActionReplyLike = ChatCompletionActionReplyLike>(
+  options: ChatCompletionActionOptions,
+): ChatCompletionRouteActions<Reply> {
+  return {
+    handleChatCompletionRequest: (body, origin, reply, runAgent) =>
+      handleChatCompletionRequestAction(body, origin, reply, runAgent, options),
+  };
 }
 
 export function parseChatCompletionSseEvent(event: string): ParsedChatCompletionSseEvent[] {
