@@ -30,10 +30,7 @@ import {
   type ModelActionOptions,
 } from "@dotagents/shared/chat-utils"
 import {
-  createConversationAction,
-  getConversationAction,
-  getConversationsAction,
-  updateConversationAction,
+  createConversationRouteActions,
   type ConversationActionOptions,
 } from "@dotagents/shared/conversation-sync"
 import { getConversationIdValidationError } from "@dotagents/shared/conversation-id"
@@ -320,6 +317,8 @@ const conversationActionOptions: ConversationActionOptions<DesktopConversationAc
   now: () => Date.now(),
 }
 
+const conversationRouteActions = createConversationRouteActions(conversationActionOptions)
+
 const conversationVideoAssetActionOptions: ConversationVideoAssetActionOptions = {
   service: {
     getVideoAssetFile: async (conversationId, fileName) => {
@@ -517,10 +516,6 @@ const skillActionOptions: SkillActionOptions = {
 
 const skillRouteActions = createSkillRouteActions(skillActionOptions)
 
-async function getConversation(id: string | undefined) {
-  return getConversationAction(id, conversationActionOptions)
-}
-
 async function getConversationVideoAsset(
   id: string | undefined,
   fileName: string | undefined,
@@ -534,18 +529,6 @@ async function getConversationVideoAsset(
   )
 }
 
-async function getConversations() {
-  return getConversationsAction(conversationActionOptions)
-}
-
-async function createConversation(body: unknown, onChanged: () => void) {
-  return createConversationAction(body, onChanged, conversationActionOptions)
-}
-
-async function updateConversation(id: string | undefined, body: unknown, onChanged: () => void) {
-  return updateConversationAction(id, body, onChanged, conversationActionOptions)
-}
-
 export const mobileApiDesktopActions: MobileApiRouteActions = {
   handleChatCompletionRequest,
   ...modelRouteActions,
@@ -555,13 +538,10 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   ...settingsRouteActions,
   ...agentSessionCandidateRouteActions,
   recordOperatorAuditEvent,
-  getConversation,
+  ...conversationRouteActions,
   getConversationVideoAsset,
   ...ttsRouteActions,
   ...pushRouteActions,
-  getConversations,
-  createConversation,
-  updateConversation,
   ...emergencyStopRouteActions,
   ...skillRouteActions,
   ...knowledgeNoteRouteActions,

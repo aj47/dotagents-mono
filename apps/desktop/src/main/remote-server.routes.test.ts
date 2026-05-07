@@ -1320,19 +1320,27 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.getConversations()")
     expect(mobileApiRoutesSource).toContain("actions.createConversation(req.body, notifyConversationHistoryChanged)")
     expect(mobileApiRoutesSource).toContain("actions.updateConversation(params.id, req.body, notifyConversationHistoryChanged)")
-    expect(mobileApiDesktopActionsSource).toContain("getConversationAction(id, conversationActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("getConversationsAction(conversationActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain(
+    expect(mobileApiDesktopActionsSource).toContain("const conversationRouteActions = createConversationRouteActions(conversationActionOptions)")
+    expect(mobileApiDesktopActionsSource).toContain("...conversationRouteActions")
+    expect(mobileApiDesktopActionsSource).not.toContain("getConversationAction(id, conversationActionOptions)")
+    expect(mobileApiDesktopActionsSource).not.toContain("getConversationsAction(conversationActionOptions)")
+    expect(mobileApiDesktopActionsSource).not.toContain(
       "createConversationAction(body, onChanged, conversationActionOptions)",
     )
-    expect(mobileApiDesktopActionsSource).toContain(
+    expect(mobileApiDesktopActionsSource).not.toContain(
       "updateConversationAction(id, body, onChanged, conversationActionOptions)",
     )
     expect(sharedConversationSyncSource).toContain("export interface ConversationActionOptions")
+    expect(sharedConversationSyncSource).toContain("export interface ConversationRouteActions")
+    expect(sharedConversationSyncSource).toContain("export function createConversationRouteActions")
     expect(sharedConversationSyncSource).toContain("export async function getConversationAction")
     expect(sharedConversationSyncSource).toContain("export async function getConversationsAction")
     expect(sharedConversationSyncSource).toContain("export async function createConversationAction")
     expect(sharedConversationSyncSource).toContain("export async function updateConversationAction")
+    expect(sharedConversationSyncSource).toContain("getConversation: (id) => getConversationAction(id, options)")
+    expect(sharedConversationSyncSource).toContain("getConversations: () => getConversationsAction(options)")
+    expect(sharedConversationSyncSource).toContain("createConversation: (body, onChanged) => createConversationAction(body, onChanged, options)")
+    expect(sharedConversationSyncSource).toContain("updateConversation: (id, body, onChanged) => updateConversationAction(id, body, onChanged, options)")
     expect(sharedConversationSyncSource).toContain("options.validateConversationId(conversationId)")
     expect(sharedConversationSyncSource).toContain("options.service.loadConversation(conversationId)")
     expect(sharedConversationSyncSource).toContain("buildServerConversationFullResponse(conversation, { includeMetadata: true })")

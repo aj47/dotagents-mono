@@ -68,6 +68,17 @@ export interface ConversationActionOptions<TConversation extends ServerConversat
   now(): number;
 }
 
+export interface ConversationRouteActions {
+  getConversation(id: string | undefined): Promise<ConversationActionResult>;
+  getConversations(): Promise<ConversationActionResult>;
+  createConversation(body: unknown, onChanged: () => void): Promise<ConversationActionResult>;
+  updateConversation(
+    id: string | undefined,
+    body: unknown,
+    onChanged: () => void,
+  ): Promise<ConversationActionResult>;
+}
+
 const VALID_ROLES = ['user', 'assistant', 'tool'] as const;
 
 export interface ServerConversationRecordMessage extends ServerConversationMessage {
@@ -482,6 +493,17 @@ export async function updateConversationAction<TConversation extends ServerConve
     options.diagnostics.logError('conversation-actions', 'Failed to update conversation', caughtError);
     return conversationActionError(500, getUnknownErrorMessage(caughtError, 'Failed to update conversation'));
   }
+}
+
+export function createConversationRouteActions<TConversation extends ServerConversationRecord<any>>(
+  options: ConversationActionOptions<TConversation>,
+): ConversationRouteActions {
+  return {
+    getConversation: (id) => getConversationAction(id, options),
+    getConversations: () => getConversationsAction(options),
+    createConversation: (body, onChanged) => createConversationAction(body, onChanged, options),
+    updateConversation: (id, body, onChanged) => updateConversationAction(id, body, onChanged, options),
+  };
 }
 
 /**

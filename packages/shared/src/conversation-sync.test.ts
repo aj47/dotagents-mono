@@ -7,6 +7,7 @@ import {
   buildServerConversationFullResponse,
   buildServerConversationsResponse,
   createConversationAction,
+  createConversationRouteActions,
   fetchFullConversation,
   fromServerConversationMessage,
   getConversationAction,
@@ -278,6 +279,75 @@ describe('server conversation API helpers', () => {
       { level: 'info', source: 'conversation-actions', message: 'Created conversation conv-new with 1 messages' },
       { level: 'info', source: 'conversation-actions', message: 'Updated conversation conv-1' },
     ]);
+  });
+
+  it('creates conversation route actions that delegate through service adapters', async () => {
+    const conversations = [{
+      id: 'conv-1',
+      title: 'Server Chat',
+      createdAt: 1,
+      updatedAt: 2,
+      messageCount: 1,
+      lastMessage: 'hello',
+      preview: 'hello',
+    }];
+    const fullConversation = {
+      id: 'conv-1',
+      title: 'Server Chat',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'msg-1', role: 'user' as const, content: 'hello', timestamp: 2 }],
+      metadata: { model: 'test' },
+    };
+    const savedConversations = new Map([[fullConversation.id, fullConversation]]);
+    const changed = vi.fn();
+    const options = {
+      service: {
+        loadConversation: async (conversationId: string) => savedConversations.get(conversationId),
+        getConversationHistory: async () => conversations,
+        generateConversationId: () => 'conv-new',
+        saveConversation: async (conversation: typeof fullConversation) => {
+          savedConversations.set(conversation.id, conversation);
+        },
+      },
+      diagnostics: {
+        logInfo: () => undefined,
+        logError: () => {
+          throw new Error('unexpected diagnostics log');
+        },
+      },
+      validateConversationId: () => null,
+      now: () => 10,
+    };
+    const routeActions = createConversationRouteActions(options);
+
+    await expect(routeActions.getConversations()).resolves.toEqual({
+      statusCode: 200,
+      body: buildServerConversationsResponse(conversations),
+    });
+    await expect(routeActions.getConversation('conv-1')).resolves.toEqual({
+      statusCode: 200,
+      body: buildServerConversationFullResponse(fullConversation, { includeMetadata: true }),
+    });
+    await expect(routeActions.createConversation({
+      messages: [{ role: 'user', content: 'new conversation' }],
+    }, changed)).resolves.toMatchObject({
+      statusCode: 201,
+      body: {
+        id: 'conv-new',
+        title: 'new conversation',
+      },
+    });
+    await expect(routeActions.updateConversation('conv-1', {
+      title: 'Updated',
+    }, changed)).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        id: 'conv-1',
+        title: 'Updated',
+      },
+    });
+    expect(changed).toHaveBeenCalledTimes(2);
   });
 
   it('returns shared conversation sync validation and not-found errors', async () => {
