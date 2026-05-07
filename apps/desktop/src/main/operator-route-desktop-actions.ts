@@ -32,17 +32,6 @@ import {
   testOperatorMcpServer,
 } from "./operator-mcp-actions"
 import {
-  clearOperatorDiscordLogs,
-  connectOperatorDiscord,
-  connectOperatorWhatsApp,
-  disconnectOperatorDiscord,
-  getOperatorDiscord,
-  getOperatorDiscordLogs,
-  getOperatorIntegrations,
-  getOperatorWhatsApp,
-  logoutOperatorWhatsApp,
-} from "./operator-integration-actions"
-import {
   getOperatorConversations,
   getOperatorErrors,
   getOperatorHealth,
@@ -58,11 +47,20 @@ import {
 import {
   checkOperatorUpdaterAction,
   clearOperatorMessageQueueAction,
+  clearOperatorDiscordLogsAction,
+  connectOperatorDiscordAction,
+  connectOperatorWhatsAppAction,
+  disconnectOperatorDiscordAction,
   downloadLatestOperatorUpdateAssetAction,
+  getOperatorDiscordAction,
+  getOperatorDiscordLogsAction,
+  getOperatorIntegrationsAction,
   getOperatorMessageQueuesAction,
   getOperatorTunnelAction,
   getOperatorTunnelSetupAction,
   getOperatorUpdaterAction,
+  getOperatorWhatsAppAction,
+  logoutOperatorWhatsAppAction,
   openOperatorReleasesPageAction,
   openOperatorUpdateAssetAction,
   pauseOperatorMessageQueueAction,
@@ -78,6 +76,7 @@ import {
   stopOperatorTunnelAction,
   updateOperatorQueuedMessageAction,
   type OperatorAgentActionOptions,
+  type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
   type OperatorTunnelActionOptions,
   type OperatorUpdaterActionOptions,
@@ -95,6 +94,7 @@ import {
 } from "./cloudflare-tunnel"
 import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
+import { discordService } from "./discord-service"
 import {
   pauseMessageQueueByConversationId,
   removeQueuedMessageById,
@@ -103,6 +103,11 @@ import {
   updateQueuedMessageTextById,
 } from "./message-queue-actions"
 import { messageQueueService } from "./message-queue-service"
+import { mcpService, WHATSAPP_SERVER_NAME } from "./mcp-service"
+import {
+  buildOperatorIntegrationsSummary,
+  getOperatorWhatsAppIntegrationSummary,
+} from "./operator-integration-summary"
 import {
   MANUAL_RELEASES_URL,
   checkForUpdatesAndDownload,
@@ -185,6 +190,28 @@ const localSpeechModelActionOptions: LocalSpeechModelActionOptions = {
   },
 }
 
+const integrationActionOptions: OperatorIntegrationActionOptions = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+    getErrorMessage,
+  },
+  service: {
+    getIntegrationsSummary: buildOperatorIntegrationsSummary,
+    getDiscordStatus: () => discordService.getStatus(),
+    getDiscordLogs: () => discordService.getLogs(),
+    startDiscord: () => discordService.start(),
+    stopDiscord: () => discordService.stop(),
+    clearDiscordLogs: () => discordService.clearLogs(),
+    getWhatsAppSummary: getOperatorWhatsAppIntegrationSummary,
+    isWhatsAppServerConnected: () => !!mcpService.getServerStatus()[WHATSAPP_SERVER_NAME]?.connected,
+    executeWhatsAppTool: (toolName) => mcpService.executeToolCall(
+      { name: toolName, arguments: {} },
+      undefined,
+      true,
+    ),
+  },
+}
+
 const messageQueueActionOptions: OperatorMessageQueueActionOptions = {
   service: {
     getAllQueues: () => messageQueueService.getAllQueues(),
@@ -244,6 +271,42 @@ async function getOperatorLocalSpeechModelStatus(providerId: unknown) {
 
 async function downloadOperatorLocalSpeechModel(providerId: unknown) {
   return downloadOperatorLocalSpeechModelAction(providerId, localSpeechModelActionOptions)
+}
+
+async function getOperatorIntegrations() {
+  return getOperatorIntegrationsAction(integrationActionOptions)
+}
+
+function getOperatorDiscord() {
+  return getOperatorDiscordAction(integrationActionOptions)
+}
+
+function getOperatorDiscordLogs(count: string | number | undefined) {
+  return getOperatorDiscordLogsAction(count, integrationActionOptions)
+}
+
+async function connectOperatorDiscord() {
+  return connectOperatorDiscordAction(integrationActionOptions)
+}
+
+async function disconnectOperatorDiscord() {
+  return disconnectOperatorDiscordAction(integrationActionOptions)
+}
+
+function clearOperatorDiscordLogs() {
+  return clearOperatorDiscordLogsAction(integrationActionOptions)
+}
+
+async function getOperatorWhatsApp() {
+  return getOperatorWhatsAppAction(integrationActionOptions)
+}
+
+async function connectOperatorWhatsApp() {
+  return connectOperatorWhatsAppAction(integrationActionOptions)
+}
+
+async function logoutOperatorWhatsApp() {
+  return logoutOperatorWhatsAppAction(integrationActionOptions)
 }
 
 function getOperatorMessageQueues() {

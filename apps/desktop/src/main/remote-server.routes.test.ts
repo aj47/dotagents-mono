@@ -215,12 +215,6 @@ function getSharedModelPresetsSource(): string {
   return readFileSync(sharedModelPresetsPath, "utf8")
 }
 
-function getOperatorIntegrationActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const operatorIntegrationActionsPath = path.join(testDir, "operator-integration-actions.ts")
-  return readFileSync(operatorIntegrationActionsPath, "utf8")
-}
-
 function getOperatorIntegrationSummarySource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const operatorIntegrationSummaryPath = path.join(testDir, "operator-integration-summary.ts")
@@ -642,7 +636,6 @@ describe("remote-server route registration", () => {
     const operatorActionSources = [
       getOperatorApiKeyActionsSource(),
       getOperatorAuditActionsSource(),
-      getOperatorIntegrationActionsSource(),
       getOperatorMcpActionsSource(),
       getOperatorObservabilityActionsSource(),
     ]
@@ -1251,7 +1244,6 @@ describe("remote-server route registration", () => {
       '// Operator/Admin Endpoints',
       "  // GET /v1/operator/mcp - Operator-level MCP summary",
     )
-    const operatorIntegrationActionsSource = getOperatorIntegrationActionsSource()
     const operatorIntegrationSummarySource = getOperatorIntegrationSummarySource()
     const operatorObservabilityActionsSource = getOperatorObservabilityActionsSource()
     const operatorAuditActionsSource = getOperatorAuditActionsSource()
@@ -1299,18 +1291,18 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.getOperatorWhatsApp()")
     expect(operatorRoutesSource).toContain("actions.connectOperatorWhatsApp()")
     expect(operatorRoutesSource).toContain("actions.logoutOperatorWhatsApp()")
-    expect(operatorIntegrationActionsSource).toContain("getOperatorIntegrationsAction(integrationActionOptions)")
-    expect(operatorIntegrationActionsSource).toContain("getOperatorDiscordAction(integrationActionOptions)")
-    expect(operatorIntegrationActionsSource).toContain("getOperatorDiscordLogsAction(count, integrationActionOptions)")
-    expect(operatorIntegrationActionsSource).toContain("connectOperatorDiscordAction(integrationActionOptions)")
-    expect(operatorIntegrationActionsSource).toContain("logoutOperatorWhatsAppAction(integrationActionOptions)")
-    expect(operatorIntegrationActionsSource).toContain("service: {")
-    expect(operatorIntegrationActionsSource).toContain("getIntegrationsSummary: buildOperatorIntegrationsSummary")
-    expect(operatorIntegrationActionsSource).toContain("startDiscord: () => discordService.start()")
-    expect(operatorIntegrationActionsSource).toContain("stopDiscord: () => discordService.stop()")
-    expect(operatorIntegrationActionsSource).toContain("clearDiscordLogs: () => discordService.clearLogs()")
-    expect(operatorIntegrationActionsSource).toContain("mcpService.executeToolCall")
-    expect(operatorIntegrationActionsSource).toContain("WHATSAPP_SERVER_NAME")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorIntegrationsAction(integrationActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorDiscordAction(integrationActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("getOperatorDiscordLogsAction(count, integrationActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("connectOperatorDiscordAction(integrationActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("logoutOperatorWhatsAppAction(integrationActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("service: {")
+    expect(operatorRouteDesktopActionsSource).toContain("getIntegrationsSummary: buildOperatorIntegrationsSummary")
+    expect(operatorRouteDesktopActionsSource).toContain("startDiscord: () => discordService.start()")
+    expect(operatorRouteDesktopActionsSource).toContain("stopDiscord: () => discordService.stop()")
+    expect(operatorRouteDesktopActionsSource).toContain("clearDiscordLogs: () => discordService.clearLogs()")
+    expect(operatorRouteDesktopActionsSource).toContain("mcpService.executeToolCall")
+    expect(operatorRouteDesktopActionsSource).toContain("WHATSAPP_SERVER_NAME")
     expect(sharedOperatorActionsSource).toContain("export async function getOperatorIntegrationsAction(")
     expect(sharedOperatorActionsSource).toContain("export function getOperatorDiscordAction(")
     expect(sharedOperatorActionsSource).toContain("export async function connectOperatorWhatsAppAction(")
