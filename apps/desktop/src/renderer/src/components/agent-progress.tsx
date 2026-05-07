@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
+import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
 import { desktopConversationsClient } from "@renderer/lib/desktop-conversations-client"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
@@ -226,11 +227,9 @@ const SessionModelPicker: React.FC<{
   const handleModelChange = useCallback(async (modelId: string) => {
     if (!config || modelId === currentValue) return
     try {
-      await tipcClient.saveConfig({
-        config: {
-          ...config,
-          ...buildAgentModelConfigUpdates(config, providerId, modelId),
-        },
+      await desktopConfigClient.saveConfig({
+        ...config,
+        ...buildAgentModelConfigUpdates(config, providerId, modelId),
       })
       await queryClient.invalidateQueries({ queryKey: ["config"] })
       await queryClient.invalidateQueries({ queryKey: ["available-models"] })
@@ -298,8 +297,9 @@ const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = fals
   const handleChange = useCallback(async (value: string) => {
     if (!config || value === currentValue) return
     try {
-      await tipcClient.saveConfig({
-        config: { ...config, openaiReasoningEffort: value as OpenAiReasoningEffort },
+      await desktopConfigClient.saveConfig({
+        ...config,
+        openaiReasoningEffort: value as OpenAiReasoningEffort,
       })
       await queryClient.invalidateQueries({ queryKey: ["config"] })
       toast.success("Thinking level updated")
@@ -352,8 +352,9 @@ const SessionVerbosityPicker: React.FC<{ compact?: boolean }> = ({ compact = fal
   const handleChange = useCallback(async (value: string) => {
     if (!config || value === currentValue) return
     try {
-      await tipcClient.saveConfig({
-        config: { ...config, codexTextVerbosity: value as CodexTextVerbosity },
+      await desktopConfigClient.saveConfig({
+        ...config,
+        codexTextVerbosity: value as CodexTextVerbosity,
       })
       await queryClient.invalidateQueries({ queryKey: ["config"] })
       toast.success("Verbosity updated")
