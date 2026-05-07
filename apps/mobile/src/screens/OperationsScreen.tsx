@@ -22,7 +22,9 @@ import {
 import { getDeviceIdentity } from '../lib/deviceIdentity';
 import {
   DEFAULT_FLOATING_PANEL_AUTO_SHOW,
+  DEFAULT_HIDE_DOCK_ICON,
   DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED,
+  DEFAULT_LAUNCH_AT_LOGIN,
   DEFAULT_PANEL_DRAG_ENABLED,
   DEFAULT_PANEL_POSITION,
   OperatorAuditEntry,
@@ -681,6 +683,7 @@ export default function OperationsScreen({ navigation }: any) {
   const discord = discordSummary ?? status?.integrations.discord ?? null;
   const whatsApp = whatsAppSummary ?? status?.integrations.whatsapp ?? null;
   const tunnelStatus = status?.tunnel ?? null;
+  const isDesktopMac = status?.system.platform === 'darwin';
   const trustedDeviceIds = settings?.remoteServerOperatorAllowDeviceIds ?? [];
   const currentDeviceTrusted = currentDeviceId ? trustedDeviceIds.includes(currentDeviceId) : false;
 
@@ -1886,6 +1889,47 @@ export default function OperationsScreen({ navigation }: any) {
                 >
                   <Text style={styles.secondaryActionText}>{currentDeviceTrusted ? 'This device is trusted' : 'Trust this device'}</Text>
                 </TouchableOpacity>
+              </View>
+
+              <Text style={styles.subsectionTitle}>Desktop app</Text>
+              {isDesktopMac ? (
+                <View style={styles.row}>
+                  <View style={styles.rowCopy}>
+                    <Text style={styles.label}>Hide Dock Icon</Text>
+                    <Text style={styles.helperText}>Run the desktop app without a persistent Dock icon.</Text>
+                  </View>
+                  <Switch
+                    value={settings.hideDockIcon ?? DEFAULT_HIDE_DOCK_ICON}
+                    onValueChange={(value) => void applySettingsUpdate(
+                      { hideDockIcon: value },
+                      'hide dock icon',
+                      'Dock icon preference updated.',
+                    )}
+                    disabled={controlsDisabled}
+                    accessibilityLabel={createSwitchAccessibilityLabel('Hide Dock Icon')}
+                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                    thumbColor={(settings.hideDockIcon ?? DEFAULT_HIDE_DOCK_ICON) ? theme.colors.primaryForeground : theme.colors.background}
+                  />
+                </View>
+              ) : null}
+
+              <View style={styles.row}>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.label}>Launch at Login</Text>
+                  <Text style={styles.helperText}>Start the desktop app automatically after sign-in.</Text>
+                </View>
+                <Switch
+                  value={settings.launchAtLogin ?? DEFAULT_LAUNCH_AT_LOGIN}
+                  onValueChange={(value) => void applySettingsUpdate(
+                    { launchAtLogin: value },
+                    'launch at login',
+                    'Launch at login preference updated.',
+                  )}
+                  disabled={controlsDisabled}
+                  accessibilityLabel={createSwitchAccessibilityLabel('Launch at Login')}
+                  trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                  thumbColor={(settings.launchAtLogin ?? DEFAULT_LAUNCH_AT_LOGIN) ? theme.colors.primaryForeground : theme.colors.background}
+                />
               </View>
 
               <Text style={styles.subsectionTitle}>Desktop floating panel</Text>

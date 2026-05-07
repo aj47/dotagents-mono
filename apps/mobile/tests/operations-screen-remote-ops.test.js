@@ -27,6 +27,8 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_CORS_ORIGINS/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_PORT/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED/);
+  assert.match(operationsSource, /DEFAULT_HIDE_DOCK_ICON/);
+  assert.match(operationsSource, /DEFAULT_LAUNCH_AT_LOGIN/);
   assert.match(operationsSource, /DEFAULT_FLOATING_PANEL_AUTO_SHOW/);
   assert.match(operationsSource, /DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED/);
   assert.match(operationsSource, /DEFAULT_PANEL_DRAG_ENABLED/);
@@ -47,6 +49,12 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Trusted operator devices/);
   assert.match(operationsSource, /Current device ID:/);
   assert.match(operationsSource, /Trust this device/);
+  assert.match(operationsSource, /isDesktopMac/);
+  assert.match(operationsSource, /Desktop app/);
+  assert.match(operationsSource, /Hide Dock Icon/);
+  assert.match(operationsSource, /Launch at Login/);
+  assert.match(operationsSource, /hideDockIcon: value/);
+  assert.match(operationsSource, /launchAtLogin: value/);
   assert.match(operationsSource, /Desktop floating panel/);
   assert.match(operationsSource, /Auto-Show Floating Panel/);
   assert.match(operationsSource, /Hide When Main Focused/);
