@@ -3,8 +3,8 @@ import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
 import { Send, Mic, OctagonX, ImagePlus, X, Bot } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
-import { tipcClient } from "@renderer/lib/tipc-client"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
+import { desktopMcpSessionActionsClient } from "@renderer/lib/desktop-mcp-session-actions-client"
 import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
@@ -98,10 +98,10 @@ export function OverlayFollowUpInput({
     mutationFn: async (message: string) => {
       if (!conversationId) {
         // Start a new conversation if none exists
-        return await tipcClient.createMcpTextInput({ text: message })
+        return await desktopMcpSessionActionsClient.createMcpTextInput({ text: message })
       } else {
         // Continue the existing conversation
-        return await tipcClient.createMcpTextInput({
+        return await desktopMcpSessionActionsClient.createMcpTextInput({
           text: message,
           conversationId,
         })
@@ -244,7 +244,7 @@ export function OverlayFollowUpInput({
     // This is more reliable than using Zustand store which has timing issues
     // Don't pass fake "pending-*" sessionIds - let the backend find the real session by conversationId
     const realSessionId = sessionId?.startsWith('pending-') ? undefined : sessionId
-    await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId })
+    await desktopMcpSessionActionsClient.triggerMcpRecording({ conversationId, sessionId: realSessionId })
   }
 
   // Handle stop session - kill switch functionality

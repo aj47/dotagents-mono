@@ -114,11 +114,11 @@ describe("sessions in-app actions", () => {
     expect(agentProgressSource).toContain("togglePinSession(conversationId)")
   })
 
-  it("lets tile voice continuation use the in-app dialog path while keeping the IPC fallback", () => {
+  it("lets tile voice continuation use the in-app dialog path while keeping the desktop client fallback", () => {
     expect(tileFollowUpSource).toContain("if (onVoiceContinue) {")
     expect(tileFollowUpSource).toContain("continueConversationTitle: conversationTitle")
     expect(tileFollowUpSource).toContain(
-      "await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })"
+      "await desktopMcpSessionActionsClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })"
     )
   })
 
@@ -134,12 +134,12 @@ describe("sessions in-app actions", () => {
     // of the prop value. Guards against the regression where sidebar + modal
     // submits would surface the floating panel and drop the app from Cmd+Tab.
     const textSubmitIndex = sessionActionDialogSource.indexOf("const handleTextSubmit")
-    const voiceCreateIndex = sessionActionDialogSource.indexOf("tipcClient.createMcpRecording")
+    const voiceCreateIndex = sessionActionDialogSource.indexOf("desktopMcpSessionActionsClient.createMcpRecording")
     expect(textSubmitIndex).toBeGreaterThan(-1)
     expect(voiceCreateIndex).toBeGreaterThan(-1)
 
     const textSubmitBlock = sessionActionDialogSource.slice(textSubmitIndex, textSubmitIndex + 800)
-    expect(textSubmitBlock).toContain("tipcClient.createMcpTextInput")
+    expect(textSubmitBlock).toContain("desktopMcpSessionActionsClient.createMcpTextInput")
     expect(textSubmitBlock).toContain("fromTile: true")
 
     const voiceSubmitBlock = sessionActionDialogSource.slice(voiceCreateIndex, voiceCreateIndex + 600)

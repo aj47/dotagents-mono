@@ -3,8 +3,8 @@ import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
 import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
-import { tipcClient } from "@renderer/lib/tipc-client"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
+import { desktopMcpSessionActionsClient } from "@renderer/lib/desktop-mcp-session-actions-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
 import { logUI } from "@renderer/lib/debug"
@@ -110,11 +110,11 @@ export function TileFollowUpInput({
       if (!conversationId) {
         // Start a new conversation if none exists
         // Mark as fromTile so the floating panel doesn't show - session continues in the tile
-        return await tipcClient.createMcpTextInput({ text: message, fromTile: true })
+        return await desktopMcpSessionActionsClient.createMcpTextInput({ text: message, fromTile: true })
       } else {
         // Continue the existing conversation
         // Mark as fromTile so the floating panel doesn't show - session continues in the tile
-        return await tipcClient.createMcpTextInput({
+        return await desktopMcpSessionActionsClient.createMcpTextInput({
           text: message,
           conversationId,
           fromTile: true,
@@ -258,7 +258,7 @@ export function TileFollowUpInput({
       return
     }
 
-    await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })
+    await desktopMcpSessionActionsClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })
   }
 
   // Handle stop session - kill switch functionality

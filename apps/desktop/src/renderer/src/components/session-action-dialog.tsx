@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { TextInputPanel } from "./text-input-panel"
 import { Recorder } from "@renderer/lib/recorder"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
+import { desktopMcpSessionActionsClient } from "@renderer/lib/desktop-mcp-session-actions-client"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient } from "@renderer/lib/queries"
 import { cn } from "@renderer/lib/utils"
@@ -95,7 +96,7 @@ export function SessionActionDialog({
       // description explicitly promises "without opening the hover panel".
       // Force the session snoozed regardless of the fromTile prop so the
       // floating panel never auto-shows from this dialog's submit path.
-      const result = await tipcClient.createMcpTextInput({
+      const result = await desktopMcpSessionActionsClient.createMcpTextInput({
         text,
         conversationId,
         fromTile: true,
@@ -167,7 +168,7 @@ export function SessionActionDialog({
           // Match handleTextSubmit: always start voice sessions snoozed so the
           // floating panel never auto-shows while the user is interacting with
           // the in-app dialog. See comment in handleTextSubmit above.
-          await tipcClient.createMcpRecording({
+          await desktopMcpSessionActionsClient.createMcpRecording({
             recording: await blob.arrayBuffer(),
             pcmRecording,
             duration,
