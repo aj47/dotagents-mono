@@ -1,4 +1,5 @@
 import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
+import { getBranchableServerConversationMessages } from "@dotagents/shared/conversation-sync"
 import { resolveAgentModeMaxIterations } from "@dotagents/shared/agent-run-utils"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
@@ -305,9 +306,7 @@ export async function processWithAgentMode(
         logLLM(`[agent-loop-runner] Loaded conversation with ${conversation.messages.length} messages`)
         previousConversationCompaction = conversation.compaction
 
-        const replayMessages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
-          ? conversation.rawMessages
-          : conversation.messages
+        const replayMessages = getBranchableServerConversationMessages(conversation)
         const messagesToConvert = replayMessages.slice(0, -1)
         const branchMessageIndexMap = getBranchMessageIndexMap(messagesToConvert)
         logLLM(`[agent-loop-runner] Converting ${messagesToConvert.length} messages (excluding last message)`)
