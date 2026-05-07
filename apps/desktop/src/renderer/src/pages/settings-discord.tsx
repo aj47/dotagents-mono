@@ -8,7 +8,11 @@ import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import {
+  desktopDiscordClient,
+  type DesktopDiscordLogEntry,
+  type DesktopDiscordStatus,
+} from "@renderer/lib/desktop-discord-client"
 import { formatConfigListInput, parseConfigListInput } from "@dotagents/shared/config-list-input"
 import {
   DEFAULT_DISCORD_ENABLED,
@@ -17,25 +21,8 @@ import {
   DEFAULT_DISCORD_REQUIRE_MENTION,
 } from "@dotagents/shared/discord-config"
 import { getEnabledChatAgentProfiles } from "@dotagents/shared/agent-profile-queries"
-import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
 import type { Config } from "@shared/types"
-
-interface DiscordStatus {
-  available: boolean
-  enabled: boolean
-  connected: boolean
-  connecting: boolean
-  botId?: string
-  botUsername?: string
-  lastError?: string
-}
-
-interface DiscordLogEntry {
-  id: string
-  level: "info" | "warn" | "error"
-  message: string
-  timestamp: number
-}
+import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
 
 export function Component() {
   const configQuery = useConfigQuery()
@@ -43,8 +30,8 @@ export function Component() {
   const cfg = configQuery.data as Config | undefined
   const cfgRef = useRef<Config | undefined>(cfg)
 
-  const [status, setStatus] = useState<DiscordStatus | null>(null)
-  const [logs, setLogs] = useState<DiscordLogEntry[]>([])
+  const [status, setStatus] = useState<DesktopDiscordStatus | null>(null)
+  const [logs, setLogs] = useState<DesktopDiscordLogEntry[]>([])
   const [profiles, setProfiles] = useState<AgentProfile[]>([])
   const [statusError, setStatusError] = useState<string | null>(null)
   const [botTokenDraft, setBotTokenDraft] = useState("")
@@ -100,12 +87,12 @@ export function Component() {
   const fetchStatus = useCallback(async () => {
     try {
       const [nextStatus, nextLogs, nextProfiles] = await Promise.all([
-        tipcClient.discordGetStatus(),
-        tipcClient.discordGetLogs(),
+        desktopDiscordClient.getStatus(),
+        desktopDiscordClient.getLogs(),
         desktopAgentProfilesClient.getAgentProfiles(),
       ])
-      setStatus(nextStatus as DiscordStatus)
-      setLogs((nextLogs as DiscordLogEntry[]).slice().reverse())
+      setStatus(nextStatus)
+      setLogs(nextLogs.slice().reverse())
       setProfiles(getEnabledChatAgentProfiles(nextProfiles as AgentProfile[]))
       setStatusError(null)
     } catch (error) {
@@ -135,7 +122,7 @@ export function Component() {
       }
     }
 
-    const result = await tipcClient.discordConnect()
+    const result = await desktopDiscordClient.connect()
     if (!result.success) {
       setStatusError(result.error || "Failed to connect Discord")
     }
@@ -144,7 +131,7 @@ export function Component() {
 
   const handleDisconnect = useCallback(async () => {
     setStatusError(null)
-    const result = await tipcClient.discordDisconnect()
+    const result = await desktopDiscordClient.disconnect()
     if (!result.success) {
       setStatusError(result.error || "Failed to disconnect Discord")
     }
@@ -320,7 +307,7 @@ export function Component() {
         <ControlGroup title="Recent Logs">
           <div className="flex items-center justify-between px-3 pt-2">
             <div className="text-sm text-muted-foreground">Most recent Discord events and errors.</div>
-            <Button variant="ghost" size="sm" onClick={() => void tipcClient.discordClearLogs().then(() => fetchStatus())}>
+            <Button variant="ghost" size="sm" onClick={() => void desktopDiscordClient.clearLogs().then(() => fetchStatus())}>
               <Trash2 className="mr-2 h-4 w-4" />
               Clear logs
             </Button>
