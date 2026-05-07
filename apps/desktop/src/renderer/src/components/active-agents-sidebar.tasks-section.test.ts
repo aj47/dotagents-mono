@@ -21,7 +21,7 @@ describe("active agents sidebar task section", () => {
   it("renders Tasks above regular sessions with separate pagination", () => {
     const tasksHeaderIndex = sidebarSource.indexOf("{hasTaskSessions && (")
     const sessionsHeaderIndex = sidebarSource.indexOf('<span className="select-none">Sessions</span>')
-    const sessionsListIndex = sidebarSource.indexOf("ungroupedUserSidebarSessions.map((entry)")
+    const sessionsListIndex = sidebarSource.lastIndexOf("orderedUngroupedUserSidebarSessions.map((entry)")
 
     expect(tasksHeaderIndex).toBeGreaterThan(-1)
     expect(sessionsHeaderIndex).toBeGreaterThan(-1)
@@ -46,7 +46,8 @@ describe("active agents sidebar task section", () => {
   })
 
   it("forces task rows to remain one line", () => {
-    expect(sidebarSource).toContain("options: { forceSingleLine?: boolean } = {}")
+    expect(sidebarSource).toContain("forceSingleLine?: boolean")
+    expect(sidebarSource).toContain("reorderContainerGroupId?: string | null")
     expect(sidebarSource).toContain("const forceSingleLine = options.forceSingleLine ?? false")
     expect(sidebarSource).toContain("!forceSingleLine &&")
     expect(sidebarSource).toContain("visibleTaskSidebarSessions.map((entry, idx) =>")

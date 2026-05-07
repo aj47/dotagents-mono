@@ -75,4 +75,27 @@ describe("AgentSessionTracker", () => {
     agentSessionTracker.clearAllSessions()
     agentSessionTracker.clearCompletedSessions()
   })
+
+  it("updates active and recent session titles for a renamed conversation", async () => {
+    const { agentSessionTracker } = await import("./agent-session-tracker")
+
+    agentSessionTracker.clearAllSessions()
+    agentSessionTracker.clearCompletedSessions()
+
+    const activeSessionId = agentSessionTracker.startSession("conv-shared", "Old title")
+    const completedSessionId = agentSessionTracker.startSession("conv-shared", "Old title")
+    const unrelatedSessionId = agentSessionTracker.startSession("conv-other", "Other title")
+    agentSessionTracker.completeSession(completedSessionId, "done")
+
+    expect(
+      agentSessionTracker.updateConversationTitleForConversation("conv-shared", "New title"),
+    ).toBe(2)
+
+    expect(agentSessionTracker.getSession(activeSessionId)?.conversationTitle).toBe("New title")
+    expect(agentSessionTracker.findCompletedSession(completedSessionId)?.conversationTitle).toBe("New title")
+    expect(agentSessionTracker.getSession(unrelatedSessionId)?.conversationTitle).toBe("Other title")
+
+    agentSessionTracker.clearAllSessions()
+    agentSessionTracker.clearCompletedSessions()
+  })
 })

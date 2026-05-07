@@ -48,7 +48,7 @@ import {
   preprocessTextForTTS,
   shouldCollapseMessage,
   formatToolArguments,
-  getIndividualToolCallPreview,
+  getCompactToolExecutionPreview,
   getToolResultsSummary,
   getAgentConversationStateLabel,
   extractRespondToUserContentFromArgs,
@@ -3504,7 +3504,7 @@ export default function ChatScreen({ route, navigation }: any) {
                               const tcPending = !tcResult;
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
-                              const toolPreview = label ?? getIndividualToolCallPreview(toolCall);
+                              const toolPreview = label ?? getCompactToolExecutionPreview(toolCall, tcResult ?? null);
                               return (
                                 <View key={tcIdx} style={styles.toolCallCompactLine}>
                                   <Text style={[
@@ -4762,10 +4762,10 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.info,
     },
     toolCallCompactNameSuccess: {
-      color: theme.colors.mutedForeground,
+      color: theme.colors.success,
     },
     toolCallCompactNameError: {
-      color: theme.colors.mutedForeground,
+      color: theme.colors.destructive,
     },
     toolCallCompactStatus: {
       fontSize: 9,
@@ -4774,10 +4774,10 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.info,
     },
     toolCallCompactStatusSuccess: {
-      color: theme.colors.mutedForeground,
+      color: theme.colors.success,
     },
     toolCallCompactStatusError: {
-      color: theme.colors.mutedForeground,
+      color: theme.colors.destructive,
     },
     // Tool-activity group styles (collapsed-by-default grouping of consecutive tool calls)
     toolActivityGroupCollapsed: {

@@ -18,6 +18,8 @@ export interface SidebarSessionGroupSection<T> {
   entries: T[]
 }
 
+export type SidebarSessionDropPosition = "before" | "after"
+
 export interface SidebarSessionStateSummary {
   state: SidebarBadgeLifecycleState
   count: number
@@ -98,6 +100,19 @@ export function getSidebarSessionGroupKey(session: SessionLike): string {
   return conversationId ? `conversation:${conversationId}` : `session:${session.id}`
 }
 
+export function normalizeSidebarSessionKeyOrder(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+
+  const seenSessionKeys = new Set<string>()
+  return input.flatMap((sessionKey) => {
+    if (typeof sessionKey !== "string") return []
+    const normalized = sessionKey.trim()
+    if (!normalized || seenSessionKeys.has(normalized)) return []
+    seenSessionKeys.add(normalized)
+    return [normalized]
+  })
+}
+
 export function normalizeSidebarSessionGroups(input: unknown): SidebarSessionGroup[] {
   if (!Array.isArray(input)) return []
 
@@ -108,17 +123,7 @@ export function normalizeSidebarSessionGroups(input: unknown): SidebarSessionGro
     if (!id || seenGroupIds.has(id)) return []
     seenGroupIds.add(id)
 
-    const seenSessionKeys = new Set<string>()
-    const rawSessionKeys = raw?.sessionKeys
-    const sessionKeys = Array.isArray(rawSessionKeys)
-      ? rawSessionKeys.flatMap((sessionKey) => {
-        if (typeof sessionKey !== "string") return []
-        const normalized = sessionKey.trim()
-        if (!normalized || seenSessionKeys.has(normalized)) return []
-        seenSessionKeys.add(normalized)
-        return [normalized]
-      })
-      : []
+    const sessionKeys = normalizeSidebarSessionKeyOrder(raw?.sessionKeys)
 
     const name = typeof raw?.name === "string" ? raw.name.trim() : ""
     return [{
@@ -156,6 +161,69 @@ export function assignSidebarSessionToGroup(
   })
 }
 
+export function reorderSidebarSessionKeys(
+  sessionKeys: string[],
+  sessionKey: string,
+  targetSessionKey: string | null,
+  position: SidebarSessionDropPosition,
+): string[] {
+  const normalizedSessionKey = sessionKey.trim()
+  const normalizedTargetSessionKey = targetSessionKey?.trim() || null
+  if (!normalizedSessionKey) return normalizeSidebarSessionKeyOrder(sessionKeys)
+  if (normalizedTargetSessionKey === normalizedSessionKey) {
+    return normalizeSidebarSessionKeyOrder(sessionKeys)
+  }
+
+  const orderedKeys = normalizeSidebarSessionKeyOrder(sessionKeys)
+    .filter((key) => key !== normalizedSessionKey)
+  const targetIndex = normalizedTargetSessionKey
+    ? orderedKeys.indexOf(normalizedTargetSessionKey)
+    : -1
+  const insertionIndex = targetIndex >= 0
+    ? targetIndex + (position === "after" ? 1 : 0)
+    : orderedKeys.length
+
+  return [
+    ...orderedKeys.slice(0, insertionIndex),
+    normalizedSessionKey,
+    ...orderedKeys.slice(insertionIndex),
+  ]
+}
+
+export function moveSidebarSessionToGroupPosition(
+  groups: SidebarSessionGroup[],
+  sessionKey: string,
+  targetGroupId: string,
+  targetSessionKey: string | null,
+  position: SidebarSessionDropPosition,
+): SidebarSessionGroup[] {
+  const normalizedSessionKey = sessionKey.trim()
+  if (!normalizedSessionKey || !groups.some((group) => group.id === targetGroupId)) {
+    return groups
+  }
+
+  return groups.map((group) => {
+    const sessionKeysWithoutMovingKey = group.sessionKeys.filter(
+      (key) => key !== normalizedSessionKey,
+    )
+    if (group.id !== targetGroupId) {
+      return sessionKeysWithoutMovingKey.length === group.sessionKeys.length
+        ? group
+        : { ...group, sessionKeys: sessionKeysWithoutMovingKey }
+    }
+
+    return {
+      ...group,
+      sessionKeys: reorderSidebarSessionKeys(
+        sessionKeysWithoutMovingKey,
+        normalizedSessionKey,
+        targetSessionKey,
+        position,
+      ),
+    }
+  })
+}
+
 export function groupSidebarSessionEntries<T extends { session: SessionLike }>(
   entries: T[],
   groups: SidebarSessionGroup[],
@@ -187,6 +255,35 @@ export function groupSidebarSessionEntries<T extends { session: SessionLike }>(
   )
 
   return { groupedSections, ungroupedEntries }
+}
+
+export function orderSidebarSessionEntriesByKeys<T extends { session: SessionLike }>(
+  entries: T[],
+  orderedSessionKeys: string[],
+): T[] {
+  if (entries.length <= 1 || orderedSessionKeys.length === 0) return entries
+
+  const entryBySessionKey = new Map<string, T>()
+  for (const entry of entries) {
+    const sessionKey = getSidebarSessionGroupKey(entry.session)
+    if (!entryBySessionKey.has(sessionKey)) {
+      entryBySessionKey.set(sessionKey, entry)
+    }
+  }
+
+  const orderedEntries: T[] = []
+  const seenSessionKeys = new Set<string>()
+  for (const sessionKey of orderedSessionKeys) {
+    const entry = entryBySessionKey.get(sessionKey)
+    if (!entry || seenSessionKeys.has(sessionKey)) continue
+    orderedEntries.push(entry)
+    seenSessionKeys.add(sessionKey)
+  }
+
+  return [
+    ...orderedEntries,
+    ...entries.filter((entry) => !seenSessionKeys.has(getSidebarSessionGroupKey(entry.session))),
+  ]
 }
 
 export function summarizeSidebarSessionLifecycleStates(

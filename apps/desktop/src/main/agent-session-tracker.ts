@@ -260,6 +260,34 @@ class AgentSessionTracker {
     }
   }
 
+  updateConversationTitleForConversation(conversationId: string, conversationTitle: string): number {
+    const normalizedConversationId = conversationId.trim()
+    const normalizedTitle = conversationTitle.trim()
+    if (!normalizedConversationId || !normalizedTitle) return 0
+
+    let updatedSessionCount = 0
+    for (const session of this.sessions.values()) {
+      if (session.conversationId !== normalizedConversationId) continue
+      if (session.conversationTitle === normalizedTitle) continue
+      session.conversationTitle = normalizedTitle
+      updatedSessionCount += 1
+    }
+
+    for (const session of this.completedSessions) {
+      if (session.conversationId !== normalizedConversationId) continue
+      if (session.conversationTitle === normalizedTitle) continue
+      session.conversationTitle = normalizedTitle
+      updatedSessionCount += 1
+    }
+
+    if (updatedSessionCount > 0) {
+      this.persistState()
+      emitSessionUpdate()
+    }
+
+    return updatedSessionCount
+  }
+
   /**
    * Mark a session as completed and move it to recent sessions
    */

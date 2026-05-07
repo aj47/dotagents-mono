@@ -15,13 +15,17 @@ import {
   hasUnreadAgentResponse,
   isProgressLiveForSidebar,
   isSidebarSessionCurrentlyViewed,
+  moveSidebarSessionToGroupPosition,
   isTaskSession,
   nestSubagentSessionEntries,
+  normalizeSidebarSessionKeyOrder,
   normalizeSidebarSessionGroups,
   orderActiveSessionsByPinnedFirst,
+  orderSidebarSessionEntriesByKeys,
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
+  reorderSidebarSessionKeys,
   summarizeSidebarSessionLifecycleStates,
 } from "./sidebar-sessions"
 
@@ -101,6 +105,69 @@ describe("sidebar session groups", () => {
 
     const ungrouped = assignSidebarSessionToGroup(assigned, "session:one", null)
     expect(ungrouped.map((group) => group.sessionKeys)).toEqual([[], []])
+  })
+
+  it("reorders session keys before or after a target key", () => {
+    expect(reorderSidebarSessionKeys(
+      ["session:a", "session:b", "session:c"],
+      "session:c",
+      "session:a",
+      "before",
+    )).toEqual(["session:c", "session:a", "session:b"])
+
+    expect(reorderSidebarSessionKeys(
+      ["session:a", "session:b", "session:c"],
+      "session:a",
+      "session:c",
+      "after",
+    )).toEqual(["session:b", "session:c", "session:a"])
+  })
+
+  it("moves a session to a specific position in a target group", () => {
+    const groups = [
+      { id: "group-a", name: "A", expanded: true, sessionKeys: ["session:one"] },
+      { id: "group-b", name: "B", expanded: true, sessionKeys: ["session:two", "session:three"] },
+    ]
+
+    const moved = moveSidebarSessionToGroupPosition(
+      groups,
+      "session:one",
+      "group-b",
+      "session:three",
+      "before",
+    )
+
+    expect(moved.map((group) => group.sessionKeys)).toEqual([
+      [],
+      ["session:two", "session:one", "session:three"],
+    ])
+  })
+
+  it("orders ungrouped entries by persisted session keys while preserving new entries", () => {
+    const entries = [
+      { session: activeSession("session-1", "conversation-1") },
+      { session: activeSession("session-2") },
+      { session: activeSession("session-3") },
+    ]
+
+    expect(orderSidebarSessionEntriesByKeys(entries, [
+      "session:session-3",
+      "conversation:conversation-1",
+    ]).map((entry) => entry.session.id)).toEqual([
+      "session-3",
+      "session-1",
+      "session-2",
+    ])
+  })
+
+  it("normalizes persisted ungrouped session key order", () => {
+    expect(normalizeSidebarSessionKeyOrder([
+      " session:one ",
+      "session:one",
+      "",
+      42,
+      "conversation:two",
+    ])).toEqual(["session:one", "conversation:two"])
   })
 
   it("builds grouped sections and leaves unmatched sessions ungrouped", () => {

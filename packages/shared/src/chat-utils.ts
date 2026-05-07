@@ -15,6 +15,7 @@ export type ToolArgumentEntry = {
 
 const COLLAPSE_THRESHOLD = 200;
 const MARKDOWN_IMAGE_PAYLOAD_REGEX = /!\[[^\]]*\]\((?:data:image\/|https?:\/\/|assets:\/\/conversation-image\/)[^)]*\)/gi;
+const EXEC_COMMAND_RESULT_PREVIEW_MAX_LENGTH = 96;
 
 /**
  * Determine if a message should be collapsible based on its content
@@ -83,6 +84,56 @@ export function getIndividualToolCallPreview(toolCall: ToolCall): string {
   return getToolCallPreview(toolCall);
 }
 
+type StructuredCommandOutput = {
+  found: boolean;
+  output: string;
+};
+
+function extractStringFields(obj: Record<string, unknown>, keys: string[]): string[] {
+  const values: string[] = [];
+  for (const key of keys) {
+    const value = obj[key];
+    if (typeof value === 'string' && value.trim()) values.push(value.trim());
+  }
+  return values;
+}
+
+function extractStructuredCommandOutput(raw: string): StructuredCommandOutput | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const candidates = [trimmed];
+  const objectStart = trimmed.indexOf('{');
+  const objectEnd = trimmed.lastIndexOf('}');
+  if (objectStart > 0 && objectEnd > objectStart) {
+    candidates.push(trimmed.slice(objectStart, objectEnd + 1));
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) continue;
+
+      const obj = parsed as Record<string, unknown>;
+      const looksLikeCommandResult =
+        'stdout' in obj || 'stderr' in obj || 'exitCode' in obj || 'command' in obj || 'cwd' in obj;
+      if (!looksLikeCommandResult) continue;
+
+      const streamOutput = extractStringFields(obj, ['stdout', 'stderr']);
+      const fallbackOutput = extractStringFields(obj, ['output', 'result', 'message', 'error']);
+
+      return {
+        found: true,
+        output: (streamOutput.length > 0 ? streamOutput : fallbackOutput).join('\n'),
+      };
+    } catch {
+      // Try the next candidate. Plain-text tool results are handled by the caller.
+    }
+  }
+
+  return null;
+}
+
 /**
  * Generate a summary of tool results for collapsed view
  * @param toolResults Array of tool results
@@ -114,14 +165,45 @@ export function getToolResultsSummary(toolResults: ToolResult[]): string {
   return `${icon} ${count} result${count > 1 ? 's' : ''}`;
 }
 
+function normalizeCompactPreviewText(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function truncatePreviewToChars(text: string, maxLength: number): string {
+  if (!text || maxLength <= 0) return '';
+  if (text.length <= maxLength) return text;
+  if (maxLength <= 3) return text.slice(0, maxLength);
+  return `${text.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+function buildBalancedCommandResultPreview(command: string, output: string): string {
+  const commandText = normalizeCompactPreviewText(command);
+  const outputText = normalizeCompactPreviewText(output);
+  if (!outputText) return commandText;
+
+  const fullPreview = `${commandText}:${outputText}`;
+  if (fullPreview.length <= EXEC_COMMAND_RESULT_PREVIEW_MAX_LENGTH) return fullPreview;
+
+  const availableChars = EXEC_COMMAND_RESULT_PREVIEW_MAX_LENGTH - 1;
+  const commandBaseBudget = Math.floor(availableChars / 2);
+  const outputBaseBudget = availableChars - commandBaseBudget;
+  const unusedCommandBudget = Math.max(0, commandBaseBudget - commandText.length);
+  const unusedOutputBudget = Math.max(0, outputBaseBudget - outputText.length);
+  const commandBudget = Math.min(commandText.length, commandBaseBudget + unusedOutputBudget);
+  const outputBudget = Math.min(outputText.length, outputBaseBudget + unusedCommandBudget);
+
+  return `${truncatePreviewToChars(commandText, commandBudget)}:${truncatePreviewToChars(outputText, outputBudget)}`;
+}
+
 /**
- * Compact `<firstCommandWord>:<secondToLastOutputWord>` preview for an
+ * Compact character-budgeted `<command>:<output>` preview for an
  * `execute_command` tool call. Used in collapsed tool-activity groups and
  * single-line execute_command rows where space is at a premium.
  *
- * Returns null when the call is not an execute_command or has no command. If
- * a result is supplied, the second-to-last whitespace token of its output is
- * appended after a colon; if only one token is present, that token is used.
+ * Returns null when the call is not an execute_command or has no command. When
+ * a result is supplied, the preview balances the character budget between the
+ * command input and stdout/stderr output, lending unused space to the longer
+ * side so short commands still leave room for useful output detail.
  */
 export function getExecuteCommandResultPreview(
   toolCall: ToolCall,
@@ -136,19 +218,53 @@ export function getExecuteCommandResultPreview(
   if (!command) return null;
   const firstWord = command.split(/\s+/)[0];
   if (!firstWord) return null;
+  if (!toolResult) return firstWord;
 
-  const rawOutput = toolResult
-    ? toolResult.success === false
-      ? toolResult.error || toolResult.content || ''
-      : toolResult.content || ''
-    : '';
+  const rawOutput = (() => {
+    const outputParts: string[] = [];
+    for (const rawPart of [toolResult.content, toolResult.error]) {
+      if (!rawPart?.trim()) continue;
+
+      const structured = extractStructuredCommandOutput(rawPart);
+      if (structured?.found) {
+        if (structured.output.trim()) outputParts.push(structured.output);
+        continue;
+      }
+
+      outputParts.push(rawPart);
+    }
+
+    return Array.from(new Set(outputParts.map(part => part.trim()).filter(Boolean))).join('\n');
+  })();
   const output = rawOutput.trim();
-  if (!output) return firstWord;
+  if (!output) return normalizeCompactPreviewText(command) || firstWord;
 
-  const words = output.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return firstWord;
-  const prelast = words.length >= 2 ? words[words.length - 2] : words[words.length - 1];
-  return `${firstWord}:${prelast}`;
+  return buildBalancedCommandResultPreview(command, output);
+}
+
+/**
+ * Generate the compact label shown for a single collapsed tool execution row.
+ *
+ * - execute_command prefers `<command>:<output-preview>` when a result exists.
+ * - Other tools prefer `<tool>:<result-preview>` when a meaningful result exists.
+ * - Pending tools fall back to the richer per-tool call preview.
+ */
+export function getCompactToolExecutionPreview(
+  toolCall: ToolCall,
+  toolResult?: ToolResult | null,
+): string {
+  const executePreview = getExecuteCommandResultPreview(toolCall, toolResult);
+  if (executePreview && toolResult) return executePreview;
+
+  if (toolResult) {
+    const resultPreview = generateToolResultPreview(toolResult);
+    if (resultPreview) {
+      const toolLabel = getToolCallPreview(toolCall);
+      if (toolLabel) return `${toolLabel}:${resultPreview}`;
+    }
+  }
+
+  return getIndividualToolCallPreview(toolCall);
 }
 
 /**
@@ -263,12 +379,18 @@ function extractTextPreview(content: string): string {
   if (!content) return '';
 
   const cleaned = content.trim();
+  const lines = cleaned.split('\n').filter(l => l.trim());
+
+  if (lines.length > 1) {
+    const firstLine = lines[0].trim();
+    const cleanedLine = firstLine.replace(/^(successfully|done|completed|created|updated|deleted|read|wrote|found|error:?)\s*/i, '');
+    return truncatePreview(cleanedLine || firstLine, 50);
+  }
 
   if (cleaned.length <= 50) {
     return cleaned.replace(/\n/g, ' ').trim();
   }
 
-  const lines = cleaned.split('\n').filter(l => l.trim());
   if (lines.length > 0) {
     const firstLine = lines[0].trim();
     const cleanedLine = firstLine.replace(/^(successfully|done|completed|created|updated|deleted|read|wrote|found|error:?)\s*/i, '');

@@ -26,7 +26,7 @@ import {
   formatArgumentsPreview,
   formatToolArguments,
   getToolArgumentEntries,
-  getIndividualToolCallPreview,
+  getCompactToolExecutionPreview,
   getExecuteCommandResultPreview,
   getToolResultsSummary,
   TOOL_GROUP_MIN_SIZE,
@@ -1435,16 +1435,10 @@ const CompactToolExecutionList: React.FC<{
         {toolCallEntries.map(({ call, result }, idx) => {
           const callIsPending = !result
           const callSuccess = result?.success
-          // For execute_command rows we prefer the compact
-          // `<firstCmdWord>:<secondToLastOutputWord>` format once a result is
-          // available; while still pending we fall through to the full command.
-          const execPreview = getExecuteCommandResultPreview(
+          const toolPreview = getCompactToolExecutionPreview(
             { name: call.name, arguments: call.arguments ?? {} },
             result ?? null,
           )
-          const toolPreview = execPreview && result
-            ? execPreview
-            : getIndividualToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
 
           return (
             <div key={idx}>
@@ -1607,17 +1601,24 @@ const AssistantWithToolsBubble: React.FC<{
   const toolCallEntries = data.calls.map((call, idx) => ({ call, result: data.results[idx] }))
   const resolvedResults = data.results.filter((result): result is NonNullable<typeof result> => Boolean(result))
   const isPending = toolCallEntries.some(({ result }) => !result)
+  const hasFailedTool = toolCallEntries.some(({ result }) => result?.success === false)
+  const allToolsSucceeded = toolCallEntries.length > 0 && toolCallEntries.every(({ result }) => result?.success === true)
   const hasThought = data.thought && data.thought.trim().length > 0
   const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
+  const toolStatusTextClass = isPending
+    ? "text-blue-600 dark:text-blue-400"
+    : hasFailedTool
+      ? "text-red-600 dark:text-red-400"
+      : allToolsSucceeded
+        ? "text-green-600 dark:text-green-400"
+        : "text-sky-700 dark:text-sky-300"
   const collapsedToolPreviewLine = data.calls
     .map((call, idx) => {
       const result = data.results[idx]
-      const execPreview = getExecuteCommandResultPreview(
+      return getCompactToolExecutionPreview(
         { name: call.name, arguments: call.arguments ?? {} },
         result ?? null,
       )
-      if (execPreview && result) return execPreview
-      return getIndividualToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
     })
     .join(", ")
 
@@ -1675,7 +1676,7 @@ const AssistantWithToolsBubble: React.FC<{
           </div>
         )}
         <div className="flex min-w-0 items-center gap-1.5">
-          <Wrench className="h-3 w-3 shrink-0 text-sky-600 dark:text-sky-300" aria-hidden="true" />
+          <Wrench className={cn("h-3 w-3 shrink-0", toolStatusTextClass)} aria-hidden="true" />
           {hasThought && (
             <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
           )}
@@ -1683,7 +1684,7 @@ const AssistantWithToolsBubble: React.FC<{
             {!showToolDetails ? (
               <button
                 type="button"
-                className="flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] text-sky-700 transition-colors hover:bg-muted/30 dark:text-sky-300"
+                className={cn("flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition-colors hover:bg-muted/30", toolStatusTextClass)}
                 onClick={handleToggleToolDetails}
                 title={collapsedToolPreviewLine}
               >
@@ -4223,10 +4224,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       }
       const runItems = sortedItems.slice(runStart, runEnd + 1)
       // Collapsed preview surfaces every tool call in the run as a compact
-      // token, in chronological order. execute_command renders as
-      // `<firstCommandWord>:<secondToLastOutputWord>` (e.g. `git:branch`); other
-      // tools fall back to the tool name. The CSS truncate handles overflow on
-      // narrow tiles, so we emit the full list and let the layout shrink it.
+      // token, in chronological order. execute_command renders as a balanced
+      // `<command>:<output-preview>` label; other tools fall back to the tool
+      // name. The CSS truncate handles overflow on narrow tiles, so we emit the
+      // full list and let the layout shrink it.
       const previewLines: string[] = []
       let callCount = 0
       for (let j = 0; j < runItems.length; j++) {

@@ -33,15 +33,19 @@ import {
   groupSidebarSessionEntries,
   hasUnreadAgentResponse,
   isSidebarSessionCurrentlyViewed,
+  moveSidebarSessionToGroupPosition,
   nestSubagentSessionEntries,
+  normalizeSidebarSessionKeyOrder,
   normalizeSidebarSessionGroups,
   orderActiveSessionsByPinnedFirst,
+  orderSidebarSessionEntriesByKeys,
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
+  reorderSidebarSessionKeys,
   summarizeSidebarSessionLifecycleStates,
 } from "@renderer/lib/sidebar-sessions"
-import type { SidebarBadgeLifecycleState, SidebarSessionGroup } from "@renderer/lib/sidebar-sessions"
+import type { SidebarBadgeLifecycleState, SidebarSessionDropPosition, SidebarSessionGroup } from "@renderer/lib/sidebar-sessions"
 import { formatSidebarDuration } from "@renderer/lib/sidebar-duration"
 import { useLocation, useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
@@ -153,6 +157,7 @@ const SHORTCUT_MOD_SYMBOL = IS_MAC ? "⌘" : "Ctrl"
 const STORAGE_KEY = "active-agents-sidebar-expanded"
 const TASKS_SECTION_EXPANDED_STORAGE_KEY = "sidebar-tasks-section-expanded"
 const SESSION_GROUPS_STORAGE_KEY = "sidebar-session-groups-v1"
+const UNGROUPED_SESSION_ORDER_STORAGE_KEY = "sidebar-ungrouped-session-order-v1"
 const SIDEBAR_SESSION_DRAG_MIME = "application/x-dotagents-sidebar-session-key"
 
 function readBooleanFromStorage(key: string, fallback: boolean): boolean {
@@ -185,6 +190,26 @@ function readSidebarSessionGroupsFromStorage(): SidebarSessionGroup[] {
 function writeSidebarSessionGroupsToStorage(groups: SidebarSessionGroup[]): void {
   try {
     localStorage.setItem(SESSION_GROUPS_STORAGE_KEY, JSON.stringify(groups))
+  } catch {
+    // localStorage may be unavailable; ignore.
+  }
+}
+
+function readUngroupedSessionOrderFromStorage(): string[] {
+  try {
+    const stored = localStorage.getItem(UNGROUPED_SESSION_ORDER_STORAGE_KEY)
+    return stored ? normalizeSidebarSessionKeyOrder(JSON.parse(stored)) : []
+  } catch {
+    return []
+  }
+}
+
+function writeUngroupedSessionOrderToStorage(sessionKeys: string[]): void {
+  try {
+    localStorage.setItem(
+      UNGROUPED_SESSION_ORDER_STORAGE_KEY,
+      JSON.stringify(normalizeSidebarSessionKeyOrder(sessionKeys)),
+    )
   } catch {
     // localStorage may be unavailable; ignore.
   }
@@ -313,10 +338,18 @@ export function ActiveAgentsSidebar({
   const [sessionGroups, setSessionGroups] = useState<SidebarSessionGroup[]>(
     readSidebarSessionGroupsFromStorage,
   )
+  const [ungroupedSessionOrder, setUngroupedSessionOrder] = useState<string[]>(
+    readUngroupedSessionOrderFromStorage,
+  )
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [editingGroupName, setEditingGroupName] = useState("")
   const [draggingSessionKey, setDraggingSessionKey] = useState<string | null>(null)
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null)
+  const [sessionDropTarget, setSessionDropTarget] = useState<{
+    containerGroupId: string | null
+    targetSessionKey: string
+    position: SidebarSessionDropPosition
+  } | null>(null)
   const [isUngroupDropTargetActive, setIsUngroupDropTargetActive] = useState(false)
   const skipTitleSaveOnBlurRef = useRef(false)
   const navigate = useNavigate()
@@ -643,6 +676,10 @@ export function ActiveAgentsSidebar({
     () => new Set(sessionGroups.flatMap((group) => group.sessionKeys)),
     [sessionGroups],
   )
+  const alwaysVisibleSessionKeys = useMemo(
+    () => new Set([...groupedSessionKeys, ...ungroupedSessionOrder]),
+    [groupedSessionKeys, ungroupedSessionOrder],
+  )
   const hasAlwaysVisibleUserSidebarAnchor = useMemo(
     () =>
       sessionGroups.some((group) => group.expanded !== false) ||
@@ -651,10 +688,10 @@ export function ActiveAgentsSidebar({
         const conversationId = entry.session.conversationId
         return (
           (!!conversationId && pinnedSessionIds.has(conversationId)) ||
-          groupedSessionKeys.has(getSidebarSessionGroupKey(entry.session))
+          alwaysVisibleSessionKeys.has(getSidebarSessionGroupKey(entry.session))
         )
       }),
-    [allUserSidebarSessions, groupedSessionKeys, pinnedSessionIds, sessionGroups],
+    [allUserSidebarSessions, alwaysVisibleSessionKeys, pinnedSessionIds, sessionGroups],
   )
   const minimumVisibleSavedConversationRows = hasAlwaysVisibleUserSidebarAnchor
     ? 0
@@ -668,9 +705,9 @@ export function ActiveAgentsSidebar({
       allUserSidebarSessions,
       pinnedSessionIds,
       displayedSavedConversationCount,
-      groupedSessionKeys,
+      alwaysVisibleSessionKeys,
     ),
-    [allUserSidebarSessions, displayedSavedConversationCount, pinnedSessionIds, groupedSessionKeys],
+    [allUserSidebarSessions, alwaysVisibleSessionKeys, displayedSavedConversationCount, pinnedSessionIds],
   )
 
   const {
@@ -686,21 +723,35 @@ export function ActiveAgentsSidebar({
       if (!entry.isSavedConversation) return false
       const conversationId = entry.session.conversationId
       if (conversationId && pinnedSessionIds.has(conversationId)) return false
-      return !groupedSessionKeys.has(getSidebarSessionGroupKey(entry.session))
+      return !alwaysVisibleSessionKeys.has(getSidebarSessionGroupKey(entry.session))
     }).length,
-    [groupedSessionKeys, pinnedSessionIds, userSidebarSessions],
+    [alwaysVisibleSessionKeys, pinnedSessionIds, userSidebarSessions],
   )
   const canShowLessSavedConversations =
     visiblePageableSavedConversationCount > minimumVisibleSavedConversationRows
+
+  const orderedUngroupedUserSidebarSessions = useMemo(
+    () => orderSidebarSessionEntriesByKeys(
+      ungroupedUserSidebarSessions,
+      ungroupedSessionOrder,
+    ),
+    [ungroupedSessionOrder, ungroupedUserSidebarSessions],
+  )
+  const orderedUngroupedSessionKeys = useMemo(
+    () => orderedUngroupedUserSidebarSessions.map((entry) =>
+      getSidebarSessionGroupKey(entry.session),
+    ),
+    [orderedUngroupedUserSidebarSessions],
+  )
 
   const visibleGroupedUserSidebarSessions = useMemo(
     () => [
       ...userSidebarGroupSections.flatMap((section) =>
         section.group.expanded ? section.entries : [],
       ),
-      ...ungroupedUserSidebarSessions,
+      ...orderedUngroupedUserSidebarSessions,
     ],
-    [userSidebarGroupSections, ungroupedUserSidebarSessions],
+    [orderedUngroupedUserSidebarSessions, userSidebarGroupSections],
   )
 
   const taskSidebarSessions = useMemo(
@@ -829,6 +880,10 @@ export function ActiveAgentsSidebar({
   useEffect(() => {
     writeSidebarSessionGroupsToStorage(sessionGroups)
   }, [sessionGroups])
+
+  useEffect(() => {
+    writeUngroupedSessionOrderToStorage(ungroupedSessionOrder)
+  }, [ungroupedSessionOrder])
 
   const handleActiveSessionSelect = useCallback((sessionId: string) => {
     logUI("[ActiveAgentsSidebar] Active session selected:", sessionId)
@@ -1002,6 +1057,11 @@ export function ActiveAgentsSidebar({
     return dataTransferKey || draggingSessionKey
   }, [draggingSessionKey])
 
+  const getSessionDropPosition = useCallback((event: React.DragEvent): SidebarSessionDropPosition => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    return event.clientY < rect.top + rect.height / 2 ? "before" : "after"
+  }, [])
+
   const handleSessionDragStart = useCallback((
     event: React.DragEvent,
     session: SidebarSessionRecord,
@@ -1015,14 +1075,74 @@ export function ActiveAgentsSidebar({
   const clearSessionDragState = useCallback(() => {
     setDraggingSessionKey(null)
     setDragOverGroupId(null)
+    setSessionDropTarget(null)
     setIsUngroupDropTargetActive(false)
   }, [])
+
+  const handleSessionRowDragOver = useCallback((
+    event: React.DragEvent,
+    containerGroupId: string | null,
+    targetSessionKey: string,
+  ) => {
+    if (!draggingSessionKey || draggingSessionKey === targetSessionKey) return
+    event.preventDefault()
+    event.stopPropagation()
+    event.dataTransfer.dropEffect = "move"
+    setDragOverGroupId(containerGroupId)
+    setIsUngroupDropTargetActive(containerGroupId === null)
+    setSessionDropTarget({
+      containerGroupId,
+      targetSessionKey,
+      position: getSessionDropPosition(event),
+    })
+  }, [draggingSessionKey, getSessionDropPosition])
+
+  const handleSessionRowDrop = useCallback((
+    event: React.DragEvent,
+    containerGroupId: string | null,
+    targetSessionKey: string,
+  ) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const sessionKey = getDraggedSessionKey(event)
+    if (!sessionKey || sessionKey === targetSessionKey) {
+      clearSessionDragState()
+      return
+    }
+
+    const position = getSessionDropPosition(event)
+    if (containerGroupId) {
+      setSessionGroups((prev) => moveSidebarSessionToGroupPosition(
+        prev,
+        sessionKey,
+        containerGroupId,
+        targetSessionKey,
+        position,
+      ))
+      setUngroupedSessionOrder((prev) => prev.filter((key) => key !== sessionKey))
+    } else {
+      setSessionGroups((prev) => assignSidebarSessionToGroup(prev, sessionKey, null))
+      setUngroupedSessionOrder(() => reorderSidebarSessionKeys(
+        orderedUngroupedSessionKeys,
+        sessionKey,
+        targetSessionKey,
+        position,
+      ))
+    }
+    clearSessionDragState()
+  }, [
+    clearSessionDragState,
+    getDraggedSessionKey,
+    getSessionDropPosition,
+    orderedUngroupedSessionKeys,
+  ])
 
   const handleGroupDragOver = useCallback((event: React.DragEvent, groupId: string) => {
     if (!draggingSessionKey) return
     event.preventDefault()
     event.dataTransfer.dropEffect = "move"
     setDragOverGroupId(groupId)
+    setSessionDropTarget(null)
     setIsUngroupDropTargetActive(false)
   }, [draggingSessionKey])
 
@@ -1039,6 +1159,7 @@ export function ActiveAgentsSidebar({
       sessionKey,
       groupId,
     ))
+    setUngroupedSessionOrder((prev) => prev.filter((key) => key !== sessionKey))
     clearSessionDragState()
   }, [clearSessionDragState, getDraggedSessionKey])
 
@@ -1047,6 +1168,7 @@ export function ActiveAgentsSidebar({
     event.preventDefault()
     event.dataTransfer.dropEffect = "move"
     setDragOverGroupId(null)
+    setSessionDropTarget(null)
     setIsUngroupDropTargetActive(true)
   }, [draggingSessionKey])
 
@@ -1056,9 +1178,15 @@ export function ActiveAgentsSidebar({
     const sessionKey = getDraggedSessionKey(event)
     if (sessionKey) {
       setSessionGroups((prev) => assignSidebarSessionToGroup(prev, sessionKey, null))
+      setUngroupedSessionOrder(() => reorderSidebarSessionKeys(
+        orderedUngroupedSessionKeys,
+        sessionKey,
+        null,
+        "after",
+      ))
     }
     clearSessionDragState()
-  }, [clearSessionDragState, getDraggedSessionKey])
+  }, [clearSessionDragState, getDraggedSessionKey, orderedUngroupedSessionKeys])
 
   const clearTitleEditing = useCallback(() => {
     setEditingConversationId(null)
@@ -1301,9 +1429,25 @@ export function ActiveAgentsSidebar({
                 nestingDepth = 0,
               }: SidebarSessionEntry,
               index: number,
-              options: { forceSingleLine?: boolean } = {},
+              options: {
+                forceSingleLine?: boolean
+                reorderContainerGroupId?: string | null
+              } = {},
             ) => {
             const forceSingleLine = options.forceSingleLine ?? false
+            const canReorderSession = "reorderContainerGroupId" in options
+            const reorderContainerGroupId = options.reorderContainerGroupId ?? null
+            const sessionGroupKey = getSidebarSessionGroupKey(session)
+            const isSessionDropTarget =
+              canReorderSession &&
+              sessionDropTarget?.containerGroupId === reorderContainerGroupId &&
+              sessionDropTarget.targetSessionKey === sessionGroupKey
+            const rowDropIndicatorClassName = isSessionDropTarget
+              ? cn(
+                "before:pointer-events-none before:absolute before:left-1 before:right-1 before:z-30 before:h-0.5 before:rounded-full before:bg-blue-500 before:shadow-[0_0_0_1px_rgba(59,130,246,0.35)]",
+                sessionDropTarget.position === "before" ? "before:top-0" : "before:bottom-0",
+              )
+              : null
             const isFocused = focusedSessionId === session.id
             const isSessionExpanded = expandedSessionId === session.id
             const isCurrentView = isSidebarSessionCurrentlyViewed(session, {
@@ -1380,6 +1524,12 @@ export function ActiveAgentsSidebar({
                   draggable
                   onDragStart={(event) => handleSessionDragStart(event, session)}
                   onDragEnd={clearSessionDragState}
+                  onDragOver={canReorderSession
+                    ? (event) => handleSessionRowDragOver(event, reorderContainerGroupId, sessionGroupKey)
+                    : undefined}
+                  onDrop={canReorderSession
+                    ? (event) => handleSessionRowDrop(event, reorderContainerGroupId, sessionGroupKey)
+                    : undefined}
                   onClick={() => {
                     if (session.conversationId) {
                       handleSavedConversationOpen(session.conversationId)
@@ -1392,6 +1542,7 @@ export function ActiveAgentsSidebar({
                       : "text-muted-foreground",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
+                    rowDropIndicatorClassName,
                   )}
                 >
                   {isPinned ? (
@@ -1487,6 +1638,12 @@ export function ActiveAgentsSidebar({
                 draggable
                 onDragStart={(event) => handleSessionDragStart(event, session)}
                 onDragEnd={clearSessionDragState}
+                onDragOver={canReorderSession
+                  ? (event) => handleSessionRowDragOver(event, reorderContainerGroupId, sessionGroupKey)
+                  : undefined}
+                onDrop={canReorderSession
+                  ? (event) => handleSessionRowDrop(event, reorderContainerGroupId, sessionGroupKey)
+                  : undefined}
                 onClick={() => handleActiveSessionSelect(session.id)}
                 className={cn(
                   "group relative flex cursor-pointer items-start rounded text-xs transition-all",
@@ -1508,6 +1665,7 @@ export function ActiveAgentsSidebar({
                           : isFocused
                             ? "bg-blue-500/10"
                             : "hover:bg-accent/50",
+                  rowDropIndicatorClassName,
                 )}
               >
                 {isNestedSubagent && (
@@ -1691,7 +1849,10 @@ export function ActiveAgentsSidebar({
                     ) {
                       return
                     }
-                    if (dragOverGroupId === group.id) setDragOverGroupId(null)
+                    if (dragOverGroupId === group.id) {
+                      setDragOverGroupId(null)
+                      setSessionDropTarget(null)
+                    }
                   }}
                   onDrop={(event) => handleGroupDrop(event, group.id)}
                   className={cn(
@@ -1793,6 +1954,7 @@ export function ActiveAgentsSidebar({
                     renderSessionRow(
                       entry,
                       userHotkeyIndexByEntryKey.get(entry.key) ?? userOffset,
+                      { reorderContainerGroupId: group.id },
                     ),
                   )}
                 </div>
@@ -1855,7 +2017,10 @@ export function ActiveAgentsSidebar({
                 {hasUserSidebarContent && (
                   <div
                     onDragOver={handleUngroupDragOver}
-                    onDragLeave={() => setIsUngroupDropTargetActive(false)}
+                    onDragLeave={() => {
+                      setIsUngroupDropTargetActive(false)
+                      setSessionDropTarget(null)
+                    }}
                     onDrop={handleUngroupDrop}
                     className={cn(
                       hasTaskSessions ? "mt-2" : "mt-1",
@@ -1908,10 +2073,11 @@ export function ActiveAgentsSidebar({
                   </div>
                 )}
                 {isExpanded && userSidebarGroupSections.map(renderSessionGroupSection)}
-                {isExpanded && ungroupedUserSidebarSessions.map((entry) =>
+                {isExpanded && orderedUngroupedUserSidebarSessions.map((entry) =>
                   renderSessionRow(
                     entry,
                     userHotkeyIndexByEntryKey.get(entry.key) ?? userOffset,
+                    { reorderContainerGroupId: null },
                   ),
                 )}
               </>

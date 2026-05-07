@@ -312,17 +312,37 @@ async function loadAgentProgress(
       if (typeof cmd !== "string" || !cmd.trim()) return null
       const firstWord = cmd.trim().split(/\s+/)[0]
       if (!firstWord) return null
+      if (!result) return firstWord
       const raw = result
         ? result.success === false
           ? result.error || result.content || ""
           : result.content || ""
         : ""
-      const output = raw.trim()
-      if (!output) return firstWord
-      const words = output.split(/\s+/).filter(Boolean)
-      if (words.length === 0) return firstWord
-      const prelast = words.length >= 2 ? words[words.length - 2] : words[words.length - 1]
-      return `${firstWord}:${prelast}`
+      const commandPreview = cmd.replace(/\s+/g, " ").trim()
+      const output = raw.replace(/\s+/g, " ").trim()
+      if (!output) return commandPreview
+      return `${commandPreview}:${output}`
+    },
+    getCompactToolExecutionPreview: (
+      call: { name: string; arguments?: Record<string, unknown> },
+      result?: { success: boolean; content: string; error?: string } | null,
+    ) => {
+      const cmd = (call.arguments as { command?: string } | undefined)?.command
+      if (call.name === "execute_command" && typeof cmd === "string" && cmd.trim()) {
+        const raw = result
+          ? result.success === false
+            ? result.error || result.content || ""
+            : result.content || ""
+          : ""
+        const commandPreview = cmd.replace(/\s+/g, " ").trim()
+        const output = raw.replace(/\s+/g, " ").trim()
+        return output ? `${commandPreview}:${output}` : commandPreview
+      }
+      if (result?.content?.trim()) {
+        const firstLine = result.content.trim().split("\n").find(Boolean) || result.content.trim()
+        return `${call.name}:${firstLine}`
+      }
+      return call.name
     },
     normalizeAgentConversationState: (state: string | null | undefined, fallback: string) => state ?? fallback,
     getBuiltInModelPresets: () => [{ id: "default", name: "OpenAI", baseUrl: "https://api.openai.com/v1", agentModel: "gpt-4.1-mini", isBuiltIn: true }],
@@ -789,14 +809,14 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("First tool thought")
     expect(text).not.toContain("Second tool thought")
     // Collapsed groups list every execute_command as
-    // "<firstCmdWord>:<secondToLastOutputWord>" in chronological order, with a
-    // call count next to the wrench icon.
-    expect(text).toContain("git:branch")
-    expect(text).toContain("pnpm:suites")
-    expect(text.indexOf("git:branch")).toBeLessThan(text.indexOf("pnpm:suites"))
-    expect(text.indexOf("pnpm:suites")).toBeLessThan(text.indexOf("Now here is the answer"))
+    // "<command>:<output-preview>" in chronological order, with a call count
+    // next to the wrench icon.
+    expect(text).toContain("git status --short:M file.ts branch main")
+    expect(text).toContain("pnpm test:all suites passed")
+    expect(text.indexOf("git status --short:M file.ts branch main")).toBeLessThan(text.indexOf("pnpm test:all suites passed"))
+    expect(text.indexOf("pnpm test:all suites passed")).toBeLessThan(text.indexOf("Now here is the answer"))
     // 2 tool calls in the run (search count badge before previews).
-    expect(text).toMatch(/2\s+git:branch/)
+    expect(text).toMatch(/2\s+git status --short:M file\.ts branch main/)
   })
 
   it("lets expanded tool groups collapse from the bottom", async () => {

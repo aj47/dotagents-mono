@@ -3573,15 +3573,10 @@ export const router = {
       )
 
       if (conversation) {
-        const activeSession = agentSessionTracker
-          .getActiveSessions()
-          .find((session) => session.conversationId === input.conversationId)
-
-        if (activeSession) {
-          agentSessionTracker.updateSession(activeSession.id, {
-            conversationTitle: conversation.title,
-          })
-        }
+        agentSessionTracker.updateConversationTitleForConversation(
+          input.conversationId,
+          conversation.title,
+        )
       }
 
       return conversation

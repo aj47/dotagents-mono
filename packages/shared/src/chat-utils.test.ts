@@ -4,6 +4,7 @@ import {
   getToolCallsSummary,
   getToolCallPreview,
   getIndividualToolCallPreview,
+  getCompactToolExecutionPreview,
   getExecuteCommandResultPreview,
   getToolResultsSummary,
   getToolArgumentEntries,
@@ -139,13 +140,109 @@ describe('getExecuteCommandResultPreview', () => {
     ).toBe('git')
   })
 
-  it('joins first command word with second-to-last output word on success', () => {
+  it('joins command text with output text on success', () => {
     expect(
       getExecuteCommandResultPreview(
         { name: 'execute_command', arguments: { command: 'git status --short' } },
         { success: true, content: 'M file.ts\n branch main\n' },
       ),
-    ).toBe('git:branch')
+    ).toBe('git status --short:M file.ts branch main')
+  })
+
+  it('keeps both words when output has exactly two words', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: { command: 'git status' } },
+        { success: true, content: 'no changes' },
+      ),
+    ).toBe('git status:no changes')
+  })
+
+  it('balances long command and output previews by character budget', () => {
+    const preview = getExecuteCommandResultPreview(
+      { name: 'execute_command', arguments: { command: 'pnpm --filter @dotagents/desktop exec vitest run src/renderer/src/components/agent-progress.response-history.test.ts' } },
+      { success: true, content: 'Test Files 1 passed (1) Tests 19 passed Duration 1.41s with a longer trailing output summary' },
+    )
+
+    expect(preview).not.toBeNull()
+    expect(preview!.length).toBeLessThanOrEqual(96)
+    const [commandPreview, outputPreview] = preview!.split(':')
+    expect(commandPreview).toBe('pnpm --filter @dotagents/desktop exec vitest...')
+    expect(outputPreview).toBe('Test Files 1 passed (1) Tests 19 passed Durat...')
+  })
+
+  it('extracts stdout from structured execute_command JSON before picking the output word', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: { command: 'git status --short' } },
+        {
+          success: true,
+          content: JSON.stringify({
+            success: true,
+            command: 'git status --short',
+            cwd: '/repo',
+            stdout: 'M file.ts\n branch main\n',
+            stderr: '',
+          }, null, 2),
+        },
+      ),
+    ).toBe('git status --short:M file.ts branch main')
+  })
+
+  it('combines structured stdout and stderr in the output side', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: { command: 'pnpm build' } },
+        {
+          success: false,
+          content: JSON.stringify({ success: false, stdout: 'compiled files', stderr: 'warning emitted' }, null, 2),
+        },
+      ),
+    ).toBe('pnpm build:compiled files warning emitted')
+  })
+
+  it('combines plain stdout content and error text when both are present', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: { command: 'python script.py' } },
+        { success: false, content: 'partial stdout', error: 'stderr traceback' },
+      ),
+    ).toBe('python script.py:partial stdout stderr traceback')
+  })
+
+  it('does not leak structured execute_command metadata when stdout is empty', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: { command: 'echo' } },
+        {
+          success: true,
+          content: JSON.stringify({ success: true, command: 'echo', cwd: '/repo', stdout: '', stderr: '' }, null, 2),
+        },
+      ),
+    ).toBe('echo')
+  })
+
+  it('extracts stdout from structured failed execute_command results when present', () => {
+    expect(
+      getExecuteCommandResultPreview(
+        { name: 'execute_command', arguments: { command: 'pnpm test' } },
+        {
+          success: false,
+          content: JSON.stringify({
+            success: false,
+            error: 'Command failed',
+            stdout: 'Tests failed in chat-utils.test.ts\n',
+            stderr: '',
+          }, null, 2),
+          error: JSON.stringify({
+            success: false,
+            error: 'Command failed',
+            stdout: 'Tests failed in chat-utils.test.ts\n',
+            stderr: '',
+          }, null, 2),
+        },
+      ),
+    ).toBe('pnpm test:Tests failed in chat-utils.test.ts')
   })
 
   it('falls back to the only word when output has just one token', () => {
@@ -163,7 +260,7 @@ describe('getExecuteCommandResultPreview', () => {
         { name: 'execute_command', arguments: { command: 'pnpm test' } },
         { success: false, content: '', error: 'exit code 1' },
       ),
-    ).toBe('pnpm:code')
+    ).toBe('pnpm test:exit code 1')
   })
 
   it('returns first word when output is empty whitespace', () => {
@@ -181,7 +278,36 @@ describe('getExecuteCommandResultPreview', () => {
         { name: 'execute_command', arguments: '{"command":"ls -la"}' as unknown as Record<string, unknown> },
         { success: true, content: 'total 8\ndrwxr-xr-x . user' },
       ),
-    ).toBe('ls:.')
+    ).toBe('ls -la:total 8 drwxr-xr-x . user')
+  })
+})
+
+describe('getCompactToolExecutionPreview', () => {
+  it('uses command output previews for completed execute_command rows', () => {
+    expect(
+      getCompactToolExecutionPreview(
+        { name: 'execute_command', arguments: { command: 'git status --short' } },
+        { success: true, content: 'M file.ts\n branch main\n' },
+      ),
+    ).toBe('git status --short:M file.ts branch main')
+  })
+
+  it('uses tool result previews for non-command tools when available', () => {
+    expect(
+      getCompactToolExecutionPreview(
+        { name: 'load_skill_instructions', arguments: { skillId: 'agent-skill-creation' } },
+        { success: true, content: '# Agent Skill Creation\n\nDetailed instructions...' },
+      ),
+    ).toBe('load_skill_instructions:# Agent Skill Creation')
+  })
+
+  it('falls back to the per-tool preview while a tool is still pending', () => {
+    expect(
+      getCompactToolExecutionPreview(
+        { name: 'execute_command', arguments: { command: 'pnpm test' } },
+        null,
+      ),
+    ).toBe('pnpm test')
   })
 })
 

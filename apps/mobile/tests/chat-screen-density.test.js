@@ -90,8 +90,15 @@ test('keeps Codex thinking blocks display-only on mobile', () => {
 
 test('labels result-only tool entries without showing raw tool_call text', () => {
   assert.match(screenSource, /label: 'Tool result'/);
-  assert.match(screenSource, /const toolPreview = label \?\? getIndividualToolCallPreview\(toolCall\);/);
+  assert.match(screenSource, /const toolPreview = label \?\? getCompactToolExecutionPreview\(toolCall, tcResult \?\? null\);/);
   assert.match(screenSource, /\{label \?\? toolCall\.name\}/);
+});
+
+test('colors compact tool call labels by result status', () => {
+  assert.match(screenSource, /tcSuccess && styles\.toolCallCompactNameSuccess/);
+  assert.match(screenSource, /tcError && styles\.toolCallCompactNameError/);
+  assert.match(screenSource, /toolCallCompactNameSuccess:\s*\{[\s\S]*?color:\s*theme\.colors\.success/);
+  assert.match(screenSource, /toolCallCompactNameError:\s*\{[\s\S]*?color:\s*theme\.colors\.destructive/);
 });
 
 test('uses tool activities wording consistently for grouped tool activity labels', () => {
