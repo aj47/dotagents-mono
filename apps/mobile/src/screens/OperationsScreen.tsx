@@ -75,6 +75,7 @@ import {
   OPERATOR_STATUS_PANEL_METADATA,
   OPERATOR_SYSTEM_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
+  OPERATOR_UPDATER_PANEL_METADATA,
   formatOperatorActiveAgentSessionSummary as formatActiveAgentSessionSummary,
   formatOperatorAuditDetails as formatAuditDetails,
   formatOperatorAuditSource as formatAuditSource,
@@ -2718,34 +2719,34 @@ export default function OperationsScreen({ navigation }: any) {
 
           {status && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Updater</Text>
-              <Text style={styles.detailText}>Mode: {status.updater.mode}</Text>
-              <Text style={styles.detailText}>Current version: {status.updater.currentVersion || '—'}</Text>
-              <Text style={styles.detailText}>Update available: {status.updater.updateAvailable === undefined ? 'Unknown' : status.updater.updateAvailable ? 'Yes' : 'No'}</Text>
-              <Text style={styles.detailText}>Last checked: {formatTimestamp(status.updater.lastCheckedAt)}</Text>
+              <Text style={styles.panelTitle}>{OPERATOR_UPDATER_PANEL_METADATA.panelTitle}</Text>
+              <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatMode(status.updater.mode)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatCurrentVersion(status.updater.currentVersion)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatUpdateAvailable(status.updater.updateAvailable)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatLastChecked(status.updater.lastCheckedAt)}</Text>
               {status.updater.latestRelease ? (
                 <>
-                  <Text style={styles.detailText}>Latest release: {status.updater.latestRelease.tagName}</Text>
-                  <Text style={styles.detailText}>Published: {status.updater.latestRelease.publishedAt || '—'}</Text>
-                  <Text style={styles.detailText}>Assets: {status.updater.latestRelease.assetCount ?? 0}</Text>
-                  <Text style={styles.detailText}>Release URL: {status.updater.latestRelease.url}</Text>
+                  <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatLatestRelease(status.updater.latestRelease.tagName)}</Text>
+                  <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatPublished(status.updater.latestRelease.publishedAt)}</Text>
+                  <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatAssets(status.updater.latestRelease.assetCount)}</Text>
+                  <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatReleaseUrl(status.updater.latestRelease.url)}</Text>
                 </>
               ) : null}
               {status.updater.preferredAsset ? (
                 <>
-                  <Text style={styles.detailText}>Recommended asset: {status.updater.preferredAsset.name}</Text>
-                  <Text style={styles.detailText}>Asset URL: {status.updater.preferredAsset.downloadUrl}</Text>
+                  <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatRecommendedAsset(status.updater.preferredAsset.name)}</Text>
+                  <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatAssetUrl(status.updater.preferredAsset.downloadUrl)}</Text>
                 </>
               ) : null}
               {status.updater.lastDownloadedFileName ? (
                 <>
-                  <Text style={styles.detailText}>Last downloaded file: {status.updater.lastDownloadedFileName}</Text>
-                  <Text style={styles.detailText}>Downloaded at: {formatTimestamp(status.updater.lastDownloadedAt)}</Text>
+                  <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatLastDownloadedFile(status.updater.lastDownloadedFileName)}</Text>
+                  <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatDownloadedAt(status.updater.lastDownloadedAt)}</Text>
                 </>
               ) : null}
-              {status.updater.lastCheckError ? <Text style={styles.warningText}>Last check error: {status.updater.lastCheckError}</Text> : null}
+              {status.updater.lastCheckError ? <Text style={styles.warningText}>{OPERATOR_UPDATER_PANEL_METADATA.formatLastCheckError(status.updater.lastCheckError)}</Text> : null}
               {status.updater.manualReleasesUrl ? (
-                <Text style={styles.detailText}>Manual releases: {status.updater.manualReleasesUrl}</Text>
+                <Text style={styles.detailText}>{OPERATOR_UPDATER_PANEL_METADATA.formatManualReleases(status.updater.manualReleasesUrl)}</Text>
               ) : null}
               <View style={styles.actionGrid}>
                 <TouchableOpacity
@@ -2753,10 +2754,12 @@ export default function OperationsScreen({ navigation }: any) {
                   onPress={() => void runAction('check-latest-release', () => settingsClient.checkOperatorUpdater())}
                   disabled={pendingAction !== null}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Check latest release')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_UPDATER_PANEL_METADATA.checkLatestReleaseButton.accessibilityLabel)}
                 >
                   <Text style={styles.secondaryActionText}>
-                    {pendingAction === 'check-latest-release' ? 'Checking latest release…' : 'Check latest release'}
+                    {pendingAction === 'check-latest-release'
+                      ? OPERATOR_UPDATER_PANEL_METADATA.checkLatestReleaseButton.pendingLabel
+                      : OPERATOR_UPDATER_PANEL_METADATA.checkLatestReleaseButton.buttonLabel}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -2766,18 +2769,20 @@ export default function OperationsScreen({ navigation }: any) {
                     (pendingAction !== null || !status.updater.preferredAsset) && styles.actionButtonDisabled,
                   ]}
                   onPress={() => confirmAction(
-                    'Download Latest Installer',
-                    'Download the recommended release asset onto the desktop machine now? This does not install it automatically.',
-                    'Download',
+                    OPERATOR_UPDATER_PANEL_METADATA.downloadLatestInstallerAction.confirmTitle,
+                    OPERATOR_UPDATER_PANEL_METADATA.downloadLatestInstallerAction.confirmMessage,
+                    OPERATOR_UPDATER_PANEL_METADATA.downloadLatestInstallerAction.confirmButtonLabel,
                     false,
                     () => runAction('download-latest-release', () => settingsClient.downloadOperatorUpdateAsset()),
                   )}
                   disabled={pendingAction !== null || !status.updater.preferredAsset}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Download latest installer')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_UPDATER_PANEL_METADATA.downloadLatestInstallerAction.accessibilityLabel)}
                 >
                   <Text style={styles.secondaryActionText}>
-                    {pendingAction === 'download-latest-release' ? 'Downloading installer…' : 'Download latest installer'}
+                    {pendingAction === 'download-latest-release'
+                      ? OPERATOR_UPDATER_PANEL_METADATA.downloadLatestInstallerAction.pendingLabel
+                      : OPERATOR_UPDATER_PANEL_METADATA.downloadLatestInstallerAction.buttonLabel}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -2789,10 +2794,12 @@ export default function OperationsScreen({ navigation }: any) {
                   onPress={() => void runAction('reveal-downloaded-installer', () => settingsClient.revealOperatorUpdateAsset())}
                   disabled={pendingAction !== null || !status.updater.lastDownloadedFileName}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Reveal downloaded installer')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_UPDATER_PANEL_METADATA.revealDownloadedInstallerButton.accessibilityLabel)}
                 >
                   <Text style={styles.secondaryActionText}>
-                    {pendingAction === 'reveal-downloaded-installer' ? 'Revealing installer…' : 'Reveal downloaded installer'}
+                    {pendingAction === 'reveal-downloaded-installer'
+                      ? OPERATOR_UPDATER_PANEL_METADATA.revealDownloadedInstallerButton.pendingLabel
+                      : OPERATOR_UPDATER_PANEL_METADATA.revealDownloadedInstallerButton.buttonLabel}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -2802,18 +2809,20 @@ export default function OperationsScreen({ navigation }: any) {
                     (pendingAction !== null || !status.updater.lastDownloadedFileName) && styles.actionButtonDisabled,
                   ]}
                   onPress={() => confirmAction(
-                    'Open Downloaded Installer',
-                    'Open the downloaded installer on the desktop machine now? This may launch the installer UI on that machine.',
-                    'Open Installer',
+                    OPERATOR_UPDATER_PANEL_METADATA.openDownloadedInstallerAction.confirmTitle,
+                    OPERATOR_UPDATER_PANEL_METADATA.openDownloadedInstallerAction.confirmMessage,
+                    OPERATOR_UPDATER_PANEL_METADATA.openDownloadedInstallerAction.confirmButtonLabel,
                     false,
                     () => runAction('open-downloaded-installer', () => settingsClient.openOperatorUpdateAsset()),
                   )}
                   disabled={pendingAction !== null || !status.updater.lastDownloadedFileName}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Open downloaded installer')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_UPDATER_PANEL_METADATA.openDownloadedInstallerAction.accessibilityLabel)}
                 >
                   <Text style={styles.secondaryActionText}>
-                    {pendingAction === 'open-downloaded-installer' ? 'Opening installer…' : 'Open downloaded installer'}
+                    {pendingAction === 'open-downloaded-installer'
+                      ? OPERATOR_UPDATER_PANEL_METADATA.openDownloadedInstallerAction.pendingLabel
+                      : OPERATOR_UPDATER_PANEL_METADATA.openDownloadedInstallerAction.buttonLabel}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -2821,10 +2830,12 @@ export default function OperationsScreen({ navigation }: any) {
                   onPress={() => void runAction('open-release-page', () => settingsClient.openOperatorReleasesPage())}
                   disabled={pendingAction !== null}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Open release page')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_UPDATER_PANEL_METADATA.openReleasePageButton.accessibilityLabel)}
                 >
                   <Text style={styles.secondaryActionText}>
-                    {pendingAction === 'open-release-page' ? 'Opening release page…' : 'Open release page'}
+                    {pendingAction === 'open-release-page'
+                      ? OPERATOR_UPDATER_PANEL_METADATA.openReleasePageButton.pendingLabel
+                      : OPERATOR_UPDATER_PANEL_METADATA.openReleasePageButton.buttonLabel}
                   </Text>
                 </TouchableOpacity>
               </View>

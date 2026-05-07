@@ -65,6 +65,10 @@ export type OperatorConfirmedActionMetadata = {
   buttonLabel: string
 }
 
+export type OperatorConfirmedActionButtonMetadata = OperatorConfirmedActionMetadata & {
+  pendingLabel: string
+}
+
 export type OperatorActionsPanelMetadata = {
   panelTitle: string
   runAgentLabel: string
@@ -156,6 +160,79 @@ export const OPERATOR_ACTIONS_PANEL_METADATA: OperatorActionsPanelMetadata = {
     confirmButtonLabel: "Emergency Stop",
     accessibilityLabel: "Emergency stop",
     buttonLabel: "Emergency stop",
+  },
+}
+
+export type OperatorUpdaterPanelMetadata = {
+  panelTitle: string
+  formatMode: (mode: OperatorRuntimeStatus["updater"]["mode"]) => string
+  formatCurrentVersion: (version?: string) => string
+  formatUpdateAvailable: (updateAvailable?: boolean) => string
+  formatLastChecked: (lastCheckedAt?: number) => string
+  formatLatestRelease: (tagName: string) => string
+  formatPublished: (publishedAt?: string) => string
+  formatAssets: (assetCount?: number) => string
+  formatReleaseUrl: (url: string) => string
+  formatRecommendedAsset: (name: string) => string
+  formatAssetUrl: (downloadUrl: string) => string
+  formatLastDownloadedFile: (fileName: string) => string
+  formatDownloadedAt: (downloadedAt?: number) => string
+  formatLastCheckError: (error: string) => string
+  formatManualReleases: (url: string) => string
+  checkLatestReleaseButton: OperatorActionButtonMetadata
+  downloadLatestInstallerAction: OperatorConfirmedActionButtonMetadata
+  revealDownloadedInstallerButton: OperatorActionButtonMetadata
+  openDownloadedInstallerAction: OperatorConfirmedActionButtonMetadata
+  openReleasePageButton: OperatorActionButtonMetadata
+}
+
+export const OPERATOR_UPDATER_PANEL_METADATA: OperatorUpdaterPanelMetadata = {
+  panelTitle: "Updater",
+  formatMode: (mode) => `Mode: ${mode}`,
+  formatCurrentVersion: (version) => `Current version: ${version || OPERATOR_EMPTY_VALUE_LABEL}`,
+  formatUpdateAvailable: (updateAvailable) =>
+    `Update available: ${updateAvailable === undefined ? "Unknown" : updateAvailable ? "Yes" : "No"}`,
+  formatLastChecked: (lastCheckedAt) => `Last checked: ${formatOperatorTimestamp(lastCheckedAt)}`,
+  formatLatestRelease: (tagName) => `Latest release: ${tagName}`,
+  formatPublished: (publishedAt) => `Published: ${publishedAt || OPERATOR_EMPTY_VALUE_LABEL}`,
+  formatAssets: (assetCount) => `Assets: ${assetCount ?? 0}`,
+  formatReleaseUrl: (url) => `Release URL: ${url}`,
+  formatRecommendedAsset: (name) => `Recommended asset: ${name}`,
+  formatAssetUrl: (downloadUrl) => `Asset URL: ${downloadUrl}`,
+  formatLastDownloadedFile: (fileName) => `Last downloaded file: ${fileName}`,
+  formatDownloadedAt: (downloadedAt) => `Downloaded at: ${formatOperatorTimestamp(downloadedAt)}`,
+  formatLastCheckError: (error) => `Last check error: ${error}`,
+  formatManualReleases: (url) => `Manual releases: ${url}`,
+  checkLatestReleaseButton: {
+    accessibilityLabel: "Check latest release",
+    pendingLabel: "Checking latest release…",
+    buttonLabel: "Check latest release",
+  },
+  downloadLatestInstallerAction: {
+    confirmTitle: "Download Latest Installer",
+    confirmMessage: "Download the recommended release asset onto the desktop machine now? This does not install it automatically.",
+    confirmButtonLabel: "Download",
+    accessibilityLabel: "Download latest installer",
+    pendingLabel: "Downloading installer…",
+    buttonLabel: "Download latest installer",
+  },
+  revealDownloadedInstallerButton: {
+    accessibilityLabel: "Reveal downloaded installer",
+    pendingLabel: "Revealing installer…",
+    buttonLabel: "Reveal downloaded installer",
+  },
+  openDownloadedInstallerAction: {
+    confirmTitle: "Open Downloaded Installer",
+    confirmMessage: "Open the downloaded installer on the desktop machine now? This may launch the installer UI on that machine.",
+    confirmButtonLabel: "Open Installer",
+    accessibilityLabel: "Open downloaded installer",
+    pendingLabel: "Opening installer…",
+    buttonLabel: "Open downloaded installer",
+  },
+  openReleasePageButton: {
+    accessibilityLabel: "Open release page",
+    pendingLabel: "Opening release page…",
+    buttonLabel: "Open release page",
   },
 }
 

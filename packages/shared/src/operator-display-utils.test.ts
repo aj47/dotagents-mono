@@ -15,6 +15,7 @@ import {
   OPERATOR_STATUS_PANEL_METADATA,
   OPERATOR_SYSTEM_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
+  OPERATOR_UPDATER_PANEL_METADATA,
   formatOperatorActiveAgentSessionSummary,
   formatOperatorAuditDetails,
   formatOperatorAuditSource,
@@ -156,6 +157,83 @@ describe("operator display utils", () => {
         buttonLabel: "Emergency stop",
       },
     })
+  })
+
+  it("exports operator updater panel metadata", () => {
+    expect(OPERATOR_UPDATER_PANEL_METADATA).toEqual({
+      panelTitle: "Updater",
+      formatMode: expect.any(Function),
+      formatCurrentVersion: expect.any(Function),
+      formatUpdateAvailable: expect.any(Function),
+      formatLastChecked: expect.any(Function),
+      formatLatestRelease: expect.any(Function),
+      formatPublished: expect.any(Function),
+      formatAssets: expect.any(Function),
+      formatReleaseUrl: expect.any(Function),
+      formatRecommendedAsset: expect.any(Function),
+      formatAssetUrl: expect.any(Function),
+      formatLastDownloadedFile: expect.any(Function),
+      formatDownloadedAt: expect.any(Function),
+      formatLastCheckError: expect.any(Function),
+      formatManualReleases: expect.any(Function),
+      checkLatestReleaseButton: {
+        accessibilityLabel: "Check latest release",
+        pendingLabel: "Checking latest release…",
+        buttonLabel: "Check latest release",
+      },
+      downloadLatestInstallerAction: {
+        confirmTitle: "Download Latest Installer",
+        confirmMessage: "Download the recommended release asset onto the desktop machine now? This does not install it automatically.",
+        confirmButtonLabel: "Download",
+        accessibilityLabel: "Download latest installer",
+        pendingLabel: "Downloading installer…",
+        buttonLabel: "Download latest installer",
+      },
+      revealDownloadedInstallerButton: {
+        accessibilityLabel: "Reveal downloaded installer",
+        pendingLabel: "Revealing installer…",
+        buttonLabel: "Reveal downloaded installer",
+      },
+      openDownloadedInstallerAction: {
+        confirmTitle: "Open Downloaded Installer",
+        confirmMessage: "Open the downloaded installer on the desktop machine now? This may launch the installer UI on that machine.",
+        confirmButtonLabel: "Open Installer",
+        accessibilityLabel: "Open downloaded installer",
+        pendingLabel: "Opening installer…",
+        buttonLabel: "Open downloaded installer",
+      },
+      openReleasePageButton: {
+        accessibilityLabel: "Open release page",
+        pendingLabel: "Opening release page…",
+        buttonLabel: "Open release page",
+      },
+    })
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatMode("manual")).toBe("Mode: manual")
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatCurrentVersion("1.2.3")).toBe("Current version: 1.2.3")
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatCurrentVersion()).toBe(`Current version: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatUpdateAvailable()).toBe("Update available: Unknown")
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatUpdateAvailable(true)).toBe("Update available: Yes")
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatUpdateAvailable(false)).toBe("Update available: No")
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatLastChecked()).toBe(`Last checked: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatLatestRelease("v1.2.3")).toBe("Latest release: v1.2.3")
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatPublished()).toBe(`Published: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatAssets()).toBe("Assets: 0")
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatAssets(3)).toBe("Assets: 3")
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatReleaseUrl("https://example.com/release")).toBe(
+      "Release URL: https://example.com/release",
+    )
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatRecommendedAsset("DotAgents.dmg")).toBe("Recommended asset: DotAgents.dmg")
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatAssetUrl("https://example.com/asset")).toBe(
+      "Asset URL: https://example.com/asset",
+    )
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatLastDownloadedFile("DotAgents.dmg")).toBe(
+      "Last downloaded file: DotAgents.dmg",
+    )
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatDownloadedAt()).toBe(`Downloaded at: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatLastCheckError("network failed")).toBe("Last check error: network failed")
+    expect(OPERATOR_UPDATER_PANEL_METADATA.formatManualReleases("https://example.com/releases")).toBe(
+      "Manual releases: https://example.com/releases",
+    )
   })
 
   it("exports diagnostic report action metadata", () => {
