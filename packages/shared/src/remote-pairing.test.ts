@@ -58,6 +58,7 @@ import {
   REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
+  REMOTE_SERVER_ENABLED_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
@@ -101,6 +102,20 @@ describe('remote server config contracts', () => {
   it('describes remote server option defaults and validators', () => {
     expect(DEFAULT_REMOTE_SERVER_BIND_ADDRESS).toBe('127.0.0.1');
     expect(DEFAULT_REMOTE_SERVER_ENABLED).toBe(false);
+    expect(REMOTE_SERVER_ENABLED_FIELD_METADATA).toEqual({
+      key: 'remoteServerEnabled',
+      label: 'Remote Server',
+      desktopLabel: 'Enable Remote Server',
+      helperText: 'Enable the desktop server that powers mobile operator access.',
+      pendingLabel: 'remote server',
+      enableSuccessMessage: 'Remote server enabled.',
+      disableConfirmTitle: 'Disable Remote Server',
+      disableConfirmMessage: 'Turn off the desktop remote server? This mobile operator session may disconnect immediately.',
+      disableConfirmButtonLabel: 'Disable Server',
+      disableSuccessMessage: 'Remote server disable scheduled.',
+      updateSuccessMessage: 'Remote server updated.',
+      accessibilityLabel: 'Remote Server',
+    });
     expect(REMOTE_SERVER_BIND_ADDRESS_OPTIONS).toEqual(['127.0.0.1', '0.0.0.0']);
     expect(REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA).toEqual({
       key: 'remoteServerBindAddress',

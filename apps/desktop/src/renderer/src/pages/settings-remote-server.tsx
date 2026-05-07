@@ -39,6 +39,7 @@ import {
   REMOTE_SERVER_PORT_MIN,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
+  REMOTE_SERVER_ENABLED_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_PORT_FIELD_METADATA,
@@ -200,7 +201,7 @@ export function RemoteServerSettingsGroups({
           collapsible={collapsible}
           defaultCollapsed={defaultCollapsed}
           forceOpen={forceOpen}
-          title="Remote Server"
+          title={REMOTE_SERVER_ENABLED_FIELD_METADATA.label}
           endDescription={(
             <div className="break-words whitespace-normal">
               Expose DotAgents as an OpenAI-compatible <span className="font-mono">/v1</span>{" "}
@@ -217,7 +218,7 @@ export function RemoteServerSettingsGroups({
             </div>
           )}
         >
-          <Control label="Enable Remote Server" className="px-3">
+          <Control label={REMOTE_SERVER_ENABLED_FIELD_METADATA.desktopLabel} className="px-3">
             <Switch
               checked={enabled}
               onCheckedChange={(value) => {

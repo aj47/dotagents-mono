@@ -79,6 +79,7 @@ import {
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
   REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
+  REMOTE_SERVER_ENABLED_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA,
   REMOTE_SERVER_PORT_FIELD_METADATA,
@@ -633,22 +634,34 @@ export default function OperationsScreen({ navigation }: any) {
 
   const handleRemoteServerEnabledToggle = useCallback((nextValue: boolean) => {
     if (!settings?.remoteServerEnabled && nextValue) {
-      void applySettingsUpdate({ remoteServerEnabled: true }, 'remote server', 'Remote server enabled.');
+      void applySettingsUpdate(
+        { remoteServerEnabled: true },
+        REMOTE_SERVER_ENABLED_FIELD_METADATA.pendingLabel,
+        REMOTE_SERVER_ENABLED_FIELD_METADATA.enableSuccessMessage,
+      );
       return;
     }
 
     if (settings?.remoteServerEnabled && !nextValue) {
       confirmAction(
-        'Disable Remote Server',
-        'Turn off the desktop remote server? This mobile operator session may disconnect immediately.',
-        'Disable Server',
+        REMOTE_SERVER_ENABLED_FIELD_METADATA.disableConfirmTitle,
+        REMOTE_SERVER_ENABLED_FIELD_METADATA.disableConfirmMessage,
+        REMOTE_SERVER_ENABLED_FIELD_METADATA.disableConfirmButtonLabel,
         true,
-        () => applySettingsUpdate({ remoteServerEnabled: false }, 'remote server', 'Remote server disable scheduled.'),
+        () => applySettingsUpdate(
+          { remoteServerEnabled: false },
+          REMOTE_SERVER_ENABLED_FIELD_METADATA.pendingLabel,
+          REMOTE_SERVER_ENABLED_FIELD_METADATA.disableSuccessMessage,
+        ),
       );
       return;
     }
 
-    void applySettingsUpdate({ remoteServerEnabled: nextValue }, 'remote server', 'Remote server updated.');
+    void applySettingsUpdate(
+      { remoteServerEnabled: nextValue },
+      REMOTE_SERVER_ENABLED_FIELD_METADATA.pendingLabel,
+      REMOTE_SERVER_ENABLED_FIELD_METADATA.updateSuccessMessage,
+    );
   }, [applySettingsUpdate, confirmAction, settings?.remoteServerEnabled]);
 
   const handleRemoteServerPortSave = useCallback(() => {
@@ -1756,14 +1769,14 @@ export default function OperationsScreen({ navigation }: any) {
               <Text style={styles.subsectionTitle}>Remote server</Text>
               <View style={styles.row}>
                 <View style={styles.rowCopy}>
-                  <Text style={styles.label}>Remote Server</Text>
-                  <Text style={styles.helperText}>Enable the desktop server that powers mobile operator access.</Text>
+                  <Text style={styles.label}>{REMOTE_SERVER_ENABLED_FIELD_METADATA.label}</Text>
+                  <Text style={styles.helperText}>{REMOTE_SERVER_ENABLED_FIELD_METADATA.helperText}</Text>
                 </View>
                 <Switch
                   value={settings.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED}
                   onValueChange={handleRemoteServerEnabledToggle}
                   disabled={controlsDisabled}
-                  accessibilityLabel={createSwitchAccessibilityLabel('Remote Server')}
+                  accessibilityLabel={createSwitchAccessibilityLabel(REMOTE_SERVER_ENABLED_FIELD_METADATA.accessibilityLabel)}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                   thumbColor={(settings.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                 />

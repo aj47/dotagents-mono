@@ -40,6 +40,21 @@ export type RemoteServerBindAddressFieldMetadata = {
   accessibilityLabel: string;
 };
 
+export type RemoteServerEnabledFieldMetadata = {
+  key: 'remoteServerEnabled';
+  label: string;
+  desktopLabel: string;
+  helperText: string;
+  pendingLabel: string;
+  enableSuccessMessage: string;
+  disableConfirmTitle: string;
+  disableConfirmMessage: string;
+  disableConfirmButtonLabel: string;
+  disableSuccessMessage: string;
+  updateSuccessMessage: string;
+  accessibilityLabel: string;
+};
+
 export type RemoteServerLogLevelOption = {
   value: RemoteServerLogLevel;
   label: string;
@@ -83,6 +98,20 @@ export const DEFAULT_REMOTE_SERVER_BIND_ADDRESS: RemoteServerBindAddress = '127.
 export const DEFAULT_REMOTE_SERVER_PORT = 3210;
 export const DEFAULT_REMOTE_SERVER_LOG_LEVEL: RemoteServerLogLevel = 'info';
 export const DEFAULT_CLOUDFLARE_TUNNEL_MODE: CloudflareTunnelMode = 'quick';
+export const REMOTE_SERVER_ENABLED_FIELD_METADATA: RemoteServerEnabledFieldMetadata = {
+  key: 'remoteServerEnabled',
+  label: 'Remote Server',
+  desktopLabel: 'Enable Remote Server',
+  helperText: 'Enable the desktop server that powers mobile operator access.',
+  pendingLabel: 'remote server',
+  enableSuccessMessage: 'Remote server enabled.',
+  disableConfirmTitle: 'Disable Remote Server',
+  disableConfirmMessage: 'Turn off the desktop remote server? This mobile operator session may disconnect immediately.',
+  disableConfirmButtonLabel: 'Disable Server',
+  disableSuccessMessage: 'Remote server disable scheduled.',
+  updateSuccessMessage: 'Remote server updated.',
+  accessibilityLabel: 'Remote Server',
+};
 export const REMOTE_SERVER_PORT_FIELD_METADATA: RemoteServerPortFieldMetadata = {
   key: 'remoteServerPort',
   label: 'Port',

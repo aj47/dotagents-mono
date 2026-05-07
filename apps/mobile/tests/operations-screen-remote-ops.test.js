@@ -14,7 +14,7 @@ const remoteAccessDraftsSource = fs.readFileSync(
 
 test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Remote access settings/);
-  assert.match(operationsSource, /Remote Server/);
+  assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA/);
   assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA/);
   assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS/);
   assert.match(operationsSource, /REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA/);
@@ -49,6 +49,16 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(remoteAccessDraftsSource, /remoteServerCorsOrigins: formatConfigListInput\(settings\?\.remoteServerCorsOrigins \?\? DEFAULT_REMOTE_SERVER_CORS_ORIGINS\)/);
   assert.match(operationsSource, /remoteServerBindAddress: option\.value/);
   assert.match(operationsSource, /option\.successMessage/);
+  assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA\.pendingLabel/);
+  assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA\.enableSuccessMessage/);
+  assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA\.disableConfirmTitle/);
+  assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA\.disableConfirmMessage/);
+  assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA\.disableConfirmButtonLabel/);
+  assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA\.disableSuccessMessage/);
+  assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA\.updateSuccessMessage/);
+  assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA\.accessibilityLabel/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.label\}>Remote Server<\/Text>/);
+  assert.doesNotMatch(operationsSource, /createSwitchAccessibilityLabel\('Remote Server'\)/);
   assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA\.accessibilityLabel/);
   assert.match(operationsSource, /remoteServerLogLevel: option\.value/);
   assert.match(operationsSource, /REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA\.accessibilityLabel/);
