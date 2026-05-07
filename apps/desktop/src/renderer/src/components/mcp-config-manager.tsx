@@ -456,7 +456,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                     return
                   }
                   try {
-                    await window.electronAPI.initiateOAuthFlow(name)
+                    await tipcClient.initiateOAuthFlow(name)
                     toast.success("OAuth authentication started. Please complete the flow in your browser.")
                   } catch (error) {
                     toast.error(`Failed to start OAuth flow: ${error instanceof Error ? error.message : String(error)}`)
@@ -465,7 +465,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                 onRevokeAuth={async () => {
                   if (!name) return
                   try {
-                    await window.electronAPI.revokeOAuthTokens(name)
+                    await tipcClient.revokeOAuthTokens(name)
                     toast.success("OAuth tokens revoked successfully")
                   } catch (error) {
                     toast.error(`Failed to revoke OAuth tokens: ${error instanceof Error ? error.message : String(error)}`)
@@ -518,7 +518,10 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                       testServerConfig.oauth = oauthConfig
                     }
 
-                    const result = await window.electronAPI.testMCPServer(name, testServerConfig)
+                    const result = await tipcClient.testMcpServerConnection({
+                      serverName: name,
+                      serverConfig: testServerConfig,
+                    })
                     if (result.success) {
                       toast.success("Connection test successful!")
                     } else {
@@ -1013,14 +1016,14 @@ export function MCPConfigManager({
   const refreshOAuthStatus = async (serverName?: string) => {
     try {
       if (serverName) {
-        const status = await window.electronAPI.getOAuthStatus(serverName)
+        const status = await tipcClient.getOAuthStatus(serverName)
         setOAuthStatus(prev => ({ ...prev, [serverName]: status }))
       } else {
         // Load status for all servers
         const newStatus: Record<string, any> = {}
         for (const [name, config] of Object.entries(servers)) {
           if (config.transport === "streamableHttp" && config.url) {
-            const status = await window.electronAPI.getOAuthStatus(name)
+            const status = await tipcClient.getOAuthStatus(name)
             newStatus[name] = status
           }
         }
@@ -1523,7 +1526,7 @@ export function MCPConfigManager({
 
   const handleRevokeOAuth = async (serverName: string) => {
     try {
-      await window.electronAPI.revokeOAuthTokens(serverName)
+      await tipcClient.revokeOAuthTokens(serverName)
       toast.success("OAuth authentication revoked")
       refreshOAuthStatus(serverName)
     } catch (error) {
@@ -1533,10 +1536,10 @@ export function MCPConfigManager({
 
   const handleInitiateOAuth = async (serverName: string) => {
     try {
-      await window.electronAPI.initiateOAuthFlow(serverName)
+      await tipcClient.initiateOAuthFlow(serverName)
       toast.success("OAuth authentication started")
       const checkCompletion = setInterval(async () => {
-        const statusResult = await window.electronAPI.getOAuthStatus(serverName)
+        const statusResult = await tipcClient.getOAuthStatus(serverName)
         if (statusResult.authenticated) {
           clearInterval(checkCompletion)
           refreshOAuthStatus(serverName)

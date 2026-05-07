@@ -8,6 +8,7 @@ import { Switch } from "@renderer/components/ui/switch"
 import { Loader2, CheckCircle, XCircle, AlertCircle, ExternalLink, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import type { OAuthConfig } from "@dotagents/shared/mcp-utils"
+import { tipcClient } from "@renderer/lib/tipc-client"
 
 interface OAuthServerConfigProps {
   serverName: string
@@ -48,7 +49,7 @@ export function OAuthServerConfig({
 
   const loadOAuthStatus = async () => {
     try {
-      const result = await window.electronAPI.getOAuthStatus(serverName)
+      const result = await tipcClient.getOAuthStatus(serverName)
       setStatus(result)
       if (result.error) {
         setError(result.error)
