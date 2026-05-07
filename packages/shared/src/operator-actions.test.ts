@@ -73,6 +73,7 @@ import {
   clearOperatorDiscordLogsAction,
   connectOperatorDiscordAction,
   connectOperatorWhatsAppAction,
+  createOperatorObservabilityRouteActions,
   getConfiguredCloudflareTunnelStartPlan,
   getOperatorAuditAction,
   getOperatorDiscordAction,
@@ -2474,6 +2475,48 @@ describe("operator action API helpers", () => {
       },
     })
     expect(getOperatorRemoteServerAction(remoteServer)).toMatchObject({
+      statusCode: 200,
+      body: {
+        running: true,
+        port: 3210,
+      },
+    })
+
+    const routeActions = createOperatorObservabilityRouteActions(options)
+    expect(await routeActions.getOperatorStatus(remoteServer)).toMatchObject({
+      statusCode: 200,
+      body: {
+        remoteServer: {
+          running: true,
+          port: 3210,
+        },
+      },
+    })
+    expect(await routeActions.getOperatorHealth()).toMatchObject({
+      statusCode: 200,
+      body: {
+        overall: "warning",
+      },
+    })
+    expect(routeActions.getOperatorErrors("1")).toMatchObject({
+      statusCode: 200,
+      body: {
+        count: 1,
+      },
+    })
+    expect(routeActions.getOperatorLogs(undefined, "error")).toMatchObject({
+      statusCode: 200,
+      body: {
+        level: "error",
+      },
+    })
+    expect(await routeActions.getOperatorConversations("1")).toMatchObject({
+      statusCode: 200,
+      body: {
+        count: 1,
+      },
+    })
+    expect(routeActions.getOperatorRemoteServer(remoteServer)).toMatchObject({
       statusCode: 200,
       body: {
         running: true,

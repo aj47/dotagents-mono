@@ -242,6 +242,15 @@ export interface OperatorObservabilityActionOptions {
   service: OperatorObservabilityActionService
 }
 
+export interface OperatorObservabilityRouteActions {
+  getOperatorStatus(remoteServerStatus: OperatorRemoteServerStatusLike): Promise<OperatorObservabilityActionResult>
+  getOperatorHealth(): Promise<OperatorObservabilityActionResult>
+  getOperatorErrors(count: string | number | undefined): OperatorObservabilityActionResult
+  getOperatorLogs(count: string | number | undefined, level: string | undefined): OperatorObservabilityActionResult
+  getOperatorConversations(count: string | number | undefined): Promise<OperatorObservabilityActionResult>
+  getOperatorRemoteServer(remoteServerStatus: OperatorRemoteServerStatusLike): OperatorObservabilityActionResult
+}
+
 export type OperatorIntegrationActionResult = {
   statusCode: number
   body: unknown
@@ -1858,6 +1867,19 @@ export function getOperatorRemoteServerAction(
   remoteServerStatus: OperatorRemoteServerStatusLike,
 ): OperatorObservabilityActionResult {
   return operatorObservabilityActionResult(200, buildOperatorRemoteServerStatus(remoteServerStatus))
+}
+
+export function createOperatorObservabilityRouteActions(
+  options: OperatorObservabilityActionOptions,
+): OperatorObservabilityRouteActions {
+  return {
+    getOperatorStatus: (remoteServerStatus) => getOperatorStatusAction(remoteServerStatus, options),
+    getOperatorHealth: () => getOperatorHealthAction(options),
+    getOperatorErrors: (count) => getOperatorErrorsAction(count, options),
+    getOperatorLogs: (count, level) => getOperatorLogsAction(count, level, options),
+    getOperatorConversations: (count) => getOperatorConversationsAction(count, options),
+    getOperatorRemoteServer: (remoteServerStatus) => getOperatorRemoteServerAction(remoteServerStatus),
+  }
 }
 
 function operatorMessageQueueActionResult(

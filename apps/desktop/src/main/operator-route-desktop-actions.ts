@@ -62,16 +62,11 @@ import {
   connectOperatorWhatsAppAction,
   disconnectOperatorDiscordAction,
   downloadLatestOperatorUpdateAssetAction,
-  getOperatorConversationsAction,
+  createOperatorObservabilityRouteActions,
   getOperatorDiscordAction,
   getOperatorDiscordLogsAction,
-  getOperatorErrorsAction,
-  getOperatorHealthAction,
   getOperatorIntegrationsAction,
-  getOperatorLogsAction,
   getOperatorMessageQueuesAction,
-  getOperatorRemoteServerAction,
-  getOperatorStatusAction,
   getOperatorTunnelAction,
   getOperatorTunnelSetupAction,
   getOperatorUpdaterAction,
@@ -98,7 +93,6 @@ import {
   type OperatorIntegrationActionOptions,
   type OperatorMessageQueueActionOptions,
   type OperatorObservabilityActionOptions,
-  type OperatorRemoteServerStatusLike,
   type OperatorSystemMetricsLike,
   type OperatorTunnelActionOptions,
   type OperatorUpdaterActionOptions,
@@ -358,6 +352,8 @@ const observabilityActionOptions: OperatorObservabilityActionOptions = {
   },
 }
 
+const operatorObservabilityRouteActions = createOperatorObservabilityRouteActions(observabilityActionOptions)
+
 const tunnelActionOptions: OperatorTunnelActionOptions = {
   config: {
     get: () => configStore.get(),
@@ -481,30 +477,6 @@ async function connectOperatorWhatsApp() {
 
 async function logoutOperatorWhatsApp() {
   return logoutOperatorWhatsAppAction(integrationActionOptions)
-}
-
-async function getOperatorStatus(remoteServerStatus: OperatorRemoteServerStatusLike) {
-  return getOperatorStatusAction(remoteServerStatus, observabilityActionOptions)
-}
-
-async function getOperatorHealth() {
-  return getOperatorHealthAction(observabilityActionOptions)
-}
-
-function getOperatorErrors(count: string | number | undefined) {
-  return getOperatorErrorsAction(count, observabilityActionOptions)
-}
-
-function getOperatorLogs(count: string | number | undefined, level: string | undefined) {
-  return getOperatorLogsAction(count, level, observabilityActionOptions)
-}
-
-async function getOperatorConversations(count: string | number | undefined) {
-  return getOperatorConversationsAction(count, observabilityActionOptions)
-}
-
-function getOperatorRemoteServer(remoteServerStatus: OperatorRemoteServerStatusLike) {
-  return getOperatorRemoteServerAction(remoteServerStatus)
 }
 
 function getOperatorMessageQueues() {
@@ -648,12 +620,7 @@ export const operatorRouteDesktopActions: OperatorRouteActions = {
   resumeOperatorMessageQueue,
   retryOperatorQueuedMessage,
   updateOperatorQueuedMessage,
-  getOperatorConversations,
-  getOperatorErrors,
-  getOperatorHealth,
-  getOperatorLogs,
-  getOperatorRemoteServer,
-  getOperatorStatus,
+  ...operatorObservabilityRouteActions,
   getOperatorAudit,
   recordOperatorAuditEvent,
   setOperatorAuditContext,
