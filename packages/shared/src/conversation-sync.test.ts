@@ -43,6 +43,7 @@ import {
   getValidServerConversationCompactionTimestamp,
   hasPersistedServerConversationCompactionCheckpoint,
   isServerConversationDataFileName,
+  isServerConversationCompactionSummaryLikelyFailed,
   isValidServerConversationRecordShape,
   materializeAppendServerConversationMessageRequest,
   materializeServerConversationCreateRequest,
@@ -873,6 +874,12 @@ describe('server conversation API helpers', () => {
     expect(buildServerConversationCompactionPrompt(summaryInput)).toBe(
       `Summarize this conversation history concisely, preserving key facts, decisions, and context:\n\n${summaryInput}`,
     );
+    expect(isServerConversationCompactionSummaryLikelyFailed(summaryInput, summaryInput)).toBe(true);
+    expect(isServerConversationCompactionSummaryLikelyFailed('x'.repeat(90), 'p'.repeat(100))).toBe(true);
+    expect(isServerConversationCompactionSummaryLikelyFailed('x'.repeat(89), 'p'.repeat(100))).toBe(false);
+    expect(isServerConversationCompactionSummaryLikelyFailed('x'.repeat(80), 'p'.repeat(100), {
+      maxPromptLengthRatio: 0.8,
+    })).toBe(true);
   });
 
   it('skips compaction planning when stored history is at the threshold', () => {

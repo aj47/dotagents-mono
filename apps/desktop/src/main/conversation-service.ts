@@ -31,6 +31,7 @@ import {
   getServerConversationIdFromDataFileName,
   getSortedServerConversationDataFileNames,
   getStoredServerConversationMessages,
+  isServerConversationCompactionSummaryLikelyFailed,
   isValidServerConversationRecordShape,
   materializeAppendServerConversationMessageRequest,
   materializeServerConversationCreateRequest,
@@ -1037,7 +1038,7 @@ export class ConversationService {
       // summarizeContent() swallows errors internally and returns the input text on failure.
       // Detect this by checking if the result equals or contains the full prompt (failure case).
       // A successful summary should be significantly shorter than the prompt.
-      if (summaryContent === summarizationPrompt || summaryContent.length >= summarizationPrompt.length * 0.9) {
+      if (isServerConversationCompactionSummaryLikelyFailed(summaryContent, summarizationPrompt)) {
         logApp(`[conversationService] compactOnLoad: summarization likely failed (output too similar to input), keeping original`)
         return conversation
       }

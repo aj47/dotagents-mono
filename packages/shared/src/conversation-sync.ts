@@ -280,6 +280,10 @@ export interface BuildServerConversationCompactionSummaryInputOptions {
   maxToolResultChars?: number;
 }
 
+export interface ServerConversationCompactionSummaryFailureOptions {
+  maxPromptLengthRatio?: number;
+}
+
 export interface BuildServerConversationCompactionPlanOptions {
   messageThreshold: number;
   keepLast: number;
@@ -928,6 +932,15 @@ export function buildServerConversationCompactionSummaryInput(
 
 export function buildServerConversationCompactionPrompt(summaryInput: string): string {
   return `Summarize this conversation history concisely, preserving key facts, decisions, and context:\n\n${summaryInput}`;
+}
+
+export function isServerConversationCompactionSummaryLikelyFailed(
+  summaryContent: string,
+  summarizationPrompt: string,
+  options: ServerConversationCompactionSummaryFailureOptions = {},
+): boolean {
+  const maxPromptLengthRatio = options.maxPromptLengthRatio ?? 0.9;
+  return summaryContent === summarizationPrompt || summaryContent.length >= summarizationPrompt.length * maxPromptLengthRatio;
 }
 
 export function buildServerConversationCompactionPlan<TConversation extends ServerConversationRecord<any>>(
