@@ -13,7 +13,7 @@ import {
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Label } from "@renderer/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@renderer/components/ui/select"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopKnowledgeClient } from "@renderer/lib/desktop-knowledge-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type {
   KnowledgeNote,
@@ -327,7 +327,7 @@ function GroupPanel({
   const notesQuery = useQuery({
     queryKey: ["knowledgeNotesByGroup", group.key, contextFilter ?? "all", dateFilter, sortOption],
     queryFn: async () =>
-      tipcClient.getKnowledgeNotesByGroup({
+      desktopKnowledgeClient.getNotesByGroup({
         groupKey: group.key,
         context: contextFilter,
         dateFilter,
@@ -444,7 +444,7 @@ function SeriesPanel({
   const notesQuery = useQuery({
     queryKey: ["knowledgeNotesByGroup", groupKey, series.key, contextFilter ?? "all", dateFilter, sortOption],
     queryFn: async () =>
-      tipcClient.getKnowledgeNotesByGroup({
+      desktopKnowledgeClient.getNotesByGroup({
         groupKey,
         seriesKey: series.key,
         context: contextFilter,
@@ -533,7 +533,7 @@ export function Component() {
   const overviewQuery = useQuery({
     queryKey: ["knowledgeNotesOverview", contextFilter, dateFilter],
     queryFn: async () =>
-      tipcClient.getKnowledgeNotesOverview({
+      desktopKnowledgeClient.getOverview({
         context: contextFilter === "all" ? undefined : contextFilter,
         dateFilter,
       }),
@@ -547,14 +547,14 @@ export function Component() {
 
   const agentsFoldersQuery = useQuery({
     queryKey: ["agentsFolders"],
-    queryFn: async () => tipcClient.getAgentsFolders(),
+    queryFn: async () => desktopKnowledgeClient.getAgentsFolders(),
     staleTime: Infinity,
   })
 
   const flatNotesQuery = useQuery({
     queryKey: ["knowledgeNotesFlat", contextFilter, dateFilter, sortOption],
     queryFn: async () =>
-      tipcClient.getAllKnowledgeNotes({
+      desktopKnowledgeClient.getAllNotes({
         context: contextFilter === "all" ? undefined : contextFilter,
         dateFilter,
         sort: sortOption,
@@ -567,7 +567,7 @@ export function Component() {
     mutationFn: async ({ query }: { query: string }) =>
       !query.trim()
         ? null
-        : tipcClient.searchKnowledgeNotes({
+        : desktopKnowledgeClient.searchNotes({
           query,
           context: contextFilter === "all" ? undefined : contextFilter,
           dateFilter,
@@ -577,7 +577,7 @@ export function Component() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => tipcClient.deleteKnowledgeNote({ id }),
+    mutationFn: async (id: string) => desktopKnowledgeClient.deleteNote(id),
     onSuccess: () => {
       invalidateKnowledgeQueries()
       toast.success("Note deleted")
@@ -593,7 +593,7 @@ export function Component() {
     }: {
       id: string
       updates: Partial<Omit<KnowledgeNote, "id" | "createdAt">>
-    }) => tipcClient.updateKnowledgeNote({ id, updates }),
+    }) => desktopKnowledgeClient.updateNote({ id, updates }),
     onSuccess: () => {
       invalidateKnowledgeQueries()
       if (searchQuery.trim()) {
@@ -608,7 +608,7 @@ export function Component() {
 
   const promoteToAutoMutation = useMutation({
     mutationFn: async ({ id }: { id: string }) =>
-      tipcClient.updateKnowledgeNote({
+      desktopKnowledgeClient.updateNote({
         id,
         updates: {
           context: "auto",
@@ -634,7 +634,7 @@ export function Component() {
   })
 
   const deleteMultipleMutation = useMutation({
-    mutationFn: async (ids: string[]) => tipcClient.deleteMultipleKnowledgeNotes({ ids }),
+    mutationFn: async (ids: string[]) => desktopKnowledgeClient.deleteMultipleNotes(ids),
     onSuccess: (deletedCount) => {
       invalidateKnowledgeQueries()
       toast.success(`Deleted ${deletedCount} notes`)
@@ -645,7 +645,7 @@ export function Component() {
   })
 
   const deleteAllMutation = useMutation({
-    mutationFn: async () => tipcClient.deleteAllKnowledgeNotes(),
+    mutationFn: async () => desktopKnowledgeClient.deleteAllNotes(),
     onSuccess: (deletedCount) => {
       invalidateKnowledgeQueries()
       toast.success(`Deleted ${deletedCount} notes`)
@@ -656,7 +656,7 @@ export function Component() {
   })
 
   const openKnowledgeFolderMutation = useMutation({
-    mutationFn: async () => tipcClient.openKnowledgeFolder(),
+    mutationFn: async () => desktopKnowledgeClient.openKnowledgeFolder(),
     onSuccess: (result) => {
       if (!result?.success) toast.error(result?.error || "Failed to open notes folder")
     },
@@ -664,7 +664,7 @@ export function Component() {
   })
 
   const openWorkspaceKnowledgeFolderMutation = useMutation({
-    mutationFn: async () => tipcClient.openWorkspaceKnowledgeFolder(),
+    mutationFn: async () => desktopKnowledgeClient.openWorkspaceKnowledgeFolder(),
     onSuccess: (result) => {
       if (!result?.success) toast.error(result?.error || "Failed to open workspace notes folder")
     },
