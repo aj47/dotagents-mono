@@ -66,10 +66,12 @@ import {
 } from '@dotagents/shared/operator-display-utils';
 import {
   CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_ID_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
   CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_NAME_FIELD_METADATA,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
@@ -2228,40 +2230,40 @@ export default function OperationsScreen({ navigation }: any) {
                 accessibilityLabel={createTextInputAccessibilityLabel(CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA.accessibilityLabel)}
               />
 
-              <Text style={styles.label}>Tunnel Name</Text>
+              <Text style={styles.label}>{CLOUDFLARE_TUNNEL_NAME_FIELD_METADATA.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.cloudflareTunnelName}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, cloudflareTunnelName: value }))}
                 onEndEditing={() => void applySettingsUpdate(
                   { cloudflareTunnelName: drafts.cloudflareTunnelName.trim() },
-                  'tunnel name',
-                  'Tunnel name saved.',
+                  CLOUDFLARE_TUNNEL_NAME_FIELD_METADATA.pendingLabel,
+                  CLOUDFLARE_TUNNEL_NAME_FIELD_METADATA.successMessage,
                 )}
                 editable={!controlsDisabled}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="my-dotagents-tunnel"
+                placeholder={CLOUDFLARE_TUNNEL_NAME_FIELD_METADATA.mobilePlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('Cloudflare tunnel name')}
+                accessibilityLabel={createTextInputAccessibilityLabel(CLOUDFLARE_TUNNEL_NAME_FIELD_METADATA.accessibilityLabel)}
               />
 
-              <Text style={styles.label}>Credentials Path</Text>
+              <Text style={styles.label}>{CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.cloudflareTunnelCredentialsPath}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, cloudflareTunnelCredentialsPath: value }))}
                 onEndEditing={() => void applySettingsUpdate(
                   { cloudflareTunnelCredentialsPath: drafts.cloudflareTunnelCredentialsPath.trim() },
-                  'tunnel credentials path',
-                  'Tunnel credentials path saved.',
+                  CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA.pendingLabel,
+                  CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA.successMessage,
                 )}
                 editable={!controlsDisabled}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="/path/to/credentials.json"
+                placeholder={CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA.mobilePlaceholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('Cloudflare tunnel credentials path')}
+                accessibilityLabel={createTextInputAccessibilityLabel(CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA.accessibilityLabel)}
               />
               <Text style={styles.helperText}>Named tunnels need a tunnel ID and hostname. Credentials path is optional if the desktop already knows where to find the credentials file.</Text>
 

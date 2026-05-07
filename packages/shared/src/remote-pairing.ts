@@ -134,7 +134,7 @@ export type CloudflareTunnelAutoStartFieldMetadata = {
 };
 
 export type CloudflareTunnelTextFieldMetadata = {
-  key: 'cloudflareTunnelId' | 'cloudflareTunnelHostname';
+  key: 'cloudflareTunnelId' | 'cloudflareTunnelHostname' | 'cloudflareTunnelName' | 'cloudflareTunnelCredentialsPath';
   label: string;
   tooltip: string;
   desktopPlaceholder: string;
@@ -280,6 +280,26 @@ export const CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA: CloudflareTunnelTextFiel
   pendingLabel: 'tunnel hostname',
   successMessage: 'Tunnel hostname saved.',
   accessibilityLabel: 'Cloudflare tunnel hostname',
+};
+export const CLOUDFLARE_TUNNEL_NAME_FIELD_METADATA: CloudflareTunnelTextFieldMetadata = {
+  key: 'cloudflareTunnelName',
+  label: 'Tunnel Name',
+  tooltip: 'Display name for the named Cloudflare tunnel.',
+  desktopPlaceholder: 'my-dotagents-tunnel',
+  mobilePlaceholder: 'my-dotagents-tunnel',
+  pendingLabel: 'tunnel name',
+  successMessage: 'Tunnel name saved.',
+  accessibilityLabel: 'Cloudflare tunnel name',
+};
+export const CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA: CloudflareTunnelTextFieldMetadata = {
+  key: 'cloudflareTunnelCredentialsPath',
+  label: 'Credentials Path',
+  tooltip: 'Path to credentials JSON file. Leave empty to use default (~/.cloudflared/<tunnel-id>.json)',
+  desktopPlaceholder: '~/.cloudflared/<tunnel-id>.json (default)',
+  mobilePlaceholder: '/path/to/credentials.json',
+  pendingLabel: 'tunnel credentials path',
+  successMessage: 'Tunnel credentials path saved.',
+  accessibilityLabel: 'Cloudflare tunnel credentials path',
 };
 
 export function getDefaultRemoteServerCorsOrigins(): string[] {

@@ -11,11 +11,13 @@ import {
   buildRemoteServerCorsOptions,
   buildRemoteServerStatusSnapshot,
   CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_ID_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_MODE_OPTIONS,
   CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
   CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_NAME_FIELD_METADATA,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
@@ -255,6 +257,26 @@ describe('remote server config contracts', () => {
       pendingLabel: 'tunnel hostname',
       successMessage: 'Tunnel hostname saved.',
       accessibilityLabel: 'Cloudflare tunnel hostname',
+    });
+    expect(CLOUDFLARE_TUNNEL_NAME_FIELD_METADATA).toEqual({
+      key: 'cloudflareTunnelName',
+      label: 'Tunnel Name',
+      tooltip: 'Display name for the named Cloudflare tunnel.',
+      desktopPlaceholder: 'my-dotagents-tunnel',
+      mobilePlaceholder: 'my-dotagents-tunnel',
+      pendingLabel: 'tunnel name',
+      successMessage: 'Tunnel name saved.',
+      accessibilityLabel: 'Cloudflare tunnel name',
+    });
+    expect(CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA).toEqual({
+      key: 'cloudflareTunnelCredentialsPath',
+      label: 'Credentials Path',
+      tooltip: 'Path to credentials JSON file. Leave empty to use default (~/.cloudflared/<tunnel-id>.json)',
+      desktopPlaceholder: '~/.cloudflared/<tunnel-id>.json (default)',
+      mobilePlaceholder: '/path/to/credentials.json',
+      pendingLabel: 'tunnel credentials path',
+      successMessage: 'Tunnel credentials path saved.',
+      accessibilityLabel: 'Cloudflare tunnel credentials path',
     });
 
     expect(isRemoteServerBindAddressUpdateValue('0.0.0.0')).toBe(true);

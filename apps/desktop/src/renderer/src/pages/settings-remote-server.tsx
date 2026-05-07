@@ -21,6 +21,7 @@ import {
   buildDotAgentsConfigDeepLink,
   buildRemoteServerBaseUrl,
   CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA,
+  CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_ID_FIELD_METADATA,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
@@ -669,12 +670,20 @@ export function RemoteServerSettingsGroups({
                           />
                         </Control>
 
-                        <Control label={<ControlLabel label="Credentials Path" tooltip="Path to credentials JSON file. Leave empty to use default (~/.cloudflared/<tunnel-id>.json)" />} className="px-3">
+                        <Control
+                          label={(
+                            <ControlLabel
+                              label={CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA.label}
+                              tooltip={CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA.tooltip}
+                            />
+                          )}
+                          className="px-3"
+                        >
                           <Input
                             type="text"
                             value={cfg?.cloudflareTunnelCredentialsPath ?? ""}
                             onChange={(e) => saveConfig({ cloudflareTunnelCredentialsPath: e.currentTarget.value })}
-                            placeholder="~/.cloudflared/<tunnel-id>.json (default)"
+                            placeholder={CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA.desktopPlaceholder}
                             className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
                           />
                         </Control>
