@@ -86,6 +86,9 @@ export type InjectedMcpToolsListResponse = {
   tools: unknown[]
 }
 
+export const DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR =
+  "Unauthorized: invalid ACP session context"
+
 export type InjectedMcpRuntimeToolLike = {
   name: string
   description: string

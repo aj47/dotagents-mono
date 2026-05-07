@@ -14,6 +14,7 @@ import {
   buildInjectedMcpToolsListResponse,
   createInjectedMcpProtocolRouteAction,
   createInjectedMcpToolRouteActions,
+  DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR,
   INJECTED_RUNTIME_TOOL_TRANSPORT_NAME,
   resolveInjectedRuntimeToolsForAcpSession,
   type InjectedMcpActionOptions,
@@ -39,8 +40,6 @@ import { operatorRouteDesktopActions } from "./operator-route-desktop-actions"
 import { isRuntimeTool } from "./runtime-tools"
 
 type AcpMcpRequestContext = InjectedMcpResolvedRequestContext<SessionProfileSnapshot>
-
-const INVALID_ACP_SESSION_CONTEXT_ERROR = "Unauthorized: invalid ACP session context"
 
 const injectedMcpRuntimeToolResolutionOptions: InjectedMcpRuntimeToolResolutionOptions<SessionProfileSnapshot> = {
   session: {
@@ -81,7 +80,7 @@ function createInjectedMcpServer(acpSessionToken: string): MCPServer {
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     const injectedRuntimeTools = getInjectedRuntimeToolsForAcpSession(acpSessionToken)
     if (!injectedRuntimeTools) {
-      throw new Error(INVALID_ACP_SESSION_CONTEXT_ERROR)
+      throw new Error(DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR)
     }
 
     return buildInjectedMcpToolsListResponse(injectedRuntimeTools.tools)
@@ -90,7 +89,7 @@ function createInjectedMcpServer(acpSessionToken: string): MCPServer {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const injectedRuntimeTools = getInjectedRuntimeToolsForAcpSession(acpSessionToken)
     if (!injectedRuntimeTools) {
-      return buildInjectedMcpToolCallErrorResponse(INVALID_ACP_SESSION_CONTEXT_ERROR)
+      return buildInjectedMcpToolCallErrorResponse(DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR)
     }
 
     const { name, arguments: args } = request.params
@@ -119,7 +118,7 @@ function createInjectedMcpServer(acpSessionToken: string): MCPServer {
 }
 
 const injectedMcpActionOptions: InjectedMcpActionOptions<AcpMcpRequestContext> = {
-  invalidSessionContextError: INVALID_ACP_SESSION_CONTEXT_ERROR,
+  invalidSessionContextError: DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR,
   diagnostics: {
     logWarning: (source, message) => diagnosticsService.logWarning(source, message),
     logError: (source, message, error) => diagnosticsService.logError(source, message, error),

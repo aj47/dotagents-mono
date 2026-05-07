@@ -11,6 +11,7 @@ import {
   DEFAULT_MCP_TOOL_RESPONSE_PROCESSING_ENABLED,
   DEFAULT_MCP_UNLIMITED_ITERATIONS,
   DEFAULT_MCP_VERIFY_COMPLETION_ENABLED,
+  DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR,
   INJECTED_RUNTIME_TOOL_TRANSPORT_NAME,
   INTERNAL_COMPLETION_NUDGE_TEXT,
   MCP_MAX_ITERATIONS_DEFAULT,
@@ -1487,7 +1488,7 @@ describe("MCP API helpers", () => {
     const executedCalls: Array<{ name: string; arguments: unknown; appSessionId: string }> = []
     const context = { appSessionId: "app-1" }
     const options = {
-      invalidSessionContextError: "Unauthorized: invalid ACP session context",
+      invalidSessionContextError: DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR,
       service: {
         getInjectedRuntimeTools: (token: string | undefined) => token === "valid"
           ? {
@@ -1528,7 +1529,7 @@ describe("MCP API helpers", () => {
 
     expect(listInjectedMcpToolsAction(undefined, options)).toEqual({
       statusCode: 401,
-      body: { error: "Unauthorized: invalid ACP session context" },
+      body: { error: DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR },
     })
     expect(listInjectedMcpToolsAction("valid", options)).toEqual({
       statusCode: 200,
@@ -1546,7 +1547,7 @@ describe("MCP API helpers", () => {
     })
     await expect(callInjectedMcpToolAction(undefined, {}, options)).resolves.toEqual({
       statusCode: 401,
-      body: { error: "Unauthorized: invalid ACP session context" },
+      body: { error: DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR },
     })
     await expect(callInjectedMcpToolAction("valid", {}, options)).resolves.toEqual({
       statusCode: 400,
@@ -1684,7 +1685,7 @@ describe("MCP API helpers", () => {
       { appSessionId: string }
     >({
       action: {
-        invalidSessionContextError: "Unauthorized: invalid ACP session context",
+        invalidSessionContextError: DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR,
         service: {
           getInjectedRuntimeTools: (token: string | undefined) =>
             token === "valid" || token === "throw-connect"
@@ -1779,7 +1780,7 @@ describe("MCP API helpers", () => {
       handleInjectedMcpProtocolRequest(createRequest("POST", { method: "initialize" }), invalidContextReply, "invalid"),
     ).resolves.toBe(invalidContextReply)
     expect(invalidContextReply.statusCode).toBe(401)
-    expect(invalidContextReply.body).toEqual({ error: "Unauthorized: invalid ACP session context" })
+    expect(invalidContextReply.body).toEqual({ error: DEFAULT_INJECTED_MCP_INVALID_SESSION_CONTEXT_ERROR })
 
     const missingSessionReply = createReply()
     await handleInjectedMcpProtocolRequest(createRequest("POST", { method: "tools/list" }), missingSessionReply, "valid")
