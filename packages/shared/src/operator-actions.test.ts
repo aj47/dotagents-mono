@@ -1010,6 +1010,14 @@ describe("operator action API helpers", () => {
   it("creates operator tunnel action services from Cloudflare tunnel adapters", async () => {
     const calls: string[] = []
     const service = createOperatorTunnelActionService({
+      getConfig: () => {
+        calls.push("config")
+        return {
+          cloudflareTunnelMode: "named",
+          cloudflareTunnelId: "tunnel-1",
+          cloudflareTunnelHostname: "agent.example.com",
+        }
+      },
       getStatus: () => {
         calls.push("status")
         return { running: false, starting: false, mode: null }
@@ -1042,6 +1050,10 @@ describe("operator action API helpers", () => {
       },
     })
 
+    expect(service.getConfig()).toMatchObject({
+      cloudflareTunnelMode: "named",
+      cloudflareTunnelId: "tunnel-1",
+    })
     expect(service.getStatus()).toEqual({ running: false, starting: false, mode: null })
     expect(await service.checkCloudflaredInstalled()).toBe(true)
     expect(await service.checkCloudflaredLoggedIn()).toBe(false)
@@ -1064,6 +1076,7 @@ describe("operator action API helpers", () => {
     await service.stopTunnel()
 
     expect(calls).toEqual([
+      "config",
       "status",
       "installed",
       "logged-in",
@@ -1077,18 +1090,16 @@ describe("operator action API helpers", () => {
   it("runs tunnel route actions through a shared service adapter", async () => {
     const calls: string[] = []
     const options: OperatorTunnelActionOptions = {
-      config: {
-        get: () => ({
+      diagnostics: {
+        logError: (_source, message) => { calls.push(`error:${message}`) },
+      },
+      service: {
+        getConfig: () => ({
           cloudflareTunnelMode: "named",
           cloudflareTunnelId: " tunnel-1 ",
           cloudflareTunnelHostname: " agent.example.com ",
           cloudflareTunnelCredentialsPath: " /tmp/creds.json ",
         }),
-      },
-      diagnostics: {
-        logError: (_source, message) => { calls.push(`error:${message}`) },
-      },
-      service: {
         getStatus: () => ({
           running: true,
           starting: false,

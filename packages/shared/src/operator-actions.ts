@@ -313,15 +313,12 @@ export type OperatorTunnelActionResult = {
   auditContext?: OperatorActionAuditContext
 }
 
-export interface OperatorTunnelActionConfigStore {
-  get(): OperatorTunnelSetupConfigLike
-}
-
 export interface OperatorTunnelActionDiagnostics {
   logError(source: string, message: string, error: unknown): void
 }
 
 export interface OperatorTunnelActionService {
+  getConfig(): OperatorTunnelSetupConfigLike
   getStatus(): OperatorTunnelStatusLike
   checkCloudflaredInstalled(): Promise<boolean>
   checkCloudflaredLoggedIn(): Promise<boolean>
@@ -336,6 +333,7 @@ export interface OperatorTunnelActionService {
 }
 
 export interface OperatorTunnelActionServiceOptions {
+  getConfig(): OperatorTunnelSetupConfigLike
   getStatus(): OperatorTunnelStatusLike
   checkCloudflaredInstalled(): Promise<boolean>
   checkCloudflaredLoggedIn(): Promise<boolean>
@@ -353,6 +351,7 @@ export function createOperatorTunnelActionService(
   options: OperatorTunnelActionServiceOptions,
 ): OperatorTunnelActionService {
   return {
+    getConfig: () => options.getConfig(),
     getStatus: () => options.getStatus(),
     checkCloudflaredInstalled: () => options.checkCloudflaredInstalled(),
     checkCloudflaredLoggedIn: () => options.checkCloudflaredLoggedIn(),
@@ -364,7 +363,6 @@ export function createOperatorTunnelActionService(
 }
 
 export interface OperatorTunnelActionOptions {
-  config: OperatorTunnelActionConfigStore
   diagnostics: OperatorTunnelActionDiagnostics
   service: OperatorTunnelActionService
 }
@@ -2921,7 +2919,7 @@ export async function getOperatorTunnelSetupAction(
   options: OperatorTunnelActionOptions,
 ): Promise<OperatorTunnelActionResult> {
   try {
-    const cfg = options.config.get()
+    const cfg = options.service.getConfig()
     const installed = await options.service.checkCloudflaredInstalled()
     const loggedIn = installed ? await options.service.checkCloudflaredLoggedIn() : false
     const listResult = installed && loggedIn
@@ -2943,7 +2941,7 @@ export async function getOperatorTunnelSetupAction(
 async function startConfiguredOperatorTunnel(
   options: OperatorTunnelActionOptions,
 ): Promise<OperatorTunnelStartResultLike> {
-  const cfg = options.config.get()
+  const cfg = options.service.getConfig()
   const startPlan = getConfiguredCloudflareTunnelStartPlan(cfg)
 
   if (startPlan.ok === false) {

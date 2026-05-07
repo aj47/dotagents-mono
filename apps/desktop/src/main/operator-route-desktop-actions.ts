@@ -334,11 +334,9 @@ const observabilityActionOptions: OperatorObservabilityActionOptions = {
 const operatorObservabilityRouteActions = createOperatorObservabilityRouteActions(observabilityActionOptions)
 
 const tunnelActionOptions: OperatorTunnelActionOptions = {
-  config: {
-    get: () => configStore.get(),
-  },
   diagnostics: diagnosticsService,
   service: createOperatorTunnelActionService({
+    getConfig: () => configStore.get(),
     getStatus: getCloudflareTunnelStatus,
     checkCloudflaredInstalled,
     checkCloudflaredLoggedIn,

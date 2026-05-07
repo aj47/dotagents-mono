@@ -1814,6 +1814,10 @@ describe("remote-server route registration", () => {
     )
     expect(operatorRouteDesktopActionsSource).not.toContain("stopOperatorTunnelAction(tunnelActionOptions)")
     expect(operatorRouteDesktopActionsSource).toContain("service: createOperatorTunnelActionService({")
+    expect(operatorRouteDesktopActionsSource).toContain("getConfig: () => configStore.get()")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "const tunnelActionOptions: OperatorTunnelActionOptions = {\n  config: {",
+    )
     expect(operatorRouteDesktopActionsSource).toContain("checkCloudflaredInstalled")
     expect(operatorRouteDesktopActionsSource).toContain("listCloudflareTunnels")
     expect(operatorRouteDesktopActionsSource).toContain("startNamedCloudflareTunnel")
@@ -1823,6 +1827,8 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).not.toContain("startNamedTunnel: startNamedCloudflareTunnel")
     expect(operatorRouteDesktopActionsSource).not.toContain("stopTunnel: stopCloudflareTunnel")
     expect(sharedOperatorActionsSource).toContain("export function createOperatorTunnelActionService")
+    expect(sharedOperatorActionsSource).toContain("getConfig: () => options.getConfig()")
+    expect(sharedOperatorActionsSource).toContain("const cfg = options.service.getConfig()")
     expect(sharedOperatorActionsSource).toContain("startQuickTunnel: () => options.startCloudflareTunnel()")
     expect(sharedOperatorActionsSource).toContain(
       "startNamedTunnel: (tunnelOptions) => options.startNamedCloudflareTunnel(tunnelOptions)",
