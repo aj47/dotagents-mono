@@ -9,6 +9,7 @@ import {
   appendServerConversationMessage,
   buildNewServerConversation,
   buildBranchedServerConversation,
+  buildServerConversationSessionStateFromSettings,
   buildServerConversationAutoTitlePrompt,
   buildServerConversationCompactedRecord,
   buildServerConversationCompactionCheckpointBackfill,
@@ -1835,6 +1836,23 @@ describe('syncConversations', () => {
     expect(applyServerConversationSessionState({ ...session, serverConversationId: undefined }, {
       pinnedConversationIds: ['conv-1'],
     })).toEqual({ ...session, serverConversationId: undefined });
+  });
+
+  it('builds server conversation session state from settings payloads', () => {
+    expect(buildServerConversationSessionStateFromSettings(null)).toBeNull();
+    expect(buildServerConversationSessionStateFromSettings({})).toBeNull();
+
+    const state = buildServerConversationSessionStateFromSettings({
+      pinnedSessionIds: ['conv-1', 42, 'conv-2'],
+      archivedSessionIds: ['conv-3'],
+    });
+
+    expect(Array.from(state?.pinnedConversationIds ?? [])).toEqual(['conv-1', 'conv-2']);
+    expect(Array.from(state?.archivedConversationIds ?? [])).toEqual(['conv-3']);
+    expect(buildServerConversationSessionStateFromSettings({ pinnedSessionIds: [] })).toEqual({
+      pinnedConversationIds: new Set<string>(),
+      archivedConversationIds: new Set<string>(),
+    });
   });
 
   it('merges synced sessions while preserving local edits made during sync', () => {

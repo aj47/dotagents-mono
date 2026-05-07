@@ -13,10 +13,10 @@ import {
 import { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import {
+  buildServerConversationSessionStateFromSettings,
   fetchFullConversation,
   mergeSyncedSessionsWithLocalChanges,
   syncConversations,
-  type ServerConversationSessionState,
   type SyncResult,
 } from '@dotagents/shared/conversation-sync';
 
@@ -676,27 +676,13 @@ export function useSessions(): SessionStore {
         client.getSettings().catch(() => null),
       ]);
 
-      // Build server-side pinned/archived sets keyed by conversation ID
-      const serverPinnedIds = new Set(
-        Array.isArray(serverSettings?.pinnedSessionIds) ? serverSettings.pinnedSessionIds : []
-      );
-      const serverArchivedIds = new Set(
-        Array.isArray(serverSettings?.archivedSessionIds) ? serverSettings.archivedSessionIds : []
-      );
+      const serverState = buildServerConversationSessionStateFromSettings(serverSettings);
 
       // Determine if we need to update sessions
       const hasConversationChanges = result.pulled > 0 || result.pushed > 0 || result.updated > 0;
-      const hasServerPinState = serverSettings !== null &&
-        ('pinnedSessionIds' in serverSettings || 'archivedSessionIds' in serverSettings);
+      const hasServerPinState = serverState !== null;
 
       if (hasConversationChanges || hasServerPinState) {
-        const serverState: ServerConversationSessionState | null = hasServerPinState
-          ? {
-              pinnedConversationIds: serverPinnedIds,
-              archivedConversationIds: serverArchivedIds,
-            }
-          : null;
-
         const currentSessions = sessionsRef.current;
         const mergedSessions = mergeSyncedSessionsWithLocalChanges(
           currentSessions,

@@ -49,6 +49,11 @@ export interface ServerConversationSessionState {
   archivedConversationIds?: Iterable<string> | null;
 }
 
+export type ServerConversationSessionSettingsLike = {
+  pinnedSessionIds?: unknown;
+  archivedSessionIds?: unknown;
+};
+
 export interface MergeSyncedSessionsOptions {
   serverState?: ServerConversationSessionState | null;
 }
@@ -2000,6 +2005,25 @@ function iterableHasValue(values: Iterable<string> | null | undefined, target: s
   }
 
   return false;
+}
+
+function toServerConversationIdSet(value: unknown): Set<string> {
+  return new Set(Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : []);
+}
+
+export function buildServerConversationSessionStateFromSettings(
+  settings: ServerConversationSessionSettingsLike | null | undefined,
+): ServerConversationSessionState | null {
+  if (!settings || !('pinnedSessionIds' in settings || 'archivedSessionIds' in settings)) {
+    return null;
+  }
+
+  return {
+    pinnedConversationIds: toServerConversationIdSet(settings.pinnedSessionIds),
+    archivedConversationIds: toServerConversationIdSet(settings.archivedSessionIds),
+  };
 }
 
 export function applyServerConversationSessionState<
