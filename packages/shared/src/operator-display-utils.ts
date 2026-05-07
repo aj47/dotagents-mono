@@ -32,6 +32,28 @@ export const OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA: OperatorDiagnosticRepor
   formatGeneratedMessage: (logEntryCount) => `Diagnostic report generated with ${logEntryCount} log entries.`,
 }
 
+export type OperatorLogsPanelMetadata = {
+  panelTitle: string
+  clearConfirmTitle: string
+  clearConfirmMessage: string
+  clearConfirmButtonLabel: string
+  clearAccessibilityLabel: string
+  clearPendingLabel: string
+  clearButtonLabel: string
+  emptyText: string
+}
+
+export const OPERATOR_LOGS_PANEL_METADATA: OperatorLogsPanelMetadata = {
+  panelTitle: "Recent operator logs",
+  clearConfirmTitle: "Clear Operator Log",
+  clearConfirmMessage: "Clear the desktop operator error log now?",
+  clearConfirmButtonLabel: "Clear Log",
+  clearAccessibilityLabel: "Clear desktop operator error log",
+  clearPendingLabel: "Clearing log…",
+  clearButtonLabel: "Clear log",
+  emptyText: "No recent operator log entries returned by the desktop server.",
+}
+
 export function formatOperatorTimestamp(timestamp?: number): string {
   if (!timestamp) return OPERATOR_EMPTY_VALUE_LABEL
   return new Date(timestamp).toLocaleString()

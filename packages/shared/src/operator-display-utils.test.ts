@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_EMPTY_VALUE_LABEL,
+  OPERATOR_LOGS_PANEL_METADATA,
   formatOperatorAuditDetails,
   formatOperatorAuditSource,
   formatOperatorDurationSeconds,
@@ -31,6 +32,19 @@ describe("operator display utils", () => {
     expect(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatGeneratedMessage(3)).toBe(
       "Diagnostic report generated with 3 log entries.",
     )
+  })
+
+  it("exports operator logs panel metadata", () => {
+    expect(OPERATOR_LOGS_PANEL_METADATA).toEqual({
+      panelTitle: "Recent operator logs",
+      clearConfirmTitle: "Clear Operator Log",
+      clearConfirmMessage: "Clear the desktop operator error log now?",
+      clearConfirmButtonLabel: "Clear Log",
+      clearAccessibilityLabel: "Clear desktop operator error log",
+      clearPendingLabel: "Clearing log…",
+      clearButtonLabel: "Clear log",
+      emptyText: "No recent operator log entries returned by the desktop server.",
+    })
   })
 
   it("formats timestamps with the empty fallback", () => {

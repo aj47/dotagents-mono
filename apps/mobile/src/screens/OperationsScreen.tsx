@@ -63,6 +63,7 @@ import {
 } from '@dotagents/shared/theme-preference';
 import {
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
+  OPERATOR_LOGS_PANEL_METADATA,
   formatOperatorAuditDetails as formatAuditDetails,
   formatOperatorAuditSource as formatAuditSource,
   formatOperatorDurationSeconds as formatDuration,
@@ -2743,28 +2744,30 @@ export default function OperationsScreen({ navigation }: any) {
           )}
 
           <View style={styles.panel}>
-            <Text style={styles.panelTitle}>Recent operator logs</Text>
+            <Text style={styles.panelTitle}>{OPERATOR_LOGS_PANEL_METADATA.panelTitle}</Text>
             <View style={styles.actionGrid}>
               <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                 onPress={() => confirmAction(
-                  'Clear Operator Log',
-                  'Clear the desktop operator error log now?',
-                  'Clear Log',
+                  OPERATOR_LOGS_PANEL_METADATA.clearConfirmTitle,
+                  OPERATOR_LOGS_PANEL_METADATA.clearConfirmMessage,
+                  OPERATOR_LOGS_PANEL_METADATA.clearConfirmButtonLabel,
                   true,
                   () => runAction('operator-clear-errors', () => settingsClient.clearOperatorErrors()),
                 )}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Clear desktop operator error log')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_LOGS_PANEL_METADATA.clearAccessibilityLabel)}
               >
                 <Text style={styles.secondaryActionText}>
-                  {pendingAction === 'operator-clear-errors' ? 'Clearing log…' : 'Clear log'}
+                  {pendingAction === 'operator-clear-errors'
+                    ? OPERATOR_LOGS_PANEL_METADATA.clearPendingLabel
+                    : OPERATOR_LOGS_PANEL_METADATA.clearButtonLabel}
                 </Text>
               </TouchableOpacity>
             </View>
             {operatorLogs.length === 0 ? (
-              <Text style={styles.mutedText}>No recent operator log entries returned by the desktop server.</Text>
+              <Text style={styles.mutedText}>{OPERATOR_LOGS_PANEL_METADATA.emptyText}</Text>
             ) : (
               operatorLogs.map((entry) => (
                 <View key={`${entry.timestamp}-${entry.component}-${entry.level}-${entry.message}`} style={styles.logItem}>

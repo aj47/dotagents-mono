@@ -357,10 +357,18 @@ test('displays recent operator logs from operator API', () => {
   assert.match(operationsSource, /RECENT_LOG_COUNT/);
   assert.match(operationsSource, /getOperatorLogs\(RECENT_LOG_COUNT\)/);
   assert.match(operationsSource, /setOperatorLogs/);
-  assert.match(operationsSource, /Recent operator logs/);
+  assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /operatorLogs\.map/);
   assert.match(operationsSource, /settingsClient\.clearOperatorErrors\(\)/);
-  assert.match(operationsSource, /Clear desktop operator error log/);
+  assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.clearConfirmTitle/);
+  assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.clearConfirmMessage/);
+  assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.clearConfirmButtonLabel/);
+  assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.clearAccessibilityLabel/);
+  assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.clearPendingLabel/);
+  assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.clearButtonLabel/);
+  assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.emptyText/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Recent operator logs<\/Text>/);
+  assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Clear desktop operator error log'\)/);
 });
 
 test('displays MCP servers from operator API', () => {
