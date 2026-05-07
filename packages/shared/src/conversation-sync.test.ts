@@ -231,11 +231,15 @@ describe('server conversation API helpers', () => {
         },
       },
       generateConversationId: () => 'conv-new',
+      validateConversationId: () => null,
+      now: () => 10,
     });
 
     await expect(service.loadConversation('conv-1')).resolves.toBe(conversation);
     await expect(service.getConversationHistory()).resolves.toBe(conversations);
     expect(service.generateConversationId()).toBe('conv-new');
+    expect(service.validateConversationId('conv-1')).toBeNull();
+    expect(service.getTimestamp()).toBe(10);
     await service.saveConversation(conversation, true);
     expect(saved).toEqual([{ conversationId: 'conv-1', preserveTimestamp: true }]);
   });
@@ -266,6 +270,8 @@ describe('server conversation API helpers', () => {
         loadConversation: async (conversationId: string) => savedConversations.get(conversationId),
         getConversationHistory: async () => conversations,
         generateConversationId: () => 'conv-new',
+        validateConversationId: () => null,
+        getTimestamp: () => 10,
         saveConversation: async (conversation: typeof fullConversation) => {
           savedConversations.set(conversation.id, conversation);
         },
@@ -276,8 +282,6 @@ describe('server conversation API helpers', () => {
           throw new Error('unexpected diagnostics log');
         },
       },
-      validateConversationId: () => null,
-      now: () => 10,
     };
 
     await expect(getConversationsAction(options)).resolves.toEqual({
@@ -343,6 +347,8 @@ describe('server conversation API helpers', () => {
         loadConversation: async (conversationId: string) => savedConversations.get(conversationId),
         getConversationHistory: async () => conversations,
         generateConversationId: () => 'conv-new',
+        validateConversationId: () => null,
+        getTimestamp: () => 10,
         saveConversation: async (conversation: typeof fullConversation) => {
           savedConversations.set(conversation.id, conversation);
         },
@@ -353,8 +359,6 @@ describe('server conversation API helpers', () => {
           throw new Error('unexpected diagnostics log');
         },
       },
-      validateConversationId: () => null,
-      now: () => 10,
     };
     const routeActions = createConversationRouteActions(options);
 
@@ -394,6 +398,9 @@ describe('server conversation API helpers', () => {
         loadConversation: async () => null,
         getConversationHistory: async () => [],
         generateConversationId: () => 'conv-new',
+        validateConversationId: (conversationId: string) =>
+          conversationId === 'bad/id' ? 'Invalid conversation ID format' : null,
+        getTimestamp: () => 10,
         saveConversation: async () => undefined,
       },
       diagnostics: {
@@ -404,8 +411,6 @@ describe('server conversation API helpers', () => {
           throw new Error('unexpected error log');
         },
       },
-      validateConversationId: (conversationId: string) => conversationId === 'bad/id' ? 'Invalid conversation ID format' : null,
-      now: () => 10,
     };
 
     await expect(getConversationAction(undefined, options)).resolves.toEqual({
@@ -441,6 +446,8 @@ describe('server conversation API helpers', () => {
         },
         getConversationHistory: async () => [],
         generateConversationId: () => 'conv-new',
+        validateConversationId: () => null,
+        getTimestamp: () => 10,
         saveConversation: async () => undefined,
       },
       diagnostics: {
@@ -449,8 +456,6 @@ describe('server conversation API helpers', () => {
           loggedErrors.push({ source, message, caughtError });
         },
       },
-      validateConversationId: () => null,
-      now: () => 10,
     };
 
     await expect(getConversationAction('conv-1', options)).resolves.toEqual({

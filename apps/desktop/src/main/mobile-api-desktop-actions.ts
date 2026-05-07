@@ -262,10 +262,10 @@ const conversationActionOptions: ConversationActionOptions<DesktopConversationAc
   service: createConversationActionService({
     service: conversationService,
     generateConversationId: () => conversationService.generateConversationIdPublic(),
+    validateConversationId: getConversationIdValidationError,
+    now: () => Date.now(),
   }),
   diagnostics: diagnosticsService,
-  validateConversationId: getConversationIdValidationError,
-  now: () => Date.now(),
 }
 
 const conversationRouteActions = createConversationRouteActions(conversationActionOptions)

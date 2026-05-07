@@ -58,6 +58,8 @@ export interface ConversationActionService<TConversation extends ServerConversat
   loadConversation(conversationId: string): ConversationMaybePromise<TConversation | null | undefined>;
   getConversationHistory(): ConversationMaybePromise<ServerConversation[]>;
   generateConversationId(): string;
+  validateConversationId(conversationId: string): string | null | undefined;
+  getTimestamp(): number;
   saveConversation(conversation: TConversation, preserveTimestamp: boolean): ConversationMaybePromise<void>;
 }
 
@@ -70,6 +72,8 @@ export interface ConversationActionPersistenceService<TConversation extends Serv
 export interface ConversationActionServiceAdapterOptions<TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>> {
   service: ConversationActionPersistenceService<TConversation>;
   generateConversationId(): string;
+  validateConversationId(conversationId: string): string | null | undefined;
+  now?: () => number;
 }
 
 export function createConversationActionService<TConversation extends ServerConversationRecord<any>>(
@@ -80,6 +84,8 @@ export function createConversationActionService<TConversation extends ServerConv
     loadConversation: (conversationId) => service.loadConversation(conversationId),
     getConversationHistory: () => service.getConversationHistory(),
     generateConversationId: () => options.generateConversationId(),
+    validateConversationId: (conversationId) => options.validateConversationId(conversationId),
+    getTimestamp: () => (options.now ?? Date.now)(),
     saveConversation: (conversation, preserveTimestamp) => service.saveConversation(conversation, preserveTimestamp),
   };
 }
@@ -87,8 +93,6 @@ export function createConversationActionService<TConversation extends ServerConv
 export interface ConversationActionOptions<TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>> {
   service: ConversationActionService<TConversation>;
   diagnostics: ConversationActionDiagnostics;
-  validateConversationId(conversationId: string): string | null | undefined;
-  now(): number;
 }
 
 export interface ConversationRouteActions {
@@ -384,7 +388,7 @@ function getConversationIdActionError(
     return 'Missing or invalid conversation ID';
   }
 
-  return options.validateConversationId(conversationId) ?? null;
+  return options.service.validateConversationId(conversationId) ?? null;
 }
 
 export async function getConversationAction<TConversation extends ServerConversationRecord<any>>(
@@ -441,7 +445,7 @@ export async function createConversationAction<TConversation extends ServerConve
     }
 
     const conversationId = options.service.generateConversationId();
-    const timestamp = options.now();
+    const timestamp = options.service.getTimestamp();
     const conversation = buildNewServerConversation(conversationId, parsedRequest.request, timestamp) as unknown as TConversation;
 
     await options.service.saveConversation(conversation, true);
@@ -480,7 +484,7 @@ export async function updateConversationAction<TConversation extends ServerConve
       return conversationActionError(parsedRequest.statusCode, parsedRequest.error);
     }
 
-    const timestamp = options.now();
+    const timestamp = options.service.getTimestamp();
     let conversation = await options.service.loadConversation(conversationId);
 
     if (!conversation) {
