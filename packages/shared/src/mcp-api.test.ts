@@ -33,6 +33,7 @@ import {
   buildOperatorMcpStatusResponse,
   callInjectedMcpToolAction,
   clearOperatorMcpServerLogsAction,
+  createMcpRouteActions,
   formatMcpMaxIterationsValidationMessage,
   getMcpServersAction,
   getOperatorMcpServerLogsAction,
@@ -471,6 +472,91 @@ describe("MCP API helpers", () => {
         nextServers: ["filesystem", "github"],
       },
     ])
+  })
+
+  it("creates mobile MCP route actions that delegate through service adapters", () => {
+    let mcpConfig: MCPConfig = {
+      mcpServers: {
+        filesystem: { command: "filesystem-mcp" },
+      },
+    }
+    const toggles: Array<{ serverName: string; enabled: boolean }> = []
+    const logs: string[] = []
+    const routeActions = createMcpRouteActions({
+      server: {
+        service: {
+          getServerStatus: () => ({
+            filesystem: {
+              connected: true,
+              toolCount: 3,
+              runtimeEnabled: true,
+              configDisabled: false,
+            },
+          }),
+          setServerRuntimeEnabled: (serverName, enabled) => {
+            toggles.push({ serverName, enabled })
+            return true
+          },
+        },
+        diagnostics: {
+          logError: (_source, message) => logs.push(message),
+          logInfo: (_source, message) => logs.push(message),
+        },
+      },
+      config: {
+        service: {
+          getMcpConfig: () => mcpConfig,
+          saveMcpConfig: (nextConfig) => {
+            mcpConfig = nextConfig
+          },
+        },
+        diagnostics: {
+          logError: (_source, message) => logs.push(message),
+          logInfo: (_source, message) => logs.push(message),
+        },
+        reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
+      },
+    })
+
+    expect(routeActions.getMcpServers()).toEqual({
+      statusCode: 200,
+      body: buildMcpServersResponse({
+        filesystem: {
+          connected: true,
+          toolCount: 3,
+          runtimeEnabled: true,
+          configDisabled: false,
+        },
+      }),
+    })
+    expect(routeActions.toggleMcpServer("filesystem", { enabled: false })).toEqual({
+      statusCode: 200,
+      body: buildMcpServerToggleResponse("filesystem", false),
+    })
+    expect(routeActions.upsertMcpServerConfig("github", { config: { command: "github-mcp" } })).toEqual({
+      statusCode: 200,
+      body: buildMcpServerConfigMutationResponse("github", "upserted"),
+    })
+    expect(routeActions.exportMcpServerConfigs()).toEqual({
+      statusCode: 200,
+      body: buildMcpServerConfigExportResponse(mcpConfig),
+    })
+    expect(routeActions.deleteMcpServerConfig("github")).toEqual({
+      statusCode: 200,
+      body: buildMcpServerConfigMutationResponse("github", "deleted"),
+    })
+    expect(routeActions.importMcpServerConfigs({
+      config: {
+        mcpServers: {
+          github: { command: "github-mcp" },
+        },
+      },
+    })).toEqual({
+      statusCode: 200,
+      body: buildMcpServerConfigImportResponse(1, []),
+    })
+    expect(toggles).toEqual([{ serverName: "filesystem", enabled: false }])
+    expect(logs).toContain("Toggled MCP server filesystem to disabled")
   })
 
   it("builds compact operator MCP status responses", () => {

@@ -169,6 +169,20 @@ export interface McpServerConfigActionOptions {
   reservedServerNames?: readonly string[]
 }
 
+export interface McpRouteActionOptions {
+  server: McpServerActionOptions
+  config: McpServerConfigActionOptions
+}
+
+export interface McpRouteActions {
+  getMcpServers(): McpServerActionResult
+  toggleMcpServer(serverName: string | undefined, body: unknown): McpServerActionResult
+  exportMcpServerConfigs(): McpServerActionResult
+  importMcpServerConfigs(body: unknown): McpServerActionResult
+  upsertMcpServerConfig(serverName: string | undefined, body: unknown): McpServerActionResult
+  deleteMcpServerConfig(serverName?: string): McpServerActionResult
+}
+
 export interface OperatorMcpReadActionService {
   getServerStatus(): McpServerStatusMapLike
   getServerLogs(serverName: string): McpServerLogEntryLike[]
@@ -889,6 +903,17 @@ export function exportMcpServerConfigsAction(
   } catch (caughtError) {
     options.diagnostics.logError("mcp-server-actions", "Failed to export MCP server configs", caughtError)
     return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to export MCP server configs"))
+  }
+}
+
+export function createMcpRouteActions(options: McpRouteActionOptions): McpRouteActions {
+  return {
+    getMcpServers: () => getMcpServersAction(options.server),
+    toggleMcpServer: (serverName, body) => toggleMcpServerAction(serverName, body, options.server),
+    exportMcpServerConfigs: () => exportMcpServerConfigsAction(options.config),
+    importMcpServerConfigs: (body) => importMcpServerConfigsAction(body, options.config),
+    upsertMcpServerConfig: (serverName, body) => upsertMcpServerConfigAction(serverName, body, options.config),
+    deleteMcpServerConfig: (serverName) => deleteMcpServerConfigAction(serverName, options.config),
   }
 }
 

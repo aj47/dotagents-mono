@@ -48,12 +48,8 @@ import {
 } from "@dotagents/shared/discord-config"
 import {
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
-  deleteMcpServerConfigAction,
-  exportMcpServerConfigsAction,
-  getMcpServersAction,
-  importMcpServerConfigsAction,
-  toggleMcpServerAction,
-  upsertMcpServerConfigAction,
+  createMcpRouteActions,
+  type McpServerConfigActionOptions,
 } from "@dotagents/shared/mcp-api"
 import type { MCPConfig } from "@dotagents/shared/mcp-utils"
 import { getMaskedRemoteServerApiKey } from "@dotagents/shared/remote-pairing"
@@ -475,7 +471,12 @@ const mcpServerConfigActionOptions = {
   },
   diagnostics: diagnosticsService,
   reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
-} satisfies Parameters<typeof upsertMcpServerConfigAction>[2]
+} satisfies McpServerConfigActionOptions
+
+const mcpRouteActions = createMcpRouteActions({
+  server: mcpServerActionOptions,
+  config: mcpServerConfigActionOptions,
+})
 
 function cleanupDeletedSkillReferences(): void {
   const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -545,41 +546,12 @@ async function updateConversation(id: string | undefined, body: unknown, onChang
   return updateConversationAction(id, body, onChanged, conversationActionOptions)
 }
 
-function getMcpServers() {
-  return getMcpServersAction(mcpServerActionOptions)
-}
-
-function toggleMcpServer(serverName: string | undefined, body: unknown) {
-  return toggleMcpServerAction(serverName, body, mcpServerActionOptions)
-}
-
-function importMcpServerConfigs(body: unknown) {
-  return importMcpServerConfigsAction(body, mcpServerConfigActionOptions)
-}
-
-function exportMcpServerConfigs() {
-  return exportMcpServerConfigsAction(mcpServerConfigActionOptions)
-}
-
-function upsertMcpServerConfig(serverName: string | undefined, body: unknown) {
-  return upsertMcpServerConfigAction(serverName, body, mcpServerConfigActionOptions)
-}
-
-function deleteMcpServerConfig(serverName: string | undefined) {
-  return deleteMcpServerConfigAction(serverName, mcpServerConfigActionOptions)
-}
-
 export const mobileApiDesktopActions: MobileApiRouteActions = {
   handleChatCompletionRequest,
   ...modelRouteActions,
   ...profileRouteActions,
   ...bundleRouteActions,
-  getMcpServers,
-  toggleMcpServer,
-  exportMcpServerConfigs,
-  importMcpServerConfigs,
-  upsertMcpServerConfig,
-  deleteMcpServerConfig,
+  ...mcpRouteActions,
   ...settingsRouteActions,
   ...agentSessionCandidateRouteActions,
   recordOperatorAuditEvent,

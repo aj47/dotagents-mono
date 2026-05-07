@@ -1211,26 +1211,44 @@ describe("remote-server route registration", () => {
     expect(sharedChatUtilsSource).toContain("options.fetchAvailableModels(providerId)")
     expect(sharedChatUtilsSource).not.toContain("models-service")
     expect(sharedChatUtilsSource).not.toContain("configStore")
-    expect(mobileApiDesktopActionsSource).toContain("getMcpServersAction(mcpServerActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("toggleMcpServerAction(serverName, body, mcpServerActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain(
+    expect(mobileApiDesktopActionsSource).toContain("const mcpRouteActions = createMcpRouteActions({")
+    expect(mobileApiDesktopActionsSource).toContain("server: mcpServerActionOptions")
+    expect(mobileApiDesktopActionsSource).toContain("config: mcpServerConfigActionOptions")
+    expect(mobileApiDesktopActionsSource).toContain("...mcpRouteActions")
+    expect(mobileApiDesktopActionsSource).not.toContain("getMcpServersAction(mcpServerActionOptions)")
+    expect(mobileApiDesktopActionsSource).not.toContain("toggleMcpServerAction(serverName, body, mcpServerActionOptions)")
+    expect(mobileApiDesktopActionsSource).not.toContain(
       "upsertMcpServerConfigAction(serverName, body, mcpServerConfigActionOptions)",
     )
-    expect(mobileApiDesktopActionsSource).toContain(
+    expect(mobileApiDesktopActionsSource).not.toContain(
       "deleteMcpServerConfigAction(serverName, mcpServerConfigActionOptions)",
     )
-    expect(mobileApiDesktopActionsSource).toContain("importMcpServerConfigsAction(body, mcpServerConfigActionOptions)")
-    expect(mobileApiDesktopActionsSource).toContain("exportMcpServerConfigsAction(mcpServerConfigActionOptions)")
+    expect(mobileApiDesktopActionsSource).not.toContain("importMcpServerConfigsAction(body, mcpServerConfigActionOptions)")
+    expect(mobileApiDesktopActionsSource).not.toContain("exportMcpServerConfigsAction(mcpServerConfigActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain("cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)")
     expect(mobileApiDesktopActionsSource).toContain("agentProfileService.reload()")
     expect(sharedMcpApiSource).toContain("export interface McpServerActionService")
     expect(sharedMcpApiSource).toContain("export interface McpServerConfigActionService")
+    expect(sharedMcpApiSource).toContain("export interface McpRouteActions")
     expect(sharedMcpApiSource).toContain("export function getMcpServersAction")
     expect(sharedMcpApiSource).toContain("export function toggleMcpServerAction")
     expect(sharedMcpApiSource).toContain("export function upsertMcpServerConfigAction")
     expect(sharedMcpApiSource).toContain("export function deleteMcpServerConfigAction")
     expect(sharedMcpApiSource).toContain("export function importMcpServerConfigsAction")
     expect(sharedMcpApiSource).toContain("export function exportMcpServerConfigsAction")
+    expect(sharedMcpApiSource).toContain("export function createMcpRouteActions")
+    expect(sharedMcpApiSource).toContain("getMcpServers: () => getMcpServersAction(options.server)")
+    expect(sharedMcpApiSource).toContain(
+      "toggleMcpServer: (serverName, body) => toggleMcpServerAction(serverName, body, options.server)",
+    )
+    expect(sharedMcpApiSource).toContain("exportMcpServerConfigs: () => exportMcpServerConfigsAction(options.config)")
+    expect(sharedMcpApiSource).toContain("importMcpServerConfigs: (body) => importMcpServerConfigsAction(body, options.config)")
+    expect(sharedMcpApiSource).toContain(
+      "upsertMcpServerConfig: (serverName, body) => upsertMcpServerConfigAction(serverName, body, options.config)",
+    )
+    expect(sharedMcpApiSource).toContain(
+      "deleteMcpServerConfig: (serverName) => deleteMcpServerConfigAction(serverName, options.config)",
+    )
     expect(sharedMcpApiSource).toContain("buildMcpServersResponse(options.service.getServerStatus())")
     expect(sharedMcpApiSource).toContain("options.service.setServerRuntimeEnabled(normalizedServerName, enabled)")
     expect(sharedMcpApiSource).toContain("options.service.saveMcpConfig(nextMcpConfig)")
