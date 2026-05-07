@@ -50,8 +50,10 @@ export type RemoteAgentConversationLike = {
 }
 
 export type RemoteAgentSessionLike = {
+  id?: string
   status?: string
   isSnoozed?: boolean
+  conversationId?: string
 }
 
 export type RemoteAgentRunModeState = {
@@ -87,6 +89,41 @@ export interface RemoteAgentRunActionDiagnostics {
 export interface RemoteAgentRunActionOptions<TConversation extends RemoteAgentConversationLike = RemoteAgentConversationLike> {
   service: RemoteAgentRunActionService<TConversation>
   diagnostics: RemoteAgentRunActionDiagnostics
+}
+
+export type RemoteAgentChildSessionLike = {
+  id: string
+  status?: string
+}
+
+export type StopRemoteAgentSessionResult = {
+  success: true
+  sessionId: string
+  conversationId?: string
+}
+
+export interface StopRemoteAgentSessionActionService {
+  getAppSessionForAcpSession(sessionId: string): string | undefined
+  getTrackedSession(sessionId: string): RemoteAgentSessionLike | undefined
+  stopSessionState(sessionId: string): void
+  cancelSessionApprovals(sessionId: string): void
+  getChildSubSessions(sessionId: string): RemoteAgentChildSessionLike[] | Promise<RemoteAgentChildSessionLike[]>
+  cancelSubSession(sessionId: string): void | Promise<void>
+  pauseMessageQueue(conversationId: string): void
+  getMessageQueueLength(conversationId: string): number
+  getSessionRunId(sessionId: string): number | undefined
+  emitAgentProgress(update: AgentProgressUpdate): Promise<void>
+  stopTrackedSession(sessionId: string): void
+}
+
+export interface StopRemoteAgentSessionActionDiagnostics {
+  logApp(message: string, details?: unknown): void
+  logLLM(message: string, details?: unknown): void
+}
+
+export interface StopRemoteAgentSessionActionOptions {
+  service: StopRemoteAgentSessionActionService
+  diagnostics: StopRemoteAgentSessionActionDiagnostics
 }
 
 export interface AgentStoppedProgressUpdateOptions {
@@ -352,6 +389,89 @@ export function describeAgentSessionId(sessionId?: string | null): AgentSessionI
   if (sessionId.startsWith("subsession_")) return "subsession"
   if (sessionId.startsWith("session_")) return "session"
   return "unknown"
+}
+
+export async function stopRemoteAgentSessionAction(
+  sessionId: string,
+  actionOptions: StopRemoteAgentSessionActionOptions,
+): Promise<StopRemoteAgentSessionResult> {
+  const { diagnostics, service } = actionOptions
+  const requestedSessionKind = describeAgentSessionId(sessionId)
+  const mappedAppSessionId = service.getAppSessionForAcpSession(sessionId)
+  const trackedSession = service.getTrackedSession(sessionId)
+  const mappedTrackedSession = mappedAppSessionId
+    ? service.getTrackedSession(mappedAppSessionId)
+    : undefined
+
+  diagnostics.logApp("[stopAgentSession] Stop requested", {
+    requestedSessionId: sessionId,
+    requestedSessionKind,
+    mappedAppSessionId: mappedAppSessionId ?? null,
+    trackerSessionFound: Boolean(trackedSession),
+    trackerSessionStatus: trackedSession?.status ?? null,
+    trackerConversationId: trackedSession?.conversationId ?? null,
+    mappedTrackerSessionFound: Boolean(mappedTrackedSession),
+    mappedTrackerSessionStatus: mappedTrackedSession?.status ?? null,
+    mappedTrackerConversationId: mappedTrackedSession?.conversationId ?? null,
+  })
+
+  service.stopSessionState(sessionId)
+  service.cancelSessionApprovals(sessionId)
+
+  try {
+    const childSessions = await service.getChildSubSessions(sessionId)
+    const runningChildSessionIds = childSessions
+      .filter((child) => child.status === "running")
+      .map((child) => child.id)
+
+    for (const child of childSessions) {
+      if (child.status === "running") {
+        await service.cancelSubSession(child.id)
+        diagnostics.logLLM(`[stopAgentSession] Cancelled internal sub-session ${child.id}`)
+      }
+    }
+
+    diagnostics.logApp("[stopAgentSession] Internal sub-session scan complete", {
+      requestedSessionId: sessionId,
+      childSessionCount: childSessions.length,
+      runningChildSessionIds,
+    })
+  } catch (error) {
+    diagnostics.logApp("[stopAgentSession] Error cancelling internal sub-sessions:", error)
+  }
+
+  const session = service.getTrackedSession(sessionId)
+  if (session?.conversationId) {
+    service.pauseMessageQueue(session.conversationId)
+    diagnostics.logLLM(`[stopAgentSession] Paused queue for conversation ${session.conversationId}`)
+    diagnostics.logApp("[stopAgentSession] Queue paused", {
+      requestedSessionId: sessionId,
+      pausedConversationId: session.conversationId,
+      pausedByTrackedSessionId: session.id,
+      queueLength: service.getMessageQueueLength(session.conversationId),
+    })
+  } else {
+    diagnostics.logApp("[stopAgentSession] Queue pause skipped because requested session is not tracked", {
+      requestedSessionId: sessionId,
+      requestedSessionKind,
+      mappedAppSessionId: mappedAppSessionId ?? null,
+      mappedConversationId: mappedTrackedSession?.conversationId ?? null,
+    })
+  }
+
+  const runId = service.getSessionRunId(sessionId)
+  await service.emitAgentProgress(buildAgentStoppedProgressUpdate({
+    sessionId,
+    runId,
+  }))
+
+  service.stopTrackedSession(sessionId)
+
+  return {
+    success: true,
+    sessionId,
+    ...(session?.conversationId ? { conversationId: session.conversationId } : {}),
+  }
 }
 
 export async function runRemoteAgentAction<TConversation extends RemoteAgentConversationLike = RemoteAgentConversationLike>(

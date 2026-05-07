@@ -17,9 +17,11 @@ import {
   resolveAgentModeMaxIterations,
   resolveAgentIterationLimits,
   runRemoteAgentAction,
+  stopRemoteAgentSessionAction,
   type AgentRuntimeTuningConfig,
   type RemoteAgentConversationLike,
   type RemoteAgentRunActionService,
+  type StopRemoteAgentSessionActionService,
 } from './agent-run-utils';
 
 function assertType<T>(_value: T): void {
@@ -201,6 +203,138 @@ describe('describeAgentSessionId', () => {
     expect(describeAgentSessionId('acp-123')).toBe('unknown');
   });
 });
+
+describe('stopRemoteAgentSessionAction', () => {
+  function createStopSessionService(overrides: Partial<StopRemoteAgentSessionActionService> = {}) {
+    const trackedSessions = new Map([
+      ['session-1', { id: 'session-1', status: 'active', conversationId: 'conv-1' }],
+      ['session-parent', { id: 'session-parent', status: 'active', conversationId: 'conv-parent' }],
+    ])
+    const stateStops: string[] = []
+    const cancelledApprovals: string[] = []
+    const cancelledSubSessions: string[] = []
+    const pausedQueues: string[] = []
+    const stoppedTrackedSessions: string[] = []
+    const progressUpdates: unknown[] = []
+
+    const service: StopRemoteAgentSessionActionService = {
+      getAppSessionForAcpSession: (sessionId) => sessionId === 'subsession_1' ? 'session-parent' : undefined,
+      getTrackedSession: (sessionId) => trackedSessions.get(sessionId),
+      stopSessionState: (sessionId) => { stateStops.push(sessionId) },
+      cancelSessionApprovals: (sessionId) => { cancelledApprovals.push(sessionId) },
+      getChildSubSessions: () => [
+        { id: 'subsession-a', status: 'running' },
+        { id: 'subsession-b', status: 'complete' },
+      ],
+      cancelSubSession: (sessionId) => { cancelledSubSessions.push(sessionId) },
+      pauseMessageQueue: (conversationId) => { pausedQueues.push(conversationId) },
+      getMessageQueueLength: () => 2,
+      getSessionRunId: () => 7,
+      emitAgentProgress: async (update) => { progressUpdates.push(update) },
+      stopTrackedSession: (sessionId) => { stoppedTrackedSessions.push(sessionId) },
+      ...overrides,
+    }
+
+    return {
+      cancelledApprovals,
+      cancelledSubSessions,
+      pausedQueues,
+      progressUpdates,
+      service,
+      stateStops,
+      stoppedTrackedSessions,
+    }
+  }
+
+  it('stops session state, cancels running child sessions, pauses the queue, and emits progress', async () => {
+    const appLogs: unknown[] = []
+    const llmLogs: string[] = []
+    const {
+      cancelledApprovals,
+      cancelledSubSessions,
+      pausedQueues,
+      progressUpdates,
+      service,
+      stateStops,
+      stoppedTrackedSessions,
+    } = createStopSessionService()
+
+    await expect(stopRemoteAgentSessionAction('session-1', {
+      service,
+      diagnostics: {
+        logApp: (_message, details) => { appLogs.push(details) },
+        logLLM: (message) => { llmLogs.push(message) },
+      },
+    })).resolves.toEqual({
+      success: true,
+      sessionId: 'session-1',
+      conversationId: 'conv-1',
+    })
+
+    expect(stateStops).toEqual(['session-1'])
+    expect(cancelledApprovals).toEqual(['session-1'])
+    expect(cancelledSubSessions).toEqual(['subsession-a'])
+    expect(pausedQueues).toEqual(['conv-1'])
+    expect(stoppedTrackedSessions).toEqual(['session-1'])
+    expect(progressUpdates).toEqual([
+      expect.objectContaining({
+        sessionId: 'session-1',
+        runId: 7,
+        finalContent: AGENT_STOP_NOTE,
+      }),
+    ])
+    expect(llmLogs).toContain('[stopAgentSession] Cancelled internal sub-session subsession-a')
+    expect(llmLogs).toContain('[stopAgentSession] Paused queue for conversation conv-1')
+    expect(appLogs).toContainEqual(expect.objectContaining({
+      requestedSessionId: 'session-1',
+      trackerSessionFound: true,
+      trackerConversationId: 'conv-1',
+    }))
+  })
+
+  it('continues cleanup when child session lookup fails and preserves mapped session diagnostics', async () => {
+    const appLogMessages: string[] = []
+    const appLogDetails: unknown[] = []
+    const { pausedQueues, progressUpdates, service, stateStops, stoppedTrackedSessions } = createStopSessionService({
+      getTrackedSession: (sessionId) => sessionId === 'session-parent'
+        ? { id: 'session-parent', status: 'active', conversationId: 'conv-parent' }
+        : undefined,
+      getChildSubSessions: () => { throw new Error('child lookup failed') },
+      getSessionRunId: () => undefined,
+    })
+
+    await expect(stopRemoteAgentSessionAction('subsession_1', {
+      service,
+      diagnostics: {
+        logApp: (message, details) => {
+          appLogMessages.push(message)
+          appLogDetails.push(details)
+        },
+        logLLM: () => {},
+      },
+    })).resolves.toEqual({
+      success: true,
+      sessionId: 'subsession_1',
+    })
+
+    expect(stateStops).toEqual(['subsession_1'])
+    expect(pausedQueues).toEqual([])
+    expect(stoppedTrackedSessions).toEqual(['subsession_1'])
+    expect(progressUpdates).toEqual([
+      expect.objectContaining({
+        sessionId: 'subsession_1',
+        finalContent: AGENT_STOP_NOTE,
+      }),
+    ])
+    expect(appLogMessages).toContain('[stopAgentSession] Error cancelling internal sub-sessions:')
+    expect(appLogDetails).toContainEqual(expect.objectContaining({
+      requestedSessionId: 'subsession_1',
+      requestedSessionKind: 'subsession',
+      mappedAppSessionId: 'session-parent',
+      mappedConversationId: 'conv-parent',
+    }))
+  })
+})
 
 describe('runRemoteAgentAction', () => {
   function createRemoteAgentRunService(overrides: Partial<RemoteAgentRunActionService> = {}) {
