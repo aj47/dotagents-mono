@@ -129,6 +129,7 @@ import { isRepeatTaskSessionForTasks } from "@dotagents/shared/repeat-task-utils
 import { stopAgentSessionById } from "./agent-session-actions"
 import { describeAgentSessionId } from "@dotagents/shared/agent-run-utils"
 import { resolveAgentProfileReferenceCleanupLayers } from "@dotagents/shared/agent-profile-reference-cleanup"
+import { createInactiveAgentSessionClearPredicate } from "@dotagents/shared/agent-session-store"
 
 export { runAgentLoopSession } from "./agent-loop-runner"
 
@@ -700,10 +701,9 @@ export const router = {
 
   clearInactiveSessions: t.procedure.action(async () => {
     // Clear completed sessions from the tracker
-    agentSessionTracker.clearCompletedSessions((session) => {
-      if (!session.conversationId) return true
-      return messageQueueService.getQueue(session.conversationId).length === 0
-    })
+    agentSessionTracker.clearCompletedSessions(createInactiveAgentSessionClearPredicate({
+      getQueuedMessageCount: (conversationId) => messageQueueService.getQueue(conversationId).length,
+    }))
 
     // Send to all windows so both main and panel can update their state
     for (const [id, win] of WINDOWS.entries()) {

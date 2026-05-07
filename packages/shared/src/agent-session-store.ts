@@ -78,8 +78,33 @@ export interface AgentSessionStore {
   getPersistedState(): PersistedAgentSessionState;
 }
 
+export interface InactiveAgentSessionClearOptions {
+  getQueuedMessageCount(conversationId: string): number;
+}
+
 export const DEFAULT_MAX_COMPLETED_AGENT_SESSIONS = 20;
 export const DEFAULT_AGENT_SESSION_RESTART_ACTIVITY = 'Interrupted by app restart';
+
+export function shouldClearInactiveAgentSession(
+  session: Pick<AgentSession, 'conversationId'>,
+  options: InactiveAgentSessionClearOptions,
+): boolean {
+  if (!session.conversationId) return true;
+  return options.getQueuedMessageCount(session.conversationId) === 0;
+}
+
+export function createInactiveAgentSessionClearPredicate(
+  options: InactiveAgentSessionClearOptions,
+): (session: Pick<AgentSession, 'conversationId'>) => boolean {
+  return (session) => shouldClearInactiveAgentSession(session, options);
+}
+
+export function countClearableInactiveAgentSessions(
+  sessions: Array<Pick<AgentSession, 'conversationId'>>,
+  options: InactiveAgentSessionClearOptions,
+): number {
+  return sessions.filter(createInactiveAgentSessionClearPredicate(options)).length;
+}
 
 function defaultAgentSessionIdFactory(createdAt: number): string {
   return `session_${createdAt}_${Math.random().toString(36).substr(2, 9)}`;

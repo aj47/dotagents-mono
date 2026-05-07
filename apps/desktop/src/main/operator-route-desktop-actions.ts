@@ -27,8 +27,9 @@ import {
 } from "@dotagents/shared/mcp-api"
 import type { MCPServerConfig } from "@dotagents/shared/mcp-utils"
 import {
-  operatorAuditRouteActionBundle,
-} from "./operator-audit-actions"
+  countClearableInactiveAgentSessions,
+  createInactiveAgentSessionClearPredicate,
+} from "@dotagents/shared/agent-session-store"
 import {
   buildOperatorActionAuditContext,
   buildOperatorMcpClearLogsAuditContext,
@@ -75,6 +76,9 @@ import {
   type OperatorTtsPlaybackActionOptions,
   type OperatorUpdaterActionOptions,
 } from "@dotagents/shared/operator-actions"
+import {
+  operatorAuditRouteActionBundle,
+} from "./operator-audit-actions"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { stopAgentSessionById } from "./agent-session-actions"
 import {
@@ -197,11 +201,11 @@ const agentActionOptions: OperatorAgentActionOptions = {
       return { sessionId, isSnoozed }
     },
     clearInactiveAgentSessions: () => {
-      const shouldClear = (session: { conversationId?: string }) => {
-        if (!session.conversationId) return true
-        return messageQueueService.getQueue(session.conversationId).length === 0
+      const clearOptions = {
+        getQueuedMessageCount: (conversationId: string) => messageQueueService.getQueue(conversationId).length,
       }
-      const clearedCount = agentSessionTracker.getRecentSessions(100).filter(shouldClear).length
+      const shouldClear = createInactiveAgentSessionClearPredicate(clearOptions)
+      const clearedCount = countClearableInactiveAgentSessions(agentSessionTracker.getRecentSessions(100), clearOptions)
       agentSessionTracker.clearCompletedSessions(shouldClear)
       for (const id of ["main", "panel"] as const) {
         try {

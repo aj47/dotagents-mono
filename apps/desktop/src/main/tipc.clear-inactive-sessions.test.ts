@@ -6,14 +6,19 @@ const trackerSource = readFileSync(
   new URL("./agent-session-tracker.ts", import.meta.url),
   "utf8",
 )
+const sharedStoreSource = readFileSync(
+  new URL("../../../../packages/shared/src/agent-session-store.ts", import.meta.url),
+  "utf8",
+)
 
 describe("tipc clearInactiveSessions", () => {
   it("keeps completed sessions with queued follow-ups out of bulk inactive cleanup", () => {
-    expect(tipcSource).toContain("agentSessionTracker.clearCompletedSessions((session) => {")
-    expect(tipcSource).toContain("messageQueueService.getQueue(session.conversationId).length === 0")
+    expect(tipcSource).toContain("createInactiveAgentSessionClearPredicate")
+    expect(tipcSource).toContain("agentSessionTracker.clearCompletedSessions(createInactiveAgentSessionClearPredicate({")
+    expect(tipcSource).toContain("messageQueueService.getQueue(conversationId).length")
     expect(trackerSource).toContain("clearCompletedSessions(")
     expect(trackerSource).toContain("shouldClear: (session: AgentSession) => boolean = () => true")
-    expect(trackerSource).toContain("if (shouldClear(session)) {")
-    expect(trackerSource).toContain("this.completedSessions = retainedSessions")
+    expect(sharedStoreSource).toContain("if (shouldClear(session)) {")
+    expect(sharedStoreSource).toContain("completedSessions = retainedSessions")
   })
 })

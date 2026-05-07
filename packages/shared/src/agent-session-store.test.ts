@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  countClearableInactiveAgentSessions,
   createAgentSessionStore,
+  createInactiveAgentSessionClearPredicate,
   restoreAgentSessionStoreState,
+  shouldClearInactiveAgentSession,
   type AgentSession,
   type PersistedAgentSessionState,
 } from './agent-session-store';
@@ -140,6 +143,30 @@ describe('agent-session-store', () => {
     store.clearCompletedSessions((session) => session.id === second);
     expect(discarded).toEqual([first, second]);
     expect(store.getRecentSessions(10).map((session) => session.id)).toEqual([third]);
+  });
+
+  it('keeps inactive sessions with queued follow-ups out of bulk cleanup', () => {
+    const getQueuedMessageCount = (conversationId: string) => ({
+      'conversation-empty': 0,
+      'conversation-queued': 2,
+    })[conversationId] ?? 0;
+
+    expect(shouldClearInactiveAgentSession({}, { getQueuedMessageCount })).toBe(true);
+    expect(shouldClearInactiveAgentSession({ conversationId: 'conversation-empty' }, { getQueuedMessageCount })).toBe(true);
+    expect(shouldClearInactiveAgentSession({ conversationId: 'conversation-queued' }, { getQueuedMessageCount })).toBe(false);
+
+    const shouldClear = createInactiveAgentSessionClearPredicate({ getQueuedMessageCount });
+    const sessions = [
+      { conversationId: undefined },
+      { conversationId: 'conversation-empty' },
+      { conversationId: 'conversation-queued' },
+    ];
+
+    expect(sessions.filter(shouldClear)).toEqual([
+      { conversationId: undefined },
+      { conversationId: 'conversation-empty' },
+    ]);
+    expect(countClearableInactiveAgentSessions(sessions, { getQueuedMessageCount })).toBe(2);
   });
 
   it('can export persisted state from the store adapter boundary', () => {
