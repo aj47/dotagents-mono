@@ -23,6 +23,7 @@ import {
   hasSelectedBundleComponent,
   importBundleAction,
   importBundleFromTemporaryFile,
+  parseDotAgentsBundle,
   parseExportBundleRequestBody,
   parseImportBundleRequestBody,
   parsePreviewBundleImportRequestBody,
@@ -200,6 +201,58 @@ describe("bundle API helpers", () => {
       success: true,
       preview: importPreview,
     })
+  })
+
+  it("parses current and legacy DotAgents bundle payloads", () => {
+    expect(parseDotAgentsBundle(bundle)).toEqual(bundle)
+
+    const legacyBundle = {
+      manifest: {
+        ...bundle.manifest,
+        components: {
+          agentProfiles: 1,
+          mcpServers: 0,
+          skills: 1,
+        },
+      },
+      agentProfiles: bundle.agentProfiles,
+      mcpServers: bundle.mcpServers,
+      skills: bundle.skills,
+    }
+
+    expect(parseDotAgentsBundle(legacyBundle)).toEqual(bundle)
+    expect(parseDotAgentsBundle({ manifest: { version: 2 } })).toBeNull()
+  })
+
+  it("normalizes continuous bundle tasks without schedules", () => {
+    const continuousBundle: DotAgentsBundle = {
+      ...bundle,
+      manifest: {
+        ...bundle.manifest,
+        components: {
+          ...bundle.manifest.components,
+          repeatTasks: 1,
+        },
+      },
+      repeatTasks: [{
+        id: "task-1",
+        name: "Task",
+        prompt: "Run continuously",
+        intervalMinutes: 5,
+        enabled: true,
+        runContinuously: true,
+        schedule: { type: "daily", times: ["09:00"] },
+      }],
+    }
+
+    const parsed = parseDotAgentsBundle(continuousBundle)
+
+    expect(parsed?.repeatTasks).toHaveLength(1)
+    expect(parsed?.repeatTasks[0]).toMatchObject({
+      id: "task-1",
+      runContinuously: true,
+    })
+    expect(parsed?.repeatTasks[0]).not.toHaveProperty("schedule")
   })
 
   it("builds shared bundle selection defaults and dependency warnings", () => {

@@ -1,5 +1,8 @@
-import type { AgentProfileConnectionTypeValue } from "./agent-profile-connection"
-import type { AgentProfileRole } from "./agent-profile-role"
+import {
+  isAgentProfileConnectionTypeValue,
+  type AgentProfileConnectionTypeValue,
+} from "./agent-profile-connection"
+import { isAgentProfileRole, type AgentProfileRole } from "./agent-profile-role"
 import type { KnowledgeNoteContext, KnowledgeNoteEntryType } from "./knowledge-note-domain"
 import type { RepeatTaskSchedule } from "./repeat-task-utils"
 
@@ -140,6 +143,215 @@ export type DotAgentsBundle = {
   skills: BundleSkill[]
   repeatTasks: BundleRepeatTask[]
   knowledgeNotes: BundleKnowledgeNote[]
+}
+
+export type BundleManifestInputComponents = Omit<BundleManifest["components"], "repeatTasks" | "knowledgeNotes"> & {
+  repeatTasks?: number
+  knowledgeNotes?: number
+}
+
+export type ParsedDotAgentsBundle = Omit<DotAgentsBundle, "manifest" | "repeatTasks" | "knowledgeNotes"> & {
+  manifest: Omit<BundleManifest, "components"> & {
+    components: BundleManifestInputComponents
+  }
+  repeatTasks?: BundleRepeatTask[]
+  knowledgeNotes?: BundleKnowledgeNote[]
+}
+
+function isRecordObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0
+}
+
+function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || typeof value === "string"
+}
+
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string")
+}
+
+function isBundlePublicMetadataAuthor(value: unknown): value is BundlePublicMetadataAuthor {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.displayName)) return false
+  if (!isOptionalString(value.handle)) return false
+  return isOptionalString(value.url)
+}
+
+function isBundlePublicMetadataCompatibility(value: unknown): value is BundlePublicMetadataCompatibility {
+  if (!isRecordObject(value)) return false
+  if (!isOptionalString(value.minDesktopVersion)) return false
+  return value.notes === undefined || isStringArray(value.notes)
+}
+
+function isBundlePublicMetadata(value: unknown): value is BundlePublicMetadata {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.summary)) return false
+  if (!isBundlePublicMetadataAuthor(value.author)) return false
+  if (!isStringArray(value.tags)) return false
+  return value.compatibility === undefined || isBundlePublicMetadataCompatibility(value.compatibility)
+}
+
+function isBundleAgentProfile(value: unknown): value is BundleAgentProfile {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (typeof value.enabled !== "boolean") return false
+  if (!isOptionalString(value.displayName)) return false
+  if (!isOptionalString(value.description)) return false
+  if (value.role !== undefined && !isAgentProfileRole(value.role)) return false
+  if (!isOptionalString(value.systemPrompt)) return false
+  if (!isOptionalString(value.guidelines)) return false
+  if (!isRecordObject(value.connection)) return false
+  if (!isAgentProfileConnectionTypeValue(value.connection.type)) return false
+  if (!isOptionalString(value.connection.command)) return false
+  if (value.connection.args !== undefined && !isStringArray(value.connection.args)) return false
+  if (!isOptionalString(value.connection.cwd)) return false
+  if (!isOptionalString(value.connection.baseUrl)) return false
+  return true
+}
+
+function isBundleMcpServer(value: unknown): value is BundleMcpServer {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (!isOptionalString(value.command)) return false
+  if (!isOptionalString(value.transport)) return false
+  if (value.args !== undefined && !isStringArray(value.args)) return false
+  if (value.enabled !== undefined && typeof value.enabled !== "boolean") return false
+  return true
+}
+
+function isBundleSkill(value: unknown): value is BundleSkill {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (!isOptionalString(value.description)) return false
+  return isOptionalString(value.instructions)
+}
+
+function isBundleRepeatTaskSchedule(value: unknown): boolean {
+  if (value === undefined) return true
+  if (!isRecordObject(value)) return false
+  if (value.type !== "daily" && value.type !== "weekly") return false
+  if (!Array.isArray(value.times) || value.times.length === 0) return false
+  if (!value.times.every((time) => typeof time === "string")) return false
+  if (value.type === "weekly") {
+    if (!Array.isArray(value.daysOfWeek) || value.daysOfWeek.length === 0) return false
+    if (!value.daysOfWeek.every((day) => typeof day === "number" && Number.isInteger(day) && day >= 0 && day <= 6)) {
+      return false
+    }
+  }
+  return true
+}
+
+function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.name)) return false
+  if (typeof value.prompt !== "string") return false
+  if (!isNonNegativeFiniteNumber(value.intervalMinutes)) return false
+  if (typeof value.enabled !== "boolean") return false
+  if (value.runOnStartup !== undefined && typeof value.runOnStartup !== "boolean") return false
+  if (value.speakOnTrigger !== undefined && typeof value.speakOnTrigger !== "boolean") return false
+  if (value.continueInSession !== undefined && typeof value.continueInSession !== "boolean") return false
+  if (value.runContinuously !== undefined && typeof value.runContinuously !== "boolean") return false
+  return isBundleRepeatTaskSchedule(value.schedule)
+}
+
+function isBundleKnowledgeNote(value: unknown): value is BundleKnowledgeNote {
+  if (!isRecordObject(value)) return false
+  if (!isNonEmptyString(value.id)) return false
+  if (!isNonEmptyString(value.title)) return false
+  if (!["auto", "search-only"].includes(String(value.context))) return false
+  if (typeof value.body !== "string") return false
+  if (!isStringArray(value.tags)) return false
+  if (value.summary !== undefined && typeof value.summary !== "string") return false
+  if (value.references !== undefined && !isStringArray(value.references)) return false
+  if (value.group !== undefined && typeof value.group !== "string") return false
+  if (value.series !== undefined && typeof value.series !== "string") return false
+  if (value.entryType !== undefined && !["note", "entry", "overview"].includes(String(value.entryType))) return false
+  if (value.createdAt !== undefined && !isNonNegativeFiniteNumber(value.createdAt)) return false
+  return isNonNegativeFiniteNumber(value.updatedAt)
+}
+
+function hasValidManifestComponents(value: unknown): value is BundleManifestInputComponents {
+  if (!isRecordObject(value)) return false
+  if (!isNonNegativeFiniteNumber(value.agentProfiles)) return false
+  if (!isNonNegativeFiniteNumber(value.mcpServers)) return false
+  if (!isNonNegativeFiniteNumber(value.skills)) return false
+  if (value.repeatTasks !== undefined && !isNonNegativeFiniteNumber(value.repeatTasks)) return false
+  if (value.knowledgeNotes !== undefined && !isNonNegativeFiniteNumber(value.knowledgeNotes)) return false
+  return true
+}
+
+function normalizeDotAgentsBundleRepeatTask(task: BundleRepeatTask): BundleRepeatTask {
+  const normalized = { ...task }
+  if (normalized.runContinuously === true) {
+    delete normalized.schedule
+  }
+  return normalized
+}
+
+export function validateDotAgentsBundle(bundle: unknown): bundle is ParsedDotAgentsBundle {
+  if (!isRecordObject(bundle)) return false
+  if (!isRecordObject(bundle.manifest)) return false
+  const manifest = bundle.manifest
+  if (manifest.version !== 1) return false
+  if (!isNonEmptyString(manifest.name)) return false
+  if (!isOptionalString(manifest.description)) return false
+  if (typeof manifest.createdAt !== "string" || Number.isNaN(Date.parse(manifest.createdAt))) return false
+  if (!isNonEmptyString(manifest.exportedFrom)) return false
+  if (manifest.publicMetadata !== undefined && !isBundlePublicMetadata(manifest.publicMetadata)) return false
+  if (!hasValidManifestComponents(manifest.components)) return false
+  if (!Array.isArray(bundle.agentProfiles) || !bundle.agentProfiles.every(isBundleAgentProfile)) return false
+  if (!Array.isArray(bundle.mcpServers) || !bundle.mcpServers.every(isBundleMcpServer)) return false
+  if (!Array.isArray(bundle.skills) || !bundle.skills.every(isBundleSkill)) return false
+  if ("repeatTasks" in bundle && bundle.repeatTasks !== undefined) {
+    if (!Array.isArray(bundle.repeatTasks) || !bundle.repeatTasks.every(isBundleRepeatTask)) return false
+  }
+  if ("knowledgeNotes" in bundle && bundle.knowledgeNotes !== undefined) {
+    if (!Array.isArray(bundle.knowledgeNotes) || !bundle.knowledgeNotes.every(isBundleKnowledgeNote)) return false
+  }
+  return true
+}
+
+export function normalizeDotAgentsBundle(bundle: ParsedDotAgentsBundle): DotAgentsBundle {
+  const repeatTasks = Array.isArray(bundle.repeatTasks)
+    ? bundle.repeatTasks.map(normalizeDotAgentsBundleRepeatTask)
+    : []
+  const knowledgeNotes = Array.isArray(bundle.knowledgeNotes) ? bundle.knowledgeNotes : []
+  const rawComponents = isRecordObject(bundle.manifest.components)
+    ? bundle.manifest.components as Record<string, unknown>
+    : {}
+  const countOrFallback = (value: unknown, fallback: number): number =>
+    typeof value === "number" && Number.isFinite(value) ? value : fallback
+
+  return {
+    ...bundle,
+    manifest: {
+      ...bundle.manifest,
+      components: {
+        agentProfiles: countOrFallback(rawComponents.agentProfiles, bundle.agentProfiles.length),
+        mcpServers: countOrFallback(rawComponents.mcpServers, bundle.mcpServers.length),
+        skills: countOrFallback(rawComponents.skills, bundle.skills.length),
+        repeatTasks: countOrFallback(rawComponents.repeatTasks, repeatTasks.length),
+        knowledgeNotes: countOrFallback(rawComponents.knowledgeNotes, knowledgeNotes.length),
+      },
+    },
+    repeatTasks,
+    knowledgeNotes,
+  }
+}
+
+export function parseDotAgentsBundle(bundle: unknown): DotAgentsBundle | null {
+  return validateDotAgentsBundle(bundle) ? normalizeDotAgentsBundle(bundle) : null
 }
 
 function normalizeBundlePublicMetadataString(value: string | undefined): string | undefined {
