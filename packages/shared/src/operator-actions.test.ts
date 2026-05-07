@@ -74,6 +74,7 @@ import {
   clearOperatorDiscordLogsAction,
   connectOperatorDiscordAction,
   connectOperatorWhatsAppAction,
+  createOperatorAgentActionService,
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
   createOperatorAuditRecorder,
@@ -194,6 +195,22 @@ describe("operator action API helpers", () => {
       content: "Done",
       messageCount: 2,
     })
+  })
+
+  it("creates operator agent action services from session adapters", async () => {
+    const calls: string[] = []
+    const service = createOperatorAgentActionService({
+      stopAgentSessionById: async (sessionId) => {
+        calls.push(`stop:${sessionId}`)
+        return { sessionId, conversationId: "conv-1" }
+      },
+    })
+
+    await expect(service.stopAgentSessionById("session-1")).resolves.toEqual({
+      sessionId: "session-1",
+      conversationId: "conv-1",
+    })
+    expect(calls).toEqual(["stop:session-1"])
   })
 
   it("runs agent route actions through a shared service adapter", async () => {

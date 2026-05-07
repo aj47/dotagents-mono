@@ -2002,7 +2002,11 @@ describe("remote-server route registration", () => {
     )
     expect(operatorRouteDesktopActionsSource).toContain("agent: operatorAgentRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain("runOperatorAgentAction(body, runAgent, agentActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain("service: {")
+    expect(operatorRouteDesktopActionsSource).toContain("service: createOperatorAgentActionService({")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorAgentActionService")
+    expect(sharedOperatorActionsSource).toContain(
+      "stopAgentSessionById: (sessionId) => options.stopAgentSessionById(sessionId)",
+    )
     expect(sharedOperatorActionsSource).toContain("export interface OperatorAgentRouteActions")
     expect(sharedOperatorActionsSource).toContain("export function createOperatorAgentRouteActions")
     expect(sharedOperatorActionsSource).toContain(

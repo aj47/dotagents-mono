@@ -39,6 +39,7 @@ import {
   buildOperatorMcpStopFailureAuditContext,
   buildOperatorMcpTestAuditContext,
   buildOperatorMcpTestFailureAuditContext,
+  createOperatorAgentActionService,
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
   createOperatorIntegrationActionService,
@@ -144,9 +145,9 @@ const agentActionOptions: OperatorAgentActionOptions = {
     logError: (...args) => diagnosticsService.logError(...args),
     getErrorMessage,
   },
-  service: {
+  service: createOperatorAgentActionService({
     stopAgentSessionById,
-  },
+  }),
 }
 
 const operatorAgentRouteActions = createOperatorAgentRouteActions(agentActionOptions)

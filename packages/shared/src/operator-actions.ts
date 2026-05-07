@@ -551,6 +551,21 @@ export interface OperatorAgentActionService {
   }>
 }
 
+export interface OperatorAgentActionServiceOptions {
+  stopAgentSessionById(sessionId: string): Promise<{
+    sessionId: string
+    conversationId?: string
+  }>
+}
+
+export function createOperatorAgentActionService(
+  options: OperatorAgentActionServiceOptions,
+): OperatorAgentActionService {
+  return {
+    stopAgentSessionById: (sessionId) => options.stopAgentSessionById(sessionId),
+  }
+}
+
 export interface OperatorAgentActionOptions {
   diagnostics: OperatorAgentActionDiagnostics
   service: OperatorAgentActionService
