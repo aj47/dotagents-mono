@@ -280,6 +280,31 @@ export interface OperatorMcpLifecycleActionOptions<TAuditContext = unknown> {
   audit?: OperatorMcpLifecycleActionAudit<TAuditContext>
 }
 
+export interface OperatorMcpRouteActionOptions<TServerConfig = unknown, TAuditContext = unknown> {
+  read: OperatorMcpReadActionOptions
+  mutation: OperatorMcpMutationActionOptions<TAuditContext>
+  test: OperatorMcpTestActionOptions<TServerConfig, TAuditContext>
+  lifecycle: OperatorMcpLifecycleActionOptions<TAuditContext>
+}
+
+export interface OperatorMcpRouteActions<TAuditContext = unknown> {
+  getOperatorMcpStatus(): McpServerActionResult
+  getOperatorMcpServerLogs(
+    serverName: string | undefined,
+    count: string | number | undefined,
+  ): McpServerActionResult
+  clearOperatorMcpServerLogs(serverName: string | undefined): OperatorMcpMutationActionResult<TAuditContext>
+  testOperatorMcpServer(serverName: string | undefined): Promise<OperatorMcpTestActionResult<TAuditContext>>
+  getOperatorMcpTools(server: unknown): McpServerActionResult
+  setOperatorMcpToolEnabled(
+    toolName: string | undefined,
+    body: unknown,
+  ): OperatorMcpMutationActionResult<TAuditContext>
+  startOperatorMcpServer(body: unknown): Promise<OperatorMcpLifecycleActionResult<TAuditContext>>
+  stopOperatorMcpServer(body: unknown): Promise<OperatorMcpLifecycleActionResult<TAuditContext>>
+  restartOperatorMcpServer(body: unknown): Promise<OperatorMcpLifecycleActionResult<TAuditContext>>
+}
+
 export type McpServerLogEntryLike = {
   timestamp: number
   message: string
@@ -1333,6 +1358,25 @@ export function setOperatorMcpToolEnabledAction<TAuditContext = unknown>(
     const errorMessage = options.diagnostics.getErrorMessage(caughtError)
     options.diagnostics.logError("operator-mcp-actions", `Failed to toggle MCP tool ${toolName}: ${errorMessage}`, caughtError)
     return operatorMcpActionError(500, `Failed to toggle MCP tool: ${errorMessage}`)
+  }
+}
+
+export function createOperatorMcpRouteActions<TServerConfig = unknown, TAuditContext = unknown>(
+  options: OperatorMcpRouteActionOptions<TServerConfig, TAuditContext>,
+): OperatorMcpRouteActions<TAuditContext> {
+  return {
+    getOperatorMcpStatus: () => getOperatorMcpStatusAction(options.read),
+    getOperatorMcpServerLogs: (serverName, count) =>
+      getOperatorMcpServerLogsAction(serverName, count, options.read),
+    clearOperatorMcpServerLogs: (serverName) =>
+      clearOperatorMcpServerLogsAction(serverName, options.mutation),
+    testOperatorMcpServer: (serverName) => testOperatorMcpServerAction(serverName, options.test),
+    getOperatorMcpTools: (server) => getOperatorMcpToolsAction(server, options.read),
+    setOperatorMcpToolEnabled: (toolName, body) =>
+      setOperatorMcpToolEnabledAction(toolName, body, options.mutation),
+    startOperatorMcpServer: (body) => startOperatorMcpServerAction(body, options.lifecycle),
+    stopOperatorMcpServer: (body) => stopOperatorMcpServerAction(body, options.lifecycle),
+    restartOperatorMcpServer: (body) => restartOperatorMcpServerAction(body, options.lifecycle),
   }
 }
 

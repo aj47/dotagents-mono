@@ -17,15 +17,7 @@ import {
   type ModelPresetActionOptions,
 } from "@dotagents/shared/model-presets"
 import {
-  clearOperatorMcpServerLogsAction,
-  getOperatorMcpServerLogsAction,
-  getOperatorMcpStatusAction,
-  getOperatorMcpToolsAction,
-  restartOperatorMcpServerAction,
-  setOperatorMcpToolEnabledAction,
-  startOperatorMcpServerAction,
-  stopOperatorMcpServerAction,
-  testOperatorMcpServerAction,
+  createOperatorMcpRouteActions,
   type OperatorMcpLifecycleActionOptions,
   type OperatorMcpMutationActionOptions,
   type OperatorMcpReadActionOptions,
@@ -276,6 +268,13 @@ const operatorMcpLifecycleActionOptions: OperatorMcpLifecycleActionOptions<Opera
   },
 }
 
+const operatorMcpRouteActions = createOperatorMcpRouteActions({
+  read: operatorMcpReadActionOptions,
+  mutation: operatorMcpMutationActionOptions,
+  test: operatorMcpTestActionOptions,
+  lifecycle: operatorMcpLifecycleActionOptions,
+})
+
 const integrationActionOptions: OperatorIntegrationActionOptions = {
   diagnostics: {
     logError: (...args) => diagnosticsService.logError(...args),
@@ -366,63 +365,13 @@ const updaterActionOptions: OperatorUpdaterActionOptions = {
 
 const operatorUpdaterRouteActions = createOperatorUpdaterRouteActions(MANUAL_RELEASES_URL, updaterActionOptions)
 
-function getOperatorMcpStatus() {
-  return getOperatorMcpStatusAction(operatorMcpReadActionOptions)
-}
-
-function getOperatorMcpServerLogs(
-  serverName: string | undefined,
-  count: string | number | undefined,
-) {
-  return getOperatorMcpServerLogsAction(serverName, count, operatorMcpReadActionOptions)
-}
-
-function clearOperatorMcpServerLogs(serverName: string | undefined) {
-  return clearOperatorMcpServerLogsAction(serverName, operatorMcpMutationActionOptions)
-}
-
-async function testOperatorMcpServer(serverName: string | undefined) {
-  return testOperatorMcpServerAction(serverName, operatorMcpTestActionOptions)
-}
-
-function getOperatorMcpTools(server: unknown) {
-  return getOperatorMcpToolsAction(server, operatorMcpReadActionOptions)
-}
-
-function setOperatorMcpToolEnabled(
-  toolName: string | undefined,
-  body: unknown,
-) {
-  return setOperatorMcpToolEnabledAction(toolName, body, operatorMcpMutationActionOptions)
-}
-
-async function startOperatorMcpServer(body: unknown) {
-  return startOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)
-}
-
-async function stopOperatorMcpServer(body: unknown) {
-  return stopOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)
-}
-
-async function restartOperatorMcpServer(body: unknown) {
-  return restartOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)
-}
-
 function rotateOperatorRemoteServerApiKey() {
   return rotateOperatorRemoteServerApiKeyAction(apiKeyActionOptions)
 }
 
 export const operatorRouteDesktopActions: OperatorRouteActions = {
   ...operatorAgentRouteActions,
-  clearOperatorMcpServerLogs,
-  getOperatorMcpServerLogs,
-  getOperatorMcpStatus,
-  getOperatorMcpTools,
-  restartOperatorMcpServer,
-  setOperatorMcpToolEnabled,
-  startOperatorMcpServer,
-  stopOperatorMcpServer,
-  testOperatorMcpServer,
+  ...operatorMcpRouteActions,
   ...operatorLocalSpeechModelRouteActions,
   ...operatorModelPresetRouteActions,
   ...operatorTunnelRouteActions,

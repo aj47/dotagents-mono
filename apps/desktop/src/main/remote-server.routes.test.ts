@@ -1838,15 +1838,35 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.startOperatorMcpServer(req.body)")
     expect(operatorRoutesSource).toContain("actions.stopOperatorMcpServer(req.body)")
     expect(operatorRoutesSource).toContain("actions.restartOperatorMcpServer(req.body)")
-    expect(operatorRouteDesktopActionsSource).toContain("getOperatorMcpStatusAction(operatorMcpReadActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain("getOperatorMcpServerLogsAction(serverName, count, operatorMcpReadActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain("getOperatorMcpToolsAction(server, operatorMcpReadActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain("clearOperatorMcpServerLogsAction(serverName, operatorMcpMutationActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain("setOperatorMcpToolEnabledAction(toolName, body, operatorMcpMutationActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain("testOperatorMcpServerAction(serverName, operatorMcpTestActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain("startOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain("stopOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain("restartOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "const operatorMcpRouteActions = createOperatorMcpRouteActions({",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain("read: operatorMcpReadActionOptions")
+    expect(operatorRouteDesktopActionsSource).toContain("mutation: operatorMcpMutationActionOptions")
+    expect(operatorRouteDesktopActionsSource).toContain("test: operatorMcpTestActionOptions")
+    expect(operatorRouteDesktopActionsSource).toContain("lifecycle: operatorMcpLifecycleActionOptions")
+    expect(operatorRouteDesktopActionsSource).toContain("...operatorMcpRouteActions")
+    expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorMcpStatusAction(operatorMcpReadActionOptions)")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "getOperatorMcpServerLogsAction(serverName, count, operatorMcpReadActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorMcpToolsAction(server, operatorMcpReadActionOptions)")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "clearOperatorMcpServerLogsAction(serverName, operatorMcpMutationActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "setOperatorMcpToolEnabledAction(toolName, body, operatorMcpMutationActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).not.toContain("testOperatorMcpServerAction(serverName, operatorMcpTestActionOptions)")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "startOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "stopOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "restartOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)",
+    )
     expect(operatorRouteDesktopActionsSource).toContain("getServerLogs: (serverName) => mcpService.getServerLogs(serverName)")
     expect(operatorRouteDesktopActionsSource).toContain("getDetailedToolList: () => mcpService.getDetailedToolList()")
     expect(operatorRouteDesktopActionsSource).toContain("clearServerLogs: (serverName) => mcpService.clearServerLogs(serverName)")
@@ -1865,6 +1885,11 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain("export async function startOperatorMcpServerAction<")
     expect(sharedMcpApiSource).toContain("export async function stopOperatorMcpServerAction<")
     expect(sharedMcpApiSource).toContain("export async function restartOperatorMcpServerAction<")
+    expect(sharedMcpApiSource).toContain("export interface OperatorMcpRouteActions")
+    expect(sharedMcpApiSource).toContain("export function createOperatorMcpRouteActions")
+    expect(sharedMcpApiSource).toContain("getOperatorMcpStatus: () => getOperatorMcpStatusAction(options.read)")
+    expect(sharedMcpApiSource).toContain("setOperatorMcpToolEnabledAction(toolName, body, options.mutation)")
+    expect(sharedMcpApiSource).toContain("restartOperatorMcpServerAction(body, options.lifecycle)")
     expect(sharedMcpApiSource).toContain("buildOperatorMcpServerLogsResponse(")
     expect(sharedMcpApiSource).toContain("buildOperatorMcpToolsResponse(")
     expect(sharedMcpApiSource).toContain("clearServerLogs(serverName)")

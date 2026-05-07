@@ -34,6 +34,7 @@ import {
   callInjectedMcpToolAction,
   clearOperatorMcpServerLogsAction,
   createMcpRouteActions,
+  createOperatorMcpRouteActions,
   formatMcpMaxIterationsValidationMessage,
   getMcpServersAction,
   getOperatorMcpServerLogsAction,
@@ -62,10 +63,11 @@ import {
   type SamplingResult,
   type OperatorMcpLifecycleActionOptions,
   type OperatorMcpMutationActionOptions,
+  type OperatorMcpReadActionOptions,
   type OperatorMcpTestActionOptions,
   type McpServerStatusMapLike,
 } from "./mcp-api"
-import type { MCPConfig } from "./mcp-utils"
+import type { MCPConfig, MCPServerConfig } from "./mcp-utils"
 
 describe("MCP API helpers", () => {
   it("exports canonical runtime tool MCP names", () => {
@@ -1162,6 +1164,173 @@ describe("MCP API helpers", () => {
     expect(logs).toContain("Operator MCP start failed: restart denied")
     expect(logs).toContain("Operator MCP stop failed: stop denied")
     expect(logs).toContain("Operator MCP restart failed: restart denied")
+  })
+
+  it("creates operator MCP route actions through shared adapters", async () => {
+    type AuditContext = {
+      action: string
+      success?: boolean
+      server?: string
+      failureReason?: string
+    }
+    const status: McpServerStatusMapLike = {
+      filesystem: {
+        connected: true,
+        toolCount: 1,
+        runtimeEnabled: true,
+        configDisabled: false,
+      },
+    }
+    const calls: string[] = []
+    const read: OperatorMcpReadActionOptions = {
+      service: {
+        getServerStatus: () => status,
+        getServerLogs: (serverName) => {
+          calls.push(`logs:${serverName}`)
+          return [{ timestamp: 1, message: "ready" }]
+        },
+        getDetailedToolList: () => [{
+          name: "filesystem:read",
+          description: "Read files",
+          sourceKind: "mcp",
+          sourceName: "filesystem",
+          enabled: true,
+          serverEnabled: true,
+        }],
+      },
+      diagnostics: {
+        logError: (_source, message) => { calls.push(`error:${message}`) },
+        getErrorMessage: (error) => error instanceof Error ? error.message : String(error),
+      },
+    }
+    const mutation: OperatorMcpMutationActionOptions<AuditContext> = {
+      service: {
+        getServerStatus: () => status,
+        clearServerLogs: (serverName) => { calls.push(`clear:${serverName}`) },
+        setToolEnabled: (toolName, enabled) => {
+          calls.push(`toggle:${toolName}:${enabled}`)
+          return true
+        },
+      },
+      diagnostics: read.diagnostics,
+      audit: {
+        buildClearLogsAuditContext: (server) => ({ action: "mcp-clear-logs", success: true, server }),
+        buildClearLogsFailureAuditContext: (failureReason) => ({
+          action: "mcp-clear-logs",
+          success: false,
+          failureReason,
+        }),
+        buildToolToggleAuditContext: (response) => ({ action: response.action, success: response.success }),
+      },
+    }
+    const test: OperatorMcpTestActionOptions<MCPServerConfig, AuditContext> = {
+      service: {
+        getServerConfig: (serverName) => serverName === "filesystem" ? { command: "node" } : undefined,
+        testServerConnection: async (serverName) => {
+          calls.push(`test:${serverName}`)
+          return { success: true, toolCount: 1 }
+        },
+      },
+      diagnostics: read.diagnostics,
+      audit: {
+        buildTestAuditContext: (response) => ({
+          action: response.action,
+          success: response.success,
+          server: response.server,
+        }),
+        buildTestFailureAuditContext: (failureReason) => ({
+          action: "mcp-test",
+          success: false,
+          failureReason,
+        }),
+      },
+    }
+    const lifecycle: OperatorMcpLifecycleActionOptions<AuditContext> = {
+      service: {
+        getServerStatus: () => status,
+        setServerRuntimeEnabled: (serverName, enabled) => {
+          calls.push(`runtime:${serverName}:${enabled}`)
+          return true
+        },
+        restartServer: async (serverName) => {
+          calls.push(`restart:${serverName}`)
+          return { success: true }
+        },
+        stopServer: async (serverName) => {
+          calls.push(`stop:${serverName}`)
+          return { success: true }
+        },
+      },
+      diagnostics: {
+        ...read.diagnostics,
+        logInfo: (_source, message) => { calls.push(`info:${message}`) },
+      },
+      audit: {
+        buildStartAuditContext: (server) => ({ action: "mcp-start", success: true, server }),
+        buildStartFailureAuditContext: (failureReason) => ({
+          action: "mcp-start",
+          success: false,
+          failureReason,
+        }),
+        buildStopAuditContext: (server) => ({ action: "mcp-stop", success: true, server }),
+        buildStopFailureAuditContext: (failureReason) => ({
+          action: "mcp-stop",
+          success: false,
+          failureReason,
+        }),
+        buildRestartAuditContext: (server) => ({ action: "mcp-restart", success: true, server }),
+        buildRestartFailureAuditContext: (failureReason) => ({
+          action: "mcp-restart",
+          success: false,
+          failureReason,
+        }),
+      },
+    }
+    const routeActions = createOperatorMcpRouteActions({ read, mutation, test, lifecycle })
+
+    expect(routeActions.getOperatorMcpStatus()).toMatchObject({ statusCode: 200, body: { totalServers: 1 } })
+    expect(routeActions.getOperatorMcpServerLogs("filesystem", "1")).toMatchObject({
+      statusCode: 200,
+      body: { count: 1 },
+    })
+    expect(routeActions.getOperatorMcpTools(undefined)).toMatchObject({
+      statusCode: 200,
+      body: { count: 1 },
+    })
+    expect(routeActions.clearOperatorMcpServerLogs("filesystem")).toMatchObject({
+      statusCode: 200,
+      body: { success: true },
+    })
+    expect(routeActions.setOperatorMcpToolEnabled("filesystem:read", { enabled: false })).toMatchObject({
+      statusCode: 200,
+      body: { success: true, enabled: false },
+    })
+    await expect(routeActions.testOperatorMcpServer("filesystem")).resolves.toMatchObject({
+      statusCode: 200,
+      body: { success: true, toolCount: 1 },
+    })
+    await expect(routeActions.startOperatorMcpServer({ server: "filesystem" })).resolves.toMatchObject({
+      statusCode: 200,
+      body: { success: true, action: "mcp-start" },
+    })
+    await expect(routeActions.stopOperatorMcpServer({ server: "filesystem" })).resolves.toMatchObject({
+      statusCode: 200,
+      body: { success: true, action: "mcp-stop" },
+    })
+    await expect(routeActions.restartOperatorMcpServer({ server: "filesystem" })).resolves.toMatchObject({
+      statusCode: 200,
+      body: { success: true, action: "mcp-restart" },
+    })
+    expect(calls).toEqual(expect.arrayContaining([
+      "logs:filesystem",
+      "clear:filesystem",
+      "toggle:filesystem:read:false",
+      "test:filesystem",
+      "runtime:filesystem:true",
+      "runtime:filesystem:false",
+      "restart:filesystem",
+      "stop:filesystem",
+    ]))
   })
 
   it("parses injected MCP tool call requests", () => {
