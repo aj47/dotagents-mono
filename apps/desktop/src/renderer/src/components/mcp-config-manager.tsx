@@ -77,13 +77,13 @@ import {
   renameMcpServerConfig,
   upsertMcpServerConfig,
 } from "@dotagents/shared/mcp-utils"
-import { tipcClient } from "@renderer/lib/tipc-client"
 import { desktopMcpOAuthClient } from "@renderer/lib/desktop-mcp-oauth-client"
 import { desktopMcpToolsClient } from "@renderer/lib/desktop-mcp-tools-client"
 import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
 import { OAUTH_MCP_EXAMPLES } from "@dotagents/shared/oauth-examples"
 import { parseShellCommand } from "@dotagents/shared/shell-parse"
+import { desktopMcpServerClient } from "@renderer/lib/desktop-mcp-server-client"
 
 
 
@@ -520,10 +520,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                       testServerConfig.oauth = oauthConfig
                     }
 
-                    const result = await tipcClient.testMcpServerConnection({
-                      serverName: name,
-                      serverConfig: testServerConfig,
-                    })
+                    const result = await desktopMcpServerClient.testConnection(name, testServerConfig)
                     if (result.success) {
                       toast.success("Connection test successful!")
                     } else {
@@ -1039,8 +1036,8 @@ export function MCPConfigManager({
   // Fetch logs for expanded servers
   const fetchLogsForServer = async (serverName: string) => {
     try {
-      const logs = await tipcClient.getMcpServerLogs({ serverName })
-      setServerLogs(prev => ({ ...prev, [serverName]: logs as ServerLogEntry[] }))
+      const logs = await desktopMcpServerClient.getServerLogs(serverName)
+      setServerLogs(prev => ({ ...prev, [serverName]: logs }))
     } catch (error) {
       console.error(`Failed to fetch logs for ${serverName}:`, error)
     }
@@ -1051,8 +1048,8 @@ export function MCPConfigManager({
     const fetchStatus = async () => {
       try {
         const [status, initStatus] = await Promise.all([
-          tipcClient.getMcpServerStatus({}),
-          tipcClient.getMcpInitializationStatus({}),
+          desktopMcpServerClient.getServerStatus(),
+          desktopMcpServerClient.getInitializationStatus(),
         ])
         setServerStatus(status as any)
         setInitializationStatus(initStatus as any)
@@ -1312,21 +1309,18 @@ export function MCPConfigManager({
       setTimeout(async () => {
         try {
           // Mark the server as runtime-enabled
-          const runtimeResult = await tipcClient.setMcpServerRuntimeEnabled({
-            serverName: name,
-            enabled: true,
-          })
-          if (!(runtimeResult as any).success) {
+          const runtimeResult = await desktopMcpServerClient.setRuntimeEnabled(name, true)
+          if (!runtimeResult.success) {
             toast.error(`Failed to enable server: Server not found`)
             return
           }
 
           // Start the server
-          const result = await tipcClient.restartMcpServer({ serverName: name })
-          if ((result as any).success) {
+          const result = await desktopMcpServerClient.restartServer(name)
+          if (result.success) {
             toast.success(`Server ${name} connected successfully`)
           } else {
-            toast.error(`Failed to connect server: ${(result as any).error}`)
+            toast.error(`Failed to connect server: ${result.error}`)
           }
         } catch (error) {
           toast.error(`Failed to connect server: ${error instanceof Error ? error.message : String(error)}`)
@@ -1352,7 +1346,7 @@ export function MCPConfigManager({
 
   const handleImportConfigFromFile = async () => {
     try {
-      const importedConfig = await tipcClient.loadMcpConfigFile({})
+      const importedConfig = await desktopMcpServerClient.loadConfigFile()
       if (importedConfig) {
         const importResult = mergeImportedMcpServers(config, importedConfig, {
           reservedServerNames: RESERVED_SERVER_NAMES,
@@ -1380,7 +1374,7 @@ export function MCPConfigManager({
 
   const handleExportConfig = async () => {
     try {
-      const success = await tipcClient.saveMcpConfigFile({ config })
+      const success = await desktopMcpServerClient.saveConfigFile(config)
       if (success) {
         toast.success("MCP configuration exported successfully")
       }
@@ -1406,7 +1400,7 @@ export function MCPConfigManager({
       // is performed by validateMcpConfigText which will catch any JSON syntax errors
       const formattedJson = formatJsonPreview(text)
 
-      const importedConfig = await tipcClient.validateMcpConfigText({ text: formattedJson })
+      const importedConfig = await desktopMcpServerClient.validateConfigText(formattedJson)
 
       if (importedConfig) {
         const importResult = mergeImportedMcpServers(config, importedConfig, {
@@ -1463,11 +1457,11 @@ export function MCPConfigManager({
 
   const handleRestartServer = async (serverName: string) => {
     try {
-      const result = await tipcClient.restartMcpServer({ serverName })
-      if ((result as any).success) {
+      const result = await desktopMcpServerClient.restartServer(serverName)
+      if (result.success) {
         toast.success(`Server ${serverName} restarted successfully`)
       } else {
-        toast.error(`Failed to restart server: ${(result as any).error}`)
+        toast.error(`Failed to restart server: ${result.error}`)
       }
     } catch (error) {
       toast.error(`Failed to restart server: ${error instanceof Error ? error.message : String(error)}`)
@@ -1477,23 +1471,20 @@ export function MCPConfigManager({
   const handleStopServer = async (serverName: string) => {
     try {
       // First mark the server as runtime-disabled so it stays stopped
-      const runtimeResult = await tipcClient.setMcpServerRuntimeEnabled({
-        serverName,
-        enabled: false,
-      })
-      if (!(runtimeResult as any).success) {
+      const runtimeResult = await desktopMcpServerClient.setRuntimeEnabled(serverName, false)
+      if (!runtimeResult.success) {
         toast.error(`Failed to disable server: Server not found`)
         return
       }
 
       // Then stop the server
-      const result = await tipcClient.stopMcpServer({ serverName })
-      if ((result as any).success) {
+      const result = await desktopMcpServerClient.stopServer(serverName)
+      if (result.success) {
         toast.success(`Server ${serverName} stopped successfully`)
         // Immediately fetch tools to update the UI
         await fetchTools()
       } else {
-        toast.error(`Failed to stop server: ${(result as any).error}`)
+        toast.error(`Failed to stop server: ${result.error}`)
       }
     } catch (error) {
       toast.error(`Failed to stop server: ${error instanceof Error ? error.message : String(error)}`)
@@ -1503,23 +1494,20 @@ export function MCPConfigManager({
   const handleStartServer = async (serverName: string) => {
     try {
       // Mark the server as runtime-enabled so it can be initialized
-      const runtimeResult = await tipcClient.setMcpServerRuntimeEnabled({
-        serverName,
-        enabled: true,
-      })
-      if (!(runtimeResult as any).success) {
+      const runtimeResult = await desktopMcpServerClient.setRuntimeEnabled(serverName, true)
+      if (!runtimeResult.success) {
         toast.error(`Failed to enable server: Server not found`)
         return
       }
 
       // Restart the server to initialize it
-      const result = await tipcClient.restartMcpServer({ serverName })
-      if ((result as any).success) {
+      const result = await desktopMcpServerClient.restartServer(serverName)
+      if (result.success) {
         toast.success(`Server ${serverName} started successfully`)
         // Immediately fetch tools so they appear without waiting for the 5-second interval
         await fetchTools()
       } else {
-        toast.error(`Failed to start server: ${(result as any).error}`)
+        toast.error(`Failed to start server: ${result.error}`)
       }
     } catch (error) {
       toast.error(`Failed to start server: ${error.message}`)
@@ -1615,7 +1603,7 @@ export function MCPConfigManager({
 
   const handleClearLogs = async (serverName: string) => {
     try {
-      await tipcClient.clearMcpServerLogs({ serverName })
+      await desktopMcpServerClient.clearServerLogs(serverName)
       setServerLogs(prev => ({ ...prev, [serverName]: [] }))
       toast.success(`Logs cleared for ${serverName}`)
     } catch (error) {

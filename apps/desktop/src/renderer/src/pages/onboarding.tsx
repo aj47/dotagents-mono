@@ -13,9 +13,9 @@ import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/queries"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
 import { Config } from "@shared/types"
 import { useNavigate } from "react-router-dom"
-import { tipcClient } from "@renderer/lib/tipc-client"
 import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
 import { desktopDictationClient } from "@renderer/lib/desktop-dictation-client"
+import { desktopMcpServerClient } from "@renderer/lib/desktop-mcp-server-client"
 import { desktopMcpSessionActionsClient } from "@renderer/lib/desktop-mcp-session-actions-client"
 import { Recorder } from "@renderer/lib/recorder"
 import { useMutation } from "@tanstack/react-query"
@@ -550,11 +550,8 @@ function AgentStep({
       await onSaveConfigAsync({ mcpConfig: newMcpConfig })
 
       // Enable and start the server
-      await tipcClient.setMcpServerRuntimeEnabled({
-        serverName: "exa",
-        enabled: true,
-      })
-      await tipcClient.restartMcpServer({ serverName: "exa" })
+      await desktopMcpServerClient.setRuntimeEnabled("exa", true)
+      await desktopMcpServerClient.restartServer("exa")
 
       setExaInstalled(true)
     } catch (error) {

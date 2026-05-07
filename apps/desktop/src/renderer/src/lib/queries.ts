@@ -7,6 +7,7 @@ import {
 import { reportConfigSaveError } from "./config-save-error"
 import { desktopConfigClient } from "./desktop-config-client"
 import { desktopConversationsClient } from "./desktop-conversations-client"
+import { desktopMcpServerClient } from "./desktop-mcp-server-client"
 import { desktopPermissionsClient } from "./desktop-permissions-client"
 import { tipcClient } from "./tipc-client"
 
@@ -74,7 +75,7 @@ export const useMcpServerStatus = () =>
   useQuery({
     queryKey: ["mcp-server-status"],
     queryFn: async () => {
-      return tipcClient.getMcpServerStatus()
+      return desktopMcpServerClient.getServerStatus()
     },
   })
 
@@ -82,7 +83,7 @@ export const useMcpInitializationStatus = () =>
   useQuery({
     queryKey: ["mcp-initialization-status"],
     queryFn: async () => {
-      return tipcClient.getMcpInitializationStatus()
+      return desktopMcpServerClient.getInitializationStatus()
     },
   })
 
@@ -210,14 +211,14 @@ export const useUpdateConfigMutation = () =>
 export const useLoadMcpConfigFile = () =>
   useMutation({
     mutationFn: async () => {
-      return tipcClient.loadMcpConfigFile()
+      return desktopMcpServerClient.loadConfigFile()
     },
   })
 
 export const useSaveMcpConfigFile = () =>
   useMutation({
     mutationFn: async ({ config }: { config: any }) => {
-      await tipcClient.saveMcpConfigFile({ config })
+      await desktopMcpServerClient.saveConfigFile(config)
     },
   })
 
