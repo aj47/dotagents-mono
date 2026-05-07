@@ -68,14 +68,17 @@ describe("renderer process boundary", () => {
     expect(violations).toEqual([])
   })
 
-  it("keeps direct TIPC client access isolated to renderer client wrappers", () => {
+  it("keeps direct TIPC bridge access isolated to renderer client wrappers", () => {
     const sourceFiles = collectSourceFiles(rendererRoot)
     const tipcClientNamedImportPattern =
       /import\s*\{[^}]*\btipcClient\b[^}]*\}\s*from\s*["'][^"']*tipc-client["']/
+    const rendererHandlersNamedImportPattern =
+      /import\s*\{[^}]*\brendererHandlers\b[^}]*\}\s*from\s*["'][^"']*tipc-client["']/
     const tipcClientNamespaceImportPattern =
       /import\s+\*\s+as\s+\w+\s+from\s*["'][^"']*tipc-client["']/
-    const tipcClientDynamicImportPattern = /import\(\s*["'][^"']*tipc-client["']\s*\)/
+    const tipcBridgeDynamicImportPattern = /import\(\s*["'][^"']*tipc-client["']\s*\)/
     const tipcClientReferencePattern = /\btipcClient\b/
+    const rendererHandlersReferencePattern = /\brendererHandlers\b/
 
     const violations = sourceFiles.flatMap((filePath) => {
       if (isRendererTipcClientBoundary(filePath)) return []
@@ -87,14 +90,17 @@ describe("renderer process boundary", () => {
       if (tipcClientNamedImportPattern.test(source)) {
         fileViolations.push(`${relativePath}: direct tipcClient import`)
       }
+      if (rendererHandlersNamedImportPattern.test(source)) {
+        fileViolations.push(`${relativePath}: direct rendererHandlers import`)
+      }
       if (tipcClientNamespaceImportPattern.test(source)) {
         fileViolations.push(`${relativePath}: tipc-client namespace import`)
       }
       if (
-        tipcClientDynamicImportPattern.test(source) &&
-        tipcClientReferencePattern.test(source)
+        tipcBridgeDynamicImportPattern.test(source) &&
+        (tipcClientReferencePattern.test(source) || rendererHandlersReferencePattern.test(source))
       ) {
-        fileViolations.push(`${relativePath}: dynamic tipcClient import`)
+        fileViolations.push(`${relativePath}: dynamic tipc-client bridge import`)
       }
 
       return fileViolations
@@ -107,9 +113,12 @@ describe("renderer process boundary", () => {
     const sourceFiles = rendererUiDirectories.flatMap((directory) => collectSourceFiles(directory))
     const tipcClientNamedImportPattern =
       /import\s*\{[^}]*\btipcClient\b[^}]*\}\s*from\s*["'][^"']*tipc-client["']/
+    const rendererHandlersNamedImportPattern =
+      /import\s*\{[^}]*\brendererHandlers\b[^}]*\}\s*from\s*["'][^"']*tipc-client["']/
     const tipcClientNamespaceImportPattern =
       /import\s+\*\s+as\s+\w+\s+from\s*["'][^"']*tipc-client["']/
     const tipcClientCallPattern = /\btipcClient\./
+    const rendererHandlersCallPattern = /\brendererHandlers\./
 
     const violations = sourceFiles.flatMap((filePath) => {
       const source = readFileSync(filePath, "utf8")
@@ -119,11 +128,17 @@ describe("renderer process boundary", () => {
       if (tipcClientNamedImportPattern.test(source)) {
         fileViolations.push(`${relativePath}: direct tipcClient import`)
       }
+      if (rendererHandlersNamedImportPattern.test(source)) {
+        fileViolations.push(`${relativePath}: direct rendererHandlers import`)
+      }
       if (tipcClientNamespaceImportPattern.test(source)) {
         fileViolations.push(`${relativePath}: tipc-client namespace import`)
       }
       if (tipcClientCallPattern.test(source)) {
         fileViolations.push(`${relativePath}: direct tipcClient call`)
+      }
+      if (rendererHandlersCallPattern.test(source)) {
+        fileViolations.push(`${relativePath}: direct rendererHandlers call`)
       }
 
       return fileViolations
