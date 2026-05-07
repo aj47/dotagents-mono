@@ -64,6 +64,7 @@ import {
 } from "@renderer/lib/queries"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopAgentsFolderClient } from "@renderer/lib/desktop-agents-folder-client"
 import { ExternalLink, FolderOpen, FolderUp, FileText, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -138,7 +139,7 @@ export function Component() {
   const agentsFoldersQuery = useQuery({
     queryKey: ["agentsFolders"],
     queryFn: async () => {
-      return tipcClient.getAgentsFolders()
+      return desktopAgentsFolderClient.getAgentsFolders()
     },
     staleTime: Infinity,
   })
@@ -159,7 +160,7 @@ export function Component() {
 
   const openGlobalAgentsFolder = useCallback(async () => {
     try {
-      const result = await tipcClient.openAgentsFolder()
+      const result = await desktopAgentsFolderClient.openGlobalAgentsFolder()
       if (!result?.success) {
         toast.error(result?.error || "Failed to open global .agents folder")
       }
@@ -171,7 +172,7 @@ export function Component() {
 
   const openWorkspaceAgentsFolder = useCallback(async () => {
     try {
-      const result = await tipcClient.openWorkspaceAgentsFolder()
+      const result = await desktopAgentsFolderClient.openWorkspaceAgentsFolder()
       if (!result?.success) {
         toast.error(result?.error || "Failed to open workspace .agents folder")
       }
@@ -183,7 +184,7 @@ export function Component() {
 
   const openSystemPromptFile = useCallback(async () => {
     try {
-      const result = await tipcClient.openSystemPromptFile()
+      const result = await desktopAgentsFolderClient.openSystemPromptFile()
       if (!result?.success) {
         toast.error(result?.error || "Failed to reveal system prompt file")
       }
@@ -195,7 +196,7 @@ export function Component() {
 
   const openAgentsGuidelinesFile = useCallback(async () => {
     try {
-      const result = await tipcClient.openAgentsGuidelinesFile()
+      const result = await desktopAgentsFolderClient.openAgentsGuidelinesFile()
       if (!result?.success) {
         toast.error(result?.error || "Failed to reveal guidelines file")
       }

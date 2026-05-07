@@ -38,19 +38,6 @@ export interface DesktopKnowledgeFolderActionResult {
   error?: string
 }
 
-export interface DesktopAgentsFolderLayer {
-  agentsDir: string
-  skillsDir: string
-  knowledgeDir: string
-  memoriesDir: string
-}
-
-export interface DesktopAgentsFolders {
-  global: DesktopAgentsFolderLayer
-  workspace: DesktopAgentsFolderLayer | null
-  workspaceSource: string | null
-}
-
 export const desktopKnowledgeClient = {
   getOverview(filter: DesktopKnowledgeNotesOverviewFilter): Promise<KnowledgeNotesOverview> {
     return tipcClient.getKnowledgeNotesOverview(filter) as Promise<KnowledgeNotesOverview>
@@ -82,10 +69,6 @@ export const desktopKnowledgeClient = {
 
   deleteAllNotes(): Promise<number> {
     return tipcClient.deleteAllKnowledgeNotes() as Promise<number>
-  },
-
-  getAgentsFolders(): Promise<DesktopAgentsFolders> {
-    return tipcClient.getAgentsFolders() as Promise<DesktopAgentsFolders>
   },
 
   openKnowledgeFolder(): Promise<DesktopKnowledgeFolderActionResult> {

@@ -19,7 +19,9 @@ import {
   DropdownMenuTrigger,
 } from "@renderer/components/ui/dropdown-menu"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
-import { tipcClient, rendererHandlers } from "@renderer/lib/tipc-client"
+import { rendererHandlers } from "@renderer/lib/tipc-client"
+import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
+import { desktopAgentsFolderClient } from "@renderer/lib/desktop-agents-folder-client"
 import { desktopBundleClient } from "@renderer/lib/desktop-bundle-client"
 import { desktopSkillsClient } from "@renderer/lib/desktop-skills-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -61,7 +63,7 @@ export function Component() {
   const agentsFoldersQuery = useQuery({
     queryKey: ["agentsFolders"],
     queryFn: async () => {
-      return await tipcClient.getAgentsFolders()
+      return await desktopAgentsFolderClient.getAgentsFolders()
     },
     staleTime: Infinity,
   })
@@ -69,7 +71,7 @@ export function Component() {
   const currentProfileQuery = useQuery({
     queryKey: ["currentProfile"],
     queryFn: async () => {
-      return await tipcClient.getCurrentProfile()
+      return await desktopAgentProfilesClient.getCurrentProfile()
     },
   })
 

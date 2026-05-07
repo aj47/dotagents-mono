@@ -7,6 +7,7 @@ import type {
   AgentProfileCreateRouteRequest,
   AgentProfileUpdateRouteRequest,
 } from "@dotagents/shared/profile-api"
+import type { LegacyProfileRecord as Profile } from "@dotagents/shared/agent-profile-legacy-converters"
 import type { DetailedToolInfo } from "@dotagents/shared/mcp-utils"
 import { tipcClient } from "@renderer/lib/tipc-client"
 
@@ -44,6 +45,10 @@ export interface DesktopSetCurrentAgentProfileResult {
 export const desktopAgentProfilesClient = {
   getAgentProfiles(): Promise<AgentProfile[]> {
     return tipcClient.getAgentProfiles() as Promise<AgentProfile[]>
+  },
+
+  getCurrentProfile(): Promise<AgentProfile | Profile | null | undefined> {
+    return tipcClient.getCurrentProfile() as Promise<AgentProfile | Profile | null | undefined>
   },
 
   createAgentProfile(profile: DesktopAgentProfileCreateRequest): Promise<AgentProfile> {

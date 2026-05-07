@@ -7,6 +7,7 @@ const applySelectedAgentSource = readFileSync(new URL("./apply-selected-agent.ts
 const agentSelectorSource = readFileSync(new URL("../components/agent-selector.tsx", import.meta.url), "utf8")
 const panelSource = readFileSync(new URL("../pages/panel.tsx", import.meta.url), "utf8")
 const settingsDiscordSource = readFileSync(new URL("../pages/settings-discord.tsx", import.meta.url), "utf8")
+const settingsSkillsSource = readFileSync(new URL("../pages/settings-skills.tsx", import.meta.url), "utf8")
 
 describe("desktop agent profiles renderer client", () => {
   it("centralizes desktop agent profile IPC channels behind shared profile types", () => {
@@ -15,6 +16,7 @@ describe("desktop agent profiles renderer client", () => {
     expect(clientSource).toContain("VerifyExternalAgentCommandRequest")
     expect(clientSource).toContain("VerifyExternalAgentCommandResponse")
     expect(clientSource).toContain("tipcClient.getAgentProfiles()")
+    expect(clientSource).toContain("tipcClient.getCurrentProfile()")
     expect(clientSource).toContain("tipcClient.createAgentProfile({ profile: payload })")
     expect(clientSource).toContain("tipcClient.updateAgentProfile({ id, updates })")
     expect(clientSource).toContain("tipcClient.deleteAgentProfile({ id })")
@@ -56,10 +58,12 @@ describe("desktop agent profiles renderer client", () => {
     expect(agentSelectorSource).toContain("desktopAgentProfilesClient.getAgentProfiles()")
     expect(panelSource).toContain("desktopAgentProfilesClient.getAgentProfiles()")
     expect(settingsDiscordSource).toContain("desktopAgentProfilesClient.getAgentProfiles()")
+    expect(settingsSkillsSource).toContain("desktopAgentProfilesClient.getCurrentProfile()")
     expect(applySelectedAgentSource).not.toContain("tipcClient.getAgentProfiles(")
     expect(applySelectedAgentSource).not.toContain("tipcClient.setCurrentAgentProfile(")
     expect(agentSelectorSource).not.toContain("tipcClient.getAgentProfiles(")
     expect(panelSource).not.toContain("tipcClient.getAgentProfiles(")
     expect(settingsDiscordSource).not.toContain("tipcClient.getAgentProfiles(")
+    expect(settingsSkillsSource).not.toContain("tipcClient.getCurrentProfile(")
   })
 })

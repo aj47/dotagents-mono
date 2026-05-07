@@ -14,6 +14,7 @@ import { Textarea } from "@renderer/components/ui/textarea"
 import { Label } from "@renderer/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@renderer/components/ui/select"
 import { desktopKnowledgeClient } from "@renderer/lib/desktop-knowledge-client"
+import { desktopAgentsFolderClient } from "@renderer/lib/desktop-agents-folder-client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type {
   KnowledgeNote,
@@ -547,7 +548,7 @@ export function Component() {
 
   const agentsFoldersQuery = useQuery({
     queryKey: ["agentsFolders"],
-    queryFn: async () => desktopKnowledgeClient.getAgentsFolders(),
+    queryFn: async () => desktopAgentsFolderClient.getAgentsFolders(),
     staleTime: Infinity,
   })
 
