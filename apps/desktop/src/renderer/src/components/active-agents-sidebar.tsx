@@ -143,6 +143,7 @@ function formatMinutesAgo(timestamp: number): string | null {
 
 const DEFAULT_VISIBLE_SIDEBAR_SESSIONS = 5
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 5
+const MIN_VISIBLE_SIDEBAR_ITEMS = 1
 const SIDEBAR_TASKS_MIN_VISIBLE = 3
 const FINAL_RESPONSE_RETENTION_MS = 10_000
 
@@ -303,7 +304,7 @@ export function ActiveAgentsSidebar({
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
   const toggleArchiveSession = useAgentStore((s) => s.toggleArchiveSession)
-  const [visibleSavedConversationCount, setVisibleSavedConversationCount] = useState(0)
+  const [visibleSavedConversationCount, setVisibleSavedConversationCount] = useState<number | null>(null)
   const [visibleTaskConversationCount, setVisibleTaskConversationCount] = useState(
     SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
   )
@@ -637,15 +638,27 @@ export function ActiveAgentsSidebar({
   )
 
   const displayedSavedConversationCount =
-    visibleSavedConversationCount > 0
-      ? visibleSavedConversationCount
-      : defaultSavedConversationRows
+    visibleSavedConversationCount ?? defaultSavedConversationRows
   const groupedSessionKeys = useMemo(
     () => new Set(sessionGroups.flatMap((group) => group.sessionKeys)),
     [sessionGroups],
   )
-  const canShowLessSavedConversations =
-    visibleSavedConversationCount > defaultSavedConversationRows
+  const hasAlwaysVisibleUserSidebarAnchor = useMemo(
+    () =>
+      sessionGroups.some((group) => group.expanded !== false) ||
+      allUserSidebarSessions.some((entry) => {
+        if (!entry.isSavedConversation) return true
+        const conversationId = entry.session.conversationId
+        return (
+          (!!conversationId && pinnedSessionIds.has(conversationId)) ||
+          groupedSessionKeys.has(getSidebarSessionGroupKey(entry.session))
+        )
+      }),
+    [allUserSidebarSessions, groupedSessionKeys, pinnedSessionIds, sessionGroups],
+  )
+  const minimumVisibleSavedConversationRows = hasAlwaysVisibleUserSidebarAnchor
+    ? 0
+    : MIN_VISIBLE_SIDEBAR_ITEMS
 
   const {
     visibleEntries: userSidebarSessions,
@@ -667,6 +680,18 @@ export function ActiveAgentsSidebar({
     () => groupSidebarSessionEntries(userSidebarSessions, sessionGroups),
     [userSidebarSessions, sessionGroups],
   )
+
+  const visiblePageableSavedConversationCount = useMemo(
+    () => userSidebarSessions.filter((entry) => {
+      if (!entry.isSavedConversation) return false
+      const conversationId = entry.session.conversationId
+      if (conversationId && pinnedSessionIds.has(conversationId)) return false
+      return !groupedSessionKeys.has(getSidebarSessionGroupKey(entry.session))
+    }).length,
+    [groupedSessionKeys, pinnedSessionIds, userSidebarSessions],
+  )
+  const canShowLessSavedConversations =
+    visiblePageableSavedConversationCount > minimumVisibleSavedConversationRows
 
   const visibleGroupedUserSidebarSessions = useMemo(
     () => [
@@ -1169,17 +1194,18 @@ export function ActiveAgentsSidebar({
 
   const loadMoreSavedConversations = useCallback(() => {
     setVisibleSavedConversationCount((prev) =>
-      (prev > 0 ? prev : defaultSavedConversationRows) +
+      (prev ?? defaultSavedConversationRows) +
         SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
     )
   }, [defaultSavedConversationRows])
 
   const showLessSavedConversations = useCallback(() => {
     setVisibleSavedConversationCount((prev) => {
-      const next = prev - SIDEBAR_PAST_SESSIONS_PAGE_SIZE
-      return next > defaultSavedConversationRows ? next : 0
+      const current = prev ?? defaultSavedConversationRows
+      const next = current - SIDEBAR_PAST_SESSIONS_PAGE_SIZE
+      return Math.max(next, minimumVisibleSavedConversationRows)
     })
-  }, [defaultSavedConversationRows])
+  }, [defaultSavedConversationRows, minimumVisibleSavedConversationRows])
 
   const loadMoreTaskConversations = useCallback(() => {
     setVisibleTaskConversationCount((prev) =>
