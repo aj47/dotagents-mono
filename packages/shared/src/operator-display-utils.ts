@@ -405,10 +405,15 @@ export const OPERATOR_ERRORS_PANEL_METADATA: OperatorErrorsPanelMetadata = {
 
 export type OperatorConversationsPanelMetadata = {
   panelTitle: string
+  formatConversationSummary: (title: string | undefined, messageCount: number) => string
+  formatConversationUpdatedPreview: (updatedAt?: number, preview?: string) => string
 }
 
 export const OPERATOR_CONVERSATIONS_PANEL_METADATA: OperatorConversationsPanelMetadata = {
   panelTitle: "Recent conversations",
+  formatConversationSummary: (title, messageCount) => `${title || "Untitled"} (${messageCount} msgs)`,
+  formatConversationUpdatedPreview: (updatedAt, preview) =>
+    `${formatOperatorTimestamp(updatedAt)}${preview ? ` — ${preview.slice(0, 80)}` : ""}`,
 }
 
 export type OperatorAgentSessionReference = {

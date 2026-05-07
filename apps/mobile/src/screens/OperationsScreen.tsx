@@ -1628,10 +1628,10 @@ export default function OperationsScreen({ navigation }: any) {
               {conversations.map((c) => (
                 <View key={c.id} style={{ marginBottom: 6 }}>
                   <Text style={styles.detailText}>
-                    {c.title || 'Untitled'} ({c.messageCount} msgs)
+                    {OPERATOR_CONVERSATIONS_PANEL_METADATA.formatConversationSummary(c.title, c.messageCount)}
                   </Text>
                   <Text style={styles.mutedText}>
-                    {formatTimestamp(c.updatedAt)}{c.preview ? ` — ${c.preview.slice(0, 80)}` : ''}
+                    {OPERATOR_CONVERSATIONS_PANEL_METADATA.formatConversationUpdatedPreview(c.updatedAt, c.preview)}
                   </Text>
                 </View>
               ))}

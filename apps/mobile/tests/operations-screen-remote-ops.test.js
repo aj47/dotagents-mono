@@ -517,8 +517,13 @@ test('displays recent conversations from operator API', () => {
   assert.match(operationsSource, /getOperatorConversations/);
   assert.match(operationsSource, /setConversations/);
   assert.match(operationsSource, /OPERATOR_CONVERSATIONS_PANEL_METADATA\.panelTitle/);
+  assert.match(operationsSource, /OPERATOR_CONVERSATIONS_PANEL_METADATA\.formatConversationSummary\(c\.title, c\.messageCount\)/);
+  assert.match(operationsSource, /OPERATOR_CONVERSATIONS_PANEL_METADATA\.formatConversationUpdatedPreview\(c\.updatedAt, c\.preview\)/);
   assert.match(operationsSource, /conversations\.map/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Recent conversations<\/Text>/);
+  assert.doesNotMatch(operationsSource, /c\.title \|\| 'Untitled'/);
+  assert.doesNotMatch(operationsSource, /c\.messageCount\} msgs/);
+  assert.doesNotMatch(operationsSource, /c\.preview\.slice\(0, 80\)/);
 });
 
 test('exposes desktop diagnostic report controls', () => {

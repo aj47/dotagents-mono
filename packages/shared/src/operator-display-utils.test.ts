@@ -340,7 +340,19 @@ describe("operator display utils", () => {
   it("exports operator conversations panel metadata", () => {
     expect(OPERATOR_CONVERSATIONS_PANEL_METADATA).toEqual({
       panelTitle: "Recent conversations",
+      formatConversationSummary: expect.any(Function),
+      formatConversationUpdatedPreview: expect.any(Function),
     })
+    expect(OPERATOR_CONVERSATIONS_PANEL_METADATA.formatConversationSummary("Build release", 3)).toBe(
+      "Build release (3 msgs)",
+    )
+    expect(OPERATOR_CONVERSATIONS_PANEL_METADATA.formatConversationSummary(undefined, 1)).toBe("Untitled (1 msgs)")
+    expect(
+      OPERATOR_CONVERSATIONS_PANEL_METADATA.formatConversationUpdatedPreview(
+        undefined,
+        "A long preview that stays under the truncation limit",
+      ),
+    ).toBe(`${OPERATOR_EMPTY_VALUE_LABEL} — A long preview that stays under the truncation limit`)
   })
 
   it("exports operator agent sessions panel metadata", () => {
