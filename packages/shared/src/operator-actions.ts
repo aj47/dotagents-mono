@@ -127,6 +127,47 @@ export interface OperatorMessageQueueActionService {
   ): OperatorQueuedMessageMutationResultLike
 }
 
+export interface OperatorMessageQueueStoreAdapter {
+  getAllQueues(): MessageQueue[]
+  isQueuePaused(conversationId: string): boolean
+  clearQueue(conversationId: string): boolean
+}
+
+export interface OperatorMessageQueueMutationAdapter {
+  pauseQueue(conversationId: string): OperatorMessageQueuePauseResultLike
+  resumeQueue(conversationId: string): OperatorMessageQueueResumeResultLike
+  removeQueuedMessage(conversationId: string, messageId: string): OperatorQueuedMessageMutationResultLike
+  retryQueuedMessage(conversationId: string, messageId: string): OperatorQueuedMessageMutationResultLike
+  updateQueuedMessageText(
+    conversationId: string,
+    messageId: string,
+    text: string,
+  ): OperatorQueuedMessageMutationResultLike
+}
+
+export interface OperatorMessageQueueActionServiceOptions {
+  queue: OperatorMessageQueueStoreAdapter
+  mutations: OperatorMessageQueueMutationAdapter
+}
+
+export function createOperatorMessageQueueActionService(
+  options: OperatorMessageQueueActionServiceOptions,
+): OperatorMessageQueueActionService {
+  return {
+    getAllQueues: () => options.queue.getAllQueues(),
+    isQueuePaused: (conversationId) => options.queue.isQueuePaused(conversationId),
+    clearQueue: (conversationId) => options.queue.clearQueue(conversationId),
+    pauseQueue: (conversationId) => options.mutations.pauseQueue(conversationId),
+    resumeQueue: (conversationId) => options.mutations.resumeQueue(conversationId),
+    removeQueuedMessage: (conversationId, messageId) =>
+      options.mutations.removeQueuedMessage(conversationId, messageId),
+    retryQueuedMessage: (conversationId, messageId) =>
+      options.mutations.retryQueuedMessage(conversationId, messageId),
+    updateQueuedMessageText: (conversationId, messageId, text) =>
+      options.mutations.updateQueuedMessageText(conversationId, messageId, text),
+  }
+}
+
 export interface OperatorMessageQueueActionOptions {
   service: OperatorMessageQueueActionService
 }

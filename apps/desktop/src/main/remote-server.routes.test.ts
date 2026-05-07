@@ -2009,27 +2009,24 @@ describe("remote-server route registration", () => {
     )
     expect(operatorRouteDesktopActionsSource).toContain("messageQueue: operatorMessageQueueRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain("getOperatorMessageQueuesAction(messageQueueActionOptions)")
-    expect(operatorRouteDesktopActionsSource).toContain(
+    expect(operatorRouteDesktopActionsSource).toContain("service: createOperatorMessageQueueActionService({")
+    expect(operatorRouteDesktopActionsSource).toContain("queue: messageQueueService")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
       "clearQueue: (conversationId) => messageQueueService.clearQueue(conversationId)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain("getAllQueues: () => messageQueueService.getAllQueues()")
+    expect(operatorRouteDesktopActionsSource).not.toContain("getAllQueues: () => messageQueueService.getAllQueues()")
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "clearOperatorMessageQueueAction(conversationIdParam, messageQueueActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain(
-      "pauseQueue: (conversationId) => pauseMessageQueueByConversationId(conversationId)",
-    )
-    expect(operatorRouteDesktopActionsSource).toContain(
-      "resumeQueue: (conversationId) => resumeMessageQueueByConversationId(conversationId)",
-    )
-    expect(operatorRouteDesktopActionsSource).toContain(
-      "removeQueuedMessage: (conversationId, messageId) => removeQueuedMessageById(conversationId, messageId)",
-    )
-    expect(operatorRouteDesktopActionsSource).toContain(
-      "retryQueuedMessage: (conversationId, messageId) => retryQueuedMessageById(conversationId, messageId)",
-    )
-    expect(operatorRouteDesktopActionsSource).toContain("updateQueuedMessageTextById(conversationId, messageId, text)")
+    expect(operatorRouteDesktopActionsSource).toContain("pauseQueue: pauseMessageQueueByConversationId")
+    expect(operatorRouteDesktopActionsSource).toContain("resumeQueue: resumeMessageQueueByConversationId")
+    expect(operatorRouteDesktopActionsSource).toContain("removeQueuedMessage: removeQueuedMessageById")
+    expect(operatorRouteDesktopActionsSource).toContain("retryQueuedMessage: retryQueuedMessageById")
+    expect(operatorRouteDesktopActionsSource).toContain("updateQueuedMessageText: updateQueuedMessageTextById")
     expect(sharedOperatorActionsSource).toContain("export interface OperatorMessageQueueRouteActions")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorMessageQueueActionService")
+    expect(sharedOperatorActionsSource).toContain("getAllQueues: () => options.queue.getAllQueues()")
+    expect(sharedOperatorActionsSource).toContain("pauseQueue: (conversationId) => options.mutations.pauseQueue(conversationId)")
     expect(sharedOperatorActionsSource).toContain("export function createOperatorMessageQueueRouteActions")
     expect(sharedOperatorActionsSource).toContain("getOperatorMessageQueues: () => getOperatorMessageQueuesAction(options)")
     expect(sharedOperatorActionsSource).toContain(

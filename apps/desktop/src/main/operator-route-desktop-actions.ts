@@ -42,6 +42,7 @@ import {
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
   createOperatorIntegrationRouteActions,
+  createOperatorMessageQueueActionService,
   createOperatorMessageQueueRouteActions,
   createOperatorObservabilityRouteActions,
   createOperatorRestartRouteActions,
@@ -293,17 +294,16 @@ const integrationActionOptions: OperatorIntegrationActionOptions = {
 const operatorIntegrationRouteActions = createOperatorIntegrationRouteActions(integrationActionOptions)
 
 const messageQueueActionOptions: OperatorMessageQueueActionOptions = {
-  service: {
-    getAllQueues: () => messageQueueService.getAllQueues(),
-    isQueuePaused: (conversationId) => messageQueueService.isQueuePaused(conversationId),
-    clearQueue: (conversationId) => messageQueueService.clearQueue(conversationId),
-    pauseQueue: (conversationId) => pauseMessageQueueByConversationId(conversationId),
-    resumeQueue: (conversationId) => resumeMessageQueueByConversationId(conversationId),
-    removeQueuedMessage: (conversationId, messageId) => removeQueuedMessageById(conversationId, messageId),
-    retryQueuedMessage: (conversationId, messageId) => retryQueuedMessageById(conversationId, messageId),
-    updateQueuedMessageText: (conversationId, messageId, text) =>
-      updateQueuedMessageTextById(conversationId, messageId, text),
-  },
+  service: createOperatorMessageQueueActionService({
+    queue: messageQueueService,
+    mutations: {
+      pauseQueue: pauseMessageQueueByConversationId,
+      resumeQueue: resumeMessageQueueByConversationId,
+      removeQueuedMessage: removeQueuedMessageById,
+      retryQueuedMessage: retryQueuedMessageById,
+      updateQueuedMessageText: updateQueuedMessageTextById,
+    },
+  }),
 }
 
 const operatorMessageQueueRouteActions = createOperatorMessageQueueRouteActions(messageQueueActionOptions)

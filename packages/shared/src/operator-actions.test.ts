@@ -79,6 +79,7 @@ import {
   createOperatorAuditRecorder,
   createOperatorAuditRouteActions,
   createOperatorIntegrationRouteActions,
+  createOperatorMessageQueueActionService,
   createOperatorMessageQueueRouteActions,
   createOperatorObservabilityRouteActions,
   createOperatorRestartRouteActions,
@@ -2491,6 +2492,65 @@ describe("operator action API helpers", () => {
         failureReason: "No asset found",
       },
     })
+  })
+
+  it("creates operator message queue action services from queue and mutation adapters", () => {
+    const calls: string[] = []
+    const service = createOperatorMessageQueueActionService({
+      queue: {
+        getAllQueues: () => [{
+          conversationId: "conv-1",
+          messages: [],
+        }],
+        isQueuePaused: (conversationId) => conversationId === "conv-1",
+        clearQueue: (conversationId) => {
+          calls.push(`clear:${conversationId}`)
+          return true
+        },
+      },
+      mutations: {
+        pauseQueue: (conversationId) => {
+          calls.push(`pause:${conversationId}`)
+          return { conversationId }
+        },
+        resumeQueue: (conversationId) => {
+          calls.push(`resume:${conversationId}`)
+          return { conversationId, processingStarted: true }
+        },
+        removeQueuedMessage: (conversationId, messageId) => {
+          calls.push(`remove:${conversationId}:${messageId}`)
+          return { success: true }
+        },
+        retryQueuedMessage: (conversationId, messageId) => {
+          calls.push(`retry:${conversationId}:${messageId}`)
+          return { success: true, processingStarted: true }
+        },
+        updateQueuedMessageText: (conversationId, messageId, text) => {
+          calls.push(`update:${conversationId}:${messageId}:${text}`)
+          return { success: true, processingStarted: false }
+        },
+      },
+    })
+
+    expect(service.getAllQueues()).toEqual([{ conversationId: "conv-1", messages: [] }])
+    expect(service.isQueuePaused("conv-1")).toBe(true)
+    expect(service.clearQueue("conv-1")).toBe(true)
+    expect(service.pauseQueue("conv-1")).toEqual({ conversationId: "conv-1" })
+    expect(service.resumeQueue("conv-1")).toEqual({ conversationId: "conv-1", processingStarted: true })
+    expect(service.removeQueuedMessage("conv-1", "msg-1")).toEqual({ success: true })
+    expect(service.retryQueuedMessage("conv-1", "msg-1")).toEqual({ success: true, processingStarted: true })
+    expect(service.updateQueuedMessageText("conv-1", "msg-1", "edited")).toEqual({
+      success: true,
+      processingStarted: false,
+    })
+    expect(calls).toEqual([
+      "clear:conv-1",
+      "pause:conv-1",
+      "resume:conv-1",
+      "remove:conv-1:msg-1",
+      "retry:conv-1:msg-1",
+      "update:conv-1:msg-1:edited",
+    ])
   })
 
   it("runs message queue route actions through a shared service adapter", () => {
