@@ -52,6 +52,11 @@ import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/c
 import { getErrorMessage } from '@dotagents/shared/error-utils';
 import { DEFAULT_TEXT_INPUT_ENABLED } from '@dotagents/shared/key-utils';
 import {
+  DEFAULT_THEME_PREFERENCE,
+  THEME_PREFERENCE_VALUES,
+  type ThemePreferenceValue,
+} from '@dotagents/shared/theme-preference';
+import {
   formatOperatorAuditDetails as formatAuditDetails,
   formatOperatorAuditSource as formatAuditSource,
   formatOperatorDurationSeconds as formatDuration,
@@ -101,6 +106,10 @@ const PANEL_POSITION_OPTIONS: Array<{ value: PanelPosition; label: string }> = [
   { value: 'bottom-right', label: 'Bottom Right' },
   { value: 'custom', label: 'Custom' },
 ];
+const DESKTOP_THEME_OPTIONS: Array<{ value: ThemePreferenceValue; label: string }> = THEME_PREFERENCE_VALUES.map((value) => ({
+  value,
+  label: value === 'system' ? 'System' : value === 'light' ? 'Light' : 'Dark',
+}));
 
 export default function OperationsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -1937,6 +1946,35 @@ export default function OperationsScreen({ navigation }: any) {
                   />
                 </View>
               ) : null}
+
+              <Text style={styles.label}>Desktop Theme</Text>
+              <View style={styles.chipRow}>
+                {DESKTOP_THEME_OPTIONS.map((option) => {
+                  const isActive = (settings.themePreference ?? DEFAULT_THEME_PREFERENCE) === option.value;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.chipButton,
+                        isActive && styles.chipButtonActive,
+                        controlsDisabled && styles.actionButtonDisabled,
+                      ]}
+                      onPress={() => void applySettingsUpdate(
+                        { themePreference: option.value },
+                        'desktop theme',
+                        `Desktop theme set to ${option.label}.`,
+                      )}
+                      disabled={controlsDisabled}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`Set desktop theme to ${option.label}`)}
+                    >
+                      <Text style={[styles.chipButtonText, isActive && styles.chipButtonTextActive]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
               <View style={styles.row}>
                 <View style={styles.rowCopy}>
