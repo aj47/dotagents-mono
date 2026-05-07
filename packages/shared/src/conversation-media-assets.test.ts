@@ -14,6 +14,7 @@ import {
   getConversationImageExtensionForMimeType,
   getConversationImageMimeTypeFromFileName,
   getConversationVideoByteRange,
+  getConversationVideoAssetAction,
   getConversationVideoExtensionForMimeType,
   getConversationVideoMimeTypeFromFileName,
   getDataImageBytesFromUrl,
@@ -676,6 +677,124 @@ describe('conversation video asset utilities', () => {
   it('builds reusable video stream response plans for unsatisfiable ranges', () => {
     expect(buildConversationVideoAssetStreamPlan('abcdef1234567890.mp4', 'bytes=1000-1001', 1000)).toEqual({
       ok: false,
+      statusCode: 416,
+      headers: { 'Content-Range': 'bytes */1000' },
+    });
+  });
+
+  it('builds reusable video asset action responses through an injected file service', async () => {
+    const bodyRanges: Array<{ start: number; end: number } | undefined> = [];
+    const options = {
+      validateConversationId: () => null,
+      service: {
+        getVideoAssetFile: async () => ({
+          size: 1000,
+          createBody: (range?: { start: number; end: number }) => {
+            bodyRanges.push(range);
+            return range ? `stream:${range.start}-${range.end}` : 'stream:full';
+          },
+        }),
+      },
+    };
+
+    await expect(getConversationVideoAssetAction(
+      'conv-1',
+      'abcdef1234567890.mp4',
+      undefined,
+      options,
+    )).resolves.toEqual({
+      statusCode: 200,
+      headers: {
+        'Accept-Ranges': 'bytes',
+        'Content-Type': 'video/mp4',
+        'Content-Length': '1000',
+      },
+      body: 'stream:full',
+    });
+
+    await expect(getConversationVideoAssetAction(
+      'conv-1',
+      'abcdef1234567890.webm',
+      'bytes=10-19',
+      options,
+    )).resolves.toEqual({
+      statusCode: 206,
+      headers: {
+        'Accept-Ranges': 'bytes',
+        'Content-Type': 'video/webm',
+        'Content-Length': '10',
+        'Content-Range': 'bytes 10-19/1000',
+      },
+      body: 'stream:10-19',
+    });
+
+    expect(bodyRanges).toEqual([undefined, { start: 10, end: 19 }]);
+  });
+
+  it('builds video asset action errors for invalid ids, invalid files, missing files, and ranges', async () => {
+    await expect(getConversationVideoAssetAction(
+      'bad id',
+      'abcdef1234567890.mp4',
+      undefined,
+      {
+        validateConversationId: () => 'Invalid conversation id',
+        service: {
+          getVideoAssetFile: async () => {
+            throw new Error('should not resolve files for invalid ids');
+          },
+        },
+      },
+    )).resolves.toEqual({
+      statusCode: 400,
+      body: { error: 'Invalid conversation id' },
+    });
+
+    await expect(getConversationVideoAssetAction(
+      'conv-1',
+      '../bad.mp4',
+      undefined,
+      {
+        validateConversationId: () => null,
+        service: {
+          getVideoAssetFile: async () => {
+            throw new Error('Invalid conversation video asset filename');
+          },
+        },
+      },
+    )).resolves.toEqual({
+      statusCode: 400,
+      body: { error: 'Invalid conversation video asset filename' },
+    });
+
+    await expect(getConversationVideoAssetAction(
+      'conv-1',
+      'abcdef1234567890.mp4',
+      undefined,
+      {
+        validateConversationId: () => null,
+        service: {
+          getVideoAssetFile: async () => null,
+        },
+      },
+    )).resolves.toEqual({
+      statusCode: 404,
+      body: { error: 'Video asset not found' },
+    });
+
+    await expect(getConversationVideoAssetAction(
+      'conv-1',
+      'abcdef1234567890.mp4',
+      'bytes=1000-1001',
+      {
+        validateConversationId: () => null,
+        service: {
+          getVideoAssetFile: async () => ({
+            size: 1000,
+            createBody: () => 'unused',
+          }),
+        },
+      },
+    )).resolves.toEqual({
       statusCode: 416,
       headers: { 'Content-Range': 'bytes */1000' },
     });

@@ -164,6 +164,34 @@ export type ConversationVideoAssetStreamPlan =
       headers: Record<string, string>;
     };
 
+export type ConversationVideoAssetActionResult<Body = unknown> = {
+  statusCode: number;
+  body?: Body | { error: string };
+  headers?: Record<string, string>;
+};
+
+export type ConversationVideoAssetActionFile<Body = unknown> = {
+  size: number;
+  createBody(range?: { start: number; end: number }): Body;
+};
+
+export interface ConversationVideoAssetActionService<Body = unknown> {
+  getVideoAssetFile(
+    conversationId: string,
+    fileName: string,
+  ): Promise<ConversationVideoAssetActionFile<Body> | null | undefined>;
+}
+
+export interface ConversationVideoAssetActionDiagnostics {
+  logError(source: string, message: string, error: unknown): void;
+}
+
+export interface ConversationVideoAssetActionOptions<Body = unknown> {
+  service: ConversationVideoAssetActionService<Body>;
+  validateConversationId(conversationId: string): string | null | undefined;
+  diagnostics?: ConversationVideoAssetActionDiagnostics;
+}
+
 export type RespondToUserLocalAssetResolution = {
   resolvedPath: string;
   fileBytes: number;
@@ -987,4 +1015,86 @@ export function buildConversationVideoAssetStreamPlan(
     headers,
     range: { start: range.start, end: range.end },
   };
+}
+
+function buildConversationVideoAssetActionError<Body = unknown>(
+  statusCode: number,
+  message: string,
+  headers?: Record<string, string>,
+): ConversationVideoAssetActionResult<Body> {
+  return {
+    statusCode,
+    body: { error: message },
+    ...(headers ? { headers } : {}),
+  };
+}
+
+function getConversationVideoAssetActionErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function isMissingConversationVideoAssetError(error: unknown): boolean {
+  return !!error
+    && typeof error === 'object'
+    && 'code' in error
+    && (error as { code?: unknown }).code === 'ENOENT';
+}
+
+export async function getConversationVideoAssetAction<Body = unknown>(
+  id: string | undefined,
+  fileName: string | undefined,
+  rangeHeader: string | string[] | undefined,
+  options: ConversationVideoAssetActionOptions<Body>,
+): Promise<ConversationVideoAssetActionResult<Body>> {
+  try {
+    const conversationId = id ?? '';
+    const assetFileName = fileName ?? '';
+
+    const conversationIdError = options.validateConversationId(conversationId);
+    if (conversationIdError) {
+      return buildConversationVideoAssetActionError(400, conversationIdError);
+    }
+
+    let assetFile: ConversationVideoAssetActionFile<Body> | null | undefined;
+    try {
+      assetFile = await options.service.getVideoAssetFile(conversationId, assetFileName);
+    } catch (caughtError) {
+      if (isMissingConversationVideoAssetError(caughtError)) {
+        return buildConversationVideoAssetActionError(404, 'Video asset not found');
+      }
+      const errorMessage = getConversationVideoAssetActionErrorMessage(caughtError, 'Invalid video asset');
+      if (errorMessage.startsWith('Invalid ')) {
+        return buildConversationVideoAssetActionError(400, errorMessage);
+      }
+      options.diagnostics?.logError('conversation-media-assets', 'Failed to stream conversation video asset', caughtError);
+      return buildConversationVideoAssetActionError(500, errorMessage);
+    }
+
+    if (!assetFile || assetFile.size <= 0) {
+      return buildConversationVideoAssetActionError(404, 'Video asset not found');
+    }
+
+    const streamPlan = buildConversationVideoAssetStreamPlan(assetFileName, rangeHeader, assetFile.size);
+    if (!streamPlan.ok) {
+      return {
+        statusCode: streamPlan.statusCode,
+        headers: streamPlan.headers,
+      };
+    }
+
+    return {
+      statusCode: streamPlan.statusCode,
+      headers: streamPlan.headers,
+      body: assetFile.createBody(streamPlan.range),
+    };
+  } catch (caughtError) {
+    if (isMissingConversationVideoAssetError(caughtError)) {
+      return buildConversationVideoAssetActionError(404, 'Video asset not found');
+    }
+    options.diagnostics?.logError('conversation-media-assets', 'Failed to stream conversation video asset', caughtError);
+    return buildConversationVideoAssetActionError(
+      500,
+      getConversationVideoAssetActionErrorMessage(caughtError, 'Failed to stream video asset'),
+    );
+  }
 }

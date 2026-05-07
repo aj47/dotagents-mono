@@ -48,7 +48,10 @@ import {
   type ConversationActionOptions,
 } from "@dotagents/shared/conversation-sync"
 import { getConversationIdValidationError } from "@dotagents/shared/conversation-id"
-import { buildConversationVideoAssetStreamPlan } from "@dotagents/shared/conversation-media-assets"
+import {
+  getConversationVideoAssetAction,
+  type ConversationVideoAssetActionOptions,
+} from "@dotagents/shared/conversation-media-assets"
 import {
   getDiscordLifecycleAction,
   getDiscordResolvedDefaultProfileId,
@@ -114,10 +117,6 @@ import {
   type ExternalAgentCommandVerificationActionOptions,
   type ProfileActionOptions,
 } from "@dotagents/shared/profile-api"
-import {
-  buildMobileApiActionError,
-  buildMobileApiActionResult,
-} from "@dotagents/shared/remote-server-route-contracts"
 import {
   createRepeatTaskAction,
   deleteRepeatTaskAction,
@@ -359,6 +358,24 @@ const conversationActionOptions: ConversationActionOptions<DesktopConversationAc
   diagnostics: diagnosticsService,
   validateConversationId: getConversationIdValidationError,
   now: () => Date.now(),
+}
+
+const conversationVideoAssetActionOptions: ConversationVideoAssetActionOptions = {
+  service: {
+    getVideoAssetFile: async (conversationId, fileName) => {
+      const assetPath = getConversationVideoAssetPath(conversationId, fileName)
+      const stat = await fs.promises.stat(assetPath)
+      if (!stat.isFile()) return null
+      return {
+        size: stat.size,
+        createBody: (range) => range
+          ? fs.createReadStream(assetPath, { start: range.start, end: range.end })
+          : fs.createReadStream(assetPath),
+      }
+    },
+  },
+  validateConversationId: getConversationIdValidationError,
+  diagnostics: diagnosticsService,
 }
 
 const profileActionOptions: ProfileActionOptions<DesktopProfileActionProfile> = {
@@ -610,50 +627,12 @@ async function getConversationVideoAsset(
   fileName: string | undefined,
   rangeHeader: string | undefined,
 ) {
-  try {
-    const conversationId = id ?? ""
-
-    const conversationIdError = getConversationIdValidationError(conversationId)
-    if (conversationIdError) {
-      return buildMobileApiActionError(400, conversationIdError)
-    }
-
-    let assetPath: string
-    try {
-      assetPath = getConversationVideoAssetPath(conversationId, fileName ?? "")
-    } catch (caughtError) {
-      return buildMobileApiActionError(400, caughtError instanceof Error ? caughtError.message : "Invalid video asset")
-    }
-
-    const stat = await fs.promises.stat(assetPath)
-    if (!stat.isFile() || stat.size <= 0) {
-      return buildMobileApiActionError(404, "Video asset not found")
-    }
-
-    const streamPlan = buildConversationVideoAssetStreamPlan(fileName ?? "", rangeHeader, stat.size)
-    if (!streamPlan.ok) {
-      return {
-        statusCode: streamPlan.statusCode,
-        headers: streamPlan.headers,
-      }
-    }
-
-    if (streamPlan.range) {
-      return buildMobileApiActionResult(
-        fs.createReadStream(assetPath, { start: streamPlan.range.start, end: streamPlan.range.end }),
-        streamPlan.statusCode,
-        streamPlan.headers,
-      )
-    }
-
-    return buildMobileApiActionResult(fs.createReadStream(assetPath), streamPlan.statusCode, streamPlan.headers)
-  } catch (caughtError: any) {
-    if (caughtError?.code === "ENOENT") {
-      return buildMobileApiActionError(404, "Video asset not found")
-    }
-    diagnosticsService.logError("mobile-api-desktop-actions", "Failed to stream conversation video asset", caughtError)
-    return buildMobileApiActionError(500, caughtError?.message || "Failed to stream video asset")
-  }
+  return getConversationVideoAssetAction(
+    id,
+    fileName,
+    rangeHeader,
+    conversationVideoAssetActionOptions,
+  )
 }
 
 async function getConversations() {
