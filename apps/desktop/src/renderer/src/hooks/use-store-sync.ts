@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { reportConfigSaveError } from '@renderer/lib/config-save-error'
-import { rendererHandlers } from '@renderer/lib/tipc-client'
+import { desktopAgentSessionsClient } from '@renderer/lib/desktop-agent-sessions-client'
 import { desktopConfigClient } from '@renderer/lib/desktop-config-client'
+import { desktopConversationsClient } from '@renderer/lib/desktop-conversations-client'
 import { desktopMessageQueueClient } from '@renderer/lib/desktop-message-queue-client'
 import { desktopPanelClient } from '@renderer/lib/desktop-panel-client'
+import { desktopTtsClient } from '@renderer/lib/desktop-tts-client'
 import { useAgentStore, useConversationStore } from '@renderer/stores'
 import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress'
 import type { QueuedMessage } from '@dotagents/shared/message-queue-utils'
@@ -63,7 +65,7 @@ export function useStoreSync() {
   const lastPersistedArchivedSessionIdsRevisionRef = useRef(archivedSessionIdsRevision)
 
   useEffect(() => {
-    const unlisten = rendererHandlers.agentProgressUpdate.listen(
+    const unlisten = desktopAgentSessionsClient.onAgentProgressUpdate(
       (update: AgentProgressUpdate) => {
         updateSessionProgress(update)
 
@@ -83,14 +85,14 @@ export function useStoreSync() {
   }, [updateSessionProgress, markConversationCompleted])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.clearAgentProgress.listen(() => {
+    const unlisten = desktopAgentSessionsClient.onClearAgentProgress(() => {
       clearAllProgress()
     })
     return unlisten
   }, [clearAllProgress])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.clearAgentSessionProgress.listen(
+    const unlisten = desktopAgentSessionsClient.onClearAgentSessionProgress(
       (sessionId: string) => {
         clearSessionProgress(sessionId)
       }
@@ -99,7 +101,7 @@ export function useStoreSync() {
   }, [clearSessionProgress])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.clearInactiveSessions.listen(
+    const unlisten = desktopAgentSessionsClient.onClearInactiveSessions(
       () => {
         clearInactiveSessions()
       }
@@ -108,7 +110,7 @@ export function useStoreSync() {
   }, [clearInactiveSessions])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.stopAllTts.listen(() => {
+    const unlisten = desktopTtsClient.onStopAllTts(() => {
       logUI("[StoreSync] stopAllTts event received", {
         trackedAudioCount: ttsManager.getAudioCount(),
       })
@@ -123,7 +125,7 @@ export function useStoreSync() {
   // Track floating panel visibility so the main window can suppress duplicate
   // TTS auto-play when the panel is already speaking the same session.
   useEffect(() => {
-    const unlisten = rendererHandlers.panelVisibilityChanged.listen(
+    const unlisten = desktopPanelClient.onPanelVisibilityChanged(
       ({ visible }: { visible: boolean }) => {
         setFloatingPanelVisible(visible)
       }
@@ -142,7 +144,7 @@ export function useStoreSync() {
   }, [setFloatingPanelVisible])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.focusAgentSession.listen(
+    const unlisten = desktopAgentSessionsClient.onFocusAgentSession(
       (sessionId: string) => {
         setFocusedSessionId(sessionId)
         setScrollToSessionId(null)
@@ -152,7 +154,7 @@ export function useStoreSync() {
   }, [setFocusedSessionId, setScrollToSessionId])
 
   useEffect(() => {
-    const unlisten = rendererHandlers.setAgentSessionSnoozed.listen(
+    const unlisten = desktopAgentSessionsClient.onSetAgentSessionSnoozed(
       ({ sessionId, isSnoozed }: { sessionId: string; isSnoozed: boolean }) => {
         setSessionSnoozed(sessionId, isSnoozed)
       }
@@ -166,7 +168,7 @@ export function useStoreSync() {
   // CompactMessage mounts with an already-final assistant response after the panel
   // reveals it.
   useEffect(() => {
-    const unlisten = rendererHandlers.clearSessionTTSKeys.listen(
+    const unlisten = desktopTtsClient.onClearSessionTtsKeys(
       (sessionId: string) => {
         clearSessionTTSTracking(sessionId)
         markSessionForcedAutoPlay(sessionId)
@@ -177,7 +179,7 @@ export function useStoreSync() {
 
   // Listen for message queue updates
   useEffect(() => {
-    const unlisten = rendererHandlers.onMessageQueueUpdate.listen(
+    const unlisten = desktopMessageQueueClient.onMessageQueueUpdate(
       (data: { conversationId: string; queue: QueuedMessage[]; isPaused: boolean }) => {
         updateMessageQueue(data.conversationId, data.queue, data.isPaused)
       }
@@ -374,7 +376,7 @@ export function useStoreSync() {
   // Listen for conversation history changes from remote server (mobile sync)
   // This ensures the sidebar refreshes when conversations are created/updated remotely
   useEffect(() => {
-    const unlisten = rendererHandlers.conversationHistoryChanged.listen(() => {
+    const unlisten = desktopConversationsClient.onConversationHistoryChanged(() => {
       queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
       queryClient.invalidateQueries({ queryKey: ["conversation"] })
     })

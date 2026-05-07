@@ -4,7 +4,8 @@ import type {
   LoadedConversation,
 } from "@dotagents/shared/conversation-domain"
 import type { ToolCall, ToolResult } from "@dotagents/shared/types"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import type { RendererHandlers } from "@shared/renderer-handlers"
+import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 
 export interface DesktopLoadConversationRequest {
   conversationId: string
@@ -25,6 +26,10 @@ export interface DesktopAddMessageToConversationRequest {
 }
 
 export const desktopConversationsClient = {
+  onConversationHistoryChanged(listener: RendererHandlers["conversationHistoryChanged"]): () => void {
+    return rendererHandlers.conversationHistoryChanged.listen(listener)
+  },
+
   getConversationHistory(): Promise<ConversationHistoryItem[]> {
     return tipcClient.getConversationHistory() as Promise<ConversationHistoryItem[]>
   },

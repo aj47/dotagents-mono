@@ -23,6 +23,7 @@ const panelPageSource = readFileSync(new URL("../pages/panel.tsx", import.meta.u
 describe("desktop panel renderer client", () => {
   it("centralizes panel IPC channels", () => {
     expect(clientSource).toContain("rendererHandlers.onPanelSizeChanged.listen(listener)")
+    expect(clientSource).toContain("rendererHandlers.panelVisibilityChanged.listen(listener)")
     expect(clientSource).toContain("tipcClient.setPanelFocusable(request)")
     expect(clientSource).toContain("tipcClient.getFloatingPanelVisibility()")
     expect(clientSource).toContain("tipcClient.getPanelPosition()")
@@ -52,7 +53,9 @@ describe("desktop panel renderer client", () => {
   })
 
   it("keeps store sync off direct floating panel visibility IPC", () => {
+    expect(useStoreSyncSource).toContain("desktopPanelClient.onPanelVisibilityChanged(")
     expect(useStoreSyncSource).toContain("desktopPanelClient.getFloatingPanelVisibility()")
+    expect(useStoreSyncSource).not.toContain("rendererHandlers.panelVisibilityChanged")
     expect(useStoreSyncSource).not.toContain("tipcClient.getFloatingPanelVisibility(")
   })
 

@@ -6,9 +6,11 @@ const queriesSource = readFileSync(new URL("./queries.ts", import.meta.url), "ut
 const sessionsSource = readFileSync(new URL("../pages/sessions.tsx", import.meta.url), "utf8")
 const activeAgentsSidebarSource = readFileSync(new URL("../components/active-agents-sidebar.tsx", import.meta.url), "utf8")
 const agentProgressSource = readFileSync(new URL("../components/agent-progress.tsx", import.meta.url), "utf8")
+const useStoreSyncSource = readFileSync(new URL("../hooks/use-store-sync.ts", import.meta.url), "utf8")
 
 describe("desktop conversations renderer client", () => {
   it("centralizes conversation IPC channels", () => {
+    expect(clientSource).toContain("rendererHandlers.conversationHistoryChanged.listen(listener)")
     expect(clientSource).toContain("tipcClient.getConversationHistory()")
     expect(clientSource).toContain("tipcClient.loadConversation(request)")
     expect(clientSource).toContain("tipcClient.saveConversation({ conversation })")
@@ -27,6 +29,7 @@ describe("desktop conversations renderer client", () => {
       sessionsSource,
       activeAgentsSidebarSource,
       agentProgressSource,
+      useStoreSyncSource,
     ].join("\n")
 
     expect(queriesSource).toContain("desktopConversationsClient.getConversationHistory()")
@@ -40,7 +43,9 @@ describe("desktop conversations renderer client", () => {
     expect(activeAgentsSidebarSource).toContain("desktopConversationsClient.renameConversationTitle(conversationId, nextTitle)")
     expect(agentProgressSource).toContain("desktopConversationsClient.branchConversation(")
     expect(agentProgressSource).toContain("desktopConversationsClient.renameConversationTitle(conversationId, nextTitle)")
+    expect(useStoreSyncSource).toContain("desktopConversationsClient.onConversationHistoryChanged(")
 
+    expect(combinedSource).not.toContain("rendererHandlers.conversationHistoryChanged")
     expect(combinedSource).not.toContain("tipcClient.getConversationHistory(")
     expect(combinedSource).not.toContain("tipcClient.loadConversation(")
     expect(combinedSource).not.toContain("tipcClient.saveConversation(")

@@ -1,5 +1,6 @@
 import type { QueuedMessage } from "@dotagents/shared/message-queue-utils"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import type { RendererHandlers } from "@shared/renderer-handlers"
+import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 
 export interface DesktopMessageQueueSnapshot {
   conversationId: string
@@ -8,6 +9,10 @@ export interface DesktopMessageQueueSnapshot {
 }
 
 export const desktopMessageQueueClient = {
+  onMessageQueueUpdate(listener: RendererHandlers["onMessageQueueUpdate"]): () => void {
+    return rendererHandlers.onMessageQueueUpdate.listen(listener)
+  },
+
   getAllQueues(): Promise<DesktopMessageQueueSnapshot[]> {
     return tipcClient.getAllMessageQueues() as Promise<DesktopMessageQueueSnapshot[]>
   },

@@ -46,6 +46,30 @@ export const desktopAgentSessionsClient = {
     return rendererHandlers.agentSessionsUpdated.listen(listener)
   },
 
+  onAgentProgressUpdate(listener: RendererHandlers["agentProgressUpdate"]): () => void {
+    return rendererHandlers.agentProgressUpdate.listen(listener)
+  },
+
+  onClearAgentProgress(listener: RendererHandlers["clearAgentProgress"]): () => void {
+    return rendererHandlers.clearAgentProgress.listen(listener)
+  },
+
+  onClearAgentSessionProgress(listener: RendererHandlers["clearAgentSessionProgress"]): () => void {
+    return rendererHandlers.clearAgentSessionProgress.listen(listener)
+  },
+
+  onClearInactiveSessions(listener: RendererHandlers["clearInactiveSessions"]): () => void {
+    return rendererHandlers.clearInactiveSessions.listen(listener)
+  },
+
+  onFocusAgentSession(listener: RendererHandlers["focusAgentSession"]): () => void {
+    return rendererHandlers.focusAgentSession.listen(listener)
+  },
+
+  onSetAgentSessionSnoozed(listener: RendererHandlers["setAgentSessionSnoozed"]): () => void {
+    return rendererHandlers.setAgentSessionSnoozed.listen(listener)
+  },
+
   getAgentSessions(): Promise<DesktopAgentSessionsResponse> {
     return tipcClient.getAgentSessions() as Promise<DesktopAgentSessionsResponse>
   },
