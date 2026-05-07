@@ -11,9 +11,11 @@ import type {
   OnProgressCallback,
 } from '@dotagents/shared/agent-progress';
 import {
+  applyChatCompletionSseEventResult,
   buildChatCompletionRequestBody,
-  parseChatCompletionSseEvent,
+  processChatCompletionSseEvent,
   type ChatCompletionRequestBody,
+  type ProcessedChatCompletionSseEvent,
 } from '@dotagents/shared/chat-utils';
 import {
   ConnectionStatus,
@@ -371,45 +373,22 @@ export class OpenAIClient {
         recovery?.recordHeartbeat();
 
         const data = event.data;
-
-        for (const parsed of parseChatCompletionSseEvent(data)) {
-          if (parsed.type === 'done') {
-            console.log('[OpenAIClient] Received [DONE] signal');
-            continue;
-          }
-
-          if (parsed.type === 'progress') {
-            onProgress?.(parsed.update);
-            // Only call onToken as a fallback when onProgress is NOT provided
-            if (!onProgress && parsed.update.streamingContent?.text) {
-              onToken?.(parsed.update.streamingContent.text);
-            }
-            continue;
-          }
-
-          if (parsed.type === 'complete') {
-            console.log('[OpenAIClient] Received done event');
-            finalContent = parsed.content;
-            conversationId = parsed.conversationId;
-            conversationHistory = parsed.conversationHistory;
-            if (parsed.conversationHistory) {
-              console.log('[OpenAIClient] conversation_history received:', conversationHistory?.length || 0, 'messages');
-            } else {
-              console.log('[OpenAIClient] WARNING: No conversation_history in done event');
-            }
-            continue;
-          }
-
-          if (parsed.type === 'error') {
-            console.error('[OpenAIClient] Error event:', parsed.message);
-            recovery?.markDisconnected(parsed.message);
-            safeReject(new Error(parsed.message));
+        const result = this.processSSEEvent(data, onToken, onProgress);
+        if (result) {
+          if (result.error) {
+            recovery?.markDisconnected(result.error.message);
+            safeReject(result.error);
             return;
           }
-
-          if (parsed.type === 'token') {
-            onToken?.(parsed.token);
-            finalContent += parsed.token;
+          const nextState = applyChatCompletionSseEventResult(
+            { content: finalContent, conversationId, conversationHistory },
+            result,
+          );
+          finalContent = nextState.content;
+          conversationId = nextState.conversationId;
+          conversationHistory = nextState.conversationHistory;
+          if (result.conversationHistory !== undefined) {
+            console.log('[OpenAIClient] conversation_history received:', conversationHistory?.length || 0, 'messages');
           }
         }
       });
@@ -550,17 +529,13 @@ export class OpenAIClient {
               safeReject(result.error);
               return;
             }
-            if (result.content !== undefined) {
-              // Use !== undefined instead of truthy check for conversationHistory
-              // to correctly handle empty arrays (which should still replace finalContent)
-              if (result.conversationHistory !== undefined) {
-                finalContent = result.content;
-              } else {
-                finalContent += result.content;
-              }
-            }
-            if (result.conversationId) conversationId = result.conversationId;
-            if (result.conversationHistory !== undefined) conversationHistory = result.conversationHistory;
+            const nextState = applyChatCompletionSseEventResult(
+              { content: finalContent, conversationId, conversationHistory },
+              result,
+            );
+            finalContent = nextState.content;
+            conversationId = nextState.conversationId;
+            conversationHistory = nextState.conversationHistory;
           }
         }
       };
@@ -577,17 +552,13 @@ export class OpenAIClient {
               safeReject(result.error);
               return;
             }
-            if (result.content !== undefined) {
-              // Use !== undefined instead of truthy check for conversationHistory
-              // to correctly handle empty arrays (which should still replace finalContent)
-              if (result.conversationHistory !== undefined) {
-                finalContent = result.content;
-              } else {
-                finalContent += result.content;
-              }
-            }
-            if (result.conversationId) conversationId = result.conversationId;
-            if (result.conversationHistory !== undefined) conversationHistory = result.conversationHistory;
+            const nextState = applyChatCompletionSseEventResult(
+              { content: finalContent, conversationId, conversationHistory },
+              result,
+            );
+            finalContent = nextState.content;
+            conversationId = nextState.conversationId;
+            conversationHistory = nextState.conversationHistory;
           }
         }
 
@@ -702,16 +673,13 @@ export class OpenAIClient {
                   recovery?.markDisconnected(result.error.message);
                   throw result.error;
                 }
-                if (result.content !== undefined) {
-                  // Use !== undefined for conversationHistory to correctly handle empty arrays
-                  if (result.conversationHistory !== undefined) {
-                    finalContent = result.content;
-                  } else {
-                    finalContent += result.content;
-                  }
-                }
-                if (result.conversationId) conversationId = result.conversationId;
-                if (result.conversationHistory !== undefined) conversationHistory = result.conversationHistory;
+                const nextState = applyChatCompletionSseEventResult(
+                  { content: finalContent, conversationId, conversationHistory },
+                  result,
+                );
+                finalContent = nextState.content;
+                conversationId = nextState.conversationId;
+                conversationHistory = nextState.conversationHistory;
               }
             }
           }
@@ -730,16 +698,13 @@ export class OpenAIClient {
               recovery?.markDisconnected(result.error.message);
               throw result.error;
             }
-            if (result.content !== undefined) {
-              // Use !== undefined for conversationHistory to correctly handle empty arrays
-              if (result.conversationHistory !== undefined) {
-                finalContent = result.content;
-              } else {
-                finalContent += result.content;
-              }
-            }
-            if (result.conversationId) conversationId = result.conversationId;
-            if (result.conversationHistory !== undefined) conversationHistory = result.conversationHistory;
+            const nextState = applyChatCompletionSseEventResult(
+              { content: finalContent, conversationId, conversationHistory },
+              result,
+            );
+            finalContent = nextState.content;
+            conversationId = nextState.conversationId;
+            conversationHistory = nextState.conversationHistory;
           }
         }
       } else {
@@ -753,16 +718,13 @@ export class OpenAIClient {
               recovery?.markDisconnected(result.error.message);
               throw result.error;
             }
-            if (result.content !== undefined) {
-              // Use !== undefined for conversationHistory to correctly handle empty arrays
-              if (result.conversationHistory !== undefined) {
-                finalContent = result.content;
-              } else {
-                finalContent += result.content;
-              }
-            }
-            if (result.conversationId) conversationId = result.conversationId;
-            if (result.conversationHistory !== undefined) conversationHistory = result.conversationHistory;
+            const nextState = applyChatCompletionSseEventResult(
+              { content: finalContent, conversationId, conversationHistory },
+              result,
+            );
+            finalContent = nextState.content;
+            conversationId = nextState.conversationId;
+            conversationHistory = nextState.conversationHistory;
           }
         }
       }
@@ -785,45 +747,11 @@ export class OpenAIClient {
     event: string,
     onToken?: (token: string) => void,
     onProgress?: OnProgressCallback
-  ): { content?: string; conversationId?: string; conversationHistory?: ConversationHistoryMessage[]; error?: Error } | null {
-    if (!event.trim()) return null;
-
-    let result: { content?: string; conversationId?: string; conversationHistory?: ConversationHistoryMessage[]; error?: Error } | null = null;
-
-    for (const parsed of parseChatCompletionSseEvent(event)) {
-      if (parsed.type === 'done') continue;
-
-      if (parsed.type === 'progress') {
-        onProgress?.(parsed.update);
-        // Only call onToken as a fallback when onProgress is NOT provided.
-        // When onProgress IS provided, it already handles streaming content display
-        // via convertProgressToMessages(). Calling both causes duplicate state updates.
-        if (!onProgress && parsed.update.streamingContent?.text) {
-          onToken?.(parsed.update.streamingContent.text);
-        }
-        continue;
-      }
-
-      if (parsed.type === 'complete') {
-        result = {
-          content: parsed.content,
-          conversationId: parsed.conversationId,
-          conversationHistory: parsed.conversationHistory,
-        };
-        continue;
-      }
-
-      if (parsed.type === 'error') {
-        console.error('[OpenAIClient] Error event:', parsed.message);
-        // Return error in result so callers can handle it
-        return { error: new Error(parsed.message) };
-      }
-
-      if (parsed.type === 'token') {
-        onToken?.(parsed.token);
-        // Initialize result if null to avoid "Cannot spread null" error on first token
-        result = { ...(result || {}), content: (result?.content || '') + parsed.token };
-      }
+  ): (ProcessedChatCompletionSseEvent & { error?: Error }) | null {
+    const result = processChatCompletionSseEvent(event, { onToken, onProgress });
+    if (result?.errorMessage) {
+      console.error('[OpenAIClient] Error event:', result.errorMessage);
+      return { error: new Error(result.errorMessage) };
     }
 
     return result;

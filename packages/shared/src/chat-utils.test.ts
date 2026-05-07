@@ -53,6 +53,8 @@ import {
   getVisibleMessageContent,
   isToolOnlyMessage,
   normalizeServerSentEventOrigin,
+  processChatCompletionSseEvent,
+  applyChatCompletionSseEventResult,
   isInternalCompletionControlMessage,
   hasRawToolCallMarkerTokens,
   hasRawToolMarkerTokens,
@@ -1121,6 +1123,67 @@ describe('parseChatCompletionSseEvent', () => {
 
   it('ignores malformed or empty SSE lines', () => {
     expect(parseChatCompletionSseEvent('data: {not-json}\n\nevent: ping\n\n')).toEqual([])
+  })
+})
+
+describe('processChatCompletionSseEvent', () => {
+  it('fires progress callbacks and uses token fallback only without a progress callback', () => {
+    const onToken = vi.fn()
+    const onProgress = vi.fn()
+    const event = 'data: {"type":"progress","data":{"sessionId":"s1","currentStep":"thinking","isComplete":false,"streamingContent":{"text":"hi"}}}\n\n'
+
+    expect(processChatCompletionSseEvent(event, { onToken, onProgress })).toBeNull()
+    expect(onProgress).toHaveBeenCalledWith({
+      sessionId: 's1',
+      currentStep: 'thinking',
+      isComplete: false,
+      streamingContent: { text: 'hi' },
+    })
+    expect(onToken).not.toHaveBeenCalled()
+
+    processChatCompletionSseEvent(event, { onToken })
+    expect(onToken).toHaveBeenCalledWith('hi')
+  })
+
+  it('returns completion, error, and accumulated token payloads', () => {
+    expect(processChatCompletionSseEvent(
+      'data: {"type":"done","data":{"content":"Finished","conversation_id":"conv-1","conversation_history":[]}}\n\n',
+    )).toEqual({
+      content: 'Finished',
+      conversationId: 'conv-1',
+      conversationHistory: [],
+    })
+
+    expect(processChatCompletionSseEvent('data: {"type":"error","data":{"message":"Boom"}}\n\n')).toEqual({
+      errorMessage: 'Boom',
+    })
+
+    const onToken = vi.fn()
+    expect(processChatCompletionSseEvent([
+      'data: {"choices":[{"delta":{"content":"Hel"}}]}',
+      'data: {"choices":[{"delta":{"content":"lo"}}]}',
+    ].join('\n'), { onToken })).toEqual({ content: 'Hello' })
+    expect(onToken).toHaveBeenNthCalledWith(1, 'Hel')
+    expect(onToken).toHaveBeenNthCalledWith(2, 'lo')
+  })
+
+  it('applies processed SSE results to an accumulator', () => {
+    expect(applyChatCompletionSseEventResult(
+      { content: 'Hel' },
+      { content: 'lo' },
+    )).toEqual({ content: 'Hello' })
+
+    expect(applyChatCompletionSseEventResult(
+      { content: 'old', conversationId: 'conv-old' },
+      { content: 'Done', conversationId: 'conv-1', conversationHistory: [] },
+    )).toEqual({
+      content: 'Done',
+      conversationId: 'conv-1',
+      conversationHistory: [],
+    })
+
+    const state = { content: 'unchanged' }
+    expect(applyChatCompletionSseEventResult(state, { errorMessage: 'Boom' })).toBe(state)
   })
 })
 // ── Tool Preview ─────────────────────────────────────────────────────────────

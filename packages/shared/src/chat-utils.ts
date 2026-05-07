@@ -181,6 +181,24 @@ export type ParsedChatCompletionSseEvent =
   | { type: 'error'; message: string }
   | { type: 'token'; token: string };
 
+export type ChatCompletionSseEventCallbacks = {
+  onToken?: (token: string) => void;
+  onProgress?: (update: AgentProgressUpdate) => void;
+};
+
+export type ProcessedChatCompletionSseEvent = {
+  content?: string;
+  conversationId?: string;
+  conversationHistory?: ConversationHistoryMessage[];
+  errorMessage?: string;
+};
+
+export type ChatCompletionSseAccumulator = {
+  content: string;
+  conversationId?: string;
+  conversationHistory?: ConversationHistoryMessage[];
+};
+
 export type DotAgentsChatCompletionProgressSsePayload = {
   type: 'progress';
   data: AgentProgressUpdate;
@@ -1068,6 +1086,73 @@ export function parseChatCompletionSseEvent(event: string): ParsedChatCompletion
   }
 
   return parsedEvents;
+}
+
+export function processChatCompletionSseEvent(
+  event: string,
+  callbacks: ChatCompletionSseEventCallbacks = {},
+): ProcessedChatCompletionSseEvent | null {
+  if (!event.trim()) return null;
+
+  let result: ProcessedChatCompletionSseEvent | null = null;
+
+  for (const parsed of parseChatCompletionSseEvent(event)) {
+    if (parsed.type === 'done') continue;
+
+    if (parsed.type === 'progress') {
+      callbacks.onProgress?.(parsed.update);
+      if (!callbacks.onProgress && parsed.update.streamingContent?.text) {
+        callbacks.onToken?.(parsed.update.streamingContent.text);
+      }
+      continue;
+    }
+
+    if (parsed.type === 'complete') {
+      result = {
+        content: parsed.content,
+        conversationId: parsed.conversationId,
+        conversationHistory: parsed.conversationHistory,
+      };
+      continue;
+    }
+
+    if (parsed.type === 'error') {
+      return { errorMessage: parsed.message };
+    }
+
+    if (parsed.type === 'token') {
+      callbacks.onToken?.(parsed.token);
+      result = { ...(result || {}), content: `${result?.content || ''}${parsed.token}` };
+    }
+  }
+
+  return result;
+}
+
+export function applyChatCompletionSseEventResult(
+  state: ChatCompletionSseAccumulator,
+  result: ProcessedChatCompletionSseEvent | null,
+): ChatCompletionSseAccumulator {
+  if (!result || result.errorMessage) {
+    return state;
+  }
+
+  const nextState: ChatCompletionSseAccumulator = { ...state };
+
+  if (result.content !== undefined) {
+    nextState.content = result.conversationHistory !== undefined
+      ? result.content
+      : `${state.content}${result.content}`;
+  }
+
+  if (result.conversationId) {
+    nextState.conversationId = result.conversationId;
+  }
+  if (result.conversationHistory !== undefined) {
+    nextState.conversationHistory = result.conversationHistory;
+  }
+
+  return nextState;
 }
 
 /**
