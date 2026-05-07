@@ -18,6 +18,8 @@ import {
   buildBranchedServerConversation,
   buildNewServerConversation,
   buildServerConversationCompactionCheckpointMetadata,
+  buildServerConversationCompactionPrompt,
+  buildServerConversationCompactionSummaryInput,
   buildServerConversationHistoryItem,
   buildServerConversationTitle,
   estimateServerConversationCompactionTokensFromText,
@@ -1187,40 +1189,10 @@ export class ConversationService {
     logApp(`[conversationService] compactOnLoad: compacting ${messagesToSummarize.length} messages for ${conversation.id}`)
 
     // Build a summary of the older messages
-    const summaryInput = messagesToSummarize
-      .map((m) => {
-        const sanitizedContent = sanitizeMessageContentForDisplay(m.content || "")
-        let text = `${m.role}: ${sanitizedContent.substring(0, 500) || "(empty)"}`
-
-        // Include tool calls if present
-        if (m.toolCalls && m.toolCalls.length > 0) {
-          const toolCallsStr = m.toolCalls
-            .map((tc) => {
-              const argsStr = JSON.stringify(tc.arguments).substring(0, 200)
-              return `${tc.name}(${argsStr})`
-            })
-            .join(", ")
-          text += `\nTool calls: ${toolCallsStr}`
-        }
-
-        // Include tool results if present
-        if (m.toolResults && m.toolResults.length > 0) {
-          const toolResultsStr = m.toolResults
-            .map((tr) => {
-              const status = tr.success ? "success" : "error"
-              const content = (tr.error || tr.content || "").substring(0, 200)
-              return `${status}: ${content}`
-            })
-            .join(", ")
-          text += `\nTool results: ${toolResultsStr}`
-        }
-
-        return text
-      })
-      .join("\n\n")
+    const summaryInput = buildServerConversationCompactionSummaryInput(messagesToSummarize)
 
     let summaryContent: string
-    const summarizationPrompt = `Summarize this conversation history concisely, preserving key facts, decisions, and context:\n\n${summaryInput}`
+    const summarizationPrompt = buildServerConversationCompactionPrompt(summaryInput)
     try {
       summaryContent = await summarizeContent(summarizationPrompt, sessionId)
       // summarizeContent() swallows errors internally and returns the input text on failure.

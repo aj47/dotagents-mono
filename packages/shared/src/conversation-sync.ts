@@ -211,6 +211,12 @@ export interface BuildServerConversationCompactionCheckpointMetadataOptions {
   maxExtractedFacts?: number;
 }
 
+export interface BuildServerConversationCompactionSummaryInputOptions {
+  maxContentChars?: number;
+  maxToolArgumentChars?: number;
+  maxToolResultChars?: number;
+}
+
 export type LimitedServerConversationRecord<TConversation extends ServerConversationRecord<any>> = TConversation & {
   messageOffset?: number;
   totalMessageCount?: number;
@@ -464,6 +470,49 @@ export function hasPersistedServerConversationCompactionCheckpoint(
       compaction.summarizedRange
     )
   );
+}
+
+export function buildServerConversationCompactionSummaryInput(
+  messages: ServerConversationRecordMessage[],
+  options: BuildServerConversationCompactionSummaryInputOptions = {},
+): string {
+  const maxContentChars = options.maxContentChars ?? 500;
+  const maxToolArgumentChars = options.maxToolArgumentChars ?? 200;
+  const maxToolResultChars = options.maxToolResultChars ?? 200;
+
+  return messages
+    .map((message) => {
+      const sanitizedContent = sanitizeMessageContentForDisplay(message.content || '');
+      let text = `${message.role}: ${sanitizedContent.substring(0, maxContentChars) || '(empty)'}`;
+
+      if (message.toolCalls && message.toolCalls.length > 0) {
+        const toolCallsText = message.toolCalls
+          .map((toolCall) => {
+            const argsText = JSON.stringify(toolCall.arguments).substring(0, maxToolArgumentChars);
+            return `${toolCall.name}(${argsText})`;
+          })
+          .join(', ');
+        text += `\nTool calls: ${toolCallsText}`;
+      }
+
+      if (message.toolResults && message.toolResults.length > 0) {
+        const toolResultsText = message.toolResults
+          .map((toolResult) => {
+            const status = toolResult.success ? 'success' : 'error';
+            const content = (toolResult.error || toolResult.content || '').substring(0, maxToolResultChars);
+            return `${status}: ${content}`;
+          })
+          .join(', ');
+        text += `\nTool results: ${toolResultsText}`;
+      }
+
+      return text;
+    })
+    .join('\n\n');
+}
+
+export function buildServerConversationCompactionPrompt(summaryInput: string): string {
+  return `Summarize this conversation history concisely, preserving key facts, decisions, and context:\n\n${summaryInput}`;
 }
 
 export function buildServerConversationCompactionCheckpointMetadata(

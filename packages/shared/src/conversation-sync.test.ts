@@ -7,6 +7,8 @@ import {
   buildNewServerConversation,
   buildBranchedServerConversation,
   buildServerConversationCompactionCheckpointMetadata,
+  buildServerConversationCompactionPrompt,
+  buildServerConversationCompactionSummaryInput,
   buildServerConversationHistoryItem,
   buildNewServerConversationFromUpdateRequest,
   buildServerConversationTitle,
@@ -457,6 +459,40 @@ describe('server conversation API helpers', () => {
     expect(metadata.firstKeptMessageIndex).toBeUndefined();
     expect(metadata.summarizedRange).toMatchObject({ startIndex: 0, endIndex: 2 });
     expect(hasPersistedServerConversationCompactionCheckpoint(metadata)).toBe(true);
+  });
+
+  it('builds portable compaction summary input and prompt text', () => {
+    const summaryInput = buildServerConversationCompactionSummaryInput([
+      {
+        id: 'm1',
+        role: 'user',
+        content: 'Use <secret> tags\n\nand keep only the first words'.repeat(20),
+        timestamp: 1,
+      },
+      {
+        id: 'm2',
+        role: 'assistant',
+        content: '',
+        timestamp: 2,
+        toolCalls: [{ name: 'repoSearch', arguments: { query: 'dotagents conversation compaction' } }],
+        toolResults: [
+          { success: true, content: 'Found packages/shared/src/conversation-sync.ts' },
+          { success: false, content: '', error: 'Search timed out while querying the provider' },
+        ],
+      },
+    ], {
+      maxContentChars: 28,
+      maxToolArgumentChars: 32,
+      maxToolResultChars: 24,
+    });
+
+    expect(summaryInput).toContain('user: Use <secret> tags\n\nand keep ');
+    expect(summaryInput).toContain('assistant: (empty)');
+    expect(summaryInput).toContain('Tool calls: repoSearch({"query":"dotagents conversation)');
+    expect(summaryInput).toContain('Tool results: success: Found packages/shared/sr, error: Search timed out while q');
+    expect(buildServerConversationCompactionPrompt(summaryInput)).toBe(
+      `Summarize this conversation history concisely, preserving key facts, decisions, and context:\n\n${summaryInput}`,
+    );
   });
 
   it('limits loaded conversation messages without returning raw history payloads', () => {
