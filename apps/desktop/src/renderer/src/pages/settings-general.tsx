@@ -63,8 +63,8 @@ import {
   useSaveConfigMutation,
 } from "@renderer/lib/queries"
 import { ttsManager } from "@renderer/lib/tts-manager"
-import { tipcClient } from "@renderer/lib/tipc-client"
 import { desktopAgentsFolderClient } from "@renderer/lib/desktop-agents-folder-client"
+import { desktopSettingsGeneralClient } from "@renderer/lib/desktop-settings-general-client"
 import { ExternalLink, FolderOpen, FolderUp, FileText, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -131,7 +131,7 @@ export function Component() {
   const langfuseInstalledQuery = useQuery({
     queryKey: ["langfuseInstalled"],
     queryFn: async () => {
-      return tipcClient.isLangfuseInstalled()
+      return desktopSettingsGeneralClient.isLangfuseInstalled()
     },
     staleTime: Infinity, // Only check once per session
   })
@@ -147,7 +147,7 @@ export function Component() {
   const externalAgentsQuery = useQuery({
     queryKey: ["externalAgents"],
     queryFn: async () => {
-      return tipcClient.getExternalAgents()
+      return desktopSettingsGeneralClient.getExternalAgents()
     },
     staleTime: 30_000,
   })
@@ -208,8 +208,7 @@ export function Component() {
 
   const showFloatingPanelNow = useCallback(async () => {
     try {
-      await tipcClient.resizePanelToNormal({})
-      await tipcClient.showPanelWindow({})
+      await desktopSettingsGeneralClient.showFloatingPanel()
       toast.success("Floating panel shown")
     } catch (error) {
       console.error("Failed to show floating panel:", error)
@@ -219,7 +218,7 @@ export function Component() {
 
   const resetFloatingPanel = useCallback(async () => {
     try {
-      const result = await tipcClient.resetFloatingPanel({})
+      const result = await desktopSettingsGeneralClient.resetFloatingPanel()
       if (result && "success" in result && result.success === false) {
         toast.error("Failed to reset floating panel")
         return
@@ -1172,7 +1171,7 @@ export function Component() {
                 if (!value) {
                   ttsManager.stopAll("settings-global-tts-disabled")
                   try {
-                    await tipcClient.stopAllTts()
+                    await desktopSettingsGeneralClient.stopAllTts()
                   } catch (error) {
                     console.error("Failed to stop TTS in all windows:", error)
                   }
@@ -1284,7 +1283,7 @@ export function Component() {
                   panelPosition: value,
                 })
                 // Update panel position immediately if it's visible
-                tipcClient.setPanelPosition({ position: value })
+                desktopSettingsGeneralClient.setPanelPosition(value)
               }}
             >
               <SelectTrigger className="w-full sm:w-[180px]">
