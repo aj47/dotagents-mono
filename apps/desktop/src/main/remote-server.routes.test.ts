@@ -168,10 +168,26 @@ function getOperatorRouteDesktopActionsSource(): string {
   return readFileSync(operatorRouteDesktopActionsPath, "utf8")
 }
 
-function getMobileApiRoutesSource(): string {
+function getMobileApiRoutesFacadeSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const mobileApiRoutesPath = path.join(testDir, "mobile-api-routes.ts")
   return readFileSync(mobileApiRoutesPath, "utf8")
+}
+
+function getSharedMobileApiRoutesSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedMobileApiRoutesPath = path.join(
+    testDir,
+    "../../../../packages/shared/src/remote-server-mobile-api-routes.ts",
+  )
+  return readFileSync(sharedMobileApiRoutesPath, "utf8")
+}
+
+function getMobileApiRoutesSource(): string {
+  return [
+    getMobileApiRoutesFacadeSource(),
+    getSharedMobileApiRoutesSource(),
+  ].join("\n")
 }
 
 function getMobileApiDesktopActionsSource(): string {
@@ -490,7 +506,9 @@ describe("remote-server route registration", () => {
     const operatorRouteDesktopActionsSource = getOperatorRouteDesktopActionsSource()
     const injectedMcpRoutesSource = getInjectedMcpRoutesSource()
     const sharedInjectedMcpRoutesSource = getSharedInjectedMcpRoutesSource()
+    const mobileApiRoutesFacadeSource = getMobileApiRoutesFacadeSource()
     const mobileApiRoutesSource = getMobileApiRoutesSource()
+    const sharedMobileApiRoutesSource = getSharedMobileApiRoutesSource()
     const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedRouteContractsSource = getSharedRemoteServerRouteContractsSource()
     const sharedControllerContractsSource = getSharedRemoteServerControllerContractsSource()
@@ -618,19 +636,31 @@ describe("remote-server route registration", () => {
     expect(routeBundleSource).toContain("handleInjectedMcpProtocolRequest")
     expect(routeBundleSource).toContain("listInjectedMcpTools")
     expect(routeBundleSource).toContain("callInjectedMcpTool")
-    expect(mobileApiRoutesSource).not.toContain('from "./model-actions"')
-    expect(mobileApiRoutesSource).not.toContain('from "./conversation-actions"')
-    expect(mobileApiRoutesSource).not.toContain('from "./settings-actions"')
-    expect(mobileApiRoutesSource).not.toContain('from "./operator-audit-actions"')
-    expect(mobileApiRoutesSource).toContain('from "@dotagents/shared/remote-server-route-contracts"')
-    expect(mobileApiRoutesSource).toContain(
+    expect(mobileApiRoutesFacadeSource).not.toContain('from "./model-actions"')
+    expect(mobileApiRoutesFacadeSource).not.toContain('from "./conversation-actions"')
+    expect(mobileApiRoutesFacadeSource).not.toContain('from "./settings-actions"')
+    expect(mobileApiRoutesFacadeSource).not.toContain('from "./operator-audit-actions"')
+    expect(mobileApiRoutesFacadeSource).toContain('from "@dotagents/shared/remote-server-mobile-api-routes"')
+    expect(mobileApiRoutesFacadeSource).toContain(
+      "registerMobileApiRoutes as registerSharedMobileApiRoutes",
+    )
+    expect(mobileApiRoutesFacadeSource).toContain(
       "export type MobileApiRouteActions = SharedMobileApiRouteActions<FastifyRequest, FastifyReply>",
     )
-    expect(mobileApiRoutesSource).toContain(
+    expect(mobileApiRoutesFacadeSource).toContain(
       "export type RegisterMobileApiRoutesOptions = SharedMobileApiRouteOptions<FastifyRequest, FastifyReply>",
     )
-    expect(mobileApiRoutesSource).not.toContain("export interface MobileApiRouteActions")
-    expect(mobileApiRoutesSource).not.toContain("export interface RegisterMobileApiRoutesOptions")
+    expect(mobileApiRoutesFacadeSource).not.toContain("export interface MobileApiRouteActions")
+    expect(mobileApiRoutesFacadeSource).not.toContain("export interface RegisterMobileApiRoutesOptions")
+    expect(sharedMobileApiRoutesSource).toContain("from './remote-server-route-contracts'")
+    expect(sharedMobileApiRoutesSource).toContain("export interface RemoteServerMobileApiRouteServer")
+    expect(sharedMobileApiRoutesSource).toContain("fastify.post(API_ROUTES.chatCompletions")
+    expect(sharedMobileApiRoutesSource).toContain("fastify.get(API_ROUTES.models")
+    expect(sharedMobileApiRoutesSource).toContain("fastify.patch(API_ROUTES.settings")
+    expect(sharedMobileApiRoutesSource).toContain("fastify.put(API_ROUTES.conversation")
+    expect(sharedMobileApiRoutesSource).toContain("fastify.delete(API_ROUTES.loop")
+    expect(sharedMobileApiRoutesSource).not.toContain("Fastify")
+    expect(sharedMobileApiRoutesSource).not.toContain("Electron")
     expect(mobileApiDesktopActionsSource).toContain("export const mobileApiDesktopActions")
     expect(mobileApiDesktopActionsSource).toContain("handleChatCompletionRequest")
     expect(mobileApiDesktopActionsSource).toContain("getModels")

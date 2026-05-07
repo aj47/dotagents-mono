@@ -366,6 +366,11 @@
       "import": "./dist/remote-server-injected-mcp-routes.mjs",
       "require": "./dist/remote-server-injected-mcp-routes.js"
     },
+    "./remote-server-mobile-api-routes": {
+      "types": "./dist/remote-server-mobile-api-routes.d.ts",
+      "import": "./dist/remote-server-mobile-api-routes.mjs",
+      "require": "./dist/remote-server-mobile-api-routes.js"
+    },
     "./remote-server-api": {
       "types": "./dist/remote-server-api.d.ts",
       "import": "./dist/remote-server-api.mjs",
