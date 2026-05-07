@@ -10,6 +10,7 @@ import {
   buildOperatorActionAuditContext,
   buildOperatorAgentSessionClearResponse,
   buildOperatorAgentSessionsClearInactiveResponse,
+  buildOperatorAgentSessionsSnoozeAndHidePanelResponse,
   buildOperatorAgentSessionShowResponse,
   buildOperatorAgentSessionStopResponse,
   buildOperatorAgentSessionSnoozedResponse,
@@ -155,6 +156,7 @@ import {
   openOperatorReleasesPageAction,
   openOperatorUpdateAssetAction,
   pauseOperatorMessageQueueAction,
+  parseOperatorAgentSessionsSnoozeAndHidePanelRequestBody,
   OPERATOR_AUDIT_DEVICE_HEADER_KEYS,
   parseOperatorJsonRecord,
   parseOperatorAuditLogEntries,
@@ -178,6 +180,7 @@ import {
   showOperatorMainWindowAction,
   showOperatorPanelWindowAction,
   showOperatorAgentSessionAction,
+  snoozeOperatorAgentSessionsAndHidePanelAction,
   stopOperatorTtsPlaybackAction,
   stopOperatorAgentSessionAction,
   SENSITIVE_OPERATOR_SETTINGS_KEYS,
@@ -217,6 +220,18 @@ describe("operator action API helpers", () => {
       statusCode: 400,
       error: "Missing prompt",
     })
+
+    expect(parseOperatorAgentSessionsSnoozeAndHidePanelRequestBody({
+      sessionIds: [" session-1 ", "session-1", "session-2", ""],
+    })).toEqual({
+      ok: true,
+      request: { sessionIds: ["session-1", "session-2"] },
+    })
+    expect(parseOperatorAgentSessionsSnoozeAndHidePanelRequestBody({ sessionIds: "session-1" })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "Invalid session IDs",
+    })
   })
 
   it("builds run-agent responses", () => {
@@ -252,6 +267,10 @@ describe("operator action API helpers", () => {
         calls.push("clear-inactive")
         return { clearedCount: 2 }
       },
+      snoozeAgentSessionsAndHidePanel: (sessionIds) => {
+        calls.push(`snooze-hide:${sessionIds?.join(",") ?? "all"}`)
+        return { sessionIds: sessionIds ?? ["session-1"] }
+      },
       clearAgentSessionProgress: (sessionId) => {
         calls.push(`clear:${sessionId}`)
         return { sessionId, removed: true }
@@ -270,8 +289,18 @@ describe("operator action API helpers", () => {
       isSnoozed: true,
     })
     expect(service.clearInactiveAgentSessions()).toEqual({ clearedCount: 2 })
+    expect(service.snoozeAgentSessionsAndHidePanel(["session-1", "session-2"])).toEqual({
+      sessionIds: ["session-1", "session-2"],
+    })
     expect(service.clearAgentSessionProgress("session-1")).toEqual({ sessionId: "session-1", removed: true })
-    expect(calls).toEqual(["stop:session-1", "show:session-1", "snooze:session-1", "clear-inactive", "clear:session-1"])
+    expect(calls).toEqual([
+      "stop:session-1",
+      "show:session-1",
+      "snooze:session-1",
+      "clear-inactive",
+      "snooze-hide:session-1,session-2",
+      "clear:session-1",
+    ])
   })
 
   it("runs TTS playback route actions through a shared service adapter", () => {
@@ -445,6 +474,10 @@ describe("operator action API helpers", () => {
           calls.push("clear-inactive")
           return { clearedCount: 3 }
         },
+        snoozeAgentSessionsAndHidePanel: (sessionIds) => {
+          calls.push(`snooze-hide:${sessionIds?.join(",") ?? "all"}`)
+          return { sessionIds: sessionIds ?? ["session-1"] }
+        },
         clearAgentSessionProgress: (sessionId) => {
           calls.push(`clear:${sessionId}`)
           return { sessionId, removed: true }
@@ -598,6 +631,34 @@ describe("operator action API helpers", () => {
         success: true,
       },
     })
+    expect(snoozeOperatorAgentSessionsAndHidePanelAction({ sessionIds: [" session-1 "] }, options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "agent-sessions-snooze-hide-panel",
+        details: {
+          sessionIds: ["session-1"],
+          snoozedCount: 1,
+        },
+      },
+      auditContext: {
+        action: "agent-sessions-snooze-hide-panel",
+        success: true,
+      },
+    })
+    expect(snoozeOperatorAgentSessionsAndHidePanelAction({ sessionIds: [1] }, options)).toMatchObject({
+      statusCode: 400,
+      body: {
+        success: false,
+        action: "agent-sessions-snooze-hide-panel",
+        error: "Invalid session IDs",
+      },
+      auditContext: {
+        action: "agent-sessions-snooze-hide-panel",
+        success: false,
+        failureReason: "Invalid session IDs",
+      },
+    })
     expect(clearOperatorAgentSessionAction(" session-1 ", options)).toMatchObject({
       statusCode: 200,
       body: {
@@ -664,6 +725,13 @@ describe("operator action API helpers", () => {
         action: "agent-sessions-clear-inactive",
       },
     })
+    expect(routeActions.snoozeOperatorAgentSessionsAndHidePanel({ sessionIds: ["session-1"] })).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "agent-sessions-snooze-hide-panel",
+      },
+    })
     expect(routeActions.clearOperatorAgentSession("session-1")).toMatchObject({
       statusCode: 200,
       body: {
@@ -679,6 +747,7 @@ describe("operator action API helpers", () => {
         stopAgentSessionById: async () => { throw new Error("missing session") },
         setAgentSessionSnoozed: () => { throw new Error("missing session") },
         clearInactiveAgentSessions: () => { throw new Error("missing session") },
+        snoozeAgentSessionsAndHidePanel: () => { throw new Error("missing session") },
         clearAgentSessionProgress: () => { throw new Error("missing session") },
       },
     }
@@ -708,6 +777,19 @@ describe("operator action API helpers", () => {
         failureReason: "Failed to clear inactive agent sessions: missing session",
       },
     })
+    expect(snoozeOperatorAgentSessionsAndHidePanelAction(undefined, failingStopOptions)).toMatchObject({
+      statusCode: 500,
+      body: {
+        success: false,
+        action: "agent-sessions-snooze-hide-panel",
+        error: "Failed to hide active agent sessions: missing session",
+      },
+      auditContext: {
+        action: "agent-sessions-snooze-hide-panel",
+        success: false,
+        failureReason: "Failed to hide active agent sessions: missing session",
+      },
+    })
     expect(clearOperatorAgentSessionAction("session-404", failingStopOptions)).toMatchObject({
       statusCode: 500,
       body: {
@@ -730,9 +812,11 @@ describe("operator action API helpers", () => {
       "snooze:session-1",
       "unsnooze:session-1",
       "clear-inactive",
+      "snooze-hide:session-1",
       "clear:session-1",
       "error:Failed to stop agent session session-404: missing session",
       "error:Failed to clear inactive agent sessions: missing session",
+      "error:Failed to hide active agent sessions: missing session",
       "error:Failed to clear agent session session-404: missing session",
     ]))
   })
@@ -2959,6 +3043,16 @@ describe("operator action API helpers", () => {
       message: "Cleared 2 inactive agent sessions",
       details: {
         clearedCount: 2,
+      },
+    })
+
+    expect(buildOperatorAgentSessionsSnoozeAndHidePanelResponse(["session-1"])).toEqual({
+      success: true,
+      action: "agent-sessions-snooze-hide-panel",
+      message: "Hid 1 active agent session",
+      details: {
+        sessionIds: ["session-1"],
+        snoozedCount: 1,
       },
     })
 

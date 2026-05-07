@@ -166,6 +166,7 @@ describe('remote server operator routes', () => {
       unsnoozeOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-unsnooze' } })),
       clearOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-clear' } })),
       clearInactiveOperatorAgentSessions: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-sessions-clear-inactive' } })),
+      snoozeOperatorAgentSessionsAndHidePanel: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-sessions-snooze-hide-panel' } })),
       getOperatorMcpServerLogs: vi.fn(() => ({ statusCode: 200, body: { logs: [] } })),
       setOperatorAuditContext: vi.fn(),
     };
@@ -314,6 +315,13 @@ describe('remote server operator routes', () => {
       createReply(),
     );
     expect(actions.clearInactiveOperatorAgentSessions).toHaveBeenCalledWith();
+
+    const snoozeAndHideBody = { sessionIds: ['session-1', 'session-2'] };
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionsSnoozeAndHidePanel}`)!(
+      createRequest({ body: snoozeAndHideBody }),
+      createReply(),
+    );
+    expect(actions.snoozeOperatorAgentSessionsAndHidePanel).toHaveBeenCalledWith(snoozeAndHideBody);
 
     await routes.get(`GET ${REMOTE_SERVER_API_ROUTE_PATHS.operatorMcpServerLogs}`)!(
       createRequest({

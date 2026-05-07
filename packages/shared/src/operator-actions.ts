@@ -119,6 +119,10 @@ export type OperatorDiagnosticReportSaveRequest = {
   filePath?: string
 }
 
+export type OperatorAgentSessionsSnoozeAndHidePanelRequest = {
+  sessionIds?: string[]
+}
+
 export type OperatorQueuedMessageUpdateRequest = {
   text: string
 }
@@ -663,6 +667,9 @@ export interface OperatorAgentActionService {
   clearInactiveAgentSessions(): {
     clearedCount?: number
   }
+  snoozeAgentSessionsAndHidePanel(sessionIds?: string[]): {
+    sessionIds: string[]
+  }
   clearAgentSessionProgress(sessionId: string): {
     sessionId: string
     removed?: boolean
@@ -684,6 +691,9 @@ export interface OperatorAgentActionServiceOptions {
   clearInactiveAgentSessions(): {
     clearedCount?: number
   }
+  snoozeAgentSessionsAndHidePanel(sessionIds?: string[]): {
+    sessionIds: string[]
+  }
   clearAgentSessionProgress(sessionId: string): {
     sessionId: string
     removed?: boolean
@@ -698,6 +708,7 @@ export function createOperatorAgentActionService(
     stopAgentSessionById: (sessionId) => options.stopAgentSessionById(sessionId),
     setAgentSessionSnoozed: (sessionId, isSnoozed) => options.setAgentSessionSnoozed(sessionId, isSnoozed),
     clearInactiveAgentSessions: () => options.clearInactiveAgentSessions(),
+    snoozeAgentSessionsAndHidePanel: (sessionIds) => options.snoozeAgentSessionsAndHidePanel(sessionIds),
     clearAgentSessionProgress: (sessionId) => options.clearAgentSessionProgress(sessionId),
   }
 }
@@ -714,6 +725,7 @@ export interface OperatorAgentRouteActions {
   snoozeOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
   unsnoozeOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
   clearInactiveOperatorAgentSessions(): OperatorAgentActionResult
+  snoozeOperatorAgentSessionsAndHidePanel(body: unknown): OperatorAgentActionResult
   clearOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
 }
 
@@ -1582,6 +1594,37 @@ export function parseOperatorRunAgentRequestBody(body: unknown): OperatorActionP
       prompt,
       conversationId: typeof requestBody.conversationId === "string" ? requestBody.conversationId : undefined,
       profileId: typeof requestBody.profileId === "string" ? requestBody.profileId : undefined,
+    },
+  }
+}
+
+export function parseOperatorAgentSessionsSnoozeAndHidePanelRequestBody(
+  body: unknown,
+): OperatorActionParseResult<OperatorAgentSessionsSnoozeAndHidePanelRequest> {
+  const requestBody = getRequestRecord(body)
+  const rawSessionIds = requestBody.sessionIds
+  if (rawSessionIds === undefined) {
+    return { ok: true, request: {} }
+  }
+  if (!Array.isArray(rawSessionIds)) {
+    return { ok: false, statusCode: 400, error: "Invalid session IDs" }
+  }
+
+  const sessionIds: string[] = []
+  for (const value of rawSessionIds) {
+    if (typeof value !== "string") {
+      return { ok: false, statusCode: 400, error: "Invalid session IDs" }
+    }
+    const sessionId = value.trim()
+    if (sessionId) {
+      sessionIds.push(sessionId)
+    }
+  }
+
+  return {
+    ok: true,
+    request: {
+      sessionIds: sessionIds.length > 0 ? Array.from(new Set(sessionIds)) : undefined,
     },
   }
 }
@@ -2509,6 +2552,22 @@ export function buildOperatorAgentSessionsClearInactiveResponse(
   }
 }
 
+export function buildOperatorAgentSessionsSnoozeAndHidePanelResponse(
+  sessionIds: string[],
+): OperatorActionResponse {
+  return {
+    success: true,
+    action: "agent-sessions-snooze-hide-panel",
+    message: sessionIds.length === 1
+      ? "Hid 1 active agent session"
+      : `Hid ${sessionIds.length} active agent sessions`,
+    details: {
+      sessionIds,
+      snoozedCount: sessionIds.length,
+    },
+  }
+}
+
 export function buildOperatorAgentSessionClearResponse(
   sessionId: string,
   removed?: boolean,
@@ -2787,6 +2846,35 @@ export function clearInactiveOperatorAgentSessionsAction(
   }
 }
 
+export function snoozeOperatorAgentSessionsAndHidePanelAction(
+  body: unknown,
+  options: OperatorAgentActionOptions,
+): OperatorAgentActionResult {
+  const parsed = parseOperatorAgentSessionsSnoozeAndHidePanelRequestBody(body)
+  if (!parsed.ok) {
+    const response = buildOperatorActionErrorResponse("agent-sessions-snooze-hide-panel", parsed.error)
+    return operatorAgentActionResult(parsed.statusCode, response, buildOperatorActionAuditContext(response))
+  }
+
+  try {
+    const result = options.service.snoozeAgentSessionsAndHidePanel(parsed.request.sessionIds)
+    const response = buildOperatorAgentSessionsSnoozeAndHidePanelResponse(result.sessionIds)
+    return operatorAgentActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    const response = buildOperatorActionErrorResponse(
+      "agent-sessions-snooze-hide-panel",
+      `Failed to hide active agent sessions: ${errorMessage}`,
+    )
+    options.diagnostics.logError(
+      "operator-agent-actions",
+      `Failed to hide active agent sessions: ${errorMessage}`,
+      caughtError,
+    )
+    return operatorAgentActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
 export function clearOperatorAgentSessionAction(
   sessionIdParam: string | undefined,
   options: OperatorAgentActionOptions,
@@ -2828,6 +2916,7 @@ export function createOperatorAgentRouteActions(
     unsnoozeOperatorAgentSession: (sessionIdParam) =>
       setOperatorAgentSessionSnoozedAction(sessionIdParam, false, options),
     clearInactiveOperatorAgentSessions: () => clearInactiveOperatorAgentSessionsAction(options),
+    snoozeOperatorAgentSessionsAndHidePanel: (body) => snoozeOperatorAgentSessionsAndHidePanelAction(body, options),
     clearOperatorAgentSession: (sessionIdParam) => clearOperatorAgentSessionAction(sessionIdParam, options),
   }
 }

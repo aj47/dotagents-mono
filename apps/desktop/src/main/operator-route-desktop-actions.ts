@@ -90,7 +90,10 @@ import { configStore } from "./config"
 import { conversationService } from "./conversation-service"
 import { diagnosticsService } from "./diagnostics"
 import { discordService } from "./discord-service"
-import { setTrackedAgentSessionSnoozed } from "./floating-panel-session-state"
+import {
+  setTrackedAgentSessionSnoozed,
+  snoozeAgentSessionsAndHidePanelWindow,
+} from "./floating-panel-session-state"
 import {
   pauseMessageQueueByConversationId,
   removeQueuedMessageById,
@@ -212,6 +215,9 @@ const agentActionOptions: OperatorAgentActionOptions = {
       }
       return { clearedCount }
     },
+    snoozeAgentSessionsAndHidePanel: (sessionIds) => ({
+      sessionIds: snoozeAgentSessionsAndHidePanelWindow(sessionIds),
+    }),
     clearAgentSessionProgress: (sessionId) => {
       clearSessionUserResponse(sessionId)
       const removed = agentSessionTracker.removeCompletedSession(sessionId)

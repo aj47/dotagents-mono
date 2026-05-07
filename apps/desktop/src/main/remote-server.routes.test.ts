@@ -2276,6 +2276,7 @@ describe("remote-server route registration", () => {
     expectRegisteredApiRoute(source, "POST", "operatorAgentSessionUnsnooze")
     expectRegisteredApiRoute(source, "POST", "operatorAgentSessionClear")
     expectRegisteredApiRoute(source, "POST", "operatorAgentSessionsClearInactive")
+    expectRegisteredApiRoute(source, "POST", "operatorAgentSessionsSnoozeAndHidePanel")
     const agentSessionActionsSource = getAgentSessionActionsSource()
     expect(operatorRoutesSource).toContain("actions.stopOperatorAgentSession(params.sessionId)")
     expect(operatorRoutesSource).toContain("actions.showOperatorAgentSession(params.sessionId)")
@@ -2283,6 +2284,7 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.unsnoozeOperatorAgentSession(params.sessionId)")
     expect(operatorRoutesSource).toContain("actions.clearOperatorAgentSession(params.sessionId)")
     expect(operatorRoutesSource).toContain("actions.clearInactiveOperatorAgentSessions()")
+    expect(operatorRoutesSource).toContain("actions.snoozeOperatorAgentSessionsAndHidePanel(req.body)")
     expect(operatorRouteDesktopActionsSource).toContain("stopAgentSessionById")
     expect(operatorRouteDesktopActionsSource).toContain("showAgentSession: (sessionId) =>")
     expect(operatorRouteDesktopActionsSource).toContain('getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)')
@@ -2292,6 +2294,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain("clearInactiveAgentSessions: () =>")
     expect(operatorRouteDesktopActionsSource).toContain("agentSessionTracker.clearCompletedSessions(shouldClear)")
     expect(operatorRouteDesktopActionsSource).toContain("getWindowRendererHandlers(id)?.clearInactiveSessions?.send()")
+    expect(operatorRouteDesktopActionsSource).toContain("snoozeAgentSessionsAndHidePanelWindow(sessionIds)")
     expect(operatorRouteDesktopActionsSource).toContain("clearAgentSessionProgress: (sessionId) =>")
     expect(operatorRouteDesktopActionsSource).toContain("clearSessionUserResponse(sessionId)")
     expect(operatorRouteDesktopActionsSource).toContain("agentSessionTracker.removeCompletedSession(sessionId)")
@@ -2316,17 +2319,22 @@ describe("remote-server route registration", () => {
       "clearInactiveOperatorAgentSessions: () => clearInactiveOperatorAgentSessionsAction(options)",
     )
     expect(sharedOperatorActionsSource).toContain(
+      "snoozeOperatorAgentSessionsAndHidePanel: (body) => snoozeOperatorAgentSessionsAndHidePanelAction(body, options)",
+    )
+    expect(sharedOperatorActionsSource).toContain(
       "clearOperatorAgentSession: (sessionIdParam) => clearOperatorAgentSessionAction(sessionIdParam, options)",
     )
     expect(sharedOperatorActionsSource).toContain("export async function stopOperatorAgentSessionAction(")
     expect(sharedOperatorActionsSource).toContain("export function showOperatorAgentSessionAction(")
     expect(sharedOperatorActionsSource).toContain("export function setOperatorAgentSessionSnoozedAction(")
     expect(sharedOperatorActionsSource).toContain("export function clearInactiveOperatorAgentSessionsAction(")
+    expect(sharedOperatorActionsSource).toContain("export function snoozeOperatorAgentSessionsAndHidePanelAction(")
     expect(sharedOperatorActionsSource).toContain("export function clearOperatorAgentSessionAction(")
     expect(sharedOperatorActionsSource).toContain("buildOperatorAgentSessionStopResponse(stopResult.sessionId, stopResult.conversationId)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorAgentSessionShowResponse(result.sessionId)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorAgentSessionSnoozedResponse(result.sessionId, result.isSnoozed)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorAgentSessionsClearInactiveResponse(result.clearedCount)")
+    expect(sharedOperatorActionsSource).toContain("buildOperatorAgentSessionsSnoozeAndHidePanelResponse(result.sessionIds)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorAgentSessionClearResponse(result.sessionId, result.removed)")
     // Message queue operator endpoints
     expectRegisteredApiRoute(source, "GET", "operatorMessageQueues")

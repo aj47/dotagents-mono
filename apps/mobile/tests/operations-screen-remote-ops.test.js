@@ -119,8 +119,11 @@ test('displays system metrics and agent sessions from operator status', () => {
   assert.match(operationsSource, /showOperatorAgentSession\(s\.id\)/);
   assert.match(operationsSource, /snoozeOperatorAgentSession\(s\.id\)/);
   assert.match(operationsSource, /unsnoozeOperatorAgentSession\(s\.id\)/);
+  assert.match(operationsSource, /snoozeOperatorAgentSessionsAndHidePanel/);
   assert.match(operationsSource, /clearOperatorAgentSession\(s\.id\)/);
   assert.match(operationsSource, /clearInactiveOperatorAgentSessions\(\)/);
+  assert.match(operationsSource, /Hide active agent sessions and desktop panel/);
+  assert.match(operationsSource, /Hide active/);
   assert.match(operationsSource, /Dismiss \$\{s\.title \?\? s\.id\} agent session progress on desktop/);
   assert.match(operationsSource, /Clear inactive agent sessions on desktop/);
   assert.match(operationsSource, /Sessions with queued follow-ups are kept/);

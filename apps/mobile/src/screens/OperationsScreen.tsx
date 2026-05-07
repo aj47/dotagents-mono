@@ -817,6 +817,27 @@ export default function OperationsScreen({ navigation }: any) {
                     {pendingAction === 'agent-sessions-clear-inactive' ? 'Clearing...' : 'Clear inactive'}
                   </Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.sessionStopButton,
+                    styles.secondaryActionButton,
+                    (controlsDisabled || status.sessions.activeSessions === 0) && styles.actionButtonDisabled,
+                  ]}
+                  onPress={() => void runAction(
+                    'agent-sessions-snooze-hide-panel',
+                    () => settingsClient.snoozeOperatorAgentSessionsAndHidePanel(
+                      status.sessions.activeSessionDetails.map((s) => s.id),
+                    ),
+                    false,
+                  )}
+                  disabled={controlsDisabled || status.sessions.activeSessions === 0}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Hide active agent sessions and desktop panel')}
+                >
+                  <Text style={styles.secondaryActionText}>
+                    {pendingAction === 'agent-sessions-snooze-hide-panel' ? 'Hiding...' : 'Hide active'}
+                  </Text>
+                </TouchableOpacity>
               </View>
               {status.sessions.activeSessionDetails.map((s) => {
                 const stopAction = `agent-session-stop:${s.id}`;

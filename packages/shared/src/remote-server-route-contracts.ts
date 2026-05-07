@@ -329,6 +329,7 @@ export interface OperatorRouteActions<Request = unknown> {
   snoozeOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   unsnoozeOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   clearInactiveOperatorAgentSessions: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
+  snoozeOperatorAgentSessionsAndHidePanel: (body: unknown) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   clearOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   clearOperatorMcpServerLogs: (server?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   getOperatorMcpServerLogs: (
@@ -434,6 +435,7 @@ export interface OperatorRouteActionGroups<Request = unknown> {
     | 'snoozeOperatorAgentSession'
     | 'unsnoozeOperatorAgentSession'
     | 'clearInactiveOperatorAgentSessions'
+    | 'snoozeOperatorAgentSessionsAndHidePanel'
     | 'clearOperatorAgentSession'
   >;
   ttsPlayback: Pick<OperatorRouteActions<Request>, 'stopOperatorTtsPlayback'>;

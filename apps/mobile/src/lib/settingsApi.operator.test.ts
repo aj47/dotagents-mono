@@ -101,7 +101,8 @@ describe('SettingsApiClient operator endpoints', () => {
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-snooze', message: 'snoozed' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-unsnooze', message: 'unsnoozed' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-clear', message: 'cleared session' }))
-      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-sessions-clear-inactive', message: 'cleared' }));
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-sessions-clear-inactive', message: 'cleared' }))
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-sessions-snooze-hide-panel', message: 'hidden' }));
     vi.stubGlobal('fetch', fetchMock);
 
     const client = new SettingsApiClient('https://example.com/v1', 'secret-token');
@@ -132,6 +133,7 @@ describe('SettingsApiClient operator endpoints', () => {
     await client.unsnoozeOperatorAgentSession('session/1');
     await client.clearOperatorAgentSession('session/1');
     await client.clearInactiveOperatorAgentSessions();
+    await client.snoozeOperatorAgentSessionsAndHidePanel(['session/1']);
 
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
       'https://example.com/v1/operator/errors?count=12',
@@ -160,12 +162,14 @@ describe('SettingsApiClient operator endpoints', () => {
       'https://example.com/v1/operator/sessions/session%2F1/unsnooze',
       'https://example.com/v1/operator/sessions/session%2F1/clear',
       'https://example.com/v1/operator/sessions/clear-inactive',
+      'https://example.com/v1/operator/sessions/snooze-and-hide-panel',
     ]);
 
-    for (const index of [2, 3, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]) {
+    for (const index of [2, 3, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]) {
       expect(fetchMock.mock.calls[index]?.[1]?.method).toBe('POST');
     }
     expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(JSON.stringify({ filePath: '/tmp/report.json' }));
+    expect(fetchMock.mock.calls[26]?.[1]?.body).toBe(JSON.stringify({ sessionIds: ['session/1'] }));
   });
 
   it('targets tunnel, Discord, and WhatsApp operator endpoints with the expected HTTP methods', async () => {

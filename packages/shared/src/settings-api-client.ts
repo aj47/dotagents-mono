@@ -1567,6 +1567,15 @@ export class SettingsApiClient {
     });
   }
 
+  async snoozeOperatorAgentSessionsAndHidePanel(sessionIds?: string[]): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorAgentSessionsSnoozeAndHidePanel, {
+      method: 'POST',
+      ...(sessionIds && sessionIds.length > 0
+        ? { body: JSON.stringify({ sessionIds }) }
+        : {}),
+    });
+  }
+
   async clearOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
     return this.request<OperatorActionResponse>(API_BUILDERS.operatorAgentSessionClear(sessionId), {
       method: 'POST',
