@@ -1,8 +1,18 @@
 import crypto from "crypto"
 import type { OperatorRouteActions } from "./operator-routes"
 import type { Config } from "../shared/types"
+import type {
+  LocalSpeechModelProviderId,
+  LocalSpeechModelStatus,
+} from "@dotagents/shared/api-types"
 import type { AgentRunExecutor } from "@dotagents/shared/agent-run-utils"
 import { getErrorMessage } from "@dotagents/shared/error-utils"
+import {
+  downloadOperatorLocalSpeechModelAction,
+  getOperatorLocalSpeechModelStatusAction,
+  getOperatorLocalSpeechModelStatusesAction,
+  type LocalSpeechModelActionOptions,
+} from "@dotagents/shared/local-speech-models"
 import {
   createOperatorModelPresetAction,
   deleteOperatorModelPresetAction,
@@ -21,11 +31,6 @@ import {
   stopOperatorMcpServer,
   testOperatorMcpServer,
 } from "./operator-mcp-actions"
-import {
-  downloadOperatorLocalSpeechModel,
-  getOperatorLocalSpeechModelStatus,
-  getOperatorLocalSpeechModelStatuses,
-} from "./operator-local-speech-actions"
 import {
   clearOperatorDiscordLogs,
   connectOperatorDiscord,
@@ -122,6 +127,57 @@ const agentActionOptions: OperatorAgentActionOptions = {
   },
 }
 
+async function getLocalSpeechModelStatus(providerId: LocalSpeechModelProviderId): Promise<LocalSpeechModelStatus> {
+  if (providerId === "parakeet") {
+    const parakeetStt = await import("./parakeet-stt")
+    return parakeetStt.getModelStatus()
+  }
+  if (providerId === "kitten") {
+    const { getKittenModelStatus } = await import("./kitten-tts")
+    return getKittenModelStatus()
+  }
+
+  const { getSupertonicModelStatus } = await import("./supertonic-tts")
+  return getSupertonicModelStatus()
+}
+
+async function downloadLocalSpeechModel(providerId: LocalSpeechModelProviderId): Promise<void> {
+  if (providerId === "parakeet") {
+    const parakeetStt = await import("./parakeet-stt")
+    await parakeetStt.downloadModel()
+    return
+  }
+  if (providerId === "kitten") {
+    const { downloadKittenModel } = await import("./kitten-tts")
+    await downloadKittenModel()
+    return
+  }
+
+  const { downloadSupertonicModel } = await import("./supertonic-tts")
+  await downloadSupertonicModel()
+}
+
+function startLocalSpeechModelDownload(providerId: LocalSpeechModelProviderId): void {
+  void downloadLocalSpeechModel(providerId).catch((caughtError) => {
+    diagnosticsService.logError(
+      "operator-route-desktop-actions",
+      `Failed to download ${providerId} local speech model`,
+      caughtError,
+    )
+  })
+}
+
+const localSpeechModelActionOptions: LocalSpeechModelActionOptions = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+    getErrorMessage,
+  },
+  service: {
+    getStatus: getLocalSpeechModelStatus,
+    startDownload: startLocalSpeechModelDownload,
+  },
+}
+
 const tunnelActionOptions: OperatorTunnelActionOptions = {
   config: {
     get: () => configStore.get(),
@@ -155,6 +211,18 @@ async function runOperatorAgent(body: unknown, runAgent: AgentRunExecutor) {
 
 async function stopOperatorAgentSession(sessionIdParam: string | undefined) {
   return stopOperatorAgentSessionAction(sessionIdParam, agentActionOptions)
+}
+
+async function getOperatorLocalSpeechModelStatuses() {
+  return getOperatorLocalSpeechModelStatusesAction(localSpeechModelActionOptions)
+}
+
+async function getOperatorLocalSpeechModelStatus(providerId: unknown) {
+  return getOperatorLocalSpeechModelStatusAction(providerId, localSpeechModelActionOptions)
+}
+
+async function downloadOperatorLocalSpeechModel(providerId: unknown) {
+  return downloadOperatorLocalSpeechModelAction(providerId, localSpeechModelActionOptions)
 }
 
 async function getOperatorModelPresets(secretMask: string) {

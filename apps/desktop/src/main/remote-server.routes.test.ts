@@ -203,12 +203,6 @@ function getRemoteServerRouteRegistrationSource(): string {
   ].join("\n")
 }
 
-function getOperatorLocalSpeechActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const operatorLocalSpeechActionsPath = path.join(testDir, "operator-local-speech-actions.ts")
-  return readFileSync(operatorLocalSpeechActionsPath, "utf8")
-}
-
 function getSharedLocalSpeechModelsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedLocalSpeechModelsPath = path.join(testDir, "../../../../packages/shared/src/local-speech-models.ts")
@@ -655,7 +649,6 @@ describe("remote-server route registration", () => {
       getOperatorApiKeyActionsSource(),
       getOperatorAuditActionsSource(),
       getOperatorIntegrationActionsSource(),
-      getOperatorLocalSpeechActionsSource(),
       getOperatorMcpActionsSource(),
       getOperatorMessageQueueActionsSource(),
       getOperatorObservabilityActionsSource(),
@@ -1582,25 +1575,30 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain("restartServer(serverName)")
     expect(sharedMcpApiSource).toContain("stopServer(serverName)")
     // Local speech model operator endpoints
-    const operatorLocalSpeechActionsSource = getOperatorLocalSpeechActionsSource()
     const sharedLocalSpeechModelsSource = getSharedLocalSpeechModelsSource()
     expect(operatorRoutesSource).toContain("actions.getOperatorLocalSpeechModelStatuses()")
     expect(operatorRoutesSource).toContain("actions.getOperatorLocalSpeechModelStatus(params.providerId)")
     expect(operatorRoutesSource).toContain("actions.downloadOperatorLocalSpeechModel(params.providerId)")
-    expect(operatorLocalSpeechActionsSource).toContain("getOperatorLocalSpeechModelStatusesAction(localSpeechModelActionOptions)")
-    expect(operatorLocalSpeechActionsSource).toContain("getOperatorLocalSpeechModelStatusAction(providerId, localSpeechModelActionOptions)")
-    expect(operatorLocalSpeechActionsSource).toContain("downloadOperatorLocalSpeechModelAction(providerId, localSpeechModelActionOptions)")
-    expect(operatorLocalSpeechActionsSource).toContain("service: {")
-    expect(operatorLocalSpeechActionsSource).toContain("getStatus: getLocalSpeechModelStatus")
-    expect(operatorLocalSpeechActionsSource).toContain("startDownload: startLocalSpeechModelDownload")
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "getOperatorLocalSpeechModelStatusesAction(localSpeechModelActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "getOperatorLocalSpeechModelStatusAction(providerId, localSpeechModelActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "downloadOperatorLocalSpeechModelAction(providerId, localSpeechModelActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain("service: {")
+    expect(operatorRouteDesktopActionsSource).toContain("getStatus: getLocalSpeechModelStatus")
+    expect(operatorRouteDesktopActionsSource).toContain("startDownload: startLocalSpeechModelDownload")
     expect(sharedLocalSpeechModelsSource).toContain("export async function getOperatorLocalSpeechModelStatusesAction(")
     expect(sharedLocalSpeechModelsSource).toContain("export async function downloadOperatorLocalSpeechModelAction(")
     expect(sharedLocalSpeechModelsSource).toContain("buildLocalSpeechModelStatusesResponse((providerId) => (")
     expect(sharedLocalSpeechModelsSource).toContain("buildLocalSpeechModelDownloadResponse(providerId, status)")
     expect(sharedLocalSpeechModelsSource).toContain("buildLocalSpeechModelDownloadErrorResponse(providerId, message)")
-    expect(operatorLocalSpeechActionsSource).toContain('await import("./parakeet-stt")')
-    expect(operatorLocalSpeechActionsSource).toContain('await import("./kitten-tts")')
-    expect(operatorLocalSpeechActionsSource).toContain('await import("./supertonic-tts")')
+    expect(operatorRouteDesktopActionsSource).toContain('await import("./parakeet-stt")')
+    expect(operatorRouteDesktopActionsSource).toContain('await import("./kitten-tts")')
+    expect(operatorRouteDesktopActionsSource).toContain('await import("./supertonic-tts")')
     const sharedModelPresetsSource = getSharedModelPresetsSource()
     expect(source).toContain("providerSecretMask: PROVIDER_SECRET_MASK")
     expect(operatorRoutesSource).toContain("actions.getOperatorModelPresets(providerSecretMask)")
