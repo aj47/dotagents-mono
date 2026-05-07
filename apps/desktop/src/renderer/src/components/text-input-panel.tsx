@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } f
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Button } from "@renderer/components/ui/button"
 import { cn } from "@renderer/lib/utils"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
 import { AgentProcessingView } from "./agent-processing-view"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import { useTheme } from "@renderer/contexts/theme-context"
@@ -93,7 +93,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   // make the window focusable+focused, then re-point focus at the textarea.
   const handleMouseDown = async () => {
     try {
-      await tipcClient.setPanelFocusable({ focusable: true, andFocus: true })
+      await desktopPanelClient.setPanelFocusable({ focusable: true, andFocus: true })
       setTimeout(() => {
         textareaRef.current?.focus()
       }, 50)

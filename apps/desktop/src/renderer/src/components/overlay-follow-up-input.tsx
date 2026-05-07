@@ -4,6 +4,7 @@ import { Button } from "@renderer/components/ui/button"
 import { Send, Mic, OctagonX, ImagePlus, X, Bot } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
+import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
 import { useAgentStore } from "@renderer/stores"
 import { logUI } from "@renderer/lib/debug"
@@ -82,7 +83,7 @@ export function OverlayFollowUpInput({
   // for windows shown with showInactive() to receive input events
   const handleInputInteraction = async () => {
     try {
-      await tipcClient.setPanelFocusable({ focusable: true, andFocus: true })
+      await desktopPanelClient.setPanelFocusable({ focusable: true, andFocus: true })
       // After making focusable and focused, ensure the input has focus
       setTimeout(() => {
         inputRef.current?.focus()
@@ -234,7 +235,7 @@ export function OverlayFollowUpInput({
     // Make panel focusable and focused first to ensure click events are received
     // This is required on macOS for windows shown with showInactive()
     try {
-      await tipcClient.setPanelFocusable({ focusable: true, andFocus: true })
+      await desktopPanelClient.setPanelFocusable({ focusable: true, andFocus: true })
     } catch {
       // Ignore errors - recording might still work
     }
