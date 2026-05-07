@@ -78,7 +78,11 @@ import { getAgentAvatarColors } from "@dotagents/shared/agent-avatar-colors"
 import {
   sortAgentProfilesWithDefaultFirst as sortAgentsWithDefaultFirst,
 } from "@dotagents/shared/agent-selector-options"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import {
+  desktopAgentProfilesClient,
+  type DesktopMcpServerStatus,
+} from "@renderer/lib/desktop-agent-profiles-client"
+import { desktopSkillsClient } from "@renderer/lib/desktop-skills-client"
 import { ModelSelector } from "@renderer/components/model-selector"
 import { BundleImportDialog } from "@renderer/components/bundle-import-dialog"
 import { BundleExportDialog } from "@renderer/components/bundle-export-dialog"
@@ -113,15 +117,7 @@ interface EditingAgent {
   avatarDataUrl?: string | null
 }
 
-interface ExternalAgentCommandVerificationResult {
-  ok: boolean
-  resolvedCommand?: string
-  details?: string
-  error?: string
-  warnings?: string[]
-}
-
-type ServerInfo = { connected: boolean; toolCount: number; runtimeEnabled?: boolean; configDisabled?: boolean }
+type ExternalAgentCommandVerificationResult = Awaited<ReturnType<typeof desktopAgentProfilesClient.verifyExternalAgentCommand>>
 
 function emptyAgent(): EditingAgent {
   return {
@@ -177,8 +173,8 @@ export function SettingsAgents() {
   const [agents, setAgents] = useState<AgentProfile[]>([])
   const [editing, setEditing] = useState<EditingAgent | null>(null)
   const [isCreating, setIsCreating] = useState(false)
-  const [serverStatus, setServerStatus] = useState<Record<string, ServerInfo>>({})
-  const [allTools, setAllTools] = useState<{name: string, description: string, serverName: string}[]>([])
+  const [serverStatus, setServerStatus] = useState<DesktopMcpServerStatus>({})
+  const [allTools, setAllTools] = useState<DetailedToolInfo[]>([])
   const [skills, setSkills] = useState<AgentSkill[]>([])
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
@@ -202,7 +198,7 @@ export function SettingsAgents() {
     loadAgents()
     loadSkills()
     loadAllTools()
-    tipcClient.getDefaultSystemPrompt().then(setDefaultSystemPrompt).catch(console.error)
+    desktopAgentProfilesClient.getDefaultSystemPrompt().then(setDefaultSystemPrompt).catch(console.error)
   }, [])
   useEffect(() => { if (editing) { loadServers(); loadSkills(); loadAllTools() } }, [!!editing])
 
@@ -257,20 +253,20 @@ export function SettingsAgents() {
   }, [searchParams, agents])
 
   const loadAgents = async () => {
-    const all = await tipcClient.getAgentProfiles()
+    const all = await desktopAgentProfilesClient.getAgentProfiles()
     setAgents(all)
   }
   const loadServers = async () => {
-    try { const s = await tipcClient.getMcpServerStatus(); setServerStatus(s as Record<string, ServerInfo>) } catch {}
+    try { const s = await desktopAgentProfilesClient.getMcpServerStatus(); setServerStatus(s) } catch {}
   }
   const loadAllTools = async () => {
     try {
-      const list = await tipcClient.getMcpDetailedToolList()
+      const list = await desktopAgentProfilesClient.getMcpDetailedToolList()
       setAllTools(list)
     } catch {}
   }
   const loadSkills = async () => {
-    try { const s = await tipcClient.getSkills(); setSkills(s) } catch {}
+    try { const s = await desktopSkillsClient.getSkills(); setSkills(s) } catch {}
   }
 
   const handleCreate = () => { setIsCreating(true); setEditing(emptyAgent()); setCommandVerification(null) }
@@ -327,24 +323,23 @@ export function SettingsAgents() {
       properties: formatAgentProfilePropertiesForRequest(editing.properties),
       avatarDataUrl: editing.avatarDataUrl ?? null,
     }
-    if (isCreating) await tipcClient.createAgentProfile({ profile: data })
-    else if (editing.id) await tipcClient.updateAgentProfile({ id: editing.id, updates: data })
+    if (isCreating) await desktopAgentProfilesClient.createAgentProfile(data)
+    else if (editing.id) await desktopAgentProfilesClient.updateAgentProfile(editing.id, data)
     setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); setCommandVerification(null); loadAgents()
     refreshAgentProfileQueries()
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this agent?")) return
-    await tipcClient.deleteAgentProfile({ id }); loadAgents()
+    await desktopAgentProfilesClient.deleteAgentProfile(id); loadAgents()
     refreshAgentProfileQueries()
   }
 
   const handleCancel = () => { setEditing(null); setIsCreating(false); setNewPropKey(""); setNewPropValue(""); setCommandVerification(null) }
 
   // Derived tool data
-  const typedTools = allTools as DetailedToolInfo[]
-  const runtimeTools = typedTools.filter(t => t.sourceKind === "runtime")
-  const externalTools = typedTools.filter(t => t.sourceKind === "mcp")
+  const runtimeTools = allTools.filter(t => t.sourceKind === "runtime")
+  const externalTools = allTools.filter(t => t.sourceKind === "mcp")
   const serverNames = Object.keys(serverStatus)
   const toolsByServer = (serverName: string) => externalTools.filter(t => t.sourceName === serverName)
 
@@ -514,7 +509,7 @@ export function SettingsAgents() {
 
     setIsVerifyingCommand(true)
     try {
-      const result = await tipcClient.verifyExternalAgentCommand({
+      const result = await desktopAgentProfilesClient.verifyExternalAgentCommand({
         command: editing.connectionCommand || "",
         args: normalizeAgentConnectionArgs(editing.connectionArgs),
         cwd: editing.connectionCwd || undefined,
@@ -546,7 +541,7 @@ export function SettingsAgents() {
           <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={() => setIsPublishDialogOpen(true)}>
             <Globe className="h-4 w-4" />Export for Hub
           </Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={async () => { await tipcClient.reloadAgentProfiles(); loadAgents(); refreshAgentProfileQueries() }}>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={async () => { await desktopAgentProfilesClient.reloadAgentProfiles(); loadAgents(); refreshAgentProfileQueries() }}>
             <RefreshCw className="h-4 w-4" />Rescan Files
           </Button>
           <Button size="sm" className="h-8 gap-1.5 whitespace-nowrap px-2.5" onClick={handleCreate}><Plus className="h-4 w-4" />Add Agent</Button>

@@ -1,0 +1,47 @@
+import { readFileSync } from "node:fs"
+import { describe, expect, it } from "vitest"
+
+const clientSource = readFileSync(new URL("./desktop-agent-profiles-client.ts", import.meta.url), "utf8")
+const settingsAgentsSource = readFileSync(new URL("../pages/settings-agents.tsx", import.meta.url), "utf8")
+
+describe("desktop agent profiles renderer client", () => {
+  it("centralizes desktop agent profile IPC channels behind shared profile types", () => {
+    expect(clientSource).toContain("AgentProfileCreateRouteRequest")
+    expect(clientSource).toContain("AgentProfileUpdateRouteRequest")
+    expect(clientSource).toContain("VerifyExternalAgentCommandRequest")
+    expect(clientSource).toContain("VerifyExternalAgentCommandResponse")
+    expect(clientSource).toContain("tipcClient.getAgentProfiles()")
+    expect(clientSource).toContain("tipcClient.createAgentProfile({ profile: payload })")
+    expect(clientSource).toContain("tipcClient.updateAgentProfile({ id, updates })")
+    expect(clientSource).toContain("tipcClient.deleteAgentProfile({ id })")
+    expect(clientSource).toContain("tipcClient.reloadAgentProfiles()")
+    expect(clientSource).toContain("tipcClient.verifyExternalAgentCommand(request)")
+    expect(clientSource).toContain("tipcClient.getDefaultSystemPrompt()")
+    expect(clientSource).toContain("tipcClient.getMcpServerStatus()")
+    expect(clientSource).toContain("tipcClient.getMcpDetailedToolList()")
+    expect(clientSource).not.toContain("window.electron.ipcRenderer")
+  })
+
+  it("keeps the settings agents UI off direct desktop agent profile IPC channels", () => {
+    expect(settingsAgentsSource).toContain("desktopAgentProfilesClient.getAgentProfiles()")
+    expect(settingsAgentsSource).toContain("desktopAgentProfilesClient.createAgentProfile(data)")
+    expect(settingsAgentsSource).toContain("desktopAgentProfilesClient.updateAgentProfile(editing.id, data)")
+    expect(settingsAgentsSource).toContain("desktopAgentProfilesClient.deleteAgentProfile(id)")
+    expect(settingsAgentsSource).toContain("desktopAgentProfilesClient.reloadAgentProfiles()")
+    expect(settingsAgentsSource).toContain("desktopAgentProfilesClient.verifyExternalAgentCommand({")
+    expect(settingsAgentsSource).toContain("desktopAgentProfilesClient.getDefaultSystemPrompt()")
+    expect(settingsAgentsSource).toContain("desktopAgentProfilesClient.getMcpServerStatus()")
+    expect(settingsAgentsSource).toContain("desktopAgentProfilesClient.getMcpDetailedToolList()")
+    expect(settingsAgentsSource).toContain("desktopSkillsClient.getSkills()")
+    expect(settingsAgentsSource).not.toContain("tipcClient.getAgentProfiles(")
+    expect(settingsAgentsSource).not.toContain("tipcClient.createAgentProfile(")
+    expect(settingsAgentsSource).not.toContain("tipcClient.updateAgentProfile(")
+    expect(settingsAgentsSource).not.toContain("tipcClient.deleteAgentProfile(")
+    expect(settingsAgentsSource).not.toContain("tipcClient.reloadAgentProfiles(")
+    expect(settingsAgentsSource).not.toContain("tipcClient.verifyExternalAgentCommand(")
+    expect(settingsAgentsSource).not.toContain("tipcClient.getDefaultSystemPrompt(")
+    expect(settingsAgentsSource).not.toContain("tipcClient.getMcpServerStatus(")
+    expect(settingsAgentsSource).not.toContain("tipcClient.getMcpDetailedToolList(")
+    expect(settingsAgentsSource).not.toContain("tipcClient.getSkills(")
+  })
+})
