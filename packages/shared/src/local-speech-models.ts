@@ -46,6 +46,12 @@ export interface LocalSpeechModelActionOptions {
   service: LocalSpeechModelActionService;
 }
 
+export interface OperatorLocalSpeechModelRouteActions {
+  getOperatorLocalSpeechModelStatuses(): Promise<LocalSpeechModelActionResult>;
+  getOperatorLocalSpeechModelStatus(providerId: unknown): Promise<LocalSpeechModelActionResult>;
+  downloadOperatorLocalSpeechModel(providerId: unknown): Promise<LocalSpeechModelActionResult>;
+}
+
 export const LOCAL_SPEECH_MODEL_DOWNLOAD_ACTION = 'local-speech-model-download';
 
 export const LOCAL_SPEECH_MODEL_LABELS: Record<LocalSpeechModelProviderId, string> = {
@@ -225,4 +231,16 @@ export async function downloadOperatorLocalSpeechModelAction(
     const response = buildLocalSpeechModelDownloadErrorResponse(providerId, message);
     return localSpeechModelActionOk(response, buildLocalSpeechModelActionAuditContext(response));
   }
+}
+
+export function createOperatorLocalSpeechModelRouteActions(
+  options: LocalSpeechModelActionOptions,
+): OperatorLocalSpeechModelRouteActions {
+  return {
+    getOperatorLocalSpeechModelStatuses: () => getOperatorLocalSpeechModelStatusesAction(options),
+    getOperatorLocalSpeechModelStatus: (providerId) =>
+      getOperatorLocalSpeechModelStatusAction(providerId, options),
+    downloadOperatorLocalSpeechModel: (providerId) =>
+      downloadOperatorLocalSpeechModelAction(providerId, options),
+  };
 }

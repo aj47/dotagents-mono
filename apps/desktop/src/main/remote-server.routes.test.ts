@@ -1867,17 +1867,30 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.getOperatorLocalSpeechModelStatus(params.providerId)")
     expect(operatorRoutesSource).toContain("actions.downloadOperatorLocalSpeechModel(params.providerId)")
     expect(operatorRouteDesktopActionsSource).toContain(
+      "const operatorLocalSpeechModelRouteActions = createOperatorLocalSpeechModelRouteActions(localSpeechModelActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain("...operatorLocalSpeechModelRouteActions")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
       "getOperatorLocalSpeechModelStatusesAction(localSpeechModelActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain(
+    expect(operatorRouteDesktopActionsSource).not.toContain(
       "getOperatorLocalSpeechModelStatusAction(providerId, localSpeechModelActionOptions)",
     )
-    expect(operatorRouteDesktopActionsSource).toContain(
+    expect(operatorRouteDesktopActionsSource).not.toContain(
       "downloadOperatorLocalSpeechModelAction(providerId, localSpeechModelActionOptions)",
     )
     expect(operatorRouteDesktopActionsSource).toContain("service: {")
     expect(operatorRouteDesktopActionsSource).toContain("getStatus: getLocalSpeechModelStatus")
     expect(operatorRouteDesktopActionsSource).toContain("startDownload: startLocalSpeechModelDownload")
+    expect(sharedLocalSpeechModelsSource).toContain("export interface OperatorLocalSpeechModelRouteActions")
+    expect(sharedLocalSpeechModelsSource).toContain("export function createOperatorLocalSpeechModelRouteActions")
+    expect(sharedLocalSpeechModelsSource).toContain(
+      "getOperatorLocalSpeechModelStatuses: () => getOperatorLocalSpeechModelStatusesAction(options)",
+    )
+    expect(sharedLocalSpeechModelsSource).toContain(
+      "getOperatorLocalSpeechModelStatusAction(providerId, options)",
+    )
+    expect(sharedLocalSpeechModelsSource).toContain("downloadOperatorLocalSpeechModelAction(providerId, options)")
     expect(sharedLocalSpeechModelsSource).toContain("export async function getOperatorLocalSpeechModelStatusesAction(")
     expect(sharedLocalSpeechModelsSource).toContain("export async function downloadOperatorLocalSpeechModelAction(")
     expect(sharedLocalSpeechModelsSource).toContain("buildLocalSpeechModelStatusesResponse((providerId) => (")

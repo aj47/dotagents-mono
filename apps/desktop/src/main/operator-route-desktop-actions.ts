@@ -10,9 +10,7 @@ import type {
 import type { AgentRunExecutor } from "@dotagents/shared/agent-run-utils"
 import { getErrorMessage } from "@dotagents/shared/error-utils"
 import {
-  downloadOperatorLocalSpeechModelAction,
-  getOperatorLocalSpeechModelStatusAction,
-  getOperatorLocalSpeechModelStatusesAction,
+  createOperatorLocalSpeechModelRouteActions,
   type LocalSpeechModelActionOptions,
 } from "@dotagents/shared/local-speech-models"
 import {
@@ -210,6 +208,8 @@ const localSpeechModelActionOptions: LocalSpeechModelActionOptions = {
   },
 }
 
+const operatorLocalSpeechModelRouteActions = createOperatorLocalSpeechModelRouteActions(localSpeechModelActionOptions)
+
 const operatorMcpReadActionOptions: OperatorMcpReadActionOptions = {
   diagnostics: {
     logError: (...args) => diagnosticsService.logError(...args),
@@ -374,18 +374,6 @@ async function stopOperatorAgentSession(sessionIdParam: string | undefined) {
   return stopOperatorAgentSessionAction(sessionIdParam, agentActionOptions)
 }
 
-async function getOperatorLocalSpeechModelStatuses() {
-  return getOperatorLocalSpeechModelStatusesAction(localSpeechModelActionOptions)
-}
-
-async function getOperatorLocalSpeechModelStatus(providerId: unknown) {
-  return getOperatorLocalSpeechModelStatusAction(providerId, localSpeechModelActionOptions)
-}
-
-async function downloadOperatorLocalSpeechModel(providerId: unknown) {
-  return downloadOperatorLocalSpeechModelAction(providerId, localSpeechModelActionOptions)
-}
-
 function getOperatorMcpStatus() {
   return getOperatorMcpStatusAction(operatorMcpReadActionOptions)
 }
@@ -444,9 +432,7 @@ export const operatorRouteDesktopActions: OperatorRouteActions = {
   startOperatorMcpServer,
   stopOperatorMcpServer,
   testOperatorMcpServer,
-  downloadOperatorLocalSpeechModel,
-  getOperatorLocalSpeechModelStatus,
-  getOperatorLocalSpeechModelStatuses,
+  ...operatorLocalSpeechModelRouteActions,
   ...operatorModelPresetRouteActions,
   ...operatorTunnelRouteActions,
   ...operatorUpdaterRouteActions,

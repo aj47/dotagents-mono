@@ -7,6 +7,7 @@ import {
   buildLocalSpeechModelDownloadErrorResponse,
   buildLocalSpeechModelDownloadResponse,
   buildLocalSpeechModelStatusesResponse,
+  createOperatorLocalSpeechModelRouteActions,
   downloadOperatorLocalSpeechModelAction,
   formatLocalSpeechModelStatusesResponse,
   getLocalSpeechModelLabel,
@@ -197,6 +198,23 @@ describe('local speech model metadata', () => {
       auditContext: {
         action: 'local-speech-model-download',
         success: true,
+      },
+    });
+
+    const routeActions = createOperatorLocalSpeechModelRouteActions(options);
+    expect(await routeActions.getOperatorLocalSpeechModelStatuses()).toMatchObject({
+      statusCode: 200,
+      body: { models: statuses },
+    });
+    expect(await routeActions.getOperatorLocalSpeechModelStatus('kitten')).toEqual({
+      statusCode: 200,
+      body: statuses.kitten,
+    });
+    expect(await routeActions.downloadOperatorLocalSpeechModel('supertonic')).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: 'local-speech-model-download',
       },
     });
 
