@@ -955,6 +955,21 @@ export interface SkillDeleteResponse {
   id: string;
 }
 
+export interface SkillDeleteMultipleRequest {
+  ids: string[];
+}
+
+export interface SkillDeleteMultipleResult {
+  id: string;
+  success: boolean;
+}
+
+export interface SkillDeleteMultipleResponse {
+  success: true;
+  deletedCount: number;
+  results: SkillDeleteMultipleResult[];
+}
+
 export interface SkillToggleResponse {
   success: true;
   skillId: string;

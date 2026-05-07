@@ -121,6 +121,7 @@ describe('remote server mobile API routes', () => {
     const { routes, server } = createRouteServer();
     const chatBody = { messages: [{ role: 'user', content: 'hi' }] };
     const settingsBody = { remoteServerEnabled: true };
+    const skillsDeleteBody = { ids: ['skill-1'] };
     const auditContext = { action: 'settings.update', success: true };
     const actions = {
       handleChatCompletionRequest: vi.fn(() => 'chat-result'),
@@ -131,6 +132,7 @@ describe('remote server mobile API routes', () => {
         remoteServerLifecycleAction: 'restart' as const,
         auditContext,
       })),
+      deleteSkills: vi.fn(() => ({ statusCode: 200, body: { success: true, deletedCount: 1 } })),
       recordOperatorAuditEvent: vi.fn(),
       getConversationImageAsset: vi.fn(() => ({
         statusCode: 200,
@@ -185,6 +187,15 @@ describe('remote server mobile API routes', () => {
     expect(options.scheduleRemoteServerLifecycleActionAfterReply).toHaveBeenCalledWith(settingsReply, 'restart');
     expect(actions.recordOperatorAuditEvent).toHaveBeenCalledWith(settingsRequest, auditContext);
     expect(settingsReply.statusCode).toBe(202);
+
+    const skillsDeleteReply = createReply();
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.skillsDeleteMultiple}`)!(
+      createRequest({ body: skillsDeleteBody }),
+      skillsDeleteReply,
+    );
+
+    expect(actions.deleteSkills).toHaveBeenCalledWith(skillsDeleteBody);
+    expect(skillsDeleteReply.statusCode).toBe(200);
 
     const imageReply = createReply();
     await routes.get(`GET ${REMOTE_SERVER_API_ROUTE_PATHS.conversationImageAsset}`)!(

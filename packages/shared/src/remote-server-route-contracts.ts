@@ -115,6 +115,7 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   exportSkillToMarkdown: (id?: string) => MobileApiActionResult;
   updateSkill: (id: string | undefined, body: unknown) => MobileApiActionResult;
   deleteSkill: (id?: string) => MobileApiActionResult;
+  deleteSkills: (body: unknown) => MobileApiActionResult;
   toggleProfileSkill: (id?: string) => MobileApiActionResult;
   getKnowledgeNotes: (query?: unknown) => RemoteServerMaybePromise<MobileApiActionResult>;
   getKnowledgeNote: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
@@ -196,6 +197,7 @@ export interface MobileApiRouteActionGroups<Request = unknown, Reply = unknown> 
     | 'exportSkillToMarkdown'
     | 'updateSkill'
     | 'deleteSkill'
+    | 'deleteSkills'
     | 'toggleProfileSkill'
   >;
   knowledgeNotes: Pick<

@@ -401,6 +401,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Skills, Knowledge Notes, Agents, and Loops state
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(new Set());
   const [knowledgeNotes, setKnowledgeNotes] = useState<KnowledgeNote[]>([]);
   const [knowledgeNoteSearchQuery, setKnowledgeNoteSearchQuery] = useState('');
   const [knowledgeNoteSearchResults, setKnowledgeNoteSearchResults] = useState<KnowledgeNote[]>([]);
@@ -433,6 +434,14 @@ export default function SettingsScreen({ navigation }: any) {
     if (enabledDiff !== 0) return enabledDiff;
     return a.name.localeCompare(b.name);
   }), [skills]);
+  const displayedSkillIds = useMemo(
+    () => new Set(displaySkills.map((skill) => skill.id)),
+    [displaySkills]
+  );
+  const visibleSelectedSkillIds = useMemo(
+    () => [...selectedSkillIds].filter((id) => displayedSkillIds.has(id)),
+    [selectedSkillIds, displayedSkillIds]
+  );
   const sortedAgentProfiles = useMemo(
     () => sortAgentProfilesWithDefaultFirst(agentProfiles),
     [agentProfiles]
@@ -1795,18 +1804,59 @@ export default function SettingsScreen({ navigation }: any) {
     });
   }, [navigation]);
 
+  const toggleSkillSelection = useCallback((skillId: string) => {
+    setSelectedSkillIds(prev => {
+      const next = new Set(prev);
+      if (next.has(skillId)) next.delete(skillId);
+      else next.add(skillId);
+      return next;
+    });
+  }, []);
+
   const handleSkillDelete = useCallback((skill: Skill) => {
     if (!settingsClient) return;
     confirmDestructiveAction('Delete Skill', `Are you sure you want to delete "${skill.name}"?`, async () => {
       try {
         await settingsClient.deleteSkill(skill.id);
         setSkills(prev => prev.filter(item => item.id !== skill.id));
+        setSelectedSkillIds(prev => {
+          const next = new Set(prev);
+          next.delete(skill.id);
+          return next;
+        });
       } catch (error: any) {
         console.error('[Settings] Failed to delete skill:', error);
         Alert.alert('Error', error.message || 'Failed to delete skill');
       }
     });
   }, [confirmDestructiveAction, settingsClient]);
+
+  const handleSelectedSkillsDelete = useCallback(() => {
+    if (!settingsClient || visibleSelectedSkillIds.length === 0) return;
+
+    confirmDestructiveAction(
+      'Delete Selected Skills',
+      `Delete ${visibleSelectedSkillIds.length} selected skill${visibleSelectedSkillIds.length === 1 ? '' : 's'}?`,
+      async () => {
+        try {
+          const result = await settingsClient.deleteSkills(visibleSelectedSkillIds);
+          const deletedIds = new Set(result.results.filter(item => item.success).map(item => item.id));
+          setSkills(prev => prev.filter(item => !deletedIds.has(item.id)));
+          setSelectedSkillIds(prev => {
+            const next = new Set(prev);
+            for (const id of visibleSelectedSkillIds) next.delete(id);
+            return next;
+          });
+          if (result.deletedCount < visibleSelectedSkillIds.length) {
+            Alert.alert('Partial Delete', `Deleted ${result.deletedCount} of ${visibleSelectedSkillIds.length} selected skills.`);
+          }
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete selected skills:', error);
+          Alert.alert('Error', error.message || 'Failed to delete selected skills');
+        }
+      }
+    );
+  }, [confirmDestructiveAction, settingsClient, visibleSelectedSkillIds]);
 
   // Handle agent profile toggle
   const handleAgentProfileToggle = async (profileId: string) => {
@@ -4403,64 +4453,79 @@ export default function SettingsScreen({ navigation }: any) {
                 ) : skills.length === 0 ? (
                   <Text style={styles.helperText}>No skills configured</Text>
                 ) : (
-                  displaySkills.map((skill) => (
-                    <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
-                      <TouchableOpacity
-                        style={styles.agentInfoPressable}
-                        onPress={() => handleSkillEdit(skill)}
-                        activeOpacity={0.7}
-                        accessibilityRole="button"
-                        accessibilityLabel={createButtonAccessibilityLabel(`Edit skill ${skill.name}`)}
-                      >
-                        <View style={styles.serverInfo}>
-                          <View style={styles.serverNameRow}>
-                            <Text style={styles.serverName}>{skill.name}</Text>
-                            {skill.source && (
-                              <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
-                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{skill.source}</Text>
-                              </View>
-                            )}
+                  displaySkills.map((skill) => {
+                    const isSelected = selectedSkillIds.has(skill.id);
+                    return (
+                      <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
+                        <TouchableOpacity
+                          style={styles.agentInfoPressable}
+                          onPress={() => handleSkillEdit(skill)}
+                          activeOpacity={0.7}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Edit skill ${skill.name}`)}
+                        >
+                          <View style={styles.serverInfo}>
+                            <View style={styles.serverNameRow}>
+                              <Text style={styles.serverName}>{skill.name}</Text>
+                              {skill.source && (
+                                <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
+                                  <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{skill.source}</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.serverMeta} numberOfLines={2}>
+                              {!skill.enabled ? '(Globally disabled) ' : ''}{skill.description || 'No description'}
+                            </Text>
                           </View>
-                          <Text style={styles.serverMeta} numberOfLines={2}>
-                            {!skill.enabled ? '(Globally disabled) ' : ''}{skill.description || 'No description'}
-                          </Text>
+                        </TouchableOpacity>
+                        <View style={styles.agentActions}>
+                          <Switch
+                            value={skill.enabledForProfile}
+                            onValueChange={() => handleSkillToggle(skill.id)}
+                            disabled={!skill.enabled}
+                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                            thumbColor={skill.enabledForProfile && skill.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                          />
+                          <TouchableOpacity
+                            style={[styles.noteSelectButton, isSelected && styles.noteSelectButtonSelected]}
+                            onPress={() => toggleSkillSelection(skill.id)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: isSelected }}
+                            accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} skill ${skill.name}`}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={[styles.noteSelectButtonText, isSelected && styles.noteSelectButtonTextSelected]}>
+                              {isSelected ? 'Selected' : 'Select'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.agentSecondaryButton,
+                              isExportingSkillMarkdownId === skill.id && styles.agentActionButtonDisabled,
+                            ]}
+                            onPress={() => handleSkillMarkdownExport(skill)}
+                            disabled={isExportingSkillMarkdownId === skill.id}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Export skill ${skill.name} as Markdown`)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={styles.agentSecondaryButtonText}>
+                              {isExportingSkillMarkdownId === skill.id ? 'Exporting...' : 'Export'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.agentDeleteButton}
+                            onPress={() => handleSkillDelete(skill)}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Delete skill ${skill.name}`)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={styles.agentDeleteButtonText}>Delete</Text>
+                          </TouchableOpacity>
                         </View>
-                      </TouchableOpacity>
-                      <View style={styles.agentActions}>
-                        <Switch
-                          value={skill.enabledForProfile}
-                          onValueChange={() => handleSkillToggle(skill.id)}
-                          disabled={!skill.enabled}
-                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                          thumbColor={skill.enabledForProfile && skill.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                        />
-                        <TouchableOpacity
-                          style={[
-                            styles.agentSecondaryButton,
-                            isExportingSkillMarkdownId === skill.id && styles.agentActionButtonDisabled,
-                          ]}
-                          onPress={() => handleSkillMarkdownExport(skill)}
-                          disabled={isExportingSkillMarkdownId === skill.id}
-                          accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Export skill ${skill.name} as Markdown`)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Text style={styles.agentSecondaryButtonText}>
-                            {isExportingSkillMarkdownId === skill.id ? 'Exporting...' : 'Export'}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.agentDeleteButton}
-                          onPress={() => handleSkillDelete(skill)}
-                          accessibilityRole="button"
-                          accessibilityLabel={createButtonAccessibilityLabel(`Delete skill ${skill.name}`)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Text style={styles.agentDeleteButtonText}>Delete</Text>
-                        </TouchableOpacity>
                       </View>
-                    </View>
-                  ))
+                    );
+                  })
                 )}
                 <View style={styles.sectionActionRow}>
                   <TouchableOpacity
@@ -4485,6 +4550,18 @@ export default function SettingsScreen({ navigation }: any) {
                   >
                     <Text style={styles.createAgentButtonText}>Import GitHub</Text>
                   </TouchableOpacity>
+                  {visibleSelectedSkillIds.length > 0 && (
+                    <TouchableOpacity
+                      style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
+                      onPress={handleSelectedSkillsDelete}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`Delete ${visibleSelectedSkillIds.length} selected skills`)}
+                    >
+                      <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>
+                        Delete Selected ({visibleSelectedSkillIds.length})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
                 <Text style={styles.helperText}>
                   Tap a skill to edit, or toggle to enable it for the Main Agent.

@@ -45,7 +45,7 @@ test('sorts mobile skills like desktop without mutating fetched state', () => {
   assert.match(settingsSource, /const displaySkills = useMemo\(\(\) => \[\.\.\.skills\]\.sort\(\(a, b\) => \{/);
   assert.match(settingsSource, /Number\(b\.enabledForProfile\) - Number\(a\.enabledForProfile\)/);
   assert.match(settingsSource, /return a\.name\.localeCompare\(b\.name\);/);
-  assert.match(settingsSource, /displaySkills\.map\(\(skill\) => \(/);
+  assert.match(settingsSource, /displaySkills\.map\(\(skill\) => \{/);
 });
 
 test('lets mobile delete non-reserved desktop MCP server configs', () => {
@@ -126,6 +126,15 @@ test('lets mobile import GitHub skills through the shared client', () => {
   assert.match(settingsSource, /settingsClient\.importSkillFromGitHub\(skillGitHubImportText\.trim\(\)\)/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\('Import skill from GitHub'\)/);
   assert.match(settingsSource, /accessibilityLabel="Import GitHub skill"/);
+});
+
+test('lets mobile bulk-delete selected desktop skills through the shared client', () => {
+  assert.match(settingsSource, /const \[selectedSkillIds, setSelectedSkillIds\] = useState<Set<string>>\(new Set\(\)\)/);
+  assert.match(settingsSource, /const visibleSelectedSkillIds = useMemo/);
+  assert.match(settingsSource, /toggleSkillSelection\(skill\.id\)/);
+  assert.match(settingsSource, /settingsClient\.deleteSkills\(visibleSelectedSkillIds\)/);
+  assert.match(settingsSource, /Delete Selected \(\{visibleSelectedSkillIds\.length\}\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\(`Delete \$\{visibleSelectedSkillIds\.length\} selected skills`\)/);
 });
 
 test('lets mobile search desktop knowledge notes through the shared client', () => {

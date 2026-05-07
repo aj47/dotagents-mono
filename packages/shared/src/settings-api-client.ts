@@ -227,6 +227,7 @@ import type {
   Settings,
   SettingsUpdate,
   SkillCreateRequest,
+  SkillDeleteMultipleResponse,
   SkillDeleteResponse,
   SkillExportMarkdownResponse,
   SkillImportGitHubRequest,
@@ -1796,6 +1797,13 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   async deleteSkill(id: string): Promise<SkillDeleteResponse> {
     return this.request<SkillDeleteResponse>(API_BUILDERS.skill(id), {
       method: 'DELETE',
+    });
+  }
+
+  async deleteSkills(ids: string[]): Promise<SkillDeleteMultipleResponse> {
+    return this.request<SkillDeleteMultipleResponse>(API_PATHS.skillsDeleteMultiple, {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
     });
   }
 

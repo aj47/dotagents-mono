@@ -351,6 +351,12 @@ export function registerMobileApiRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  // POST /v1/skills/delete-multiple - Delete selected skills
+  fastify.post(API_ROUTES.skillsDeleteMultiple, async (req, reply) => {
+    const result = actions.deleteSkills(req.body);
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   // POST /v1/skills/:id/toggle-profile - Toggle skill for current profile
   fastify.post(API_ROUTES.skillToggleProfile, async (req, reply) => {
     const params = req.params as { id?: string };

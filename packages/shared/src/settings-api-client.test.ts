@@ -1374,6 +1374,7 @@ describe('SettingsApiClient', () => {
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.skillExportMarkdown }, expectedPath: REMOTE_SERVER_API_BUILDERS.skillExportMarkdown(skillId), run: () => client.exportSkillToMarkdown(skillId) },
       { route: { method: 'PATCH', path: REMOTE_SERVER_API_PATHS.skill }, expectedPath: REMOTE_SERVER_API_BUILDERS.skill(skillId), run: () => client.updateSkill(skillId, { description: 'Updated' }) },
       { route: { method: 'DELETE', path: REMOTE_SERVER_API_PATHS.skill }, expectedPath: REMOTE_SERVER_API_BUILDERS.skill(skillId), run: () => client.deleteSkill(skillId) },
+      { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.skillsDeleteMultiple }, expectedPath: REMOTE_SERVER_API_PATHS.skillsDeleteMultiple, run: () => client.deleteSkills([skillId]) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.skillToggleProfile }, expectedPath: REMOTE_SERVER_API_BUILDERS.skillToggleProfile(skillId), run: () => client.toggleSkillForProfile(skillId) },
       {
         route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.knowledgeNotes },

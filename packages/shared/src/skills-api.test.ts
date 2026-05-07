@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildDisabledRuntimeSkillPayload,
+  buildSkillDeleteMultipleResponse,
   buildSkillDeleteResponse,
   buildSkillExportMarkdownResponse,
   buildSkillImportGitHubResponse,
@@ -15,6 +16,7 @@ import {
   createSkillIdFromName,
   createSkillRouteActions,
   deleteSkillAction,
+  deleteSkillsAction,
   exportSkillToMarkdownAction,
   importSkillFromGitHubAction,
   buildIgnoredExecuteCommandSkillIdWarning,
@@ -30,6 +32,7 @@ import {
   isGitHubSkillMarkdownFileName,
   isSkillEnabledByConfig,
   isSkillEnabledForProfile,
+  parseSkillDeleteMultipleRequestBody,
   parseGitHubSkillIdentifier,
   parseSkillImportMarkdownRequestBody,
   parseRuntimeSkillIdArg,
@@ -217,6 +220,17 @@ describe("skills API helpers", () => {
     expect(buildSkillDeleteResponse("research")).toEqual({
       success: true,
       id: "research",
+    })
+    expect(buildSkillDeleteMultipleResponse([
+      { id: "research", success: true },
+      { id: "missing", success: false },
+    ])).toEqual({
+      success: true,
+      deletedCount: 1,
+      results: [
+        { id: "research", success: true },
+        { id: "missing", success: false },
+      ],
     })
     expect(buildSkillToggleResponse("research", {
       skillsConfig: {
@@ -544,6 +558,64 @@ describe("skills API helpers", () => {
     })
   })
 
+  it("deletes selected skills through the shared route action", () => {
+    let remainingSkills = [...skills]
+    const deletedContexts: SkillDeletedContext[] = []
+    const service = createTestSkillActionService({
+      getSkills: () => remainingSkills,
+      deleteSkill: (skillId: string) => {
+        const exists = remainingSkills.some((skill) => skill.id === skillId)
+        if (exists) {
+          remainingSkills = remainingSkills.filter((skill) => skill.id !== skillId)
+        }
+        return exists
+      },
+      onSkillDeleted: (context) => {
+        deletedContexts.push(context)
+      },
+    })
+    const diagnostics = {
+      logError: () => {
+        throw new Error("unexpected diagnostics log")
+      },
+    }
+
+    expect(parseSkillDeleteMultipleRequestBody({
+      ids: [" research ", "writing", "research", "", 42],
+    })).toEqual({
+      ok: true,
+      request: { ids: ["research", "writing"] },
+    })
+    expect(deleteSkillsAction({
+      ids: [" research ", "missing", "writing"],
+    }, { service, diagnostics })).toEqual({
+      statusCode: 200,
+      body: buildSkillDeleteMultipleResponse([
+        { id: "research", success: true },
+        { id: "missing", success: false },
+        { id: "writing", success: true },
+      ]),
+    })
+    expect(deletedContexts).toEqual([
+      {
+        skillId: "research",
+        availableSkills: [skills[1]],
+        availableSkillIds: ["writing"],
+      },
+      {
+        skillId: "writing",
+        availableSkills: [],
+        availableSkillIds: [],
+      },
+    ])
+
+    const routeActions = createSkillRouteActions({ service, diagnostics })
+    expect(routeActions.deleteSkills({ ids: ["missing"] })).toEqual({
+      statusCode: 200,
+      body: buildSkillDeleteMultipleResponse([{ id: "missing", success: false }]),
+    })
+  })
+
   it("returns shared skill action validation errors before mutating profile state", async () => {
     const service = createTestSkillActionService({
       getCurrentProfile: () => null,
@@ -613,6 +685,10 @@ describe("skills API helpers", () => {
     expect(deleteSkillAction("missing", { service, diagnostics })).toEqual({
       statusCode: 404,
       body: { error: "Skill not found" },
+    })
+    expect(deleteSkillsAction({ ids: [] }, { service, diagnostics })).toEqual({
+      statusCode: 400,
+      body: { error: "ids must be a non-empty array of strings" },
     })
     expect(parseSkillImportMarkdownRequestBody({ content: "  ---\nname: Research\n---" })).toEqual({
       ok: true,

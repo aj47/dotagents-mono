@@ -1,6 +1,9 @@
 import type {
   Skill,
   SkillCreateRequest,
+  SkillDeleteMultipleRequest,
+  SkillDeleteMultipleResponse,
+  SkillDeleteMultipleResult,
   SkillDeleteResponse,
   SkillExportMarkdownResponse,
   SkillImportGitHubRequest,
@@ -143,6 +146,7 @@ export interface SkillRouteActions {
   exportSkillToMarkdown(id: string | undefined): SkillActionResult
   updateSkill(id: string | undefined, body: unknown): SkillActionResult
   deleteSkill(id: string | undefined): SkillActionResult
+  deleteSkills(body: unknown): SkillActionResult
   toggleProfileSkill(id: string | undefined): SkillActionResult
 }
 
@@ -497,6 +501,16 @@ export function buildSkillDeleteResponse(skillId: string): SkillDeleteResponse {
   }
 }
 
+export function buildSkillDeleteMultipleResponse(
+  results: SkillDeleteMultipleResult[],
+): SkillDeleteMultipleResponse {
+  return {
+    success: true,
+    deletedCount: results.filter((result) => result.success).length,
+    results,
+  }
+}
+
 export function buildSkillToggleResponse(
   skillId: string,
   profile?: SkillProfileLike | null,
@@ -592,6 +606,29 @@ export function parseSkillUpdateRequestBody(body: unknown): SkillUpdateParseResu
   }
 
   return { ok: true, request }
+}
+
+export type SkillDeleteMultipleParseResult =
+  | { ok: true; request: SkillDeleteMultipleRequest }
+  | { ok: false; error: string }
+
+export function parseSkillDeleteMultipleRequestBody(body: unknown): SkillDeleteMultipleParseResult {
+  const record = getRequestRecord(body)
+  if (!Array.isArray(record.ids)) {
+    return { ok: false, error: "ids must be a non-empty array of strings" }
+  }
+
+  const ids = Array.from(new Set(
+    record.ids
+      .filter((id): id is string => typeof id === "string")
+      .map((id) => id.trim())
+      .filter(Boolean),
+  ))
+  if (ids.length === 0) {
+    return { ok: false, error: "ids must be a non-empty array of strings" }
+  }
+
+  return { ok: true, request: { ids } }
 }
 
 export type SkillImportMarkdownParseResult =
@@ -804,6 +841,36 @@ export function deleteSkillAction(
   }
 }
 
+export function deleteSkillsAction(
+  body: unknown,
+  options: SkillActionOptions,
+): SkillActionResult {
+  const parsed = parseSkillDeleteMultipleRequestBody(body)
+  if (parsed.ok === false) {
+    return skillActionError(400, parsed.error)
+  }
+
+  try {
+    const results = parsed.request.ids.map((id) => {
+      const success = options.service.deleteSkill(id)
+      if (success && options.service.onSkillDeleted) {
+        const availableSkills = options.service.getSkills()
+        options.service.onSkillDeleted({
+          skillId: id,
+          availableSkills,
+          availableSkillIds: availableSkills.map((skill) => skill.id),
+        })
+      }
+      return { id, success }
+    })
+
+    return skillActionOk(buildSkillDeleteMultipleResponse(results))
+  } catch (caughtError) {
+    options.diagnostics.logError("skill-actions", "Failed to delete skills", caughtError)
+    return skillActionError(500, getUnknownErrorMessage(caughtError, "Failed to delete skills"))
+  }
+}
+
 export function toggleProfileSkillAction(
   skillId: string | undefined,
   options: SkillActionOptions,
@@ -839,6 +906,7 @@ export function createSkillRouteActions(options: SkillActionOptions): SkillRoute
     exportSkillToMarkdown: (id) => exportSkillToMarkdownAction(id, options),
     updateSkill: (id, body) => updateSkillAction(id, body, options),
     deleteSkill: (id) => deleteSkillAction(id, options),
+    deleteSkills: (body) => deleteSkillsAction(body, options),
     toggleProfileSkill: (id) => toggleProfileSkillAction(id, options),
   }
 }
