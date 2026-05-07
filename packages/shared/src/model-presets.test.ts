@@ -13,6 +13,7 @@ import {
   buildModelPresetUpdateAuditContext,
   buildModelPresetsResponse,
   createCustomModelPresetId,
+  createModelPresetActionService,
   createOperatorModelPresetAction,
   createOperatorModelPresetRouteActions,
   deleteOperatorModelPresetAction,
@@ -42,6 +43,33 @@ import { DEFAULT_AGENT_PROVIDER_ID, DEFAULT_MODEL_PRESET_ID, type ModelPreset } 
 describe('model preset helpers', () => {
   it('creates custom model preset ids from injected unique ids', () => {
     expect(createCustomModelPresetId(() => 'preset-uuid')).toBe('custom-preset-uuid');
+  });
+
+  it('creates model preset action services from config adapters', async () => {
+    let config: ModelPresetActionConfigLike = { modelPresets: [] };
+    const service = createModelPresetActionService({
+      config: {
+        get: () => config,
+        save: async (nextConfig) => {
+          config = nextConfig;
+        },
+      },
+      createUniqueId: () => 'preset-uuid',
+      now: () => 123,
+    });
+
+    expect(service.getConfig()).toEqual({ modelPresets: [] });
+    expect(service.createPresetId()).toBe('custom-preset-uuid');
+    expect(service.now()).toBe(123);
+
+    await service.saveConfig({
+      modelPresets: [{
+        id: 'custom-1',
+        name: 'Custom',
+        baseUrl: 'https://example.com/v1',
+      }],
+    });
+    expect(config.modelPresets?.[0]?.id).toBe('custom-1');
   });
 
   it('merges built-in presets with saved overrides and custom presets', () => {
@@ -544,20 +572,22 @@ describe('model preset helpers', () => {
     };
     const savedConfigs: ModelPresetActionConfigLike[] = [];
     const options: ModelPresetActionOptions = {
-      config: {
-        get: () => config,
-        save: async (nextConfig) => {
-          config = nextConfig;
-          savedConfigs.push(nextConfig);
-        },
-      },
       diagnostics: {
         logError: () => {
           throw new Error('unexpected diagnostics log');
         },
       },
-      createPresetId: () => 'custom-1',
-      now: () => 123,
+      service: createModelPresetActionService({
+        config: {
+          get: () => config,
+          save: async (nextConfig) => {
+            config = nextConfig;
+            savedConfigs.push(nextConfig);
+          },
+        },
+        createUniqueId: () => '1',
+        now: () => 123,
+      }),
     };
 
     await expect(getOperatorModelPresetsAction('MASK', options)).resolves.toEqual({
@@ -640,19 +670,21 @@ describe('model preset helpers', () => {
 
   it('returns operator model preset action validation errors', async () => {
     const options: ModelPresetActionOptions = {
-      config: {
-        get: () => ({
-          modelPresets: [],
-        }),
-        save: async () => undefined,
-      },
       diagnostics: {
         logError: () => {
           throw new Error('unexpected diagnostics log');
         },
       },
-      createPresetId: () => 'custom-1',
-      now: () => 123,
+      service: createModelPresetActionService({
+        config: {
+          get: () => ({
+            modelPresets: [],
+          }),
+          save: async () => undefined,
+        },
+        createUniqueId: () => '1',
+        now: () => 123,
+      }),
     };
 
     await expect(createOperatorModelPresetAction({}, 'MASK', options)).resolves.toEqual({
@@ -685,19 +717,21 @@ describe('model preset helpers', () => {
       }],
     };
     const options: ModelPresetActionOptions = {
-      config: {
-        get: () => config,
-        save: async (nextConfig) => {
-          config = nextConfig;
-        },
-      },
       diagnostics: {
         logError: () => {
           throw new Error('unexpected diagnostics log');
         },
       },
-      createPresetId: () => 'custom-2',
-      now: () => 123,
+      service: createModelPresetActionService({
+        config: {
+          get: () => config,
+          save: async (nextConfig) => {
+            config = nextConfig;
+          },
+        },
+        createUniqueId: () => '2',
+        now: () => 123,
+      }),
     };
     const routeActions = createOperatorModelPresetRouteActions(options);
 
@@ -739,21 +773,23 @@ describe('model preset helpers', () => {
     const caughtFailure = new Error('save failed');
     const loggedErrors: unknown[] = [];
     const options: ModelPresetActionOptions = {
-      config: {
-        get: () => ({
-          modelPresets: [],
-        }),
-        save: async () => {
-          throw caughtFailure;
-        },
-      },
       diagnostics: {
         logError: (source: string, message: string, caughtError: unknown) => {
           loggedErrors.push({ source, message, caughtError });
         },
       },
-      createPresetId: () => 'custom-1',
-      now: () => 123,
+      service: createModelPresetActionService({
+        config: {
+          get: () => ({
+            modelPresets: [],
+          }),
+          save: async () => {
+            throw caughtFailure;
+          },
+        },
+        createUniqueId: () => '1',
+        now: () => 123,
+      }),
     };
 
     await expect(createOperatorModelPresetAction({

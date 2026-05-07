@@ -2282,9 +2282,12 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "getOperatorModelPresetsAction(secretMask, modelPresetActionOptions)",
     )
+    expect(operatorRouteDesktopActionsSource).toContain("service: createModelPresetActionService<Config>({")
+    expect(operatorRouteDesktopActionsSource).toContain("createUniqueId: crypto.randomUUID")
     expect(operatorRouteDesktopActionsSource).toContain(
-      "createPresetId: () => createCustomModelPresetId(crypto.randomUUID)",
+      "const modelPresetActionOptions: ModelPresetActionOptions<Config> = {\n  diagnostics: diagnosticsService,\n  service:",
     )
+    expect(operatorRouteDesktopActionsSource).not.toContain("createPresetId: () => createCustomModelPresetId")
     expect(operatorRouteDesktopActionsSource).not.toContain("`custom-${crypto.randomUUID()}`")
     expect(operatorRouteDesktopActionsSource).not.toContain(
       "createOperatorModelPresetAction(body, secretMask, modelPresetActionOptions)",
@@ -2296,6 +2299,9 @@ describe("remote-server route registration", () => {
       "deleteOperatorModelPresetAction(presetId, secretMask, modelPresetActionOptions)",
     )
     expect(source).toContain("PROVIDER_SECRET_MASK")
+    expect(sharedModelPresetsSource).toContain("export interface ModelPresetActionService")
+    expect(sharedModelPresetsSource).toContain("export function createModelPresetActionService")
+    expect(sharedModelPresetsSource).toContain("createPresetId: () => createCustomModelPresetId(options.createUniqueId)")
     expect(sharedModelPresetsSource).toContain("export interface ModelPresetActionOptions")
     expect(sharedModelPresetsSource).toContain("export function createCustomModelPresetId(")
     expect(sharedModelPresetsSource).toContain("export interface OperatorModelPresetRouteActions")
@@ -2311,10 +2317,10 @@ describe("remote-server route registration", () => {
     expect(sharedModelPresetsSource).toContain("export async function createOperatorModelPresetAction")
     expect(sharedModelPresetsSource).toContain("export async function updateOperatorModelPresetAction")
     expect(sharedModelPresetsSource).toContain("export async function deleteOperatorModelPresetAction")
-    expect(sharedModelPresetsSource).toContain("buildModelPresetsResponse(options.config.get(), secretMask)")
-    expect(sharedModelPresetsSource).toContain("options.createPresetId()")
-    expect(sharedModelPresetsSource).toContain("options.now()")
-    expect(sharedModelPresetsSource).toContain("options.config.save(nextConfig)")
+    expect(sharedModelPresetsSource).toContain("buildModelPresetsResponse(options.service.getConfig(), secretMask)")
+    expect(sharedModelPresetsSource).toContain("options.service.createPresetId()")
+    expect(sharedModelPresetsSource).toContain("options.service.now()")
+    expect(sharedModelPresetsSource).toContain("options.service.saveConfig(nextConfig)")
     expect(sharedModelPresetsSource).toContain("buildModelPresetMutationResponse")
     expect(sharedModelPresetsSource).toContain("getModelPresetActivationUpdates")
     expect(sharedModelPresetsSource).toContain("upsertModelPresetOverride")

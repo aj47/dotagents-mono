@@ -115,15 +115,37 @@ export interface ModelPresetActionDiagnostics {
   logError(source: string, message: string, error: unknown): void;
 }
 
-export interface ModelPresetActionOptions<TConfig extends ModelPresetActionConfigLike = ModelPresetActionConfigLike> {
-  config: ModelPresetActionStore<TConfig>;
-  diagnostics: ModelPresetActionDiagnostics;
+export interface ModelPresetActionService<TConfig extends ModelPresetActionConfigLike = ModelPresetActionConfigLike> {
+  getConfig(): TConfig;
+  saveConfig(config: TConfig): ModelPresetMaybePromise<void>;
   createPresetId(): string;
+  now(): number;
+}
+
+export interface ModelPresetActionServiceOptions<TConfig extends ModelPresetActionConfigLike = ModelPresetActionConfigLike> {
+  config: ModelPresetActionStore<TConfig>;
+  createUniqueId(): string;
   now(): number;
 }
 
 export function createCustomModelPresetId(createUniqueId: () => string): string {
   return `custom-${createUniqueId()}`;
+}
+
+export function createModelPresetActionService<TConfig extends ModelPresetActionConfigLike>(
+  options: ModelPresetActionServiceOptions<TConfig>,
+): ModelPresetActionService<TConfig> {
+  return {
+    getConfig: () => options.config.get(),
+    saveConfig: (config) => options.config.save(config),
+    createPresetId: () => createCustomModelPresetId(options.createUniqueId),
+    now: () => options.now(),
+  };
+}
+
+export interface ModelPresetActionOptions<TConfig extends ModelPresetActionConfigLike = ModelPresetActionConfigLike> {
+  service: ModelPresetActionService<TConfig>;
+  diagnostics: ModelPresetActionDiagnostics;
 }
 
 export interface OperatorModelPresetRouteActions {
@@ -309,7 +331,7 @@ export async function getOperatorModelPresetsAction<TConfig extends ModelPresetA
   options: ModelPresetActionOptions<TConfig>,
 ): Promise<ModelPresetActionResult> {
   try {
-    return modelPresetActionOk(buildModelPresetsResponse(options.config.get(), secretMask));
+    return modelPresetActionOk(buildModelPresetsResponse(options.service.getConfig(), secretMask));
   } catch (caughtError) {
     options.diagnostics.logError(
       'operator-model-preset-actions',
@@ -332,17 +354,17 @@ export async function createOperatorModelPresetAction<TConfig extends ModelPrese
     }
 
     const preset = buildCustomModelPresetFromRequest(
-      options.createPresetId(),
+      options.service.createPresetId(),
       parsedRequest.request,
-      options.now(),
+      options.service.now(),
     );
 
-    const cfg = options.config.get();
+    const cfg = options.service.getConfig();
     const nextConfig = {
       ...cfg,
       modelPresets: [...getSavedModelPresets(cfg), preset],
     } as TConfig;
-    await options.config.save(nextConfig);
+    await options.service.saveConfig(nextConfig);
 
     return modelPresetActionOk(
       buildModelPresetMutationResponse(nextConfig, secretMask, { preset }),
@@ -370,7 +392,7 @@ export async function updateOperatorModelPresetAction<TConfig extends ModelPrese
   }
 
   try {
-    const cfg = options.config.get();
+    const cfg = options.service.getConfig();
     const existingPreset = getMergedModelPresetById(cfg, presetId);
     if (!existingPreset) {
       return modelPresetActionError(404, 'Model preset not found');
@@ -389,7 +411,7 @@ export async function updateOperatorModelPresetAction<TConfig extends ModelPrese
     }
 
     const nextConfig = { ...cfg, ...updates } as TConfig;
-    await options.config.save(nextConfig);
+    await options.service.saveConfig(nextConfig);
 
     return modelPresetActionOk(
       buildModelPresetMutationResponse(nextConfig, secretMask, { preset: updatedPreset }),
@@ -416,7 +438,7 @@ export async function deleteOperatorModelPresetAction<TConfig extends ModelPrese
   }
 
   try {
-    const cfg = options.config.get();
+    const cfg = options.service.getConfig();
     const preset = getMergedModelPresetById(cfg, presetId);
     if (!preset) {
       return modelPresetActionError(404, 'Model preset not found');
@@ -435,7 +457,7 @@ export async function deleteOperatorModelPresetAction<TConfig extends ModelPrese
     }
 
     const nextConfig = { ...cfg, ...updates } as TConfig;
-    await options.config.save(nextConfig);
+    await options.service.saveConfig(nextConfig);
 
     return modelPresetActionOk(
       buildModelPresetMutationResponse(nextConfig, secretMask, { deletedPresetId: presetId }),

@@ -10,7 +10,7 @@ import {
   type LocalSpeechModelActionOptions,
 } from "@dotagents/shared/local-speech-models"
 import {
-  createCustomModelPresetId,
+  createModelPresetActionService,
   createOperatorModelPresetRouteActions,
   type ModelPresetActionOptions,
 } from "@dotagents/shared/model-presets"
@@ -122,13 +122,15 @@ const getOperatorSystemMetrics = createOperatorSystemMetricsCollector({
 })
 
 const modelPresetActionOptions: ModelPresetActionOptions<Config> = {
-  config: {
-    get: () => configStore.get(),
-    save: (config) => configStore.save(config),
-  },
   diagnostics: diagnosticsService,
-  createPresetId: () => createCustomModelPresetId(crypto.randomUUID),
-  now: () => Date.now(),
+  service: createModelPresetActionService<Config>({
+    config: {
+      get: () => configStore.get(),
+      save: (config) => configStore.save(config),
+    },
+    createUniqueId: crypto.randomUUID,
+    now: () => Date.now(),
+  }),
 }
 
 const operatorModelPresetRouteActions = createOperatorModelPresetRouteActions(modelPresetActionOptions)
