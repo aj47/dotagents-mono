@@ -36,6 +36,7 @@ import {
   createInjectedMcpProtocolRouteAction,
   clearOperatorMcpServerLogsAction,
   createInjectedMcpToolRouteActions,
+  createMcpConfigActionService,
   createMcpRouteActions,
   createOperatorMcpRouteActions,
   formatMcpMaxIterationsValidationMessage,
@@ -499,6 +500,62 @@ describe("MCP API helpers", () => {
         nextServers: ["filesystem", "github"],
       },
     ])
+  })
+
+  it("creates config-backed MCP config action services", () => {
+    let config: { mcpConfig?: MCPConfig; unrelatedSetting: boolean } = {
+      mcpConfig: {
+        mcpServers: {
+          filesystem: { command: "filesystem-mcp" },
+        },
+      },
+      unrelatedSetting: true,
+    }
+    const service = createMcpConfigActionService({
+      get: () => config,
+      save: (nextConfig) => {
+        config = nextConfig
+      },
+    })
+
+    expect(service.getMcpConfig()).toEqual({
+      mcpServers: {
+        filesystem: { command: "filesystem-mcp" },
+      },
+    })
+
+    service.saveMcpConfig({
+      mcpServers: {
+        docs: {
+          transport: "streamableHttp",
+          url: "https://example.com/mcp",
+        },
+      },
+    })
+
+    expect(config).toEqual({
+      mcpConfig: {
+        mcpServers: {
+          docs: {
+            transport: "streamableHttp",
+            url: "https://example.com/mcp",
+          },
+        },
+      },
+      unrelatedSetting: true,
+    })
+
+    let emptyConfig: { mcpConfig?: MCPConfig; unrelatedSetting: boolean } = {
+      unrelatedSetting: false,
+    }
+    const emptyService = createMcpConfigActionService({
+      get: () => emptyConfig,
+      save: (nextConfig) => {
+        emptyConfig = nextConfig
+      },
+    })
+
+    expect(emptyService.getMcpConfig()).toEqual({ mcpServers: {} })
   })
 
   it("creates mobile MCP route actions that delegate through service adapters", () => {

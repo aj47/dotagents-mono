@@ -44,10 +44,10 @@ import {
 } from "@dotagents/shared/discord-config"
 import {
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
+  createMcpConfigActionService,
   createMcpRouteActions,
   type McpServerConfigActionOptions,
 } from "@dotagents/shared/mcp-api"
-import type { MCPConfig } from "@dotagents/shared/mcp-utils"
 import { getMaskedRemoteServerApiKey } from "@dotagents/shared/remote-pairing"
 import {
   createTtsRouteActions,
@@ -376,13 +376,10 @@ function cleanupInvalidAgentProfileMcpReferences(validServerNames: string[]): vo
 }
 
 const mcpServerConfigActionOptions = {
-  service: {
-    getMcpConfig: () => configStore.get().mcpConfig || { mcpServers: {} },
-    saveMcpConfig: (mcpConfig: MCPConfig) => {
-      const config = configStore.get()
-      configStore.save({ ...config, mcpConfig })
-    },
-  },
+  service: createMcpConfigActionService({
+    get: () => configStore.get(),
+    save: (config) => configStore.save(config),
+  }),
   diagnostics: diagnosticsService,
   reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   onMcpServerDeleted: ({ availableServerNames }) => {

@@ -1365,6 +1365,8 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain("server: mcpServerActionOptions")
     expect(mobileApiDesktopActionsSource).toContain("config: mcpServerConfigActionOptions")
     expect(mobileApiDesktopActionsSource).toContain("mcp: mcpRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("service: createMcpConfigActionService({")
+    expect(mobileApiDesktopActionsSource).toContain("save: (config) => configStore.save(config)")
     expect(mobileApiDesktopActionsSource).not.toContain("getMcpServersAction(mcpServerActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("toggleMcpServerAction(serverName, body, mcpServerActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain(
@@ -1385,6 +1387,9 @@ describe("remote-server route registration", () => {
     )
     expect(sharedMcpApiSource).toContain("export interface McpServerActionService")
     expect(sharedMcpApiSource).toContain("export interface McpServerConfigActionService")
+    expect(sharedMcpApiSource).toContain("export function createMcpConfigActionService")
+    expect(sharedMcpApiSource).toContain("getMcpConfig: () => store.get().mcpConfig || { mcpServers: {} }")
+    expect(sharedMcpApiSource).toContain("store.save({ ...config, mcpConfig })")
     expect(sharedMcpApiSource).toContain("onMcpServerDeleted?(context: McpServerDeletedContext): void")
     expect(sharedMcpApiSource).toContain("export interface McpRouteActions")
     expect(sharedMcpApiSource).toContain("export function getMcpServersAction")

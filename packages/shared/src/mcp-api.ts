@@ -271,6 +271,27 @@ export interface McpServerConfigActionService {
   }): void
 }
 
+export type McpConfigActionStoreConfig = {
+  mcpConfig?: MCPConfig
+}
+
+export interface McpConfigActionStore<TConfig extends object> {
+  get(): TConfig & McpConfigActionStoreConfig
+  save(config: TConfig & McpConfigActionStoreConfig): void
+}
+
+export function createMcpConfigActionService<TConfig extends object>(
+  store: McpConfigActionStore<TConfig>,
+): McpServerConfigActionService {
+  return {
+    getMcpConfig: () => store.get().mcpConfig || { mcpServers: {} },
+    saveMcpConfig: (mcpConfig) => {
+      const config = store.get()
+      store.save({ ...config, mcpConfig })
+    },
+  }
+}
+
 export type McpServerDeletedContext = {
   serverName: string
   previousMcpConfig: MCPConfig
