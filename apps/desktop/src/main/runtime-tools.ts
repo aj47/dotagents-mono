@@ -66,6 +66,7 @@ import {
 import {
   materializeParsedRespondToUserResponse,
   parseRespondToUserArgs,
+  resolveRespondToUserLocalFilePath,
   validateRespondToUserImageFile,
   validateRespondToUserImagePath,
   validateRespondToUserVideoFile,
@@ -79,6 +80,11 @@ import {
 import { RUNTIME_TOOLS_SERVER_NAME } from "@dotagents/shared/mcp-api"
 
 const execAsync = promisify(exec)
+const respondToUserLocalPathAdapter = {
+  cwd: () => process.cwd(),
+  isAbsolute: path.isAbsolute,
+  resolve: path.resolve,
+}
 
 export { RUNTIME_TOOLS_SERVER_NAME }
 export type { RuntimeToolDefinition }
@@ -160,9 +166,7 @@ async function pathExists(targetPath: string): Promise<boolean> {
 }
 
 async function resolveValidImagePath(rawPath: string): Promise<{ resolvedPath: string; fileBytes: number }> {
-  const resolvedPath = path.isAbsolute(rawPath)
-    ? rawPath
-    : path.resolve(process.cwd(), rawPath)
+  const resolvedPath = resolveRespondToUserLocalFilePath(rawPath, respondToUserLocalPathAdapter)
 
   const pathValidation = validateRespondToUserImagePath(rawPath, resolvedPath)
   if (pathValidation.success === false) {
@@ -184,9 +188,7 @@ async function resolveValidImagePath(rawPath: string): Promise<{ resolvedPath: s
 }
 
 async function resolveValidVideoPath(rawPath: string): Promise<{ resolvedPath: string; fileBytes: number }> {
-  const resolvedPath = path.isAbsolute(rawPath)
-    ? rawPath
-    : path.resolve(process.cwd(), rawPath)
+  const resolvedPath = resolveRespondToUserLocalFilePath(rawPath, respondToUserLocalPathAdapter)
 
   const stat = await fs.stat(resolvedPath)
   const fileValidation = validateRespondToUserVideoFile({

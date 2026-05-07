@@ -66,6 +66,7 @@ import {
   parseConversationVideoAssetUrl,
   replaceMarkdownImageReferences,
   replaceMarkdownVideoLinks,
+  resolveRespondToUserLocalFilePath,
   stripMarkdownImageReferences,
   stripMarkdownVideoLinks,
   transformMarkdownUrl,
@@ -636,6 +637,17 @@ describe('conversation video asset utilities', () => {
   });
 
   it('validates respond_to_user local image files from injected file metadata', () => {
+    const pathAdapter = {
+      cwd: () => '/workspace',
+      isAbsolute: path.posix.isAbsolute,
+      resolve: path.posix.resolve,
+    };
+
+    expect(resolveRespondToUserLocalFilePath(' ./assets/image.png ', pathAdapter))
+      .toBe('/workspace/assets/image.png');
+    expect(resolveRespondToUserLocalFilePath('/tmp/preview.png', pathAdapter))
+      .toBe('/tmp/preview.png');
+
     expect(validateRespondToUserImagePath('/tmp/preview.svg', '/tmp/preview.svg')).toEqual({
       success: false,
       error: 'SVG images are not supported for conversation assets; use a raster image path: /tmp/preview.svg',

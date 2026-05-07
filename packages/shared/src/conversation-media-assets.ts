@@ -317,6 +317,12 @@ export type RespondToUserLocalFileInfo = {
   fileBytes: number;
 };
 
+export interface RespondToUserLocalPathAdapter {
+  cwd(): string;
+  isAbsolute(filePath: string): boolean;
+  resolve(...segments: string[]): string;
+}
+
 export type RespondToUserLocalFileValidation =
   | { success: true }
   | { success: false; error: string };
@@ -745,6 +751,16 @@ export function formatMediaBytesMb(bytes: number): string {
 
 export function getUtf8ByteLength(value: string): number {
   return new TextEncoder().encode(value).length;
+}
+
+export function resolveRespondToUserLocalFilePath(
+  rawPath: string,
+  pathAdapter: RespondToUserLocalPathAdapter,
+): string {
+  const trimmed = rawPath.trim();
+  return pathAdapter.isAbsolute(trimmed)
+    ? trimmed
+    : pathAdapter.resolve(pathAdapter.cwd(), trimmed);
 }
 
 function getPathBaseName(rawPath: string): string {
