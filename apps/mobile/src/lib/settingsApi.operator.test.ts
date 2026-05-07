@@ -64,6 +64,14 @@ describe('SettingsApiClient operator endpoints', () => {
   it('targets operator errors, audit, and action endpoints without duplicating the /v1 prefix', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse({ count: 0, errors: [] }))
+      .mockResolvedValueOnce(jsonResponse({
+        timestamp: 1,
+        system: { platform: 'darwin', nodeVersion: 'v20.0.0', electronVersion: '30.0.0' },
+        config: { mcpServersCount: 0 },
+        mcp: { availableTools: 0, serverStatus: {} },
+        errors: [],
+      }))
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'operator-save-diagnostic-report', message: 'saved', filePath: '/tmp/report.json' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'operator-clear-errors', message: 'cleared' }))
       .mockResolvedValueOnce(jsonResponse({ count: 1, entries: [] }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'restart-remote-server', message: 'scheduled' }))
@@ -91,6 +99,8 @@ describe('SettingsApiClient operator endpoints', () => {
     const client = new SettingsApiClient('https://example.com/v1', 'secret-token');
 
     await client.getOperatorErrors(12);
+    await client.getOperatorDiagnosticReport();
+    await client.saveOperatorDiagnosticReport('/tmp/report.json');
     await client.clearOperatorErrors();
     await client.getOperatorAudit();
     await client.restartRemoteServer();
@@ -109,6 +119,8 @@ describe('SettingsApiClient operator endpoints', () => {
 
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
       'https://example.com/v1/operator/errors?count=12',
+      'https://example.com/v1/operator/diagnostics/report',
+      'https://example.com/v1/operator/diagnostics/report/save',
       'https://example.com/v1/operator/errors/clear',
       'https://example.com/v1/operator/audit?count=20',
       'https://example.com/v1/operator/actions/restart-remote-server',
@@ -126,20 +138,10 @@ describe('SettingsApiClient operator endpoints', () => {
       'https://example.com/v1/operator/sessions/session%2F1/unsnooze',
     ]);
 
-    expect(fetchMock.mock.calls[1]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[3]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[4]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[5]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[6]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[7]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[8]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[9]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[10]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[11]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[12]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[13]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[14]?.[1]?.method).toBe('POST');
-    expect(fetchMock.mock.calls[15]?.[1]?.method).toBe('POST');
+    for (const index of [2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]) {
+      expect(fetchMock.mock.calls[index]?.[1]?.method).toBe('POST');
+    }
+    expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(JSON.stringify({ filePath: '/tmp/report.json' }));
   });
 
   it('targets tunnel, Discord, and WhatsApp operator endpoints with the expected HTTP methods', async () => {

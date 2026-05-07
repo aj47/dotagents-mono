@@ -267,6 +267,32 @@ export interface OperatorLogsResponse {
   logs: OperatorRecentError[];
 }
 
+export interface OperatorDiagnosticReportError extends OperatorRecentError {
+  stack?: string;
+}
+
+export interface OperatorDiagnosticReport {
+  timestamp: number;
+  system: {
+    platform: string;
+    nodeVersion: string;
+    electronVersion: string;
+  };
+  config: {
+    mcpServersCount: number;
+  };
+  mcp: {
+    availableTools: number;
+    toolDiscoveryError?: string;
+    serverStatus: Record<string, { connected: boolean; toolCount: number }>;
+  };
+  errors: OperatorDiagnosticReportError[];
+}
+
+export interface OperatorDiagnosticReportSaveResponse extends OperatorActionResponse {
+  filePath?: string;
+}
+
 export interface OperatorMCPServerSummary {
   name: string;
   connected: boolean;

@@ -146,6 +146,8 @@ const operatorActionKeys = [
   'retryOperatorQueuedMessage',
   'updateOperatorQueuedMessage',
   'clearOperatorErrors',
+  'getOperatorDiagnosticReport',
+  'saveOperatorDiagnosticReport',
   'getOperatorConversations',
   'getOperatorErrors',
   'getOperatorHealth',
@@ -346,6 +348,8 @@ describe('remote server route contracts', () => {
       ),
       observability: pick(
         'clearOperatorErrors',
+        'getOperatorDiagnosticReport',
+        'saveOperatorDiagnosticReport',
         'getOperatorConversations',
         'getOperatorErrors',
         'getOperatorHealth',

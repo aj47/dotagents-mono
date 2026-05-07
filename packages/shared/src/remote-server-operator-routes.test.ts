@@ -113,8 +113,15 @@ describe('remote server operator routes', () => {
     const restartAuditContext = { action: 'restart-remote-server', success: true };
     const rotateAuditContext = { action: 'rotate-api-key', success: true };
     const clearErrorsAuditContext = { action: 'operator-clear-errors', success: true };
+    const saveDiagnosticAuditContext = { action: 'operator-save-diagnostic-report', success: true };
     const actions = {
       getOperatorStatus: vi.fn(() => ({ statusCode: 200, body: { running: true } })),
+      getOperatorDiagnosticReport: vi.fn(() => ({ statusCode: 200, body: { timestamp: 1 } })),
+      saveOperatorDiagnosticReport: vi.fn(() => ({
+        statusCode: 200,
+        body: { success: true, action: 'operator-save-diagnostic-report' },
+        auditContext: saveDiagnosticAuditContext,
+      })),
       getOperatorLogs: vi.fn(() => ({ statusCode: 200, body: { lines: [] } })),
       clearOperatorErrors: vi.fn(() => ({
         statusCode: 200,
@@ -156,6 +163,20 @@ describe('remote server operator routes', () => {
       connectableUrl: 'http://127.0.0.1:4123',
     });
     expect(statusReply.statusCode).toBe(200);
+
+    await routes.get(`GET ${REMOTE_SERVER_API_ROUTE_PATHS.operatorDiagnosticReport}`)!(
+      createRequest(),
+      createReply(),
+    );
+    expect(actions.getOperatorDiagnosticReport).toHaveBeenCalledTimes(1);
+
+    const saveDiagnosticRequest = createRequest({ body: { filePath: '/tmp/report.json' } });
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorDiagnosticReportSave}`)!(
+      saveDiagnosticRequest,
+      createReply(),
+    );
+    expect(actions.saveOperatorDiagnosticReport).toHaveBeenCalledWith({ filePath: '/tmp/report.json' });
+    expect(actions.setOperatorAuditContext).toHaveBeenCalledWith(saveDiagnosticRequest, saveDiagnosticAuditContext);
 
     await routes.get(`GET ${REMOTE_SERVER_API_ROUTE_PATHS.operatorLogs}`)!(
       createRequest({ query: { count: '50', level: 'warning' } }),

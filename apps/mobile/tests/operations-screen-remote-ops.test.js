@@ -151,6 +151,15 @@ test('displays recent conversations from operator API', () => {
   assert.match(operationsSource, /conversations\.map/);
 });
 
+test('exposes desktop diagnostic report controls', () => {
+  assert.match(operationsSource, /Diagnostics/);
+  assert.match(operationsSource, /getOperatorDiagnosticReport\(\)/);
+  assert.match(operationsSource, /saveOperatorDiagnosticReport\(\)/);
+  assert.match(operationsSource, /Generate desktop diagnostic report/);
+  assert.match(operationsSource, /Save diagnostic report on desktop/);
+  assert.match(operationsSource, /diagnosticReport\.mcp\.availableTools/);
+});
+
 test('displays recent operator logs from operator API', () => {
   assert.match(operationsSource, /RECENT_LOG_COUNT/);
   assert.match(operationsSource, /getOperatorLogs\(RECENT_LOG_COUNT\)/);

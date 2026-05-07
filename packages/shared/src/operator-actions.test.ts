@@ -115,6 +115,7 @@ import {
   getOperatorAuditPath,
   getOperatorAuditSource,
   getOperatorConversationsAction,
+  getOperatorDiagnosticReportAction,
   getOperatorErrorsAction,
   getOperatorHealthAction,
   getOperatorLogsAction,
@@ -157,6 +158,7 @@ import {
   revealOperatorUpdateAssetAction,
   sanitizeOperatorAuditDetails,
   sanitizeOperatorAuditText,
+  saveOperatorDiagnosticReportAction,
   serializeOperatorAuditLogEntries,
   setOperatorAgentSessionSnoozedAction,
   showOperatorAgentSessionAction,
@@ -3410,6 +3412,23 @@ describe("operator action API helpers", () => {
     const service = createOperatorObservabilityActionService({
       getCurrentVersion: () => "1.2.3",
       diagnostics: {
+        generateDiagnosticReport: async () => {
+          calls.push("diagnostic-report")
+          return {
+            timestamp: 1,
+            system: { platform: "darwin", nodeVersion: "v20.0.0", electronVersion: "30.0.0" },
+            config: { mcpServersCount: 1 },
+            mcp: {
+              availableTools: 2,
+              serverStatus: { filesystem: { connected: true, toolCount: 2 } },
+            },
+            errors: [{ timestamp: 1, level: "error", component: "mcp", message: "failed", stack: "stack" }],
+          }
+        },
+        saveDiagnosticReport: async (filePath) => {
+          calls.push(`save-report:${filePath ?? "default"}`)
+          return filePath ?? "/tmp/diagnostic-report.json"
+        },
         getRecentErrors: (count) => {
           calls.push(`errors:${count}`)
           return [{ timestamp: 1, level: "error", component: "mcp", message: "failed" }].slice(0, count)
@@ -3492,6 +3511,8 @@ describe("operator action API helpers", () => {
     })
 
     expect(service.getCurrentVersion()).toBe("1.2.3")
+    await expect(service.generateDiagnosticReport()).resolves.toMatchObject({ mcp: { availableTools: 2 } })
+    await expect(service.saveDiagnosticReport()).resolves.toBe("/tmp/diagnostic-report.json")
     expect(service.getRecentErrors(1)).toHaveLength(1)
     service.clearErrorLog()
     await expect(service.performHealthCheck()).resolves.toEqual({ overall: "ok", checks: {} })
@@ -3510,6 +3531,8 @@ describe("operator action API helpers", () => {
       preview: "Done",
     }])
     expect(calls).toEqual([
+      "diagnostic-report",
+      "save-report:default",
       "errors:1",
       "clear",
       "health",
@@ -3537,6 +3560,26 @@ describe("operator action API helpers", () => {
       },
       service: {
         getCurrentVersion: () => "1.2.3",
+        generateDiagnosticReport: async () => {
+          calls.push("diagnostic-report")
+          return {
+            timestamp: now,
+            system: { platform: "darwin", nodeVersion: "v20.0.0", electronVersion: "30.0.0" },
+            config: { mcpServersCount: 1 },
+            mcp: {
+              availableTools: 2,
+              toolDiscoveryError: "partial discovery",
+              serverStatus: { filesystem: { connected: true, toolCount: 2 } },
+            },
+            errors: [
+              { timestamp: now - 1_000, level: "error", component: "mcp", message: "Failed", stack: "stack" },
+            ],
+          }
+        },
+        saveDiagnosticReport: async (filePath) => {
+          calls.push(`save-report:${filePath ?? "default"}`)
+          return filePath ?? "/tmp/diagnostic-report.json"
+        },
         getRecentErrors: (count) => {
           calls.push(`errors:${count}`)
           return recentErrors.slice(0, count)
@@ -3677,6 +3720,35 @@ describe("operator action API helpers", () => {
         overall: "warning",
       },
     })
+    expect(await getOperatorDiagnosticReportAction(options)).toEqual({
+      statusCode: 200,
+      body: {
+        timestamp: now,
+        system: { platform: "darwin", nodeVersion: "v20.0.0", electronVersion: "30.0.0" },
+        config: { mcpServersCount: 1 },
+        mcp: {
+          availableTools: 2,
+          toolDiscoveryError: "partial discovery",
+          serverStatus: { filesystem: { connected: true, toolCount: 2 } },
+        },
+        errors: [
+          { timestamp: now - 1_000, level: "error", component: "mcp", message: "Failed", stack: "stack" },
+        ],
+      },
+    })
+    expect(await saveOperatorDiagnosticReportAction({ filePath: "/tmp/report.json" }, options)).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "operator-save-diagnostic-report",
+        message: "Diagnostic report saved to /tmp/report.json",
+        filePath: "/tmp/report.json",
+      },
+      auditContext: {
+        action: "operator-save-diagnostic-report",
+        success: true,
+      },
+    })
     expect(getOperatorErrorsAction("1", options)).toEqual({
       statusCode: 200,
       body: {
@@ -3742,6 +3814,21 @@ describe("operator action API helpers", () => {
         overall: "warning",
       },
     })
+    expect(await routeActions.getOperatorDiagnosticReport()).toMatchObject({
+      statusCode: 200,
+      body: {
+        mcp: {
+          availableTools: 2,
+        },
+      },
+    })
+    expect(await routeActions.saveOperatorDiagnosticReport({})).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "operator-save-diagnostic-report",
+      },
+    })
     expect(routeActions.getOperatorErrors("1")).toMatchObject({
       statusCode: 200,
       body: {
@@ -3783,10 +3870,14 @@ describe("operator action API helpers", () => {
       "system",
       "active-sessions",
       "recent-sessions:10",
+      "diagnostic-report",
+      "save-report:/tmp/report.json",
       "errors:1",
       "clear",
       "errors:20",
       "conversations",
+      "diagnostic-report",
+      "save-report:default",
     ]))
 
     const failingOptions: OperatorObservabilityActionOptions = {

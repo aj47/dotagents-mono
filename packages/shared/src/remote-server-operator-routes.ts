@@ -75,6 +75,19 @@ export function registerOperatorRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  fastify.get(API_ROUTES.operatorDiagnosticReport, async (_req, reply) => {
+    const result = await actions.getOperatorDiagnosticReport();
+    return reply.code(result.statusCode).send(result.body);
+  });
+
+  fastify.post(API_ROUTES.operatorDiagnosticReportSave, async (req, reply) => {
+    const result = await actions.saveOperatorDiagnosticReport(req.body);
+    if (result.auditContext) {
+      actions.setOperatorAuditContext(req, result.auditContext);
+    }
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   fastify.get(API_ROUTES.operatorErrors, async (req, reply) => {
     const query = req.query as { count?: string | number };
     const result = await actions.getOperatorErrors(query.count);

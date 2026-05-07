@@ -23,6 +23,7 @@ import { getDeviceIdentity } from '../lib/deviceIdentity';
 import type {
   OperatorAuditEntry,
   OperatorConversationItem,
+  OperatorDiagnosticReport,
   OperatorDiscordIntegrationSummary,
   OperatorDiscordLogEntry,
   OperatorMessageQueueSummary,
@@ -98,6 +99,7 @@ export default function OperationsScreen({ navigation }: any) {
   const [whatsAppSummary, setWhatsAppSummary] = useState<OperatorWhatsAppIntegrationSummary | null>(null);
   const [recentErrors, setRecentErrors] = useState<OperatorRecentError[]>([]);
   const [operatorLogs, setOperatorLogs] = useState<OperatorRecentError[]>([]);
+  const [diagnosticReport, setDiagnosticReport] = useState<OperatorDiagnosticReport | null>(null);
   const [auditEntries, setAuditEntries] = useState<OperatorAuditEntry[]>([]);
   const [conversations, setConversations] = useState<OperatorConversationItem[]>([]);
   const [messageQueues, setMessageQueues] = useState<OperatorMessageQueueSummary[]>([]);
@@ -138,6 +140,7 @@ export default function OperationsScreen({ navigation }: any) {
       setWhatsAppSummary(null);
       setRecentErrors([]);
       setOperatorLogs([]);
+      setDiagnosticReport(null);
       setAuditEntries([]);
       setConversations([]);
       setMessageQueues([]);
@@ -432,6 +435,25 @@ export default function OperationsScreen({ navigation }: any) {
     }
   }, [loadOperatorData, settingsClient]);
 
+  const loadDiagnosticReport = useCallback(async () => {
+    if (!settingsClient) {
+      Alert.alert('Connection Required', 'Configure your desktop server connection before using operator actions.');
+      return;
+    }
+
+    setPendingAction('diagnostic-report');
+    setActionFeedback(null);
+    try {
+      const report = await settingsClient.getOperatorDiagnosticReport();
+      setDiagnosticReport(report);
+      setActionFeedback(`Diagnostic report generated with ${report.errors.length} log entries.`);
+    } catch (actionError) {
+      Alert.alert('Action Failed', getErrorMessage(actionError));
+    } finally {
+      setPendingAction(null);
+    }
+  }, [settingsClient]);
+
   const fetchMcpLogsForServer = useCallback(async (serverName: string) => {
     if (!settingsClient) {
       Alert.alert('Connection Required', 'Configure your desktop server connection before viewing MCP logs.');
@@ -715,6 +737,54 @@ export default function OperationsScreen({ navigation }: any) {
               </Text>
             </View>
           )}
+
+          <View style={styles.panel}>
+            <Text style={styles.panelTitle}>Diagnostics</Text>
+            <View style={styles.actionGrid}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                onPress={() => void loadDiagnosticReport()}
+                disabled={pendingAction !== null}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Generate desktop diagnostic report')}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {pendingAction === 'diagnostic-report' ? 'Generating report…' : 'Generate report'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                onPress={() => confirmAction(
+                  'Save Diagnostic Report',
+                  'Save a diagnostic report JSON file on the desktop machine now?',
+                  'Save Report',
+                  false,
+                  () => runAction('diagnostic-report-save', () => settingsClient.saveOperatorDiagnosticReport(), false),
+                )}
+                disabled={pendingAction !== null}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Save diagnostic report on desktop')}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {pendingAction === 'diagnostic-report-save' ? 'Saving report…' : 'Save report'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {diagnosticReport ? (
+              <>
+                <Text style={styles.detailText}>Generated: {formatTimestamp(diagnosticReport.timestamp)}</Text>
+                <Text style={styles.detailText}>
+                  MCP tools: {diagnosticReport.mcp.availableTools} • Servers: {Object.keys(diagnosticReport.mcp.serverStatus).length}/{diagnosticReport.config.mcpServersCount}
+                </Text>
+                <Text style={styles.detailText}>Log entries: {diagnosticReport.errors.length}</Text>
+                {diagnosticReport.mcp.toolDiscoveryError ? (
+                  <Text style={styles.warningText}>Tool discovery: {diagnosticReport.mcp.toolDiscoveryError}</Text>
+                ) : null}
+              </>
+            ) : (
+              <Text style={styles.mutedText}>No diagnostic report generated in this mobile session.</Text>
+            )}
+          </View>
 
           {status?.sessions && (
             <View style={styles.panel}>

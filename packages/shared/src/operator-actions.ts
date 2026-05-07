@@ -5,6 +5,8 @@ import type {
   OperatorApiKeyRotationResponse,
   OperatorConversationItem,
   OperatorConversationsResponse,
+  OperatorDiagnosticReport,
+  OperatorDiagnosticReportSaveResponse,
   OperatorDiscordIntegrationSummary,
   OperatorDiscordLogEntry,
   OperatorDiscordLogsResponse,
@@ -109,6 +111,10 @@ export type OperatorMcpRestartRequest = {
 
 export type OperatorMcpServerActionRequest = {
   server: string
+}
+
+export type OperatorDiagnosticReportSaveRequest = {
+  filePath?: string
 }
 
 export type OperatorQueuedMessageUpdateRequest = {
@@ -409,6 +415,8 @@ export interface OperatorObservabilityActionDiagnostics {
 
 export interface OperatorObservabilityActionService {
   getCurrentVersion(): string
+  generateDiagnosticReport(): Promise<OperatorDiagnosticReportLike>
+  saveDiagnosticReport(filePath?: string): Promise<string>
   getRecentErrors(count: number): OperatorRecentErrorLike[]
   clearErrorLog(): void
   performHealthCheck(): Promise<OperatorHealthLike>
@@ -422,6 +430,8 @@ export interface OperatorObservabilityActionService {
 }
 
 export interface OperatorObservabilityDiagnosticsServiceAdapter {
+  generateDiagnosticReport(): Promise<OperatorDiagnosticReportLike>
+  saveDiagnosticReport(filePath?: string): Promise<string>
   getRecentErrors(count: number): OperatorRecentErrorLike[]
   clearErrorLog(): void
   performHealthCheck(): Promise<OperatorHealthLike>
@@ -452,6 +462,8 @@ export function createOperatorObservabilityActionService(
 ): OperatorObservabilityActionService {
   return {
     getCurrentVersion: () => options.getCurrentVersion(),
+    generateDiagnosticReport: () => options.diagnostics.generateDiagnosticReport(),
+    saveDiagnosticReport: (filePath) => options.diagnostics.saveDiagnosticReport(filePath),
     getRecentErrors: (count) => options.diagnostics.getRecentErrors(count),
     clearErrorLog: () => options.diagnostics.clearErrorLog(),
     performHealthCheck: () => options.diagnostics.performHealthCheck(),
@@ -474,6 +486,8 @@ export interface OperatorObservabilityActionOptions {
 export interface OperatorObservabilityRouteActions {
   getOperatorStatus(remoteServerStatus: OperatorRemoteServerStatusLike): Promise<OperatorObservabilityActionResult>
   getOperatorHealth(): Promise<OperatorObservabilityActionResult>
+  getOperatorDiagnosticReport(): Promise<OperatorObservabilityActionResult>
+  saveOperatorDiagnosticReport(body: unknown): Promise<OperatorObservabilityActionResult>
   getOperatorErrors(count: string | number | undefined): OperatorObservabilityActionResult
   clearOperatorErrors(): OperatorObservabilityActionResult
   getOperatorLogs(count: string | number | undefined, level: string | undefined): OperatorObservabilityActionResult
@@ -742,6 +756,25 @@ export type OperatorRecentErrorLike = {
   level: "error" | "warning" | "info"
   component: string
   message: string
+  stack?: string
+}
+
+export type OperatorDiagnosticReportLike = {
+  timestamp: number
+  system: {
+    platform: string
+    nodeVersion: string
+    electronVersion: string
+  }
+  config: {
+    mcpServersCount: number
+  }
+  mcp: {
+    availableTools: number
+    toolDiscoveryError?: string
+    serverStatus: Record<string, { connected: boolean; toolCount: number }>
+  }
+  errors: OperatorRecentErrorLike[]
 }
 
 export type OperatorConversationHistoryLike = {
@@ -1444,6 +1477,24 @@ export function parseOperatorRunAgentRequestBody(body: unknown): OperatorActionP
   }
 }
 
+export function parseOperatorDiagnosticReportSaveRequestBody(
+  body: unknown,
+): OperatorActionParseResult<OperatorDiagnosticReportSaveRequest> {
+  const requestBody = getRequestRecord(body)
+  const rawFilePath = requestBody.filePath
+  if (rawFilePath !== undefined && typeof rawFilePath !== "string") {
+    return { ok: false, statusCode: 400, error: "Invalid file path" }
+  }
+
+  const filePath = rawFilePath?.trim()
+  return {
+    ok: true,
+    request: {
+      ...(filePath ? { filePath } : {}),
+    },
+  }
+}
+
 export function buildOperatorRunAgentResponse(result: RunAgentResultLike): OperatorRunAgentResponse {
   return {
     success: true,
@@ -1745,6 +1796,53 @@ export function buildOperatorLogsResponse(
       component,
       message,
     })),
+  }
+}
+
+export function buildOperatorDiagnosticReport(
+  report: OperatorDiagnosticReportLike,
+): OperatorDiagnosticReport {
+  return {
+    timestamp: report.timestamp,
+    system: {
+      platform: report.system.platform,
+      nodeVersion: report.system.nodeVersion,
+      electronVersion: report.system.electronVersion,
+    },
+    config: {
+      mcpServersCount: report.config.mcpServersCount,
+    },
+    mcp: {
+      availableTools: report.mcp.availableTools,
+      ...(report.mcp.toolDiscoveryError ? { toolDiscoveryError: report.mcp.toolDiscoveryError } : {}),
+      serverStatus: Object.fromEntries(
+        Object.entries(report.mcp.serverStatus).map(([serverName, status]) => [
+          serverName,
+          {
+            connected: status.connected,
+            toolCount: status.toolCount,
+          },
+        ]),
+      ),
+    },
+    errors: report.errors.map(({ timestamp, level, component, message, stack }) => ({
+      timestamp,
+      level,
+      component,
+      message,
+      ...(stack ? { stack } : {}),
+    })),
+  }
+}
+
+export function buildOperatorDiagnosticReportSavedResponse(
+  filePath: string,
+): OperatorDiagnosticReportSaveResponse {
+  return {
+    success: true,
+    action: "operator-save-diagnostic-report",
+    message: `Diagnostic report saved to ${filePath}`,
+    filePath,
   }
 }
 
@@ -2597,6 +2695,47 @@ export async function getOperatorHealthAction(
   }
 }
 
+export async function getOperatorDiagnosticReportAction(
+  options: OperatorObservabilityActionOptions,
+): Promise<OperatorObservabilityActionResult> {
+  try {
+    const report = await options.service.generateDiagnosticReport()
+    return operatorObservabilityActionResult(200, buildOperatorDiagnosticReport(report))
+  } catch (caughtError) {
+    options.diagnostics.logError("operator-observability-actions", "Failed to build operator diagnostic report", caughtError)
+    return operatorObservabilityActionError(500, "Failed to build operator diagnostic report")
+  }
+}
+
+export async function saveOperatorDiagnosticReportAction(
+  body: unknown,
+  options: OperatorObservabilityActionOptions,
+): Promise<OperatorObservabilityActionResult> {
+  const parsed = parseOperatorDiagnosticReportSaveRequestBody(body)
+  if (!parsed.ok) {
+    const response = buildOperatorActionErrorResponse("operator-save-diagnostic-report", parsed.error)
+    return operatorObservabilityActionResult(parsed.statusCode, response, buildOperatorActionAuditContext(response))
+  }
+
+  try {
+    const filePath = await options.service.saveDiagnosticReport(parsed.request.filePath)
+    const response = buildOperatorDiagnosticReportSavedResponse(filePath)
+    return operatorObservabilityActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = caughtError instanceof Error ? caughtError.message : String(caughtError)
+    const response = buildOperatorActionErrorResponse(
+      "operator-save-diagnostic-report",
+      `Failed to save diagnostic report: ${errorMessage}`,
+    )
+    options.diagnostics.logError(
+      "operator-observability-actions",
+      `Failed to save operator diagnostic report: ${errorMessage}`,
+      caughtError,
+    )
+    return operatorObservabilityActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
 export function getOperatorErrorsAction(
   count: string | number | undefined,
   options: OperatorObservabilityActionOptions,
@@ -2677,6 +2816,8 @@ export function createOperatorObservabilityRouteActions(
   return {
     getOperatorStatus: (remoteServerStatus) => getOperatorStatusAction(remoteServerStatus, options),
     getOperatorHealth: () => getOperatorHealthAction(options),
+    getOperatorDiagnosticReport: () => getOperatorDiagnosticReportAction(options),
+    saveOperatorDiagnosticReport: (body) => saveOperatorDiagnosticReportAction(body, options),
     getOperatorErrors: (count) => getOperatorErrorsAction(count, options),
     clearOperatorErrors: () => clearOperatorErrorsAction(options),
     getOperatorLogs: (count, level) => getOperatorLogsAction(count, level, options),

@@ -204,6 +204,8 @@ import type {
   OperatorApiKeyRotationResponse,
   OperatorAuditResponse,
   OperatorConversationsResponse,
+  OperatorDiagnosticReport,
+  OperatorDiagnosticReportSaveResponse,
   OperatorDiscordIntegrationSummary,
   OperatorDiscordLogsResponse,
   OperatorHealthSnapshot,
@@ -1425,6 +1427,17 @@ export class SettingsApiClient {
 
   async getOperatorHealth(): Promise<OperatorHealthSnapshot> {
     return this.request<OperatorHealthSnapshot>(API_PATHS.operatorHealth);
+  }
+
+  async getOperatorDiagnosticReport(): Promise<OperatorDiagnosticReport> {
+    return this.request<OperatorDiagnosticReport>(API_PATHS.operatorDiagnosticReport);
+  }
+
+  async saveOperatorDiagnosticReport(filePath?: string): Promise<OperatorDiagnosticReportSaveResponse> {
+    return this.request<OperatorDiagnosticReportSaveResponse>(API_PATHS.operatorDiagnosticReportSave, {
+      method: 'POST',
+      ...(filePath ? { body: JSON.stringify({ filePath }) } : {}),
+    });
   }
 
   async getOperatorErrors(count: number = 10): Promise<OperatorRecentErrorsResponse> {

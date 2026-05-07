@@ -11,6 +11,8 @@ export type RemoteServerApiRoute = {
 export const REMOTE_SERVER_API_PATHS = {
   operatorStatus: "/operator/status",
   operatorHealth: "/operator/health",
+  operatorDiagnosticReport: "/operator/diagnostics/report",
+  operatorDiagnosticReportSave: "/operator/diagnostics/report/save",
   operatorErrors: "/operator/errors",
   operatorErrorsClear: "/operator/errors/clear",
   operatorLogs: "/operator/logs",
@@ -128,6 +130,8 @@ export const REMOTE_SERVER_API_PATHS = {
 export const REMOTE_SERVER_API_ROUTES = [
   { method: "GET", path: REMOTE_SERVER_API_PATHS.operatorStatus },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.operatorHealth },
+  { method: "GET", path: REMOTE_SERVER_API_PATHS.operatorDiagnosticReport },
+  { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorDiagnosticReportSave },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.operatorErrors },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorErrorsClear },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.operatorLogs },

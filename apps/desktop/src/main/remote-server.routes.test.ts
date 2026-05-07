@@ -1778,6 +1778,8 @@ describe("remote-server route registration", () => {
     const operatorRoutes: Array<[string, RemoteServerApiPathKey]> = [
       ["GET", "operatorStatus"],
       ["GET", "operatorHealth"],
+      ["GET", "operatorDiagnosticReport"],
+      ["POST", "operatorDiagnosticReportSave"],
       ["GET", "operatorErrors"],
       ["POST", "operatorErrorsClear"],
       ["GET", "operatorLogs"],
@@ -1853,6 +1855,8 @@ describe("remote-server route registration", () => {
 
     expect(operatorRoutesSource).toContain("actions.getOperatorStatus(getRemoteServerStatus())")
     expect(operatorRoutesSource).toContain("actions.getOperatorHealth()")
+    expect(operatorRoutesSource).toContain("actions.getOperatorDiagnosticReport()")
+    expect(operatorRoutesSource).toContain("actions.saveOperatorDiagnosticReport(req.body)")
     expect(operatorRoutesSource).toContain("actions.getOperatorErrors(query.count)")
     expect(operatorRoutesSource).toContain("actions.clearOperatorErrors()")
     expect(operatorRoutesSource).toContain("actions.getOperatorLogs(query.count, query.level)")
@@ -1875,6 +1879,8 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("export function createOperatorObservabilityRouteActions")
     expect(sharedOperatorActionsSource).toContain("getOperatorStatus: (remoteServerStatus) => getOperatorStatusAction(remoteServerStatus, options)")
     expect(sharedOperatorActionsSource).toContain("getOperatorHealth: () => getOperatorHealthAction(options)")
+    expect(sharedOperatorActionsSource).toContain("getOperatorDiagnosticReport: () => getOperatorDiagnosticReportAction(options)")
+    expect(sharedOperatorActionsSource).toContain("saveOperatorDiagnosticReport: (body) => saveOperatorDiagnosticReportAction(body, options)")
     expect(sharedOperatorActionsSource).toContain("getOperatorErrors: (count) => getOperatorErrorsAction(count, options)")
     expect(sharedOperatorActionsSource).toContain("clearOperatorErrors: () => clearOperatorErrorsAction(options)")
     expect(sharedOperatorActionsSource).toContain("getOperatorLogs: (count, level) => getOperatorLogsAction(count, level, options)")
@@ -2188,6 +2194,8 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("buildOperatorRuntimeStatus({")
     expect(sharedOperatorActionsSource).toContain("system: options.service.getSystemMetrics()")
     expect(sharedOperatorActionsSource).toContain("export function createOperatorObservabilityActionService")
+    expect(sharedOperatorActionsSource).toContain("generateDiagnosticReport: () => options.diagnostics.generateDiagnosticReport()")
+    expect(sharedOperatorActionsSource).toContain("saveDiagnosticReport: (filePath) => options.diagnostics.saveDiagnosticReport(filePath)")
     expect(sharedOperatorActionsSource).toContain("getRecentErrors: (count) => options.diagnostics.getRecentErrors(count)")
     expect(sharedOperatorActionsSource).toContain("clearErrorLog: () => options.diagnostics.clearErrorLog()")
     expect(sharedOperatorActionsSource).toContain("getActiveSessions: () => options.sessions.getActiveSessions()")

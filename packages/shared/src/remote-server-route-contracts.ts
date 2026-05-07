@@ -389,6 +389,8 @@ export interface OperatorRouteActions<Request = unknown> {
     messageId: string | undefined,
     body: unknown,
   ) => RemoteServerMaybePromise<OperatorRouteActionResult>;
+  getOperatorDiagnosticReport: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
+  saveOperatorDiagnosticReport: (body: unknown) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   clearOperatorErrors: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
   getOperatorConversations: (count?: string | number) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   getOperatorErrors: (count?: string | number) => RemoteServerMaybePromise<OperatorRouteActionResult>;
@@ -485,6 +487,8 @@ export interface OperatorRouteActionGroups<Request = unknown> {
   observability: Pick<
     OperatorRouteActions<Request>,
     | 'clearOperatorErrors'
+    | 'getOperatorDiagnosticReport'
+    | 'saveOperatorDiagnosticReport'
     | 'getOperatorConversations'
     | 'getOperatorErrors'
     | 'getOperatorHealth'
