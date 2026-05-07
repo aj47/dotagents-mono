@@ -287,12 +287,6 @@ function getInjectedMcpActionsSource(): string {
   return readFileSync(injectedMcpActionsPath, "utf8")
 }
 
-function getRemoteServerPairingActionsSource(): string {
-  const testDir = path.dirname(fileURLToPath(import.meta.url))
-  const remoteServerPairingActionsPath = path.join(testDir, "remote-server-pairing-actions.ts")
-  return readFileSync(remoteServerPairingActionsPath, "utf8")
-}
-
 type RegisteredRoute = {
   method: string
   path: string
@@ -587,6 +581,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain("recordOperatorAuditEvent")
     expect(desktopAdaptersSource).toContain("authorizeRequest: authorizeRemoteServerRequest")
     expect(desktopAdaptersSource).not.toContain('from "./operator-api-key-actions"')
+    expect(desktopAdaptersSource).not.toContain('from "./remote-server-pairing-actions"')
     expect(desktopAdaptersSource).toContain("generateApiKey: generateRemoteServerApiKey")
     expect(desktopAdaptersSource).toContain("function generateRemoteServerApiKey()")
     expect(desktopAdaptersSource).toContain('crypto.randomBytes(32).toString("hex")')
@@ -1646,14 +1641,12 @@ describe("remote-server route registration", () => {
     const controllerSource = getRemoteServerControllerSource()
     const desktopAdaptersSource = getRemoteServerDesktopAdaptersSource()
     const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
-    const remoteServerPairingActionsSource = getRemoteServerPairingActionsSource()
     const sharedRemotePairingSource = getSharedRemotePairingSource()
     const sharedSettingsApiClientSource = getSharedSettingsApiClientSource()
 
-    expect(remoteServerPairingActionsSource).toContain("resolveDotAgentsSecretReferenceFromStore(value, () =>")
-    expect(remoteServerPairingActionsSource).toContain('const DOTAGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"')
-    expect(remoteServerPairingActionsSource).toContain("function getResolvedRemoteServerApiKey")
-    expect(remoteServerPairingActionsSource).toContain("function hasConfiguredRemoteServerApiKey")
+    expect(desktopAdaptersSource).toContain("resolveDotAgentsSecretReferenceFromStore(value, () =>")
+    expect(desktopAdaptersSource).toContain('const DOTAGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"')
+    expect(desktopAdaptersSource).toContain("function getResolvedRemoteServerApiKey")
     expect(sharedRemotePairingSource).toContain("export function resolveDotAgentsSecretReferenceFromStore(")
     expect(sharedRemotePairingSource).toContain("getDotAgentsSecretsRecord(loadStore())")
     expect(sharedRemotePairingSource).toContain("resolveDotAgentsSecretReference(value, secrets)")
@@ -1672,8 +1665,8 @@ describe("remote-server route registration", () => {
     expect(controllerSource).toContain("adapters.printTerminalQRCode(serverUrl, apiKey)")
     expect(controllerSource).toContain("adapters.getConnectableBaseUrlForMobilePairing(bind, port)")
     expect(controllerSource).toContain("adapters.getNetworkAddresses()")
-    expect(remoteServerPairingActionsSource).toContain("resolveConnectableRemoteServerPairingBaseUrl(bind, port, getRemoteNetworkAddresses())")
-    expect(remoteServerPairingActionsSource).toContain("QRCode.toString(qrValue")
+    expect(desktopAdaptersSource).toContain("resolveConnectableRemoteServerPairingBaseUrl(bind, port, getRemoteNetworkAddresses())")
+    expect(desktopAdaptersSource).toContain("QRCode.toString(qrValue")
     expect(mobileApiDesktopActionsSource).toContain(
       "getMaskedRemoteServerApiKey: (config) => getMaskedRemoteServerApiKey(config.remoteServerApiKey)",
     )
