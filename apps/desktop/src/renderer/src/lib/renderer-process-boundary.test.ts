@@ -5,6 +5,9 @@ import { describe, expect, it } from "vitest"
 
 const rendererRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const preloadRoot = path.resolve(rendererRoot, "..", "..", "preload")
+const rendererUiDirectories = ["components", "contexts", "hooks", "pages", "stores"].map(
+  (directory) => path.join(rendererRoot, directory),
+)
 
 function collectSourceFiles(root: string): string[] {
   const entries = readdirSync(root)
@@ -49,6 +52,35 @@ describe("renderer process boundary", () => {
       }
       if (rawElectronApiPattern.test(source)) {
         fileViolations.push(`${relativePath}: legacy electronAPI bridge usage`)
+      }
+
+      return fileViolations
+    })
+
+    expect(violations).toEqual([])
+  })
+
+  it("keeps renderer UI surfaces off the direct TIPC client", () => {
+    const sourceFiles = rendererUiDirectories.flatMap((directory) => collectSourceFiles(directory))
+    const tipcClientNamedImportPattern =
+      /import\s*\{[^}]*\btipcClient\b[^}]*\}\s*from\s*["'][^"']*tipc-client["']/
+    const tipcClientNamespaceImportPattern =
+      /import\s+\*\s+as\s+\w+\s+from\s*["'][^"']*tipc-client["']/
+    const tipcClientCallPattern = /\btipcClient\./
+
+    const violations = sourceFiles.flatMap((filePath) => {
+      const source = readFileSync(filePath, "utf8")
+      const relativePath = path.relative(rendererRoot, filePath)
+      const fileViolations: string[] = []
+
+      if (tipcClientNamedImportPattern.test(source)) {
+        fileViolations.push(`${relativePath}: direct tipcClient import`)
+      }
+      if (tipcClientNamespaceImportPattern.test(source)) {
+        fileViolations.push(`${relativePath}: tipc-client namespace import`)
+      }
+      if (tipcClientCallPattern.test(source)) {
+        fileViolations.push(`${relativePath}: direct tipcClient call`)
       }
 
       return fileViolations
