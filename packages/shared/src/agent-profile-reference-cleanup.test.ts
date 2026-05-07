@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  cleanupInvalidMcpServerReferencesInProfileLayers,
   cleanupInvalidMcpServerReferencesInProfiles,
+  cleanupInvalidSkillReferencesInProfileLayers,
   cleanupInvalidSkillReferencesInProfiles,
 } from './agent-profile-reference-cleanup'
 
@@ -69,5 +71,99 @@ describe('agent profile reference cleanup', () => {
 
     expect(result.updatedProfileIds).toEqual(['a-agent', 'z-agent'])
     expect(result.removedReferenceCount).toBe(3)
+  })
+
+  it('cleans invalid MCP server references across profile layers', () => {
+    const layers = [
+      {
+        name: 'global',
+        profiles: [{ id: 'global-agent', toolConfig: { enabledServers: ['github', 'missing'] } }],
+      },
+      {
+        name: 'workspace',
+        profiles: [{ id: 'workspace-agent', toolConfig: { enabledServers: ['exa'] } }],
+      },
+    ]
+    const writes: Array<{ layer: string; profileId: string; enabledServers?: string[] }> = []
+
+    const result = cleanupInvalidMcpServerReferencesInProfileLayers(
+      layers,
+      ['github', 'exa'],
+      {
+        loadProfiles: (layer) => layer.profiles,
+        writeProfile: (layer, profile) => {
+          writes.push({
+            layer: layer.name,
+            profileId: profile.id,
+            enabledServers: profile.toolConfig?.enabledServers,
+          })
+        },
+      },
+      321,
+    )
+
+    expect(result).toEqual({
+      updatedProfileIds: ['global-agent'],
+      removedReferenceCount: 1,
+    })
+    expect(writes).toEqual([
+      {
+        layer: 'global',
+        profileId: 'global-agent',
+        enabledServers: ['github'],
+      },
+    ])
+  })
+
+  it('cleans invalid skill references across profile layers with one-shot iterables', () => {
+    function* validSkillIds() {
+      yield 'shared-skill'
+      yield 'workspace-skill'
+    }
+
+    const layers = [
+      {
+        name: 'global',
+        profiles: [{ id: 'shared-agent', skillsConfig: { enabledSkillIds: ['shared-skill', 'missing'] } }],
+      },
+      {
+        name: 'workspace',
+        profiles: [{ id: 'workspace-agent', skillsConfig: { enabledSkillIds: ['workspace-skill', 'missing'] } }],
+      },
+    ]
+    const writes: Array<{ layer: string; profileId: string; enabledSkillIds?: string[] }> = []
+
+    const result = cleanupInvalidSkillReferencesInProfileLayers(
+      layers,
+      validSkillIds(),
+      {
+        loadProfiles: (layer) => layer.profiles,
+        writeProfile: (layer, profile) => {
+          writes.push({
+            layer: layer.name,
+            profileId: profile.id,
+            enabledSkillIds: profile.skillsConfig?.enabledSkillIds,
+          })
+        },
+      },
+      654,
+    )
+
+    expect(result).toEqual({
+      updatedProfileIds: ['shared-agent', 'workspace-agent'],
+      removedReferenceCount: 2,
+    })
+    expect(writes).toEqual([
+      {
+        layer: 'global',
+        profileId: 'shared-agent',
+        enabledSkillIds: ['shared-skill'],
+      },
+      {
+        layer: 'workspace',
+        profileId: 'workspace-agent',
+        enabledSkillIds: ['workspace-skill'],
+      },
+    ])
   })
 })

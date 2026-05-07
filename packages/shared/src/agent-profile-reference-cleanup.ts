@@ -22,8 +22,42 @@ export type AgentProfileSkillReferenceProfile = {
   }
 }
 
+export type AgentProfileReferenceCleanupLayerStore<TLayer, TProfile extends { id: string }> = {
+  loadProfiles(layer: TLayer): TProfile[]
+  writeProfile(layer: TLayer, profile: TProfile): void
+}
+
 function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b))
+}
+
+function cleanupInvalidReferencesInProfileLayers<TLayer, TProfile extends { id: string }>(
+  layers: TLayer[],
+  store: AgentProfileReferenceCleanupLayerStore<TLayer, TProfile>,
+  cleanupProfiles: (profiles: TProfile[]) => { profiles: TProfile[] } & AgentProfileReferenceCleanupSummary,
+): AgentProfileReferenceCleanupSummary {
+  const combinedUpdatedProfileIds: string[] = []
+  let removedReferenceCount = 0
+
+  for (const layer of layers) {
+    const result = cleanupProfiles(store.loadProfiles(layer))
+    if (result.updatedProfileIds.length === 0) continue
+
+    const updatedProfilesById = new Map(result.profiles.map((profile) => [profile.id, profile]))
+    for (const profileId of result.updatedProfileIds) {
+      const profile = updatedProfilesById.get(profileId)
+      if (!profile) continue
+      store.writeProfile(layer, profile)
+    }
+
+    combinedUpdatedProfileIds.push(...result.updatedProfileIds)
+    removedReferenceCount += result.removedReferenceCount
+  }
+
+  return {
+    updatedProfileIds: uniqueSorted(combinedUpdatedProfileIds),
+    removedReferenceCount,
+  }
 }
 
 export function cleanupInvalidMcpServerReferencesInProfiles<TProfile extends AgentProfileMcpReferenceProfile>(
@@ -62,6 +96,21 @@ export function cleanupInvalidMcpServerReferencesInProfiles<TProfile extends Age
   }
 }
 
+export function cleanupInvalidMcpServerReferencesInProfileLayers<
+  TLayer,
+  TProfile extends AgentProfileMcpReferenceProfile,
+>(
+  layers: TLayer[],
+  validServerNames: Iterable<string>,
+  store: AgentProfileReferenceCleanupLayerStore<TLayer, TProfile>,
+  now: number = Date.now(),
+): AgentProfileMcpReferenceCleanupSummary {
+  const validServerNameList = Array.from(validServerNames)
+  return cleanupInvalidReferencesInProfileLayers(layers, store, (profiles) =>
+    cleanupInvalidMcpServerReferencesInProfiles(profiles, validServerNameList, now),
+  )
+}
+
 export function cleanupInvalidSkillReferencesInProfiles<TProfile extends AgentProfileSkillReferenceProfile>(
   profiles: TProfile[],
   validSkillIds: Iterable<string>,
@@ -96,4 +145,19 @@ export function cleanupInvalidSkillReferencesInProfiles<TProfile extends AgentPr
     updatedProfileIds: uniqueSorted(updatedProfileIds),
     removedReferenceCount,
   }
+}
+
+export function cleanupInvalidSkillReferencesInProfileLayers<
+  TLayer,
+  TProfile extends AgentProfileSkillReferenceProfile,
+>(
+  layers: TLayer[],
+  validSkillIds: Iterable<string>,
+  store: AgentProfileReferenceCleanupLayerStore<TLayer, TProfile>,
+  now: number = Date.now(),
+): AgentProfileSkillReferenceCleanupSummary {
+  const validSkillIdList = Array.from(validSkillIds)
+  return cleanupInvalidReferencesInProfileLayers(layers, store, (profiles) =>
+    cleanupInvalidSkillReferencesInProfiles(profiles, validSkillIdList, now),
+  )
 }
