@@ -76,7 +76,10 @@ import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared/stt
 import { DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED } from "@dotagents/shared/providers"
 import { DEFAULT_TTS_ENABLED } from "@dotagents/shared/text-to-speech-settings"
 import { buildConversationImageMarkdownMessage } from "@dotagents/shared/conversation-media-assets"
-import { getLatestStoredServerConversationUserMessageContent } from "@dotagents/shared/conversation-sync"
+import {
+  getFirstNonEmptyStoredServerConversationUserMessageContent,
+  getLatestStoredServerConversationUserMessageContent,
+} from "@dotagents/shared/conversation-sync"
 import {
   DEFAULT_MCP_AUTO_PASTE_DELAY,
   DEFAULT_MCP_AUTO_PASTE_ENABLED,
@@ -154,9 +157,7 @@ async function withRepeatTaskSessionFlag<T extends {
   if (session.conversationId) {
     try {
       const conversation = await conversationService.loadConversation(session.conversationId)
-      const firstUserMessage = conversation?.messages
-        ?.find((message) => message.role === "user" && message.content.trim())
-        ?.content.trim()
+      const firstUserMessage = getFirstNonEmptyStoredServerConversationUserMessageContent(conversation)
       if (
         firstUserMessage &&
         loops.some((loop) => loop.prompt.trim() === firstUserMessage)

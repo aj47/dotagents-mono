@@ -828,6 +828,25 @@ export function getLatestStoredServerConversationUserMessageContent<
   return null;
 }
 
+export function getFirstNonEmptyStoredServerConversationUserMessageContent<
+  TConversation extends ServerConversationRecord<any>,
+>(conversation: TConversation | null | undefined): string | null {
+  if (!conversation) return null;
+
+  const storedMessages = getStoredServerConversationMessages(conversation);
+  for (const message of storedMessages) {
+    if (message?.role !== 'user' || typeof message.content !== 'string') {
+      continue;
+    }
+
+    const content = message.content.trim();
+    if (content) {
+      return content;
+    }
+  }
+  return null;
+}
+
 export function toServerConversationHistorySnippet(value: string, maxChars: number): string {
   const sanitized = sanitizeMessageContentForDisplay(value || '')
     .replace(/\s+/g, ' ')

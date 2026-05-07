@@ -43,6 +43,7 @@ import {
   getServerConversationStorageDataPath,
   getServerConversationStorageIndexPath,
   getSortedServerConversationDataFileNames,
+  getFirstNonEmptyStoredServerConversationUserMessageContent,
   getLatestStoredServerConversationUserMessageContent,
   getStoredServerConversationMessages,
   getValidServerConversationCompactionTimestamp,
@@ -1560,6 +1561,20 @@ describe('server conversation API helpers', () => {
         { id: 'raw-3', role: 'user' as const, content: 'latest', timestamp: 3 },
       ],
     })).toBe('latest');
+    expect(getFirstNonEmptyStoredServerConversationUserMessageContent({
+      id: 'conv-compact',
+      title: 'Compacted Chat',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'summary-1', role: 'assistant' as const, content: 'Summary', timestamp: 2 }],
+      rawMessages: [
+        { id: 'raw-1', role: 'user' as const, content: '   ', timestamp: 1 },
+        { id: 'raw-2', role: 'assistant' as const, content: 'second', timestamp: 2 },
+        { id: 'raw-3', role: 'user' as const, content: ' first stored user ', timestamp: 3 },
+        { id: 'raw-4', role: 'user' as const, content: 'latest', timestamp: 4 },
+      ],
+    })).toBe('first stored user');
+    expect(getFirstNonEmptyStoredServerConversationUserMessageContent(null)).toBeNull();
     expect(getLatestStoredServerConversationUserMessageContent(null)).toBeNull();
 
     const directBuild = buildBranchedServerConversation({
