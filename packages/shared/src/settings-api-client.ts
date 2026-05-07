@@ -1431,6 +1431,12 @@ export class SettingsApiClient {
     return this.request<OperatorRecentErrorsResponse>(API_BUILDERS.operatorErrors(count));
   }
 
+  async clearOperatorErrors(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorErrorsClear, {
+      method: 'POST',
+    });
+  }
+
   async getOperatorLogs(count: number = 20, level?: 'error' | 'warning' | 'info'): Promise<OperatorLogsResponse> {
     return this.request<OperatorLogsResponse>(API_BUILDERS.operatorLogs(count, level));
   }

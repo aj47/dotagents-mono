@@ -75,6 +75,7 @@ import {
   buildOperatorWhatsAppServerUnavailableActionResponse,
   clampOperatorCount,
   clearOperatorDiscordLogsAction,
+  clearOperatorErrorsAction,
   connectOperatorDiscordAction,
   connectOperatorWhatsAppAction,
   createOperatorAgentActionService,
@@ -3413,6 +3414,7 @@ describe("operator action API helpers", () => {
           calls.push(`errors:${count}`)
           return [{ timestamp: 1, level: "error", component: "mcp", message: "failed" }].slice(0, count)
         },
+        clearErrorLog: () => { calls.push("clear") },
         performHealthCheck: async () => {
           calls.push("health")
           return { overall: "ok", checks: {} }
@@ -3491,6 +3493,7 @@ describe("operator action API helpers", () => {
 
     expect(service.getCurrentVersion()).toBe("1.2.3")
     expect(service.getRecentErrors(1)).toHaveLength(1)
+    service.clearErrorLog()
     await expect(service.performHealthCheck()).resolves.toEqual({ overall: "ok", checks: {} })
     expect(service.getTunnelStatus()).toEqual({ running: false, starting: false, mode: null })
     await expect(service.getIntegrationsSummary()).resolves.toMatchObject({ discord: { available: true } })
@@ -3508,6 +3511,7 @@ describe("operator action API helpers", () => {
     }])
     expect(calls).toEqual([
       "errors:1",
+      "clear",
       "health",
       "tunnel",
       "integrations",
@@ -3537,6 +3541,7 @@ describe("operator action API helpers", () => {
           calls.push(`errors:${count}`)
           return recentErrors.slice(0, count)
         },
+        clearErrorLog: () => { calls.push("clear") },
         performHealthCheck: async () => {
           calls.push("health")
           return {
@@ -3679,6 +3684,18 @@ describe("operator action API helpers", () => {
         errors: [recentErrors[0]],
       },
     })
+    expect(clearOperatorErrorsAction(options)).toEqual({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "operator-clear-errors",
+        message: "Operator error log cleared",
+      },
+      auditContext: {
+        action: "operator-clear-errors",
+        success: true,
+      },
+    })
     expect(getOperatorLogsAction(undefined, "error", options)).toEqual({
       statusCode: 200,
       body: {
@@ -3731,6 +3748,13 @@ describe("operator action API helpers", () => {
         count: 1,
       },
     })
+    expect(routeActions.clearOperatorErrors()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "operator-clear-errors",
+      },
+    })
     expect(routeActions.getOperatorLogs(undefined, "error")).toMatchObject({
       statusCode: 200,
       body: {
@@ -3760,6 +3784,7 @@ describe("operator action API helpers", () => {
       "active-sessions",
       "recent-sessions:10",
       "errors:1",
+      "clear",
       "errors:20",
       "conversations",
     ]))

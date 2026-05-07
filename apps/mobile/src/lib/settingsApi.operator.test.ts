@@ -64,6 +64,7 @@ describe('SettingsApiClient operator endpoints', () => {
   it('targets operator errors, audit, and action endpoints without duplicating the /v1 prefix', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse({ count: 0, errors: [] }))
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'operator-clear-errors', message: 'cleared' }))
       .mockResolvedValueOnce(jsonResponse({ count: 1, entries: [] }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'restart-remote-server', message: 'scheduled' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'restart-app', message: 'scheduled' }))
@@ -90,6 +91,7 @@ describe('SettingsApiClient operator endpoints', () => {
     const client = new SettingsApiClient('https://example.com/v1', 'secret-token');
 
     await client.getOperatorErrors(12);
+    await client.clearOperatorErrors();
     await client.getOperatorAudit();
     await client.restartRemoteServer();
     await client.restartApp();
@@ -107,6 +109,7 @@ describe('SettingsApiClient operator endpoints', () => {
 
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
       'https://example.com/v1/operator/errors?count=12',
+      'https://example.com/v1/operator/errors/clear',
       'https://example.com/v1/operator/audit?count=20',
       'https://example.com/v1/operator/actions/restart-remote-server',
       'https://example.com/v1/operator/actions/restart-app',
@@ -123,7 +126,7 @@ describe('SettingsApiClient operator endpoints', () => {
       'https://example.com/v1/operator/sessions/session%2F1/unsnooze',
     ]);
 
-    expect(fetchMock.mock.calls[2]?.[1]?.method).toBe('POST');
+    expect(fetchMock.mock.calls[1]?.[1]?.method).toBe('POST');
     expect(fetchMock.mock.calls[3]?.[1]?.method).toBe('POST');
     expect(fetchMock.mock.calls[4]?.[1]?.method).toBe('POST');
     expect(fetchMock.mock.calls[5]?.[1]?.method).toBe('POST');
@@ -136,6 +139,7 @@ describe('SettingsApiClient operator endpoints', () => {
     expect(fetchMock.mock.calls[12]?.[1]?.method).toBe('POST');
     expect(fetchMock.mock.calls[13]?.[1]?.method).toBe('POST');
     expect(fetchMock.mock.calls[14]?.[1]?.method).toBe('POST');
+    expect(fetchMock.mock.calls[15]?.[1]?.method).toBe('POST');
   });
 
   it('targets tunnel, Discord, and WhatsApp operator endpoints with the expected HTTP methods', async () => {

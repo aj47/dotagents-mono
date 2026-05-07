@@ -37,6 +37,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_ROUTE_PATHS.agentSessionCandidates).toBe('/v1/agent-sessions/candidates');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.agentSessionToolApprovalResponse).toBe('/v1/agent-sessions/tool-approvals/:approvalId/respond');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorStopTtsPlayback).toBe('/v1/operator/actions/stop-tts');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorErrorsClear).toBe('/v1/operator/errors/clear');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionShow).toBe('/v1/operator/sessions/:sessionId/show');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionSnooze).toBe('/v1/operator/sessions/:sessionId/snooze');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionUnsnooze).toBe('/v1/operator/sessions/:sessionId/unsnooze');

@@ -2274,6 +2274,25 @@ export default function OperationsScreen({ navigation }: any) {
 
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Recent operator logs</Text>
+            <View style={styles.actionGrid}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                onPress={() => confirmAction(
+                  'Clear Operator Log',
+                  'Clear the desktop operator error log now?',
+                  'Clear Log',
+                  true,
+                  () => runAction('operator-clear-errors', () => settingsClient.clearOperatorErrors()),
+                )}
+                disabled={pendingAction !== null}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Clear desktop operator error log')}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {pendingAction === 'operator-clear-errors' ? 'Clearing log…' : 'Clear log'}
+                </Text>
+              </TouchableOpacity>
+            </View>
             {operatorLogs.length === 0 ? (
               <Text style={styles.mutedText}>No recent operator log entries returned by the desktop server.</Text>
             ) : (

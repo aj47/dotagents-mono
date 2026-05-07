@@ -400,6 +400,7 @@ export interface OperatorTunnelRouteActions {
 export type OperatorObservabilityActionResult = {
   statusCode: number
   body: unknown
+  auditContext?: OperatorActionAuditContext
 }
 
 export interface OperatorObservabilityActionDiagnostics {
@@ -409,6 +410,7 @@ export interface OperatorObservabilityActionDiagnostics {
 export interface OperatorObservabilityActionService {
   getCurrentVersion(): string
   getRecentErrors(count: number): OperatorRecentErrorLike[]
+  clearErrorLog(): void
   performHealthCheck(): Promise<OperatorHealthLike>
   getTunnelStatus(): OperatorTunnelStatusLike
   getIntegrationsSummary(): Promise<OperatorIntegrationsSummary>
@@ -421,6 +423,7 @@ export interface OperatorObservabilityActionService {
 
 export interface OperatorObservabilityDiagnosticsServiceAdapter {
   getRecentErrors(count: number): OperatorRecentErrorLike[]
+  clearErrorLog(): void
   performHealthCheck(): Promise<OperatorHealthLike>
 }
 
@@ -450,6 +453,7 @@ export function createOperatorObservabilityActionService(
   return {
     getCurrentVersion: () => options.getCurrentVersion(),
     getRecentErrors: (count) => options.diagnostics.getRecentErrors(count),
+    clearErrorLog: () => options.diagnostics.clearErrorLog(),
     performHealthCheck: () => options.diagnostics.performHealthCheck(),
     getTunnelStatus: () => options.getTunnelStatus(),
     getIntegrationsSummary: () => options.getIntegrationsSummary(),
@@ -471,6 +475,7 @@ export interface OperatorObservabilityRouteActions {
   getOperatorStatus(remoteServerStatus: OperatorRemoteServerStatusLike): Promise<OperatorObservabilityActionResult>
   getOperatorHealth(): Promise<OperatorObservabilityActionResult>
   getOperatorErrors(count: string | number | undefined): OperatorObservabilityActionResult
+  clearOperatorErrors(): OperatorObservabilityActionResult
   getOperatorLogs(count: string | number | undefined, level: string | undefined): OperatorObservabilityActionResult
   getOperatorConversations(count: string | number | undefined): Promise<OperatorObservabilityActionResult>
   getOperatorRemoteServer(remoteServerStatus: OperatorRemoteServerStatusLike): OperatorObservabilityActionResult
@@ -2533,10 +2538,12 @@ export function createOperatorTtsPlaybackRouteActions(
 function operatorObservabilityActionResult(
   statusCode: number,
   body: unknown,
+  auditContext?: OperatorActionAuditContext,
 ): OperatorObservabilityActionResult {
   return {
     statusCode,
     body,
+    ...(auditContext ? { auditContext } : {}),
   }
 }
 
@@ -2603,6 +2610,32 @@ export function getOperatorErrorsAction(
   }
 }
 
+export function clearOperatorErrorsAction(
+  options: OperatorObservabilityActionOptions,
+): OperatorObservabilityActionResult {
+  try {
+    options.service.clearErrorLog()
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "operator-clear-errors",
+      message: "Operator error log cleared",
+    }
+    return operatorObservabilityActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = caughtError instanceof Error ? caughtError.message : String(caughtError)
+    const response = buildOperatorActionErrorResponse(
+      "operator-clear-errors",
+      `Failed to clear operator error log: ${errorMessage}`,
+    )
+    options.diagnostics.logError(
+      "operator-observability-actions",
+      `Failed to clear operator error log: ${errorMessage}`,
+      caughtError,
+    )
+    return operatorObservabilityActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
 export function getOperatorLogsAction(
   count: string | number | undefined,
   level: string | undefined,
@@ -2645,6 +2678,7 @@ export function createOperatorObservabilityRouteActions(
     getOperatorStatus: (remoteServerStatus) => getOperatorStatusAction(remoteServerStatus, options),
     getOperatorHealth: () => getOperatorHealthAction(options),
     getOperatorErrors: (count) => getOperatorErrorsAction(count, options),
+    clearOperatorErrors: () => clearOperatorErrorsAction(options),
     getOperatorLogs: (count, level) => getOperatorLogsAction(count, level, options),
     getOperatorConversations: (count) => getOperatorConversationsAction(count, options),
     getOperatorRemoteServer: (remoteServerStatus) => getOperatorRemoteServerAction(remoteServerStatus),

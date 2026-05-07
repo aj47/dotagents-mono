@@ -112,9 +112,15 @@ describe('remote server operator routes', () => {
     const { routes, server } = createRouteServer();
     const restartAuditContext = { action: 'restart-remote-server', success: true };
     const rotateAuditContext = { action: 'rotate-api-key', success: true };
+    const clearErrorsAuditContext = { action: 'operator-clear-errors', success: true };
     const actions = {
       getOperatorStatus: vi.fn(() => ({ statusCode: 200, body: { running: true } })),
       getOperatorLogs: vi.fn(() => ({ statusCode: 200, body: { lines: [] } })),
+      clearOperatorErrors: vi.fn(() => ({
+        statusCode: 200,
+        body: { success: true, action: 'operator-clear-errors' },
+        auditContext: clearErrorsAuditContext,
+      })),
       restartOperatorRemoteServer: vi.fn(() => ({
         statusCode: 202,
         body: { action: 'restart-remote-server' },
@@ -156,6 +162,14 @@ describe('remote server operator routes', () => {
       createReply(),
     );
     expect(actions.getOperatorLogs).toHaveBeenCalledWith('50', 'warning');
+
+    const clearErrorsRequest = createRequest();
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorErrorsClear}`)!(
+      clearErrorsRequest,
+      createReply(),
+    );
+    expect(actions.clearOperatorErrors).toHaveBeenCalledTimes(1);
+    expect(actions.setOperatorAuditContext).toHaveBeenCalledWith(clearErrorsRequest, clearErrorsAuditContext);
 
     const restartRequest = createRequest();
     await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorRestartRemoteServer}`)!(

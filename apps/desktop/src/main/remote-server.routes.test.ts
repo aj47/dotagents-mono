@@ -1779,6 +1779,7 @@ describe("remote-server route registration", () => {
       ["GET", "operatorStatus"],
       ["GET", "operatorHealth"],
       ["GET", "operatorErrors"],
+      ["POST", "operatorErrorsClear"],
       ["GET", "operatorLogs"],
       ["GET", "operatorAudit"],
       ["GET", "operatorConversations"],
@@ -1853,6 +1854,7 @@ describe("remote-server route registration", () => {
     expect(operatorRoutesSource).toContain("actions.getOperatorStatus(getRemoteServerStatus())")
     expect(operatorRoutesSource).toContain("actions.getOperatorHealth()")
     expect(operatorRoutesSource).toContain("actions.getOperatorErrors(query.count)")
+    expect(operatorRoutesSource).toContain("actions.clearOperatorErrors()")
     expect(operatorRoutesSource).toContain("actions.getOperatorLogs(query.count, query.level)")
     expect(operatorRoutesSource).toContain("actions.getOperatorConversations(query.count)")
     expect(operatorRoutesSource).toContain("actions.getOperatorRemoteServer(getRemoteServerStatus())")
@@ -1874,6 +1876,7 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("getOperatorStatus: (remoteServerStatus) => getOperatorStatusAction(remoteServerStatus, options)")
     expect(sharedOperatorActionsSource).toContain("getOperatorHealth: () => getOperatorHealthAction(options)")
     expect(sharedOperatorActionsSource).toContain("getOperatorErrors: (count) => getOperatorErrorsAction(count, options)")
+    expect(sharedOperatorActionsSource).toContain("clearOperatorErrors: () => clearOperatorErrorsAction(options)")
     expect(sharedOperatorActionsSource).toContain("getOperatorLogs: (count, level) => getOperatorLogsAction(count, level, options)")
     expect(sharedOperatorActionsSource).toContain("getOperatorConversations: (count) => getOperatorConversationsAction(count, options)")
     expect(sharedOperatorActionsSource).toContain("getOperatorRemoteServer: (remoteServerStatus) => getOperatorRemoteServerAction(remoteServerStatus)")
@@ -2186,6 +2189,7 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("system: options.service.getSystemMetrics()")
     expect(sharedOperatorActionsSource).toContain("export function createOperatorObservabilityActionService")
     expect(sharedOperatorActionsSource).toContain("getRecentErrors: (count) => options.diagnostics.getRecentErrors(count)")
+    expect(sharedOperatorActionsSource).toContain("clearErrorLog: () => options.diagnostics.clearErrorLog()")
     expect(sharedOperatorActionsSource).toContain("getActiveSessions: () => options.sessions.getActiveSessions()")
     expect(sharedOperatorActionsSource).toContain("getConversationHistory: () => options.conversations.getConversationHistory()")
     expect(operatorRouteDesktopActionsSource).toContain("const getOperatorSystemMetrics = createOperatorSystemMetricsCollector({")

@@ -157,6 +157,8 @@ test('displays recent operator logs from operator API', () => {
   assert.match(operationsSource, /setOperatorLogs/);
   assert.match(operationsSource, /Recent operator logs/);
   assert.match(operationsSource, /operatorLogs\.map/);
+  assert.match(operationsSource, /settingsClient\.clearOperatorErrors\(\)/);
+  assert.match(operationsSource, /Clear desktop operator error log/);
 });
 
 test('displays MCP servers from operator API', () => {
