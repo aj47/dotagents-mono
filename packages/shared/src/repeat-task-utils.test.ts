@@ -21,6 +21,7 @@ import {
   buildRepeatTaskToggleResponse,
   buildRepeatTaskScheduleFromDraft,
   DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
+  DEFAULT_REPEAT_TASK_IMPORT_MARKDOWN_PLACEHOLDER,
   computeNextScheduledRun,
   createRepeatTaskIdFromName,
   DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
@@ -421,6 +422,14 @@ describe("repeat task schedule helpers", () => {
       scheduleTimes: ["09:00"],
       scheduleDaysOfWeek: [1, 2, 3, 4, 5],
     })
+
+    expect(DEFAULT_REPEAT_TASK_IMPORT_MARKDOWN_PLACEHOLDER).toBe(`---
+kind: task
+name: morning-check
+intervalMinutes: ${DEFAULT_REPEAT_TASK_INTERVAL_MINUTES}
+enabled: ${DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled}
+---
+Summarize overnight work.`)
 
     expect(formatRepeatTaskEditFormData({
       name: "Weekly Report",

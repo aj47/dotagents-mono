@@ -92,8 +92,7 @@ import {
 import {
   applyRepeatTaskRuntimeStatuses,
   applyRepeatTaskRuntimeStatus,
-  DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
-  DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
+  DEFAULT_REPEAT_TASK_IMPORT_MARKDOWN_PLACEHOLDER,
   describeLoopCadence,
   describeRepeatTaskRuntime,
   formatRepeatTaskRuntimeTimestamp,
@@ -217,14 +216,6 @@ type LoopRuntimeAction = {
 const MOBILE_LOOP_RUNTIME_TIMESTAMP_FORMAT = {
   dateTimeFormatOptions: { hour: 'numeric', minute: '2-digit' },
 } as const;
-
-const DEFAULT_LOOP_IMPORT_MARKDOWN_PLACEHOLDER = `---
-kind: task
-name: morning-check
-intervalMinutes: ${DEFAULT_REPEAT_TASK_INTERVAL_MINUTES}
-enabled: ${DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled}
----
-Summarize overnight work.`;
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -6052,7 +6043,7 @@ export default function SettingsScreen({ navigation }: any) {
               style={styles.importJsonInput}
               value={loopImportMarkdownText}
               onChangeText={setLoopImportMarkdownText}
-              placeholder={DEFAULT_LOOP_IMPORT_MARKDOWN_PLACEHOLDER}
+              placeholder={DEFAULT_REPEAT_TASK_IMPORT_MARKDOWN_PLACEHOLDER}
               placeholderTextColor={theme.colors.mutedForeground}
               multiline
               numberOfLines={8}

@@ -8,3 +8,11 @@ export const DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS = {
   continueInSession: false,
   runContinuously: false,
 } as const
+
+export const DEFAULT_REPEAT_TASK_IMPORT_MARKDOWN_PLACEHOLDER = `---
+kind: task
+name: morning-check
+intervalMinutes: ${DEFAULT_REPEAT_TASK_INTERVAL_MINUTES}
+enabled: ${DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled}
+---
+Summarize overnight work.`
