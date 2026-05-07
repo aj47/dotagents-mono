@@ -75,6 +75,7 @@ import {
   connectOperatorDiscordAction,
   connectOperatorWhatsAppAction,
   createOperatorAgentActionService,
+  createOperatorApiKeyActionService,
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
   createOperatorAuditRecorder,
@@ -530,18 +531,29 @@ describe("operator action API helpers", () => {
     })
   })
 
-  it("rotates operator API keys through a shared config adapter", () => {
+  it("creates operator API key action services from config adapters", () => {
     let savedConfig = { remoteServerApiKey: "old-key", remoteServerPort: 3899 }
-    const errors: string[] = []
-    const options: OperatorApiKeyActionOptions<typeof savedConfig> = {
+    const service = createOperatorApiKeyActionService({
       config: {
         get: () => savedConfig,
         save: (config) => { savedConfig = config },
       },
+      generateApiKey: () => "new-key",
+    })
+
+    expect(service.rotateRemoteServerApiKey()).toBe("new-key")
+    expect(savedConfig).toEqual({ remoteServerApiKey: "new-key", remoteServerPort: 3899 })
+  })
+
+  it("rotates operator API keys through a shared service adapter", () => {
+    const errors: string[] = []
+    const options: OperatorApiKeyActionOptions = {
+      service: {
+        rotateRemoteServerApiKey: () => "new-key",
+      },
       diagnostics: {
         logError: (_source, message) => { errors.push(message) },
       },
-      generateApiKey: () => "new-key",
     }
 
     expect(rotateOperatorRemoteServerApiKeyAction(options)).toMatchObject({
@@ -559,18 +571,15 @@ describe("operator action API helpers", () => {
       },
       shouldRestartRemoteServer: true,
     })
-    expect(savedConfig).toEqual({ remoteServerApiKey: "new-key", remoteServerPort: 3899 })
     expect(errors).toEqual([])
 
     const failingOptions: OperatorApiKeyActionOptions = {
-      config: {
-        get: () => ({ remoteServerApiKey: "old-key" }),
-        save: () => { throw new Error("disk denied") },
+      service: {
+        rotateRemoteServerApiKey: () => { throw new Error("disk denied") },
       },
       diagnostics: {
         logError: (_source, message) => { errors.push(message) },
       },
-      generateApiKey: () => "unused-key",
     }
 
     expect(rotateOperatorRemoteServerApiKeyAction(failingOptions)).toMatchObject({
@@ -587,16 +596,13 @@ describe("operator action API helpers", () => {
   })
 
   it("creates operator API key route actions through shared adapters", () => {
-    let savedConfig = { remoteServerApiKey: "old-key", remoteServerPort: 3899 }
     const routeActions = createOperatorApiKeyRouteActions({
-      config: {
-        get: () => savedConfig,
-        save: (config) => { savedConfig = config },
+      service: {
+        rotateRemoteServerApiKey: () => "route-key",
       },
       diagnostics: {
         logError: () => {},
       },
-      generateApiKey: () => "route-key",
     })
 
     expect(routeActions.rotateOperatorRemoteServerApiKey()).toMatchObject({
@@ -614,7 +620,6 @@ describe("operator action API helpers", () => {
       },
       shouldRestartRemoteServer: true,
     })
-    expect(savedConfig).toEqual({ remoteServerApiKey: "route-key", remoteServerPort: 3899 })
   })
 
   it("clamps operator counts and normalizes log levels", () => {

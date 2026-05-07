@@ -1955,9 +1955,17 @@ describe("remote-server route registration", () => {
     )
     expect(operatorRouteDesktopActionsSource).toContain("apiKey: operatorApiKeyRouteActions")
     expect(operatorRouteDesktopActionsSource).not.toContain("rotateOperatorRemoteServerApiKeyAction(apiKeyActionOptions)")
+    expect(operatorRouteDesktopActionsSource).toContain("service: createOperatorApiKeyActionService<Config>({")
+    expect(operatorRouteDesktopActionsSource).not.toContain(
+      "const apiKeyActionOptions: OperatorApiKeyActionOptions<Config> = {\n  config: {",
+    )
     expect(operatorRouteDesktopActionsSource).toContain('generateApiKey: () => crypto.randomBytes(32).toString("hex")')
     expect(desktopAdaptersSource).toContain("generateApiKey: generateRemoteServerApiKey")
     expect(desktopAdaptersSource).toContain("function generateRemoteServerApiKey()")
+    expect(sharedOperatorActionsSource).toContain("export interface OperatorApiKeyActionService")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorApiKeyActionService")
+    expect(sharedOperatorActionsSource).toContain("rotateRemoteServerApiKey: () => {")
+    expect(sharedOperatorActionsSource).toContain("const nextConfig = { ...cfg, remoteServerApiKey: apiKey } as TConfig")
     expect(sharedOperatorActionsSource).toContain("export interface OperatorApiKeyRouteActions")
     expect(sharedOperatorActionsSource).toContain("export function createOperatorApiKeyRouteActions")
     expect(sharedOperatorActionsSource).toContain(

@@ -44,6 +44,7 @@ import {
   buildOperatorMcpTestAuditContext,
   buildOperatorMcpTestFailureAuditContext,
   createOperatorAgentActionService,
+  createOperatorApiKeyActionService,
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
   createOperatorIntegrationActionService,
@@ -132,13 +133,15 @@ const modelPresetActionOptions: ModelPresetActionOptions<Config> = {
 
 const operatorModelPresetRouteActions = createOperatorModelPresetRouteActions(modelPresetActionOptions)
 
-const apiKeyActionOptions: OperatorApiKeyActionOptions<Config> = {
-  config: {
-    get: () => configStore.get(),
-    save: (config) => configStore.save(config),
-  },
+const apiKeyActionOptions: OperatorApiKeyActionOptions = {
   diagnostics: diagnosticsService,
-  generateApiKey: () => crypto.randomBytes(32).toString("hex"),
+  service: createOperatorApiKeyActionService<Config>({
+    config: {
+      get: () => configStore.get(),
+      save: (config) => configStore.save(config),
+    },
+    generateApiKey: () => crypto.randomBytes(32).toString("hex"),
+  }),
 }
 
 const operatorApiKeyRouteActions = createOperatorApiKeyRouteActions(apiKeyActionOptions)

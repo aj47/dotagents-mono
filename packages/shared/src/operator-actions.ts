@@ -225,10 +225,32 @@ export interface OperatorApiKeyActionDiagnostics {
   logError(source: string, message: string, error: unknown): void
 }
 
-export interface OperatorApiKeyActionOptions<TConfig extends OperatorApiKeyActionConfigLike = OperatorApiKeyActionConfigLike> {
+export interface OperatorApiKeyActionService {
+  rotateRemoteServerApiKey(): string
+}
+
+export interface OperatorApiKeyActionServiceOptions<TConfig extends OperatorApiKeyActionConfigLike = OperatorApiKeyActionConfigLike> {
   config: OperatorApiKeyActionConfigStore<TConfig>
-  diagnostics: OperatorApiKeyActionDiagnostics
   generateApiKey(): string
+}
+
+export function createOperatorApiKeyActionService<TConfig extends OperatorApiKeyActionConfigLike>(
+  options: OperatorApiKeyActionServiceOptions<TConfig>,
+): OperatorApiKeyActionService {
+  return {
+    rotateRemoteServerApiKey: () => {
+      const cfg = options.config.get()
+      const apiKey = options.generateApiKey()
+      const nextConfig = { ...cfg, remoteServerApiKey: apiKey } as TConfig
+      options.config.save(nextConfig)
+      return apiKey
+    },
+  }
+}
+
+export interface OperatorApiKeyActionOptions {
+  service: OperatorApiKeyActionService
+  diagnostics: OperatorApiKeyActionDiagnostics
 }
 
 export interface OperatorApiKeyRouteActions {
@@ -2598,14 +2620,11 @@ function operatorApiKeyActionResult(
   }
 }
 
-export function rotateOperatorRemoteServerApiKeyAction<TConfig extends OperatorApiKeyActionConfigLike>(
-  options: OperatorApiKeyActionOptions<TConfig>,
+export function rotateOperatorRemoteServerApiKeyAction(
+  options: OperatorApiKeyActionOptions,
 ): OperatorApiKeyActionResult {
   try {
-    const cfg = options.config.get()
-    const apiKey = options.generateApiKey()
-    const nextConfig = { ...cfg, remoteServerApiKey: apiKey } as TConfig
-    options.config.save(nextConfig)
+    const apiKey = options.service.rotateRemoteServerApiKey()
 
     return operatorApiKeyActionResult(
       200,
@@ -2627,8 +2646,8 @@ export function rotateOperatorRemoteServerApiKeyAction<TConfig extends OperatorA
   }
 }
 
-export function createOperatorApiKeyRouteActions<TConfig extends OperatorApiKeyActionConfigLike>(
-  options: OperatorApiKeyActionOptions<TConfig>,
+export function createOperatorApiKeyRouteActions(
+  options: OperatorApiKeyActionOptions,
 ): OperatorApiKeyRouteActions {
   return {
     rotateOperatorRemoteServerApiKey: () => rotateOperatorRemoteServerApiKeyAction(options),
