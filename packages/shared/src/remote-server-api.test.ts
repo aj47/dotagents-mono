@@ -46,6 +46,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorDesktopMainWindowShow).toBe('/v1/operator/windows/main/show');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorDesktopPanelWindowShow).toBe('/v1/operator/windows/panel/show');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorDesktopPanelWindowHide).toBe('/v1/operator/windows/panel/hide');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorDesktopPanelWindowReset).toBe('/v1/operator/windows/panel/reset');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionShow).toBe('/v1/operator/sessions/:sessionId/show');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionSnooze).toBe('/v1/operator/sessions/:sessionId/snooze');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionUnsnooze).toBe('/v1/operator/sessions/:sessionId/unsnooze');

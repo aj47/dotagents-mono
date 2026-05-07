@@ -1598,6 +1598,18 @@ export default function OperationsScreen({ navigation }: any) {
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                onPress={() => void runAction('desktop-panel-window-reset', () => settingsClient.resetOperatorPanelWindow(), false)}
+                disabled={pendingAction !== null}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Reset desktop floating panel')}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {pendingAction === 'desktop-panel-window-reset' ? 'Resetting panel…' : 'Reset panel'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                 onPress={() => confirmAction(
                   'Restart Remote Server',
                   'Restart the desktop remote server? Mobile clients may reconnect automatically after a short interruption.',

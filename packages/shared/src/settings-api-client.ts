@@ -1791,6 +1791,12 @@ export class SettingsApiClient {
     });
   }
 
+  async resetOperatorPanelWindow(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorDesktopPanelWindowReset, {
+      method: 'POST',
+    });
+  }
+
   async rotateOperatorApiKey(): Promise<OperatorApiKeyRotationResponse> {
     return this.request<OperatorApiKeyRotationResponse>(API_PATHS.operatorRotateApiKey, {
       method: 'POST',

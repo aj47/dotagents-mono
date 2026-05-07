@@ -161,6 +161,7 @@ describe('remote server operator routes', () => {
       showOperatorMainWindow: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'desktop-main-window-show' } })),
       showOperatorPanelWindow: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'desktop-panel-window-show' } })),
       hideOperatorPanelWindow: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'desktop-panel-window-hide' } })),
+      resetOperatorPanelWindow: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'desktop-panel-window-reset' } })),
       showOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-show' } })),
       snoozeOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-snooze' } })),
       unsnoozeOperatorAgentSession: vi.fn(() => ({ statusCode: 200, body: { success: true, action: 'agent-session-unsnooze' } })),
@@ -285,6 +286,12 @@ describe('remote server operator routes', () => {
       createReply(),
     );
     expect(actions.hideOperatorPanelWindow).toHaveBeenCalledTimes(1);
+
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorDesktopPanelWindowReset}`)!(
+      createRequest(),
+      createReply(),
+    );
+    expect(actions.resetOperatorPanelWindow).toHaveBeenCalledTimes(1);
 
     await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionShow}`)!(
       createRequest({ params: { sessionId: 'session-1' } }),

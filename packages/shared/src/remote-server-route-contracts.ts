@@ -324,6 +324,7 @@ export interface OperatorRouteActions<Request = unknown> {
   showOperatorMainWindow: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
   showOperatorPanelWindow: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
   hideOperatorPanelWindow: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
+  resetOperatorPanelWindow: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
   showOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   stopOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   snoozeOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
@@ -441,7 +442,7 @@ export interface OperatorRouteActionGroups<Request = unknown> {
   ttsPlayback: Pick<OperatorRouteActions<Request>, 'stopOperatorTtsPlayback'>;
   desktopWindow: Pick<
     OperatorRouteActions<Request>,
-    'showOperatorMainWindow' | 'showOperatorPanelWindow' | 'hideOperatorPanelWindow'
+    'showOperatorMainWindow' | 'showOperatorPanelWindow' | 'hideOperatorPanelWindow' | 'resetOperatorPanelWindow'
   >;
   apiKey: Pick<OperatorRouteActions<Request>, 'rotateOperatorRemoteServerApiKey'>;
   mcp: Pick<

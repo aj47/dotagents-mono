@@ -2202,9 +2202,11 @@ describe("remote-server route registration", () => {
     expectRegisteredApiRoute(source, "POST", "operatorDesktopMainWindowShow")
     expectRegisteredApiRoute(source, "POST", "operatorDesktopPanelWindowShow")
     expectRegisteredApiRoute(source, "POST", "operatorDesktopPanelWindowHide")
+    expectRegisteredApiRoute(source, "POST", "operatorDesktopPanelWindowReset")
     expect(operatorRoutesSource).toContain("actions.showOperatorMainWindow()")
     expect(operatorRoutesSource).toContain("actions.showOperatorPanelWindow()")
     expect(operatorRoutesSource).toContain("actions.hideOperatorPanelWindow()")
+    expect(operatorRoutesSource).toContain("actions.resetOperatorPanelWindow()")
     expect(operatorRouteDesktopActionsSource).toContain(
       "const operatorDesktopWindowRouteActions = createOperatorDesktopWindowRouteActions(desktopWindowActionOptions)",
     )
@@ -2212,9 +2214,11 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).toContain("showMainWindow: () => showMainWindow()")
     expect(operatorRouteDesktopActionsSource).toContain("showPanelWindow: () => showPanelWindow({})")
     expect(operatorRouteDesktopActionsSource).toContain("hidePanelWindow: () => hideFloatingPanelWindow()")
+    expect(operatorRouteDesktopActionsSource).toContain("resetPanelWindow: () => resetFloatingPanelPositionAndSize(true)")
     expect(sharedOperatorActionsSource).toContain("export function createOperatorDesktopWindowActionService")
     expect(sharedOperatorActionsSource).toContain("export function createOperatorDesktopWindowRouteActions")
     expect(sharedOperatorActionsSource).toContain("showOperatorMainWindow: () => showOperatorMainWindowAction(options)")
+    expect(sharedOperatorActionsSource).toContain("resetOperatorPanelWindow: () => resetOperatorPanelWindowAction(options)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorDesktopWindowActionResponse(action)")
     // Runtime status shaping stays shared while desktop supplies process and service state.
     expect(sharedOperatorActionsSource).toContain("export function createOperatorSystemMetricsCollector(")

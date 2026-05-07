@@ -775,17 +775,20 @@ export type OperatorDesktopWindowAction =
   | "desktop-main-window-show"
   | "desktop-panel-window-show"
   | "desktop-panel-window-hide"
+  | "desktop-panel-window-reset"
 
 export interface OperatorDesktopWindowActionService {
   showMainWindow(): void
   showPanelWindow(): void
   hidePanelWindow(): void
+  resetPanelWindow(): void
 }
 
 export interface OperatorDesktopWindowActionServiceOptions {
   showMainWindow(): void
   showPanelWindow(): void
   hidePanelWindow(): void
+  resetPanelWindow(): void
 }
 
 export function createOperatorDesktopWindowActionService(
@@ -795,6 +798,7 @@ export function createOperatorDesktopWindowActionService(
     showMainWindow: () => options.showMainWindow(),
     showPanelWindow: () => options.showPanelWindow(),
     hidePanelWindow: () => options.hidePanelWindow(),
+    resetPanelWindow: () => options.resetPanelWindow(),
   }
 }
 
@@ -807,6 +811,7 @@ export interface OperatorDesktopWindowRouteActions {
   showOperatorMainWindow(): OperatorDesktopWindowActionResult
   showOperatorPanelWindow(): OperatorDesktopWindowActionResult
   hideOperatorPanelWindow(): OperatorDesktopWindowActionResult
+  resetOperatorPanelWindow(): OperatorDesktopWindowActionResult
 }
 
 export type RunAgentResultLike = AgentRunResult
@@ -2518,6 +2523,12 @@ export function buildOperatorDesktopWindowActionResponse(
         action,
         message: "Hid desktop floating panel",
       }
+    case "desktop-panel-window-reset":
+      return {
+        success: true,
+        action,
+        message: "Reset desktop floating panel",
+      }
   }
 }
 
@@ -3019,6 +3030,17 @@ export function hideOperatorPanelWindowAction(
   )
 }
 
+export function resetOperatorPanelWindowAction(
+  options: OperatorDesktopWindowActionOptions,
+): OperatorDesktopWindowActionResult {
+  return runOperatorDesktopWindowAction(
+    "desktop-panel-window-reset",
+    "reset desktop floating panel",
+    () => options.service.resetPanelWindow(),
+    options,
+  )
+}
+
 export function createOperatorDesktopWindowRouteActions(
   options: OperatorDesktopWindowActionOptions,
 ): OperatorDesktopWindowRouteActions {
@@ -3026,6 +3048,7 @@ export function createOperatorDesktopWindowRouteActions(
     showOperatorMainWindow: () => showOperatorMainWindowAction(options),
     showOperatorPanelWindow: () => showOperatorPanelWindowAction(options),
     hideOperatorPanelWindow: () => hideOperatorPanelWindowAction(options),
+    resetOperatorPanelWindow: () => resetOperatorPanelWindowAction(options),
   }
 }
 

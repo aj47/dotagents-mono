@@ -97,6 +97,7 @@ describe('SettingsApiClient operator endpoints', () => {
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'desktop-main-window-show', message: 'showed app' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'desktop-panel-window-show', message: 'showed panel' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'desktop-panel-window-hide', message: 'hid panel' }))
+      .mockResolvedValueOnce(jsonResponse({ success: true, action: 'desktop-panel-window-reset', message: 'reset panel' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-show', message: 'showing' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-snooze', message: 'snoozed' }))
       .mockResolvedValueOnce(jsonResponse({ success: true, action: 'agent-session-unsnooze', message: 'unsnoozed' }))
@@ -128,6 +129,7 @@ describe('SettingsApiClient operator endpoints', () => {
     await client.showOperatorMainWindow();
     await client.showOperatorPanelWindow();
     await client.hideOperatorPanelWindow();
+    await client.resetOperatorPanelWindow();
     await client.showOperatorAgentSession('session/1');
     await client.snoozeOperatorAgentSession('session/1');
     await client.unsnoozeOperatorAgentSession('session/1');
@@ -157,6 +159,7 @@ describe('SettingsApiClient operator endpoints', () => {
       'https://example.com/v1/operator/windows/main/show',
       'https://example.com/v1/operator/windows/panel/show',
       'https://example.com/v1/operator/windows/panel/hide',
+      'https://example.com/v1/operator/windows/panel/reset',
       'https://example.com/v1/operator/sessions/session%2F1/show',
       'https://example.com/v1/operator/sessions/session%2F1/snooze',
       'https://example.com/v1/operator/sessions/session%2F1/unsnooze',
@@ -165,11 +168,11 @@ describe('SettingsApiClient operator endpoints', () => {
       'https://example.com/v1/operator/sessions/snooze-and-hide-panel',
     ]);
 
-    for (const index of [2, 3, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]) {
+    for (const index of [2, 3, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]) {
       expect(fetchMock.mock.calls[index]?.[1]?.method).toBe('POST');
     }
     expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(JSON.stringify({ filePath: '/tmp/report.json' }));
-    expect(fetchMock.mock.calls[26]?.[1]?.body).toBe(JSON.stringify({ sessionIds: ['session/1'] }));
+    expect(fetchMock.mock.calls[27]?.[1]?.body).toBe(JSON.stringify({ sessionIds: ['session/1'] }));
   });
 
   it('targets tunnel, Discord, and WhatsApp operator endpoints with the expected HTTP methods', async () => {

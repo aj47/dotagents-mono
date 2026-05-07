@@ -171,6 +171,7 @@ import {
   rotateOperatorRemoteServerApiKeyAction,
   runOperatorAgentAction,
   retryOperatorQueuedMessageAction,
+  resetOperatorPanelWindowAction,
   revealOperatorUpdateAssetAction,
   sanitizeOperatorAuditDetails,
   sanitizeOperatorAuditText,
@@ -373,6 +374,7 @@ describe("operator action API helpers", () => {
       showMainWindow: () => { calls.push("show-main") },
       showPanelWindow: () => { calls.push("show-panel") },
       hidePanelWindow: () => { calls.push("hide-panel") },
+      resetPanelWindow: () => { calls.push("reset-panel") },
     })
     const options: OperatorDesktopWindowActionOptions = {
       diagnostics: {
@@ -412,6 +414,13 @@ describe("operator action API helpers", () => {
         action: "desktop-panel-window-hide",
       },
     })
+    expect(resetOperatorPanelWindowAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "desktop-panel-window-reset",
+      },
+    })
 
     const routeActions = createOperatorDesktopWindowRouteActions(options)
     expect(routeActions.showOperatorMainWindow()).toMatchObject({
@@ -425,6 +434,7 @@ describe("operator action API helpers", () => {
         showMainWindow: () => { throw new Error("window missing") },
         showPanelWindow: () => { throw new Error("panel missing") },
         hidePanelWindow: () => { throw new Error("panel missing") },
+        resetPanelWindow: () => { throw new Error("panel missing") },
       }),
     }
     expect(showOperatorMainWindowAction(failingOptions)).toMatchObject({
@@ -444,6 +454,7 @@ describe("operator action API helpers", () => {
       "show-main",
       "show-panel",
       "hide-panel",
+      "reset-panel",
       "show-main",
       "error:Failed to show desktop app window: window missing",
     ])

@@ -119,6 +119,7 @@ import {
 import {
   getWindowRendererHandlers,
   hideFloatingPanelWindow,
+  resetFloatingPanelPositionAndSize,
   setPanelMode,
   showMainWindow,
   showPanelWindow,
@@ -260,6 +261,7 @@ const desktopWindowActionOptions: OperatorDesktopWindowActionOptions = {
     showMainWindow: () => showMainWindow(),
     showPanelWindow: () => showPanelWindow({}),
     hidePanelWindow: () => hideFloatingPanelWindow(),
+    resetPanelWindow: () => resetFloatingPanelPositionAndSize(true),
   }),
 }
 
