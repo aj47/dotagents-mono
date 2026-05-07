@@ -18,7 +18,7 @@ test('lets mobile edit per-agent skill capability config through the shared clie
   assert.match(screenSource, /settingsClient\.getSkills\(\)/);
   assert.match(screenSource, /normalizeAgentProfileSkillsConfigForEdit\(profile\.skillsConfig\)/);
   assert.match(screenSource, /skillsConfig: formatAgentProfileSkillsConfigForRequest\(formData\.skillsConfig\)/);
-  assert.match(screenSource, /isSkillEnabledByConfig\(skill\.id, formData\.skillsConfig\)/);
+  assert.match(screenSource, /isAgentProfileSkillEnabled\(formData\.skillsConfig, skill\.id\)/);
 });
 
 test('keeps agent skill controls compact and accessible on mobile', () => {
@@ -35,7 +35,7 @@ test('lets mobile edit per-agent MCP server capability config through the shared
   assert.match(screenSource, /settingsClient\.getMCPServers\(\)/);
   assert.match(screenSource, /normalizeAgentProfileMcpConfigForEdit\(profile\.toolConfig\)/);
   assert.match(screenSource, /toolConfig: formatAgentProfileMcpConfigForRequest\(formData\.toolConfig\)/);
-  assert.match(screenSource, /isMcpServerEnabledByConfig\(server\.name, formData\.toolConfig\)/);
+  assert.match(screenSource, /isAgentProfileMcpServerEnabled\(formData\.toolConfig, server\.name\)/);
 });
 
 test('keeps mobile MCP server controls bulk-editable and accessible', () => {
@@ -51,6 +51,7 @@ test('lets mobile edit per-agent runtime tool allowlists through shared runtime 
   assert.match(screenSource, /dotagentsRuntimeToolDefinitions/);
   assert.match(screenSource, /AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES/);
   assert.match(screenSource, /countEnabledAgentProfileRuntimeTools\(formData\.toolConfig, runtimeToolNames, AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES\)/);
+  assert.match(screenSource, /isAgentProfileRuntimeToolEnabled\([\s\S]*formData\.toolConfig,[\s\S]*tool\.name,[\s\S]*AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,[\s\S]*\)/);
   assert.match(screenSource, /getAgentProfileRuntimeToolsConfigAfterToggle\(/);
   assert.match(screenSource, /getAgentProfileRuntimeToolsConfigAfterSetAllEnabled\(prev\.toolConfig, enabled, AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES\)/);
 });
@@ -79,6 +80,8 @@ test('keeps model override controls compact and accessible', () => {
   assert.match(screenSource, /accessibilityState=\{\{ selected, disabled: isBuiltInAgent \}\}/);
   assert.match(screenSource, /onChangeText=\{v => updateAgentModel\(selectedModelProvider, v\)\}/);
   assert.match(screenSource, /placeholder=\{getAgentModelPlaceholder\(selectedModelProvider\)\}/);
+  assert.match(screenSource, /from '@dotagents\/shared\/model-presets'/);
+  assert.doesNotMatch(screenSource, /const getAgentModelPlaceholder =/);
 });
 
 test('lets mobile edit per-agent properties through the shared profile payload', () => {

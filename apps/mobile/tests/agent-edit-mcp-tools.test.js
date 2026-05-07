@@ -18,7 +18,7 @@ test('loads operator MCP tools for per-agent mobile MCP tool overrides', () => {
 });
 
 test('persists per-agent disabled MCP tools through toolConfig.disabledTools', () => {
-  assert.match(screenSource, /isMcpToolEnabledByConfig\(tool\.name, formData\.toolConfig\)/);
+  assert.match(screenSource, /isAgentProfileMcpToolEnabled\(formData\.toolConfig, tool\.name\)/);
   assert.match(screenSource, /const toggleMcpTool = useCallback\(\(toolName: string\) =>/);
   assert.match(screenSource, /getAgentProfileMcpConfigAfterToolToggle\(prev\.toolConfig, toolName\)/);
   assert.match(screenSource, /onValueChange=\{\(\) => toggleMcpTool\(tool\.name\)\}/);

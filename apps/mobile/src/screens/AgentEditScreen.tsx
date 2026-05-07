@@ -37,6 +37,7 @@ import {
   getAgentProfilePresetFormFields,
   type AgentProfilePresetKey,
 } from '@dotagents/shared/agent-profile-presets';
+import { getAgentModelPlaceholder } from '@dotagents/shared/model-presets';
 import {
   buildAgentProfileAvatarDataUrl,
   DEFAULT_AGENT_PROFILE_AUTO_SPAWN,
@@ -85,8 +86,6 @@ import {
   type AgentProfileSkillsConfigUpdateLike,
 } from '@dotagents/shared/agent-profile-config-updates';
 
-type AgentModelProvider = AgentProfileAgentModelProvider;
-
 const RUNTIME_TOOLS = dotagentsRuntimeToolDefinitions;
 interface AgentFormData extends AgentConnectionFormFields {
   displayName: string;
@@ -112,29 +111,6 @@ const defaultFormData: AgentFormData = {
   enabled: DEFAULT_AGENT_PROFILE_ENABLED,
   autoSpawn: DEFAULT_AGENT_PROFILE_AUTO_SPAWN,
   properties: {},
-};
-
-const isMcpServerEnabledByConfig = (serverName: string, toolConfig?: AgentProfileMcpConfigUpdateLike): boolean => {
-  return isAgentProfileMcpServerEnabled(toolConfig, serverName);
-};
-
-const isMcpToolEnabledByConfig = (toolName: string, toolConfig?: AgentProfileMcpConfigUpdateLike): boolean => {
-  return isAgentProfileMcpToolEnabled(toolConfig, toolName);
-};
-
-const isRuntimeToolEnabledByConfig = (toolName: string, toolConfig?: AgentProfileMcpConfigUpdateLike): boolean => {
-  return isAgentProfileRuntimeToolEnabled(toolConfig, toolName, AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES);
-};
-
-const isSkillEnabledByConfig = (skillId: string, skillsConfig?: AgentProfileSkillsConfigUpdateLike): boolean => {
-  return isAgentProfileSkillEnabled(skillsConfig, skillId);
-};
-
-const getAgentModelPlaceholder = (provider: AgentModelProvider): string => {
-  if (provider === 'openai') return 'gpt-5.4-mini';
-  if (provider === 'groq') return 'openai/gpt-oss-120b';
-  if (provider === 'gemini') return 'gemini-2.5-flash';
-  return 'gpt-5.4-mini';
 };
 
 export default function AgentEditScreen({ navigation, route }: any) {
@@ -473,7 +449,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
     }));
   }, []);
 
-  const updateAgentModel = useCallback((provider: AgentModelProvider, model: string) => {
+  const updateAgentModel = useCallback((provider: AgentProfileAgentModelProvider, model: string) => {
     setFormData(prev => ({
       ...prev,
       modelConfig: mergeAgentProfileModelConfig(
@@ -949,7 +925,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         ) : displaySkills.length === 0 ? (
           <Text style={styles.sectionHelperText}>No skills available.</Text>
         ) : displaySkills.map(skill => {
-          const enabled = isSkillEnabledByConfig(skill.id, formData.skillsConfig);
+          const enabled = isAgentProfileSkillEnabled(formData.skillsConfig, skill.id);
           return (
             <View key={skill.id} style={styles.skillRow}>
               <View style={styles.skillInfo}>
@@ -1004,7 +980,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
         ) : displayMcpServers.length === 0 ? (
           <Text style={styles.sectionHelperText}>No MCP servers configured.</Text>
         ) : displayMcpServers.map(server => {
-          const enabled = isMcpServerEnabledByConfig(server.name, formData.toolConfig);
+          const enabled = isAgentProfileMcpServerEnabled(formData.toolConfig, server.name);
           const tools = mcpToolsByServer[server.name] ?? [];
           const enabledToolCount = countEnabledAgentProfileMcpTools(formData.toolConfig, tools.map(tool => tool.name));
           return (
@@ -1036,7 +1012,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
               {enabled && tools.length > 0 ? (
                 <View style={styles.mcpToolList}>
                   {tools.map(tool => {
-                    const toolEnabled = isMcpToolEnabledByConfig(tool.name, formData.toolConfig);
+                    const toolEnabled = isAgentProfileMcpToolEnabled(formData.toolConfig, tool.name);
                     return (
                       <View key={tool.name} style={styles.mcpToolRow}>
                         <View style={styles.mcpToolInfo}>
@@ -1090,7 +1066,11 @@ export default function AgentEditScreen({ navigation, route }: any) {
         </View>
         {runtimeTools.map(tool => {
           const essential = isAgentProfileEssentialRuntimeToolName(tool.name);
-          const enabled = isRuntimeToolEnabledByConfig(tool.name, formData.toolConfig);
+          const enabled = isAgentProfileRuntimeToolEnabled(
+            formData.toolConfig,
+            tool.name,
+            AGENT_PROFILE_ESSENTIAL_RUNTIME_TOOL_NAMES,
+          );
           return (
             <View key={tool.name} style={styles.skillRow}>
               <View style={styles.skillInfo}>
