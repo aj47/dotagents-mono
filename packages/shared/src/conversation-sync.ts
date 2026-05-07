@@ -549,6 +549,10 @@ export function normalizeServerConversationHistoryIndex<TItem extends { lastMess
   return { index: normalizedIndex, changed };
 }
 
+export function sortServerConversationHistoryByUpdatedAt<TItem extends { updatedAt: number }>(index: TItem[]): TItem[] {
+  return [...index].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
 export function getRepresentedServerConversationMessageCount<TConversation extends ServerConversationRecord<any>>(
   conversation: TConversation,
 ): number {

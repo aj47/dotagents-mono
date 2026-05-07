@@ -32,6 +32,7 @@ import {
   normalizeServerConversationSummarizedMessageCount,
   renameServerConversationTitle,
   repairServerConversationJsonData,
+  sortServerConversationHistoryByUpdatedAt,
   syncServerConversationStorageMetadata,
 } from "@dotagents/shared/conversation-sync"
 import { summarizeContent } from "./context-budget"
@@ -847,9 +848,7 @@ export class ConversationService {
     try {
       const index = await this.ensureIndexLoaded()
 
-      // Sort by updatedAt descending (most recent first)
-      const sorted = [...index].sort((a, b) => b.updatedAt - a.updatedAt)
-      return sorted
+      return sortServerConversationHistoryByUpdatedAt(index)
     } catch (error) {
       logApp("[ConversationService] Error loading conversation history:", error)
       return []

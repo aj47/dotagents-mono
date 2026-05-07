@@ -42,6 +42,7 @@ import {
   renameServerConversationTitle,
   repairServerConversationJsonData,
   serverConversationToStubSession,
+  sortServerConversationHistoryByUpdatedAt,
   syncConversations,
   syncServerConversationStorageMetadata,
   toServerConversationHistorySnippet,
@@ -402,6 +403,21 @@ describe('server conversation API helpers', () => {
       maxLastMessageChars: 8,
       maxPreviewChars: 10,
     }).changed).toBe(false);
+  });
+
+  it('sorts conversation history by most recent update without mutating input', () => {
+    const index = [
+      { id: 'old', updatedAt: 10 },
+      { id: 'new', updatedAt: 30 },
+      { id: 'middle', updatedAt: 20 },
+    ];
+
+    expect(sortServerConversationHistoryByUpdatedAt(index).map((item) => item.id)).toEqual([
+      'new',
+      'middle',
+      'old',
+    ]);
+    expect(index.map((item) => item.id)).toEqual(['old', 'new', 'middle']);
   });
 
   it('repairs conversation JSON with trailing garbage using shared shape validation', () => {
