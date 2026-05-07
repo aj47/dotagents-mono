@@ -7,6 +7,7 @@ import {
   buildPushStatusResponse,
   buildPushUnregistrationResponse,
   clearPushBadgeAction,
+  createPushConfigTokenStore,
   createPushRouteActions,
   getPushStatusAction,
   parsePushTokenBody,
@@ -100,6 +101,41 @@ describe('push notification API helpers', () => {
     };
 
     expect(token.badgeCount).toBe(2);
+  });
+
+  it('creates config-backed push token stores', () => {
+    let config = {
+      pushNotificationTokens: [{
+        token: 't1',
+        type: 'expo' as const,
+        platform: 'ios' as const,
+        registeredAt: 100,
+      }],
+      unrelatedSetting: true,
+    };
+    const tokenStore = createPushConfigTokenStore({
+      get: () => config,
+      save: (nextConfig) => {
+        config = nextConfig;
+      },
+    });
+
+    expect(tokenStore.getPushNotificationTokens()).toEqual(config.pushNotificationTokens);
+    tokenStore.savePushNotificationTokens([{
+      token: 't2',
+      type: 'expo',
+      platform: 'android',
+      registeredAt: 200,
+    }]);
+    expect(config).toEqual({
+      pushNotificationTokens: [{
+        token: 't2',
+        type: 'expo',
+        platform: 'android',
+        registeredAt: 200,
+      }],
+      unrelatedSetting: true,
+    });
   });
 
   it('builds registration, unregistration, and status responses', () => {

@@ -85,6 +85,15 @@ export interface PushActionTokenStore {
   savePushNotificationTokens(tokens: PushTokenRecord[]): void;
 }
 
+export interface PushConfigTokenStoreAdapter<TConfig extends PushConfigTokenStoreConfig> {
+  get(): TConfig;
+  save(config: TConfig): void;
+}
+
+export interface PushConfigTokenStoreConfig {
+  pushNotificationTokens?: PushTokenRecord[];
+}
+
 export interface PushActionDiagnostics {
   logError(source: string, message: string, error: unknown): void;
   logInfo?(source: string, message: string): void;
@@ -106,6 +115,18 @@ export interface PushRouteActions {
   unregisterPushToken(body: unknown): PushActionResult;
   getPushStatus(): PushActionResult;
   clearPushBadge(body: unknown): PushActionResult;
+}
+
+export function createPushConfigTokenStore<TConfig extends PushConfigTokenStoreConfig>(
+  store: PushConfigTokenStoreAdapter<TConfig>,
+): PushActionTokenStore {
+  return {
+    getPushNotificationTokens: () => store.get().pushNotificationTokens ?? [],
+    savePushNotificationTokens: (tokens) => {
+      const config = store.get();
+      store.save({ ...config, pushNotificationTokens: tokens });
+    },
+  };
 }
 
 const DEFAULT_MESSAGE_PUSH_NOTIFICATION_PREVIEW_LENGTH = 100;
