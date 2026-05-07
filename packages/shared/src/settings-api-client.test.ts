@@ -1494,6 +1494,23 @@ describe('SettingsApiClient', () => {
     );
   });
 
+  it('can route the desktop main window to a known page', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      success: true,
+      action: 'desktop-main-window-show',
+      message: 'showed settings',
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new ExtendedSettingsApiClient('https://example.com/v1', 'secret-token');
+    await client.showOperatorMainWindow('/settings');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://example.com/v1/operator/windows/main/show');
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('POST');
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify({ route: '/settings' }));
+  });
+
   it('returns raw audio bytes from the shared TTS endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), {
       status: 200,

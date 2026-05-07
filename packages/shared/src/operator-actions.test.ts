@@ -160,6 +160,7 @@ import {
   OPERATOR_AUDIT_DEVICE_HEADER_KEYS,
   parseOperatorJsonRecord,
   parseOperatorAuditLogEntries,
+  parseOperatorMainWindowShowRequestBody,
   parseOperatorMcpRestartRequestBody,
   parseOperatorMcpServerActionRequestBody,
   parseOperatorQueuedMessageUpdateRequestBody,
@@ -371,7 +372,7 @@ describe("operator action API helpers", () => {
   it("runs desktop window route actions through a shared service adapter", () => {
     const calls: string[] = []
     const service = createOperatorDesktopWindowActionService({
-      showMainWindow: () => { calls.push("show-main") },
+      showMainWindow: (route) => { calls.push(`show-main:${route ?? "default"}`) },
       showPanelWindow: () => { calls.push("show-panel") },
       hidePanelWindow: () => { calls.push("hide-panel") },
       resetPanelWindow: () => { calls.push("reset-panel") },
@@ -389,7 +390,16 @@ describe("operator action API helpers", () => {
       action: "desktop-main-window-show",
       message: "Showing desktop app window",
     })
-    expect(showOperatorMainWindowAction(options)).toMatchObject({
+    expect(parseOperatorMainWindowShowRequestBody({ route: "/settings" })).toEqual({
+      ok: true,
+      request: { route: "/settings" },
+    })
+    expect(parseOperatorMainWindowShowRequestBody({ route: "https://example.com" })).toEqual({
+      ok: false,
+      statusCode: 400,
+      error: "Invalid main window route",
+    })
+    expect(showOperatorMainWindowAction({ route: "/settings" }, options)).toMatchObject({
       statusCode: 200,
       body: {
         success: true,
@@ -423,7 +433,7 @@ describe("operator action API helpers", () => {
     })
 
     const routeActions = createOperatorDesktopWindowRouteActions(options)
-    expect(routeActions.showOperatorMainWindow()).toMatchObject({
+    expect(routeActions.showOperatorMainWindow({ route: "/" })).toMatchObject({
       statusCode: 200,
       body: { action: "desktop-main-window-show" },
     })
@@ -437,7 +447,7 @@ describe("operator action API helpers", () => {
         resetPanelWindow: () => { throw new Error("panel missing") },
       }),
     }
-    expect(showOperatorMainWindowAction(failingOptions)).toMatchObject({
+    expect(showOperatorMainWindowAction(undefined, failingOptions)).toMatchObject({
       statusCode: 500,
       body: {
         success: false,
@@ -451,11 +461,11 @@ describe("operator action API helpers", () => {
       },
     })
     expect(calls).toEqual([
-      "show-main",
+      "show-main:/settings",
       "show-panel",
       "hide-panel",
       "reset-panel",
-      "show-main",
+      "show-main:/",
       "error:Failed to show desktop app window: window missing",
     ])
   })

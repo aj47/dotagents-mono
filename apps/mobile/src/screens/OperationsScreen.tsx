@@ -1591,6 +1591,30 @@ export default function OperationsScreen({ navigation }: any) {
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                onPress={() => void runAction('desktop-main-window-history-show', () => settingsClient.showOperatorMainWindow('/'), false)}
+                disabled={pendingAction !== null}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Show desktop conversation history')}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {pendingAction === 'desktop-main-window-history-show' ? 'Opening history…' : 'History'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                onPress={() => void runAction('desktop-main-window-settings-show', () => settingsClient.showOperatorMainWindow('/settings'), false)}
+                disabled={pendingAction !== null}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Show desktop settings')}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {pendingAction === 'desktop-main-window-settings-show' ? 'Opening settings…' : 'Settings'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                 onPress={() => void runAction('desktop-panel-window-show', () => settingsClient.showOperatorPanelWindow(), false)}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"

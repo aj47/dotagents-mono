@@ -270,10 +270,10 @@ describe('remote server operator routes', () => {
     expect(actions.stopOperatorTtsPlayback).toHaveBeenCalledTimes(1);
 
     await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorDesktopMainWindowShow}`)!(
-      createRequest(),
+      createRequest({ body: { route: '/settings' } }),
       createReply(),
     );
-    expect(actions.showOperatorMainWindow).toHaveBeenCalledTimes(1);
+    expect(actions.showOperatorMainWindow).toHaveBeenCalledWith({ route: '/settings' });
 
     await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.operatorDesktopPanelWindowShow}`)!(
       createRequest(),

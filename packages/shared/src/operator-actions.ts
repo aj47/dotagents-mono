@@ -777,15 +777,23 @@ export type OperatorDesktopWindowAction =
   | "desktop-panel-window-hide"
   | "desktop-panel-window-reset"
 
+export type OperatorMainWindowRoute = "/" | "/settings"
+
+export interface OperatorMainWindowShowRequest {
+  route?: OperatorMainWindowRoute
+}
+
+const OPERATOR_MAIN_WINDOW_ROUTES = new Set<OperatorMainWindowRoute>(["/", "/settings"])
+
 export interface OperatorDesktopWindowActionService {
-  showMainWindow(): void
+  showMainWindow(route?: OperatorMainWindowRoute): void
   showPanelWindow(): void
   hidePanelWindow(): void
   resetPanelWindow(): void
 }
 
 export interface OperatorDesktopWindowActionServiceOptions {
-  showMainWindow(): void
+  showMainWindow(route?: OperatorMainWindowRoute): void
   showPanelWindow(): void
   hidePanelWindow(): void
   resetPanelWindow(): void
@@ -795,7 +803,7 @@ export function createOperatorDesktopWindowActionService(
   options: OperatorDesktopWindowActionServiceOptions,
 ): OperatorDesktopWindowActionService {
   return {
-    showMainWindow: () => options.showMainWindow(),
+    showMainWindow: (route) => options.showMainWindow(route),
     showPanelWindow: () => options.showPanelWindow(),
     hidePanelWindow: () => options.hidePanelWindow(),
     resetPanelWindow: () => options.resetPanelWindow(),
@@ -808,7 +816,7 @@ export interface OperatorDesktopWindowActionOptions {
 }
 
 export interface OperatorDesktopWindowRouteActions {
-  showOperatorMainWindow(): OperatorDesktopWindowActionResult
+  showOperatorMainWindow(body?: unknown): OperatorDesktopWindowActionResult
   showOperatorPanelWindow(): OperatorDesktopWindowActionResult
   hideOperatorPanelWindow(): OperatorDesktopWindowActionResult
   resetOperatorPanelWindow(): OperatorDesktopWindowActionResult
@@ -1601,6 +1609,26 @@ export function parseOperatorRunAgentRequestBody(body: unknown): OperatorActionP
       profileId: typeof requestBody.profileId === "string" ? requestBody.profileId : undefined,
     },
   }
+}
+
+export function parseOperatorMainWindowShowRequestBody(
+  body: unknown,
+): OperatorActionParseResult<OperatorMainWindowShowRequest> {
+  const requestBody = getRequestRecord(body)
+  const rawRoute = requestBody.route
+  if (rawRoute === undefined || rawRoute === null) {
+    return { ok: true, request: {} }
+  }
+  if (typeof rawRoute !== "string") {
+    return { ok: false, statusCode: 400, error: "Invalid main window route" }
+  }
+
+  const route = rawRoute.trim()
+  if (!OPERATOR_MAIN_WINDOW_ROUTES.has(route as OperatorMainWindowRoute)) {
+    return { ok: false, statusCode: 400, error: "Invalid main window route" }
+  }
+
+  return { ok: true, request: { route: route as OperatorMainWindowRoute } }
 }
 
 export function parseOperatorAgentSessionsSnoozeAndHidePanelRequestBody(
@@ -2998,12 +3026,19 @@ function runOperatorDesktopWindowAction(
 }
 
 export function showOperatorMainWindowAction(
+  body: unknown,
   options: OperatorDesktopWindowActionOptions,
 ): OperatorDesktopWindowActionResult {
+  const parsed = parseOperatorMainWindowShowRequestBody(body)
+  if (!parsed.ok) {
+    const response = buildOperatorActionErrorResponse("desktop-main-window-show", parsed.error)
+    return operatorDesktopWindowActionResult(parsed.statusCode, response, buildOperatorActionAuditContext(response))
+  }
+
   return runOperatorDesktopWindowAction(
     "desktop-main-window-show",
     "show desktop app window",
-    () => options.service.showMainWindow(),
+    () => options.service.showMainWindow(parsed.request.route),
     options,
   )
 }
@@ -3045,7 +3080,7 @@ export function createOperatorDesktopWindowRouteActions(
   options: OperatorDesktopWindowActionOptions,
 ): OperatorDesktopWindowRouteActions {
   return {
-    showOperatorMainWindow: () => showOperatorMainWindowAction(options),
+    showOperatorMainWindow: (body) => showOperatorMainWindowAction(body, options),
     showOperatorPanelWindow: () => showOperatorPanelWindowAction(options),
     hideOperatorPanelWindow: () => hideOperatorPanelWindowAction(options),
     resetOperatorPanelWindow: () => resetOperatorPanelWindowAction(options),

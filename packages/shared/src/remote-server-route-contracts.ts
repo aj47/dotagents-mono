@@ -321,7 +321,7 @@ export interface OperatorRouteActions<Request = unknown> {
     runAgent: OperatorRunAgentExecutor,
   ) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   stopOperatorTtsPlayback: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
-  showOperatorMainWindow: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
+  showOperatorMainWindow: (body?: unknown) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   showOperatorPanelWindow: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
   hideOperatorPanelWindow: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
   resetOperatorPanelWindow: () => RemoteServerMaybePromise<OperatorRouteActionResult>;

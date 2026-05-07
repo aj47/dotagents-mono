@@ -258,7 +258,7 @@ const desktopWindowActionOptions: OperatorDesktopWindowActionOptions = {
     getErrorMessage,
   },
   service: createOperatorDesktopWindowActionService({
-    showMainWindow: () => showMainWindow(),
+    showMainWindow: (route) => showMainWindow(route),
     showPanelWindow: () => showPanelWindow({}),
     hidePanelWindow: () => hideFloatingPanelWindow(),
     resetPanelWindow: () => resetFloatingPanelPositionAndSize(true),

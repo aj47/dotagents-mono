@@ -115,7 +115,7 @@ import {
   DEFAULT_LANGFUSE_ENABLED,
   DEFAULT_LOCAL_TRACE_LOGGING_ENABLED,
 } from './observability-config';
-import { getSensitiveOperatorSettingsKeys } from './operator-actions';
+import { getSensitiveOperatorSettingsKeys, type OperatorMainWindowRoute } from './operator-actions';
 import {
   DEFAULT_OPENAI_TTS_RESPONSE_FORMAT,
   DEFAULT_SUPERTONIC_TTS_LANGUAGE,
@@ -1773,9 +1773,10 @@ export class SettingsApiClient {
     });
   }
 
-  async showOperatorMainWindow(): Promise<OperatorActionResponse> {
+  async showOperatorMainWindow(route?: OperatorMainWindowRoute): Promise<OperatorActionResponse> {
     return this.request<OperatorActionResponse>(API_PATHS.operatorDesktopMainWindowShow, {
       method: 'POST',
+      ...(route ? { body: JSON.stringify({ route }) } : {}),
     });
   }
 

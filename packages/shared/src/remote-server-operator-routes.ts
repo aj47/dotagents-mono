@@ -368,7 +368,7 @@ export function registerOperatorRoutes<
   });
 
   fastify.post(API_ROUTES.operatorDesktopMainWindowShow, async (req, reply) => {
-    const result = await actions.showOperatorMainWindow();
+    const result = await actions.showOperatorMainWindow(req.body);
     if (result.auditContext) {
       actions.setOperatorAuditContext(req, result.auditContext);
     }
