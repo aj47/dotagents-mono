@@ -1,13 +1,13 @@
 import {
+  createMessageQueueActionOptionsBundle,
   pauseMessageQueueAction,
   processQueuedMessagesAction,
-  processQueuedMessagesIfConversationIdleAction,
   removeQueuedMessageAction,
   resumeMessageQueueAction,
   retryQueuedMessageAction,
   updateQueuedMessageTextAction,
-  type MessageQueueRuntimeActionOptions,
-  type ProcessQueuedMessagesActionOptions,
+  type MessageQueueActionService,
+  type MessageQueueActionOptionsBundle,
   type MessageQueuePauseResult,
   type MessageQueueResumeResult,
   type QueuedMessageActionResult,
@@ -25,47 +25,41 @@ export type {
   QueuedMessageActionResult,
 }
 
-function createQueuedMessagesActionOptions(): ProcessQueuedMessagesActionOptions {
+function createMessageQueueActionService(): MessageQueueActionService {
   return {
-    diagnostics: {
-      logLLM,
-    },
-    service: {
-      tryAcquireProcessingLock: (conversationId) => messageQueueService.tryAcquireProcessingLock(conversationId),
-      releaseProcessingLock: (conversationId) => messageQueueService.releaseProcessingLock(conversationId),
-      isQueuePaused: (conversationId) => messageQueueService.isQueuePaused(conversationId),
-      peek: (conversationId) => messageQueueService.peek(conversationId),
-      getQueue: (conversationId) => messageQueueService.getQueue(conversationId),
-      markProcessing: (conversationId, messageId) => messageQueueService.markProcessing(conversationId, messageId),
-      markAddedToHistory: (conversationId, messageId) => messageQueueService.markAddedToHistory(conversationId, messageId),
-      markProcessed: (conversationId, messageId) => messageQueueService.markProcessed(conversationId, messageId),
-      markFailed: (conversationId, messageId, errorMessage) =>
-        messageQueueService.markFailed(conversationId, messageId, errorMessage),
-      addMessageToConversation: (conversationId, text, role) =>
-        conversationService.addMessageToConversation(conversationId, text, role),
-      isPanelVisible: () => WINDOWS.get("panel")?.isVisible() ?? false,
-      findSessionByConversationId: (conversationId) => agentSessionTracker.findSessionByConversationId(conversationId),
-      getSession: (sessionId) => agentSessionTracker.getSession(sessionId),
-      reviveSession: (sessionId, startSnoozed) => agentSessionTracker.reviveSession(sessionId, startSnoozed),
-      processAgentMode: (text, conversationId, existingSessionId, startSnoozed) =>
-        processWithAgentMode(text, conversationId, existingSessionId, startSnoozed),
-    },
+    tryAcquireProcessingLock: (conversationId) => messageQueueService.tryAcquireProcessingLock(conversationId),
+    releaseProcessingLock: (conversationId) => messageQueueService.releaseProcessingLock(conversationId),
+    isQueuePaused: (conversationId) => messageQueueService.isQueuePaused(conversationId),
+    peek: (conversationId) => messageQueueService.peek(conversationId),
+    getQueue: (conversationId) => messageQueueService.getQueue(conversationId),
+    markProcessing: (conversationId, messageId) => messageQueueService.markProcessing(conversationId, messageId),
+    markAddedToHistory: (conversationId, messageId) => messageQueueService.markAddedToHistory(conversationId, messageId),
+    markProcessed: (conversationId, messageId) => messageQueueService.markProcessed(conversationId, messageId),
+    markFailed: (conversationId, messageId, errorMessage) =>
+      messageQueueService.markFailed(conversationId, messageId, errorMessage),
+    addMessageToConversation: (conversationId, text, role) =>
+      conversationService.addMessageToConversation(conversationId, text, role),
+    isPanelVisible: () => WINDOWS.get("panel")?.isVisible() ?? false,
+    findSessionByConversationId: (conversationId) => agentSessionTracker.findSessionByConversationId(conversationId),
+    getSession: (sessionId) => agentSessionTracker.getSession(sessionId),
+    reviveSession: (sessionId, startSnoozed) => agentSessionTracker.reviveSession(sessionId, startSnoozed),
+    processAgentMode: (text, conversationId, existingSessionId, startSnoozed) =>
+      processWithAgentMode(text, conversationId, existingSessionId, startSnoozed),
+    pauseQueue: (conversationId) => messageQueueService.pauseQueue(conversationId),
+    resumeQueue: (conversationId) => messageQueueService.resumeQueue(conversationId),
+    removeFromQueue: (conversationId, messageId) => messageQueueService.removeFromQueue(conversationId, messageId),
+    resetToPending: (conversationId, messageId) => messageQueueService.resetToPending(conversationId, messageId),
+    updateMessageText: (conversationId, messageId, text) =>
+      messageQueueService.updateMessageText(conversationId, messageId, text),
   }
 }
 
-function createMessageQueueRuntimeActionOptions(): MessageQueueRuntimeActionOptions {
-  return {
-    service: {
-      pauseQueue: (conversationId) => messageQueueService.pauseQueue(conversationId),
-      resumeQueue: (conversationId) => messageQueueService.resumeQueue(conversationId),
-      removeFromQueue: (conversationId, messageId) => messageQueueService.removeFromQueue(conversationId, messageId),
-      resetToPending: (conversationId, messageId) => messageQueueService.resetToPending(conversationId, messageId),
-      updateMessageText: (conversationId, messageId, text) =>
-        messageQueueService.updateMessageText(conversationId, messageId, text),
-      getQueue: (conversationId) => messageQueueService.getQueue(conversationId),
-    },
-    processQueuedMessagesIfConversationIdle,
-  }
+function createMessageQueueActionOptions(): MessageQueueActionOptionsBundle {
+  return createMessageQueueActionOptionsBundle({
+    service: createMessageQueueActionService(),
+    diagnostics: { logLLM },
+    processQueuedMessages,
+  })
 }
 
 /**
@@ -74,41 +68,36 @@ function createMessageQueueRuntimeActionOptions(): MessageQueueRuntimeActionOpti
  * Uses a per-conversation lock to prevent concurrent processing of the same queue.
  */
 export async function processQueuedMessages(conversationId: string): Promise<void> {
-  return processQueuedMessagesAction(conversationId, createQueuedMessagesActionOptions())
+  return processQueuedMessagesAction(conversationId, createMessageQueueActionOptions().processing)
 }
 
 export function processQueuedMessagesIfConversationIdle(
   conversationId: string,
   logContext: string,
 ): boolean {
-  return processQueuedMessagesIfConversationIdleAction(
-    conversationId,
-    logContext,
-    processQueuedMessages,
-    createQueuedMessagesActionOptions(),
-  )
+  return createMessageQueueActionOptions().runtime.processQueuedMessagesIfConversationIdle(conversationId, logContext)
 }
 
 export function resumeMessageQueueByConversationId(conversationId: string): MessageQueueResumeResult {
-  return resumeMessageQueueAction(conversationId, createMessageQueueRuntimeActionOptions())
+  return resumeMessageQueueAction(conversationId, createMessageQueueActionOptions().runtime)
 }
 
 export function pauseMessageQueueByConversationId(conversationId: string): MessageQueuePauseResult {
-  return pauseMessageQueueAction(conversationId, createMessageQueueRuntimeActionOptions())
+  return pauseMessageQueueAction(conversationId, createMessageQueueActionOptions().runtime)
 }
 
 export function removeQueuedMessageById(
   conversationId: string,
   messageId: string,
 ): QueuedMessageActionResult {
-  return removeQueuedMessageAction(conversationId, messageId, createMessageQueueRuntimeActionOptions())
+  return removeQueuedMessageAction(conversationId, messageId, createMessageQueueActionOptions().runtime)
 }
 
 export function retryQueuedMessageById(
   conversationId: string,
   messageId: string,
 ): QueuedMessageActionResult {
-  return retryQueuedMessageAction(conversationId, messageId, createMessageQueueRuntimeActionOptions())
+  return retryQueuedMessageAction(conversationId, messageId, createMessageQueueActionOptions().runtime)
 }
 
 export function updateQueuedMessageTextById(
@@ -116,5 +105,5 @@ export function updateQueuedMessageTextById(
   messageId: string,
   text: string,
 ): QueuedMessageActionResult {
-  return updateQueuedMessageTextAction(conversationId, messageId, text, createMessageQueueRuntimeActionOptions())
+  return updateQueuedMessageTextAction(conversationId, messageId, text, createMessageQueueActionOptions().runtime)
 }

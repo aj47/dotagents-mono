@@ -3,6 +3,7 @@ import {
   buildMessageQueuePauseResult,
   buildMessageQueueResumeResult,
   buildQueuedMessageActionResult,
+  createMessageQueueActionOptionsBundle,
   createMessageQueueStore,
   pauseMessageQueueAction,
   processQueuedMessagesAction,
@@ -11,6 +12,7 @@ import {
   resumeMessageQueueAction,
   retryQueuedMessageAction,
   updateQueuedMessageTextAction,
+  type MessageQueueActionService,
   type MessageQueueRuntimeActionService,
   type ProcessQueuedMessagesIdleActionService,
   type ProcessQueuedMessagesActionService,
@@ -120,6 +122,82 @@ describe('message-queue-store', () => {
       'retryQueuedMessage:conversation-1',
       'updateQueuedMessageText:conversation-1',
     ]);
+  });
+
+  it('builds queue action option bundles from one injected service adapter', () => {
+    const calls: string[] = [];
+    const logMessages: string[] = [];
+    const service: MessageQueueActionService = {
+      tryAcquireProcessingLock: () => true,
+      releaseProcessingLock: () => {},
+      isQueuePaused: () => false,
+      peek: () => null,
+      getQueue: () => [
+        { id: 'failed-message', conversationId: 'conversation-1', text: 'old', createdAt: 1, status: 'failed' },
+      ],
+      markProcessing: () => true,
+      markAddedToHistory: () => true,
+      markProcessed: () => true,
+      markFailed: () => true,
+      addMessageToConversation: async () => ({ ok: true }),
+      isPanelVisible: () => true,
+      findSessionByConversationId: () => undefined,
+      getSession: () => undefined,
+      reviveSession: () => false,
+      processAgentMode: async () => undefined,
+      pauseQueue: (conversationId) => { calls.push(`pause:${conversationId}`); },
+      resumeQueue: (conversationId) => { calls.push(`resume:${conversationId}`); },
+      removeFromQueue: (conversationId, messageId) => {
+        calls.push(`remove:${conversationId}:${messageId}`);
+        return true;
+      },
+      resetToPending: (conversationId, messageId) => {
+        calls.push(`reset:${conversationId}:${messageId}`);
+        return true;
+      },
+      updateMessageText: (conversationId, messageId, text) => {
+        calls.push(`update:${conversationId}:${messageId}:${text}`);
+        return true;
+      },
+    };
+    const processed: string[] = [];
+    const options = createMessageQueueActionOptionsBundle({
+      service,
+      diagnostics: { logLLM: (message) => { logMessages.push(message); } },
+      processQueuedMessages: async (conversationId) => { processed.push(conversationId); },
+    });
+
+    expect(options.processing.service).toBe(service);
+    expect(options.idle.service).toBe(service);
+    expect(resumeMessageQueueAction('conversation-1', options.runtime)).toEqual({
+      success: true,
+      conversationId: 'conversation-1',
+      processingStarted: true,
+    });
+    expect(pauseMessageQueueAction('conversation-1', options.runtime)).toMatchObject({
+      success: true,
+    });
+    expect(retryQueuedMessageAction('conversation-1', 'failed-message', options.runtime)).toMatchObject({
+      success: true,
+      processingStarted: true,
+    });
+    expect(updateQueuedMessageTextAction('conversation-1', 'failed-message', 'new text', options.runtime)).toMatchObject({
+      success: true,
+      processingStarted: true,
+    });
+
+    expect(processed).toEqual([
+      'conversation-1',
+      'conversation-1',
+      'conversation-1',
+    ]);
+    expect(calls).toEqual([
+      'resume:conversation-1',
+      'pause:conversation-1',
+      'reset:conversation-1:failed-message',
+      'update:conversation-1:failed-message:new text',
+    ]);
+    expect(logMessages).toEqual([]);
   });
 
   it('manages queue state and emits external change notifications', () => {

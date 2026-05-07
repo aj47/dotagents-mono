@@ -139,6 +139,48 @@ export interface MessageQueueRuntimeActionOptions {
   processQueuedMessagesIfConversationIdle(conversationId: string, logContext: string): boolean;
 }
 
+export type MessageQueueActionService = ProcessQueuedMessagesActionService & MessageQueueRuntimeActionService;
+
+export interface MessageQueueActionOptionsBundleConfig {
+  service: MessageQueueActionService;
+  diagnostics: ProcessQueuedMessagesActionDiagnostics;
+  processQueuedMessages(conversationId: string): Promise<void>;
+}
+
+export interface MessageQueueActionOptionsBundle {
+  processing: ProcessQueuedMessagesActionOptions;
+  idle: ProcessQueuedMessagesIdleActionOptions;
+  runtime: MessageQueueRuntimeActionOptions;
+}
+
+export function createMessageQueueActionOptionsBundle(
+  config: MessageQueueActionOptionsBundleConfig,
+): MessageQueueActionOptionsBundle {
+  const processing: ProcessQueuedMessagesActionOptions = {
+    service: config.service,
+    diagnostics: config.diagnostics,
+  };
+  const idle: ProcessQueuedMessagesIdleActionOptions = {
+    service: config.service,
+    diagnostics: config.diagnostics,
+  };
+
+  return {
+    processing,
+    idle,
+    runtime: {
+      service: config.service,
+      processQueuedMessagesIfConversationIdle: (conversationId, logContext) =>
+        processQueuedMessagesIfConversationIdleAction(
+          conversationId,
+          logContext,
+          config.processQueuedMessages,
+          idle,
+        ),
+    },
+  };
+}
+
 function defaultMessageIdFactory(createdAt: number): string {
   return `qmsg_${createdAt}_${Math.random().toString(36).slice(2, 11)}`;
 }
