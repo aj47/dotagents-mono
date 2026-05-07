@@ -24,7 +24,6 @@ import { emitAgentProgress } from "./emit-agent-progress"
 import type { SessionProfileSnapshot } from "@dotagents/core"
 import type { ACPConfigOption, AgentProgressStep, AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import type { ToolCall, ToolResult } from "@dotagents/shared/types"
-import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
 import {
   extractRespondToUserResponseEvents,
   MARK_WORK_COMPLETE_TOOL,
@@ -35,6 +34,7 @@ import type { AgentUserResponseEvent } from "@dotagents/shared/agent-progress"
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { buildProfileContext } from "@dotagents/shared/agent-run-utils"
+import { buildConversationHistoryForProgress } from "@dotagents/shared/session-progress-hydration"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 
@@ -350,15 +350,7 @@ export async function processTranscriptWithACPAgent(
   try {
     const conversation = await conversationService.loadConversation(conversationId)
     if (conversation) {
-      const branchMessageIndexMap = getBranchMessageIndexMap(conversation.messages)
-      conversationHistory = conversation.messages.map((m, index) => ({
-        role: m.role,
-        content: m.content,
-        toolCalls: m.toolCalls,
-        toolResults: m.toolResults,
-        timestamp: m.timestamp,
-        branchMessageIndex: branchMessageIndexMap[index],
-      }))
+      conversationHistory = buildConversationHistoryForProgress(conversation)
     }
   } catch (err) {
     logApp(`[ACP Main] Failed to load conversation history: ${err}`)

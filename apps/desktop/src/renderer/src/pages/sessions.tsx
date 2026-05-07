@@ -10,7 +10,6 @@ import { Button } from "@renderer/components/ui/button"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
 import type { LoadedConversation } from "@dotagents/shared/conversation-domain"
-import { getBranchMessageIndexMap } from "@dotagents/shared/conversation-progress"
 import { toast } from "sonner"
 
 import { logUI } from "@renderer/lib/debug"
@@ -23,6 +22,7 @@ import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { orderActiveSessionsByPinnedFirst } from "@dotagents/shared/sidebar-sessions"
 import {
+  buildConversationHistoryForProgress,
   getLoadedConversationHistoryStartIndex,
   hasConversationHistoryForDisplay,
   mergeLoadedConversationIntoProgress,
@@ -705,8 +705,6 @@ export function Component() {
     const conv = pendingResumeConversationQuery.data
     const isInitializing = pendingContinuationStartedAt !== null
 
-    const branchMessageIndexMap = getBranchMessageIndexMap(conv.messages)
-    const branchMessageIndexOffset = conv.branchMessageIndexOffset ?? 0
     return {
       sessionId: `pending-${pendingResumeConversationId}`,
       conversationId: pendingResumeConversationId,
@@ -726,15 +724,7 @@ export function Component() {
       isComplete: !isInitializing,
       conversationHistoryStartIndex: getLoadedConversationHistoryStartIndex(conv),
       conversationHistoryTotalCount: conv.totalMessageCount ?? conv.messages.length,
-      conversationHistory: conv.messages.map((m, index) => ({
-        role: m.role,
-        content: m.content,
-        ...(m.displayContent ? { displayContent: m.displayContent } : {}),
-        toolCalls: m.toolCalls,
-        toolResults: m.toolResults,
-        timestamp: m.timestamp,
-        branchMessageIndex: branchMessageIndexOffset + branchMessageIndexMap[index],
-      })),
+      conversationHistory: buildConversationHistoryForProgress(conv),
     }
   }, [pendingResumeConversationId, pendingResumeConversationQuery.data, pendingContinuationStartedAt])
 

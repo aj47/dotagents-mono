@@ -14,6 +14,11 @@ type ConversationForProgressHydration = Pick<
 
 type ProgressConversationHistory = NonNullable<AgentProgressUpdate["conversationHistory"]>
 
+type ConversationForProgressHistory = Pick<
+  LoadedConversation,
+  "messages" | "branchMessageIndexOffset"
+>
+
 function toNonNegativeInteger(value: number | undefined): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null
   return Math.max(0, Math.floor(value))
@@ -90,6 +95,23 @@ export function hasConversationHistoryForDisplay(
   return (progress?.conversationHistory?.length ?? 0) > 0
 }
 
+export function buildConversationHistoryForProgress(
+  conversation: ConversationForProgressHistory,
+): ProgressConversationHistory {
+  const branchMessageIndexMap = getBranchMessageIndexMap(conversation.messages)
+  const branchMessageIndexOffset = conversation.branchMessageIndexOffset ?? 0
+
+  return conversation.messages.map((message, index) => ({
+    role: message.role,
+    content: message.content,
+    ...(message.displayContent ? { displayContent: message.displayContent } : {}),
+    toolCalls: message.toolCalls,
+    toolResults: message.toolResults,
+    timestamp: message.timestamp,
+    branchMessageIndex: branchMessageIndexOffset + branchMessageIndexMap[index],
+  }))
+}
+
 export function mergeLoadedConversationIntoProgress(
   progress: AgentProgressUpdate,
   conversation: ConversationForProgressHydration | null | undefined,
@@ -113,21 +135,11 @@ export function mergeLoadedConversationIntoProgress(
       (progress.conversationHistoryTotalCount ?? progress.conversationHistory?.length ?? 0) -
         (progress.conversationHistory?.length ?? 0),
     )
-  const branchMessageIndexMap = getBranchMessageIndexMap(conversation.messages)
-  const branchMessageIndexOffset = conversation.branchMessageIndexOffset ?? 0
   const loadedHistoryStartIndex = getLoadedConversationHistoryStartIndex(
     conversation,
     existingHistoryStartIndex,
   )
-  const loadedConversationHistory = conversation.messages.map((message, index) => ({
-    role: message.role,
-    content: message.content,
-    ...(message.displayContent ? { displayContent: message.displayContent } : {}),
-    toolCalls: message.toolCalls,
-    toolResults: message.toolResults,
-    timestamp: message.timestamp,
-    branchMessageIndex: branchMessageIndexOffset + branchMessageIndexMap[index],
-  }))
+  const loadedConversationHistory = buildConversationHistoryForProgress(conversation)
   const mergedHistory = options?.replaceExistingHistory === true
     ? mergeHistoryWindows(
         loadedConversationHistory,

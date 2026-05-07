@@ -14,6 +14,14 @@ const tipcSource = readFileSync(
   new URL("../../../main/tipc.ts", import.meta.url),
   "utf8",
 )
+const agentRunUtilsSource = readFileSync(
+  new URL("../../../../../../packages/shared/src/agent-run-utils.ts", import.meta.url),
+  "utf8",
+)
+const sessionProgressHydrationSource = readFileSync(
+  new URL("../../../../../../packages/shared/src/session-progress-hydration.ts", import.meta.url),
+  "utf8",
+)
 
 describe("sessions in-app actions", () => {
   it("opens the in-app session action dialog from shared layout handlers instead of the hover panel", () => {
@@ -104,8 +112,9 @@ describe("sessions in-app actions", () => {
   })
 
   it("preserves display-only thinking blocks when saved conversations become session history", () => {
-    expect(sessionsSource).toContain("...(m.displayContent ? { displayContent: m.displayContent } : {}),")
-    expect(tipcSource).toContain("...(msg.displayContent ? { displayContent: msg.displayContent } : {}),")
+    expect(sessionsSource).toContain("conversationHistory: buildConversationHistoryForProgress(conv),")
+    expect(sessionProgressHydrationSource).toContain("...(message.displayContent ? { displayContent: message.displayContent } : {}),")
+    expect(agentRunUtilsSource).toContain("...(message.displayContent ? { displayContent: message.displayContent } : {}),")
   })
 
   it("keeps pinned tiles at the top of the active sessions grid and exposes a tile pin control", () => {

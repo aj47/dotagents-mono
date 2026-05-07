@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import type { AgentProgressUpdate } from "./agent-progress"
 import type { LoadedConversation } from "./conversation-domain"
 import {
+  buildConversationHistoryForProgress,
   hasConversationHistoryForDisplay,
   mergeLoadedConversationIntoProgress,
 } from "./session-progress-hydration"
@@ -31,6 +32,31 @@ const loadedConversation = (): LoadedConversation => ({
 })
 
 describe("session progress hydration", () => {
+  it("builds progress history with persisted display content and branch offsets", () => {
+    const conversation = loadedConversation()
+    conversation.messages[1].displayContent = "<think>reasoning</think>\n\nWorking on it"
+
+    expect(buildConversationHistoryForProgress(conversation)).toEqual([
+      {
+        role: "user",
+        content: "Original task",
+        toolCalls: undefined,
+        toolResults: undefined,
+        timestamp: 10,
+        branchMessageIndex: 5,
+      },
+      {
+        role: "assistant",
+        content: "Working on it",
+        displayContent: "<think>reasoning</think>\n\nWorking on it",
+        toolCalls: undefined,
+        toolResults: undefined,
+        timestamp: 11,
+        branchMessageIndex: 6,
+      },
+    ])
+  })
+
   it("hydrates placeholder progress from a loaded conversation", () => {
     const hydrated = mergeLoadedConversationIntoProgress(
       baseProgress(),
