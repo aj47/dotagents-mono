@@ -92,6 +92,17 @@ export interface OperatorAuditContextRouteActions<Request> {
   setOperatorAuditContext(request: Request, context: OperatorResponseAuditContext): void
 }
 
+export interface OperatorAuditRouteActionBundle<Request extends OperatorAuditRequestLike>
+  extends OperatorAuditRouteActions,
+    OperatorAuditEventRouteActions<Request>,
+    OperatorAuditContextRouteActions<Request> {}
+
+export interface OperatorAuditRouteActionBundleOptions<Request extends OperatorAuditRequestLike> {
+  audit: OperatorAuditRouteActions
+  event: OperatorAuditEventRouteActions<Request>
+  context: OperatorAuditContextRouteActions<Request>
+}
+
 export type OperatorMcpRestartRequest = {
   server: string
 }
@@ -1700,6 +1711,16 @@ export function createOperatorAuditContextRouteActions<Request>(
     setOperatorAuditContext: (request, context) => {
       Object.assign(store.getContext(request), context)
     },
+  }
+}
+
+export function createOperatorAuditRouteActionBundle<Request extends OperatorAuditRequestLike>(
+  options: OperatorAuditRouteActionBundleOptions<Request>,
+): OperatorAuditRouteActionBundle<Request> {
+  return {
+    getOperatorAudit: options.audit.getOperatorAudit,
+    recordOperatorAuditEvent: options.event.recordOperatorAuditEvent,
+    setOperatorAuditContext: options.context.setOperatorAuditContext,
   }
 }
 

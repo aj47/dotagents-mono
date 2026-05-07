@@ -27,9 +27,7 @@ import {
 } from "@dotagents/shared/mcp-api"
 import type { MCPServerConfig } from "@dotagents/shared/mcp-utils"
 import {
-  operatorAuditContextRouteActions,
-  operatorAuditEventRouteActions,
-  operatorAuditRouteActions,
+  operatorAuditRouteActionBundle,
 } from "./operator-audit-actions"
 import {
   buildOperatorActionAuditContext,
@@ -376,9 +374,5 @@ export const operatorRouteDesktopActions = createOperatorRouteActions({
   messageQueue: operatorMessageQueueRouteActions,
   observability: operatorObservabilityRouteActions,
   restart: operatorRestartRouteActions,
-  audit: {
-    getOperatorAudit: operatorAuditRouteActions.getOperatorAudit,
-    recordOperatorAuditEvent: operatorAuditEventRouteActions.recordOperatorAuditEvent,
-    setOperatorAuditContext: operatorAuditContextRouteActions.setOperatorAuditContext,
-  },
+  audit: operatorAuditRouteActionBundle,
 })

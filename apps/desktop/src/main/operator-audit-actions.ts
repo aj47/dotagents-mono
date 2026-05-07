@@ -6,6 +6,7 @@ import {
   createOperatorAuditRecorder,
   createOperatorAuditContextRouteActions,
   createOperatorAuditEventRouteActions,
+  createOperatorAuditRouteActionBundle,
   createOperatorAuditRouteActions,
   type OperatorAuditActionOptions,
   type OperatorResponseAuditContext,
@@ -61,6 +62,12 @@ export const operatorAuditEventRouteActions = createOperatorAuditEventRouteActio
 
 export const operatorAuditContextRouteActions = createOperatorAuditContextRouteActions<FastifyRequest>({
   getContext: getOperatorAuditContext,
+})
+
+export const operatorAuditRouteActionBundle = createOperatorAuditRouteActionBundle<FastifyRequest>({
+  audit: operatorAuditRouteActions,
+  event: operatorAuditEventRouteActions,
+  context: operatorAuditContextRouteActions,
 })
 
 export function recordRejectedOperatorDeviceAttempt(request: FastifyRequest, failureReason: string): void {

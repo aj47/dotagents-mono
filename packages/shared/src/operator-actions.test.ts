@@ -81,6 +81,7 @@ import {
   createOperatorAuditContextRouteActions,
   createOperatorAuditEventRouteActions,
   createOperatorAuditRecorder,
+  createOperatorAuditRouteActionBundle,
   createOperatorAuditRouteActions,
   createOperatorIntegrationActionService,
   createOperatorIntegrationRouteActions,
@@ -1710,6 +1711,39 @@ describe("operator action API helpers", () => {
       success: true,
       details: { keys: ["remoteServer"] },
     })
+  })
+
+  it("creates operator audit route action bundles", () => {
+    const calls: string[] = []
+    const bundle = createOperatorAuditRouteActionBundle({
+      audit: {
+        getOperatorAudit: (count) => {
+          calls.push(`get:${count}`)
+          return { statusCode: 200, body: { entries: [] } }
+        },
+      },
+      event: {
+        recordOperatorAuditEvent: (_request, options) => {
+          calls.push(`record:${options.action}`)
+        },
+      },
+      context: {
+        setOperatorAuditContext: (_request, context) => {
+          calls.push(`context:${context.action}`)
+        },
+      },
+    })
+
+    expect(bundle.getOperatorAudit(5)).toEqual({ statusCode: 200, body: { entries: [] } })
+    bundle.recordOperatorAuditEvent({ url: "/v1/settings", headers: {} }, {
+      action: "settings-update",
+      success: true,
+    })
+    bundle.setOperatorAuditContext({ url: "/v1/settings", headers: {} }, {
+      action: "settings-update",
+    })
+
+    expect(calls).toEqual(["get:5", "record:settings-update", "context:settings-update"])
   })
 
   it("parses operator JSON records defensively", () => {
