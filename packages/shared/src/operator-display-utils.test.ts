@@ -287,10 +287,18 @@ describe("operator display utils", () => {
       saveButtonLabel: "Save report",
       emptyReportText: "No diagnostic report generated in this mobile session.",
       formatGeneratedMessage: expect.any(Function),
+      formatGeneratedAt: expect.any(Function),
+      formatMcpSummary: expect.any(Function),
+      formatLogEntries: expect.any(Function),
+      formatToolDiscoveryError: expect.any(Function),
     })
     expect(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatGeneratedMessage(3)).toBe(
       "Diagnostic report generated with 3 log entries.",
     )
+    expect(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatGeneratedAt()).toBe(`Generated: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatMcpSummary(4, 2, 3)).toBe("MCP tools: 4 • Servers: 2/3")
+    expect(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatLogEntries(5)).toBe("Log entries: 5")
+    expect(OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatToolDiscoveryError("timeout")).toBe("Tool discovery: timeout")
   })
 
   it("exports operator logs panel metadata", () => {

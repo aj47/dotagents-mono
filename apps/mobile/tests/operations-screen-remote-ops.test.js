@@ -511,8 +511,16 @@ test('exposes desktop diagnostic report controls', () => {
   assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.savePendingLabel/);
   assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.saveButtonLabel/);
   assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.emptyReportText/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.formatGeneratedAt\(diagnosticReport\.timestamp\)/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.formatMcpSummary/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.formatLogEntries\(diagnosticReport\.errors\.length\)/);
+  assert.match(operationsSource, /OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA\.formatToolDiscoveryError\(diagnosticReport\.mcp\.toolDiscoveryError\)/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Generate desktop diagnostic report'\)/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Save diagnostic report on desktop'\)/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.detailText\}>Generated:/);
+  assert.doesNotMatch(operationsSource, /MCP tools: \{diagnosticReport\.mcp\.availableTools\}/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.detailText\}>Log entries:/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.warningText\}>Tool discovery:/);
   assert.match(operationsSource, /diagnosticReport\.mcp\.availableTools/);
 });
 

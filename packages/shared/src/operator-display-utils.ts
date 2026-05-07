@@ -319,6 +319,10 @@ export type OperatorDiagnosticReportActionMetadata = {
   saveButtonLabel: string
   emptyReportText: string
   formatGeneratedMessage: (logEntryCount: number) => string
+  formatGeneratedAt: (timestamp?: number) => string
+  formatMcpSummary: (availableTools: number, serverStatusCount: number, configuredServerCount: number) => string
+  formatLogEntries: (logEntryCount: number) => string
+  formatToolDiscoveryError: (error: string) => string
 }
 
 export const OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA: OperatorDiagnosticReportActionMetadata = {
@@ -334,6 +338,11 @@ export const OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA: OperatorDiagnosticRepor
   saveButtonLabel: "Save report",
   emptyReportText: "No diagnostic report generated in this mobile session.",
   formatGeneratedMessage: (logEntryCount) => `Diagnostic report generated with ${logEntryCount} log entries.`,
+  formatGeneratedAt: (timestamp) => `Generated: ${formatOperatorTimestamp(timestamp)}`,
+  formatMcpSummary: (availableTools, serverStatusCount, configuredServerCount) =>
+    `MCP tools: ${availableTools} • Servers: ${serverStatusCount}/${configuredServerCount}`,
+  formatLogEntries: (logEntryCount) => `Log entries: ${logEntryCount}`,
+  formatToolDiscoveryError: (error) => `Tool discovery: ${error}`,
 }
 
 export type OperatorLogsPanelMetadata = {

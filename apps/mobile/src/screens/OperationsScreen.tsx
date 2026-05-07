@@ -846,13 +846,23 @@ export default function OperationsScreen({ navigation }: any) {
             </View>
             {diagnosticReport ? (
               <>
-                <Text style={styles.detailText}>Generated: {formatTimestamp(diagnosticReport.timestamp)}</Text>
                 <Text style={styles.detailText}>
-                  MCP tools: {diagnosticReport.mcp.availableTools} • Servers: {Object.keys(diagnosticReport.mcp.serverStatus).length}/{diagnosticReport.config.mcpServersCount}
+                  {OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatGeneratedAt(diagnosticReport.timestamp)}
                 </Text>
-                <Text style={styles.detailText}>Log entries: {diagnosticReport.errors.length}</Text>
+                <Text style={styles.detailText}>
+                  {OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatMcpSummary(
+                    diagnosticReport.mcp.availableTools,
+                    Object.keys(diagnosticReport.mcp.serverStatus).length,
+                    diagnosticReport.config.mcpServersCount,
+                  )}
+                </Text>
+                <Text style={styles.detailText}>
+                  {OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatLogEntries(diagnosticReport.errors.length)}
+                </Text>
                 {diagnosticReport.mcp.toolDiscoveryError ? (
-                  <Text style={styles.warningText}>Tool discovery: {diagnosticReport.mcp.toolDiscoveryError}</Text>
+                  <Text style={styles.warningText}>
+                    {OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA.formatToolDiscoveryError(diagnosticReport.mcp.toolDiscoveryError)}
+                  </Text>
                 ) : null}
               </>
             ) : (
