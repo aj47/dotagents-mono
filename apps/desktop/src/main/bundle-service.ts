@@ -31,12 +31,12 @@ import {
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
   buildAgentProfileFromBundleProfile,
   buildBundleAgentProfilesFromProfiles,
+  buildBundleFromComponentLoaders,
   buildBundleImportPreviewConflicts,
   buildBundleKnowledgeNotesFromNotes,
   buildBundleMcpServersFromConfig,
   buildBundleRepeatTasksFromTasks,
   buildBundleSkillsFromSkills,
-  buildDotAgentsBundle,
   buildExportableBundleAgentProfiles,
   buildExportableBundleKnowledgeNotes,
   buildExportableBundleMcpServers,
@@ -232,32 +232,22 @@ export async function exportBundle(
   options?: ExportBundleOptions
 ): Promise<DotAgentsBundle> {
   const layer = getAgentsLayerPaths(agentsDir)
-  const components = { ...DEFAULT_BUNDLE_COMPONENT_SELECTION, ...options?.components }
-
-  const profiles = components.agentProfiles
-    ? loadAgentProfilesForBundle(layer, options)
-    : []
-  const mcpServers = components.mcpServers ? loadMCPServersForBundle(layer, options) : []
-  const skills = components.skills ? loadSkillsForBundle(layer, options) : []
-  const repeatTasks = components.repeatTasks ? loadRepeatTasksForBundle(layer, options) : []
-  const knowledgeNotes = components.knowledgeNotes ? loadKnowledgeNotesForBundle(layer, options) : []
-
-  const bundle = buildDotAgentsBundle(options, {
-    agentProfiles: profiles,
-    mcpServers,
-    skills,
-    repeatTasks,
-    knowledgeNotes,
+  const bundle = buildBundleFromComponentLoaders(options, {
+    loadAgentProfiles: () => loadAgentProfilesForBundle(layer, options),
+    loadMcpServers: () => loadMCPServersForBundle(layer, options),
+    loadSkills: () => loadSkillsForBundle(layer, options),
+    loadRepeatTasks: () => loadRepeatTasksForBundle(layer, options),
+    loadKnowledgeNotes: () => loadKnowledgeNotesForBundle(layer, options),
   }, {
     exportedFrom: "dotagents-desktop",
   })
 
   logApp("[bundle-service] Exported bundle", {
-    profiles: profiles.length,
-    mcpServers: mcpServers.length,
-    skills: skills.length,
-    repeatTasks: repeatTasks.length,
-    knowledgeNotes: knowledgeNotes.length,
+    profiles: bundle.agentProfiles.length,
+    mcpServers: bundle.mcpServers.length,
+    skills: bundle.skills.length,
+    repeatTasks: bundle.repeatTasks.length,
+    knowledgeNotes: bundle.knowledgeNotes.length,
   })
 
   return bundle

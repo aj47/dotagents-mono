@@ -1271,6 +1271,30 @@ export function buildDotAgentsBundle(
   }
 }
 
+export interface BundleComponentLoaders {
+  loadAgentProfiles(): BundleAgentProfile[]
+  loadMcpServers(): BundleMcpServer[]
+  loadSkills(): BundleSkill[]
+  loadRepeatTasks(): BundleRepeatTask[]
+  loadKnowledgeNotes(): BundleKnowledgeNote[]
+}
+
+export function buildBundleFromComponentLoaders(
+  request: ExportBundleRequest | undefined,
+  loaders: BundleComponentLoaders,
+  options: BuildDotAgentsBundleOptions = {},
+): DotAgentsBundle {
+  const components = { ...DEFAULT_BUNDLE_COMPONENT_SELECTION, ...request?.components }
+
+  return buildDotAgentsBundle(request, {
+    agentProfiles: components.agentProfiles ? loaders.loadAgentProfiles() : [],
+    mcpServers: components.mcpServers ? loaders.loadMcpServers() : [],
+    skills: components.skills ? loaders.loadSkills() : [],
+    repeatTasks: components.repeatTasks ? loaders.loadRepeatTasks() : [],
+    knowledgeNotes: components.knowledgeNotes ? loaders.loadKnowledgeNotes() : [],
+  }, options)
+}
+
 export function hasSelectedBundleComponent(components: BundleComponentSelection): boolean {
   return BUNDLE_COMPONENT_KEYS.some((key) => components[key] === true)
 }

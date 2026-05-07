@@ -20,6 +20,7 @@ import {
   buildBundleImportItemErrorResult,
   buildBundleImportItemResult,
   buildBundleFromLayerDirs,
+  buildBundleFromComponentLoaders,
   buildDotAgentsBundle,
   buildExportableBundleAgentProfiles,
   buildExportableBundleKnowledgeNotes,
@@ -945,6 +946,62 @@ describe("bundle API helpers", () => {
       repeatTasks: [],
       knowledgeNotes: [],
     })
+
+    const loaderCalls: string[] = []
+    expect(buildBundleFromComponentLoaders({
+      name: "Loader Bundle",
+      components: {
+        agentProfiles: true,
+        mcpServers: false,
+        skills: true,
+        repeatTasks: false,
+        knowledgeNotes: false,
+      },
+    }, {
+      loadAgentProfiles: () => {
+        loaderCalls.push("agentProfiles")
+        return bundle.agentProfiles
+      },
+      loadMcpServers: () => {
+        loaderCalls.push("mcpServers")
+        return [{ name: "server-1" }]
+      },
+      loadSkills: () => {
+        loaderCalls.push("skills")
+        return bundle.skills
+      },
+      loadRepeatTasks: () => {
+        loaderCalls.push("repeatTasks")
+        return bundle.repeatTasks
+      },
+      loadKnowledgeNotes: () => {
+        loaderCalls.push("knowledgeNotes")
+        return bundle.knowledgeNotes
+      },
+    }, {
+      createdAt: "2026-05-06T12:00:00.000Z",
+      exportedFrom: "shared-loader",
+    })).toEqual({
+      manifest: {
+        version: 1,
+        name: "Loader Bundle",
+        createdAt: "2026-05-06T12:00:00.000Z",
+        exportedFrom: "shared-loader",
+        components: {
+          agentProfiles: 1,
+          mcpServers: 0,
+          skills: 1,
+          repeatTasks: 0,
+          knowledgeNotes: 0,
+        },
+      },
+      agentProfiles: bundle.agentProfiles,
+      mcpServers: [],
+      skills: bundle.skills,
+      repeatTasks: [],
+      knowledgeNotes: [],
+    })
+    expect(loaderCalls).toEqual(["agentProfiles", "skills"])
   })
 
   it("merges layered bundle items with later layers winning", () => {
