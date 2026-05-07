@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
+import { desktopMcpDialogsClient } from "@renderer/lib/desktop-mcp-dialogs-client"
+import { rendererHandlers } from "@renderer/lib/tipc-client"
 import {
   Dialog,
   DialogContent,
@@ -79,8 +80,7 @@ function McpElicitationDialog() {
     if (!request) return
 
     const content = action === "accept" && request.mode === "form" ? formValues : undefined
-    await tipcClient.resolveElicitation({
-      requestId: request.requestId,
+    await desktopMcpDialogsClient.resolveElicitation(request.requestId, {
       action,
       content,
     })

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
+import { desktopMcpDialogsClient } from "@renderer/lib/desktop-mcp-dialogs-client"
+import { rendererHandlers } from "@renderer/lib/tipc-client"
 import {
   Dialog,
   DialogContent,
@@ -28,10 +29,7 @@ export default function McpSamplingDialog() {
   const handleResponse = async (approved: boolean) => {
     if (!request) return
 
-    await tipcClient.resolveSampling({
-      requestId: request.requestId,
-      approved,
-    })
+    await desktopMcpDialogsClient.resolveSampling(request.requestId, approved)
 
     setIsOpen(false)
     setRequest(null)
