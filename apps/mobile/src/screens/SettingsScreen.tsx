@@ -96,6 +96,14 @@ import {
   type MainAgentMode,
 } from '@dotagents/shared/main-agent-selection';
 import {
+  CODEX_TEXT_VERBOSITY_OPTIONS,
+  DEFAULT_CODEX_REASONING_EFFORT,
+  DEFAULT_CODEX_TEXT_VERBOSITY,
+  OPENAI_REASONING_EFFORT_OPTIONS,
+  type CodexTextVerbosity,
+  type OpenAiReasoningEffort,
+} from '@dotagents/shared/agent-generation-options';
+import {
   DEFAULT_DISCORD_ENABLED,
   DEFAULT_DISCORD_DM_ENABLED,
   DEFAULT_DISCORD_LOG_MESSAGES,
@@ -3289,6 +3297,57 @@ export default function SettingsScreen({ navigation }: any) {
                       </View>
                     )}
                   </TouchableOpacity>
+                )}
+
+                {getAgentProvider() === 'chatgpt-web' && (
+                  <View style={styles.codexOptionsGroup}>
+                    <Text style={styles.subsectionTitle}>Codex Options</Text>
+                    <Text style={styles.helperText}>
+                      Tune reasoning effort and response verbosity for the OpenAI Codex provider.
+                    </Text>
+
+                    <Text style={styles.label}>Thinking Level</Text>
+                    <View style={styles.providerSelector}>
+                      {OPENAI_REASONING_EFFORT_OPTIONS.map((option) => (
+                        <Pressable
+                          key={option.value}
+                          style={[
+                            styles.providerOption,
+                            (remoteSettings.openaiReasoningEffort || DEFAULT_CODEX_REASONING_EFFORT) === option.value && styles.providerOptionActive,
+                          ]}
+                          onPress={() => handleRemoteSettingUpdate('openaiReasoningEffort', option.value as OpenAiReasoningEffort)}
+                        >
+                          <Text style={[
+                            styles.providerOptionText,
+                            (remoteSettings.openaiReasoningEffort || DEFAULT_CODEX_REASONING_EFFORT) === option.value && styles.providerOptionTextActive,
+                          ]}>
+                            {option.value === DEFAULT_CODEX_REASONING_EFFORT ? `${option.label} (default)` : option.label}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+
+                    <Text style={[styles.label, { marginTop: spacing.md }]}>Verbosity</Text>
+                    <View style={styles.providerSelector}>
+                      {CODEX_TEXT_VERBOSITY_OPTIONS.map((option) => (
+                        <Pressable
+                          key={option.value}
+                          style={[
+                            styles.providerOption,
+                            (remoteSettings.codexTextVerbosity || DEFAULT_CODEX_TEXT_VERBOSITY) === option.value && styles.providerOptionActive,
+                          ]}
+                          onPress={() => handleRemoteSettingUpdate('codexTextVerbosity', option.value as CodexTextVerbosity)}
+                        >
+                          <Text style={[
+                            styles.providerOptionText,
+                            (remoteSettings.codexTextVerbosity || DEFAULT_CODEX_TEXT_VERBOSITY) === option.value && styles.providerOptionTextActive,
+                          ]}>
+                            {option.value === DEFAULT_CODEX_TEXT_VERBOSITY ? `${option.label} (default)` : option.label}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
                 )}
 
                 <Text style={[styles.label, { marginTop: spacing.lg }]}>Transcript Processing</Text>
@@ -6868,6 +6927,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     endpointPanel: {
       marginTop: spacing.sm,
       gap: spacing.sm,
+    },
+    codexOptionsGroup: {
+      marginTop: spacing.lg,
+      gap: spacing.xs,
     },
     endpointMetaRow: {
       flexDirection: 'row',

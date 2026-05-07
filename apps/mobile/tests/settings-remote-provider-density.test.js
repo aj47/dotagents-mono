@@ -75,6 +75,16 @@ test('keeps profile/model actions text-first and explicitly labeled', () => {
   assert.match(profileModelSection, /\{isLoadingModels \? 'Refreshing…' : 'Refresh'\}/);
   assert.match(profileModelSection, /accessibilityLabel=\{useCustomModel \? 'Show model list' : 'Enter custom model name'\}/);
   assert.match(profileModelSection, /accessibilityLabel="Refresh available models"/);
+  assert.match(settingsSource, /OPENAI_REASONING_EFFORT_OPTIONS/);
+  assert.match(settingsSource, /CODEX_TEXT_VERBOSITY_OPTIONS/);
+  assert.match(settingsSource, /DEFAULT_CODEX_REASONING_EFFORT/);
+  assert.match(settingsSource, /DEFAULT_CODEX_TEXT_VERBOSITY/);
+  assert.match(profileModelSection, />Codex Options</);
+  assert.match(profileModelSection, /getAgentProvider\(\) === 'chatgpt-web'/);
+  assert.match(profileModelSection, /remoteSettings\.openaiReasoningEffort \|\| DEFAULT_CODEX_REASONING_EFFORT/);
+  assert.match(profileModelSection, /handleRemoteSettingUpdate\('openaiReasoningEffort', option\.value as OpenAiReasoningEffort\)/);
+  assert.match(profileModelSection, /remoteSettings\.codexTextVerbosity \|\| DEFAULT_CODEX_TEXT_VERBOSITY/);
+  assert.match(profileModelSection, /handleRemoteSettingUpdate\('codexTextVerbosity', option\.value as CodexTextVerbosity\)/);
   assert.match(profileModelSection, />Transcript Processing</);
   assert.match(profileModelSection, />Enabled</);
   assert.match(profileModelSection, />Provider</);
