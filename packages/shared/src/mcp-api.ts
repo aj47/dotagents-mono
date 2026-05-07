@@ -260,6 +260,20 @@ export interface McpServerActionService {
   setServerRuntimeEnabled(serverName: string, enabled: boolean): boolean
 }
 
+export interface McpServerActionServiceOptions {
+  getServerStatus(): McpServerStatusMapLike
+  setServerRuntimeEnabled(serverName: string, enabled: boolean): boolean
+}
+
+export function createMcpServerActionService(
+  options: McpServerActionServiceOptions,
+): McpServerActionService {
+  return {
+    getServerStatus: () => options.getServerStatus(),
+    setServerRuntimeEnabled: (serverName, enabled) => options.setServerRuntimeEnabled(serverName, enabled),
+  }
+}
+
 export interface McpServerConfigActionService {
   getMcpConfig(): MCPConfig
   saveMcpConfig(mcpConfig: MCPConfig): void

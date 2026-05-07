@@ -1427,6 +1427,10 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain("server: mcpServerActionOptions")
     expect(mobileApiDesktopActionsSource).toContain("config: mcpServerConfigActionOptions")
     expect(mobileApiDesktopActionsSource).toContain("mcp: mcpRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("service: createMcpServerActionService({")
+    expect(mobileApiDesktopActionsSource).toContain("getServerStatus: () => mcpService.getServerStatus()")
+    expect(mobileApiDesktopActionsSource).toContain("setServerRuntimeEnabled: (serverName, enabled) => mcpService.setServerRuntimeEnabled(serverName, enabled)")
+    expect(mobileApiDesktopActionsSource).not.toContain("service: mcpService")
     expect(mobileApiDesktopActionsSource).toContain("service: createMcpConfigActionService({")
     expect(mobileApiDesktopActionsSource).toContain("save: (config) => configStore.save(config)")
     expect(mobileApiDesktopActionsSource).not.toContain("getMcpServersAction(mcpServerActionOptions)")
@@ -1451,6 +1455,7 @@ describe("remote-server route registration", () => {
       "export function resolveAgentProfileReferenceCleanupLayers",
     )
     expect(sharedMcpApiSource).toContain("export interface McpServerActionService")
+    expect(sharedMcpApiSource).toContain("export function createMcpServerActionService")
     expect(sharedMcpApiSource).toContain("export interface McpServerConfigActionService")
     expect(sharedMcpApiSource).toContain("export function createMcpConfigActionService")
     expect(sharedMcpApiSource).toContain("getMcpConfig: () => store.get().mcpConfig || { mcpServers: {} }")

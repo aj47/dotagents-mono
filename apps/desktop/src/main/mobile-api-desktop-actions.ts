@@ -52,7 +52,9 @@ import {
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   createMcpConfigActionService,
   createMcpRouteActions,
+  createMcpServerActionService,
   type McpServerConfigActionOptions,
+  type McpServerActionOptions,
 } from "@dotagents/shared/mcp-api"
 import { getMaskedRemoteServerApiKey } from "@dotagents/shared/remote-pairing"
 import {
@@ -345,9 +347,12 @@ const repeatTaskActionOptions: RepeatTaskActionOptions<LoopConfig> = {
 const repeatTaskRouteActions = createRepeatTaskRouteActions(repeatTaskActionOptions)
 
 const mcpServerActionOptions = {
-  service: mcpService,
+  service: createMcpServerActionService({
+    getServerStatus: () => mcpService.getServerStatus(),
+    setServerRuntimeEnabled: (serverName, enabled) => mcpService.setServerRuntimeEnabled(serverName, enabled),
+  }),
   diagnostics: diagnosticsService,
-}
+} satisfies McpServerActionOptions
 
 function getAgentProfileReferenceCleanupLayers() {
   return resolveAgentProfileReferenceCleanupLayers(

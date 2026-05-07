@@ -38,6 +38,7 @@ import {
   createInjectedMcpToolRouteActions,
   createMcpConfigActionService,
   createMcpRouteActions,
+  createMcpServerActionService,
   createOperatorMcpLifecycleActionService,
   createOperatorMcpMutationActionService,
   createOperatorMcpReadActionService,
@@ -588,6 +589,36 @@ describe("MCP API helpers", () => {
     })
 
     expect(emptyService.getMcpConfig()).toEqual({ mcpServers: {} })
+  })
+
+  it("creates MCP server action services from runtime adapters", () => {
+    const calls: string[] = []
+    const service = createMcpServerActionService({
+      getServerStatus: () => {
+        calls.push("status")
+        return {
+          filesystem: {
+            connected: true,
+            toolCount: 2,
+            runtimeEnabled: true,
+          },
+        }
+      },
+      setServerRuntimeEnabled: (serverName, enabled) => {
+        calls.push(`runtime:${serverName}:${enabled}`)
+        return true
+      },
+    })
+
+    expect(service.getServerStatus()).toEqual({
+      filesystem: {
+        connected: true,
+        toolCount: 2,
+        runtimeEnabled: true,
+      },
+    })
+    expect(service.setServerRuntimeEnabled("filesystem", false)).toBe(true)
+    expect(calls).toEqual(["status", "runtime:filesystem:false"])
   })
 
   it("creates operator MCP read action services from MCP adapters", () => {
