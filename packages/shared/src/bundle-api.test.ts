@@ -11,6 +11,7 @@ import {
   buildBundleAgentProfilesFromProfiles,
   buildBundleExportResponse,
   buildBundleExportableItemsResponse,
+  buildBundleFromSourceLoaders,
   buildBundleImportPreviewConflicts,
   buildBundleImportPreviewResponse,
   buildBundleKnowledgeNotesFromNotes,
@@ -24,6 +25,7 @@ import {
   buildBundleFromComponentLoaders,
   buildDotAgentsBundle,
   buildExportableBundleAgentProfiles,
+  buildExportableBundleItemsFromSources,
   buildExportableBundleKnowledgeNotes,
   buildExportableBundleMcpServers,
   buildExportableBundleRepeatTasks,
@@ -643,6 +645,83 @@ describe("bundle API helpers", () => {
       runContinuously: true,
     }])
     expect(buildBundleKnowledgeNotesFromNotes([note], ["note-1"])).toEqual([note])
+
+    const sourceLoaderCalls: string[] = []
+    expect(buildBundleFromSourceLoaders({
+      name: "Source Loader Bundle",
+      agentProfileIds: ["agent-1"],
+      mcpServerNames: ["filesystem"],
+      skillIds: ["skill-1"],
+      repeatTaskIds: ["task-1"],
+      knowledgeNoteIds: ["note-1"],
+      components: {
+        agentProfiles: true,
+        mcpServers: true,
+        skills: false,
+        repeatTasks: true,
+        knowledgeNotes: false,
+      },
+    }, {
+      loadAgentProfiles: () => {
+        sourceLoaderCalls.push("agentProfiles")
+        return [profile]
+      },
+      loadMcpConfig: () => {
+        sourceLoaderCalls.push("mcpConfig")
+        return {
+          mcpConfig: {
+            mcpServers: {
+              filesystem: {
+                command: "node",
+                args: ["server.js"],
+                transport: "stdio",
+              },
+            },
+          },
+        }
+      },
+      loadSkills: () => {
+        sourceLoaderCalls.push("skills")
+        return [skill]
+      },
+      loadRepeatTasks: () => {
+        sourceLoaderCalls.push("repeatTasks")
+        return [task]
+      },
+      loadKnowledgeNotes: () => {
+        sourceLoaderCalls.push("knowledgeNotes")
+        return [note]
+      },
+    }, {
+      createdAt: "2026-05-06T12:30:00.000Z",
+      exportedFrom: "shared-sources",
+    })).toEqual({
+      manifest: {
+        version: 1,
+        name: "Source Loader Bundle",
+        createdAt: "2026-05-06T12:30:00.000Z",
+        exportedFrom: "shared-sources",
+        components: {
+          agentProfiles: 1,
+          mcpServers: 1,
+          skills: 0,
+          repeatTasks: 1,
+          knowledgeNotes: 0,
+        },
+      },
+      agentProfiles: buildBundleAgentProfilesFromProfiles([profile], ["agent-1"]),
+      mcpServers: [{
+        name: "filesystem",
+        command: "node",
+        args: ["server.js"],
+        transport: "stdio",
+        enabled: true,
+      }],
+      skills: [],
+      repeatTasks: buildBundleRepeatTasksFromTasks([task], ["task-1"]),
+      knowledgeNotes: [],
+    })
+    expect(sourceLoaderCalls).toEqual(["agentProfiles", "mcpConfig", "repeatTasks"])
   })
 
   it("builds exportable item summaries from loaded app records", () => {
@@ -720,6 +799,55 @@ describe("bundle API helpers", () => {
       context: "auto",
       summary: "Context summary",
     }])
+    expect(buildExportableBundleItemsFromSources({
+      agentProfiles: [profile],
+      mcpConfig: {
+        mcpConfig: {
+          mcpServers: {
+            filesystem: {
+              command: "node",
+              transport: "stdio",
+              disabled: true,
+            },
+          },
+        },
+      },
+      skills: [skill],
+      repeatTasks: [task],
+      knowledgeNotes: [note],
+    })).toEqual({
+      agentProfiles: [{
+        id: "agent-1",
+        name: "agent",
+        displayName: "Agent",
+        enabled: true,
+        role: "chat-agent",
+        referencedMcpServerNames: ["filesystem"],
+        referencedSkillIds: ["research"],
+      }],
+      mcpServers: [{
+        name: "filesystem",
+        transport: "stdio",
+        enabled: false,
+      }],
+      skills: [{
+        id: "skill-1",
+        name: "Skill",
+        description: "Skill description",
+      }],
+      repeatTasks: [{
+        id: "task-1",
+        name: "Task",
+        intervalMinutes: 30,
+        enabled: false,
+      }],
+      knowledgeNotes: [{
+        id: "note-1",
+        title: "Note",
+        context: "auto",
+        summary: "Context summary",
+      }],
+    })
   })
 
   it("builds imported app records from bundle items", async () => {

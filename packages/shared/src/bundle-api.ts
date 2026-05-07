@@ -997,6 +997,22 @@ export type BundleBuildItems = {
   knowledgeNotes: BundleKnowledgeNote[]
 }
 
+export type BundleSourceLoaders = {
+  loadAgentProfiles(): readonly AgentProfile[]
+  loadMcpConfig(): Record<string, unknown>
+  loadSkills(): readonly AgentSkill[]
+  loadRepeatTasks(): readonly LoopConfig[]
+  loadKnowledgeNotes(): readonly KnowledgeNote[]
+}
+
+export type ExportableBundleItemSources = {
+  agentProfiles: readonly AgentProfile[]
+  mcpConfig: Record<string, unknown>
+  skills: readonly AgentSkill[]
+  repeatTasks: readonly LoopConfig[]
+  knowledgeNotes: readonly KnowledgeNote[]
+}
+
 export type BuildDotAgentsBundleOptions = {
   exportedFrom?: string
   createdAt?: string
@@ -1091,6 +1107,18 @@ export function createBundleItemSelection(items: ExportableBundleItems): Detaile
     skillIds: items.skills.map((item) => item.id),
     repeatTaskIds: items.repeatTasks.map((item) => item.id),
     knowledgeNoteIds: items.knowledgeNotes.map((item) => item.id),
+  }
+}
+
+export function buildExportableBundleItemsFromSources(
+  sources: ExportableBundleItemSources,
+): ExportableBundleItems {
+  return {
+    agentProfiles: buildExportableBundleAgentProfiles(sources.agentProfiles),
+    mcpServers: buildExportableBundleMcpServers(buildBundleMcpServersFromConfig(sources.mcpConfig)),
+    skills: buildExportableBundleSkills(sources.skills),
+    repeatTasks: buildExportableBundleRepeatTasks(sources.repeatTasks),
+    knowledgeNotes: buildExportableBundleKnowledgeNotes(sources.knowledgeNotes),
   }
 }
 
@@ -1292,6 +1320,32 @@ export function buildBundleFromComponentLoaders(
     skills: components.skills ? loaders.loadSkills() : [],
     repeatTasks: components.repeatTasks ? loaders.loadRepeatTasks() : [],
     knowledgeNotes: components.knowledgeNotes ? loaders.loadKnowledgeNotes() : [],
+  }, options)
+}
+
+export function buildBundleFromSourceLoaders(
+  request: ExportBundleRequest | undefined,
+  loaders: BundleSourceLoaders,
+  options: BuildDotAgentsBundleOptions = {},
+): DotAgentsBundle {
+  const components = resolveBundleComponentSelection(request?.components)
+
+  return buildDotAgentsBundle(request, {
+    agentProfiles: components.agentProfiles
+      ? buildBundleAgentProfilesFromProfiles(loaders.loadAgentProfiles(), request?.agentProfileIds)
+      : [],
+    mcpServers: components.mcpServers
+      ? buildBundleMcpServersFromConfig(loaders.loadMcpConfig(), request?.mcpServerNames)
+      : [],
+    skills: components.skills
+      ? buildBundleSkillsFromSkills(loaders.loadSkills(), request?.skillIds)
+      : [],
+    repeatTasks: components.repeatTasks
+      ? buildBundleRepeatTasksFromTasks(loaders.loadRepeatTasks(), request?.repeatTaskIds)
+      : [],
+    knowledgeNotes: components.knowledgeNotes
+      ? buildBundleKnowledgeNotesFromNotes(loaders.loadKnowledgeNotes(), request?.knowledgeNoteIds)
+      : [],
   }, options)
 }
 

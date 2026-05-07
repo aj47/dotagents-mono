@@ -29,19 +29,10 @@ import {
 import {
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
   buildAgentProfileFromBundleProfile,
-  buildBundleAgentProfilesFromProfiles,
-  buildBundleFromComponentLoaders,
+  buildBundleFromSourceLoaders,
   buildBundleImportExistingItems,
   buildBundleImportPreviewConflicts,
-  buildBundleKnowledgeNotesFromNotes,
-  buildBundleMcpServersFromConfig,
-  buildBundleRepeatTasksFromTasks,
-  buildBundleSkillsFromSkills,
-  buildExportableBundleAgentProfiles,
-  buildExportableBundleKnowledgeNotes,
-  buildExportableBundleMcpServers,
-  buildExportableBundleRepeatTasks,
-  buildExportableBundleSkills,
+  buildExportableBundleItemsFromSources,
   buildKnowledgeNoteFromBundleNote,
   buildRepeatTaskFromBundleTask,
   buildSkillFromBundleSkill,
@@ -158,55 +149,20 @@ export interface BundlePreviewResult {
 // Export
 // ============================================================================
 
-function loadAgentProfilesForBundle(
-  layer: AgentsLayerPaths,
-  options?: BundleItemSelectionOptions
-): BundleAgentProfile[] {
-  return buildBundleAgentProfilesFromProfiles(
-    loadAgentProfilesLayer(layer).profiles,
-    options?.agentProfileIds
-  )
-}
-
-function loadMCPServersForBundle(
-  layer: AgentsLayerPaths,
-  options?: BundleItemSelectionOptions
-): BundleMCPServer[] {
-  const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
+function loadMcpConfigForBundle(layer: AgentsLayerPaths): Record<string, unknown> {
+  return safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
     defaultValue: {},
   })
-  return buildBundleMcpServersFromConfig(mcpConfig, options?.mcpServerNames)
-}
-
-function loadSkillsForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleSkill[] {
-  return buildBundleSkillsFromSkills(
-    loadAgentsSkillsLayer(layer).skills,
-    options?.skillIds
-  )
-}
-
-function loadRepeatTasksForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleRepeatTask[] {
-  return buildBundleRepeatTasksFromTasks(
-    loadTasksLayer(layer).tasks,
-    options?.repeatTaskIds
-  )
-}
-
-function loadKnowledgeNotesForBundle(layer: AgentsLayerPaths, options?: BundleItemSelectionOptions): BundleKnowledgeNote[] {
-  return buildBundleKnowledgeNotesFromNotes(
-    loadAgentsKnowledgeNotesLayer(layer).notes,
-    options?.knowledgeNoteIds
-  )
 }
 
 function listExportableBundleItemsForLayer(layer: AgentsLayerPaths): ExportableBundleItems {
-  return {
-    agentProfiles: buildExportableBundleAgentProfiles(loadAgentProfilesLayer(layer).profiles),
-    mcpServers: buildExportableBundleMcpServers(loadMCPServersForBundle(layer)),
-    skills: buildExportableBundleSkills(loadAgentsSkillsLayer(layer).skills),
-    repeatTasks: buildExportableBundleRepeatTasks(loadTasksLayer(layer).tasks),
-    knowledgeNotes: buildExportableBundleKnowledgeNotes(loadAgentsKnowledgeNotesLayer(layer).notes),
-  }
+  return buildExportableBundleItemsFromSources({
+    agentProfiles: loadAgentProfilesLayer(layer).profiles,
+    mcpConfig: loadMcpConfigForBundle(layer),
+    skills: loadAgentsSkillsLayer(layer).skills,
+    repeatTasks: loadTasksLayer(layer).tasks,
+    knowledgeNotes: loadAgentsKnowledgeNotesLayer(layer).notes,
+  })
 }
 
 export function getBundleExportableItems(agentsDir: string): ExportableBundleItems {
@@ -230,12 +186,12 @@ export async function exportBundle(
   options?: ExportBundleOptions
 ): Promise<DotAgentsBundle> {
   const layer = getAgentsLayerPaths(agentsDir)
-  const bundle = buildBundleFromComponentLoaders(options, {
-    loadAgentProfiles: () => loadAgentProfilesForBundle(layer, options),
-    loadMcpServers: () => loadMCPServersForBundle(layer, options),
-    loadSkills: () => loadSkillsForBundle(layer, options),
-    loadRepeatTasks: () => loadRepeatTasksForBundle(layer, options),
-    loadKnowledgeNotes: () => loadKnowledgeNotesForBundle(layer, options),
+  const bundle = buildBundleFromSourceLoaders(options, {
+    loadAgentProfiles: () => loadAgentProfilesLayer(layer).profiles,
+    loadMcpConfig: () => loadMcpConfigForBundle(layer),
+    loadSkills: () => loadAgentsSkillsLayer(layer).skills,
+    loadRepeatTasks: () => loadTasksLayer(layer).tasks,
+    loadKnowledgeNotes: () => loadAgentsKnowledgeNotesLayer(layer).notes,
   }, {
     exportedFrom: "dotagents-desktop",
   })
