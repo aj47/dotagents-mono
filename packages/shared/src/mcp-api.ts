@@ -268,6 +268,13 @@ export interface McpServerConfigActionService {
   }): void
 }
 
+export type McpServerDeletedContext = {
+  serverName: string
+  previousMcpConfig: MCPConfig
+  nextMcpConfig: MCPConfig
+  availableServerNames: string[]
+}
+
 export interface McpServerActionDiagnostics {
   logError(source: string, message: string, error: unknown): void
   logInfo?(source: string, message: string): void
@@ -282,6 +289,7 @@ export interface McpServerConfigActionOptions {
   service: McpServerConfigActionService
   diagnostics: McpServerActionDiagnostics
   reservedServerNames?: readonly string[]
+  onMcpServerDeleted?(context: McpServerDeletedContext): void
 }
 
 export interface McpRouteActionOptions {
@@ -982,6 +990,12 @@ export function deleteMcpServerConfigAction(
       serverName: normalizedServerName,
       previousMcpConfig: currentMcpConfig,
       nextMcpConfig,
+    })
+    options.onMcpServerDeleted?.({
+      serverName: normalizedServerName,
+      previousMcpConfig: currentMcpConfig,
+      nextMcpConfig,
+      availableServerNames: Object.keys(nextMcpConfig.mcpServers || {}),
     })
     options.diagnostics.logInfo?.(
       "mcp-server-actions",

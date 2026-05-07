@@ -383,12 +383,11 @@ const mcpServerActionOptions = {
   diagnostics: diagnosticsService,
 }
 
-function cleanupInvalidAgentProfileMcpReferences(mcpConfig: MCPConfig): void {
+function cleanupInvalidAgentProfileMcpReferences(validServerNames: string[]): void {
   const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
   const layers = workspaceAgentsFolder
     ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
     : [getAgentsLayerPaths(globalAgentsFolder)]
-  const validServerNames = Object.keys(mcpConfig.mcpServers || {})
   const cleanupResult = cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)
 
   if (cleanupResult.updatedProfileIds.length > 0) {
@@ -407,14 +406,12 @@ const mcpServerConfigActionOptions = {
       const config = configStore.get()
       configStore.save({ ...config, mcpConfig })
     },
-    onMcpConfigSaved: ({ action, nextMcpConfig }) => {
-      if (action === "deleted") {
-        cleanupInvalidAgentProfileMcpReferences(nextMcpConfig)
-      }
-    },
   },
   diagnostics: diagnosticsService,
   reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
+  onMcpServerDeleted: ({ availableServerNames }) => {
+    cleanupInvalidAgentProfileMcpReferences(availableServerNames)
+  },
 } satisfies McpServerConfigActionOptions
 
 const mcpRouteActions = createMcpRouteActions({

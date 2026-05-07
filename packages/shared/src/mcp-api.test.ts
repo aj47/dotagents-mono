@@ -359,6 +359,12 @@ describe("MCP API helpers", () => {
       previousServers: string[]
       nextServers: string[]
     }> = []
+    const deletedContexts: Array<{
+      serverName: string
+      previousServers: string[]
+      nextServers: string[]
+      availableServerNames: string[]
+    }> = []
     let mcpConfig: MCPConfig = {
       mcpServers: {
         filesystem: { command: "filesystem-mcp" },
@@ -400,6 +406,14 @@ describe("MCP API helpers", () => {
       },
       diagnostics: options.diagnostics,
       reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
+      onMcpServerDeleted: ({ serverName, previousMcpConfig, nextMcpConfig, availableServerNames }) => {
+        deletedContexts.push({
+          serverName,
+          previousServers: Object.keys(previousMcpConfig.mcpServers).sort(),
+          nextServers: Object.keys(nextMcpConfig.mcpServers).sort(),
+          availableServerNames,
+        })
+      },
     }
 
     expect(getMcpServersAction(options)).toEqual({
@@ -435,6 +449,12 @@ describe("MCP API helpers", () => {
       statusCode: 404,
       body: { error: "Server 'missing' not found" },
     })
+    expect(deletedContexts).toEqual([{
+      serverName: "github",
+      previousServers: ["filesystem", "github"],
+      nextServers: ["filesystem"],
+      availableServerNames: ["filesystem"],
+    }])
     expect(importMcpServerConfigsAction({
       config: {
         mcpServers: {
