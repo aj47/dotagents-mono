@@ -12,6 +12,7 @@ import { PanelResizeWrapper } from "@renderer/components/panel-resize-wrapper"
 import { useAgentStore, useAgentProgress, useConversationStore } from "@renderer/stores"
 import { useConfigQuery, useConversationQuery, useCreateConversationMutation } from "@renderer/lib/queries"
 import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
+import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
 import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
 import { PanelDragBar } from "@renderer/components/panel-drag-bar"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
@@ -360,7 +361,7 @@ export function Component() {
   const startRecordingWithFreshDevice = async () => {
     let deviceId = audioInputDeviceIdRef.current
     try {
-      const freshConfig = await tipcClient.getConfig()
+      const freshConfig = await desktopConfigClient.getConfig()
       if (freshConfig) {
         deviceId = freshConfig.audioInputDeviceId
         audioInputDeviceIdRef.current = deviceId
@@ -449,7 +450,7 @@ export function Component() {
 
       // Fetch config synchronously to avoid race condition where configQuery.data
       // is undefined on early interactions (augment review feedback)
-      const config = await tipcClient.getConfig()
+      const config = await desktopConfigClient.getConfig()
       const isParakeet = config?.sttProviderId === "parakeet"
       const pcmRecording = isParakeet ? await decodeBlobToPcm(blob) : undefined
       await tipcClient.createRecording({
@@ -479,7 +480,7 @@ export function Component() {
     }) => {
       // Fetch config synchronously to avoid race condition where configQuery.data
       // is undefined on early interactions (augment review feedback)
-      const config = await tipcClient.getConfig()
+      const config = await desktopConfigClient.getConfig()
       const isParakeet = config?.sttProviderId === "parakeet"
       const pcmRecording = isParakeet ? await decodeBlobToPcm(blob) : undefined
       const arrayBuffer = await blob.arrayBuffer()
