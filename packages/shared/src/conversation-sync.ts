@@ -1,5 +1,7 @@
 import type {
   CreateConversationRequest,
+  ConversationDeleteResponse,
+  ConversationsDeleteAllResponse,
   ServerConversation,
   ServerConversationFull,
   ServerConversationMessage,
@@ -61,12 +63,16 @@ export interface ConversationActionService<TConversation extends ServerConversat
   validateConversationId(conversationId: string): string | null | undefined;
   getTimestamp(): number;
   saveConversation(conversation: TConversation, preserveTimestamp: boolean): ConversationMaybePromise<void>;
+  deleteConversation(conversationId: string): ConversationMaybePromise<void>;
+  deleteAllConversations(): ConversationMaybePromise<void>;
 }
 
 export interface ConversationActionPersistenceService<TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>> {
   loadConversation(conversationId: string): ConversationMaybePromise<TConversation | null | undefined>;
   getConversationHistory(): ConversationMaybePromise<ServerConversation[]>;
   saveConversation(conversation: TConversation, preserveTimestamp: boolean): ConversationMaybePromise<void>;
+  deleteConversation(conversationId: string): ConversationMaybePromise<void>;
+  deleteAllConversations(): ConversationMaybePromise<void>;
 }
 
 export interface ConversationActionServiceAdapterOptions<TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>> {
@@ -87,6 +93,8 @@ export function createConversationActionService<TConversation extends ServerConv
     validateConversationId: (conversationId) => options.validateConversationId(conversationId),
     getTimestamp: () => (options.now ?? Date.now)(),
     saveConversation: (conversation, preserveTimestamp) => service.saveConversation(conversation, preserveTimestamp),
+    deleteConversation: (conversationId) => service.deleteConversation(conversationId),
+    deleteAllConversations: () => service.deleteAllConversations(),
   };
 }
 
@@ -104,6 +112,11 @@ export interface ConversationRouteActions {
     body: unknown,
     onChanged: () => void,
   ): Promise<ConversationActionResult>;
+  deleteConversation(
+    id: string | undefined,
+    onChanged: () => void,
+  ): Promise<ConversationActionResult>;
+  deleteAllConversations(onChanged: () => void): Promise<ConversationActionResult>;
 }
 
 const VALID_ROLES = ['user', 'assistant', 'tool'] as const;
@@ -356,6 +369,17 @@ export function buildServerConversationFullResponse(
   return response;
 }
 
+export function buildServerConversationDeleteResponse(conversationId: string): ConversationDeleteResponse {
+  return {
+    success: true,
+    id: conversationId,
+  };
+}
+
+export function buildServerConversationsDeleteAllResponse(): ConversationsDeleteAllResponse {
+  return { success: true };
+}
+
 function conversationActionOk(body: unknown, statusCode = 200, headers?: Record<string, string>): ConversationActionResult {
   return {
     statusCode,
@@ -514,6 +538,55 @@ export async function updateConversationAction<TConversation extends ServerConve
   }
 }
 
+export async function deleteConversationAction<TConversation extends ServerConversationRecord<any>>(
+  id: string | undefined,
+  onChanged: () => void,
+  options: ConversationActionOptions<TConversation>,
+): Promise<ConversationActionResult> {
+  try {
+    const conversationId = id;
+    const conversationIdError = getConversationIdActionError(conversationId, options);
+    if (conversationIdError) {
+      return conversationActionError(400, conversationIdError);
+    }
+    if (!conversationId) {
+      return conversationActionError(400, 'Missing or invalid conversation ID');
+    }
+
+    const conversation = await options.service.loadConversation(conversationId);
+    if (!conversation) {
+      return conversationActionError(404, 'Conversation not found');
+    }
+
+    await options.service.deleteConversation(conversationId);
+    options.diagnostics.logInfo('conversation-actions', `Deleted conversation ${conversationId}`);
+
+    onChanged();
+
+    return conversationActionOk(buildServerConversationDeleteResponse(conversationId));
+  } catch (caughtError) {
+    options.diagnostics.logError('conversation-actions', 'Failed to delete conversation', caughtError);
+    return conversationActionError(500, getUnknownErrorMessage(caughtError, 'Failed to delete conversation'));
+  }
+}
+
+export async function deleteAllConversationsAction<TConversation extends ServerConversationRecord<any>>(
+  onChanged: () => void,
+  options: ConversationActionOptions<TConversation>,
+): Promise<ConversationActionResult> {
+  try {
+    await options.service.deleteAllConversations();
+    options.diagnostics.logInfo('conversation-actions', 'Deleted all conversations');
+
+    onChanged();
+
+    return conversationActionOk(buildServerConversationsDeleteAllResponse());
+  } catch (caughtError) {
+    options.diagnostics.logError('conversation-actions', 'Failed to delete all conversations', caughtError);
+    return conversationActionError(500, getUnknownErrorMessage(caughtError, 'Failed to delete all conversations'));
+  }
+}
+
 export function createConversationRouteActions<TConversation extends ServerConversationRecord<any>>(
   options: ConversationActionOptions<TConversation>,
 ): ConversationRouteActions {
@@ -522,6 +595,8 @@ export function createConversationRouteActions<TConversation extends ServerConve
     getConversations: () => getConversationsAction(options),
     createConversation: (body, onChanged) => createConversationAction(body, onChanged, options),
     updateConversation: (id, body, onChanged) => updateConversationAction(id, body, onChanged, options),
+    deleteConversation: (id, onChanged) => deleteConversationAction(id, onChanged, options),
+    deleteAllConversations: (onChanged) => deleteAllConversationsAction(onChanged, options),
   };
 }
 

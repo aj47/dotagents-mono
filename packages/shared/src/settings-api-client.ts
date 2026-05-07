@@ -165,6 +165,8 @@ import type {
   VerifyExternalAgentCommandRequest,
   VerifyExternalAgentCommandResponse,
   CreateConversationRequest,
+  ConversationDeleteResponse,
+  ConversationsDeleteAllResponse,
   EmergencyStopResponse,
   KnowledgeNoteCreateRequest,
   KnowledgeNoteDeleteResponse,
@@ -1760,6 +1762,18 @@ export class SettingsApiClient {
     return this.request<ServerConversationFull>(API_BUILDERS.conversation(id), {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+
+  async deleteConversation(id: string): Promise<ConversationDeleteResponse> {
+    return this.request<ConversationDeleteResponse>(API_BUILDERS.conversation(id), {
+      method: 'DELETE',
+    });
+  }
+
+  async deleteAllConversations(): Promise<ConversationsDeleteAllResponse> {
+    return this.request<ConversationsDeleteAllResponse>(API_PATHS.conversations, {
+      method: 'DELETE',
     });
   }
 }

@@ -83,6 +83,7 @@ import {
   formatRepeatTaskRuntimeTimestamp,
 } from '@dotagents/shared/repeat-task-utils';
 import { parseConfigListInput } from '@dotagents/shared/config-list-input';
+import { getErrorMessage } from '@dotagents/shared/error-utils';
 import {
   DEFAULT_PARAKEET_NUM_THREADS,
   DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED,
@@ -1526,16 +1527,26 @@ export default function SettingsScreen({ navigation }: any) {
   );
 
   const handleClearAllChats = useCallback(() => {
+    const clearsDesktop = !!settingsClient;
     confirmDestructiveAction(
       'Clear All Chats',
-      'Are you sure you want to delete all chats from this mobile app? This cannot be undone.',
+      clearsDesktop
+        ? 'Are you sure you want to delete all chats from this mobile app and the connected desktop server? This cannot be undone.'
+        : 'Are you sure you want to delete all chats from this mobile app? This cannot be undone.',
       async () => {
-        connectionManager.manager.cleanupAll();
-        await sessionStore.clearAllSessions();
+        try {
+          if (settingsClient) {
+            await settingsClient.deleteAllConversations();
+          }
+          connectionManager.manager.cleanupAll();
+          await sessionStore.clearAllSessions();
+        } catch (error) {
+          Alert.alert('Clear Chats Failed', getErrorMessage(error));
+        }
       },
       'Delete All'
     );
-  }, [confirmDestructiveAction, connectionManager, sessionStore]);
+  }, [confirmDestructiveAction, connectionManager, sessionStore, settingsClient]);
 
   const handleMcpServerDelete = useCallback((server: MCPServer) => {
     if (!settingsClient) return;

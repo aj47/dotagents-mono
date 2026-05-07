@@ -4,11 +4,15 @@ import {
   applyServerConversationUpdate,
   buildNewServerConversation,
   buildNewServerConversationFromUpdateRequest,
+  buildServerConversationDeleteResponse,
   buildServerConversationFullResponse,
+  buildServerConversationsDeleteAllResponse,
   buildServerConversationsResponse,
   createConversationAction,
   createConversationActionService,
   createConversationRouteActions,
+  deleteAllConversationsAction,
+  deleteConversationAction,
   fetchFullConversation,
   fromServerConversationMessage,
   getConversationAction,
@@ -222,12 +226,20 @@ describe('server conversation API helpers', () => {
       preview: 'hello',
     }];
     const saved: Array<{ conversationId: string; preserveTimestamp: boolean }> = [];
+    const deleted: string[] = [];
+    let allDeleted = false;
     const service = createConversationActionService({
       service: {
         loadConversation: async (conversationId: string) => conversationId === conversation.id ? conversation : null,
         getConversationHistory: async () => conversations,
         saveConversation: async (nextConversation: typeof conversation, preserveTimestamp: boolean) => {
           saved.push({ conversationId: nextConversation.id, preserveTimestamp });
+        },
+        deleteConversation: async (conversationId: string) => {
+          deleted.push(conversationId);
+        },
+        deleteAllConversations: async () => {
+          allDeleted = true;
         },
       },
       generateConversationId: () => 'conv-new',
@@ -242,6 +254,10 @@ describe('server conversation API helpers', () => {
     expect(service.getTimestamp()).toBe(10);
     await service.saveConversation(conversation, true);
     expect(saved).toEqual([{ conversationId: 'conv-1', preserveTimestamp: true }]);
+    await service.deleteConversation('conv-1');
+    expect(deleted).toEqual(['conv-1']);
+    await service.deleteAllConversations();
+    expect(allDeleted).toBe(true);
   });
 
   it('runs shared conversation sync actions through service adapters', async () => {
@@ -274,6 +290,12 @@ describe('server conversation API helpers', () => {
         getTimestamp: () => 10,
         saveConversation: async (conversation: typeof fullConversation) => {
           savedConversations.set(conversation.id, conversation);
+        },
+        deleteConversation: async (conversationId: string) => {
+          savedConversations.delete(conversationId);
+        },
+        deleteAllConversations: async () => {
+          savedConversations.clear();
         },
       },
       diagnostics: {
@@ -313,12 +335,23 @@ describe('server conversation API helpers', () => {
         messages: [{ role: 'assistant', content: 'updated reply', timestamp: 10 }],
       },
     });
-    expect(changed).toHaveBeenCalledTimes(2);
+    await expect(deleteConversationAction('conv-1', changed, options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildServerConversationDeleteResponse('conv-1'),
+    });
+    savedConversations.set(fullConversation.id, fullConversation);
+    await expect(deleteAllConversationsAction(changed, options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildServerConversationsDeleteAllResponse(),
+    });
+    expect(changed).toHaveBeenCalledTimes(4);
     expect(logs).toEqual([
       { level: 'info', source: 'conversation-actions', message: 'Listed 1 conversations' },
       { level: 'info', source: 'conversation-actions', message: 'Fetched conversation conv-1 for recovery' },
       { level: 'info', source: 'conversation-actions', message: 'Created conversation conv-new with 1 messages' },
       { level: 'info', source: 'conversation-actions', message: 'Updated conversation conv-1' },
+      { level: 'info', source: 'conversation-actions', message: 'Deleted conversation conv-1' },
+      { level: 'info', source: 'conversation-actions', message: 'Deleted all conversations' },
     ]);
   });
 
@@ -351,6 +384,12 @@ describe('server conversation API helpers', () => {
         getTimestamp: () => 10,
         saveConversation: async (conversation: typeof fullConversation) => {
           savedConversations.set(conversation.id, conversation);
+        },
+        deleteConversation: async (conversationId: string) => {
+          savedConversations.delete(conversationId);
+        },
+        deleteAllConversations: async () => {
+          savedConversations.clear();
         },
       },
       diagnostics: {
@@ -388,7 +427,15 @@ describe('server conversation API helpers', () => {
         title: 'Updated',
       },
     });
-    expect(changed).toHaveBeenCalledTimes(2);
+    await expect(routeActions.deleteConversation('conv-1', changed)).resolves.toEqual({
+      statusCode: 200,
+      body: buildServerConversationDeleteResponse('conv-1'),
+    });
+    await expect(routeActions.deleteAllConversations(changed)).resolves.toEqual({
+      statusCode: 200,
+      body: buildServerConversationsDeleteAllResponse(),
+    });
+    expect(changed).toHaveBeenCalledTimes(4);
   });
 
   it('returns shared conversation sync validation and not-found errors', async () => {
@@ -402,6 +449,8 @@ describe('server conversation API helpers', () => {
           conversationId === 'bad/id' ? 'Invalid conversation ID format' : null,
         getTimestamp: () => 10,
         saveConversation: async () => undefined,
+        deleteConversation: async () => undefined,
+        deleteAllConversations: async () => undefined,
       },
       diagnostics: {
         logInfo: () => {
@@ -433,6 +482,10 @@ describe('server conversation API helpers', () => {
       statusCode: 400,
       body: { error: 'Conversation not found and no messages provided to create it' },
     });
+    await expect(deleteConversationAction('missing', changed, options)).resolves.toEqual({
+      statusCode: 404,
+      body: { error: 'Conversation not found' },
+    });
     expect(changed).not.toHaveBeenCalled();
   });
 
@@ -449,6 +502,8 @@ describe('server conversation API helpers', () => {
         validateConversationId: () => null,
         getTimestamp: () => 10,
         saveConversation: async () => undefined,
+        deleteConversation: async () => undefined,
+        deleteAllConversations: async () => undefined,
       },
       diagnostics: {
         logInfo: () => undefined,

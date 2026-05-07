@@ -148,6 +148,8 @@ describe('remote server mobile API routes', () => {
         body: 'video-bytes',
         headers: { 'content-range': 'bytes 0-9/10' },
       })),
+      deleteConversation: vi.fn(() => ({ statusCode: 200, body: { success: true, id: 'conversation-1' } })),
+      deleteAllConversations: vi.fn(() => ({ statusCode: 200, body: { success: true } })),
     };
     const options = createOptions(actions);
 
@@ -259,5 +261,24 @@ describe('remote server mobile API routes', () => {
     expect(videoReply.headers.get('content-range')).toBe('bytes 0-9/10');
     expect(videoReply.statusCode).toBe(206);
     expect(videoReply.body).toBe('video-bytes');
+
+    const deleteConversationReply = createReply();
+    await routes.get(`DELETE ${REMOTE_SERVER_API_ROUTE_PATHS.conversation}`)!(
+      createRequest({ params: { id: 'conversation-1' } }),
+      deleteConversationReply,
+    );
+    expect(actions.deleteConversation).toHaveBeenCalledWith(
+      'conversation-1',
+      options.notifyConversationHistoryChanged,
+    );
+    expect(deleteConversationReply.body).toEqual({ success: true, id: 'conversation-1' });
+
+    const deleteAllConversationsReply = createReply();
+    await routes.get(`DELETE ${REMOTE_SERVER_API_ROUTE_PATHS.conversations}`)!(
+      createRequest(),
+      deleteAllConversationsReply,
+    );
+    expect(actions.deleteAllConversations).toHaveBeenCalledWith(options.notifyConversationHistoryChanged);
+    expect(deleteAllConversationsReply.body).toEqual({ success: true });
   });
 });

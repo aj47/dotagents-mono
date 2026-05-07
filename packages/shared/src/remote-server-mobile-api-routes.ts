@@ -321,6 +321,19 @@ export function registerMobileApiRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  // DELETE /v1/conversations/:id - Delete an existing conversation
+  fastify.delete(API_ROUTES.conversation, async (req, reply) => {
+    const params = req.params as { id?: string };
+    const result = await actions.deleteConversation(params.id, notifyConversationHistoryChanged);
+    return reply.code(result.statusCode).send(result.body);
+  });
+
+  // DELETE /v1/conversations - Delete all conversations
+  fastify.delete(API_ROUTES.conversations, async (_req, reply) => {
+    const result = await actions.deleteAllConversations(notifyConversationHistoryChanged);
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   // Kill switch endpoint - emergency stop all agent sessions
   fastify.post(API_ROUTES.emergencyStop, async (_req, reply) => {
     const result = await actions.triggerEmergencyStop();

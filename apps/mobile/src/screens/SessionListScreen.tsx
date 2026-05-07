@@ -20,6 +20,7 @@ import type { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { isStubSession, type SessionListItem } from '@dotagents/shared/session';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createTextInputAccessibilityLabel } from '@dotagents/shared/accessibility-utils';
+import { getErrorMessage } from '@dotagents/shared/error-utils';
 import {
   filterSessionSearchResults,
   filterSessionsByArchiveMode,
@@ -606,6 +607,14 @@ export default function SessionListScreen({ navigation }: Props) {
     navigation.navigate('ConnectionSettings');
   }, [navigation]);
 
+  // Create a settings client for syncing destructive and pin/archive state to the server.
+  const settingsClient = useMemo(() => {
+    if (config.baseUrl && config.apiKey) {
+      return new SettingsApiClient(config.baseUrl, config.apiKey);
+    }
+    return undefined;
+  }, [config.baseUrl, config.apiKey]);
+
   useLayoutEffect(() => {
     navigation?.setOptions?.({
       headerTitle: () => (
@@ -717,14 +726,22 @@ export default function SessionListScreen({ navigation }: Props) {
   };
 
   const handleDeleteSession = useCallback((session: SessionListItem) => {
-    const doDelete = () => {
-      connectionManager.removeConnection(session.id);
-      sessionStore.deleteSession(session.id);
+    const doDelete = async () => {
+      try {
+        const serverConversationId = sessionStore.sessions.find((item) => item.id === session.id)?.serverConversationId;
+        if (settingsClient && serverConversationId) {
+          await settingsClient.deleteConversation(serverConversationId);
+        }
+        connectionManager.removeConnection(session.id);
+        await sessionStore.deleteSession(session.id);
+      } catch (error) {
+        Alert.alert('Delete Failed', getErrorMessage(error));
+      }
     };
 
     if (Platform.OS === 'web') {
       if (window.confirm(`Delete "${session.title}"?`)) {
-        doDelete();
+        void doDelete();
       }
     } else {
       Alert.alert(
@@ -732,19 +749,11 @@ export default function SessionListScreen({ navigation }: Props) {
         `Are you sure you want to delete "${session.title}"?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: doDelete },
+          { text: 'Delete', style: 'destructive', onPress: () => { void doDelete(); } },
         ]
       );
     }
-  }, [connectionManager, sessionStore]);
-
-  // Create a settings client for syncing pin/archive state to server
-  const settingsClient = useMemo(() => {
-    if (config.baseUrl && config.apiKey) {
-      return new SettingsApiClient(config.baseUrl, config.apiKey);
-    }
-    return undefined;
-  }, [config.baseUrl, config.apiKey]);
+  }, [connectionManager, sessionStore, settingsClient]);
 
   const handleToggleSessionPinned = useCallback(async (sessionId: string) => {
     await sessionStore.toggleSessionPinned(sessionId, settingsClient);

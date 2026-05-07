@@ -110,6 +110,13 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
     body: unknown,
     notifyConversationHistoryChanged: () => void,
   ) => RemoteServerMaybePromise<MobileApiActionResult>;
+  deleteConversation: (
+    id: string | undefined,
+    notifyConversationHistoryChanged: () => void,
+  ) => RemoteServerMaybePromise<MobileApiActionResult>;
+  deleteAllConversations: (
+    notifyConversationHistoryChanged: () => void,
+  ) => RemoteServerMaybePromise<MobileApiActionResult>;
   triggerEmergencyStop: () => RemoteServerMaybePromise<MobileApiActionResult>;
   getSkills: () => MobileApiActionResult;
   getSkill: (id?: string) => MobileApiActionResult;
@@ -187,7 +194,12 @@ export interface MobileApiRouteActionGroups<Request = unknown, Reply = unknown> 
   audit: Pick<MobileApiRouteActions<Request, Reply>, 'recordOperatorAuditEvent'>;
   conversations: Pick<
     MobileApiRouteActions<Request, Reply>,
-    'getConversation' | 'getConversations' | 'createConversation' | 'updateConversation'
+    | 'getConversation'
+    | 'getConversations'
+    | 'createConversation'
+    | 'updateConversation'
+    | 'deleteConversation'
+    | 'deleteAllConversations'
   >;
   conversationImageAssets: Pick<MobileApiRouteActions<Request, Reply>, 'getConversationImageAsset'>;
   conversationVideoAssets: Pick<MobileApiRouteActions<Request, Reply>, 'getConversationVideoAsset'>;

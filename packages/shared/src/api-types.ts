@@ -879,6 +879,16 @@ export interface UpdateConversationRequest {
   updatedAt?: number;
 }
 
+export interface ConversationDeleteResponse {
+  success: true;
+  id: string;
+}
+
+export interface ConversationsDeleteAllResponse {
+  success: true;
+  deletedCount?: number;
+}
+
 // Push notification registration/unregistration
 export interface PushTokenRegistration {
   token: string;
