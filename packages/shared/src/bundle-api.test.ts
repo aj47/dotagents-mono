@@ -30,10 +30,13 @@ import {
   parsePreviewBundleImportRequestBody,
   previewBundleImportAction,
   previewBundleImportFromTemporaryFile,
+  readBundleMcpServersFromConfig,
   resolveBundleExportLayerDirs,
   resolveBundleComponentSelection,
   resolveBundleImportTargetDir,
   sanitizeBundlePublicMetadata,
+  stripBundleSecretsFromObject,
+  writeCanonicalBundleMcpConfig,
   type DotAgentsBundle,
   type ExportableBundleItems,
 } from "./bundle-api"
@@ -299,6 +302,70 @@ describe("bundle API helpers", () => {
       skills: [{ id: "skill-1", name: "Skill", existingName: "Existing Skill" }],
       repeatTasks: [{ id: "task-1", name: "Task", existingName: "Existing Task" }],
       knowledgeNotes: [{ id: "note-1", name: "Note", existingName: "Existing Note" }],
+    })
+  })
+
+  it("normalizes bundle MCP config shapes for export and import", () => {
+    const config = {
+      legacyServer: { command: "legacy" },
+      mcpFuturePreference: { collapsed: true },
+      mcpGithub: { command: "node" },
+      mcpServers: {
+        legacyServer: { command: "direct" },
+        topLevel: { transport: "stdio" },
+      },
+      mcpConfig: {
+        mcpServers: {
+          topLevel: { command: "nested" },
+          nested: { command: "nested" },
+        },
+        metadata: { enabled: true },
+      },
+      mcpDisabledTools: { nested: ["tool"] },
+    }
+
+    expect(readBundleMcpServersFromConfig(config)).toEqual({
+      legacyServer: { command: "direct" },
+      mcpGithub: { command: "node" },
+      topLevel: { command: "nested" },
+      nested: { command: "nested" },
+    })
+
+    expect(writeCanonicalBundleMcpConfig(config, {
+      finalServer: { command: "final" },
+    })).toEqual({
+      mcpFuturePreference: { collapsed: true },
+      mcpConfig: {
+        metadata: { enabled: true },
+        mcpServers: {
+          finalServer: { command: "final" },
+        },
+      },
+      mcpDisabledTools: { nested: ["tool"] },
+    })
+  })
+
+  it("strips secret-looking bundle MCP fields recursively", () => {
+    expect(stripBundleSecretsFromObject({
+      command: "node",
+      env: {
+        API_KEY: "secret",
+        KEEP_ME: "visible",
+      },
+      headers: {
+        Authorization: "Bearer token",
+      },
+      nested: [{ password: "pass", value: "ok" }],
+    })).toEqual({
+      command: "node",
+      env: {
+        API_KEY: "<CONFIGURE_YOUR_KEY>",
+        KEEP_ME: "visible",
+      },
+      headers: {
+        Authorization: "<CONFIGURE_YOUR_KEY>",
+      },
+      nested: [{ password: "<CONFIGURE_YOUR_KEY>", value: "ok" }],
     })
   })
 

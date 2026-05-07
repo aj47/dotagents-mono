@@ -145,6 +145,35 @@ export type DotAgentsBundle = {
   knowledgeNotes: BundleKnowledgeNote[]
 }
 
+const BUNDLE_SECRET_PATTERNS = [
+  /key/i,
+  /token/i,
+  /secret/i,
+  /password/i,
+  /credential/i,
+  /auth/i,
+  /bearer/i,
+]
+
+const BUNDLE_TOP_LEVEL_MCP_CONFIG_KEYS = [
+  "mcpDisabledTools",
+  "mcpRuntimeDisabledServers",
+  "mcpToolsCollapsedServers",
+  "mcpServersCollapsedServers",
+] as const
+
+const BUNDLE_MCP_SERVER_CONFIG_KEYS = [
+  "transport",
+  "command",
+  "args",
+  "env",
+  "url",
+  "headers",
+  "oauth",
+  "timeout",
+  "disabled",
+] as const
+
 export type BundleManifestInputComponents = Omit<BundleManifest["components"], "repeatTasks" | "knowledgeNotes"> & {
   repeatTasks?: number
   knowledgeNotes?: number
@@ -352,6 +381,117 @@ export function normalizeDotAgentsBundle(bundle: ParsedDotAgentsBundle): DotAgen
 
 export function parseDotAgentsBundle(bundle: unknown): DotAgentsBundle | null {
   return validateDotAgentsBundle(bundle) ? normalizeDotAgentsBundle(bundle) : null
+}
+
+function isBundleSecretKey(key: string): boolean {
+  return BUNDLE_SECRET_PATTERNS.some((pattern) => pattern.test(key))
+}
+
+function stripBundleSecretsFromValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripBundleSecretsFromValue(item))
+  }
+
+  if (isRecordObject(value)) {
+    return stripBundleSecretsFromObject(value)
+  }
+
+  return value
+}
+
+export function stripBundleSecretsFromObject(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    if (isBundleSecretKey(key) && typeof value === "string" && value.length > 0) {
+      result[key] = "<CONFIGURE_YOUR_KEY>"
+    } else {
+      result[key] = stripBundleSecretsFromValue(value)
+    }
+  }
+  return result
+}
+
+function isReservedTopLevelBundleMcpKey(key: string): boolean {
+  if (key === "mcpConfig" || key === "mcpServers") return true
+  return (BUNDLE_TOP_LEVEL_MCP_CONFIG_KEYS as readonly string[]).includes(key)
+}
+
+function isLikelyBundleMcpServerConfig(value: unknown): value is Record<string, unknown> {
+  if (!isRecordObject(value)) return false
+  const keys = Object.keys(value)
+  if (keys.length === 0) return false
+  return keys.some((key) => (BUNDLE_MCP_SERVER_CONFIG_KEYS as readonly string[]).includes(key))
+}
+
+function readLegacyTopLevelBundleMcpServers(mcpJson: Record<string, unknown>): Record<string, unknown> {
+  const legacyServers: Record<string, Record<string, unknown>> = {}
+
+  for (const [key, value] of Object.entries(mcpJson)) {
+    if (!isRecordObject(value)) continue
+    if (isReservedTopLevelBundleMcpKey(key)) continue
+
+    const likelyServerConfig = isLikelyBundleMcpServerConfig(value)
+    if (key.startsWith("mcp") && !likelyServerConfig) continue
+
+    if (Object.keys(value).length > 0) {
+      legacyServers[key] = value
+    }
+  }
+
+  return legacyServers
+}
+
+export function readBundleMcpServersFromConfig(mcpJson: Record<string, unknown>): Record<string, unknown> {
+  const legacyServers = readLegacyTopLevelBundleMcpServers(mcpJson)
+
+  const nestedMcpConfig = mcpJson.mcpConfig
+  let nestedServers: Record<string, unknown> = {}
+  if (isRecordObject(nestedMcpConfig)) {
+    const mcpConfigServers = nestedMcpConfig.mcpServers
+    if (isRecordObject(mcpConfigServers)) {
+      nestedServers = mcpConfigServers
+    }
+  }
+
+  const topLevelServers = mcpJson.mcpServers
+  let directServers: Record<string, unknown> = {}
+  if (isRecordObject(topLevelServers)) {
+    directServers = topLevelServers
+  }
+
+  return {
+    ...legacyServers,
+    ...directServers,
+    ...nestedServers,
+  }
+}
+
+export function writeCanonicalBundleMcpConfig(
+  mcpJson: Record<string, unknown>,
+  mcpServers: Record<string, unknown>,
+): Record<string, unknown> {
+  const nextMcpJson = { ...mcpJson }
+  delete nextMcpJson.mcpServers
+
+  const legacyTopLevelServers = readLegacyTopLevelBundleMcpServers(mcpJson)
+  for (const legacyServerName of Object.keys(legacyTopLevelServers)) {
+    delete nextMcpJson[legacyServerName]
+  }
+
+  const existingMcpConfig =
+    isRecordObject(nextMcpJson.mcpConfig)
+      ? { ...nextMcpJson.mcpConfig }
+      : {}
+
+  delete existingMcpConfig.mcpServers
+
+  return {
+    ...nextMcpJson,
+    mcpConfig: {
+      ...existingMcpConfig,
+      mcpServers,
+    },
+  }
 }
 
 function normalizeBundlePublicMetadataString(value: string | undefined): string | undefined {

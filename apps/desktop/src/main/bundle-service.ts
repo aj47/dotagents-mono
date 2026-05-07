@@ -37,7 +37,10 @@ import {
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
   buildBundleImportPreviewConflicts,
   parseDotAgentsBundle,
+  readBundleMcpServersFromConfig,
   sanitizeBundlePublicMetadata,
+  stripBundleSecretsFromObject,
+  writeCanonicalBundleMcpConfig,
   type BundleAgentProfile,
   type BundleComponentSelection,
   type BundleImportConflictStrategy,
@@ -141,161 +144,11 @@ export interface BundlePreviewResult {
 // Secret stripping
 // ============================================================================
 
-const SECRET_PATTERNS = [
-  /key/i,
-  /token/i,
-  /secret/i,
-  /password/i,
-  /credential/i,
-  /auth/i,
-  /bearer/i,
-]
-
 const BUNDLE_FILE_EXTENSIONS = new Set([".dotagents", ".json"])
 const HUB_BUNDLE_FILE_EXTENSION = ".dotagents"
-const TOP_LEVEL_MCP_CONFIG_KEYS = [
-  "mcpDisabledTools",
-  "mcpRuntimeDisabledServers",
-  "mcpToolsCollapsedServers",
-  "mcpServersCollapsedServers",
-] as const
-const MCP_SERVER_CONFIG_KEYS = [
-  "transport",
-  "command",
-  "args",
-  "env",
-  "url",
-  "headers",
-  "oauth",
-  "timeout",
-  "disabled",
-] as const
-function isReservedTopLevelMcpKey(key: string): boolean {
-  if (key === "mcpConfig" || key === "mcpServers") return true
-  return (TOP_LEVEL_MCP_CONFIG_KEYS as readonly string[]).includes(key)
-}
-
-function isRecordObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0
-}
-
-function isSecretKey(key: string): boolean {
-  return SECRET_PATTERNS.some((pattern) => pattern.test(key))
-}
-
-function stripSecretsFromValue(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => stripSecretsFromValue(item))
-  }
-
-  if (typeof value === "object" && value !== null) {
-    return stripSecretsFromObject(value as Record<string, unknown>)
-  }
-
-  return value
-}
-
-function stripSecretsFromObject(obj: Record<string, unknown>): Record<string, unknown> {
-  const result: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(obj)) {
-    if (isSecretKey(key) && typeof value === "string" && value.length > 0) {
-      result[key] = "<CONFIGURE_YOUR_KEY>"
-    } else {
-      result[key] = stripSecretsFromValue(value)
-    }
-  }
-  return result
-}
-
-function isLikelyMcpServerConfig(value: unknown): value is Record<string, unknown> {
-  if (!isRecordObject(value)) return false
-  const keys = Object.keys(value)
-  if (keys.length === 0) return false
-  return keys.some((key) => (MCP_SERVER_CONFIG_KEYS as readonly string[]).includes(key))
-}
-
-function readLegacyTopLevelMcpServers(mcpJson: Record<string, unknown>): Record<string, unknown> {
-  const legacyServers: Record<string, Record<string, unknown>> = {}
-
-  for (const [key, value] of Object.entries(mcpJson)) {
-    if (!isRecordObject(value)) continue
-    if (isReservedTopLevelMcpKey(key)) continue
-
-    const likelyServerConfig = isLikelyMcpServerConfig(value)
-
-    // Reserve future top-level `mcp*` config keys unless this key clearly
-    // looks like a legacy server entry (e.g. mcpGithub: { command, args }).
-    if (key.startsWith("mcp") && !likelyServerConfig) continue
-
-    // Backward compatibility: keep non-empty object entries even when their shape is unknown.
-    // This avoids missing legacy servers in mixed configs that contain both known and unknown
-    // server schemas during migration.
-    if (Object.keys(value).length > 0) {
-      legacyServers[key] = value
-    }
-  }
-
-  return legacyServers
-}
-
-function readMcpServersFromConfig(mcpJson: Record<string, unknown>): Record<string, unknown> {
-  const legacyServers = readLegacyTopLevelMcpServers(mcpJson)
-
-  const nestedMcpConfig = mcpJson.mcpConfig
-  let nestedServers: Record<string, unknown> = {}
-  if (isRecordObject(nestedMcpConfig)) {
-    const mcpConfigServers = (nestedMcpConfig as Record<string, unknown>).mcpServers
-    if (isRecordObject(mcpConfigServers)) {
-      nestedServers = mcpConfigServers as Record<string, unknown>
-    }
-  }
-
-  const topLevelServers = mcpJson.mcpServers
-  let directServers: Record<string, unknown> = {}
-  if (isRecordObject(topLevelServers)) {
-    directServers = topLevelServers as Record<string, unknown>
-  }
-
-  // Merge all known MCP server shapes to avoid dropping legacy servers in mixed configs.
-  // Precedence: nested mcpConfig.mcpServers > top-level mcpServers > legacy top-level.
-  return {
-    ...legacyServers,
-    ...directServers,
-    ...nestedServers,
-  }
-}
-
-function writeCanonicalMcpConfig(
-  mcpJson: Record<string, unknown>,
-  mcpServers: Record<string, unknown>
-): Record<string, unknown> {
-  const nextMcpJson = { ...mcpJson }
-  delete nextMcpJson.mcpServers
-
-  // Remove legacy top-level server entries so we only persist canonical mcpConfig.mcpServers.
-  const legacyTopLevelServers = readLegacyTopLevelMcpServers(mcpJson)
-  for (const legacyServerName of Object.keys(legacyTopLevelServers)) {
-    delete nextMcpJson[legacyServerName]
-  }
-
-  const existingMcpConfig =
-    isRecordObject(nextMcpJson.mcpConfig)
-      ? { ...(nextMcpJson.mcpConfig as Record<string, unknown>) }
-      : {}
-
-  delete existingMcpConfig.mcpServers
-
-  return {
-    ...nextMcpJson,
-    mcpConfig: {
-      ...existingMcpConfig,
-      mcpServers,
-    },
-  }
 }
 
 // ============================================================================
@@ -375,7 +228,7 @@ function loadMCPServersForBundle(
   const selectedMcpServerNames = toSelectionSet(options?.mcpServerNames)
 
   const servers: BundleMCPServer[] = []
-  const mcpServers = readMcpServersFromConfig(mcpConfig)
+  const mcpServers = readBundleMcpServersFromConfig(mcpConfig)
 
   if (typeof mcpServers === "object" && mcpServers !== null) {
     for (const [name, config] of Object.entries(mcpServers)) {
@@ -384,7 +237,7 @@ function loadMCPServersForBundle(
       const serverConfig = config as Record<string, unknown>
 
       // Strip secrets from the server config
-      const stripped = stripSecretsFromObject(serverConfig)
+      const stripped = stripBundleSecretsFromObject(serverConfig)
 
       servers.push({
         name,
@@ -860,7 +713,7 @@ export function previewBundleWithConflicts(
   const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
     defaultValue: {},
   })
-  const existingMcpServers = Object.keys(readMcpServersFromConfig(mcpConfig))
+  const existingMcpServers = Object.keys(readBundleMcpServersFromConfig(mcpConfig))
   const conflicts = buildBundleImportPreviewConflicts(bundle, {
     agentProfiles: existingProfiles.profiles.map((profile) => ({ id: profile.id, name: profile.name })),
     mcpServers: existingMcpServers.map((name) => ({ id: name })),
@@ -1045,7 +898,7 @@ export async function importBundle(
       const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
         defaultValue: {},
       })
-      const mcpServers = { ...readMcpServersFromConfig(mcpConfig) }
+      const mcpServers = { ...readBundleMcpServersFromConfig(mcpConfig) }
       const existingNames = new Set(Object.keys(mcpServers))
       let modified = false
 
@@ -1091,7 +944,7 @@ export async function importBundle(
       }
 
       if (modified) {
-        const newMcpConfig = writeCanonicalMcpConfig(mcpConfig, mcpServers)
+        const newMcpConfig = writeCanonicalBundleMcpConfig(mcpConfig, mcpServers)
         safeWriteJsonFileSync(layer.mcpJsonPath, newMcpConfig, {
           backupDir: layer.backupsDir,
           maxBackups: 10,
