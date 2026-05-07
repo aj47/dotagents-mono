@@ -72,6 +72,92 @@ export const OPERATOR_CONVERSATIONS_PANEL_METADATA: OperatorConversationsPanelMe
   panelTitle: "Recent conversations",
 }
 
+export type OperatorAgentSessionReference = {
+  id: string
+  title?: string
+}
+
+export type OperatorActiveAgentSessionSummary = OperatorAgentSessionReference & {
+  status: string
+  currentIteration?: number
+  maxIterations?: number
+  isSnoozed?: boolean
+  profileName?: string
+}
+
+export type OperatorRecentAgentSessionSummary = OperatorAgentSessionReference & {
+  status: string
+  profileName?: string
+}
+
+export type OperatorAgentSessionsPanelMetadata = {
+  panelTitle: string
+  formatSummary: (activeSessions: number, recentSessions: number) => string
+  clearInactiveConfirmTitle: string
+  clearInactiveConfirmMessage: string
+  clearInactiveConfirmButtonLabel: string
+  clearInactiveAccessibilityLabel: string
+  clearInactivePendingLabel: string
+  clearInactiveButtonLabel: string
+  hideActiveAccessibilityLabel: string
+  hideActivePendingLabel: string
+  hideActiveButtonLabel: string
+  formatShowAccessibilityLabel: (sessionName: string) => string
+  showPendingLabel: string
+  showButtonLabel: string
+  formatSnoozeAccessibilityLabel: (sessionName: string, isSnoozed: boolean) => string
+  formatSnoozePendingLabel: (isSnoozed: boolean) => string
+  formatSnoozeButtonLabel: (isSnoozed: boolean) => string
+  stopConfirmTitle: string
+  formatStopConfirmMessage: (sessionName: string) => string
+  stopConfirmButtonLabel: string
+  formatStopAccessibilityLabel: (sessionName: string) => string
+  stopPendingLabel: string
+  stopButtonLabel: string
+  recentSessionsLabel: string
+  dismissConfirmTitle: string
+  formatDismissConfirmMessage: (sessionName: string) => string
+  dismissConfirmButtonLabel: string
+  formatDismissAccessibilityLabel: (sessionName: string) => string
+  dismissPendingLabel: string
+  dismissButtonLabel: string
+  noActiveSessionsText: string
+}
+
+export const OPERATOR_AGENT_SESSIONS_PANEL_METADATA: OperatorAgentSessionsPanelMetadata = {
+  panelTitle: "Agent sessions",
+  formatSummary: (activeSessions, recentSessions) => `Active: ${activeSessions} • Recent: ${recentSessions}`,
+  clearInactiveConfirmTitle: "Clear Inactive Sessions",
+  clearInactiveConfirmMessage: "Clear recent inactive agent sessions on the desktop app? Sessions with queued follow-ups are kept.",
+  clearInactiveConfirmButtonLabel: "Clear Sessions",
+  clearInactiveAccessibilityLabel: "Clear inactive agent sessions on desktop",
+  clearInactivePendingLabel: "Clearing...",
+  clearInactiveButtonLabel: "Clear inactive",
+  hideActiveAccessibilityLabel: "Hide active agent sessions and desktop panel",
+  hideActivePendingLabel: "Hiding...",
+  hideActiveButtonLabel: "Hide active",
+  formatShowAccessibilityLabel: (sessionName) => `Show ${sessionName} agent session on desktop`,
+  showPendingLabel: "Showing...",
+  showButtonLabel: "Show",
+  formatSnoozeAccessibilityLabel: (sessionName, isSnoozed) => `${isSnoozed ? "Restore" : "Hide"} ${sessionName} agent session`,
+  formatSnoozePendingLabel: (isSnoozed) => isSnoozed ? "Restoring..." : "Hiding...",
+  formatSnoozeButtonLabel: (isSnoozed) => isSnoozed ? "Restore" : "Hide",
+  stopConfirmTitle: "Stop Agent Session",
+  formatStopConfirmMessage: (sessionName) => `Stop ${sessionName} on the desktop app? The conversation queue for this session will be paused.`,
+  stopConfirmButtonLabel: "Stop Session",
+  formatStopAccessibilityLabel: (sessionName) => `Stop ${sessionName} agent session`,
+  stopPendingLabel: "Stopping...",
+  stopButtonLabel: "Stop",
+  recentSessionsLabel: "Recent sessions",
+  dismissConfirmTitle: "Dismiss Agent Session",
+  formatDismissConfirmMessage: (sessionName) => `Dismiss ${sessionName} from desktop agent progress?`,
+  dismissConfirmButtonLabel: "Dismiss",
+  formatDismissAccessibilityLabel: (sessionName) => `Dismiss ${sessionName} agent session progress on desktop`,
+  dismissPendingLabel: "Dismissing...",
+  dismissButtonLabel: "Dismiss",
+  noActiveSessionsText: "No active agent sessions",
+}
+
 export type OperatorRuntimeStatusPanelMetadata = {
   panelTitle: string
   configuredLabel: string
@@ -237,6 +323,23 @@ export const OPERATOR_MCP_SERVERS_PANEL_METADATA: OperatorMcpServersPanelMetadat
   toolsEmptyText: "No tools returned for this server.",
   serverDisabledText: "Server disabled",
   formatToolAccessibilityLabel: (toolName) => `Enable ${toolName} MCP tool`,
+}
+
+export function getOperatorAgentSessionDisplayName(session: OperatorAgentSessionReference): string {
+  return session.title ?? session.id
+}
+
+export function formatOperatorActiveAgentSessionSummary(session: OperatorActiveAgentSessionSummary): string {
+  const sessionName = getOperatorAgentSessionDisplayName(session)
+  const profileName = session.profileName ? ` · ${session.profileName}` : ""
+  const snoozedLabel = session.isSnoozed === true ? " · background" : ""
+  return `${sessionName} — ${session.status}${profileName}${snoozedLabel} (${session.currentIteration ?? 0}/${session.maxIterations ?? "?"})`
+}
+
+export function formatOperatorRecentAgentSessionSummary(session: OperatorRecentAgentSessionSummary): string {
+  const sessionName = getOperatorAgentSessionDisplayName(session)
+  const profileName = session.profileName ? ` · ${session.profileName}` : ""
+  return `${sessionName} — ${session.status}${profileName}`
 }
 
 export function formatOperatorTimestamp(timestamp?: number): string {

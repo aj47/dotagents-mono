@@ -62,6 +62,7 @@ import {
   THEME_PREFERENCE_OPTIONS,
 } from '@dotagents/shared/theme-preference';
 import {
+  OPERATOR_AGENT_SESSIONS_PANEL_METADATA,
   OPERATOR_CONVERSATIONS_PANEL_METADATA,
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_ERRORS_PANEL_METADATA,
@@ -69,12 +70,15 @@ import {
   OPERATOR_MCP_SERVERS_PANEL_METADATA,
   OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
+  formatOperatorActiveAgentSessionSummary as formatActiveAgentSessionSummary,
   formatOperatorAuditDetails as formatAuditDetails,
   formatOperatorAuditSource as formatAuditSource,
   formatOperatorDurationSeconds as formatDuration,
   formatOperatorLogSummary as formatLogSummary,
+  formatOperatorRecentAgentSessionSummary as formatRecentAgentSessionSummary,
   formatOperatorTimestamp as formatTimestamp,
   formatOperatorYesNo as formatYesNo,
+  getOperatorAgentSessionDisplayName as getAgentSessionDisplayName,
   getOperatorTunnelStateLabel as getTunnelStateLabel,
 } from '@dotagents/shared/operator-display-utils';
 import {
@@ -848,9 +852,9 @@ export default function OperationsScreen({ navigation }: any) {
 
           {status?.sessions && (
             <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Agent sessions</Text>
+              <Text style={styles.panelTitle}>{OPERATOR_AGENT_SESSIONS_PANEL_METADATA.panelTitle}</Text>
               <Text style={styles.detailText}>
-                Active: {status.sessions.activeSessions} • Recent: {status.sessions.recentSessions}
+                {OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSummary(status.sessions.activeSessions, status.sessions.recentSessions)}
               </Text>
               <View style={styles.mcpActionRow}>
                 <TouchableOpacity
@@ -860,9 +864,9 @@ export default function OperationsScreen({ navigation }: any) {
                     (controlsDisabled || status.sessions.recentSessions === 0) && styles.actionButtonDisabled,
                   ]}
                   onPress={() => confirmAction(
-                    'Clear Inactive Sessions',
-                    'Clear recent inactive agent sessions on the desktop app? Sessions with queued follow-ups are kept.',
-                    'Clear Sessions',
+                    OPERATOR_AGENT_SESSIONS_PANEL_METADATA.clearInactiveConfirmTitle,
+                    OPERATOR_AGENT_SESSIONS_PANEL_METADATA.clearInactiveConfirmMessage,
+                    OPERATOR_AGENT_SESSIONS_PANEL_METADATA.clearInactiveConfirmButtonLabel,
                     false,
                     () => runAction(
                       'agent-sessions-clear-inactive',
@@ -871,10 +875,12 @@ export default function OperationsScreen({ navigation }: any) {
                   )}
                   disabled={controlsDisabled || status.sessions.recentSessions === 0}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Clear inactive agent sessions on desktop')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.clearInactiveAccessibilityLabel)}
                 >
                   <Text style={styles.secondaryActionText}>
-                    {pendingAction === 'agent-sessions-clear-inactive' ? 'Clearing...' : 'Clear inactive'}
+                    {pendingAction === 'agent-sessions-clear-inactive'
+                      ? OPERATOR_AGENT_SESSIONS_PANEL_METADATA.clearInactivePendingLabel
+                      : OPERATOR_AGENT_SESSIONS_PANEL_METADATA.clearInactiveButtonLabel}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -892,10 +898,12 @@ export default function OperationsScreen({ navigation }: any) {
                   )}
                   disabled={controlsDisabled || status.sessions.activeSessions === 0}
                   accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Hide active agent sessions and desktop panel')}
+                  accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.hideActiveAccessibilityLabel)}
                 >
                   <Text style={styles.secondaryActionText}>
-                    {pendingAction === 'agent-sessions-snooze-hide-panel' ? 'Hiding...' : 'Hide active'}
+                    {pendingAction === 'agent-sessions-snooze-hide-panel'
+                      ? OPERATOR_AGENT_SESSIONS_PANEL_METADATA.hideActivePendingLabel
+                      : OPERATOR_AGENT_SESSIONS_PANEL_METADATA.hideActiveButtonLabel}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -904,11 +912,12 @@ export default function OperationsScreen({ navigation }: any) {
                 const showAction = `agent-session-show:${s.id}`;
                 const snoozeAction = `agent-session-snooze:${s.id}`;
                 const isSnoozed = s.isSnoozed === true;
+                const sessionName = getAgentSessionDisplayName(s);
                 return (
                   <View key={s.id} style={styles.agentSessionRow}>
                     <View style={styles.agentSessionCopy}>
                       <Text style={styles.detailText}>
-                        {s.title ?? s.id} — {s.status}{s.profileName ? ` · ${s.profileName}` : ''}{isSnoozed ? ' · background' : ''} ({s.currentIteration ?? 0}/{s.maxIterations ?? '?'})
+                        {formatActiveAgentSessionSummary(s)}
                       </Text>
                       <Text style={styles.mutedText}>Since {formatTimestamp(s.startTime)}</Text>
                     </View>
@@ -922,10 +931,12 @@ export default function OperationsScreen({ navigation }: any) {
                         onPress={() => void runAction(showAction, () => settingsClient.showOperatorAgentSession(s.id))}
                         disabled={controlsDisabled}
                         accessibilityRole="button"
-                        accessibilityLabel={createButtonAccessibilityLabel(`Show ${s.title ?? s.id} agent session on desktop`)}
+                        accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatShowAccessibilityLabel(sessionName))}
                       >
                         <Text style={styles.secondaryActionText}>
-                          {pendingAction === showAction ? 'Showing...' : 'Show'}
+                          {pendingAction === showAction
+                            ? OPERATOR_AGENT_SESSIONS_PANEL_METADATA.showPendingLabel
+                            : OPERATOR_AGENT_SESSIONS_PANEL_METADATA.showButtonLabel}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -942,10 +953,12 @@ export default function OperationsScreen({ navigation }: any) {
                         )}
                         disabled={controlsDisabled}
                         accessibilityRole="button"
-                        accessibilityLabel={createButtonAccessibilityLabel(`${isSnoozed ? 'Restore' : 'Hide'} ${s.title ?? s.id} agent session`)}
+                        accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSnoozeAccessibilityLabel(sessionName, isSnoozed))}
                       >
                         <Text style={styles.secondaryActionText}>
-                          {pendingAction === snoozeAction ? (isSnoozed ? 'Restoring...' : 'Hiding...') : (isSnoozed ? 'Restore' : 'Hide')}
+                          {pendingAction === snoozeAction
+                            ? OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSnoozePendingLabel(isSnoozed)
+                            : OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSnoozeButtonLabel(isSnoozed)}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -955,18 +968,20 @@ export default function OperationsScreen({ navigation }: any) {
                           controlsDisabled && styles.actionButtonDisabled,
                         ]}
                         onPress={() => confirmAction(
-                          'Stop Agent Session',
-                          `Stop ${s.title ?? s.id} on the desktop app? The conversation queue for this session will be paused.`,
-                          'Stop Session',
+                          OPERATOR_AGENT_SESSIONS_PANEL_METADATA.stopConfirmTitle,
+                          OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatStopConfirmMessage(sessionName),
+                          OPERATOR_AGENT_SESSIONS_PANEL_METADATA.stopConfirmButtonLabel,
                           false,
                           () => runAction(stopAction, () => settingsClient.stopOperatorAgentSession(s.id)),
                         )}
                         disabled={controlsDisabled}
                         accessibilityRole="button"
-                        accessibilityLabel={createButtonAccessibilityLabel(`Stop ${s.title ?? s.id} agent session`)}
+                        accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatStopAccessibilityLabel(sessionName))}
                       >
                         <Text style={styles.secondaryActionText}>
-                          {pendingAction === stopAction ? 'Stopping...' : 'Stop'}
+                          {pendingAction === stopAction
+                            ? OPERATOR_AGENT_SESSIONS_PANEL_METADATA.stopPendingLabel
+                            : OPERATOR_AGENT_SESSIONS_PANEL_METADATA.stopButtonLabel}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -975,14 +990,15 @@ export default function OperationsScreen({ navigation }: any) {
               })}
               {(status.sessions.recentSessionDetails ?? []).length > 0 && (
                 <>
-                  <Text style={styles.mutedText}>Recent sessions</Text>
+                  <Text style={styles.mutedText}>{OPERATOR_AGENT_SESSIONS_PANEL_METADATA.recentSessionsLabel}</Text>
                   {(status.sessions.recentSessionDetails ?? []).map((s) => {
                     const clearAction = `agent-session-clear:${s.id}`;
+                    const sessionName = getAgentSessionDisplayName(s);
                     return (
                       <View key={s.id} style={styles.agentSessionRow}>
                         <View style={styles.agentSessionCopy}>
                           <Text style={styles.detailText}>
-                            {s.title ?? s.id} — {s.status}{s.profileName ? ` · ${s.profileName}` : ''}
+                            {formatRecentAgentSessionSummary(s)}
                           </Text>
                           <Text style={styles.mutedText}>
                             {s.endTime ? `Ended ${formatTimestamp(s.endTime)}` : `Started ${formatTimestamp(s.startTime)}`}
@@ -996,18 +1012,20 @@ export default function OperationsScreen({ navigation }: any) {
                               controlsDisabled && styles.actionButtonDisabled,
                             ]}
                             onPress={() => confirmAction(
-                              'Dismiss Agent Session',
-                              `Dismiss ${s.title ?? s.id} from desktop agent progress?`,
-                              'Dismiss',
+                              OPERATOR_AGENT_SESSIONS_PANEL_METADATA.dismissConfirmTitle,
+                              OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatDismissConfirmMessage(sessionName),
+                              OPERATOR_AGENT_SESSIONS_PANEL_METADATA.dismissConfirmButtonLabel,
                               false,
                               () => runAction(clearAction, () => settingsClient.clearOperatorAgentSession(s.id)),
                             )}
                             disabled={controlsDisabled}
                             accessibilityRole="button"
-                            accessibilityLabel={createButtonAccessibilityLabel(`Dismiss ${s.title ?? s.id} agent session progress on desktop`)}
+                            accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatDismissAccessibilityLabel(sessionName))}
                           >
                             <Text style={styles.secondaryActionText}>
-                              {pendingAction === clearAction ? 'Dismissing...' : 'Dismiss'}
+                              {pendingAction === clearAction
+                                ? OPERATOR_AGENT_SESSIONS_PANEL_METADATA.dismissPendingLabel
+                                : OPERATOR_AGENT_SESSIONS_PANEL_METADATA.dismissButtonLabel}
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -1017,7 +1035,7 @@ export default function OperationsScreen({ navigation }: any) {
                 </>
               )}
               {status.sessions.activeSessions === 0 && (
-                <Text style={styles.mutedText}>No active agent sessions</Text>
+                <Text style={styles.mutedText}>{OPERATOR_AGENT_SESSIONS_PANEL_METADATA.noActiveSessionsText}</Text>
               )}
             </View>
           )}

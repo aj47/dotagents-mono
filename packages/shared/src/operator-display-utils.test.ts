@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  OPERATOR_AGENT_SESSIONS_PANEL_METADATA,
   OPERATOR_CONVERSATIONS_PANEL_METADATA,
   OPERATOR_DIAGNOSTIC_REPORT_ACTION_METADATA,
   OPERATOR_EMPTY_VALUE_LABEL,
@@ -9,12 +10,15 @@ import {
   OPERATOR_MCP_SERVERS_PANEL_METADATA,
   OPERATOR_RUNTIME_STATUS_PANEL_METADATA,
   OPERATOR_TUNNEL_STATUS_PANEL_METADATA,
+  formatOperatorActiveAgentSessionSummary,
   formatOperatorAuditDetails,
   formatOperatorAuditSource,
   formatOperatorDurationSeconds,
   formatOperatorLogSummary,
+  formatOperatorRecentAgentSessionSummary,
   formatOperatorTimestamp,
   formatOperatorYesNo,
+  getOperatorAgentSessionDisplayName,
   getOperatorTunnelStateLabel,
 } from "./operator-display-utils"
 
@@ -63,6 +67,68 @@ describe("operator display utils", () => {
     expect(OPERATOR_CONVERSATIONS_PANEL_METADATA).toEqual({
       panelTitle: "Recent conversations",
     })
+  })
+
+  it("exports operator agent sessions panel metadata", () => {
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA).toEqual({
+      panelTitle: "Agent sessions",
+      formatSummary: expect.any(Function),
+      clearInactiveConfirmTitle: "Clear Inactive Sessions",
+      clearInactiveConfirmMessage: "Clear recent inactive agent sessions on the desktop app? Sessions with queued follow-ups are kept.",
+      clearInactiveConfirmButtonLabel: "Clear Sessions",
+      clearInactiveAccessibilityLabel: "Clear inactive agent sessions on desktop",
+      clearInactivePendingLabel: "Clearing...",
+      clearInactiveButtonLabel: "Clear inactive",
+      hideActiveAccessibilityLabel: "Hide active agent sessions and desktop panel",
+      hideActivePendingLabel: "Hiding...",
+      hideActiveButtonLabel: "Hide active",
+      formatShowAccessibilityLabel: expect.any(Function),
+      showPendingLabel: "Showing...",
+      showButtonLabel: "Show",
+      formatSnoozeAccessibilityLabel: expect.any(Function),
+      formatSnoozePendingLabel: expect.any(Function),
+      formatSnoozeButtonLabel: expect.any(Function),
+      stopConfirmTitle: "Stop Agent Session",
+      formatStopConfirmMessage: expect.any(Function),
+      stopConfirmButtonLabel: "Stop Session",
+      formatStopAccessibilityLabel: expect.any(Function),
+      stopPendingLabel: "Stopping...",
+      stopButtonLabel: "Stop",
+      recentSessionsLabel: "Recent sessions",
+      dismissConfirmTitle: "Dismiss Agent Session",
+      formatDismissConfirmMessage: expect.any(Function),
+      dismissConfirmButtonLabel: "Dismiss",
+      formatDismissAccessibilityLabel: expect.any(Function),
+      dismissPendingLabel: "Dismissing...",
+      dismissButtonLabel: "Dismiss",
+      noActiveSessionsText: "No active agent sessions",
+    })
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSummary(2, 5)).toBe("Active: 2 • Recent: 5")
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatShowAccessibilityLabel("Build release")).toBe(
+      "Show Build release agent session on desktop",
+    )
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSnoozeAccessibilityLabel("Build release", false)).toBe(
+      "Hide Build release agent session",
+    )
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSnoozeAccessibilityLabel("Build release", true)).toBe(
+      "Restore Build release agent session",
+    )
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSnoozePendingLabel(false)).toBe("Hiding...")
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSnoozePendingLabel(true)).toBe("Restoring...")
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSnoozeButtonLabel(false)).toBe("Hide")
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatSnoozeButtonLabel(true)).toBe("Restore")
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatStopConfirmMessage("Build release")).toBe(
+      "Stop Build release on the desktop app? The conversation queue for this session will be paused.",
+    )
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatStopAccessibilityLabel("Build release")).toBe(
+      "Stop Build release agent session",
+    )
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatDismissConfirmMessage("Build release")).toBe(
+      "Dismiss Build release from desktop agent progress?",
+    )
+    expect(OPERATOR_AGENT_SESSIONS_PANEL_METADATA.formatDismissAccessibilityLabel("Build release")).toBe(
+      "Dismiss Build release agent session progress on desktop",
+    )
   })
 
   it("exports operator runtime and tunnel status panel metadata", () => {
@@ -173,6 +239,30 @@ describe("operator display utils", () => {
       "Clear filesystem MCP server logs",
     )
     expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatToolAccessibilityLabel("search")).toBe("Enable search MCP tool")
+  })
+
+  it("formats operator agent session summaries", () => {
+    expect(getOperatorAgentSessionDisplayName({ id: "session-1" })).toBe("session-1")
+    expect(getOperatorAgentSessionDisplayName({ id: "session-1", title: "Build release" })).toBe("Build release")
+    expect(formatOperatorActiveAgentSessionSummary({
+      id: "session-1",
+      title: "Build release",
+      status: "running",
+      currentIteration: 2,
+      maxIterations: 4,
+      isSnoozed: true,
+      profileName: "Release agent",
+    })).toBe("Build release — running · Release agent · background (2/4)")
+    expect(formatOperatorActiveAgentSessionSummary({
+      id: "session-2",
+      status: "pending",
+    })).toBe("session-2 — pending (0/?)")
+    expect(formatOperatorRecentAgentSessionSummary({
+      id: "session-3",
+      title: "Fix bug",
+      status: "complete",
+      profileName: "Bug agent",
+    })).toBe("Fix bug — complete · Bug agent")
   })
 
   it("formats timestamps with the empty fallback", () => {
