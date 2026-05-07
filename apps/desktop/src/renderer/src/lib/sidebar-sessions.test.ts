@@ -25,6 +25,7 @@ import {
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
+  reorderSidebarSessionGroups,
   reorderSidebarSessionKeys,
   summarizeSidebarSessionLifecycleStates,
 } from "./sidebar-sessions"
@@ -140,6 +141,26 @@ describe("sidebar session groups", () => {
     expect(moved.map((group) => group.sessionKeys)).toEqual([
       [],
       ["session:two", "session:one", "session:three"],
+    ])
+  })
+
+  it("reorders groups before or after a target group", () => {
+    const groups = [
+      { id: "group-a", name: "A", expanded: true, sessionKeys: [] },
+      { id: "group-b", name: "B", expanded: true, sessionKeys: [] },
+      { id: "group-c", name: "C", expanded: true, sessionKeys: [] },
+    ]
+
+    expect(reorderSidebarSessionGroups(groups, "group-c", "group-a", "before").map((group) => group.id)).toEqual([
+      "group-c",
+      "group-a",
+      "group-b",
+    ])
+
+    expect(reorderSidebarSessionGroups(groups, "group-a", "group-c", "after").map((group) => group.id)).toEqual([
+      "group-b",
+      "group-c",
+      "group-a",
     ])
   })
 

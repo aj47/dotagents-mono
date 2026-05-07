@@ -10,6 +10,7 @@ import {
   X,
   Clock,
   CornerDownRight,
+  GripVertical,
   Mic,
   Plus,
 } from "lucide-react"
@@ -42,6 +43,7 @@ import {
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
+  reorderSidebarSessionGroups,
   reorderSidebarSessionKeys,
   summarizeSidebarSessionLifecycleStates,
 } from "@renderer/lib/sidebar-sessions"
@@ -159,6 +161,7 @@ const TASKS_SECTION_EXPANDED_STORAGE_KEY = "sidebar-tasks-section-expanded"
 const SESSION_GROUPS_STORAGE_KEY = "sidebar-session-groups-v1"
 const UNGROUPED_SESSION_ORDER_STORAGE_KEY = "sidebar-ungrouped-session-order-v1"
 const SIDEBAR_SESSION_DRAG_MIME = "application/x-dotagents-sidebar-session-key"
+const SIDEBAR_GROUP_DRAG_MIME = "application/x-dotagents-sidebar-group-id"
 
 function readBooleanFromStorage(key: string, fallback: boolean): boolean {
   try {
@@ -344,10 +347,15 @@ export function ActiveAgentsSidebar({
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [editingGroupName, setEditingGroupName] = useState("")
   const [draggingSessionKey, setDraggingSessionKey] = useState<string | null>(null)
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null)
   const [sessionDropTarget, setSessionDropTarget] = useState<{
     containerGroupId: string | null
     targetSessionKey: string
+    position: SidebarSessionDropPosition
+  } | null>(null)
+  const [groupDropTarget, setGroupDropTarget] = useState<{
+    targetGroupId: string
     position: SidebarSessionDropPosition
   } | null>(null)
   const [isUngroupDropTargetActive, setIsUngroupDropTargetActive] = useState(false)
@@ -1057,6 +1065,11 @@ export function ActiveAgentsSidebar({
     return dataTransferKey || draggingSessionKey
   }, [draggingSessionKey])
 
+  const getDraggedGroupId = useCallback((event: React.DragEvent): string | null => {
+    const dataTransferGroupId = event.dataTransfer.getData(SIDEBAR_GROUP_DRAG_MIME).trim()
+    return dataTransferGroupId || draggingGroupId
+  }, [draggingGroupId])
+
   const getSessionDropPosition = useCallback((event: React.DragEvent): SidebarSessionDropPosition => {
     const rect = event.currentTarget.getBoundingClientRect()
     return event.clientY < rect.top + rect.height / 2 ? "before" : "after"
@@ -1070,12 +1083,29 @@ export function ActiveAgentsSidebar({
     event.dataTransfer.effectAllowed = "move"
     event.dataTransfer.setData(SIDEBAR_SESSION_DRAG_MIME, sessionKey)
     setDraggingSessionKey(sessionKey)
+    setDraggingGroupId(null)
+    setGroupDropTarget(null)
+  }, [])
+
+  const handleGroupDragStart = useCallback((
+    event: React.DragEvent,
+    groupId: string,
+  ) => {
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData(SIDEBAR_GROUP_DRAG_MIME, groupId)
+    setDraggingGroupId(groupId)
+    setDraggingSessionKey(null)
+    setDragOverGroupId(null)
+    setSessionDropTarget(null)
+    setIsUngroupDropTargetActive(false)
   }, [])
 
   const clearSessionDragState = useCallback(() => {
     setDraggingSessionKey(null)
+    setDraggingGroupId(null)
     setDragOverGroupId(null)
     setSessionDropTarget(null)
+    setGroupDropTarget(null)
     setIsUngroupDropTargetActive(false)
   }, [])
 
@@ -1095,6 +1125,7 @@ export function ActiveAgentsSidebar({
       targetSessionKey,
       position: getSessionDropPosition(event),
     })
+    setGroupDropTarget(null)
   }, [draggingSessionKey, getSessionDropPosition])
 
   const handleSessionRowDrop = useCallback((
@@ -1143,6 +1174,7 @@ export function ActiveAgentsSidebar({
     event.dataTransfer.dropEffect = "move"
     setDragOverGroupId(groupId)
     setSessionDropTarget(null)
+    setGroupDropTarget(null)
     setIsUngroupDropTargetActive(false)
   }, [draggingSessionKey])
 
@@ -1163,12 +1195,43 @@ export function ActiveAgentsSidebar({
     clearSessionDragState()
   }, [clearSessionDragState, getDraggedSessionKey])
 
+  const handleGroupHeaderDragOver = useCallback((event: React.DragEvent, targetGroupId: string) => {
+    if (!draggingGroupId || draggingGroupId === targetGroupId) return
+    event.preventDefault()
+    event.stopPropagation()
+    event.dataTransfer.dropEffect = "move"
+    setDragOverGroupId(null)
+    setSessionDropTarget(null)
+    setIsUngroupDropTargetActive(false)
+    setGroupDropTarget({
+      targetGroupId,
+      position: getSessionDropPosition(event),
+    })
+  }, [draggingGroupId, getSessionDropPosition])
+
+  const handleGroupHeaderDrop = useCallback((event: React.DragEvent, targetGroupId: string) => {
+    const groupId = getDraggedGroupId(event)
+    if (!groupId) return
+    event.preventDefault()
+    event.stopPropagation()
+    if (groupId !== targetGroupId) {
+      setSessionGroups((prev) => reorderSidebarSessionGroups(
+        prev,
+        groupId,
+        targetGroupId,
+        getSessionDropPosition(event),
+      ))
+    }
+    clearSessionDragState()
+  }, [clearSessionDragState, getDraggedGroupId, getSessionDropPosition])
+
   const handleUngroupDragOver = useCallback((event: React.DragEvent) => {
     if (!draggingSessionKey) return
     event.preventDefault()
     event.dataTransfer.dropEffect = "move"
     setDragOverGroupId(null)
     setSessionDropTarget(null)
+    setGroupDropTarget(null)
     setIsUngroupDropTargetActive(true)
   }, [draggingSessionKey])
 
@@ -1833,6 +1896,13 @@ export function ActiveAgentsSidebar({
             ) => {
               const { group, entries } = section
               const isDragOver = dragOverGroupId === group.id
+              const isGroupDropTarget = groupDropTarget?.targetGroupId === group.id
+              const groupDropIndicatorClassName = isGroupDropTarget
+                ? cn(
+                  "before:pointer-events-none before:absolute before:left-0 before:right-0 before:z-30 before:h-0.5 before:rounded-full before:bg-blue-500 before:shadow-[0_0_0_1px_rgba(59,130,246,0.35)]",
+                  groupDropTarget.position === "before" ? "before:top-0" : "before:bottom-0",
+                )
+                : null
               const groupStateSummaries = summarizeSidebarSessionLifecycleStates(
                 entries.map(getEntryLifecycleState),
               )
@@ -1856,14 +1926,18 @@ export function ActiveAgentsSidebar({
                   }}
                   onDrop={(event) => handleGroupDrop(event, group.id)}
                   className={cn(
-                    "mt-1 space-y-0.5 rounded-md transition-colors",
+                    "relative mt-1 space-y-0.5 rounded-md transition-colors",
                     isDragOver && "bg-blue-500/5 ring-1 ring-inset ring-blue-500/20",
+                    groupDropIndicatorClassName,
                   )}
                 >
                   <div
+                    onDragOver={(event) => handleGroupHeaderDragOver(event, group.id)}
+                    onDrop={(event) => handleGroupHeaderDrop(event, group.id)}
                     className={cn(
                       "-ml-1 flex items-center gap-1 rounded px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80 transition-colors",
                       isDragOver && "bg-blue-500/10 text-blue-600 ring-1 ring-inset ring-blue-500/20 dark:text-blue-300",
+                      isGroupDropTarget && "text-blue-600 dark:text-blue-300",
                     )}
                   >
                     <button
@@ -1878,6 +1952,17 @@ export function ActiveAgentsSidebar({
                       ) : (
                         <ChevronRight className="h-3 w-3" />
                       )}
+                    </button>
+                    <button
+                      type="button"
+                      draggable={editingGroupId !== group.id}
+                      onDragStart={(event) => handleGroupDragStart(event, group.id)}
+                      onDragEnd={clearSessionDragState}
+                      className="flex h-4 w-3 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground/45 transition-colors hover:bg-accent/50 hover:text-foreground active:cursor-grabbing"
+                      title="Drag to reorder group"
+                      aria-label={`Drag ${group.name} group`}
+                    >
+                      <GripVertical className="h-3 w-3" />
                     </button>
                     {editingGroupId === group.id ? (
                       <input

@@ -54,6 +54,15 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("renderSessionRow(entry, tasksOffset + idx, { forceSingleLine: true })")
   })
 
+  it("supports dragging session groups to reorder them", () => {
+    expect(sidebarSource).toContain("SIDEBAR_GROUP_DRAG_MIME")
+    expect(sidebarSource).toContain("const [draggingGroupId, setDraggingGroupId]")
+    expect(sidebarSource).toContain("handleGroupHeaderDragOver")
+    expect(sidebarSource).toContain("handleGroupHeaderDrop")
+    expect(sidebarSource).toContain("reorderSidebarSessionGroups(")
+    expect(sidebarSource).toContain('title="Drag to reorder group"')
+  })
+
   it("distinguishes task rows from regular sessions with section headings", () => {
     expect(sidebarSource).toContain('<span className="select-none">Tasks</span>')
     expect(sidebarSource).toContain('<span className="select-none">Sessions</span>')

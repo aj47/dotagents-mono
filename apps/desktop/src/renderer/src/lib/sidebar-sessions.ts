@@ -224,6 +224,35 @@ export function moveSidebarSessionToGroupPosition(
   })
 }
 
+export function reorderSidebarSessionGroups(
+  groups: SidebarSessionGroup[],
+  groupId: string,
+  targetGroupId: string,
+  position: SidebarSessionDropPosition,
+): SidebarSessionGroup[] {
+  const normalizedGroupId = groupId.trim()
+  const normalizedTargetGroupId = targetGroupId.trim()
+  if (!normalizedGroupId || !normalizedTargetGroupId || normalizedGroupId === normalizedTargetGroupId) {
+    return groups
+  }
+
+  const movingGroup = groups.find((group) => group.id === normalizedGroupId)
+  if (!movingGroup || !groups.some((group) => group.id === normalizedTargetGroupId)) {
+    return groups
+  }
+
+  const remainingGroups = groups.filter((group) => group.id !== normalizedGroupId)
+  const targetIndex = remainingGroups.findIndex((group) => group.id === normalizedTargetGroupId)
+  if (targetIndex === -1) return groups
+
+  const insertionIndex = targetIndex + (position === "after" ? 1 : 0)
+  return [
+    ...remainingGroups.slice(0, insertionIndex),
+    movingGroup,
+    ...remainingGroups.slice(insertionIndex),
+  ]
+}
+
 export function groupSidebarSessionEntries<T extends { session: SessionLike }>(
   entries: T[],
   groups: SidebarSessionGroup[],
