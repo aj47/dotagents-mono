@@ -32,14 +32,13 @@ import {
   getSortedServerConversationDataFileNames,
   getStoredServerConversationMessages,
   isServerConversationCompactionSummaryLikelyFailed,
-  isValidServerConversationRecordShape,
   materializeAppendServerConversationMessageRequest,
   materializeServerConversationCreateRequest,
   materializeServerConversationRecordContent,
   normalizeServerConversationHistoryIndex,
+  parseServerConversationStorageData,
   renameServerConversationTitle,
   removeServerConversationHistoryIndexItem,
-  repairServerConversationJsonData,
   resolveServerConversationGeneratedTitle,
   SERVER_CONVERSATION_INDEX_FILE_NAME,
   serializeServerConversationHistoryIndex,
@@ -368,28 +367,28 @@ export class ConversationService {
     conversationPath?: string,
     persistRepairs: boolean = true,
   ): Promise<Conversation | null> {
-    try {
-      const conversation = JSON.parse(conversationData) as unknown
-      if (!this.isValidConversationShape(conversation)) {
+    const parsed = parseServerConversationStorageData<Conversation>(conversationData)
+    if (!parsed.ok) {
+      if (parsed.reason === "invalid_shape") {
         logApp(`[ConversationService] Invalid conversation shape for ${conversationId}`)
         return null
       }
 
-      const normalizedConversation = conversation as Conversation
-      if (persistRepairs && conversationPath) {
-        await this.persistStorageMetadataIfNeeded(conversationId, conversationPath, normalizedConversation)
+      if (parsed.reason === "too_large") {
+        logApp(`[ConversationService] Skipping repair: file too large (${parsed.bytes} bytes)`)
+      } else {
+        logApp(
+          `[ConversationService] Failed to parse conversation ${conversationId}; unable to repair.`,
+          parsed.parseError,
+        )
       }
-      return normalizedConversation
-    } catch (error) {
-      const repairedConversation = this.tryRepairConversationFromCorruptedData(conversationData)
-      if (!repairedConversation) {
-        logApp(`[ConversationService] Failed to parse conversation ${conversationId}; unable to repair.`, error)
-        return null
-      }
+      return null
+    }
 
-      if (persistRepairs && conversationPath) {
+    if (persistRepairs && conversationPath) {
+      if (parsed.repaired) {
         try {
-          await this.writeConversationFileAtomic(conversationPath, serializeServerConversationRecord(repairedConversation))
+          await this.writeConversationFileAtomic(conversationPath, serializeServerConversationRecord(parsed.conversation))
           logApp(`[ConversationService] Repaired corrupted conversation file: ${conversationId}`)
         } catch (repairSaveError) {
           logApp(
@@ -397,12 +396,12 @@ export class ConversationService {
             repairSaveError,
           )
         }
-
-        await this.persistStorageMetadataIfNeeded(conversationId, conversationPath, repairedConversation)
       }
 
-      return repairedConversation
+      await this.persistStorageMetadataIfNeeded(conversationId, conversationPath, parsed.conversation)
     }
+
+    return parsed.conversation
   }
 
   private async rebuildConversationIndexFromDisk(reason: string): Promise<ConversationHistoryItem[]> {
@@ -578,31 +577,6 @@ export class ConversationService {
       }
       throw error
     }
-  }
-
-  /**
-   * Validate minimal shape before accepting parsed JSON as a conversation.
-   */
-  private isValidConversationShape(value: unknown): value is Conversation {
-    return isValidServerConversationRecordShape(value)
-  }
-
-  /**
-   * Attempt to recover a valid conversation JSON by trimming trailing garbage and reparsing.
-   * This is only used when the file failed normal JSON.parse().
-   */
-  private tryRepairConversationFromCorruptedData(raw: string): Conversation | null {
-    const result = repairServerConversationJsonData<Conversation>(raw, {
-      validateConversationShape: (value): value is Conversation => this.isValidConversationShape(value),
-    })
-    if (result.ok) {
-      return result.conversation
-    }
-    if (result.reason === "too_large") {
-      logApp(`[ConversationService] Skipping repair: file too large (${result.bytes} bytes)`)
-      return null
-    }
-    return null
   }
 
   private async loadConversationFromDisk(conversationId: string): Promise<Conversation | null> {

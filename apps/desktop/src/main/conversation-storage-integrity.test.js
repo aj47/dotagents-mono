@@ -47,7 +47,8 @@ test('conversation indexing and append flow follow represented full-history coun
   assert.match(sharedConversationSyncSource, /const storedMessages = getStoredServerConversationMessages\(conversation\)/)
   assert.match(sharedConversationSyncSource, /if \(Array\.isArray\(conversation\.rawMessages\) && conversation\.rawMessages\.length > 0\) \{/)
   assert.match(sharedConversationSyncSource, /conversation\.rawMessages\.push\(message\)/)
-  assert.match(serviceSource, /await this\.persistStorageMetadataIfNeeded\(conversationId, conversationPath, normalizedConversation\)/)
+  assert.match(serviceSource, /parseServerConversationStorageData<Conversation>\(conversationData\)/)
+  assert.match(serviceSource, /await this\.persistStorageMetadataIfNeeded\(conversationId, conversationPath, parsed\.conversation\)/)
 })
 
 test('conversation service rebuilds the history index when conversation files outnumber indexed entries', () => {

@@ -50,6 +50,7 @@ import {
   materializeServerConversationRecordContent,
   normalizeServerConversationHistoryIndex,
   normalizeServerConversationSummarizedMessageCount,
+  parseServerConversationStorageData,
   parseCreateConversationRequestBody,
   parseBranchConversationRequestBody,
   parseUpdateConversationRequestBody,
@@ -715,6 +716,38 @@ describe('server conversation API helpers', () => {
     })).toMatchObject({
       ok: false,
       reason: 'too_large',
+      attempts: 0,
+    });
+
+    expect(parseServerConversationStorageData(JSON.stringify(validConversation))).toEqual({
+      ok: true,
+      conversation: validConversation,
+      repaired: false,
+    });
+
+    expect(parseServerConversationStorageData(`${JSON.stringify(validConversation)}}} trailing`)).toMatchObject({
+      ok: true,
+      conversation: validConversation,
+      repaired: true,
+      attempts: 3,
+    });
+
+    expect(parseServerConversationStorageData(JSON.stringify({ ...validConversation, messages: undefined }))).toEqual({
+      ok: false,
+      reason: 'invalid_shape',
+      repaired: false,
+    });
+
+    expect(parseServerConversationStorageData('[]')).toEqual({
+      ok: false,
+      reason: 'invalid_shape',
+      repaired: false,
+    });
+
+    expect(parseServerConversationStorageData('not json')).toMatchObject({
+      ok: false,
+      reason: 'missing_object_start',
+      repaired: false,
       attempts: 0,
     });
   });

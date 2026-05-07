@@ -181,6 +181,26 @@ export interface RepairServerConversationJsonOptions<TConversation extends Serve
   validateConversationShape?: (value: unknown) => value is TConversation;
 }
 
+export type ParseServerConversationStorageDataFailureReason =
+  | 'invalid_shape'
+  | RepairServerConversationJsonFailureReason;
+
+export type ParseServerConversationStorageDataResult<TConversation extends ServerConversationRecord<any>> =
+  | { ok: true; conversation: TConversation; repaired: false }
+  | { ok: true; conversation: TConversation; repaired: true; attempts: number; bytes: number }
+  | { ok: false; reason: 'invalid_shape'; repaired: false }
+  | {
+    ok: false;
+    reason: RepairServerConversationJsonFailureReason;
+    repaired: false;
+    attempts: number;
+    bytes: number;
+    parseError: unknown;
+  };
+
+export type ParseServerConversationStorageDataOptions<TConversation extends ServerConversationRecord<any>> =
+  RepairServerConversationJsonOptions<TConversation>;
+
 export type ConversationRequestParseResult<T> =
   | { ok: true; request: T }
   | { ok: false; statusCode: 400; error: string };
@@ -392,6 +412,48 @@ export function repairServerConversationJsonData<
   }
 
   return { ok: false, reason: 'no_valid_candidate', attempts, bytes };
+}
+
+export function parseServerConversationStorageData<
+  TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>,
+>(
+  raw: string,
+  options: ParseServerConversationStorageDataOptions<TConversation> = {},
+): ParseServerConversationStorageDataResult<TConversation> {
+  const validateConversationShape =
+    options.validateConversationShape ?? ((value: unknown): value is TConversation => isValidServerConversationRecordShape(value));
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!validateConversationShape(parsed)) {
+      return { ok: false, reason: 'invalid_shape', repaired: false };
+    }
+
+    return { ok: true, conversation: parsed, repaired: false };
+  } catch (parseError) {
+    const repaired = repairServerConversationJsonData<TConversation>(raw, {
+      ...options,
+      validateConversationShape,
+    });
+    if (repaired.ok) {
+      return {
+        ok: true,
+        conversation: repaired.conversation,
+        repaired: true,
+        attempts: repaired.attempts,
+        bytes: repaired.bytes,
+      };
+    }
+
+    return {
+      ok: false,
+      reason: repaired.reason,
+      repaired: false,
+      attempts: repaired.attempts,
+      bytes: repaired.bytes,
+      parseError,
+    };
+  }
 }
 
 export function isServerConversationDataFileName(fileName: string): boolean {
