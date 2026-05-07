@@ -158,7 +158,13 @@ import {
   parseMcpMaxIterationsDraft,
   type McpOAuthStatusResponse,
 } from '@dotagents/shared/mcp-api';
-import { isReservedMcpServerName, parseMcpKeyValueDraft, type MCPServerConfig, type MCPTransportType } from '@dotagents/shared/mcp-utils';
+import {
+  buildMcpServerConfigFromDraft,
+  EMPTY_MCP_SERVER_CONFIG_DRAFT as EMPTY_MCP_SERVER_DRAFT,
+  isReservedMcpServerName,
+  type McpServerConfigDraft as McpServerDraft,
+  type MCPTransportType,
+} from '@dotagents/shared/mcp-utils';
 import {
   REMOTE_SETTINGS_SECRET_MASK as SECRET_MASK,
   buildRemoteSettingsInputDrafts,
@@ -214,40 +220,6 @@ type ModelPresetDraft = {
   transcriptProcessingModel: string;
   isBuiltIn: boolean;
   hasApiKey: boolean;
-};
-
-type McpServerDraft = {
-  name: string;
-  transport: MCPTransportType;
-  command: string;
-  args: string;
-  url: string;
-  env: string;
-  headers: string;
-  timeout: string;
-  disabled: boolean;
-  oauthEnabled: boolean;
-  oauthScope: string;
-  oauthClientId: string;
-  oauthUseDiscovery: boolean;
-  oauthUseDynamicRegistration: boolean;
-};
-
-const EMPTY_MCP_SERVER_DRAFT: McpServerDraft = {
-  name: '',
-  transport: 'stdio',
-  command: '',
-  args: '',
-  url: '',
-  env: '',
-  headers: '',
-  timeout: '',
-  disabled: false,
-  oauthEnabled: false,
-  oauthScope: '',
-  oauthClientId: '',
-  oauthUseDiscovery: true,
-  oauthUseDynamicRegistration: true,
 };
 
 type LoopRuntimeAction = {
@@ -1685,100 +1657,18 @@ export default function SettingsScreen({ navigation }: any) {
     setMcpServerDraft(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  const buildMcpServerConfigFromDraft = (): { name: string; config: MCPServerConfig } | null => {
-    const name = mcpServerDraft.name.trim();
-    if (!name) {
-      setRemoteError('MCP server name is required');
-      return null;
-    }
-    if (isReservedMcpServerName(name, RESERVED_RUNTIME_TOOL_SERVER_NAMES)) {
-      setRemoteError(`MCP server name "${name}" is reserved`);
-      return null;
-    }
-    if (mcpServerEditorMode === 'create' && mcpServers.some(server => server.name === name)) {
-      setRemoteError(`MCP server "${name}" already exists`);
-      return null;
-    }
-
-    const config: MCPServerConfig = {
-      transport: mcpServerDraft.transport,
-    };
-
-    if (mcpServerDraft.transport === 'stdio') {
-      const command = mcpServerDraft.command.trim();
-      if (!command) {
-        setRemoteError('Command is required for stdio MCP servers');
-        return null;
-      }
-      config.command = command;
-      const args = mcpServerDraft.args
-        .split('\n')
-        .map((arg) => arg.trim())
-        .filter(Boolean);
-      if (args.length > 0) config.args = args;
-
-      const envResult = parseMcpKeyValueDraft(mcpServerDraft.env, 'Environment');
-      if (envResult.error) {
-        setRemoteError(envResult.error);
-        return null;
-      }
-      if (envResult.value && Object.keys(envResult.value).length > 0) {
-        config.env = envResult.value;
-      }
-    } else {
-      const url = mcpServerDraft.url.trim();
-      if (!url) {
-        setRemoteError('URL is required for remote MCP servers');
-        return null;
-      }
-      try {
-        new URL(url);
-      } catch {
-        setRemoteError('MCP server URL is invalid');
-        return null;
-      }
-      config.url = url;
-
-      const headersResult = parseMcpKeyValueDraft(mcpServerDraft.headers, 'Header');
-      if (headersResult.error) {
-        setRemoteError(headersResult.error);
-        return null;
-      }
-      if (headersResult.value && Object.keys(headersResult.value).length > 0) {
-        config.headers = headersResult.value;
-      }
-
-      if (mcpServerDraft.transport === 'streamableHttp' && mcpServerDraft.oauthEnabled) {
-        const scope = mcpServerDraft.oauthScope.trim();
-        const clientId = mcpServerDraft.oauthClientId.trim();
-        config.oauth = {
-          ...(scope ? { scope } : {}),
-          ...(clientId ? { clientId } : {}),
-          useDiscovery: mcpServerDraft.oauthUseDiscovery,
-          useDynamicRegistration: mcpServerDraft.oauthUseDynamicRegistration,
-        };
-      }
-    }
-
-    const timeout = mcpServerDraft.timeout.trim();
-    if (timeout) {
-      const parsedTimeout = Number(timeout);
-      if (!Number.isFinite(parsedTimeout) || parsedTimeout <= 0) {
-        setRemoteError('Timeout must be a positive number');
-        return null;
-      }
-      config.timeout = Math.floor(parsedTimeout);
-    }
-    if (mcpServerDraft.disabled) config.disabled = true;
-
-    return { name, config };
-  };
-
   const handleMcpServerEditorSave = async () => {
     if (!settingsClient) return;
 
-    const draftConfig = buildMcpServerConfigFromDraft();
-    if (!draftConfig) return;
+    const draftConfig = buildMcpServerConfigFromDraft(mcpServerDraft, {
+      mode: mcpServerEditorMode,
+      existingServerNames: mcpServers.map(server => server.name),
+      reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
+    });
+    if (!draftConfig.ok) {
+      setRemoteError(draftConfig.error);
+      return;
+    }
 
     setIsSavingMcpServer(true);
     setRemoteError(null);

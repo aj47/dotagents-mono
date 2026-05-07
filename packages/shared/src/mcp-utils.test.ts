@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildMcpServerConfigFromDraft,
+  EMPTY_MCP_SERVER_CONFIG_DRAFT,
   inferTransportType,
   formatMcpKeyValueDraft,
   isReservedMcpServerName,
@@ -166,6 +168,102 @@ describe('MCP key/value draft helpers', () => {
     })
     expect(parseMcpKeyValueDraft('=secret', 'Header')).toEqual({
       value: {},
+      error: 'Header entries must use KEY=value',
+    })
+  })
+})
+
+describe('MCP server config draft helpers', () => {
+  it('builds stdio server configs from shared drafts', () => {
+    expect(buildMcpServerConfigFromDraft({
+      ...EMPTY_MCP_SERVER_CONFIG_DRAFT,
+      name: 'github',
+      command: 'npx',
+      args: '-y\n@modelcontextprotocol/server-github',
+      env: 'GITHUB_TOKEN=secret',
+      timeout: '12.8',
+      disabled: true,
+    })).toEqual({
+      ok: true,
+      name: 'github',
+      config: {
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server-github'],
+        env: { GITHUB_TOKEN: 'secret' },
+        timeout: 12,
+        disabled: true,
+      },
+    })
+  })
+
+  it('builds remote OAuth server configs from shared drafts', () => {
+    expect(buildMcpServerConfigFromDraft({
+      ...EMPTY_MCP_SERVER_CONFIG_DRAFT,
+      name: 'linear',
+      transport: 'streamableHttp',
+      url: 'https://mcp.example.com/mcp',
+      headers: 'Authorization=Bearer token',
+      oauthEnabled: true,
+      oauthScope: 'read write',
+      oauthClientId: 'client-1',
+      oauthUseDiscovery: false,
+      oauthUseDynamicRegistration: true,
+    })).toEqual({
+      ok: true,
+      name: 'linear',
+      config: {
+        transport: 'streamableHttp',
+        url: 'https://mcp.example.com/mcp',
+        headers: { Authorization: 'Bearer token' },
+        oauth: {
+          scope: 'read write',
+          clientId: 'client-1',
+          useDiscovery: false,
+          useDynamicRegistration: true,
+        },
+      },
+    })
+  })
+
+  it('validates shared MCP server config drafts before saving', () => {
+    expect(buildMcpServerConfigFromDraft(EMPTY_MCP_SERVER_CONFIG_DRAFT)).toEqual({
+      ok: false,
+      error: 'MCP server name is required',
+    })
+    expect(buildMcpServerConfigFromDraft({
+      ...EMPTY_MCP_SERVER_CONFIG_DRAFT,
+      name: 'DotAgents-Runtime-Tools',
+      command: 'runtime',
+    }, { reservedServerNames: ['dotagents-runtime-tools'] })).toEqual({
+      ok: false,
+      error: 'MCP server name "DotAgents-Runtime-Tools" is reserved',
+    })
+    expect(buildMcpServerConfigFromDraft({
+      ...EMPTY_MCP_SERVER_CONFIG_DRAFT,
+      name: 'github',
+      command: 'npx',
+    }, { existingServerNames: ['github'] })).toEqual({
+      ok: false,
+      error: 'MCP server "github" already exists',
+    })
+    expect(buildMcpServerConfigFromDraft({
+      ...EMPTY_MCP_SERVER_CONFIG_DRAFT,
+      name: 'remote',
+      transport: 'websocket',
+      url: 'not a url',
+    })).toEqual({
+      ok: false,
+      error: 'MCP server URL is invalid',
+    })
+    expect(buildMcpServerConfigFromDraft({
+      ...EMPTY_MCP_SERVER_CONFIG_DRAFT,
+      name: 'remote',
+      transport: 'websocket',
+      url: 'wss://example.com/mcp',
+      headers: 'Authorization',
+    })).toEqual({
+      ok: false,
       error: 'Header entries must use KEY=value',
     })
   })

@@ -69,19 +69,21 @@ test('lets mobile create desktop MCP server configs through the shared client', 
   assert.match(settingsSource, /showMcpServerEditor/);
   assert.match(settingsSource, /Create MCP Server/);
   assert.match(settingsSource, /settingsClient\.upsertMCPServerConfig\(draftConfig\.name, draftConfig\.config\)/);
-  assert.match(settingsSource, /parseMcpKeyValueDraft\(mcpServerDraft\.env, 'Environment'\)/);
-  assert.match(settingsSource, /parseMcpKeyValueDraft\(mcpServerDraft\.headers, 'Header'\)/);
+  assert.match(settingsSource, /buildMcpServerConfigFromDraft\(mcpServerDraft, \{/);
+  assert.match(settingsSource, /existingServerNames: mcpServers\.map\(server => server\.name\)/);
+  assert.match(settingsSource, /reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES/);
   assert.match(settingsSource, /setMcpServerDraft\(EMPTY_MCP_SERVER_DRAFT\)/);
 });
 
 test('lets mobile configure OAuth for streamable HTTP MCP servers', () => {
-  assert.match(settingsSource, /oauthEnabled: false/);
-  assert.match(settingsSource, /mcpServerDraft\.transport === 'streamableHttp' && mcpServerDraft\.oauthEnabled/);
-  assert.match(settingsSource, /config\.oauth = \{/);
-  assert.match(settingsSource, /\.\.\.\(scope \? \{ scope \} : \{\}\)/);
-  assert.match(settingsSource, /\.\.\.\(clientId \? \{ clientId \} : \{\}\)/);
-  assert.match(settingsSource, /useDiscovery: mcpServerDraft\.oauthUseDiscovery/);
-  assert.match(settingsSource, /useDynamicRegistration: mcpServerDraft\.oauthUseDynamicRegistration/);
+  assert.match(settingsSource, /EMPTY_MCP_SERVER_CONFIG_DRAFT as EMPTY_MCP_SERVER_DRAFT/);
+  assert.match(settingsSource, /type McpServerConfigDraft as McpServerDraft/);
+  assert.match(settingsSource, /mcpServerDraft\.transport === 'streamableHttp'/);
+  assert.match(settingsSource, /handleMcpServerDraftChange\('oauthEnabled', v\)/);
+  assert.match(settingsSource, /handleMcpServerDraftChange\('oauthScope', v\)/);
+  assert.match(settingsSource, /handleMcpServerDraftChange\('oauthClientId', v\)/);
+  assert.match(settingsSource, /handleMcpServerDraftChange\('oauthUseDiscovery', v\)/);
+  assert.match(settingsSource, /handleMcpServerDraftChange\('oauthUseDynamicRegistration', v\)/);
   assert.match(settingsSource, />OAuth Scope</);
   assert.match(settingsSource, />OAuth Client ID</);
   assert.match(settingsSource, />Metadata Discovery</);
@@ -93,7 +95,7 @@ test('lets mobile replace existing MCP server configs without reading secrets', 
   assert.match(settingsSource, /mcpServerEditorMode === 'replace'/);
   assert.match(settingsSource, /Replace MCP Server/);
   assert.match(settingsSource, /createButtonAccessibilityLabel\(`Replace MCP server \$\{server\.name\} config`\)/);
-  assert.match(settingsSource, /mcpServerEditorMode === 'create' && mcpServers\.some/);
+  assert.match(settingsSource, /mode: mcpServerEditorMode/);
 });
 
 test('lets mobile import pasted MCP server configs through the shared client', () => {

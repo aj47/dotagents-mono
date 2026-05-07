@@ -59,6 +59,40 @@ export interface MCPServerConfig {
   disabled?: boolean
 }
 
+export type McpServerConfigDraft = {
+  name: string
+  transport: MCPTransportType
+  command: string
+  args: string
+  url: string
+  env: string
+  headers: string
+  timeout: string
+  disabled: boolean
+  oauthEnabled: boolean
+  oauthScope: string
+  oauthClientId: string
+  oauthUseDiscovery: boolean
+  oauthUseDynamicRegistration: boolean
+}
+
+export const EMPTY_MCP_SERVER_CONFIG_DRAFT: McpServerConfigDraft = {
+  name: "",
+  transport: "stdio",
+  command: "",
+  args: "",
+  url: "",
+  env: "",
+  headers: "",
+  timeout: "",
+  disabled: false,
+  oauthEnabled: false,
+  oauthScope: "",
+  oauthClientId: "",
+  oauthUseDiscovery: true,
+  oauthUseDynamicRegistration: true,
+}
+
 export type MCPServerConfigLike = MCPServerConfig
 
 export interface MCPConfig {
@@ -145,6 +179,16 @@ export type McpKeyValueDraftParseResult = {
   error?: string
 }
 
+export type BuildMcpServerConfigFromDraftOptions = {
+  mode?: "create" | "replace"
+  existingServerNames?: readonly string[]
+  reservedServerNames?: readonly string[]
+}
+
+export type BuildMcpServerConfigFromDraftResult =
+  | { ok: true; name: string; config: MCPServerConfig }
+  | { ok: false; error: string }
+
 export function formatMcpKeyValueDraft(value?: Record<string, string>): string {
   if (!value) return ""
   return Object.entries(value)
@@ -168,6 +212,81 @@ export function parseMcpKeyValueDraft(text: string, label: string): McpKeyValueD
     value[key] = trimmed.slice(separatorIndex + 1).trim()
   }
   return { value }
+}
+
+export function buildMcpServerConfigFromDraft(
+  draft: McpServerConfigDraft,
+  options: BuildMcpServerConfigFromDraftOptions = {},
+): BuildMcpServerConfigFromDraftResult {
+  const name = draft.name.trim()
+  if (!name) return { ok: false, error: "MCP server name is required" }
+
+  if (isReservedMcpServerName(name, options.reservedServerNames ?? [])) {
+    return { ok: false, error: `MCP server name "${name}" is reserved` }
+  }
+
+  const mode = options.mode ?? "create"
+  const existingServerNames = options.existingServerNames ?? []
+  if (mode === "create" && existingServerNames.includes(name)) {
+    return { ok: false, error: `MCP server "${name}" already exists` }
+  }
+
+  const config: MCPServerConfig = {
+    transport: draft.transport,
+  }
+
+  if (draft.transport === "stdio") {
+    const command = draft.command.trim()
+    if (!command) return { ok: false, error: "Command is required for stdio MCP servers" }
+    config.command = command
+
+    const args = draft.args
+      .split("\n")
+      .map((arg) => arg.trim())
+      .filter(Boolean)
+    if (args.length > 0) config.args = args
+
+    const envResult = parseMcpKeyValueDraft(draft.env, "Environment")
+    if (envResult.error) return { ok: false, error: envResult.error }
+    if (Object.keys(envResult.value).length > 0) config.env = envResult.value
+  } else {
+    const url = draft.url.trim()
+    if (!url) return { ok: false, error: "URL is required for remote MCP servers" }
+    try {
+      new URL(url)
+    } catch {
+      return { ok: false, error: "MCP server URL is invalid" }
+    }
+    config.url = url
+
+    const headersResult = parseMcpKeyValueDraft(draft.headers, "Header")
+    if (headersResult.error) return { ok: false, error: headersResult.error }
+    if (Object.keys(headersResult.value).length > 0) config.headers = headersResult.value
+
+    if (draft.transport === "streamableHttp" && draft.oauthEnabled) {
+      const scope = draft.oauthScope.trim()
+      const clientId = draft.oauthClientId.trim()
+      config.oauth = {
+        ...(scope ? { scope } : {}),
+        ...(clientId ? { clientId } : {}),
+        useDiscovery: draft.oauthUseDiscovery,
+        useDynamicRegistration: draft.oauthUseDynamicRegistration,
+      }
+    }
+  }
+
+  const timeout = draft.timeout.trim()
+  if (timeout) {
+    const parsedTimeout = Number(timeout)
+    if (!Number.isFinite(parsedTimeout) || parsedTimeout <= 0) {
+      return { ok: false, error: "Timeout must be a positive number" }
+    }
+    config.timeout = Math.floor(parsedTimeout)
+  }
+
+  if (draft.disabled) config.disabled = true
+
+  return { ok: true, name, config }
 }
 
 export function upsertMcpServerConfig<
