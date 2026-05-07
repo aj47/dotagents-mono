@@ -52,11 +52,14 @@ test('lets mobile configure desktop provider credentials without echoing secrets
   assert.match(settingsSource, /openaiApiKey/);
   assert.match(settingsSource, /groqApiKey/);
   assert.match(settingsSource, /geminiApiKey/);
-  assert.match(providerSetupSection, /handleRemoteSecretDraftChange\(provider\.apiKey, v\)/);
-  assert.match(providerSetupSection, /commitRemoteSecretDraft\(provider\.apiKey\)/);
+  assert.match(settingsSource, /chatgptWebAccessToken/);
+  assert.match(settingsSource, /chatgptWebSessionToken/);
+  assert.match(settingsSource, /chatgptWebBaseUrl/);
+  assert.match(providerSetupSection, /handleRemoteSecretDraftChange\(secret\.key, v\)/);
+  assert.match(providerSetupSection, /commitRemoteSecretDraft\(secret\.key\)/);
   assert.match(providerSetupSection, /handleRemoteSettingUpdate\(provider\.baseUrl, v\)/);
-  assert.match(providerSetupSection, /placeholder=\{hasConfiguredKey \? 'Configured' : provider\.apiKeyPlaceholder\}/);
-  assert.doesNotMatch(providerSetupSection, /value=\{remoteSettings\[provider\.apiKey\]/);
+  assert.match(providerSetupSection, /placeholder=\{hasConfiguredSecret \? 'Configured' : secret\.placeholder\}/);
+  assert.doesNotMatch(providerSetupSection, /value=\{remoteSettings\[(provider\.apiKey|secret\.key)\]/);
 });
 
 test('keeps profile/model actions text-first and explicitly labeled', () => {

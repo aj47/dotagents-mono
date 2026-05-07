@@ -169,8 +169,9 @@ describe('SettingsApiClient', () => {
         remoteServerApiKey: '   ',
         openaiApiKey: '••••••••',
         groqApiKey: ' groq-secret ',
-        chatgptWebAccessToken: 'chatgpt-access',
-        chatgptWebBaseUrl: 'https://chatgpt.example',
+        chatgptWebAccessToken: ' chatgpt-access ',
+        chatgptWebSessionToken: '••••••••',
+        chatgptWebBaseUrl: ' https://chatgpt.example ',
         openaiReasoningEffort: 'xhigh',
         codexTextVerbosity: 'high',
         themePreference: 'dark',
@@ -258,6 +259,7 @@ describe('SettingsApiClient', () => {
       mcpDisabledTools: ['github:create_issue'],
     });
     expect(updates).not.toHaveProperty('openaiApiKey');
+    expect(updates).not.toHaveProperty('chatgptWebSessionToken');
     expect(updates).not.toHaveProperty('remoteServerApiKey');
     expect(updates).not.toHaveProperty('discordBotToken');
 
@@ -352,6 +354,13 @@ describe('SettingsApiClient', () => {
         mcpToolsGroqModel: 'llama-3.3',
         openaiApiKey: 'sk-openai',
         groqBaseUrl: 'https://groq.example/v1',
+        chatgptWebAccessToken: 'chatgpt-access',
+        chatgptWebSessionToken: 'chatgpt-session',
+        chatgptWebAccountId: 'account-1',
+        chatgptWebBaseUrl: 'https://chatgpt.example',
+        chatgptWebAuthEmail: 'aj@example.com',
+        chatgptWebPlanType: 'plus',
+        chatgptWebConnectedAt: 12345,
         openaiReasoningEffort: 'high',
         codexTextVerbosity: 'low',
         themePreference: 'light',
@@ -413,6 +422,13 @@ describe('SettingsApiClient', () => {
       currentModelPresetId: 'custom-1',
       openaiApiKey: 'MASKED',
       groqBaseUrl: 'https://groq.example/v1',
+      chatgptWebAccessToken: 'MASKED',
+      chatgptWebSessionToken: 'MASKED',
+      chatgptWebAccountId: 'account-1',
+      chatgptWebBaseUrl: 'https://chatgpt.example',
+      chatgptWebAuthEmail: 'aj@example.com',
+      chatgptWebPlanType: 'plus',
+      chatgptWebConnectedAt: 12345,
       openaiReasoningEffort: 'high',
       codexTextVerbosity: 'low',
       themePreference: 'light',

@@ -640,6 +640,8 @@ describe("operator action API helpers", () => {
   it("identifies sensitive operator settings keys", () => {
     expect(SENSITIVE_OPERATOR_SETTINGS_KEYS).toContain("remoteServerApiKey")
     expect(SENSITIVE_OPERATOR_SETTINGS_KEYS).toContain("discordBotToken")
+    expect(SENSITIVE_OPERATOR_SETTINGS_KEYS).toContain("chatgptWebAccessToken")
+    expect(SENSITIVE_OPERATOR_SETTINGS_KEYS).toContain("chatgptWebSessionToken")
     expect(isSensitiveOperatorSettingsKey("langfuseSecretKey")).toBe(true)
     expect(isSensitiveOperatorSettingsKey("theme")).toBe(false)
     expect(getSensitiveOperatorSettingsKeys({

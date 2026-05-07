@@ -454,6 +454,13 @@ export function buildSettingsResponse(
     groqBaseUrl: cfg.groqBaseUrl ?? '',
     geminiApiKey: cfg.geminiApiKey ? options.providerSecretMask : '',
     geminiBaseUrl: cfg.geminiBaseUrl ?? '',
+    chatgptWebAccessToken: cfg.chatgptWebAccessToken ? options.providerSecretMask : '',
+    chatgptWebSessionToken: cfg.chatgptWebSessionToken ? options.providerSecretMask : '',
+    chatgptWebAccountId: cfg.chatgptWebAccountId ?? '',
+    chatgptWebBaseUrl: cfg.chatgptWebBaseUrl ?? '',
+    chatgptWebAuthEmail: cfg.chatgptWebAuthEmail ?? '',
+    chatgptWebPlanType: cfg.chatgptWebPlanType ?? '',
+    chatgptWebConnectedAt: cfg.chatgptWebConnectedAt,
     openaiReasoningEffort: cfg.openaiReasoningEffort,
     codexTextVerbosity: cfg.codexTextVerbosity,
     themePreference: cfg.themePreference ?? DEFAULT_THEME_PREFERENCE,
@@ -943,10 +950,14 @@ export function buildSettingsUpdatePatch(
     updates.agentChatgptWebModel = agentChatgptWebModel;
     updates.mcpToolsChatgptWebModel = agentChatgptWebModel;
   }
-  if (typeof requestBody.chatgptWebAccessToken === 'string') updates.chatgptWebAccessToken = requestBody.chatgptWebAccessToken;
-  if (typeof requestBody.chatgptWebSessionToken === 'string') updates.chatgptWebSessionToken = requestBody.chatgptWebSessionToken;
+  if (typeof requestBody.chatgptWebAccessToken === 'string' && requestBody.chatgptWebAccessToken !== providerSecretMask) {
+    updates.chatgptWebAccessToken = requestBody.chatgptWebAccessToken.trim();
+  }
+  if (typeof requestBody.chatgptWebSessionToken === 'string' && requestBody.chatgptWebSessionToken !== providerSecretMask) {
+    updates.chatgptWebSessionToken = requestBody.chatgptWebSessionToken.trim();
+  }
   if (typeof requestBody.chatgptWebAccountId === 'string') updates.chatgptWebAccountId = requestBody.chatgptWebAccountId;
-  if (typeof requestBody.chatgptWebBaseUrl === 'string') updates.chatgptWebBaseUrl = requestBody.chatgptWebBaseUrl;
+  if (typeof requestBody.chatgptWebBaseUrl === 'string') updates.chatgptWebBaseUrl = requestBody.chatgptWebBaseUrl.trim();
   if (isOpenAiReasoningEffortUpdateValue(requestBody.openaiReasoningEffort)) {
     updates.openaiReasoningEffort = requestBody.openaiReasoningEffort;
   }

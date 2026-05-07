@@ -165,8 +165,13 @@ import {
   normalizeTextToSpeechVoiceUpdateValue as normalizeTtsVoiceUpdateValue,
 } from '@dotagents/shared/text-to-speech-settings';
 
-type ProviderSecretSettingKey = 'openaiApiKey' | 'groqApiKey' | 'geminiApiKey';
-type ProviderBaseUrlSettingKey = 'openaiBaseUrl' | 'groqBaseUrl' | 'geminiBaseUrl';
+type ProviderSecretSettingKey =
+  | 'openaiApiKey'
+  | 'groqApiKey'
+  | 'geminiApiKey'
+  | 'chatgptWebAccessToken'
+  | 'chatgptWebSessionToken';
+type ProviderBaseUrlSettingKey = 'openaiBaseUrl' | 'groqBaseUrl' | 'geminiBaseUrl' | 'chatgptWebBaseUrl';
 type DiscordListSettingKey =
   | 'discordAllowUserIds'
   | 'discordAllowGuildIds'
@@ -257,34 +262,44 @@ const KNOWLEDGE_SORT_OPTIONS: Array<{ label: string; value: KnowledgeNoteSort }>
 const PROVIDER_CREDENTIAL_SECTIONS: Array<{
   id: string;
   label: string;
-  apiKey: ProviderSecretSettingKey;
+  secrets: Array<{
+    key: ProviderSecretSettingKey;
+    label: string;
+    placeholder: string;
+  }>;
   baseUrl: ProviderBaseUrlSettingKey;
-  apiKeyPlaceholder: string;
   baseUrlPlaceholder: string;
 }> = [
   {
     id: 'openai',
     label: 'OpenAI Compatible',
-    apiKey: 'openaiApiKey',
+    secrets: [{ key: 'openaiApiKey', label: 'API Key', placeholder: 'sk-...' }],
     baseUrl: 'openaiBaseUrl',
-    apiKeyPlaceholder: 'sk-...',
     baseUrlPlaceholder: 'https://api.openai.com/v1',
   },
   {
     id: 'groq',
     label: 'Groq',
-    apiKey: 'groqApiKey',
+    secrets: [{ key: 'groqApiKey', label: 'API Key', placeholder: 'gsk_...' }],
     baseUrl: 'groqBaseUrl',
-    apiKeyPlaceholder: 'gsk_...',
     baseUrlPlaceholder: 'https://api.groq.com/openai/v1',
   },
   {
     id: 'gemini',
     label: 'Gemini',
-    apiKey: 'geminiApiKey',
+    secrets: [{ key: 'geminiApiKey', label: 'API Key', placeholder: 'AIza...' }],
     baseUrl: 'geminiBaseUrl',
-    apiKeyPlaceholder: 'AIza...',
     baseUrlPlaceholder: 'https://generativelanguage.googleapis.com',
+  },
+  {
+    id: 'chatgpt-web',
+    label: 'OpenAI Codex',
+    secrets: [
+      { key: 'chatgptWebAccessToken', label: 'Access Token', placeholder: 'access token' },
+      { key: 'chatgptWebSessionToken', label: 'Session Token', placeholder: 'session token' },
+    ],
+    baseUrl: 'chatgptWebBaseUrl',
+    baseUrlPlaceholder: 'https://chatgpt.com',
   },
 ];
 
@@ -2441,8 +2456,10 @@ export default function SettingsScreen({ navigation }: any) {
           if (pendingKeys.has(section.baseUrl)) {
             updates[section.baseUrl] = inputDrafts[section.baseUrl] ?? '';
           }
-          if (pendingKeys.has(section.apiKey)) {
-            updates[section.apiKey] = inputDrafts[section.apiKey] ?? '';
+          for (const secret of section.secrets) {
+            if (pendingKeys.has(secret.key)) {
+              updates[secret.key] = inputDrafts[secret.key] ?? '';
+            }
           }
         }
 
@@ -2475,11 +2492,21 @@ export default function SettingsScreen({ navigation }: any) {
             ...(updates.openaiApiKey !== undefined ? { openaiApiKey: updates.openaiApiKey ? SECRET_MASK : '' } : {}),
             ...(updates.groqApiKey !== undefined ? { groqApiKey: updates.groqApiKey ? SECRET_MASK : '' } : {}),
             ...(updates.geminiApiKey !== undefined ? { geminiApiKey: updates.geminiApiKey ? SECRET_MASK : '' } : {}),
+            ...(updates.chatgptWebAccessToken !== undefined ? { chatgptWebAccessToken: updates.chatgptWebAccessToken ? SECRET_MASK : '' } : {}),
+            ...(updates.chatgptWebSessionToken !== undefined ? { chatgptWebSessionToken: updates.chatgptWebSessionToken ? SECRET_MASK : '' } : {}),
             ...(updates.discordBotToken !== undefined ? { discordBotToken: updates.discordBotToken ? SECRET_MASK : '' } : {}),
             ...(updates.langfuseSecretKey ? { langfuseSecretKey: '••••••••' } : {}),
           } : null);
 
-          if (updates.langfuseSecretKey || updates.discordBotToken !== undefined || updates.openaiApiKey !== undefined || updates.groqApiKey !== undefined || updates.geminiApiKey !== undefined) {
+          if (
+            updates.langfuseSecretKey
+            || updates.discordBotToken !== undefined
+            || updates.openaiApiKey !== undefined
+            || updates.groqApiKey !== undefined
+            || updates.geminiApiKey !== undefined
+            || updates.chatgptWebAccessToken !== undefined
+            || updates.chatgptWebSessionToken !== undefined
+          ) {
             setInputDrafts((prev) => ({
               ...prev,
               ...(updates.langfuseSecretKey ? { langfuseSecretKey: '' } : {}),
@@ -2487,6 +2514,8 @@ export default function SettingsScreen({ navigation }: any) {
               ...(updates.openaiApiKey !== undefined ? { openaiApiKey: '' } : {}),
               ...(updates.groqApiKey !== undefined ? { groqApiKey: '' } : {}),
               ...(updates.geminiApiKey !== undefined ? { geminiApiKey: '' } : {}),
+              ...(updates.chatgptWebAccessToken !== undefined ? { chatgptWebAccessToken: '' } : {}),
+              ...(updates.chatgptWebSessionToken !== undefined ? { chatgptWebSessionToken: '' } : {}),
             }));
           }
         }
@@ -3028,39 +3057,43 @@ export default function SettingsScreen({ navigation }: any) {
             {/* Provider Setup */}
             {remoteSettings && (
               <CollapsibleSection id="providerSetup" title="Provider Setup">
-                {PROVIDER_CREDENTIAL_SECTIONS.map((provider) => {
-                  const hasConfiguredKey = remoteSettings[provider.apiKey] === SECRET_MASK;
-                  return (
-                    <View key={provider.id} style={styles.providerCredentialGroup}>
-                      <Text style={styles.subsectionTitle}>{provider.label}</Text>
+                {PROVIDER_CREDENTIAL_SECTIONS.map((provider) => (
+                  <View key={provider.id} style={styles.providerCredentialGroup}>
+                    <Text style={styles.subsectionTitle}>{provider.label}</Text>
 
-                      <Text style={styles.label}>API Key</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={inputDrafts[provider.apiKey] ?? ''}
-                        onChangeText={(v) => handleRemoteSecretDraftChange(provider.apiKey, v)}
-                        onBlur={() => { void commitRemoteSecretDraft(provider.apiKey); }}
-                        placeholder={hasConfiguredKey ? 'Configured' : provider.apiKeyPlaceholder}
-                        placeholderTextColor={theme.colors.mutedForeground}
-                        autoCapitalize='none'
-                        autoCorrect={false}
-                        secureTextEntry
-                      />
+                    {provider.secrets.map((secret) => {
+                      const hasConfiguredSecret = remoteSettings[secret.key] === SECRET_MASK;
+                      return (
+                        <View key={secret.key}>
+                          <Text style={styles.label}>{secret.label}</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={inputDrafts[secret.key] ?? ''}
+                            onChangeText={(v) => handleRemoteSecretDraftChange(secret.key, v)}
+                            onBlur={() => { void commitRemoteSecretDraft(secret.key); }}
+                            placeholder={hasConfiguredSecret ? 'Configured' : secret.placeholder}
+                            placeholderTextColor={theme.colors.mutedForeground}
+                            autoCapitalize='none'
+                            autoCorrect={false}
+                            secureTextEntry
+                          />
+                        </View>
+                      );
+                    })}
 
-                      <Text style={styles.label}>Base URL</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={inputDrafts[provider.baseUrl] ?? ''}
-                        onChangeText={(v) => handleRemoteSettingUpdate(provider.baseUrl, v)}
-                        placeholder={provider.baseUrlPlaceholder}
-                        placeholderTextColor={theme.colors.mutedForeground}
-                        autoCapitalize='none'
-                        autoCorrect={false}
-                        keyboardType="url"
-                      />
-                    </View>
-                  );
-                })}
+                    <Text style={styles.label}>Base URL</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={inputDrafts[provider.baseUrl] ?? ''}
+                      onChangeText={(v) => handleRemoteSettingUpdate(provider.baseUrl, v)}
+                      placeholder={provider.baseUrlPlaceholder}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      autoCapitalize='none'
+                      autoCorrect={false}
+                      keyboardType="url"
+                    />
+                  </View>
+                ))}
               </CollapsibleSection>
             )}
 
