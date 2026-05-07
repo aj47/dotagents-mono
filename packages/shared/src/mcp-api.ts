@@ -122,6 +122,33 @@ export interface InjectedMcpActionOptions<TRequestContext = unknown> {
   diagnostics: InjectedMcpActionDiagnostics
 }
 
+export interface InjectedMcpToolRouteResponseAdapter<TReply = unknown> {
+  sendActionResult(reply: TReply, result: InjectedMcpActionResult): unknown
+}
+
+export interface InjectedMcpToolRouteRequestAdapter<TRequest = unknown> {
+  getBody(request: TRequest): unknown
+}
+
+export interface InjectedMcpToolRouteActionOptions<
+  TRequest = unknown,
+  TReply = unknown,
+  TRequestContext = unknown,
+> {
+  action: InjectedMcpActionOptions<TRequestContext>
+  request: InjectedMcpToolRouteRequestAdapter<TRequest>
+  response: InjectedMcpToolRouteResponseAdapter<TReply>
+}
+
+export interface InjectedMcpToolRouteActions<TRequest = unknown, TReply = unknown> {
+  listInjectedMcpTools(acpSessionToken: string | undefined, reply: TReply): unknown
+  callInjectedMcpTool(
+    request: TRequest,
+    reply: TReply,
+    acpSessionToken: string | undefined,
+  ): Promise<unknown>
+}
+
 export type McpServerStatusLike = {
   connected: boolean
   toolCount: number
@@ -1478,6 +1505,29 @@ export async function callInjectedMcpToolAction<TRequestContext = unknown>(
       500,
       buildInjectedMcpToolCallErrorResponse(options.diagnostics.getErrorMessage(caughtError) || "Tool execution failed"),
     )
+  }
+}
+
+export function createInjectedMcpToolRouteActions<
+  TRequest = unknown,
+  TReply = unknown,
+  TRequestContext = unknown,
+>(
+  options: InjectedMcpToolRouteActionOptions<TRequest, TReply, TRequestContext>,
+): InjectedMcpToolRouteActions<TRequest, TReply> {
+  return {
+    listInjectedMcpTools: (acpSessionToken, reply) => {
+      const result = listInjectedMcpToolsAction(acpSessionToken, options.action)
+      return options.response.sendActionResult(reply, result)
+    },
+    callInjectedMcpTool: async (request, reply, acpSessionToken) => {
+      const result = await callInjectedMcpToolAction(
+        acpSessionToken,
+        options.request.getBody(request),
+        options.action,
+      )
+      return options.response.sendActionResult(reply, result)
+    },
   }
 }
 

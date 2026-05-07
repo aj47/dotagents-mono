@@ -12,9 +12,8 @@ import {
   buildInjectedMcpToolCallErrorResponse,
   buildInjectedMcpToolCallResponse,
   buildInjectedMcpToolsListResponse,
-  callInjectedMcpToolAction,
+  createInjectedMcpToolRouteActions,
   INJECTED_RUNTIME_TOOL_TRANSPORT_NAME,
-  listInjectedMcpToolsAction,
   type InjectedMcpActionOptions,
 } from "@dotagents/shared/mcp-api"
 import type { RemoteServerRouteRegistrar } from "@dotagents/shared/remote-server-controller-contracts"
@@ -169,22 +168,19 @@ const injectedMcpActionOptions: InjectedMcpActionOptions<AcpMcpRequestContext> =
   },
 }
 
-async function listInjectedMcpTools(
-  acpSessionToken: string | undefined,
-  reply: any,
-) {
-  const result = listInjectedMcpToolsAction(acpSessionToken, injectedMcpActionOptions)
-  return reply.code(result.statusCode).send(result.body)
-}
-
-async function callInjectedMcpTool(
-  req: any,
-  reply: any,
-  acpSessionToken: string | undefined,
-) {
-  const result = await callInjectedMcpToolAction(acpSessionToken, req.body, injectedMcpActionOptions)
-  return reply.code(result.statusCode).send(result.body)
-}
+const injectedMcpToolRouteActions = createInjectedMcpToolRouteActions<
+  FastifyRequest,
+  FastifyReply,
+  AcpMcpRequestContext
+>({
+  action: injectedMcpActionOptions,
+  request: {
+    getBody: (req) => req.body,
+  },
+  response: {
+    sendActionResult: (reply, result) => reply.code(result.statusCode).send(result.body),
+  },
+})
 
 async function handleInjectedMcpProtocolRequest(
   req: any,
@@ -285,10 +281,9 @@ async function handleInjectedMcpProtocolRequest(
   }
 }
 
-const injectedMcpDesktopActions: InjectedMcpRouteActions = {
-  callInjectedMcpTool,
+const injectedMcpDesktopActions: InjectedMcpRouteActions<FastifyRequest, FastifyReply> = {
+  ...injectedMcpToolRouteActions,
   handleInjectedMcpProtocolRequest,
-  listInjectedMcpTools,
 }
 
 export const registerDesktopRemoteServerRoutes: RemoteServerRouteRegistrar<

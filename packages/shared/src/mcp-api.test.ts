@@ -33,6 +33,7 @@ import {
   buildOperatorMcpStatusResponse,
   callInjectedMcpToolAction,
   clearOperatorMcpServerLogsAction,
+  createInjectedMcpToolRouteActions,
   createMcpRouteActions,
   createOperatorMcpRouteActions,
   formatMcpMaxIterationsValidationMessage,
@@ -1456,9 +1457,47 @@ describe("MCP API helpers", () => {
         isError: true,
       },
     })
+    const sentResults: Array<{ statusCode: number; body: unknown }> = []
+    const routeActions = createInjectedMcpToolRouteActions<{
+      body: unknown
+    }, typeof sentResults, typeof context>({
+      action: options,
+      request: {
+        getBody: (request) => request.body,
+      },
+      response: {
+        sendActionResult: (reply, result) => {
+          reply.push(result)
+          return result.body
+        },
+      },
+    })
+
+    expect(routeActions.listInjectedMcpTools("valid", sentResults)).toEqual({
+      tools: [{
+        name: "runtime.read_file",
+        description: "Read files",
+        inputSchema: { type: "object" },
+      }, {
+        name: "runtime.throw",
+        description: "Throw",
+        inputSchema: { type: "object" },
+      }],
+    })
+    await expect(routeActions.callInjectedMcpTool({
+      body: {
+        name: "runtime.read_file",
+        arguments: { path: "route.md" },
+      },
+    }, sentResults, "valid")).resolves.toEqual({
+      content: [{ type: "text", text: "ok" }],
+      isError: false,
+    })
+    expect(sentResults.map((result) => result.statusCode)).toEqual([200, 200])
     expect(executedCalls).toEqual([
       { name: "runtime.read_file", arguments: { path: "README.md" }, appSessionId: "app-1" },
       { name: "runtime.read_file", arguments: { nullResult: true }, appSessionId: "app-1" },
+      { name: "runtime.read_file", arguments: { path: "route.md" }, appSessionId: "app-1" },
     ])
     expect(logs).toContain("Denied injected MCP tools/list request without valid ACP session context")
     expect(logs).toContain("Denied injected MCP tools/call request without valid ACP session context")
