@@ -2,12 +2,14 @@ import crypto from "crypto"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import type { FastifyReply, FastifyRequest } from "fastify"
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify"
+import cors from "@fastify/cors"
 import QRCode from "qrcode"
 import { authorizeRemoteServerRequest } from "@dotagents/shared/operator-actions"
 import type { RemoteServerControllerAdapters } from "@dotagents/shared/remote-server-controller-contracts"
 import {
   buildDotAgentsConfigDeepLink,
+  buildRemoteServerCorsOptions,
   formatConnectableRemoteHostWarning,
   redactSecretForDisplay,
   resolveConnectableRemoteServerPairingBaseUrl,
@@ -23,6 +25,52 @@ import { configStore, globalAgentsFolder } from "./config"
 import { diagnosticsService } from "./diagnostics"
 
 const DOTAGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"
+
+async function createHttpServer(options: {
+  logLevel: string
+  bodyLimitBytes: number
+  corsOrigins: readonly string[]
+}): Promise<FastifyInstance> {
+  const server = Fastify({
+    logger: { level: options.logLevel },
+    bodyLimit: options.bodyLimitBytes,
+  })
+
+  await server.register(cors, buildRemoteServerCorsOptions(options.corsOrigins))
+  return server
+}
+
+function addRequestHook(
+  server: FastifyInstance,
+  handler: (request: FastifyRequest, reply: FastifyReply) => Promise<void> | void,
+): void {
+  server.addHook("onRequest", handler)
+}
+
+function addResponseHook(
+  server: FastifyInstance,
+  handler: (request: FastifyRequest, reply: FastifyReply) => Promise<void> | void,
+): void {
+  server.addHook("onResponse", handler)
+}
+
+async function listenHttpServer(
+  server: FastifyInstance,
+  options: { port: number; host: string },
+): Promise<void> {
+  await server.listen({ port: options.port, host: options.host })
+}
+
+async function closeHttpServer(server: FastifyInstance): Promise<void> {
+  await server.close()
+}
+
+function sendAuthFailure(
+  reply: FastifyReply,
+  response: { statusCode: number; error: string },
+): void {
+  reply.code(response.statusCode).send({ error: response.error })
+}
 
 function generateRemoteServerApiKey(): string {
   return crypto.randomBytes(32).toString("hex")
@@ -118,7 +166,17 @@ function getConnectableBaseUrlForMobilePairing(
   return resolution.baseUrl
 }
 
-export const remoteServerDesktopAdapters: RemoteServerControllerAdapters<FastifyRequest, FastifyReply, Config> = {
+export const remoteServerDesktopAdapters: RemoteServerControllerAdapters<
+  FastifyRequest,
+  FastifyReply,
+  Config,
+  FastifyInstance
+> = {
+  createHttpServer,
+  addRequestHook,
+  addResponseHook,
+  listenHttpServer,
+  closeHttpServer,
   authorizeRequest: authorizeRemoteServerRequest,
   generateApiKey: generateRemoteServerApiKey,
   resolveApiKeyReference: readDotAgentsSecretReference,
@@ -128,6 +186,7 @@ export const remoteServerDesktopAdapters: RemoteServerControllerAdapters<Fastify
   printTerminalQRCode,
   scheduleDelayedTask,
   scheduleTaskAfterReply,
+  sendAuthFailure,
   writeTerminalInfo,
   writeTerminalWarning,
   recordRejectedOperatorDeviceAttempt,

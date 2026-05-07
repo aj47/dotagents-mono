@@ -30,11 +30,36 @@ export interface RemoteServerDiagnostics {
   logError(scope: string, message: string, error?: unknown): void;
 }
 
+export type RemoteServerControllerMaybePromise<T> = T | Promise<T>;
+
+export interface RemoteServerHttpServerOptions {
+  logLevel: string;
+  bodyLimitBytes: number;
+  corsOrigins: readonly string[];
+}
+
+export interface RemoteServerHttpListenOptions {
+  port: number;
+  host: string;
+}
+
 export interface RemoteServerControllerAdapters<
   Request = unknown,
   Reply = unknown,
   Config extends RemoteServerControllerConfigLike = RemoteServerControllerConfigLike,
+  Server = unknown,
 > {
+  createHttpServer: (options: RemoteServerHttpServerOptions) => RemoteServerControllerMaybePromise<Server>;
+  addRequestHook: (
+    server: Server,
+    handler: (request: Request, reply: Reply) => RemoteServerControllerMaybePromise<void>,
+  ) => RemoteServerControllerMaybePromise<void>;
+  addResponseHook: (
+    server: Server,
+    handler: (request: Request, reply: Reply) => RemoteServerControllerMaybePromise<void>,
+  ) => RemoteServerControllerMaybePromise<void>;
+  listenHttpServer: (server: Server, options: RemoteServerHttpListenOptions) => Promise<void>;
+  closeHttpServer: (server: Server) => Promise<void>;
   authorizeRequest: (
     request: Request,
     options: {
@@ -50,6 +75,7 @@ export interface RemoteServerControllerAdapters<
   printTerminalQRCode: (url: string, apiKey: string) => Promise<boolean>;
   scheduleDelayedTask: (delayMs: number, task: () => void) => void;
   scheduleTaskAfterReply: (reply: Reply, task: () => void) => void;
+  sendAuthFailure: (reply: Reply, response: { statusCode: number; error: string }) => void;
   writeTerminalInfo: (message: string) => void;
   writeTerminalWarning: (message: string) => void;
   recordRejectedOperatorDeviceAttempt: (request: Request, failureReason: string) => void;
@@ -88,7 +114,7 @@ export interface RemoteServerControllerOptions<
   configStore: RemoteServerConfigStore<Config>;
   diagnosticsService: RemoteServerDiagnostics;
   registerRoutes: RemoteServerRouteRegistrar<Server, Reply>;
-  adapters: RemoteServerControllerAdapters<Request, Reply, Config>;
+  adapters: RemoteServerControllerAdapters<Request, Reply, Config, Server>;
   providerSecretMask: string;
   remoteServerSecretMask: string;
   discordSecretMask: string;

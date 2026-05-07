@@ -1,5 +1,4 @@
-import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify"
-import cors from "@fastify/cors"
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type {
   RemoteServerController as SharedRemoteServerController,
   RemoteServerControllerAdapters as SharedRemoteServerControllerAdapters,
@@ -16,7 +15,6 @@ import type {
 import type { RemoteServerLifecycleAction } from "@dotagents/shared/remote-pairing"
 import {
   buildRemoteServerBaseUrl,
-  buildRemoteServerCorsOptions,
   buildRemoteServerStatusSnapshot,
   DEFAULT_REMOTE_SERVER_BIND_ADDRESS,
   DEFAULT_REMOTE_SERVER_PORT,
@@ -38,7 +36,8 @@ export type RemoteServerConfigStore = SharedRemoteServerConfigStore<RemoteServer
 export type RemoteServerControllerAdapters = SharedRemoteServerControllerAdapters<
   FastifyRequest,
   FastifyReply,
-  RemoteServerControllerConfig
+  RemoteServerControllerConfig,
+  FastifyInstance
 >
 export type RemoteServerControllerOptions = SharedRemoteServerControllerOptions<
   FastifyInstance,
@@ -184,15 +183,17 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
     lastError = undefined
     const { logLevel, bind, port } = startupPlan
 
-    // Fastify defaults the body limit to 1MB, which is too small for chat requests that
-    // include long conversation histories. Raise it to 50MB to accommodate large payloads
-    // (mobile clients send the full message history on each /v1/chat/completions call).
-    const fastify = Fastify({ logger: { level: logLevel }, bodyLimit: 50 * 1024 * 1024 })
-
-    await fastify.register(cors, buildRemoteServerCorsOptions(startupPlan.corsOrigins))
+    const httpServer = await adapters.createHttpServer({
+      logLevel,
+      // Fastify defaults the body limit to 1MB, which is too small for chat requests that
+      // include long conversation histories. Raise it to 50MB to accommodate large payloads
+      // (mobile clients send the full message history on each /v1/chat/completions call).
+      bodyLimitBytes: 50 * 1024 * 1024,
+      corsOrigins: startupPlan.corsOrigins,
+    })
 
     // Auth hook (skip for OPTIONS preflight requests)
-    fastify.addHook("onRequest", async (req, reply) => {
+    await adapters.addRequestHook(httpServer, async (req, reply) => {
       const current = configStore.get()
       const authDecision = adapters.authorizeRequest(req, {
         currentApiKey: adapters.resolveConfiguredApiKey(current),
@@ -204,7 +205,10 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
           adapters.recordRejectedOperatorDeviceAttempt(req, authDecision.auditFailureReason)
         }
 
-        reply.code(authDecision.statusCode).send({ error: authDecision.error })
+        adapters.sendAuthFailure(reply, {
+          statusCode: authDecision.statusCode,
+          error: authDecision.error,
+        })
         // Must return — falling through here lets the request reach the route
         // handler and perform side effects despite operator access being denied.
         return
@@ -213,11 +217,11 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
       return
     })
 
-    fastify.addHook("onResponse", async (req, reply) => {
+    await adapters.addResponseHook(httpServer, async (req, reply) => {
       adapters.recordOperatorResponseAuditEvent(req, reply)
     })
 
-    registerRoutes(fastify, {
+    registerRoutes(httpServer, {
       providerSecretMask,
       remoteServerSecretMask,
       discordSecretMask,
@@ -237,12 +241,12 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
     })
 
     try {
-      await fastify.listen({ port, host: bind })
+      await adapters.listenHttpServer(httpServer, { port, host: bind })
       diagnosticsService.logInfo(
         "remote-server",
         `Remote server listening at ${buildRemoteServerBaseUrl(bind, port)}`,
       )
-      server = fastify
+      server = httpServer
 
       // Print QR code to terminal for mobile app pairing
       // Auto-print in headless environments, or when explicitly requested
@@ -279,7 +283,7 @@ export function createRemoteServerController(options: RemoteServerControllerOpti
   async function stopRemoteServer() {
     if (server) {
       try {
-        await server.close()
+        await adapters.closeHttpServer(server)
         diagnosticsService.logInfo("remote-server", "Remote server stopped")
       } catch (err) {
         diagnosticsService.logError("remote-server", "Error stopping server", err)
