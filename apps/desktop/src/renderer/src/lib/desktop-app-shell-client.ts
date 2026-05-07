@@ -1,5 +1,5 @@
 import type { ThemePreferenceValue } from "@dotagents/shared/theme-preference"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 
 export interface DesktopContextMenuRequest {
   x: number
@@ -33,6 +33,10 @@ export const desktopAppShellClient = {
 
   broadcastThemeChange(themeMode: ThemePreferenceValue): Promise<void> {
     return tipcClient.broadcastThemeChange?.({ themeMode }) ?? Promise.resolve()
+  },
+
+  onThemeChanged(listener: (themeMode: string) => void): () => void {
+    return rendererHandlers.themeChanged.listen(listener)
   },
 
   displayError(request: DesktopDisplayErrorRequest): Promise<void> {

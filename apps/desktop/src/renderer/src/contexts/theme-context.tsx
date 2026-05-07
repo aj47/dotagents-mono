@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react"
-import { rendererHandlers } from "@renderer/lib/tipc-client"
 import { desktopAppShellClient } from "@renderer/lib/desktop-app-shell-client"
 import {
   THEME_PREFERENCE_CHANGED_EVENT,
@@ -100,7 +99,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   // Listen for theme changes broadcast from other windows via IPC
   useEffect(() => {
-    const unlisten = rendererHandlers.themeChanged.listen((newMode: string) => {
+    const unlisten = desktopAppShellClient.onThemeChanged((newMode: string) => {
       if (isThemePreference(newMode) && newMode !== themeMode) {
         setThemeModeState(newMode)
       }

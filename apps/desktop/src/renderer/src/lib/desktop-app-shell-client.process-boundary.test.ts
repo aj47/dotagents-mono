@@ -12,6 +12,7 @@ describe("desktop app shell renderer client", () => {
   it("centralizes app shell IPC channels", () => {
     expect(clientSource).toContain("tipcClient.showContextMenu(request)")
     expect(clientSource).toContain("tipcClient.broadcastThemeChange?.({ themeMode })")
+    expect(clientSource).toContain("rendererHandlers.themeChanged.listen(listener)")
     expect(clientSource).toContain("tipcClient.displayError(request)")
     expect(clientSource).toContain("tipcClient.writeClipboard({ text })")
     expect(clientSource).toContain("tipcClient.getDebugFlags()")
@@ -29,11 +30,13 @@ describe("desktop app shell renderer client", () => {
 
     expect(mainSource).toContain("desktopAppShellClient.showContextMenu({")
     expect(themeContextSource).toContain("desktopAppShellClient.broadcastThemeChange(themeMode)")
+    expect(themeContextSource).toContain("desktopAppShellClient.onThemeChanged(")
     expect(panelPageSource).toContain("desktopAppShellClient.displayError({")
     expect(clipboardSource).toContain("desktopAppShellClient.writeClipboard(text)")
     expect(debugSource).toContain("desktopAppShellClient.getDebugFlags()")
     expect(combinedSource).not.toContain("tipcClient.showContextMenu(")
     expect(combinedSource).not.toContain("tipcClient.broadcastThemeChange")
+    expect(combinedSource).not.toContain("rendererHandlers.themeChanged")
     expect(combinedSource).not.toContain("tipcClient.displayError(")
     expect(combinedSource).not.toContain("tipcClient.writeClipboard(")
     expect(combinedSource).not.toContain("tipcClient.getDebugFlags(")
