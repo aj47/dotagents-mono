@@ -21,7 +21,7 @@ import {
   registerRemoteServerRouteBundle,
   type RemoteServerRouteBundleServer,
 } from "@dotagents/shared/remote-server-route-bundle"
-import type { InjectedMcpRouteActions } from "@dotagents/shared/remote-server-route-contracts"
+import { createInjectedMcpRouteActions } from "@dotagents/shared/remote-server-route-contracts"
 import {
   getAcpSessionForClientSessionToken,
   getAppSessionForAcpSession,
@@ -281,10 +281,10 @@ async function handleInjectedMcpProtocolRequest(
   }
 }
 
-const injectedMcpDesktopActions: InjectedMcpRouteActions<FastifyRequest, FastifyReply> = {
-  ...injectedMcpToolRouteActions,
-  handleInjectedMcpProtocolRequest,
-}
+const injectedMcpDesktopActions = createInjectedMcpRouteActions<FastifyRequest, FastifyReply>({
+  protocol: { handleInjectedMcpProtocolRequest },
+  tools: injectedMcpToolRouteActions,
+})
 
 export const registerDesktopRemoteServerRoutes: RemoteServerRouteRegistrar<
   FastifyInstance,

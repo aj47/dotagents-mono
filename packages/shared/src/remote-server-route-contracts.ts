@@ -501,6 +501,20 @@ export interface InjectedMcpRouteActions<Request = unknown, Reply = unknown> {
   ) => InjectedMcpRouteResult;
 }
 
+export interface InjectedMcpRouteActionGroups<Request = unknown, Reply = unknown> {
+  protocol: Pick<InjectedMcpRouteActions<Request, Reply>, 'handleInjectedMcpProtocolRequest'>;
+  tools: Pick<InjectedMcpRouteActions<Request, Reply>, 'listInjectedMcpTools' | 'callInjectedMcpTool'>;
+}
+
+export function createInjectedMcpRouteActions<Request = unknown, Reply = unknown>(
+  groups: InjectedMcpRouteActionGroups<Request, Reply>,
+): InjectedMcpRouteActions<Request, Reply> {
+  return {
+    ...groups.protocol,
+    ...groups.tools,
+  };
+}
+
 export interface InjectedMcpRouteOptions<Request = unknown, Reply = unknown> {
   actions: InjectedMcpRouteActions<Request, Reply>;
 }

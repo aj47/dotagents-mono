@@ -3,13 +3,16 @@ import {
   buildMobileApiActionError,
   buildMobileApiActionResult,
   createMobileApiRouteActions,
+  createInjectedMcpRouteActions,
   createOperatorRouteActions,
+  type InjectedMcpRouteActions,
   type MobileApiRouteActions,
   type OperatorRouteActions,
 } from './remote-server-route-contracts';
 
 type TestRequest = { requestId: string };
 type TestReply = { replyId: string };
+type TestInjectedMcpRouteActions = InjectedMcpRouteActions<TestRequest, TestReply>;
 type TestMobileApiRouteActions = MobileApiRouteActions<TestRequest, TestReply>;
 type TestOperatorRouteActions = OperatorRouteActions<TestRequest>;
 
@@ -143,6 +146,12 @@ const operatorActionKeys = [
   'restartOperatorRemoteServer',
   'rotateOperatorRemoteServerApiKey',
 ] as const satisfies ReadonlyArray<keyof TestOperatorRouteActions>;
+
+const injectedMcpActionKeys = [
+  'handleInjectedMcpProtocolRequest',
+  'listInjectedMcpTools',
+  'callInjectedMcpTool',
+] as const satisfies ReadonlyArray<keyof TestInjectedMcpRouteActions>;
 
 describe('remote server route contracts', () => {
   it('builds mobile api action results with default success status', () => {
@@ -316,6 +325,22 @@ describe('remote server route contracts', () => {
     });
 
     expect(Object.keys(routeActions).sort()).toEqual([...operatorActionKeys].sort());
+    expect(routeActions).toEqual(actions);
+  });
+
+  it('builds a complete injected MCP action facade from protocol and tool groups', () => {
+    const actions = Object.fromEntries(injectedMcpActionKeys.map((key) => [key, vi.fn()])) as TestInjectedMcpRouteActions;
+    const routeActions = createInjectedMcpRouteActions<TestRequest, TestReply>({
+      protocol: {
+        handleInjectedMcpProtocolRequest: actions.handleInjectedMcpProtocolRequest,
+      },
+      tools: {
+        listInjectedMcpTools: actions.listInjectedMcpTools,
+        callInjectedMcpTool: actions.callInjectedMcpTool,
+      },
+    });
+
+    expect(Object.keys(routeActions).sort()).toEqual([...injectedMcpActionKeys].sort());
     expect(routeActions).toEqual(actions);
   });
 });
