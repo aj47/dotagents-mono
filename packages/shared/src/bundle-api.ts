@@ -411,6 +411,14 @@ export function stripBundleSecretsFromObject(obj: Record<string, unknown>): Reco
   return result
 }
 
+function createBundleSelectionSet(values?: readonly string[]): Set<string> | null {
+  const normalized = (values ?? [])
+    .map((value) => value.trim())
+    .filter(Boolean)
+
+  return normalized.length > 0 ? new Set(normalized) : null
+}
+
 function isReservedTopLevelBundleMcpKey(key: string): boolean {
   if (key === "mcpConfig" || key === "mcpServers") return true
   return (BUNDLE_TOP_LEVEL_MCP_CONFIG_KEYS as readonly string[]).includes(key)
@@ -464,6 +472,32 @@ export function readBundleMcpServersFromConfig(mcpJson: Record<string, unknown>)
     ...directServers,
     ...nestedServers,
   }
+}
+
+export function buildBundleMcpServersFromConfig(
+  mcpJson: Record<string, unknown>,
+  selectedMcpServerNames?: readonly string[],
+): BundleMcpServer[] {
+  const selectedNames = createBundleSelectionSet(selectedMcpServerNames)
+  const servers: BundleMcpServer[] = []
+  const mcpServers = readBundleMcpServersFromConfig(mcpJson)
+
+  for (const [name, config] of Object.entries(mcpServers)) {
+    if (selectedNames && !selectedNames.has(name)) continue
+    if (!isRecordObject(config)) continue
+
+    const stripped = stripBundleSecretsFromObject(config)
+
+    servers.push({
+      name,
+      command: typeof stripped.command === "string" ? stripped.command : undefined,
+      args: Array.isArray(stripped.args) ? stripped.args.map(String) : undefined,
+      transport: typeof stripped.transport === "string" ? stripped.transport : undefined,
+      enabled: typeof stripped.disabled === "boolean" ? !stripped.disabled : true,
+    })
+  }
+
+  return servers
 }
 
 export function writeCanonicalBundleMcpConfig(

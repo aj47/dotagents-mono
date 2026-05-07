@@ -11,6 +11,7 @@ import {
   buildBundleExportableItemsResponse,
   buildBundleImportPreviewConflicts,
   buildBundleImportPreviewResponse,
+  buildBundleMcpServersFromConfig,
   buildDotAgentsBundle,
   createBundleItemSelection,
   createBundleRouteActions,
@@ -370,6 +371,52 @@ describe("bundle API helpers", () => {
       },
       nested: [{ password: "<CONFIGURE_YOUR_KEY>", value: "ok" }],
     })
+  })
+
+  it("builds export-safe bundle MCP server entries from config", () => {
+    expect(buildBundleMcpServersFromConfig({
+      mcpConfig: {
+        mcpServers: {
+          filesystem: {
+            command: "node",
+            args: ["server.js", 1],
+            transport: "stdio",
+            disabled: true,
+            env: {
+              API_KEY: "secret",
+            },
+          },
+          remote: {
+            transport: "http",
+            url: "https://example.com/mcp",
+          },
+          malformed: "skip-me",
+        },
+      },
+    }, [" filesystem ", "missing", ""])).toEqual([{
+      name: "filesystem",
+      command: "node",
+      args: ["server.js", "1"],
+      transport: "stdio",
+      enabled: false,
+    }])
+
+    expect(buildBundleMcpServersFromConfig({
+      mcpConfig: {
+        mcpServers: {
+          remote: {
+            transport: "http",
+            disabled: false,
+          },
+        },
+      },
+    })).toEqual([{
+      name: "remote",
+      command: undefined,
+      args: undefined,
+      transport: "http",
+      enabled: true,
+    }])
   })
 
   it("builds DotAgents bundles with shared manifest defaults", () => {

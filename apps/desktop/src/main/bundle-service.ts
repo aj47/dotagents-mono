@@ -36,6 +36,7 @@ import {
 import {
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
   buildBundleImportPreviewConflicts,
+  buildBundleMcpServersFromConfig,
   buildDotAgentsBundle,
   getBundleBuildItems,
   mergeBundleBuildItems,
@@ -43,7 +44,6 @@ import {
   parseDotAgentsBundle,
   readBundleMcpServersFromConfig,
   sortExportableBundleItems,
-  stripBundleSecretsFromObject,
   writeCanonicalBundleMcpConfig,
   type BundleAgentProfile,
   type BundleComponentSelection,
@@ -229,31 +229,7 @@ function loadMCPServersForBundle(
   const mcpConfig = safeReadJsonFileSync<Record<string, unknown>>(layer.mcpJsonPath, {
     defaultValue: {},
   })
-  const selectedMcpServerNames = toSelectionSet(options?.mcpServerNames)
-
-  const servers: BundleMCPServer[] = []
-  const mcpServers = readBundleMcpServersFromConfig(mcpConfig)
-
-  if (typeof mcpServers === "object" && mcpServers !== null) {
-    for (const [name, config] of Object.entries(mcpServers)) {
-      if (selectedMcpServerNames && !selectedMcpServerNames.has(name)) continue
-      if (typeof config !== "object" || config === null) continue
-      const serverConfig = config as Record<string, unknown>
-
-      // Strip secrets from the server config
-      const stripped = stripBundleSecretsFromObject(serverConfig)
-
-      servers.push({
-        name,
-        command: typeof stripped.command === "string" ? stripped.command : undefined,
-        args: Array.isArray(stripped.args) ? stripped.args.map(String) : undefined,
-        transport: typeof stripped.transport === "string" ? stripped.transport : undefined,
-        enabled: typeof stripped.disabled === "boolean" ? !stripped.disabled : true,
-      })
-    }
-  }
-
-  return servers
+  return buildBundleMcpServersFromConfig(mcpConfig, options?.mcpServerNames)
 }
 
 const DEFAULT_EXPORT_COMPONENTS: Required<BundleComponentSelection> = {
