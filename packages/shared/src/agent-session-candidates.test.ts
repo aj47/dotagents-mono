@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildAgentSessionCandidateOptions,
   buildAgentSessionCandidatesResponse,
+  createAgentSessionCandidateRouteActions,
   formatAgentSessionCandidateLabel,
   formatAgentSessionCandidateTime,
   formatAgentSessionCandidateTitle,
@@ -126,6 +127,25 @@ describe("agent session candidates", () => {
       },
     })
     expect(requestedLimits).toEqual([7])
+
+    const routeActions = createAgentSessionCandidateRouteActions({
+      service: {
+        getActiveSessions: () => active,
+        getRecentSessions: (limit) => {
+          requestedLimits.push(limit)
+          return completed
+        },
+      },
+      diagnostics,
+    })
+    expect(routeActions.getAgentSessionCandidates({ limit: "3" })).toEqual({
+      statusCode: 200,
+      body: {
+        activeSessions: active,
+        completedSessions: completed,
+      },
+    })
+    expect(requestedLimits).toEqual([7, 3])
   })
 
   it("maps invalid limits and service failures to route errors", () => {

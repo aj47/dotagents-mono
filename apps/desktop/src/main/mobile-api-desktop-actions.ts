@@ -7,7 +7,7 @@ import type { MobileApiRouteActions } from "@dotagents/shared/remote-server-rout
 import { getAgentsLayerPaths, type LoopConfig } from "@dotagents/core"
 import type { AgentRunExecutor } from "@dotagents/shared/agent-run-utils"
 import {
-  getAgentSessionCandidatesAction,
+  createAgentSessionCandidateRouteActions,
   type AgentSessionCandidateActionOptions,
 } from "@dotagents/shared/agent-session-candidates"
 import { getEnabledAcpxAgentProfiles } from "@dotagents/shared/agent-profile-queries"
@@ -189,6 +189,8 @@ const agentSessionCandidateActionOptions: AgentSessionCandidateActionOptions = {
   },
   diagnostics: diagnosticsService,
 }
+
+const agentSessionCandidateRouteActions = createAgentSessionCandidateRouteActions(agentSessionCandidateActionOptions)
 
 const ttsActionOptions: TtsActionOptions<Config> = {
   getConfig: () => configStore.get(),
@@ -514,10 +516,6 @@ const skillActionOptions: SkillActionOptions = {
 
 const skillRouteActions = createSkillRouteActions(skillActionOptions)
 
-function getAgentSessionCandidates(query: unknown) {
-  return getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)
-}
-
 async function getConversation(id: string | undefined) {
   return getConversationAction(id, conversationActionOptions)
 }
@@ -583,7 +581,7 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   upsertMcpServerConfig,
   deleteMcpServerConfig,
   ...settingsRouteActions,
-  getAgentSessionCandidates,
+  ...agentSessionCandidateRouteActions,
   recordOperatorAuditEvent,
   getConversation,
   getConversationVideoAsset,

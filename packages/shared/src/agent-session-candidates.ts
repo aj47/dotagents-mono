@@ -46,6 +46,10 @@ export interface AgentSessionCandidateActionOptions {
   }
 }
 
+export interface AgentSessionCandidateRouteActions {
+  getAgentSessionCandidates(query?: unknown): AgentSessionCandidateActionResult
+}
+
 function actionOk(body: unknown): AgentSessionCandidateActionResult {
   return { statusCode: 200, body }
 }
@@ -171,5 +175,13 @@ export function getAgentSessionCandidatesAction(
   } catch (caughtError) {
     options.diagnostics.logError("agent-session-candidates", "Failed to list agent session candidates", caughtError)
     return actionError(500, "Failed to list agent session candidates")
+  }
+}
+
+export function createAgentSessionCandidateRouteActions(
+  options: AgentSessionCandidateActionOptions,
+): AgentSessionCandidateRouteActions {
+  return {
+    getAgentSessionCandidates: (query) => getAgentSessionCandidatesAction(query, options),
   }
 }

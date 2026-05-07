@@ -963,11 +963,20 @@ describe("remote-server route registration", () => {
     expectRegisteredApiRoute(source, "GET", "agentSessionCandidates")
     expect(mobileApiRoutesSource).toContain("actions.getAgentSessionCandidates(req.query)")
     expect(mobileApiDesktopActionsSource).toContain(
+      "const agentSessionCandidateRouteActions = createAgentSessionCandidateRouteActions(agentSessionCandidateActionOptions)",
+    )
+    expect(mobileApiDesktopActionsSource).toContain("...agentSessionCandidateRouteActions")
+    expect(mobileApiDesktopActionsSource).not.toContain(
       "getAgentSessionCandidatesAction(query, agentSessionCandidateActionOptions)",
     )
     expect(mobileApiDesktopActionsSource).toContain("agentSessionTracker.getActiveSessions()")
     expect(mobileApiDesktopActionsSource).toContain("agentSessionTracker.getRecentSessions(limit)")
+    expect(sharedAgentSessionCandidatesSource).toContain("export interface AgentSessionCandidateRouteActions")
     expect(sharedAgentSessionCandidatesSource).toContain("export function getAgentSessionCandidatesAction")
+    expect(sharedAgentSessionCandidatesSource).toContain("export function createAgentSessionCandidateRouteActions")
+    expect(sharedAgentSessionCandidatesSource).toContain(
+      "getAgentSessionCandidates: (query) => getAgentSessionCandidatesAction(query, options)",
+    )
     expect(sharedAgentSessionCandidatesSource).toContain("parseAgentSessionCandidateLimit(query)")
     expect(sharedAgentSessionCandidatesSource).toContain("buildAgentSessionCandidatesResponse(")
     expect(sharedAgentSessionCandidatesSource).not.toContain('from "./agent-session-tracker"')
