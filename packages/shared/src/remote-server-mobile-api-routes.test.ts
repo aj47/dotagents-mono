@@ -132,6 +132,11 @@ describe('remote server mobile API routes', () => {
         auditContext,
       })),
       recordOperatorAuditEvent: vi.fn(),
+      getConversationImageAsset: vi.fn(() => ({
+        statusCode: 200,
+        body: 'image-bytes',
+        headers: { 'content-type': 'image/png' },
+      })),
       getConversationVideoAsset: vi.fn(() => ({
         statusCode: 206,
         body: 'video-bytes',
@@ -180,6 +185,19 @@ describe('remote server mobile API routes', () => {
     expect(options.scheduleRemoteServerLifecycleActionAfterReply).toHaveBeenCalledWith(settingsReply, 'restart');
     expect(actions.recordOperatorAuditEvent).toHaveBeenCalledWith(settingsRequest, auditContext);
     expect(settingsReply.statusCode).toBe(202);
+
+    const imageReply = createReply();
+    await routes.get(`GET ${REMOTE_SERVER_API_ROUTE_PATHS.conversationImageAsset}`)!(
+      createRequest({
+        params: { id: 'conversation-1', fileName: 'image.png' },
+      }),
+      imageReply,
+    );
+
+    expect(actions.getConversationImageAsset).toHaveBeenCalledWith('conversation-1', 'image.png');
+    expect(imageReply.headers.get('content-type')).toBe('image/png');
+    expect(imageReply.statusCode).toBe(200);
+    expect(imageReply.body).toBe('image-bytes');
 
     const videoReply = createReply();
     await routes.get(`GET ${REMOTE_SERVER_API_ROUTE_PATHS.conversationVideoAsset}`)!(

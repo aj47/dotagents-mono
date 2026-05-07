@@ -79,6 +79,7 @@ export const REMOTE_SERVER_API_PATHS = {
   settings: "/settings",
   agentSessionCandidates: "/agent-sessions/candidates",
   conversation: "/conversations/:id",
+  conversationImageAsset: "/conversations/:id/assets/images/:fileName",
   conversationVideoAsset: "/conversations/:id/assets/videos/:fileName",
   ttsSpeak: "/tts/speak",
   pushRegister: "/push/register",
@@ -191,6 +192,7 @@ export const REMOTE_SERVER_API_ROUTES = [
   { method: "PATCH", path: REMOTE_SERVER_API_PATHS.settings },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.agentSessionCandidates },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.conversation },
+  { method: "GET", path: REMOTE_SERVER_API_PATHS.conversationImageAsset },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.conversationVideoAsset },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.ttsSpeak },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.pushRegister },
@@ -399,6 +401,9 @@ export const REMOTE_SERVER_API_BUILDERS = {
   },
   conversation(id: string): string {
     return `/conversations/${encodePathParam(id)}`;
+  },
+  conversationImageAsset(id: string, fileName: string): string {
+    return `/conversations/${encodePathParam(id)}/assets/images/${encodePathParam(fileName)}`;
   },
   conversationVideoAsset(id: string, fileName: string): string {
     return `/conversations/${encodePathParam(id)}/assets/videos/${encodePathParam(fileName)}`;

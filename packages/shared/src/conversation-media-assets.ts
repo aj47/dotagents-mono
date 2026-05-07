@@ -183,10 +183,14 @@ export type ConversationVideoAssetActionResult<Body = unknown> = {
   headers?: Record<string, string>;
 };
 
+export type ConversationImageAssetActionResult<Body = unknown> = ConversationVideoAssetActionResult<Body>;
+
 export type ConversationVideoAssetActionFile<Body = unknown> = {
   size: number;
   createBody(range?: { start: number; end: number }): Body;
 };
+
+export type ConversationImageAssetActionFile<Body = unknown> = ConversationVideoAssetActionFile<Body>;
 
 export interface ConversationVideoAssetActionService<Body = unknown> {
   validateConversationId(conversationId: string): string | null | undefined;
@@ -194,6 +198,14 @@ export interface ConversationVideoAssetActionService<Body = unknown> {
     conversationId: string,
     fileName: string,
   ): Promise<ConversationVideoAssetActionFile<Body> | null | undefined>;
+}
+
+export interface ConversationImageAssetActionService<Body = unknown> {
+  validateConversationId(conversationId: string): string | null | undefined;
+  getImageAssetFile(
+    conversationId: string,
+    fileName: string,
+  ): Promise<ConversationImageAssetActionFile<Body> | null | undefined>;
 }
 
 export interface ConversationVideoAssetFileInfo {
@@ -209,6 +221,12 @@ export interface ConversationVideoAssetFileSystemAdapter<Body = unknown> {
 export interface ConversationVideoAssetFileServiceOptions<Body = unknown> {
   validateConversationId(conversationId: string): string | null | undefined;
   resolveVideoAssetPath(conversationId: string, fileName: string): string;
+  fileSystem: ConversationVideoAssetFileSystemAdapter<Body>;
+}
+
+export interface ConversationImageAssetFileServiceOptions<Body = unknown> {
+  validateConversationId(conversationId: string): string | null | undefined;
+  resolveImageAssetPath(conversationId: string, fileName: string): string;
   fileSystem: ConversationVideoAssetFileSystemAdapter<Body>;
 }
 
@@ -229,6 +247,23 @@ export function createConversationVideoAssetFileService<Body = unknown>(
   };
 }
 
+export function createConversationImageAssetFileService<Body = unknown>(
+  options: ConversationImageAssetFileServiceOptions<Body>,
+): ConversationImageAssetActionService<Body> {
+  return {
+    validateConversationId: (conversationId) => options.validateConversationId(conversationId),
+    getImageAssetFile: async (conversationId, fileName) => {
+      const assetPath = options.resolveImageAssetPath(conversationId, fileName);
+      const fileInfo = await options.fileSystem.getFileInfo(assetPath);
+      if (!fileInfo.isFile) return null;
+      return {
+        size: fileInfo.size,
+        createBody: () => options.fileSystem.createReadBody(assetPath),
+      };
+    },
+  };
+}
+
 export interface ConversationVideoAssetActionDiagnostics {
   logError(source: string, message: string, error: unknown): void;
 }
@@ -238,12 +273,24 @@ export interface ConversationVideoAssetActionOptions<Body = unknown> {
   diagnostics?: ConversationVideoAssetActionDiagnostics;
 }
 
+export interface ConversationImageAssetActionOptions<Body = unknown> {
+  service: ConversationImageAssetActionService<Body>;
+  diagnostics?: ConversationVideoAssetActionDiagnostics;
+}
+
 export interface ConversationVideoAssetRouteActions<Body = unknown> {
   getConversationVideoAsset(
     id: string | undefined,
     fileName: string | undefined,
     rangeHeader: string | string[] | undefined,
   ): Promise<ConversationVideoAssetActionResult<Body>>;
+}
+
+export interface ConversationImageAssetRouteActions<Body = unknown> {
+  getConversationImageAsset(
+    id: string | undefined,
+    fileName: string | undefined,
+  ): Promise<ConversationImageAssetActionResult<Body>>;
 }
 
 export type RespondToUserLocalAssetResolution = {
@@ -960,6 +1007,16 @@ export function buildConversationVideoAssetHttpUrl(apiBaseUrl: string, assetUrl:
   return `${base}${REMOTE_SERVER_API_BUILDERS.conversationVideoAsset(assetRef.conversationId, assetRef.fileName)}`;
 }
 
+export function buildConversationImageAssetHttpUrl(apiBaseUrl: string, assetUrl: string): string | null {
+  const assetRef = parseConversationImageAssetUrl(assetUrl);
+  if (!assetRef) return null;
+
+  const base = apiBaseUrl.trim().replace(/\/+$/, '');
+  if (!base) return null;
+
+  return `${base}${REMOTE_SERVER_API_BUILDERS.conversationImageAsset(assetRef.conversationId, assetRef.fileName)}`;
+}
+
 export function buildConversationVideoAssetUrl(conversationId: string, fileName: string): string {
   return `assets://${CONVERSATION_VIDEO_ASSET_HOST}/${encodeURIComponent(conversationId)}/${encodeURIComponent(fileName)}`;
 }
@@ -1204,6 +1261,69 @@ function isMissingConversationVideoAssetError(error: unknown): boolean {
     && (error as { code?: unknown }).code === 'ENOENT';
 }
 
+function buildConversationImageAssetActionError<Body = unknown>(
+  statusCode: number,
+  message: string,
+): ConversationImageAssetActionResult<Body> {
+  return {
+    statusCode,
+    body: { error: message },
+  };
+}
+
+export async function getConversationImageAssetAction<Body = unknown>(
+  id: string | undefined,
+  fileName: string | undefined,
+  options: ConversationImageAssetActionOptions<Body>,
+): Promise<ConversationImageAssetActionResult<Body>> {
+  try {
+    const conversationId = id ?? '';
+    const assetFileName = fileName ?? '';
+
+    const conversationIdError = options.service.validateConversationId(conversationId);
+    if (conversationIdError) {
+      return buildConversationImageAssetActionError(400, conversationIdError);
+    }
+
+    let assetFile: ConversationImageAssetActionFile<Body> | null | undefined;
+    try {
+      assetFile = await options.service.getImageAssetFile(conversationId, assetFileName);
+    } catch (caughtError) {
+      if (isMissingConversationVideoAssetError(caughtError)) {
+        return buildConversationImageAssetActionError(404, 'Image asset not found');
+      }
+      const errorMessage = getConversationVideoAssetActionErrorMessage(caughtError, 'Invalid image asset');
+      if (errorMessage.startsWith('Invalid ')) {
+        return buildConversationImageAssetActionError(400, errorMessage);
+      }
+      options.diagnostics?.logError('conversation-media-assets', 'Failed to stream conversation image asset', caughtError);
+      return buildConversationImageAssetActionError(500, errorMessage);
+    }
+
+    if (!assetFile || assetFile.size <= 0) {
+      return buildConversationImageAssetActionError(404, 'Image asset not found');
+    }
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': getConversationImageMimeTypeFromFileName(assetFileName) ?? 'application/octet-stream',
+        'Content-Length': String(assetFile.size),
+      },
+      body: assetFile.createBody(),
+    };
+  } catch (caughtError) {
+    if (isMissingConversationVideoAssetError(caughtError)) {
+      return buildConversationImageAssetActionError(404, 'Image asset not found');
+    }
+    options.diagnostics?.logError('conversation-media-assets', 'Failed to stream conversation image asset', caughtError);
+    return buildConversationImageAssetActionError(
+      500,
+      getConversationVideoAssetActionErrorMessage(caughtError, 'Failed to stream image asset'),
+    );
+  }
+}
+
 export async function getConversationVideoAssetAction<Body = unknown>(
   id: string | undefined,
   fileName: string | undefined,
@@ -1269,5 +1389,14 @@ export function createConversationVideoAssetRouteActions<Body = unknown>(
   return {
     getConversationVideoAsset: (id, fileName, rangeHeader) =>
       getConversationVideoAssetAction(id, fileName, rangeHeader, options),
+  };
+}
+
+export function createConversationImageAssetRouteActions<Body = unknown>(
+  options: ConversationImageAssetActionOptions<Body>,
+): ConversationImageAssetRouteActions<Body> {
+  return {
+    getConversationImageAsset: (id, fileName) =>
+      getConversationImageAssetAction(id, fileName, options),
   };
 }

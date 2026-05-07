@@ -40,8 +40,11 @@ import {
 } from "@dotagents/shared/conversation-sync"
 import { getConversationIdValidationError } from "@dotagents/shared/conversation-id"
 import {
+  createConversationImageAssetFileService,
+  createConversationImageAssetRouteActions,
   createConversationVideoAssetFileService,
   createConversationVideoAssetRouteActions,
+  type ConversationImageAssetActionOptions,
   type ConversationVideoAssetActionOptions,
 } from "@dotagents/shared/conversation-media-assets"
 import {
@@ -101,6 +104,7 @@ import {
   previewBundleWithConflicts,
 } from "./bundle-service"
 import { conversationService } from "./conversation-service"
+import { getConversationImageAssetPath } from "./conversation-image-assets"
 import { getConversationVideoAssetPath } from "./conversation-video-assets"
 import { operatorAuditEventRouteActions } from "./operator-audit-actions"
 import { cleanupInvalidMcpServerReferencesInLayers } from "./agent-profile-mcp-cleanup"
@@ -277,6 +281,23 @@ const conversationActionOptions: ConversationActionOptions<DesktopConversationAc
 
 const conversationRouteActions = createConversationRouteActions(conversationActionOptions)
 
+const conversationImageAssetActionOptions: ConversationImageAssetActionOptions = {
+  service: createConversationImageAssetFileService({
+    validateConversationId: getConversationIdValidationError,
+    resolveImageAssetPath: getConversationImageAssetPath,
+    fileSystem: {
+      getFileInfo: async (assetPath) => {
+        const stat = await fs.promises.stat(assetPath)
+        return { size: stat.size, isFile: stat.isFile() }
+      },
+      createReadBody: (assetPath) => fs.createReadStream(assetPath),
+    },
+  }),
+  diagnostics: diagnosticsService,
+}
+
+const conversationImageAssetRouteActions = createConversationImageAssetRouteActions(conversationImageAssetActionOptions)
+
 const conversationVideoAssetActionOptions: ConversationVideoAssetActionOptions = {
   service: createConversationVideoAssetFileService({
     validateConversationId: getConversationIdValidationError,
@@ -424,6 +445,7 @@ export const mobileApiDesktopActions = createMobileApiRouteActions({
   agentSessionCandidates: agentSessionCandidateRouteActions,
   audit: operatorAuditEventRouteActions,
   conversations: conversationRouteActions,
+  conversationImageAssets: conversationImageAssetRouteActions,
   conversationVideoAssets: conversationVideoAssetRouteActions,
   tts: ttsRouteActions,
   push: pushRouteActions,

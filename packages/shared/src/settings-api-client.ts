@@ -1664,6 +1664,17 @@ export class SettingsApiClient {
     return this.request<ServerConversationFull>(API_BUILDERS.conversation(id));
   }
 
+  async getConversationImageAssetResponse(
+    id: string,
+    fileName: string,
+    options: Omit<RequestInit, 'method' | 'body'> = {},
+  ): Promise<Response> {
+    return this.requestResponse(API_BUILDERS.conversationImageAsset(id, fileName), {
+      ...options,
+      method: 'GET',
+    });
+  }
+
   async getConversationVideoAssetResponse(
     id: string,
     fileName: string,

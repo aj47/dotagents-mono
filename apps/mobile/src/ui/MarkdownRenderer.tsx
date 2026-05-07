@@ -1,11 +1,16 @@
 import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, Text, View, type ImageStyle, type StyleProp } from 'react-native';
 import Markdown from 'react-native-markdown-display';
-import { isAllowedMarkdownLinkUrl } from '@dotagents/shared/conversation-media-assets';
+import {
+  buildConversationImageAssetHttpUrl,
+  isAllowedMarkdownLinkUrl,
+  parseConversationImageAssetUrl,
+} from '@dotagents/shared/conversation-media-assets';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
 import { VideoAttachmentCard } from './VideoAttachmentCard';
 import { splitMarkdownContent } from '@dotagents/shared/markdown-render-parts';
+import { SettingsApiClient } from '../lib/settingsApi';
 
 interface MarkdownRendererProps {
   content: string;
@@ -42,6 +47,101 @@ const ThinkSection: React.FC<{
       )}
     </View>
   );
+};
+
+function getHeaderRecord(headers: Headers): Record<string, string> {
+  const record: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    record[key] = value;
+  });
+  return record;
+}
+
+const MarkdownImage: React.FC<{
+  sourceUrl: string;
+  alt?: string;
+  assetBaseUrl?: string;
+  authToken?: string;
+  style?: StyleProp<ImageStyle>;
+}> = ({ sourceUrl, alt, assetBaseUrl, authToken, style }) => {
+  const [imageSource, setImageSource] = React.useState<{ uri: string; headers?: Record<string, string> } | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const objectUrlRef = React.useRef<string | null>(null);
+  const assetRef = React.useMemo(() => parseConversationImageAssetUrl(sourceUrl), [sourceUrl]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const clearObjectUrl = () => {
+      if (objectUrlRef.current) {
+        try { URL.revokeObjectURL(objectUrlRef.current); } catch {}
+        objectUrlRef.current = null;
+      }
+    };
+
+    async function loadImage() {
+      clearObjectUrl();
+      setError(null);
+
+      if (!assetRef) {
+        setImageSource({ uri: sourceUrl });
+        return;
+      }
+
+      if (!assetBaseUrl || !authToken) {
+        setImageSource(null);
+        setError('Image unavailable.');
+        return;
+      }
+
+      try {
+        const client = new SettingsApiClient(assetBaseUrl, authToken);
+
+        if (Platform.OS === 'web') {
+          const response = await client.getConversationImageAssetResponse(assetRef.conversationId, assetRef.fileName);
+          if (!response.ok) {
+            throw new Error(`Image request failed (${response.status})`);
+          }
+          const objectUrl = URL.createObjectURL(await response.blob());
+          if (cancelled) {
+            URL.revokeObjectURL(objectUrl);
+            return;
+          }
+          objectUrlRef.current = objectUrl;
+          setImageSource({ uri: objectUrl });
+          return;
+        }
+
+        const resolvedUri = buildConversationImageAssetHttpUrl(assetBaseUrl, sourceUrl);
+        if (!resolvedUri) {
+          throw new Error('Invalid image asset URL.');
+        }
+        const headers = getHeaderRecord(await client.buildRequestHeaders());
+        if (!cancelled) setImageSource({ uri: resolvedUri, headers });
+      } catch (caughtError) {
+        if (!cancelled) {
+          setImageSource(null);
+          setError(caughtError instanceof Error ? caughtError.message : 'Unable to load image.');
+        }
+      }
+    }
+
+    loadImage();
+    return () => {
+      cancelled = true;
+      clearObjectUrl();
+    };
+  }, [assetBaseUrl, assetRef, authToken, sourceUrl]);
+
+  if (error) {
+    return <Text>{alt || error}</Text>;
+  }
+
+  if (!imageSource) {
+    return <Text>{alt || 'Image'}</Text>;
+  }
+
+  return <Image source={imageSource} style={style} resizeMode="contain" accessibilityLabel={alt} />;
 };
 
 const createThinkStyles = (theme: ReturnType<typeof useTheme>['theme'], isDark: boolean) => StyleSheet.create({
@@ -238,6 +338,22 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   });
 
   const parts = splitMarkdownContent(content);
+  const markdownRules = React.useMemo(() => ({
+    image: (node: any) => {
+      const src = String(node.attributes?.src || '');
+      if (!src) return null;
+      return (
+        <MarkdownImage
+          key={node.key}
+          sourceUrl={src}
+          alt={node.attributes?.alt}
+          assetBaseUrl={assetBaseUrl}
+          authToken={assetAuthToken}
+          style={markdownStyles.image}
+        />
+      );
+    },
+  }), [assetAuthToken, assetBaseUrl, markdownStyles.image]);
 
   return (
     <View>
@@ -270,6 +386,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           <Markdown
             key={`markdown-${index}`}
             style={markdownStyles}
+            rules={markdownRules}
             onLinkPress={isAllowedMarkdownLinkUrl}
           >
             {part.content}

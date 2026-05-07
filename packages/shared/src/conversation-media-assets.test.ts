@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   buildConversationVideoAssetStreamPlan,
   buildConversationVideoAssetUrl,
+  buildConversationImageAssetHttpUrl,
   buildConversationImageAssetUrl,
   buildConversationImageMarkdownMessage,
   buildConversationImageMarkdownReference,
   buildConversationVideoAssetHttpUrl,
+  createConversationImageAssetFileService,
+  createConversationImageAssetRouteActions,
   createConversationVideoAssetFileService,
   createConversationVideoAssetRouteActions,
   escapeMarkdownAltText,
@@ -99,11 +102,16 @@ describe('conversation video asset utilities', () => {
 
   it('builds authenticated remote asset urls from api base url', () => {
     const assetRoute = REMOTE_SERVER_API_BUILDERS.conversationVideoAsset('conv_1', 'abcdef1234567890.mp4');
+    const imageAssetRoute = REMOTE_SERVER_API_BUILDERS.conversationImageAsset('conv_1', 'abcdef1234567890.png');
 
     expect(buildConversationVideoAssetHttpUrl(
       'http://localhost:3210/v1/',
       'assets://conversation-video/conv_1/abcdef1234567890.mp4',
     )).toBe(`http://localhost:3210${getRemoteServerApiRoutePath(assetRoute)}`);
+    expect(buildConversationImageAssetHttpUrl(
+      'http://localhost:3210/v1/',
+      'assets://conversation-image/conv_1/abcdef1234567890.png',
+    )).toBe(`http://localhost:3210${getRemoteServerApiRoutePath(imageAssetRoute)}`);
   });
 
   it('detects conversation video asset urls', () => {
@@ -790,6 +798,56 @@ describe('conversation video asset utilities', () => {
       filePath: '/assets/conv-1/abcdef1234567890.mp4',
       range: { start: 10, end: 19 },
     }]);
+  });
+
+  it('creates reusable image asset file services from filesystem adapters', async () => {
+    const fileInfoByPath = new Map<string, { size: number; isFile: boolean }>([
+      ['/assets/conv-1/abcdef1234567890.png', { size: 500, isFile: true }],
+      ['/assets/conv-1/abcdef1234567890.webp', { size: 500, isFile: false }],
+    ]);
+    const readCalls: string[] = [];
+    const service = createConversationImageAssetFileService({
+      validateConversationId: () => null,
+      resolveImageAssetPath: (conversationId, fileName) => `/assets/${conversationId}/${fileName}`,
+      fileSystem: {
+        getFileInfo: async (filePath) => fileInfoByPath.get(filePath) ?? { size: 0, isFile: false },
+        createReadBody: (filePath) => {
+          readCalls.push(filePath);
+          return 'image-bytes';
+        },
+      },
+    });
+
+    expect(service.validateConversationId('conv-1')).toBeNull();
+    const assetFile = await service.getImageAssetFile('conv-1', 'abcdef1234567890.png');
+    expect(assetFile?.size).toBe(500);
+    expect(assetFile?.createBody()).toBe('image-bytes');
+    await expect(service.getImageAssetFile('conv-1', 'abcdef1234567890.webp')).resolves.toBeNull();
+    expect(readCalls).toEqual(['/assets/conv-1/abcdef1234567890.png']);
+  });
+
+  it('creates reusable image asset route actions through an injected file service', async () => {
+    const routeActions = createConversationImageAssetRouteActions({
+      service: {
+        validateConversationId: () => null,
+        getImageAssetFile: async () => ({
+          size: 500,
+          createBody: () => 'image-bytes',
+        }),
+      },
+    });
+
+    await expect(routeActions.getConversationImageAsset(
+      'conv-1',
+      'abcdef1234567890.png',
+    )).resolves.toEqual({
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'image/png',
+        'Content-Length': '500',
+      },
+      body: 'image-bytes',
+    });
   });
 
   it('creates reusable video asset route actions through an injected file service', async () => {

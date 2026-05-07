@@ -215,6 +215,18 @@ export function registerMobileApiRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  // GET /v1/conversations/:id/assets/images/:fileName - Stream conversation image asset for mobile
+  fastify.get(API_ROUTES.conversationImageAsset, async (req, reply) => {
+    const params = req.params as { id?: string; fileName?: string };
+    const result = await actions.getConversationImageAsset(params.id, params.fileName);
+    if (result.headers) {
+      for (const [name, value] of Object.entries(result.headers)) {
+        reply.header(name, value);
+      }
+    }
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   // GET /v1/conversations/:id/assets/videos/:fileName - Stream conversation video asset for mobile
   fastify.get(API_ROUTES.conversationVideoAsset, async (req, reply) => {
     const params = req.params as { id?: string; fileName?: string };

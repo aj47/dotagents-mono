@@ -72,6 +72,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_BUILDERS.mcpServerToggle('filesystem/local')).toBe('/mcp/servers/filesystem%2Flocal/toggle');
     expect(REMOTE_SERVER_API_BUILDERS.mcpConfigServer('filesystem/local')).toBe('/mcp/config/servers/filesystem%2Flocal');
     expect(REMOTE_SERVER_API_BUILDERS.modelsByProvider('openai')).toBe('/models/openai');
+    expect(REMOTE_SERVER_API_BUILDERS.conversationImageAsset('conv 1', 'image/name.png')).toBe('/conversations/conv%201/assets/images/image%2Fname.png');
     expect(REMOTE_SERVER_API_BUILDERS.conversationVideoAsset('conv 1', 'clip/name.mp4')).toBe('/conversations/conv%201/assets/videos/clip%2Fname.mp4');
     expect(REMOTE_SERVER_API_BUILDERS.operatorLogs(5, 'warning')).toBe('/operator/logs?count=5&level=warning');
     expect(REMOTE_SERVER_API_BUILDERS.operatorLogs(5)).toBe('/operator/logs?count=5');

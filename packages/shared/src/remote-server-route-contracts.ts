@@ -82,6 +82,10 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
     context: NonNullable<MobileApiActionResult['auditContext']>,
   ) => void;
   getConversation: (id?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
+  getConversationImageAsset: (
+    id: string | undefined,
+    fileName: string | undefined,
+  ) => RemoteServerMaybePromise<MobileApiActionResult>;
   getConversationVideoAsset: (
     id: string | undefined,
     fileName: string | undefined,
@@ -174,6 +178,7 @@ export interface MobileApiRouteActionGroups<Request = unknown, Reply = unknown> 
     MobileApiRouteActions<Request, Reply>,
     'getConversation' | 'getConversations' | 'createConversation' | 'updateConversation'
   >;
+  conversationImageAssets: Pick<MobileApiRouteActions<Request, Reply>, 'getConversationImageAsset'>;
   conversationVideoAssets: Pick<MobileApiRouteActions<Request, Reply>, 'getConversationVideoAsset'>;
   tts: Pick<MobileApiRouteActions<Request, Reply>, 'synthesizeSpeech'>;
   push: Pick<
@@ -244,6 +249,7 @@ export function createMobileApiRouteActions<Request = unknown, Reply = unknown>(
     ...groups.agentSessionCandidates,
     ...groups.audit,
     ...groups.conversations,
+    ...groups.conversationImageAssets,
     ...groups.conversationVideoAssets,
     ...groups.tts,
     ...groups.push,
