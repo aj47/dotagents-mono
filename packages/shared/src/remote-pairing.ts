@@ -89,6 +89,27 @@ export type RemoteServerLogLevelFieldMetadata = {
   accessibilityLabel: string;
 };
 
+export type RemoteServerApiKeyFieldMetadata = {
+  key: 'remoteServerApiKey';
+  label: string;
+  tooltip: string;
+  secretMask: string;
+  copyButtonLabel: string;
+  copyHiddenLabel: string;
+  copyStreamerModeTitle: string;
+  copyUnavailableTitle: string;
+  copyErrorLogMessage: string;
+  regenerateButtonLabel: string;
+  streamerCopyDisabledText: string;
+  rotateConfirmTitle: string;
+  rotateConfirmMessage: string;
+  rotateConfirmButtonLabel: string;
+  rotateAccessibilityLabel: string;
+  rotateButtonLabel: string;
+  rotatePendingButtonLabel: string;
+  rotateHelperText: string;
+};
+
 export type RemoteServerPortFieldMetadata = {
   key: 'remoteServerPort';
   label: string;
@@ -203,6 +224,26 @@ export const REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA: RemoteServerLogLevelFieldMe
   label: 'Log Level',
   tooltip: 'Fastify logger level.',
   accessibilityLabel: 'remote server log level',
+};
+export const REMOTE_SERVER_API_KEY_FIELD_METADATA: RemoteServerApiKeyFieldMetadata = {
+  key: 'remoteServerApiKey',
+  label: 'API Key',
+  tooltip: 'Bearer token required in Authorization header',
+  secretMask: DEFAULT_REMOTE_SERVER_SECRET_MASK,
+  copyButtonLabel: 'Copy',
+  copyHiddenLabel: 'Hidden',
+  copyStreamerModeTitle: 'Disabled in Streamer Mode',
+  copyUnavailableTitle: 'API key unavailable',
+  copyErrorLogMessage: 'Failed to copy remote server API key',
+  regenerateButtonLabel: 'Regenerate',
+  streamerCopyDisabledText: 'Copy disabled in Streamer Mode',
+  rotateConfirmTitle: 'Rotate API Key',
+  rotateConfirmMessage: 'Rotate the desktop remote server API key now? This phone will save the returned key locally, and any clients still using the old key will need to reconnect.',
+  rotateConfirmButtonLabel: 'Rotate Key',
+  rotateAccessibilityLabel: 'Rotate API key',
+  rotateButtonLabel: 'Rotate API key',
+  rotatePendingButtonLabel: 'Rotating API key…',
+  rotateHelperText: 'Rotating the API key revokes the previous mobile/remote credential. This phone saves the new key automatically after confirmation.',
 };
 export const REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS: readonly RemoteServerBindAddressOption[] = [
   {

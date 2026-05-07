@@ -167,7 +167,16 @@ test('includes tunnel, Discord, and WhatsApp operator controls and summaries', (
 
 test('surfaces recent operator audit entries and rotates the API key using the saved mobile config', () => {
   assert.match(operationsSource, /Recent operator audit/);
-  assert.match(operationsSource, /Rotate API key/);
+  assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA/);
+  assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotateConfirmTitle/);
+  assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotateConfirmMessage/);
+  assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotateConfirmButtonLabel/);
+  assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotateAccessibilityLabel/);
+  assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotatePendingButtonLabel/);
+  assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotateButtonLabel/);
+  assert.match(operationsSource, /REMOTE_SERVER_API_KEY_FIELD_METADATA\.rotateHelperText/);
+  assert.doesNotMatch(operationsSource, /'Rotate API Key'/);
+  assert.doesNotMatch(operationsSource, /'Rotate Key'/);
   assert.match(operationsSource, /Run Agent on Desktop/);
   assert.match(operationsSource, /settingsClient\.runOperatorAgent\(\{ prompt \}\)/);
   assert.match(operationsSource, /Check latest release/);

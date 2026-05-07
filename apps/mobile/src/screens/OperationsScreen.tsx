@@ -82,6 +82,7 @@ import {
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED,
   isRemoteServerPortUpdateValue,
+  REMOTE_SERVER_API_KEY_FIELD_METADATA,
   REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
@@ -1715,22 +1716,22 @@ export default function OperationsScreen({ navigation }: any) {
               <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                 onPress={() => confirmAction(
-                  'Rotate API Key',
-                  'Rotate the desktop remote server API key now? This phone will save the returned key locally, and any clients still using the old key will need to reconnect.',
-                  'Rotate Key',
+                  REMOTE_SERVER_API_KEY_FIELD_METADATA.rotateConfirmTitle,
+                  REMOTE_SERVER_API_KEY_FIELD_METADATA.rotateConfirmMessage,
+                  REMOTE_SERVER_API_KEY_FIELD_METADATA.rotateConfirmButtonLabel,
                   true,
                   rotateApiKey,
                 )}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Rotate API key')}
+                accessibilityLabel={createButtonAccessibilityLabel(REMOTE_SERVER_API_KEY_FIELD_METADATA.rotateAccessibilityLabel)}
               >
                 <Text style={styles.secondaryActionText}>
-                  {pendingAction === 'rotate-api-key' ? 'Rotating API key…' : 'Rotate API key'}
+                  {pendingAction === 'rotate-api-key' ? REMOTE_SERVER_API_KEY_FIELD_METADATA.rotatePendingButtonLabel : REMOTE_SERVER_API_KEY_FIELD_METADATA.rotateButtonLabel}
                 </Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.helperText}>Rotating the API key revokes the previous mobile/remote credential. This phone saves the new key automatically after confirmation.</Text>
+            <Text style={styles.helperText}>{REMOTE_SERVER_API_KEY_FIELD_METADATA.rotateHelperText}</Text>
           </View>
 
           <View style={styles.panel}>

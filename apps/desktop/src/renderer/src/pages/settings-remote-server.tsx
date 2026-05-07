@@ -39,6 +39,7 @@ import {
   isLoopbackRemoteHost,
   isUnconnectableRemoteHostForMobilePairing,
   isWildcardRemoteHost,
+  REMOTE_SERVER_API_KEY_FIELD_METADATA,
   REMOTE_SERVER_AUTO_SHOW_PANEL_FIELD_METADATA,
   REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
   REMOTE_SERVER_PORT_MAX,
@@ -325,22 +326,30 @@ export function RemoteServerSettingsGroups({
                 )}
               </Control>
 
-              <Control label={<ControlLabel label="API Key" tooltip="Bearer token required in Authorization header" />} className="px-3">
+              <Control
+                label={(
+                  <ControlLabel
+                    label={REMOTE_SERVER_API_KEY_FIELD_METADATA.label}
+                    tooltip={REMOTE_SERVER_API_KEY_FIELD_METADATA.tooltip}
+                  />
+                )}
+                className="px-3"
+              >
                 <div className="flex flex-wrap items-center gap-2">
-                  <Input type="password" value={cfg.remoteServerApiKey ? "••••••••" : ""} readOnly className="w-full sm:w-[360px] max-w-full min-w-0" />
+                  <Input type="password" value={cfg.remoteServerApiKey ? REMOTE_SERVER_API_KEY_FIELD_METADATA.secretMask : ""} readOnly className="w-full sm:w-[360px] max-w-full min-w-0" />
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={streamerMode || !hasRemoteServerApiKey}
-                    title={streamerMode ? "Disabled in Streamer Mode" : !hasRemoteServerApiKey ? "API key unavailable" : undefined}
+                    title={streamerMode ? REMOTE_SERVER_API_KEY_FIELD_METADATA.copyStreamerModeTitle : !hasRemoteServerApiKey ? REMOTE_SERVER_API_KEY_FIELD_METADATA.copyUnavailableTitle : undefined}
                     onClick={() => {
                       if (!remoteServerPairingApiKey || streamerMode) return
                       void copyTextToClipboard(remoteServerPairingApiKey).catch((err) => {
-                        console.error("Failed to copy remote server API key", err)
+                        console.error(REMOTE_SERVER_API_KEY_FIELD_METADATA.copyErrorLogMessage, err)
                       })
                     }}
                   >
-                    {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy"}
+                    {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />{REMOTE_SERVER_API_KEY_FIELD_METADATA.copyHiddenLabel}</> : REMOTE_SERVER_API_KEY_FIELD_METADATA.copyButtonLabel}
                   </Button>
                   <Button
                     variant="secondary"
@@ -357,13 +366,13 @@ export function RemoteServerSettingsGroups({
                       ])
                     }}
                   >
-                    Regenerate
+                    {REMOTE_SERVER_API_KEY_FIELD_METADATA.regenerateButtonLabel}
                   </Button>
                 </div>
                 {streamerMode && (
                   <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                     <EyeOff className="h-3 w-3" />
-                    Copy disabled in Streamer Mode
+                    {REMOTE_SERVER_API_KEY_FIELD_METADATA.streamerCopyDisabledText}
                   </div>
                 )}
               </Control>
