@@ -118,6 +118,7 @@ describe('SettingsApiClient', () => {
 
     await client.getSettings();
 
+    expect(client.getChatCompletionsUrl()).toBe('http://127.0.0.1:3210/v1/chat/completions');
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe('http://127.0.0.1:3210/v1/settings');
 

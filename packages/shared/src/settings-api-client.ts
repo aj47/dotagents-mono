@@ -1179,6 +1179,10 @@ export class SettingsApiClient {
     this.options = options;
   }
 
+  getChatCompletionsUrl(): string {
+    return `${this.baseUrl}${API_PATHS.chatCompletions}`;
+  }
+
   async buildRequestHeaders(options: Pick<RequestInit, 'headers' | 'body'> = {}): Promise<Headers> {
     const headers = new Headers(options.headers);
     headers.set('Authorization', `Bearer ${this.apiKey}`);

@@ -25,7 +25,6 @@ import {
   normalizeApiBaseUrl,
   type ConnectionRecoveryConfig,
 } from '@dotagents/shared/connection-recovery';
-import { REMOTE_SERVER_API_PATHS } from '@dotagents/shared/remote-server-api';
 import { Platform } from 'react-native';
 import EventSource from 'react-native-sse';
 import { ConnectionRecoveryManager } from './connectionRecovery';
@@ -86,11 +85,6 @@ export class OpenAIClient {
       Authorization: `Bearer ${this.cfg.apiKey}`,
       'Content-Type': 'application/json',
     } as const;
-  }
-
-  private getUrl(endpoint: string): string {
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    return `${this.baseUrl}${normalizedEndpoint}`;
   }
 
   setConnectionStatusCallback(callback: OnConnectionStatusChange): void {
@@ -158,7 +152,7 @@ export class OpenAIClient {
     onProgress?: OnProgressCallback,
     conversationId?: string
   ): Promise<ChatResponse> {
-    const url = this.getUrl(REMOTE_SERVER_API_PATHS.chatCompletions);
+    const url = this.remoteApiClient.getChatCompletionsUrl();
     const body = buildChatCompletionRequestBody({
       model: this.cfg.model,
       messages,
