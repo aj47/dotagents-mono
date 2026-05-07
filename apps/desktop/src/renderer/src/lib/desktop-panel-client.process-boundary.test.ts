@@ -18,6 +18,7 @@ const panelResizeWrapperSource = readFileSync(
   "utf8",
 )
 const resizeHandleSource = readFileSync(new URL("../components/resize-handle.tsx", import.meta.url), "utf8")
+const panelPageSource = readFileSync(new URL("../pages/panel.tsx", import.meta.url), "utf8")
 
 describe("desktop panel renderer client", () => {
   it("centralizes panel IPC channels", () => {
@@ -27,6 +28,8 @@ describe("desktop panel renderer client", () => {
     expect(clientSource).toContain("tipcClient.updatePanelPosition(position)")
     expect(clientSource).toContain("tipcClient.savePanelCustomPosition(position)")
     expect(clientSource).toContain("tipcClient.getPanelSize()")
+    expect(clientSource).toContain("tipcClient.setPanelMode({ mode })")
+    expect(clientSource).toContain("tipcClient.resizePanelForWaveformPreview({ showPreview })")
     expect(clientSource).toContain("tipcClient.updatePanelSize(size)")
     expect(clientSource).toContain("tipcClient.savePanelCustomSize(size)")
     expect(clientSource).toContain("tipcClient.getPanelMode()")
@@ -35,11 +38,12 @@ describe("desktop panel renderer client", () => {
   })
 
   it("keeps focused text-input surfaces off direct panel focusability IPC", () => {
-    const combinedSource = [textInputPanelSource, overlayFollowUpInputSource, agentProgressSource].join("\n")
+    const combinedSource = [textInputPanelSource, overlayFollowUpInputSource, agentProgressSource, panelPageSource].join("\n")
 
     expect(textInputPanelSource).toContain("desktopPanelClient.setPanelFocusable({")
     expect(overlayFollowUpInputSource).toContain("desktopPanelClient.setPanelFocusable({")
     expect(agentProgressSource).toContain("desktopPanelClient.setPanelFocusable({")
+    expect(panelPageSource).toContain("desktopPanelClient.setPanelFocusable({")
     expect(combinedSource).not.toContain("tipcClient.setPanelFocusable(")
   })
 
@@ -68,5 +72,14 @@ describe("desktop panel renderer client", () => {
     expect(combinedSource).not.toContain("tipcClient.getPanelMode(")
     expect(combinedSource).not.toContain("tipcClient.savePanelModeSize(")
     expect(combinedSource).not.toContain("tipcClient.savePanelCustomSize(")
+  })
+
+  it("keeps panel page mode and size plumbing off direct panel IPC", () => {
+    expect(panelPageSource).toContain("desktopPanelClient.setPanelMode(mode)")
+    expect(panelPageSource).toContain("desktopPanelClient.getPanelSize()")
+    expect(panelPageSource).toContain("desktopPanelClient.resizePanelForWaveformPreview(hasPreview)")
+    expect(panelPageSource).not.toContain("tipcClient.setPanelMode(")
+    expect(panelPageSource).not.toContain("tipcClient.getPanelSize(")
+    expect(panelPageSource).not.toContain("tipcClient.resizePanelForWaveformPreview(")
   })
 })

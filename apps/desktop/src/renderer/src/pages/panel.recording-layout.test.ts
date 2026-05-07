@@ -226,7 +226,7 @@ describe("panel recording layout", () => {
     )
 
     expect(showTextInputSection).toContain(
-      'await tipcClient.setPanelFocusable({ focusable: true, andFocus: true })'
+      'await desktopPanelClient.setPanelFocusable({ focusable: true, andFocus: true })'
     )
     expect(showTextInputSection).toContain("textInputPanelRef.current?.focus()")
     // Text-input open must preserve main window visibility. Neither the

@@ -12,6 +12,7 @@ import { PanelResizeWrapper } from "@renderer/components/panel-resize-wrapper"
 import { useAgentStore, useAgentProgress, useConversationStore } from "@renderer/stores"
 import { useConfigQuery, useConversationQuery, useCreateConversationMutation } from "@renderer/lib/queries"
 import { desktopAgentProfilesClient } from "@renderer/lib/desktop-agent-profiles-client"
+import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
 import { PanelDragBar } from "@renderer/components/panel-drag-bar"
 import { decodeBlobToPcm } from "@renderer/lib/audio-utils"
 import { useTheme } from "@renderer/contexts/theme-context"
@@ -251,7 +252,7 @@ export function Component() {
   const requestPanelMode = (mode: "normal" | "agent" | "textInput") => {
     if (lastRequestedModeRef.current === mode) return
     lastRequestedModeRef.current = mode
-    tipcClient.setPanelMode({ mode })
+    void desktopPanelClient.setPanelMode(mode)
   }
 
 
@@ -319,7 +320,7 @@ export function Component() {
       }
     }
 
-    tipcClient.getPanelSize().then(updateNativePanelSize).catch((error: unknown) => {
+    desktopPanelClient.getPanelSize().then(updateNativePanelSize).catch((error: unknown) => {
       console.error("Failed to get panel size for zoom compensation:", error)
     })
 
@@ -816,7 +817,7 @@ export function Component() {
   useEffect(() => {
     if (!recording) return
     const hasPreview = isPreviewEnabled && previewText.length > 0
-    tipcClient.resizePanelForWaveformPreview({ showPreview: hasPreview })
+    void desktopPanelClient.resizePanelForWaveformPreview(hasPreview)
   }, [recording, isPreviewEnabled, previewText])
 
   useEffect(() => {
@@ -932,7 +933,7 @@ export function Component() {
         }
 
         try {
-          await tipcClient.setPanelFocusable({ focusable: true, andFocus: true })
+          await desktopPanelClient.setPanelFocusable({ focusable: true, andFocus: true })
         } catch {
           // Ignore — the textarea focus attempt below may still succeed
         }
