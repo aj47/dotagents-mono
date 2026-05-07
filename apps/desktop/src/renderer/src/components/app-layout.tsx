@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
-import { rendererHandlers } from "@renderer/lib/tipc-client"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
+import { desktopAppShellClient } from "@renderer/lib/desktop-app-shell-client"
 import { desktopSettingsGeneralClient } from "@renderer/lib/desktop-settings-general-client"
 import { cn } from "@renderer/lib/utils"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -400,7 +400,7 @@ export const Component = () => {
   }
 
   useEffect(() => {
-    return rendererHandlers.navigate.listen((url) => {
+    return desktopAppShellClient.onNavigate((url) => {
       navigate(url)
     })
   }, [])

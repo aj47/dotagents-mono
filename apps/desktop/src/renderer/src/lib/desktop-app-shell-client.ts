@@ -39,6 +39,10 @@ export const desktopAppShellClient = {
     return rendererHandlers.themeChanged.listen(listener)
   },
 
+  onNavigate(listener: (url: string) => void): () => void {
+    return rendererHandlers.navigate.listen(listener)
+  },
+
   displayError(request: DesktopDisplayErrorRequest): Promise<void> {
     return tipcClient.displayError(request) as Promise<void>
   },
