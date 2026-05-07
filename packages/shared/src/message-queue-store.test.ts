@@ -3,6 +3,7 @@ import {
   buildMessageQueuePauseResult,
   buildMessageQueueResumeResult,
   buildQueuedMessageActionResult,
+  createMessageQueueActionService,
   createMessageQueueActionOptionsBundle,
   createMessageQueueStore,
   pauseMessageQueueAction,
@@ -127,39 +128,49 @@ describe('message-queue-store', () => {
   it('builds queue action option bundles from one injected service adapter', () => {
     const calls: string[] = [];
     const logMessages: string[] = [];
-    const service: MessageQueueActionService = {
-      tryAcquireProcessingLock: () => true,
-      releaseProcessingLock: () => {},
-      isQueuePaused: () => false,
-      peek: () => null,
-      getQueue: () => [
-        { id: 'failed-message', conversationId: 'conversation-1', text: 'old', createdAt: 1, status: 'failed' },
-      ],
-      markProcessing: () => true,
-      markAddedToHistory: () => true,
-      markProcessed: () => true,
-      markFailed: () => true,
-      addMessageToConversation: async () => ({ ok: true }),
-      isPanelVisible: () => true,
-      findSessionByConversationId: () => undefined,
-      getSession: () => undefined,
-      reviveSession: () => false,
-      processAgentMode: async () => undefined,
-      pauseQueue: (conversationId) => { calls.push(`pause:${conversationId}`); },
-      resumeQueue: (conversationId) => { calls.push(`resume:${conversationId}`); },
-      removeFromQueue: (conversationId, messageId) => {
-        calls.push(`remove:${conversationId}:${messageId}`);
-        return true;
+    const service: MessageQueueActionService = createMessageQueueActionService({
+      queue: {
+        tryAcquireProcessingLock: () => true,
+        releaseProcessingLock: () => {},
+        isQueuePaused: () => false,
+        peek: () => null,
+        getQueue: () => [
+          { id: 'failed-message', conversationId: 'conversation-1', text: 'old', createdAt: 1, status: 'failed' },
+        ],
+        markProcessing: () => true,
+        markAddedToHistory: () => true,
+        markProcessed: () => true,
+        markFailed: () => true,
+        pauseQueue: (conversationId) => { calls.push(`pause:${conversationId}`); },
+        resumeQueue: (conversationId) => { calls.push(`resume:${conversationId}`); },
+        removeFromQueue: (conversationId, messageId) => {
+          calls.push(`remove:${conversationId}:${messageId}`);
+          return true;
+        },
+        resetToPending: (conversationId, messageId) => {
+          calls.push(`reset:${conversationId}:${messageId}`);
+          return true;
+        },
+        updateMessageText: (conversationId, messageId, text) => {
+          calls.push(`update:${conversationId}:${messageId}:${text}`);
+          return true;
+        },
       },
-      resetToPending: (conversationId, messageId) => {
-        calls.push(`reset:${conversationId}:${messageId}`);
-        return true;
+      conversation: {
+        addMessageToConversation: async () => ({ ok: true }),
       },
-      updateMessageText: (conversationId, messageId, text) => {
-        calls.push(`update:${conversationId}:${messageId}:${text}`);
-        return true;
+      panel: {
+        isPanelVisible: () => true,
       },
-    };
+      sessions: {
+        findSessionByConversationId: () => undefined,
+        getSession: () => undefined,
+        reviveSession: () => false,
+      },
+      processor: {
+        processAgentMode: async () => undefined,
+      },
+    });
     const processed: string[] = [];
     const options = createMessageQueueActionOptionsBundle({
       service,

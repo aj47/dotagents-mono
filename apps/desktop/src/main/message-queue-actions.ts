@@ -1,4 +1,5 @@
 import {
+  createMessageQueueActionService,
   createMessageQueueActionOptionsBundle,
   pauseMessageQueueAction,
   processQueuedMessagesAction,
@@ -6,7 +7,6 @@ import {
   resumeMessageQueueAction,
   retryQueuedMessageAction,
   updateQueuedMessageTextAction,
-  type MessageQueueActionService,
   type MessageQueueActionOptionsBundle,
   type MessageQueuePauseResult,
   type MessageQueueResumeResult,
@@ -25,38 +25,45 @@ export type {
   QueuedMessageActionResult,
 }
 
-function createMessageQueueActionService(): MessageQueueActionService {
-  return {
-    tryAcquireProcessingLock: (conversationId) => messageQueueService.tryAcquireProcessingLock(conversationId),
-    releaseProcessingLock: (conversationId) => messageQueueService.releaseProcessingLock(conversationId),
-    isQueuePaused: (conversationId) => messageQueueService.isQueuePaused(conversationId),
-    peek: (conversationId) => messageQueueService.peek(conversationId),
-    getQueue: (conversationId) => messageQueueService.getQueue(conversationId),
-    markProcessing: (conversationId, messageId) => messageQueueService.markProcessing(conversationId, messageId),
-    markAddedToHistory: (conversationId, messageId) => messageQueueService.markAddedToHistory(conversationId, messageId),
-    markProcessed: (conversationId, messageId) => messageQueueService.markProcessed(conversationId, messageId),
-    markFailed: (conversationId, messageId, errorMessage) =>
-      messageQueueService.markFailed(conversationId, messageId, errorMessage),
-    addMessageToConversation: (conversationId, text, role) =>
-      conversationService.addMessageToConversation(conversationId, text, role),
-    isPanelVisible: () => WINDOWS.get("panel")?.isVisible() ?? false,
-    findSessionByConversationId: (conversationId) => agentSessionTracker.findSessionByConversationId(conversationId),
-    getSession: (sessionId) => agentSessionTracker.getSession(sessionId),
-    reviveSession: (sessionId, startSnoozed) => agentSessionTracker.reviveSession(sessionId, startSnoozed),
-    processAgentMode: (text, conversationId, existingSessionId, startSnoozed) =>
-      processWithAgentMode(text, conversationId, existingSessionId, startSnoozed),
-    pauseQueue: (conversationId) => messageQueueService.pauseQueue(conversationId),
-    resumeQueue: (conversationId) => messageQueueService.resumeQueue(conversationId),
-    removeFromQueue: (conversationId, messageId) => messageQueueService.removeFromQueue(conversationId, messageId),
-    resetToPending: (conversationId, messageId) => messageQueueService.resetToPending(conversationId, messageId),
-    updateMessageText: (conversationId, messageId, text) =>
-      messageQueueService.updateMessageText(conversationId, messageId, text),
-  }
-}
-
 function createMessageQueueActionOptions(): MessageQueueActionOptionsBundle {
   return createMessageQueueActionOptionsBundle({
-    service: createMessageQueueActionService(),
+    service: createMessageQueueActionService({
+      queue: {
+        tryAcquireProcessingLock: (conversationId) => messageQueueService.tryAcquireProcessingLock(conversationId),
+        releaseProcessingLock: (conversationId) => messageQueueService.releaseProcessingLock(conversationId),
+        isQueuePaused: (conversationId) => messageQueueService.isQueuePaused(conversationId),
+        peek: (conversationId) => messageQueueService.peek(conversationId),
+        getQueue: (conversationId) => messageQueueService.getQueue(conversationId),
+        markProcessing: (conversationId, messageId) => messageQueueService.markProcessing(conversationId, messageId),
+        markAddedToHistory: (conversationId, messageId) =>
+          messageQueueService.markAddedToHistory(conversationId, messageId),
+        markProcessed: (conversationId, messageId) => messageQueueService.markProcessed(conversationId, messageId),
+        markFailed: (conversationId, messageId, errorMessage) =>
+          messageQueueService.markFailed(conversationId, messageId, errorMessage),
+        pauseQueue: (conversationId) => messageQueueService.pauseQueue(conversationId),
+        resumeQueue: (conversationId) => messageQueueService.resumeQueue(conversationId),
+        removeFromQueue: (conversationId, messageId) => messageQueueService.removeFromQueue(conversationId, messageId),
+        resetToPending: (conversationId, messageId) => messageQueueService.resetToPending(conversationId, messageId),
+        updateMessageText: (conversationId, messageId, text) =>
+          messageQueueService.updateMessageText(conversationId, messageId, text),
+      },
+      conversation: {
+        addMessageToConversation: (conversationId, text, role) =>
+          conversationService.addMessageToConversation(conversationId, text, role),
+      },
+      panel: {
+        isPanelVisible: () => WINDOWS.get("panel")?.isVisible() ?? false,
+      },
+      sessions: {
+        findSessionByConversationId: (conversationId) => agentSessionTracker.findSessionByConversationId(conversationId),
+        getSession: (sessionId) => agentSessionTracker.getSession(sessionId),
+        reviveSession: (sessionId, startSnoozed) => agentSessionTracker.reviveSession(sessionId, startSnoozed),
+      },
+      processor: {
+        processAgentMode: (text, conversationId, existingSessionId, startSnoozed) =>
+          processWithAgentMode(text, conversationId, existingSessionId, startSnoozed),
+      },
+    }),
     diagnostics: { logLLM },
     processQueuedMessages,
   })

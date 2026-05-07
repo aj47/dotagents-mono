@@ -141,6 +141,61 @@ export interface MessageQueueRuntimeActionOptions {
 
 export type MessageQueueActionService = ProcessQueuedMessagesActionService & MessageQueueRuntimeActionService;
 
+export interface MessageQueueActionServiceAdapters {
+  queue: Pick<
+    MessageQueueActionService,
+    | 'tryAcquireProcessingLock'
+    | 'releaseProcessingLock'
+    | 'isQueuePaused'
+    | 'peek'
+    | 'getQueue'
+    | 'markProcessing'
+    | 'markAddedToHistory'
+    | 'markProcessed'
+    | 'markFailed'
+    | 'pauseQueue'
+    | 'resumeQueue'
+    | 'removeFromQueue'
+    | 'resetToPending'
+    | 'updateMessageText'
+  >;
+  conversation: Pick<MessageQueueActionService, 'addMessageToConversation'>;
+  panel: Pick<MessageQueueActionService, 'isPanelVisible'>;
+  sessions: Pick<MessageQueueActionService, 'findSessionByConversationId' | 'getSession' | 'reviveSession'>;
+  processor: Pick<MessageQueueActionService, 'processAgentMode'>;
+}
+
+export function createMessageQueueActionService(
+  adapters: MessageQueueActionServiceAdapters,
+): MessageQueueActionService {
+  return {
+    tryAcquireProcessingLock: (conversationId) => adapters.queue.tryAcquireProcessingLock(conversationId),
+    releaseProcessingLock: (conversationId) => adapters.queue.releaseProcessingLock(conversationId),
+    isQueuePaused: (conversationId) => adapters.queue.isQueuePaused(conversationId),
+    peek: (conversationId) => adapters.queue.peek(conversationId),
+    getQueue: (conversationId) => adapters.queue.getQueue(conversationId),
+    markProcessing: (conversationId, messageId) => adapters.queue.markProcessing(conversationId, messageId),
+    markAddedToHistory: (conversationId, messageId) => adapters.queue.markAddedToHistory(conversationId, messageId),
+    markProcessed: (conversationId, messageId) => adapters.queue.markProcessed(conversationId, messageId),
+    markFailed: (conversationId, messageId, errorMessage) =>
+      adapters.queue.markFailed(conversationId, messageId, errorMessage),
+    addMessageToConversation: (conversationId, text, role) =>
+      adapters.conversation.addMessageToConversation(conversationId, text, role),
+    isPanelVisible: () => adapters.panel.isPanelVisible(),
+    findSessionByConversationId: (conversationId) => adapters.sessions.findSessionByConversationId(conversationId),
+    getSession: (sessionId) => adapters.sessions.getSession(sessionId),
+    reviveSession: (sessionId, startSnoozed) => adapters.sessions.reviveSession(sessionId, startSnoozed),
+    processAgentMode: (text, conversationId, existingSessionId, startSnoozed) =>
+      adapters.processor.processAgentMode(text, conversationId, existingSessionId, startSnoozed),
+    pauseQueue: (conversationId) => adapters.queue.pauseQueue(conversationId),
+    resumeQueue: (conversationId) => adapters.queue.resumeQueue(conversationId),
+    removeFromQueue: (conversationId, messageId) => adapters.queue.removeFromQueue(conversationId, messageId),
+    resetToPending: (conversationId, messageId) => adapters.queue.resetToPending(conversationId, messageId),
+    updateMessageText: (conversationId, messageId, text) =>
+      adapters.queue.updateMessageText(conversationId, messageId, text),
+  };
+}
+
 export interface MessageQueueActionOptionsBundleConfig {
   service: MessageQueueActionService;
   diagnostics: ProcessQueuedMessagesActionDiagnostics;
