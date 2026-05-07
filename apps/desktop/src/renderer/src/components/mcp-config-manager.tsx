@@ -66,13 +66,21 @@ import {
   MoreHorizontal,
 } from "lucide-react"
 import { Spinner } from "@renderer/components/ui/spinner"
-import type { DetailedToolInfo, MCPConfig, MCPServerConfig, MCPTransportType, OAuthConfig, ServerLogEntry } from "@dotagents/shared/mcp-utils"
+import type {
+  BuildMcpServerConfigFromDraftOptions,
+  DetailedToolInfo,
+  MCPConfig,
+  MCPServerConfig,
+  MCPTransportType,
+  McpServerConfigDraft,
+  OAuthConfig,
+  ServerLogEntry,
+} from "@dotagents/shared/mcp-utils"
 import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@dotagents/shared/mcp-api"
 import {
+  buildMcpServerConfigFromDraft,
   formatMcpKeyValueDraft,
-  isReservedMcpServerName,
   mergeImportedMcpServers,
-  parseMcpKeyValueDraft,
   removeMcpServerConfig,
   renameMcpServerConfig,
   upsertMcpServerConfig,
@@ -82,7 +90,6 @@ import { desktopMcpToolsClient } from "@renderer/lib/desktop-mcp-tools-client"
 import { toast } from "sonner"
 import { OAuthServerConfig } from "./OAuthServerConfig"
 import { OAUTH_MCP_EXAMPLES } from "@dotagents/shared/oauth-examples"
-import { parseShellCommand } from "@dotagents/shared/shell-parse"
 import { desktopMcpServerClient } from "@renderer/lib/desktop-mcp-server-client"
 
 
@@ -115,6 +122,26 @@ interface ServerDialogProps {
 
 // Reserved internal server aliases that cannot be used by user-defined MCP servers.
 const RESERVED_SERVER_NAMES = [...RESERVED_RUNTIME_TOOL_SERVER_NAMES]
+
+const SERVER_DIALOG_DRAFT_OPTIONS = {
+  commandDraftMode: "shell-command",
+  includeEmptyStdioArgs: true,
+  includeRemoteEnv: true,
+  headerTransports: ["streamableHttp"],
+  reservedServerNames: RESERVED_SERVER_NAMES,
+} satisfies BuildMcpServerConfigFromDraftOptions
+
+function formatServerDialogDraftError(error: string): string {
+  if (error === "MCP server name is required") return "Server name is required"
+  if (error === "Command is required for stdio MCP servers") return "Command is required for stdio transport"
+  if (error === "URL is required for remote MCP servers") return "URL is required for remote transport"
+  if (error === "MCP server URL is invalid") return "Invalid URL format"
+
+  const reservedMatch = error.match(/^MCP server name "(.+)" is reserved$/)
+  if (reservedMatch) return `Server name "${reservedMatch[1]}" is reserved and cannot be used`
+
+  return error
+}
 
 function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFromText, isOpen }: ServerDialogProps) {
   const [name, setName] = useState(server?.name || "")
@@ -199,78 +226,32 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
     }
   }, [isOpen, server])
 
+  const buildCurrentServerDraft = (): McpServerConfigDraft => ({
+    name,
+    transport,
+    command: fullCommand,
+    args: "",
+    url,
+    env,
+    headers,
+    timeout,
+    disabled,
+    oauthEnabled: transport === "streamableHttp" && Object.keys(oauthConfig).length > 0,
+    oauthScope: oauthConfig.scope ?? "",
+    oauthClientId: oauthConfig.clientId ?? "",
+    oauthUseDiscovery: oauthConfig.useDiscovery ?? true,
+    oauthUseDynamicRegistration: oauthConfig.useDynamicRegistration ?? true,
+    oauthConfig,
+  })
+
   const handleSave = () => {
-    if (!name.trim()) {
-      toast.error("Server name is required")
+    const draftResult = buildMcpServerConfigFromDraft(buildCurrentServerDraft(), SERVER_DIALOG_DRAFT_OPTIONS)
+    if (!draftResult.ok) {
+      toast.error(formatServerDialogDraftError(draftResult.error))
       return
     }
 
-    // Check for reserved server names
-    if (isReservedMcpServerName(name, RESERVED_SERVER_NAMES)) {
-      toast.error(`Server name "${name.trim()}" is reserved and cannot be used`)
-      return
-    }
-
-    // Validate based on transport type
-    if (transport === "stdio") {
-      if (!fullCommand.trim()) {
-        toast.error("Command is required for stdio transport")
-        return
-      }
-    } else if (transport === "websocket" || transport === "streamableHttp") {
-      if (!url.trim()) {
-        toast.error("URL is required for remote transport")
-        return
-      }
-      // Basic URL validation
-      try {
-        new URL(url.trim())
-      } catch (error) {
-        toast.error("Invalid URL format")
-        return
-      }
-    }
-
-    const envResult = parseMcpKeyValueDraft(env, "Environment")
-    if (envResult.error) {
-      toast.error(envResult.error)
-      return
-    }
-    const envObject = envResult.value
-
-    const headersResult = parseMcpKeyValueDraft(headers, "Header")
-    if (headersResult.error) {
-      toast.error(headersResult.error)
-      return
-    }
-    const headersObject = headersResult.value
-
-    // Parse the full command into command and args
-    let parsedCommand = ""
-    let parsedArgs: string[] = []
-    if (transport === "stdio" && fullCommand.trim()) {
-      const parsed = parseShellCommand(fullCommand.trim())
-      parsedCommand = parsed.command
-      parsedArgs = parsed.args
-    }
-
-    const serverConfig: MCPServerConfig = {
-      transport,
-      ...(transport === "stdio" && {
-        command: parsedCommand,
-        args: parsedArgs,
-      }),
-      ...(transport !== "stdio" && {
-        url: url.trim(),
-      }),
-      ...(Object.keys(envObject).length > 0 && { env: envObject }),
-      ...(transport === "streamableHttp" && Object.keys(headersObject).length > 0 && { headers: headersObject }),
-      ...(timeout && { timeout: parseInt(timeout) }),
-      ...(disabled && { disabled }),
-      ...(transport === "streamableHttp" && Object.keys(oauthConfig).length > 0 && { oauth: oauthConfig }),
-    }
-
-    onSave(name.trim(), serverConfig)
+    onSave(draftResult.name, draftResult.config)
   }
 
   return (
@@ -479,48 +460,13 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                     return
                   }
                   try {
-                    // Create server config for testing
-                    const envResult = parseMcpKeyValueDraft(env, "Environment")
-                    if (envResult.error) {
-                      toast.error(envResult.error)
+                    const draftResult = buildMcpServerConfigFromDraft(buildCurrentServerDraft(), SERVER_DIALOG_DRAFT_OPTIONS)
+                    if (!draftResult.ok) {
+                      toast.error(formatServerDialogDraftError(draftResult.error))
                       return
                     }
-                    const envObject = envResult.value
 
-                    const headersResult = parseMcpKeyValueDraft(headers, "Header")
-                    if (headersResult.error) {
-                      toast.error(headersResult.error)
-                      return
-                    }
-                    const headersObject = headersResult.value
-
-                    const testServerConfig: MCPServerConfig = { transport }
-
-                    if ((transport as string) === "stdio") {
-                      const parsed = parseShellCommand(fullCommand.trim())
-                      testServerConfig.command = parsed.command
-                      testServerConfig.args = parsed.args
-                    } else {
-                      testServerConfig.url = url.trim()
-                    }
-
-                    if (Object.keys(envObject).length > 0) {
-                      testServerConfig.env = envObject
-                    }
-                    if (transport === "streamableHttp" && Object.keys(headersObject).length > 0) {
-                      testServerConfig.headers = headersObject
-                    }
-                    if (timeout) {
-                      testServerConfig.timeout = parseInt(timeout)
-                    }
-                    if (disabled) {
-                      testServerConfig.disabled = disabled
-                    }
-                    if (transport === "streamableHttp" && Object.keys(oauthConfig).length > 0) {
-                      testServerConfig.oauth = oauthConfig
-                    }
-
-                    const result = await desktopMcpServerClient.testConnection(name, testServerConfig)
+                    const result = await desktopMcpServerClient.testConnection(draftResult.name, draftResult.config)
                     if (result.success) {
                       toast.success("Connection test successful!")
                     } else {

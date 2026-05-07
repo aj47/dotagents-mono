@@ -226,6 +226,71 @@ describe('MCP server config draft helpers', () => {
     })
   })
 
+  it('builds desktop shell-command drafts without component-local config parsing', () => {
+    expect(buildMcpServerConfigFromDraft({
+      ...EMPTY_MCP_SERVER_CONFIG_DRAFT,
+      name: 'desktop',
+      command: 'npx -y "@modelcontextprotocol/server desktop"',
+    }, {
+      commandDraftMode: 'shell-command',
+      includeEmptyStdioArgs: true,
+    })).toEqual({
+      ok: true,
+      name: 'desktop',
+      config: {
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server desktop'],
+      },
+    })
+  })
+
+  it('preserves desktop remote env and OAuth metadata when requested', () => {
+    expect(buildMcpServerConfigFromDraft({
+      ...EMPTY_MCP_SERVER_CONFIG_DRAFT,
+      name: 'linear',
+      transport: 'streamableHttp',
+      url: 'https://mcp.example.com/mcp',
+      env: 'REMOTE_ENV=1',
+      headers: 'Authorization=Bearer token',
+      oauthEnabled: true,
+      oauthScope: 'read write',
+      oauthClientId: 'client-2',
+      oauthUseDiscovery: false,
+      oauthUseDynamicRegistration: true,
+      oauthConfig: {
+        clientSecret: 'secret',
+        tokens: {
+          access_token: 'access',
+          token_type: 'Bearer',
+        },
+      },
+    }, {
+      includeRemoteEnv: true,
+      headerTransports: ['streamableHttp'],
+    })).toEqual({
+      ok: true,
+      name: 'linear',
+      config: {
+        transport: 'streamableHttp',
+        url: 'https://mcp.example.com/mcp',
+        env: { REMOTE_ENV: '1' },
+        headers: { Authorization: 'Bearer token' },
+        oauth: {
+          clientSecret: 'secret',
+          tokens: {
+            access_token: 'access',
+            token_type: 'Bearer',
+          },
+          scope: 'read write',
+          clientId: 'client-2',
+          useDiscovery: false,
+          useDynamicRegistration: true,
+        },
+      },
+    })
+  })
+
   it('validates shared MCP server config drafts before saving', () => {
     expect(buildMcpServerConfigFromDraft(EMPTY_MCP_SERVER_CONFIG_DRAFT)).toEqual({
       ok: false,

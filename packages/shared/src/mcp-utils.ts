@@ -1,3 +1,5 @@
+import { parseShellCommand } from "./shell-parse"
+
 export type MCPTransportType = "stdio" | "websocket" | "streamableHttp"
 
 export interface OAuthClientMetadata {
@@ -74,6 +76,7 @@ export type McpServerConfigDraft = {
   oauthClientId: string
   oauthUseDiscovery: boolean
   oauthUseDynamicRegistration: boolean
+  oauthConfig?: OAuthConfig
 }
 
 export const EMPTY_MCP_SERVER_CONFIG_DRAFT: McpServerConfigDraft = {
@@ -183,6 +186,10 @@ export type BuildMcpServerConfigFromDraftOptions = {
   mode?: "create" | "replace"
   existingServerNames?: readonly string[]
   reservedServerNames?: readonly string[]
+  commandDraftMode?: "command-and-newline-args" | "shell-command"
+  includeEmptyStdioArgs?: boolean
+  includeRemoteEnv?: boolean
+  headerTransports?: readonly MCPTransportType[]
 }
 
 export type BuildMcpServerConfigFromDraftResult =
@@ -235,16 +242,22 @@ export function buildMcpServerConfigFromDraft(
     transport: draft.transport,
   }
 
+  const commandDraftMode = options.commandDraftMode ?? "command-and-newline-args"
+  const headerTransports = options.headerTransports ?? ["websocket", "streamableHttp"]
+
   if (draft.transport === "stdio") {
-    const command = draft.command.trim()
+    const parsedShellCommand = commandDraftMode === "shell-command" ? parseShellCommand(draft.command.trim()) : null
+    const command = parsedShellCommand?.command ?? draft.command.trim()
     if (!command) return { ok: false, error: "Command is required for stdio MCP servers" }
     config.command = command
 
-    const args = draft.args
-      .split("\n")
-      .map((arg) => arg.trim())
-      .filter(Boolean)
-    if (args.length > 0) config.args = args
+    const args = parsedShellCommand
+      ? parsedShellCommand.args
+      : draft.args
+          .split("\n")
+          .map((arg) => arg.trim())
+          .filter(Boolean)
+    if (args.length > 0 || options.includeEmptyStdioArgs) config.args = args
 
     const envResult = parseMcpKeyValueDraft(draft.env, "Environment")
     if (envResult.error) return { ok: false, error: envResult.error }
@@ -259,14 +272,23 @@ export function buildMcpServerConfigFromDraft(
     }
     config.url = url
 
+    if (options.includeRemoteEnv) {
+      const envResult = parseMcpKeyValueDraft(draft.env, "Environment")
+      if (envResult.error) return { ok: false, error: envResult.error }
+      if (Object.keys(envResult.value).length > 0) config.env = envResult.value
+    }
+
     const headersResult = parseMcpKeyValueDraft(draft.headers, "Header")
     if (headersResult.error) return { ok: false, error: headersResult.error }
-    if (Object.keys(headersResult.value).length > 0) config.headers = headersResult.value
+    if (headerTransports.includes(draft.transport) && Object.keys(headersResult.value).length > 0) {
+      config.headers = headersResult.value
+    }
 
     if (draft.transport === "streamableHttp" && draft.oauthEnabled) {
       const scope = draft.oauthScope.trim()
       const clientId = draft.oauthClientId.trim()
       config.oauth = {
+        ...(draft.oauthConfig ?? {}),
         ...(scope ? { scope } : {}),
         ...(clientId ? { clientId } : {}),
         useDiscovery: draft.oauthUseDiscovery,

@@ -54,4 +54,13 @@ describe("desktop MCP server renderer client", () => {
     expect(combinedSource).not.toContain("tipcClient.saveMcpConfigFile(")
     expect(combinedSource).not.toContain("tipcClient.validateMcpConfigText(")
   })
+
+  it("uses shared MCP server draft parsing for desktop save and test config assembly", () => {
+    expect(mcpConfigManagerSource).toContain("buildMcpServerConfigFromDraft(buildCurrentServerDraft(), SERVER_DIALOG_DRAFT_OPTIONS)")
+    expect(mcpConfigManagerSource).toContain('commandDraftMode: "shell-command"')
+    expect(mcpConfigManagerSource).toContain("includeRemoteEnv: true")
+    expect(mcpConfigManagerSource).toContain("oauthConfig,")
+    expect(mcpConfigManagerSource).not.toContain("parseMcpKeyValueDraft(")
+    expect(mcpConfigManagerSource).not.toContain("parseShellCommand(")
+  })
 })
