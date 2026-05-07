@@ -7,6 +7,7 @@ import type { WhatsAppIntegrationConfig } from './whatsapp-config'
 import {
   DEFAULT_AUTO_SAVE_CONVERSATIONS,
   DEFAULT_CONVERSATIONS_ENABLED,
+  DESKTOP_SHELL_SETTINGS_SECTION_METADATA,
   DEFAULT_FLOATING_PANEL_AUTO_SHOW,
   DEFAULT_HIDE_DOCK_ICON,
   DEFAULT_HIDE_PANEL_WHEN_MAIN_FOCUSED,
@@ -539,6 +540,27 @@ describe('settings API request/response contracts', () => {
     expect(defaultConfig.hideDockIcon).toBe(false)
     expect(defaultConfig.launchAtLogin).toBe(false)
     expect(update.launchAtLogin).toBe(true)
+    expect(DESKTOP_SHELL_SETTINGS_SECTION_METADATA).toEqual({
+      sectionTitle: 'Desktop app',
+      fields: {
+        hideDockIcon: {
+          key: 'hideDockIcon',
+          label: 'Hide Dock Icon',
+          helperText: 'Run the desktop app without a persistent Dock icon.',
+          pendingLabel: 'hide dock icon',
+          successMessage: 'Dock icon preference updated.',
+          accessibilityLabel: 'Hide Dock Icon',
+        },
+        launchAtLogin: {
+          key: 'launchAtLogin',
+          label: 'Launch at Login',
+          helperText: 'Start the desktop app automatically after sign-in.',
+          pendingLabel: 'launch at login',
+          successMessage: 'Launch at login preference updated.',
+          accessibilityLabel: 'Launch at Login',
+        },
+      },
+    })
   })
 
   it('accepts desktop panel layout settings through the shared settings API', () => {

@@ -27,6 +27,7 @@ import {
   DEFAULT_LAUNCH_AT_LOGIN,
   DEFAULT_PANEL_DRAG_ENABLED,
   DEFAULT_PANEL_POSITION,
+  DESKTOP_SHELL_SETTINGS_SECTION_METADATA,
   PANEL_POSITION_OPTIONS,
   OperatorAuditEntry,
   OperatorConversationItem,
@@ -710,6 +711,7 @@ export default function OperationsScreen({ navigation }: any) {
   const trustedDeviceIds = settings?.remoteServerOperatorAllowDeviceIds ?? [];
   const currentDeviceTrusted = currentDeviceId ? trustedDeviceIds.includes(currentDeviceId) : false;
   const channelAllowlistFields = CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA.fields;
+  const desktopShellFields = DESKTOP_SHELL_SETTINGS_SECTION_METADATA.fields;
 
   return (
     <ScrollView
@@ -1945,22 +1947,22 @@ export default function OperationsScreen({ navigation }: any) {
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.subsectionTitle}>Desktop app</Text>
+              <Text style={styles.subsectionTitle}>{DESKTOP_SHELL_SETTINGS_SECTION_METADATA.sectionTitle}</Text>
               {isDesktopMac ? (
                 <View style={styles.row}>
                   <View style={styles.rowCopy}>
-                    <Text style={styles.label}>Hide Dock Icon</Text>
-                    <Text style={styles.helperText}>Run the desktop app without a persistent Dock icon.</Text>
+                    <Text style={styles.label}>{desktopShellFields.hideDockIcon.label}</Text>
+                    <Text style={styles.helperText}>{desktopShellFields.hideDockIcon.helperText}</Text>
                   </View>
                   <Switch
                     value={settings.hideDockIcon ?? DEFAULT_HIDE_DOCK_ICON}
                     onValueChange={(value) => void applySettingsUpdate(
                       { hideDockIcon: value },
-                      'hide dock icon',
-                      'Dock icon preference updated.',
+                      desktopShellFields.hideDockIcon.pendingLabel,
+                      desktopShellFields.hideDockIcon.successMessage,
                     )}
                     disabled={controlsDisabled}
-                    accessibilityLabel={createSwitchAccessibilityLabel('Hide Dock Icon')}
+                    accessibilityLabel={createSwitchAccessibilityLabel(desktopShellFields.hideDockIcon.accessibilityLabel)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                     thumbColor={(settings.hideDockIcon ?? DEFAULT_HIDE_DOCK_ICON) ? theme.colors.primaryForeground : theme.colors.background}
                   />
@@ -1998,18 +2000,18 @@ export default function OperationsScreen({ navigation }: any) {
 
               <View style={styles.row}>
                 <View style={styles.rowCopy}>
-                  <Text style={styles.label}>Launch at Login</Text>
-                  <Text style={styles.helperText}>Start the desktop app automatically after sign-in.</Text>
+                  <Text style={styles.label}>{desktopShellFields.launchAtLogin.label}</Text>
+                  <Text style={styles.helperText}>{desktopShellFields.launchAtLogin.helperText}</Text>
                 </View>
                 <Switch
                   value={settings.launchAtLogin ?? DEFAULT_LAUNCH_AT_LOGIN}
                   onValueChange={(value) => void applySettingsUpdate(
                     { launchAtLogin: value },
-                    'launch at login',
-                    'Launch at login preference updated.',
+                    desktopShellFields.launchAtLogin.pendingLabel,
+                    desktopShellFields.launchAtLogin.successMessage,
                   )}
                   disabled={controlsDisabled}
-                  accessibilityLabel={createSwitchAccessibilityLabel('Launch at Login')}
+                  accessibilityLabel={createSwitchAccessibilityLabel(desktopShellFields.launchAtLogin.accessibilityLabel)}
                   trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
                   thumbColor={(settings.launchAtLogin ?? DEFAULT_LAUNCH_AT_LOGIN) ? theme.colors.primaryForeground : theme.colors.background}
                 />

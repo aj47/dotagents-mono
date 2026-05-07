@@ -820,6 +820,44 @@ export interface DesktopShellConfig {
 export const DEFAULT_HIDE_DOCK_ICON = false;
 export const DEFAULT_LAUNCH_AT_LOGIN = false;
 
+export type DesktopShellSettingsFieldKey = "hideDockIcon" | "launchAtLogin";
+
+export type DesktopShellSettingsFieldMetadata = {
+  key: DesktopShellSettingsFieldKey;
+  label: string;
+  helperText: string;
+  pendingLabel: string;
+  successMessage: string;
+  accessibilityLabel: string;
+};
+
+export type DesktopShellSettingsSectionMetadata = {
+  sectionTitle: string;
+  fields: Record<DesktopShellSettingsFieldKey, DesktopShellSettingsFieldMetadata>;
+};
+
+export const DESKTOP_SHELL_SETTINGS_SECTION_METADATA: DesktopShellSettingsSectionMetadata = {
+  sectionTitle: "Desktop app",
+  fields: {
+    hideDockIcon: {
+      key: "hideDockIcon",
+      label: "Hide Dock Icon",
+      helperText: "Run the desktop app without a persistent Dock icon.",
+      pendingLabel: "hide dock icon",
+      successMessage: "Dock icon preference updated.",
+      accessibilityLabel: "Hide Dock Icon",
+    },
+    launchAtLogin: {
+      key: "launchAtLogin",
+      label: "Launch at Login",
+      helperText: "Start the desktop app automatically after sign-in.",
+      pendingLabel: "launch at login",
+      successMessage: "Launch at login preference updated.",
+      accessibilityLabel: "Launch at Login",
+    },
+  },
+};
+
 export const PANEL_POSITION_VALUES = [
   "top-left",
   "top-center",
