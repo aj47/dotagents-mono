@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildMcpServerConfigFromDraft,
   EMPTY_MCP_SERVER_CONFIG_DRAFT,
+  MCP_TRANSPORT_OPTIONS,
   inferTransportType,
   formatMcpKeyValueDraft,
   isReservedMcpServerName,
@@ -14,6 +15,16 @@ import {
   type MCPConfig,
   type MCPConfigLike,
 } from './mcp-utils'
+
+describe('MCP transport options', () => {
+  it('describes shared MCP transport labels and values', () => {
+    expect(MCP_TRANSPORT_OPTIONS).toEqual([
+      { value: 'stdio', label: 'stdio' },
+      { value: 'streamableHttp', label: 'HTTP' },
+      { value: 'websocket', label: 'websocket' },
+    ])
+  })
+})
 
 describe('normalizeMcpConfig', () => {
   it('infers streamableHttp when url is present and transport is missing', () => {

@@ -2,6 +2,17 @@ import { parseShellCommand } from "./shell-parse"
 
 export type MCPTransportType = "stdio" | "websocket" | "streamableHttp"
 
+export type McpTransportOption = {
+  value: MCPTransportType
+  label: string
+}
+
+export const MCP_TRANSPORT_OPTIONS: readonly McpTransportOption[] = [
+  { value: "stdio", label: "stdio" },
+  { value: "streamableHttp", label: "HTTP" },
+  { value: "websocket", label: "websocket" },
+]
+
 export interface OAuthClientMetadata {
   client_name: string
   redirect_uris: string[]

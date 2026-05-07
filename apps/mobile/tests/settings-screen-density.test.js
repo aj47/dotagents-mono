@@ -84,8 +84,10 @@ test('lets mobile create desktop MCP server configs through the shared client', 
 
 test('lets mobile configure OAuth for streamable HTTP MCP servers', () => {
   assert.match(settingsSource, /EMPTY_MCP_SERVER_CONFIG_DRAFT as EMPTY_MCP_SERVER_DRAFT/);
+  assert.match(settingsSource, /MCP_TRANSPORT_OPTIONS\.map/);
   assert.match(settingsSource, /type McpServerConfigDraft as McpServerDraft/);
   assert.match(settingsSource, /mcpServerDraft\.transport === 'streamableHttp'/);
+  assert.doesNotMatch(settingsSource, /\(\['stdio', 'streamableHttp', 'websocket'\] as MCPTransportType\[\]\)/);
   assert.match(settingsSource, /handleMcpServerDraftChange\('oauthEnabled', v\)/);
   assert.match(settingsSource, /handleMcpServerDraftChange\('oauthScope', v\)/);
   assert.match(settingsSource, /handleMcpServerDraftChange\('oauthClientId', v\)/);

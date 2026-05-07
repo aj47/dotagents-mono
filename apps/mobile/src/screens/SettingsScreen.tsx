@@ -172,9 +172,9 @@ import {
 import {
   buildMcpServerConfigFromDraft,
   EMPTY_MCP_SERVER_CONFIG_DRAFT as EMPTY_MCP_SERVER_DRAFT,
+  MCP_TRANSPORT_OPTIONS,
   isReservedMcpServerName,
   type McpServerConfigDraft as McpServerDraft,
-  type MCPTransportType,
 } from '@dotagents/shared/mcp-utils';
 import { sortSkillsByProfileEnablement } from '@dotagents/shared/skills-api';
 import {
@@ -5547,23 +5547,23 @@ export default function SettingsScreen({ navigation }: any) {
 
               <Text style={styles.label}>Transport</Text>
               <View style={styles.providerSelector}>
-                {(['stdio', 'streamableHttp', 'websocket'] as MCPTransportType[]).map((transport) => (
+                {MCP_TRANSPORT_OPTIONS.map((transport) => (
                   <Pressable
-                    key={transport}
+                    key={transport.value}
                     style={[
                       styles.providerOption,
-                      mcpServerDraft.transport === transport && styles.providerOptionActive,
+                      mcpServerDraft.transport === transport.value && styles.providerOptionActive,
                     ]}
-                    onPress={() => handleMcpServerDraftChange('transport', transport)}
+                    onPress={() => handleMcpServerDraftChange('transport', transport.value)}
                     accessibilityRole="button"
-                    accessibilityLabel={`Use ${transport} MCP transport`}
+                    accessibilityLabel={`Use ${transport.label} MCP transport`}
                     disabled={isSavingMcpServer}
                   >
                     <Text style={[
                       styles.providerOptionText,
-                      mcpServerDraft.transport === transport && styles.providerOptionTextActive,
+                      mcpServerDraft.transport === transport.value && styles.providerOptionTextActive,
                     ]}>
-                      {transport === 'streamableHttp' ? 'HTTP' : transport}
+                      {transport.label}
                     </Text>
                   </Pressable>
                 ))}
