@@ -294,18 +294,18 @@ const profileRouteActionBundle = createProfileRouteActionBundle({
     profile: agentProfileService,
     agentProfile: agentProfileService,
     verifyExternalAgentCommand: verifyExternalAgentCommandService,
+    applyCurrentProfile: (profile) => {
+      const mcpServerConfig = toolConfigToMcpServerConfig(profile.toolConfig)
+      mcpService.applyProfileMcpConfig(
+        mcpServerConfig?.disabledServers,
+        mcpServerConfig?.disabledTools,
+        mcpServerConfig?.allServersDisabledByDefault,
+        mcpServerConfig?.enabledServers,
+        mcpServerConfig?.enabledRuntimeTools,
+      )
+    },
   }),
   diagnostics: diagnosticsService,
-  applyCurrentProfile: (profile) => {
-    const mcpServerConfig = toolConfigToMcpServerConfig(profile.toolConfig)
-    mcpService.applyProfileMcpConfig(
-      mcpServerConfig?.disabledServers,
-      mcpServerConfig?.disabledTools,
-      mcpServerConfig?.allServersDisabledByDefault,
-      mcpServerConfig?.enabledServers,
-      mcpServerConfig?.enabledRuntimeTools,
-    )
-  },
 })
 
 const knowledgeNoteActionOptions: KnowledgeNoteActionOptions = {

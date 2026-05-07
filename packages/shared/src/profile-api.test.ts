@@ -294,6 +294,7 @@ describe("profile API helpers", () => {
         expect(profileJson).toBe("{\"id\":\"imported-profile\"}")
         return importedProfile
       },
+      applyCurrentProfile: (updatedProfile: typeof profile) => appliedProfiles.push(updatedProfile),
     }
     const diagnostics = {
       logInfo: (source: string, message: string) => logs.push({ level: "info", source, message }),
@@ -304,7 +305,6 @@ describe("profile API helpers", () => {
     const options = {
       service,
       diagnostics,
-      applyCurrentProfile: (updatedProfile: typeof profile) => appliedProfiles.push(updatedProfile),
     }
 
     expect(getProfilesAction(options)).toEqual({
@@ -757,10 +757,14 @@ describe("profile API helpers", () => {
         resolvedCommand: request.command,
         details: "verified",
       }),
+      applyCurrentProfile: (updatedProfile: typeof profile) => {
+        calls.push(`applyCurrentProfile:${updatedProfile.id}`)
+      },
     })
 
     expect(services.profile.getUserProfiles()).toEqual([profile])
     expect(services.profile.setCurrentProfileStrict("profile-1")).toBe(profile)
+    services.profile.applyCurrentProfile?.(profile)
     expect(services.profile.exportProfile("profile-1")).toBe("export:profile-1")
     expect(services.agentProfile.getAll()).toEqual([agentProfile])
     expect(services.agentProfile.getById("agent-1")).toBe(agentProfile)
@@ -774,6 +778,7 @@ describe("profile API helpers", () => {
     expect(calls).toEqual([
       "getUserProfiles",
       "setCurrentProfileStrict:profile-1",
+      "applyCurrentProfile:profile-1",
       "delete:agent-1",
       "reload",
     ])
@@ -810,6 +815,7 @@ describe("profile API helpers", () => {
           setCurrentProfileStrict: () => profile,
           exportProfile: () => "{\"profile\":true}",
           importProfile: () => profile,
+          applyCurrentProfile: (updatedProfile: typeof profile) => appliedProfiles.push(updatedProfile),
         },
         agentProfile: {
           getAll: () => [agentProfile],
@@ -833,7 +839,6 @@ describe("profile API helpers", () => {
         },
       },
       diagnostics,
-      applyCurrentProfile: (updatedProfile) => appliedProfiles.push(updatedProfile),
     })
 
     expect(routeActionBundle.profiles.setCurrentProfile({ profileId: "profile-1" })).toEqual({

@@ -101,6 +101,7 @@ export interface ProfileActionService<TProfile extends ProfileLike = ProfileLike
   getUserProfiles(): TProfile[]
   getCurrentProfile(): TProfile | null | undefined
   setCurrentProfileStrict(profileId: string): TProfile
+  applyCurrentProfile?(profile: TProfile): void
   exportProfile(profileId: string): string
   importProfile(profileJson: string): TProfile
 }
@@ -108,7 +109,6 @@ export interface ProfileActionService<TProfile extends ProfileLike = ProfileLike
 export interface ProfileActionOptions<TProfile extends ProfileLike = ProfileLike> {
   service: ProfileActionService<TProfile>
   diagnostics: ProfileActionDiagnostics
-  applyCurrentProfile?: (profile: TProfile) => void
 }
 
 export type ApiAgentProfileRole = "chat-agent" | "delegation-target" | "external-agent"
@@ -202,7 +202,6 @@ export interface ProfileRouteActionBundleOptions<
     externalCommandVerification: ExternalAgentCommandVerificationActionService
   }
   diagnostics: ProfileActionDiagnostics
-  applyCurrentProfile?: (profile: TProfile) => void
 }
 
 export interface AgentProfileServiceAdapter<TProfile extends AgentProfileApiLike = AgentProfileApiLike> {
@@ -221,6 +220,7 @@ export interface ProfileActionServicesAdapterOptions<
   profile: ProfileActionService<TProfile>
   agentProfile: AgentProfileServiceAdapter<TAgentProfile>
   verifyExternalAgentCommand: ExternalAgentCommandVerificationActionService["verifyExternalAgentCommand"]
+  applyCurrentProfile?: (profile: TProfile) => void
 }
 
 export function createProfileActionServices<
@@ -229,14 +229,20 @@ export function createProfileActionServices<
 >(
   options: ProfileActionServicesAdapterOptions<TProfile, TAgentProfile>,
 ): ProfileRouteActionBundleOptions<TProfile, TAgentProfile>["services"] {
+  const profileService: ProfileActionService<TProfile> = {
+    getUserProfiles: () => options.profile.getUserProfiles(),
+    getCurrentProfile: () => options.profile.getCurrentProfile(),
+    setCurrentProfileStrict: (profileId) => options.profile.setCurrentProfileStrict(profileId),
+    exportProfile: (profileId) => options.profile.exportProfile(profileId),
+    importProfile: (profileJson) => options.profile.importProfile(profileJson),
+  }
+  const applyCurrentProfile = options.applyCurrentProfile ?? options.profile.applyCurrentProfile?.bind(options.profile)
+  if (applyCurrentProfile) {
+    profileService.applyCurrentProfile = applyCurrentProfile
+  }
+
   return {
-    profile: {
-      getUserProfiles: () => options.profile.getUserProfiles(),
-      getCurrentProfile: () => options.profile.getCurrentProfile(),
-      setCurrentProfileStrict: (profileId) => options.profile.setCurrentProfileStrict(profileId),
-      exportProfile: (profileId) => options.profile.exportProfile(profileId),
-      importProfile: (profileJson) => options.profile.importProfile(profileJson),
-    },
+    profile: profileService,
     agentProfile: {
       getAll: () => options.agentProfile.getAll(),
       getById: (profileId) => options.agentProfile.getById(profileId),
@@ -463,7 +469,7 @@ export function setCurrentProfileAction<TProfile extends ProfileLike>(
     }
 
     const profile = options.service.setCurrentProfileStrict(parsedRequest.request.profileId)
-    options.applyCurrentProfile?.(profile)
+    options.service.applyCurrentProfile?.(profile)
     options.diagnostics.logInfo("profile-actions", `Switched to profile: ${getProfileDisplayLabel(profile)}`)
 
     return profileActionOk(buildProfileMutationResponse(profile, { nameSource: "name" }))
@@ -722,7 +728,6 @@ export function createProfileRouteActionBundle<
   const profileOptions: ProfileActionOptions<TProfile> = {
     service: options.services.profile,
     diagnostics: options.diagnostics,
-    applyCurrentProfile: options.applyCurrentProfile,
   }
   const agentProfileOptions: AgentProfileActionOptions<TAgentProfile> = {
     service: options.services.agentProfile,
