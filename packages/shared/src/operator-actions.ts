@@ -181,6 +181,10 @@ export interface OperatorApiKeyActionOptions<TConfig extends OperatorApiKeyActio
   generateApiKey(): string
 }
 
+export interface OperatorApiKeyRouteActions {
+  rotateOperatorRemoteServerApiKey(): OperatorApiKeyActionResult
+}
+
 export type OperatorUpdaterActionResult = {
   statusCode: number
   body: unknown
@@ -2200,6 +2204,14 @@ export function rotateOperatorRemoteServerApiKeyAction<TConfig extends OperatorA
       { error: "Failed to rotate remote server API key" },
       buildOperatorApiKeyRotationFailureAuditContext(),
     )
+  }
+}
+
+export function createOperatorApiKeyRouteActions<TConfig extends OperatorApiKeyActionConfigLike>(
+  options: OperatorApiKeyActionOptions<TConfig>,
+): OperatorApiKeyRouteActions {
+  return {
+    rotateOperatorRemoteServerApiKey: () => rotateOperatorRemoteServerApiKeyAction(options),
   }
 }
 

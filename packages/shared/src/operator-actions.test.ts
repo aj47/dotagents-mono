@@ -73,6 +73,7 @@ import {
   clearOperatorDiscordLogsAction,
   connectOperatorDiscordAction,
   connectOperatorWhatsAppAction,
+  createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueRouteActions,
@@ -555,6 +556,37 @@ describe("operator action API helpers", () => {
       shouldRestartRemoteServer: false,
     })
     expect(errors).toContain("Failed to rotate remote server API key")
+  })
+
+  it("creates operator API key route actions through shared adapters", () => {
+    let savedConfig = { remoteServerApiKey: "old-key", remoteServerPort: 3899 }
+    const routeActions = createOperatorApiKeyRouteActions({
+      config: {
+        get: () => savedConfig,
+        save: (config) => { savedConfig = config },
+      },
+      diagnostics: {
+        logError: () => {},
+      },
+      generateApiKey: () => "route-key",
+    })
+
+    expect(routeActions.rotateOperatorRemoteServerApiKey()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "rotate-api-key",
+        apiKey: "route-key",
+        restartScheduled: true,
+      },
+      auditContext: {
+        action: "rotate-api-key",
+        success: true,
+        details: { restartScheduled: true },
+      },
+      shouldRestartRemoteServer: true,
+    })
+    expect(savedConfig).toEqual({ remoteServerApiKey: "route-key", remoteServerPort: 3899 })
   })
 
   it("clamps operator counts and normalizes log levels", () => {

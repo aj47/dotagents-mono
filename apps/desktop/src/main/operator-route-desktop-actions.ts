@@ -41,6 +41,7 @@ import {
   buildOperatorMcpStopFailureAuditContext,
   buildOperatorMcpTestAuditContext,
   buildOperatorMcpTestFailureAuditContext,
+  createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueRouteActions,
@@ -49,7 +50,6 @@ import {
   createOperatorUpdaterRouteActions,
   restartOperatorAppAction as restartOperatorApp,
   restartOperatorRemoteServerAction as restartOperatorRemoteServer,
-  rotateOperatorRemoteServerApiKeyAction,
   type OperatorActionAuditContext,
   type OperatorApiKeyActionOptions,
   type OperatorAgentActionOptions,
@@ -135,6 +135,8 @@ const apiKeyActionOptions: OperatorApiKeyActionOptions<Config> = {
   diagnostics: diagnosticsService,
   generateApiKey: () => crypto.randomBytes(32).toString("hex"),
 }
+
+const operatorApiKeyRouteActions = createOperatorApiKeyRouteActions(apiKeyActionOptions)
 
 const agentActionOptions: OperatorAgentActionOptions = {
   diagnostics: {
@@ -365,12 +367,9 @@ const updaterActionOptions: OperatorUpdaterActionOptions = {
 
 const operatorUpdaterRouteActions = createOperatorUpdaterRouteActions(MANUAL_RELEASES_URL, updaterActionOptions)
 
-function rotateOperatorRemoteServerApiKey() {
-  return rotateOperatorRemoteServerApiKeyAction(apiKeyActionOptions)
-}
-
 export const operatorRouteDesktopActions: OperatorRouteActions = {
   ...operatorAgentRouteActions,
+  ...operatorApiKeyRouteActions,
   ...operatorMcpRouteActions,
   ...operatorLocalSpeechModelRouteActions,
   ...operatorModelPresetRouteActions,
@@ -384,5 +383,4 @@ export const operatorRouteDesktopActions: OperatorRouteActions = {
   setOperatorAuditContext,
   restartOperatorApp,
   restartOperatorRemoteServer,
-  rotateOperatorRemoteServerApiKey,
 }
