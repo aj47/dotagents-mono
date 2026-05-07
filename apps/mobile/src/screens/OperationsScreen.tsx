@@ -62,6 +62,7 @@ import {
   THEME_PREFERENCE_OPTIONS,
 } from '@dotagents/shared/theme-preference';
 import {
+  OPERATOR_ACTIONS_PANEL_METADATA,
   OPERATOR_AGENT_SESSIONS_PANEL_METADATA,
   OPERATOR_CONNECTION_REQUIRED_PANEL_METADATA,
   OPERATOR_CONVERSATIONS_PANEL_METADATA,
@@ -1623,19 +1624,19 @@ export default function OperationsScreen({ navigation }: any) {
           )}
 
           <View style={styles.panel}>
-            <Text style={styles.panelTitle}>Actions</Text>
-            <Text style={styles.label}>Run Agent on Desktop</Text>
+            <Text style={styles.panelTitle}>{OPERATOR_ACTIONS_PANEL_METADATA.panelTitle}</Text>
+            <Text style={styles.label}>{OPERATOR_ACTIONS_PANEL_METADATA.runAgentLabel}</Text>
             <TextInput
               style={[styles.input, styles.promptInput]}
               value={operatorAgentPrompt}
               onChangeText={setOperatorAgentPrompt}
-              placeholder="Ask the desktop agent to run a task"
+              placeholder={OPERATOR_ACTIONS_PANEL_METADATA.runAgentPromptPlaceholder}
               placeholderTextColor={theme.colors.mutedForeground}
               multiline
               textAlignVertical="top"
               editable={pendingAction === null}
-              accessibilityLabel={createTextInputAccessibilityLabel('Desktop agent prompt')}
-              accessibilityHint="Enter a task for the connected desktop agent to run through the operator API."
+              accessibilityLabel={createTextInputAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.runAgentPromptAccessibilityLabel)}
+              accessibilityHint={OPERATOR_ACTIONS_PANEL_METADATA.runAgentPromptAccessibilityHint}
             />
             <View style={styles.actionGrid}>
               <TouchableOpacity
@@ -1647,10 +1648,12 @@ export default function OperationsScreen({ navigation }: any) {
                 onPress={runOperatorAgent}
                 disabled={pendingAction !== null || !operatorAgentPrompt.trim()}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Run agent on desktop')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.runAgentButton.accessibilityLabel)}
               >
                 <Text style={styles.primaryActionText}>
-                  {pendingAction === 'run-agent' ? 'Running agent…' : 'Run agent'}
+                  {pendingAction === 'run-agent'
+                    ? OPERATOR_ACTIONS_PANEL_METADATA.runAgentButton.pendingLabel
+                    : OPERATOR_ACTIONS_PANEL_METADATA.runAgentButton.buttonLabel}
                 </Text>
               </TouchableOpacity>
 
@@ -1659,9 +1662,13 @@ export default function OperationsScreen({ navigation }: any) {
                 onPress={handleRefresh}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Refresh operator console')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.refreshButton.accessibilityLabel)}
               >
-                <Text style={styles.primaryActionText}>{pendingAction === 'refresh' ? 'Refreshing…' : 'Refresh'}</Text>
+                <Text style={styles.primaryActionText}>
+                  {pendingAction === 'refresh'
+                    ? OPERATOR_ACTIONS_PANEL_METADATA.refreshButton.pendingLabel
+                    : OPERATOR_ACTIONS_PANEL_METADATA.refreshButton.buttonLabel}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1669,10 +1676,12 @@ export default function OperationsScreen({ navigation }: any) {
                 onPress={() => void runAction('stop-tts-playback', () => settingsClient.stopOperatorTtsPlayback(), false)}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Stop desktop speech playback')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.stopSpeechButton.accessibilityLabel)}
               >
                 <Text style={styles.secondaryActionText}>
-                  {pendingAction === 'stop-tts-playback' ? 'Stopping speech…' : 'Stop speech'}
+                  {pendingAction === 'stop-tts-playback'
+                    ? OPERATOR_ACTIONS_PANEL_METADATA.stopSpeechButton.pendingLabel
+                    : OPERATOR_ACTIONS_PANEL_METADATA.stopSpeechButton.buttonLabel}
                 </Text>
               </TouchableOpacity>
 
@@ -1681,10 +1690,12 @@ export default function OperationsScreen({ navigation }: any) {
                 onPress={() => void runAction('desktop-main-window-show', () => settingsClient.showOperatorMainWindow(), false)}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Show desktop app window')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.showAppButton.accessibilityLabel)}
               >
                 <Text style={styles.secondaryActionText}>
-                  {pendingAction === 'desktop-main-window-show' ? 'Showing app…' : 'Show app'}
+                  {pendingAction === 'desktop-main-window-show'
+                    ? OPERATOR_ACTIONS_PANEL_METADATA.showAppButton.pendingLabel
+                    : OPERATOR_ACTIONS_PANEL_METADATA.showAppButton.buttonLabel}
                 </Text>
               </TouchableOpacity>
 
@@ -1693,10 +1704,12 @@ export default function OperationsScreen({ navigation }: any) {
                 onPress={() => void runAction('desktop-main-window-history-show', () => settingsClient.showOperatorMainWindow('/'), false)}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Show desktop conversation history')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.showHistoryButton.accessibilityLabel)}
               >
                 <Text style={styles.secondaryActionText}>
-                  {pendingAction === 'desktop-main-window-history-show' ? 'Opening history…' : 'History'}
+                  {pendingAction === 'desktop-main-window-history-show'
+                    ? OPERATOR_ACTIONS_PANEL_METADATA.showHistoryButton.pendingLabel
+                    : OPERATOR_ACTIONS_PANEL_METADATA.showHistoryButton.buttonLabel}
                 </Text>
               </TouchableOpacity>
 
@@ -1705,10 +1718,12 @@ export default function OperationsScreen({ navigation }: any) {
                 onPress={() => void runAction('desktop-main-window-settings-show', () => settingsClient.showOperatorMainWindow('/settings'), false)}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Show desktop settings')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.showSettingsButton.accessibilityLabel)}
               >
                 <Text style={styles.secondaryActionText}>
-                  {pendingAction === 'desktop-main-window-settings-show' ? 'Opening settings…' : 'Settings'}
+                  {pendingAction === 'desktop-main-window-settings-show'
+                    ? OPERATOR_ACTIONS_PANEL_METADATA.showSettingsButton.pendingLabel
+                    : OPERATOR_ACTIONS_PANEL_METADATA.showSettingsButton.buttonLabel}
                 </Text>
               </TouchableOpacity>
 
@@ -1717,10 +1732,12 @@ export default function OperationsScreen({ navigation }: any) {
                 onPress={() => void runAction('desktop-panel-window-show', () => settingsClient.showOperatorPanelWindow(), false)}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Show desktop floating panel')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.showPanelButton.accessibilityLabel)}
               >
                 <Text style={styles.secondaryActionText}>
-                  {pendingAction === 'desktop-panel-window-show' ? 'Showing panel…' : 'Show panel'}
+                  {pendingAction === 'desktop-panel-window-show'
+                    ? OPERATOR_ACTIONS_PANEL_METADATA.showPanelButton.pendingLabel
+                    : OPERATOR_ACTIONS_PANEL_METADATA.showPanelButton.buttonLabel}
                 </Text>
               </TouchableOpacity>
 
@@ -1729,10 +1746,12 @@ export default function OperationsScreen({ navigation }: any) {
                 onPress={() => void runAction('desktop-panel-window-hide', () => settingsClient.hideOperatorPanelWindow(), false)}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Hide desktop floating panel')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.hidePanelButton.accessibilityLabel)}
               >
                 <Text style={styles.secondaryActionText}>
-                  {pendingAction === 'desktop-panel-window-hide' ? 'Hiding panel…' : 'Hide panel'}
+                  {pendingAction === 'desktop-panel-window-hide'
+                    ? OPERATOR_ACTIONS_PANEL_METADATA.hidePanelButton.pendingLabel
+                    : OPERATOR_ACTIONS_PANEL_METADATA.hidePanelButton.buttonLabel}
                 </Text>
               </TouchableOpacity>
 
@@ -1741,59 +1760,61 @@ export default function OperationsScreen({ navigation }: any) {
                 onPress={() => void runAction('desktop-panel-window-reset', () => settingsClient.resetOperatorPanelWindow(), false)}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Reset desktop floating panel')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.resetPanelButton.accessibilityLabel)}
               >
                 <Text style={styles.secondaryActionText}>
-                  {pendingAction === 'desktop-panel-window-reset' ? 'Resetting panel…' : 'Reset panel'}
+                  {pendingAction === 'desktop-panel-window-reset'
+                    ? OPERATOR_ACTIONS_PANEL_METADATA.resetPanelButton.pendingLabel
+                    : OPERATOR_ACTIONS_PANEL_METADATA.resetPanelButton.buttonLabel}
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                 onPress={() => confirmAction(
-                  'Restart Remote Server',
-                  'Restart the desktop remote server? Mobile clients may reconnect automatically after a short interruption.',
-                  'Restart Server',
+                  OPERATOR_ACTIONS_PANEL_METADATA.restartRemoteServerAction.confirmTitle,
+                  OPERATOR_ACTIONS_PANEL_METADATA.restartRemoteServerAction.confirmMessage,
+                  OPERATOR_ACTIONS_PANEL_METADATA.restartRemoteServerAction.confirmButtonLabel,
                   false,
                   () => runAction('restart-remote-server', () => settingsClient.restartRemoteServer()),
                 )}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Restart remote server')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.restartRemoteServerAction.accessibilityLabel)}
               >
-                <Text style={styles.secondaryActionText}>Restart remote server</Text>
+                <Text style={styles.secondaryActionText}>{OPERATOR_ACTIONS_PANEL_METADATA.restartRemoteServerAction.buttonLabel}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                 onPress={() => confirmAction(
-                  'Restart App',
-                  'Restart the DotAgents desktop app now? The connection may drop while the app relaunches.',
-                  'Restart App',
+                  OPERATOR_ACTIONS_PANEL_METADATA.restartAppAction.confirmTitle,
+                  OPERATOR_ACTIONS_PANEL_METADATA.restartAppAction.confirmMessage,
+                  OPERATOR_ACTIONS_PANEL_METADATA.restartAppAction.confirmButtonLabel,
                   false,
                   () => runAction('restart-app', () => settingsClient.restartApp(), false),
                 )}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Restart app')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.restartAppAction.accessibilityLabel)}
               >
-                <Text style={styles.secondaryActionText}>Restart app</Text>
+                <Text style={styles.secondaryActionText}>{OPERATOR_ACTIONS_PANEL_METADATA.restartAppAction.buttonLabel}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.destructiveActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                 onPress={() => confirmAction(
-                  'Emergency Stop',
-                  'Stop active agent work across the desktop app? Use this when the operator needs an immediate halt.',
-                  'Emergency Stop',
+                  OPERATOR_ACTIONS_PANEL_METADATA.emergencyStopAction.confirmTitle,
+                  OPERATOR_ACTIONS_PANEL_METADATA.emergencyStopAction.confirmMessage,
+                  OPERATOR_ACTIONS_PANEL_METADATA.emergencyStopAction.confirmButtonLabel,
                   true,
                   () => runAction('emergency-stop', () => settingsClient.emergencyStop()),
                 )}
                 disabled={pendingAction !== null}
                 accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Emergency stop')}
+                accessibilityLabel={createButtonAccessibilityLabel(OPERATOR_ACTIONS_PANEL_METADATA.emergencyStopAction.accessibilityLabel)}
               >
-                <Text style={styles.destructiveActionText}>Emergency stop</Text>
+                <Text style={styles.destructiveActionText}>{OPERATOR_ACTIONS_PANEL_METADATA.emergencyStopAction.buttonLabel}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity

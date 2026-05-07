@@ -51,6 +51,114 @@ export const OPERATOR_SYSTEM_PANEL_METADATA: OperatorSystemPanelMetadata = {
     `Process uptime: ${formatOperatorDurationSeconds(system.processUptimeSeconds)} • System uptime: ${formatOperatorDurationSeconds(system.uptimeSeconds)}`,
 }
 
+export type OperatorActionButtonMetadata = {
+  accessibilityLabel: string
+  pendingLabel: string
+  buttonLabel: string
+}
+
+export type OperatorConfirmedActionMetadata = {
+  confirmTitle: string
+  confirmMessage: string
+  confirmButtonLabel: string
+  accessibilityLabel: string
+  buttonLabel: string
+}
+
+export type OperatorActionsPanelMetadata = {
+  panelTitle: string
+  runAgentLabel: string
+  runAgentPromptPlaceholder: string
+  runAgentPromptAccessibilityLabel: string
+  runAgentPromptAccessibilityHint: string
+  runAgentButton: OperatorActionButtonMetadata
+  refreshButton: OperatorActionButtonMetadata
+  stopSpeechButton: OperatorActionButtonMetadata
+  showAppButton: OperatorActionButtonMetadata
+  showHistoryButton: OperatorActionButtonMetadata
+  showSettingsButton: OperatorActionButtonMetadata
+  showPanelButton: OperatorActionButtonMetadata
+  hidePanelButton: OperatorActionButtonMetadata
+  resetPanelButton: OperatorActionButtonMetadata
+  restartRemoteServerAction: OperatorConfirmedActionMetadata
+  restartAppAction: OperatorConfirmedActionMetadata
+  emergencyStopAction: OperatorConfirmedActionMetadata
+}
+
+export const OPERATOR_ACTIONS_PANEL_METADATA: OperatorActionsPanelMetadata = {
+  panelTitle: "Actions",
+  runAgentLabel: "Run Agent on Desktop",
+  runAgentPromptPlaceholder: "Ask the desktop agent to run a task",
+  runAgentPromptAccessibilityLabel: "Desktop agent prompt",
+  runAgentPromptAccessibilityHint: "Enter a task for the connected desktop agent to run through the operator API.",
+  runAgentButton: {
+    accessibilityLabel: "Run agent on desktop",
+    pendingLabel: "Running agent…",
+    buttonLabel: "Run agent",
+  },
+  refreshButton: {
+    accessibilityLabel: "Refresh operator console",
+    pendingLabel: "Refreshing…",
+    buttonLabel: "Refresh",
+  },
+  stopSpeechButton: {
+    accessibilityLabel: "Stop desktop speech playback",
+    pendingLabel: "Stopping speech…",
+    buttonLabel: "Stop speech",
+  },
+  showAppButton: {
+    accessibilityLabel: "Show desktop app window",
+    pendingLabel: "Showing app…",
+    buttonLabel: "Show app",
+  },
+  showHistoryButton: {
+    accessibilityLabel: "Show desktop conversation history",
+    pendingLabel: "Opening history…",
+    buttonLabel: "History",
+  },
+  showSettingsButton: {
+    accessibilityLabel: "Show desktop settings",
+    pendingLabel: "Opening settings…",
+    buttonLabel: "Settings",
+  },
+  showPanelButton: {
+    accessibilityLabel: "Show desktop floating panel",
+    pendingLabel: "Showing panel…",
+    buttonLabel: "Show panel",
+  },
+  hidePanelButton: {
+    accessibilityLabel: "Hide desktop floating panel",
+    pendingLabel: "Hiding panel…",
+    buttonLabel: "Hide panel",
+  },
+  resetPanelButton: {
+    accessibilityLabel: "Reset desktop floating panel",
+    pendingLabel: "Resetting panel…",
+    buttonLabel: "Reset panel",
+  },
+  restartRemoteServerAction: {
+    confirmTitle: "Restart Remote Server",
+    confirmMessage: "Restart the desktop remote server? Mobile clients may reconnect automatically after a short interruption.",
+    confirmButtonLabel: "Restart Server",
+    accessibilityLabel: "Restart remote server",
+    buttonLabel: "Restart remote server",
+  },
+  restartAppAction: {
+    confirmTitle: "Restart App",
+    confirmMessage: "Restart the DotAgents desktop app now? The connection may drop while the app relaunches.",
+    confirmButtonLabel: "Restart App",
+    accessibilityLabel: "Restart app",
+    buttonLabel: "Restart app",
+  },
+  emergencyStopAction: {
+    confirmTitle: "Emergency Stop",
+    confirmMessage: "Stop active agent work across the desktop app? Use this when the operator needs an immediate halt.",
+    confirmButtonLabel: "Emergency Stop",
+    accessibilityLabel: "Emergency stop",
+    buttonLabel: "Emergency stop",
+  },
+}
+
 export type OperatorDiagnosticReportActionMetadata = {
   sectionTitle: string
   generateAccessibilityLabel: string
