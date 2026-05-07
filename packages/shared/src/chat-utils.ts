@@ -34,6 +34,16 @@ export type ConversationHistoryForApiEntryLike = {
   timestamp?: number;
 };
 
+export type ConversationHistoryForProgressEntryLike = ConversationHistoryForApiEntryLike & {
+  branchMessageIndex?: number;
+  ephemeral?: boolean;
+};
+
+export type FormatConversationHistoryForProgressOptions = {
+  shouldExcludeEntry?: (entry: ConversationHistoryForProgressEntryLike) => boolean;
+  now?: () => number;
+};
+
 export type ChatCompletionRequestBody<T extends ChatRequestMessageLike = ChatRequestMessageLike> = {
   model?: string;
   messages: T[];
@@ -466,6 +476,26 @@ export function formatConversationHistoryForApi(
     toolResults: entry.toolResults?.map(formatConversationToolResultForApi),
     timestamp: entry.timestamp,
   }));
+}
+
+export function formatConversationHistoryForProgress(
+  history: ConversationHistoryForProgressEntryLike[],
+  options: FormatConversationHistoryForProgressOptions = {},
+): ConversationHistoryMessage[] {
+  const now = options.now ?? Date.now;
+
+  return history
+    .filter((entry) => !entry.ephemeral)
+    .filter((entry) => !(options.shouldExcludeEntry?.(entry) ?? false))
+    .map((entry) => ({
+      role: entry.role,
+      content: entry.content,
+      ...(entry.displayContent ? { displayContent: entry.displayContent } : {}),
+      toolCalls: entry.toolCalls?.map(formatConversationToolCallForApi),
+      toolResults: entry.toolResults?.map(formatConversationToolResultForApi),
+      timestamp: entry.timestamp || now(),
+      branchMessageIndex: entry.branchMessageIndex,
+    }));
 }
 
 export function buildChatCompletionRequestBody<T extends ChatRequestMessageLike>(

@@ -9,6 +9,7 @@ import {
   formatToolArguments,
   formatArgumentsPreview,
   formatConversationHistoryForApi,
+  formatConversationHistoryForProgress,
   RESPOND_TO_USER_TOOL,
   MARK_WORK_COMPLETE_TOOL,
   buildChatCompletionDoneSsePayload,
@@ -201,6 +202,49 @@ describe('formatConversationHistoryForApi', () => {
         error: 'permission denied',
       }],
       timestamp: undefined,
+    }])
+  })
+})
+
+describe('formatConversationHistoryForProgress', () => {
+  it('keeps display content and branch indexes while normalizing tool data', () => {
+    expect(formatConversationHistoryForProgress([{
+      role: 'assistant',
+      content: 'Stored answer',
+      displayContent: '<think>reasoning</think>\n\nStored answer',
+      toolCalls: [{ name: 'search', arguments: { q: 'agent' } }],
+      toolResults: [{
+        content: [{ type: 'text', text: 'found' }],
+        isError: false,
+      }],
+      timestamp: 10,
+      branchMessageIndex: 4,
+    }])).toEqual([{
+      role: 'assistant',
+      content: 'Stored answer',
+      displayContent: '<think>reasoning</think>\n\nStored answer',
+      toolCalls: [{ name: 'search', arguments: { q: 'agent' } }],
+      toolResults: [{ success: true, content: 'found', error: undefined }],
+      timestamp: 10,
+      branchMessageIndex: 4,
+    }])
+  })
+
+  it('filters ephemeral and caller-excluded messages before progress display', () => {
+    expect(formatConversationHistoryForProgress([
+      { role: 'assistant', content: 'hidden digest', ephemeral: true },
+      { role: 'user', content: 'internal nudge' },
+      { role: 'assistant', content: 'shown', timestamp: 0 },
+    ], {
+      shouldExcludeEntry: (entry) => entry.content === 'internal nudge',
+      now: () => 123,
+    })).toEqual([{
+      role: 'assistant',
+      content: 'shown',
+      toolCalls: undefined,
+      toolResults: undefined,
+      timestamp: 123,
+      branchMessageIndex: undefined,
     }])
   })
 })

@@ -51,6 +51,7 @@ import {
 import {
   getLatestRespondToUserContentFromConversationHistory,
   getUnmaterializedUserResponseEvents,
+  formatConversationHistoryForProgress,
   normalizeUserFacingResponseContent,
   resolveLatestUserFacingResponse,
 } from "@dotagents/shared/chat-utils"
@@ -1321,33 +1322,10 @@ export async function processTranscriptWithAgentMode(
   const formatConversationForProgress = (
     history: typeof conversationHistory,
   ) => {
-    return history
-      .filter((entry) => !entry.ephemeral)
-      .filter((entry) => !(entry.role === "user" && isInternalNudgeContent(entry.content)))
-      .map((entry) => ({
-        role: entry.role,
-        content: entry.content,
-        ...(entry.displayContent ? { displayContent: entry.displayContent } : {}),
-        toolCalls: entry.toolCalls?.map((tc) => ({
-          name: tc.name,
-          arguments: tc.arguments,
-        })),
-        toolResults: entry.toolResults?.map((tr) => {
-          // Safely handle content - it should be an array, but add defensive check
-          const contentText = Array.isArray(tr.content)
-            ? tr.content.map((c) => c.text).join("\n")
-            : String(tr.content || "")
-
-          return {
-            success: !tr.isError,
-            content: contentText,
-            error: tr.isError ? contentText : undefined,
-          }
-        }),
-        // Preserve original timestamp if available, otherwise use current time
-        timestamp: entry.timestamp || Date.now(),
-        branchMessageIndex: entry.branchMessageIndex,
-      }))
+    return formatConversationHistoryForProgress(history, {
+      shouldExcludeEntry: (entry) =>
+        entry.role === "user" && isInternalNudgeContent(entry.content),
+    })
   }
 
   const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {
