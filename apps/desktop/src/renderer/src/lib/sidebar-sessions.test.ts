@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  assignSidebarSessionToGroup,
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
+  getSidebarSessionGroupKey,
   getSidebarActivityPresentation,
   getSidebarProgressTitle,
   getSubagentParentSessionIdMap,
   getSubagentTitleBySessionIdMap,
+  groupSidebarSessionEntries,
   getSessionIdsWithActiveChildProgress,
   getLatestAgentResponseTimestamp,
   hasUnreadAgentResponse,
@@ -14,10 +17,12 @@ import {
   isSidebarSessionCurrentlyViewed,
   isTaskSession,
   nestSubagentSessionEntries,
+  normalizeSidebarSessionGroups,
   orderActiveSessionsByPinnedFirst,
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
+  summarizeSidebarSessionLifecycleStates,
 } from "./sidebar-sessions"
 
 const activeSession = (id: string, conversationId?: string) => ({
@@ -43,6 +48,120 @@ describe("orderActiveSessionsByPinnedFirst", () => {
       "session-2",
       "session-1",
       "session-3",
+    ])
+  })
+})
+
+describe("sidebar session groups", () => {
+  it("uses conversation ids as stable group keys when available", () => {
+    expect(getSidebarSessionGroupKey(activeSession("session-1", "conversation-1"))).toBe(
+      "conversation:conversation-1",
+    )
+    expect(getSidebarSessionGroupKey(activeSession("session-2"))).toBe(
+      "session:session-2",
+    )
+  })
+
+  it("normalizes persisted groups and drops invalid duplicate data", () => {
+    const groups = normalizeSidebarSessionGroups([
+      {
+        id: " group-1 ",
+        name: "  Research ",
+        expanded: false,
+        sessionKeys: [" conversation:a ", "conversation:a", "", 42],
+      },
+      { id: "group-1", name: "Duplicate", sessionKeys: ["session:b"] },
+      { id: "group-2", name: "", sessionKeys: ["session:c"] },
+    ])
+
+    expect(groups).toEqual([
+      {
+        id: "group-1",
+        name: "Research",
+        expanded: false,
+        sessionKeys: ["conversation:a"],
+      },
+      {
+        id: "group-2",
+        name: "Untitled group",
+        expanded: true,
+        sessionKeys: ["session:c"],
+      },
+    ])
+  })
+
+  it("assigns a session to exactly one group and can ungroup it", () => {
+    const groups = [
+      { id: "group-a", name: "A", expanded: true, sessionKeys: ["session:one"] },
+      { id: "group-b", name: "B", expanded: true, sessionKeys: [] },
+    ]
+
+    const assigned = assignSidebarSessionToGroup(groups, "session:one", "group-b")
+    expect(assigned.map((group) => group.sessionKeys)).toEqual([[], ["session:one"]])
+
+    const ungrouped = assignSidebarSessionToGroup(assigned, "session:one", null)
+    expect(ungrouped.map((group) => group.sessionKeys)).toEqual([[], []])
+  })
+
+  it("builds grouped sections and leaves unmatched sessions ungrouped", () => {
+    const entries = [
+      { session: activeSession("session-1", "conversation-1") },
+      { session: activeSession("session-2") },
+      { session: activeSession("session-3") },
+    ]
+    const result = groupSidebarSessionEntries(entries, [
+      {
+        id: "group-a",
+        name: "A",
+        expanded: true,
+        sessionKeys: ["session:2-missing", "session:session-2", "conversation:conversation-1"],
+      },
+    ])
+
+    expect(result.groupedSections[0]?.entries.map((entry) => entry.session.id)).toEqual([
+      "session-2",
+      "session-1",
+    ])
+    expect(result.ungroupedEntries.map((entry) => entry.session.id)).toEqual([
+      "session-3",
+    ])
+  })
+
+  it("keeps a session in its first matching group when persisted data duplicates it", () => {
+    const entries = [
+      { session: activeSession("session-1") },
+      { session: activeSession("session-2") },
+    ]
+    const result = groupSidebarSessionEntries(entries, [
+      { id: "group-a", name: "A", expanded: true, sessionKeys: ["session:session-1"] },
+      {
+        id: "group-b",
+        name: "B",
+        expanded: true,
+        sessionKeys: ["session:session-1", "session:session-2"],
+      },
+    ])
+
+    expect(result.groupedSections.map((section) =>
+      section.entries.map((entry) => entry.session.id),
+    )).toEqual([["session-1"], ["session-2"]])
+  })
+
+  it("summarizes group lifecycle counts in urgency-first order", () => {
+    expect(
+      summarizeSidebarSessionLifecycleStates([
+        "complete",
+        "running",
+        "needs_input",
+        "complete",
+        "blocked",
+        "running",
+      ]),
+    ).toEqual([
+      { state: "needs_input", count: 1 },
+      { state: "blocked", count: 1 },
+      { state: "running", count: 2 },
+      { state: "complete", count: 2 },
     ])
   })
 })
@@ -813,7 +932,7 @@ describe("dedupeTaskEntriesByTitle", () => {
 })
 
 describe("paginateSidebarEntries", () => {
-  it("always keeps active entries while counting pinned saved entries toward the saved limit", () => {
+  it("always keeps active and pinned saved entries while limiting unpinned saved history", () => {
     const entries = [
       { session: { id: "active", conversationId: "active-c" }, isSavedConversation: false },
       { session: { id: "pinned", conversationId: "pinned-c" }, isSavedConversation: true },
@@ -826,11 +945,12 @@ describe("paginateSidebarEntries", () => {
     expect(paginated.visibleEntries.map((entry) => entry.session.id)).toEqual([
       "active",
       "pinned",
+      "saved-1",
     ])
     expect(paginated.hasMoreEntries).toBe(true)
   })
 
-  it("does not show pinned saved entries when active rows fill the default page", () => {
+  it("keeps pinned saved entries visible when active rows fill the default page", () => {
     const entries = [
       { session: { id: "active-1", conversationId: "active-c-1" }, isSavedConversation: false },
       { session: { id: "active-2", conversationId: "active-c-2" }, isSavedConversation: false },
@@ -839,6 +959,7 @@ describe("paginateSidebarEntries", () => {
       { session: { id: "active-pin", conversationId: "active-pin-c" }, isSavedConversation: false },
       { session: { id: "pinned-1", conversationId: "pinned-c-1" }, isSavedConversation: true },
       { session: { id: "pinned-2", conversationId: "pinned-c-2" }, isSavedConversation: true },
+      { session: { id: "saved-1", conversationId: "saved-c-1" }, isSavedConversation: true },
     ]
 
     const paginated = paginateSidebarEntries(
@@ -853,6 +974,8 @@ describe("paginateSidebarEntries", () => {
       "active-3",
       "active-4",
       "active-pin",
+      "pinned-1",
+      "pinned-2",
     ])
     expect(paginated.hasMoreEntries).toBe(true)
   })
@@ -868,8 +991,33 @@ describe("paginateSidebarEntries", () => {
 
     expect(paginated.visibleEntries.map((entry) => entry.session.id)).toEqual([
       "parent",
+      "child",
     ])
     expect(paginated.hasMoreEntries).toBe(true)
+  })
+
+  it("keeps grouped pinned saved entries available before grouping", () => {
+    const paginated = paginateSidebarEntries(
+      [
+        { session: { id: "active", conversationId: "active-c" }, isSavedConversation: false },
+        { session: { id: "pinned", conversationId: "pinned-c" }, isSavedConversation: true },
+      ],
+      new Set(["pinned-c"]),
+      0,
+    )
+
+    const grouped = groupSidebarSessionEntries(paginated.visibleEntries, [
+      {
+        id: "personal",
+        name: "Personal",
+        expanded: true,
+        sessionKeys: ["conversation:pinned-c"],
+      },
+    ])
+
+    expect(grouped.groupedSections[0]?.entries.map((entry) => entry.session.id)).toEqual([
+      "pinned",
+    ])
   })
 })
 

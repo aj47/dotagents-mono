@@ -1,11 +1,33 @@
 import type { AgentProgressUpdate } from "@shared/types"
 import { TASK_SESSION_TITLE_PREFIX, hasRepeatTaskTitlePrefix } from "@shared/repeat-tasks"
 import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
-
-type SessionLike = {
+export type SessionLike = {
   id: string
   conversationId?: string
 }
+
+export interface SidebarSessionGroup {
+  id: string
+  name: string
+  sessionKeys: string[]
+  expanded: boolean
+}
+
+export interface SidebarSessionGroupSection<T> {
+  group: SidebarSessionGroup
+  entries: T[]
+}
+
+export interface SidebarSessionStateSummary {
+  state: SidebarBadgeLifecycleState
+  count: number
+}
+
+export type SidebarBadgeLifecycleState =
+  | "needs_input"
+  | "blocked"
+  | "running"
+  | "complete"
 
 type ParentSessionLike = SessionLike & {
   parentSessionId?: string | null
@@ -70,6 +92,118 @@ export interface SidebarActivityPresentation {
 }
 
 type RepeatTaskTitleHints = ReadonlySet<string>
+
+export function getSidebarSessionGroupKey(session: SessionLike): string {
+  const conversationId = session.conversationId?.trim()
+  return conversationId ? `conversation:${conversationId}` : `session:${session.id}`
+}
+
+export function normalizeSidebarSessionGroups(input: unknown): SidebarSessionGroup[] {
+  if (!Array.isArray(input)) return []
+
+  const seenGroupIds = new Set<string>()
+  return input.flatMap((value) => {
+    const raw = value as Partial<SidebarSessionGroup> | null
+    const id = typeof raw?.id === "string" ? raw.id.trim() : ""
+    if (!id || seenGroupIds.has(id)) return []
+    seenGroupIds.add(id)
+
+    const seenSessionKeys = new Set<string>()
+    const rawSessionKeys = raw?.sessionKeys
+    const sessionKeys = Array.isArray(rawSessionKeys)
+      ? rawSessionKeys.flatMap((sessionKey) => {
+        if (typeof sessionKey !== "string") return []
+        const normalized = sessionKey.trim()
+        if (!normalized || seenSessionKeys.has(normalized)) return []
+        seenSessionKeys.add(normalized)
+        return [normalized]
+      })
+      : []
+
+    const name = typeof raw?.name === "string" ? raw.name.trim() : ""
+    return [{
+      id,
+      name: name || "Untitled group",
+      sessionKeys,
+      expanded: raw?.expanded !== false,
+    }]
+  })
+}
+
+export function assignSidebarSessionToGroup(
+  groups: SidebarSessionGroup[],
+  sessionKey: string,
+  targetGroupId: string | null,
+): SidebarSessionGroup[] {
+  const normalizedSessionKey = sessionKey.trim()
+  if (!normalizedSessionKey) return groups
+  if (targetGroupId && !groups.some((group) => group.id === targetGroupId)) {
+    return groups
+  }
+
+  return groups.map((group) => {
+    const sessionKeys = group.sessionKeys.filter((key) => key !== normalizedSessionKey)
+    if (group.id !== targetGroupId) {
+      return sessionKeys.length === group.sessionKeys.length
+        ? group
+        : { ...group, sessionKeys }
+    }
+
+    return {
+      ...group,
+      sessionKeys: [...sessionKeys, normalizedSessionKey],
+    }
+  })
+}
+
+export function groupSidebarSessionEntries<T extends { session: SessionLike }>(
+  entries: T[],
+  groups: SidebarSessionGroup[],
+): { groupedSections: SidebarSessionGroupSection<T>[]; ungroupedEntries: T[] } {
+  const entryBySessionKey = new Map<string, T>()
+  for (const entry of entries) {
+    const sessionKey = getSidebarSessionGroupKey(entry.session)
+    if (!entryBySessionKey.has(sessionKey)) {
+      entryBySessionKey.set(sessionKey, entry)
+    }
+  }
+
+  const groupedSessionKeys = new Set<string>()
+  const groupedSections = groups.map((group) => {
+    const seenInGroup = new Set<string>()
+    const groupedEntries = group.sessionKeys.flatMap((sessionKey) => {
+      if (seenInGroup.has(sessionKey) || groupedSessionKeys.has(sessionKey)) return []
+      seenInGroup.add(sessionKey)
+      const entry = entryBySessionKey.get(sessionKey)
+      if (!entry) return []
+      groupedSessionKeys.add(sessionKey)
+      return [entry]
+    })
+    return { group, entries: groupedEntries }
+  })
+
+  const ungroupedEntries = entries.filter(
+    (entry) => !groupedSessionKeys.has(getSidebarSessionGroupKey(entry.session)),
+  )
+
+  return { groupedSections, ungroupedEntries }
+}
+
+export function summarizeSidebarSessionLifecycleStates(
+  states: Iterable<SidebarBadgeLifecycleState>,
+): SidebarSessionStateSummary[] {
+  const counts = new Map<SidebarBadgeLifecycleState, number>()
+
+  for (const state of states) {
+    counts.set(state, (counts.get(state) ?? 0) + 1)
+  }
+
+  return (["needs_input", "blocked", "running", "complete"] as const)
+    .flatMap((state) => {
+      const count = counts.get(state) ?? 0
+      return count > 0 ? [{ state, count }] : []
+    })
+}
 
 const SIDEBAR_ACTIVITY_BADGE_CLASSES: Record<SidebarActivityKind, string> = {
   blocked: "border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-300",
@@ -229,13 +363,19 @@ export function paginateSidebarEntries<
   T extends { session: ParentSessionLike; isSavedConversation: boolean },
 >(
   entries: T[],
-  _pinnedSessionIds: ReadonlySet<string>,
+  pinnedSessionIds: ReadonlySet<string>,
   visibleSavedEntryCount: number,
 ): { visibleEntries: T[]; hasMoreEntries: boolean } {
   const alwaysVisibleEntries: T[] = []
   const pageableEntries: T[] = []
   for (const entry of entries) {
-    if (!entry.isSavedConversation) {
+    const conversationId = entry.session.conversationId
+    const isPinnedSavedConversation =
+      entry.isSavedConversation &&
+      !!conversationId &&
+      pinnedSessionIds.has(conversationId)
+
+    if (!entry.isSavedConversation || isPinnedSavedConversation) {
       alwaysVisibleEntries.push(entry)
     } else {
       pageableEntries.push(entry)
