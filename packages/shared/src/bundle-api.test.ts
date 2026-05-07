@@ -37,6 +37,8 @@ import {
   createBundleItemSelection,
   createBundleImportErrorResult,
   createBundleImportResult,
+  createBundleTemporaryFileImportServiceAdapter,
+  createBundleTemporaryFileStore,
   createLayeredBundleActionService,
   createBundleRouteActions,
   createTemporaryBundleFileImportService,
@@ -1704,7 +1706,7 @@ describe("bundle API helpers", () => {
     const bundleJson = JSON.stringify(bundle)
     const calls: string[] = []
     const options = {
-      temporaryFiles: {
+      temporaryFiles: createBundleTemporaryFileStore({
         writeTemporaryBundleFile: async (json: string) => {
           calls.push(`write:${json}`)
           return "/tmp/import.dotagents"
@@ -1712,8 +1714,8 @@ describe("bundle API helpers", () => {
         deleteTemporaryBundleFile: async (filePath: string) => {
           calls.push(`delete:${filePath}`)
         },
-      },
-      service: {
+      }),
+      service: createBundleTemporaryFileImportServiceAdapter({
         getImportTargetDir: () => {
           calls.push("target")
           return "/agents"
@@ -1734,7 +1736,7 @@ describe("bundle API helpers", () => {
           calls.push(`import:${filePath}:${targetDir}:${request.conflictStrategy}:${JSON.stringify(request.components)}`)
           return importResult
         },
-      },
+      }),
     }
 
     await expect(previewBundleImportFromTemporaryFile({ bundleJson }, options)).resolves.toEqual(importPreview)
@@ -1759,7 +1761,7 @@ describe("bundle API helpers", () => {
   it("normalizes failed temporary bundle previews and ignores cleanup errors", async () => {
     const calls: string[] = []
     const options = {
-      temporaryFiles: {
+      temporaryFiles: createBundleTemporaryFileStore({
         writeTemporaryBundleFile: () => {
           calls.push("write")
           return "/tmp/bad.dotagents"
@@ -1768,15 +1770,15 @@ describe("bundle API helpers", () => {
           calls.push("delete")
           throw new Error("already gone")
         },
-      },
-      service: {
+      }),
+      service: createBundleTemporaryFileImportServiceAdapter({
         getImportTargetDir: () => "/agents",
         previewBundleFile: () => {
           calls.push("preview")
           return { success: false }
         },
         importBundleFile: () => importResult,
-      },
+      }),
     }
 
     await expect(previewBundleImportFromTemporaryFile({
@@ -1788,11 +1790,11 @@ describe("bundle API helpers", () => {
   it("creates a bundle action service from temporary file adapters", async () => {
     const bundleJson = JSON.stringify(bundle)
     const routeService = createTemporaryBundleFileImportService({
-      temporaryFiles: {
+      temporaryFiles: createBundleTemporaryFileStore({
         writeTemporaryBundleFile: () => "/tmp/service.dotagents",
         deleteTemporaryBundleFile: () => undefined,
-      },
-      service: {
+      }),
+      service: createBundleTemporaryFileImportServiceAdapter({
         getImportTargetDir: () => "/agents",
         previewBundleFile: () => ({
           success: true,
@@ -1803,7 +1805,7 @@ describe("bundle API helpers", () => {
           ...importResult,
           errors: [`strategy:${request.conflictStrategy}`],
         }),
-      },
+      }),
     })
 
     await expect(routeService.previewBundleImport({ bundleJson })).resolves.toEqual(importPreview)

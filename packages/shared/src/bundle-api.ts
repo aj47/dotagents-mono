@@ -1874,6 +1874,17 @@ export interface BundleTemporaryFileStore {
   deleteTemporaryBundleFile(filePath: string): void | Promise<void>
 }
 
+export type BundleTemporaryFileStoreAdapterOptions = BundleTemporaryFileStore
+
+export function createBundleTemporaryFileStore(
+  options: BundleTemporaryFileStoreAdapterOptions,
+): BundleTemporaryFileStore {
+  return {
+    writeTemporaryBundleFile: (bundleJson) => options.writeTemporaryBundleFile(bundleJson),
+    deleteTemporaryBundleFile: (filePath) => options.deleteTemporaryBundleFile(filePath),
+  }
+}
+
 export interface BundleTemporaryFileImportService {
   getImportTargetDir(): string
   previewBundleFile(filePath: string, targetDir: string): BundleTemporaryFilePreviewResult | Promise<BundleTemporaryFilePreviewResult>
@@ -1885,6 +1896,18 @@ export interface BundleTemporaryFileImportService {
       components?: BundleComponentSelection
     },
   ): BundleImportResult | Promise<BundleImportResult>
+}
+
+export type BundleTemporaryFileImportServiceAdapterOptions = BundleTemporaryFileImportService
+
+export function createBundleTemporaryFileImportServiceAdapter(
+  options: BundleTemporaryFileImportServiceAdapterOptions,
+): BundleTemporaryFileImportService {
+  return {
+    getImportTargetDir: () => options.getImportTargetDir(),
+    previewBundleFile: (filePath, targetDir) => options.previewBundleFile(filePath, targetDir),
+    importBundleFile: (filePath, targetDir, request) => options.importBundleFile(filePath, targetDir, request),
+  }
 }
 
 export interface BundleTemporaryFileImportOptions {

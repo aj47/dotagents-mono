@@ -11,6 +11,8 @@ import {
 } from "@dotagents/shared/agent-session-candidates"
 import { getEnabledAcpxAgentProfiles } from "@dotagents/shared/agent-profile-queries"
 import {
+  createBundleTemporaryFileImportServiceAdapter,
+  createBundleTemporaryFileStore,
   createTemporaryBundleFileImportService,
   createTemporaryBundleFileName,
   createLayeredBundleActionService,
@@ -227,7 +229,7 @@ function getBundleImportTargetDir(): string {
 }
 
 const temporaryBundleImportService = createTemporaryBundleFileImportService({
-  temporaryFiles: {
+  temporaryFiles: createBundleTemporaryFileStore({
     writeTemporaryBundleFile: (bundleJson) => {
       const tempDir = path.join(os.tmpdir(), "dotagents-bundle-import")
       fs.mkdirSync(tempDir, { recursive: true })
@@ -238,13 +240,13 @@ const temporaryBundleImportService = createTemporaryBundleFileImportService({
     deleteTemporaryBundleFile: (filePath) => {
       fs.unlinkSync(filePath)
     },
-  },
-  service: {
+  }),
+  service: createBundleTemporaryFileImportServiceAdapter({
     getImportTargetDir: getBundleImportTargetDir,
     previewBundleFile: (filePath, targetDir) => previewBundleWithConflicts(filePath, targetDir),
     importBundleFile: (filePath, targetDir, request) =>
       importBundleFromFile(filePath, targetDir, request),
-  },
+  }),
 })
 
 const bundleActionService = createLayeredBundleActionService({
