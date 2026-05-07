@@ -10,12 +10,10 @@ import {
 } from "@dotagents/shared/agent-session-candidates"
 import { getEnabledAcpxAgentProfiles } from "@dotagents/shared/agent-profile-queries"
 import {
+  createTemporaryBundleFileImportService,
   createBundleRouteActions,
   type BundleActionOptions,
-  type BundleImportPreview,
   type ExportBundleRequest,
-  type ImportBundleRequest,
-  type PreviewBundleImportRequest,
 } from "@dotagents/shared/bundle-api"
 import {
   createKnowledgeNoteRouteActions,
@@ -226,46 +224,33 @@ function getBundleImportTargetDir(): string {
   return resolveWorkspaceAgentsFolder() ?? globalAgentsFolder
 }
 
-async function withTemporaryBundleFile<T>(
-  bundleJson: string,
-  run: (filePath: string) => T | Promise<T>,
-): Promise<T> {
-  const tempDir = path.join(os.tmpdir(), "dotagents-bundle-import")
-  fs.mkdirSync(tempDir, { recursive: true })
-  const filePath = path.join(tempDir, `${Date.now()}-${randomUUID()}.dotagents`)
-  fs.writeFileSync(filePath, bundleJson, "utf8")
-
-  try {
-    return await run(filePath)
-  } finally {
-    try {
+const temporaryBundleImportService = createTemporaryBundleFileImportService({
+  temporaryFiles: {
+    writeTemporaryBundleFile: (bundleJson) => {
+      const tempDir = path.join(os.tmpdir(), "dotagents-bundle-import")
+      fs.mkdirSync(tempDir, { recursive: true })
+      const filePath = path.join(tempDir, `${Date.now()}-${randomUUID()}.dotagents`)
+      fs.writeFileSync(filePath, bundleJson, "utf8")
+      return filePath
+    },
+    deleteTemporaryBundleFile: (filePath) => {
       fs.unlinkSync(filePath)
-    } catch {
-      // Temporary import previews should not fail if cleanup races with the OS.
-    }
-  }
-}
+    },
+  },
+  service: {
+    getImportTargetDir: getBundleImportTargetDir,
+    previewBundleFile: (filePath, targetDir) => previewBundleWithConflicts(filePath, targetDir),
+    importBundleFile: (filePath, targetDir, request) =>
+      importBundleFromFile(filePath, targetDir, request),
+  },
+})
 
 const bundleActionOptions: BundleActionOptions = {
   service: {
     getExportableItems: () => getBundleExportableItemsFromLayers(getBundleLayerDirs()),
     exportBundle: (request: ExportBundleRequest) => exportBundleFromLayers(getBundleLayerDirs(), request),
-    previewBundleImport: async (request: PreviewBundleImportRequest) =>
-      withTemporaryBundleFile(request.bundleJson, async (filePath) => {
-        const preview = previewBundleWithConflicts(filePath, getBundleImportTargetDir())
-        if (!preview.success || !preview.bundle || !preview.conflicts) return null
-        return {
-          bundle: preview.bundle,
-          conflicts: preview.conflicts,
-        } satisfies BundleImportPreview
-      }),
-    importBundle: (request: ImportBundleRequest) =>
-      withTemporaryBundleFile(request.bundleJson, (filePath) =>
-        importBundleFromFile(filePath, getBundleImportTargetDir(), {
-          conflictStrategy: request.conflictStrategy ?? "skip",
-          components: request.components,
-        }),
-      ),
+    previewBundleImport: temporaryBundleImportService.previewBundleImport,
+    importBundle: temporaryBundleImportService.importBundle,
   },
   diagnostics: diagnosticsService,
 }

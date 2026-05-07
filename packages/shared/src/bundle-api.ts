@@ -396,6 +396,35 @@ export interface BundleActionService {
   importBundle(request: ImportBundleRequest): Promise<BundleImportResult>
 }
 
+export type BundleTemporaryFilePreviewResult = {
+  success: boolean
+  bundle?: DotAgentsBundle
+  conflicts?: BundleImportPreviewConflicts
+}
+
+export interface BundleTemporaryFileStore {
+  writeTemporaryBundleFile(bundleJson: string): string | Promise<string>
+  deleteTemporaryBundleFile(filePath: string): void | Promise<void>
+}
+
+export interface BundleTemporaryFileImportService {
+  getImportTargetDir(): string
+  previewBundleFile(filePath: string, targetDir: string): BundleTemporaryFilePreviewResult | Promise<BundleTemporaryFilePreviewResult>
+  importBundleFile(
+    filePath: string,
+    targetDir: string,
+    options: {
+      conflictStrategy: BundleImportConflictStrategy
+      components?: BundleComponentSelection
+    },
+  ): BundleImportResult | Promise<BundleImportResult>
+}
+
+export interface BundleTemporaryFileImportOptions {
+  temporaryFiles: BundleTemporaryFileStore
+  service: BundleTemporaryFileImportService
+}
+
 export interface BundleActionDiagnostics {
   logError(source: string, message: string, error: unknown): void
 }
@@ -705,6 +734,59 @@ export async function importBundleAction(
   } catch (caughtError) {
     options.diagnostics.logError("bundle-actions", "Failed to import bundle", caughtError)
     return bundleActionError(500, getUnknownErrorMessage(caughtError, "Failed to import bundle"))
+  }
+}
+
+async function withTemporaryBundleFile<T>(
+  bundleJson: string,
+  options: BundleTemporaryFileImportOptions,
+  run: (filePath: string) => T | Promise<T>,
+): Promise<T> {
+  const filePath = await options.temporaryFiles.writeTemporaryBundleFile(bundleJson)
+
+  try {
+    return await run(filePath)
+  } finally {
+    try {
+      await options.temporaryFiles.deleteTemporaryBundleFile(filePath)
+    } catch {
+      // Temporary bundle-file cleanup should not hide the route operation result.
+    }
+  }
+}
+
+export async function previewBundleImportFromTemporaryFile(
+  request: PreviewBundleImportRequest,
+  options: BundleTemporaryFileImportOptions,
+): Promise<BundleImportPreview | null> {
+  return withTemporaryBundleFile(request.bundleJson, options, async (filePath) => {
+    const preview = await options.service.previewBundleFile(filePath, options.service.getImportTargetDir())
+    if (!preview.success || !preview.bundle || !preview.conflicts) return null
+    return {
+      bundle: preview.bundle,
+      conflicts: preview.conflicts,
+    }
+  })
+}
+
+export async function importBundleFromTemporaryFile(
+  request: ImportBundleRequest,
+  options: BundleTemporaryFileImportOptions,
+): Promise<BundleImportResult> {
+  return withTemporaryBundleFile(request.bundleJson, options, (filePath) =>
+    options.service.importBundleFile(filePath, options.service.getImportTargetDir(), {
+      conflictStrategy: request.conflictStrategy ?? "skip",
+      components: request.components,
+    }),
+  )
+}
+
+export function createTemporaryBundleFileImportService(
+  options: BundleTemporaryFileImportOptions,
+): Pick<BundleActionService, "previewBundleImport" | "importBundle"> {
+  return {
+    previewBundleImport: (request) => previewBundleImportFromTemporaryFile(request, options),
+    importBundle: (request) => importBundleFromTemporaryFile(request, options),
   }
 }
 

@@ -12,6 +12,7 @@ import {
   buildBundleImportPreviewResponse,
   createBundleItemSelection,
   createBundleRouteActions,
+  createTemporaryBundleFileImportService,
   exportBundleAction,
   getAvailableBundleComponentSelection,
   getBundleDependencyWarnings,
@@ -20,10 +21,12 @@ import {
   hasBundleImportConflicts,
   hasSelectedBundleComponent,
   importBundleAction,
+  importBundleFromTemporaryFile,
   parseExportBundleRequestBody,
   parseImportBundleRequestBody,
   parsePreviewBundleImportRequestBody,
   previewBundleImportAction,
+  previewBundleImportFromTemporaryFile,
   resolveBundleComponentSelection,
   type DotAgentsBundle,
   type ExportableBundleItems,
@@ -344,6 +347,119 @@ describe("bundle API helpers", () => {
     await expect(routeActions.importBundle({ bundleJson, conflictStrategy: "overwrite" })).resolves.toEqual({
       statusCode: 200,
       body: importResult,
+    })
+  })
+
+  it("runs temporary bundle-file imports through shared adapters", async () => {
+    const bundleJson = JSON.stringify(bundle)
+    const calls: string[] = []
+    const options = {
+      temporaryFiles: {
+        writeTemporaryBundleFile: async (json: string) => {
+          calls.push(`write:${json}`)
+          return "/tmp/import.dotagents"
+        },
+        deleteTemporaryBundleFile: async (filePath: string) => {
+          calls.push(`delete:${filePath}`)
+        },
+      },
+      service: {
+        getImportTargetDir: () => {
+          calls.push("target")
+          return "/agents"
+        },
+        previewBundleFile: async (filePath: string, targetDir: string) => {
+          calls.push(`preview:${filePath}:${targetDir}`)
+          return {
+            success: true,
+            bundle,
+            conflicts: importPreview.conflicts,
+          }
+        },
+        importBundleFile: async (
+          filePath: string,
+          targetDir: string,
+          request: { conflictStrategy: string; components?: unknown },
+        ) => {
+          calls.push(`import:${filePath}:${targetDir}:${request.conflictStrategy}:${JSON.stringify(request.components)}`)
+          return importResult
+        },
+      },
+    }
+
+    await expect(previewBundleImportFromTemporaryFile({ bundleJson }, options)).resolves.toEqual(importPreview)
+    await expect(importBundleFromTemporaryFile({
+      bundleJson,
+      conflictStrategy: "rename",
+      components: { skills: false },
+    }, options)).resolves.toEqual(importResult)
+
+    expect(calls).toEqual([
+      `write:${bundleJson}`,
+      "target",
+      "preview:/tmp/import.dotagents:/agents",
+      "delete:/tmp/import.dotagents",
+      `write:${bundleJson}`,
+      "target",
+      'import:/tmp/import.dotagents:/agents:rename:{"skills":false}',
+      "delete:/tmp/import.dotagents",
+    ])
+  })
+
+  it("normalizes failed temporary bundle previews and ignores cleanup errors", async () => {
+    const calls: string[] = []
+    const options = {
+      temporaryFiles: {
+        writeTemporaryBundleFile: () => {
+          calls.push("write")
+          return "/tmp/bad.dotagents"
+        },
+        deleteTemporaryBundleFile: () => {
+          calls.push("delete")
+          throw new Error("already gone")
+        },
+      },
+      service: {
+        getImportTargetDir: () => "/agents",
+        previewBundleFile: () => {
+          calls.push("preview")
+          return { success: false }
+        },
+        importBundleFile: () => importResult,
+      },
+    }
+
+    await expect(previewBundleImportFromTemporaryFile({
+      bundleJson: JSON.stringify(bundle),
+    }, options)).resolves.toBeNull()
+    expect(calls).toEqual(["write", "preview", "delete"])
+  })
+
+  it("creates a bundle action service from temporary file adapters", async () => {
+    const bundleJson = JSON.stringify(bundle)
+    const routeService = createTemporaryBundleFileImportService({
+      temporaryFiles: {
+        writeTemporaryBundleFile: () => "/tmp/service.dotagents",
+        deleteTemporaryBundleFile: () => undefined,
+      },
+      service: {
+        getImportTargetDir: () => "/agents",
+        previewBundleFile: () => ({
+          success: true,
+          bundle,
+          conflicts: importPreview.conflicts,
+        }),
+        importBundleFile: (_filePath, _targetDir, request) => ({
+          ...importResult,
+          errors: [`strategy:${request.conflictStrategy}`],
+        }),
+      },
+    })
+
+    await expect(routeService.previewBundleImport({ bundleJson })).resolves.toEqual(importPreview)
+    await expect(routeService.importBundle({ bundleJson })).resolves.toEqual({
+      ...importResult,
+      errors: ["strategy:skip"],
     })
   })
 })
