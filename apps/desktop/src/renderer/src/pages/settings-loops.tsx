@@ -40,6 +40,7 @@ import {
   getLoopScheduleMode,
   getLoopScheduleTimes,
   parseLoopIntervalDraft,
+  REPEAT_TASK_INTERVAL_PRESETS,
   resolveRepeatTaskIntervalMinutesDraft,
   type RepeatTaskScheduleMode,
 } from "@dotagents/shared/repeat-task-utils"
@@ -71,15 +72,6 @@ const emptyLoop: EditingLoop = {
   scheduleTimes: [...DEFAULT_REPEAT_TASK_SCHEDULE_TIMES],
   scheduleDaysOfWeek: [...DEFAULT_REPEAT_TASK_WEEKDAYS],
 }
-
-const INTERVAL_PRESETS = [
-  { label: "5 minutes", value: 5 },
-  { label: "15 minutes", value: 15 },
-  { label: "30 minutes", value: 30 },
-  { label: "1 hour", value: 60 },
-  { label: "6 hours", value: 360 },
-  { label: "24 hours", value: 1440 },
-]
 
 // Sentinel used by the session picker to represent "no pinned session";
 // Radix Select does not accept an empty string as an item value.
@@ -487,7 +479,7 @@ export function SettingsLoops() {
                 <span className="self-center text-xs text-muted-foreground">minutes</span>
               </div>
               <div className="mt-1 flex flex-wrap gap-1.5">
-                {INTERVAL_PRESETS.map((preset) => (
+                {REPEAT_TASK_INTERVAL_PRESETS.map((preset) => (
                   <Button
                     key={preset.value}
                     variant={parseLoopIntervalDraft(editing.intervalMinutesDraft) === preset.value ? "secondary" : "ghost"}

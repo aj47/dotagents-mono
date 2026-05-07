@@ -230,6 +230,11 @@ export type RepeatTaskIntervalDraftResolution = {
   isValid: boolean
 }
 
+export type RepeatTaskIntervalPreset = {
+  label: string
+  value: number
+}
+
 export type RepeatTaskIdGenerator = () => string
 
 export interface RepeatTaskRuntimeIdOptions {
@@ -266,6 +271,15 @@ export const DEFAULT_REPEAT_TASK_EDIT_FORM_DATA: RepeatTaskEditFormData = {
   scheduleTimes: [...DEFAULT_REPEAT_TASK_SCHEDULE_TIMES],
   scheduleDaysOfWeek: [...DEFAULT_REPEAT_TASK_WEEKDAYS],
 }
+
+export const REPEAT_TASK_INTERVAL_PRESETS: readonly RepeatTaskIntervalPreset[] = [
+  { label: "5 minutes", value: 5 },
+  { label: "15 minutes", value: 15 },
+  { label: "30 minutes", value: 30 },
+  { label: "1 hour", value: 60 },
+  { label: "6 hours", value: 360 },
+  { label: "24 hours", value: 1440 },
+]
 
 export interface RepeatTaskActionDiagnostics {
   logError(source: string, message: string, error: unknown): void

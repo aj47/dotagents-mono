@@ -62,6 +62,7 @@ import {
   isRepeatTaskSession,
   partitionPinnedAndUnpinnedRepeatTaskEntries,
   partitionRepeatTaskAndUserEntries,
+  REPEAT_TASK_INTERVAL_PRESETS,
   runRepeatTaskAction,
   sanitizeScheduleTimes,
   startAllRepeatTasksAction,
@@ -430,6 +431,15 @@ intervalMinutes: ${DEFAULT_REPEAT_TASK_INTERVAL_MINUTES}
 enabled: ${DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled}
 ---
 Summarize overnight work.`)
+
+    expect(REPEAT_TASK_INTERVAL_PRESETS).toEqual([
+      { label: "5 minutes", value: 5 },
+      { label: "15 minutes", value: 15 },
+      { label: "30 minutes", value: 30 },
+      { label: "1 hour", value: 60 },
+      { label: "6 hours", value: 360 },
+      { label: "24 hours", value: 1440 },
+    ])
 
     expect(formatRepeatTaskEditFormData({
       name: "Weekly Report",
