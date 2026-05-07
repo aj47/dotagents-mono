@@ -11,6 +11,7 @@ import type {
 import {
   generateConversationTitleFromMessage,
   generateSessionId,
+  normalizeConversationTitleText,
   type Session,
   type SessionChatMessage,
 } from './session';
@@ -183,6 +184,10 @@ export interface AppendServerConversationMessageResult<TConversation extends Ser
   appended: boolean;
 }
 
+export type RenameServerConversationTitleResult<TConversation extends ServerConversationRecord<any>> =
+  | { ok: true; conversation: TConversation; title: string; changed: boolean }
+  | { ok: false; error: string };
+
 export function createServerConversationMessageId(timestamp: number, index: number): string {
   return `msg_${timestamp}_${index}_${Math.random().toString(36).substr(2, 9)}`;
 }
@@ -320,6 +325,34 @@ export function buildServerConversationTitle(
   }
 
   return generateConversationTitleFromMessage(firstMessageContent);
+}
+
+export function renameServerConversationTitle<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+  title: string,
+  options: { maxChars?: number } = {},
+): RenameServerConversationTitleResult<TConversation> {
+  const normalizedTitle = normalizeConversationTitleText(title, { maxChars: options.maxChars });
+  if (!normalizedTitle) {
+    return { ok: false, error: 'Missing title' };
+  }
+
+  if (normalizeConversationTitleText(conversation.title, { maxChars: options.maxChars }) === normalizedTitle) {
+    return {
+      ok: true,
+      conversation,
+      title: normalizedTitle,
+      changed: false,
+    };
+  }
+
+  conversation.title = normalizedTitle;
+  return {
+    ok: true,
+    conversation,
+    title: normalizedTitle,
+    changed: true,
+  };
 }
 
 export function buildServerConversationMessages(

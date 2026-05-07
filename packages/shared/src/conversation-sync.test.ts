@@ -25,6 +25,7 @@ import {
   parseCreateConversationRequestBody,
   parseBranchConversationRequestBody,
   parseUpdateConversationRequestBody,
+  renameServerConversationTitle,
   serverConversationToStubSession,
   syncConversations,
   toServerConversationMessage,
@@ -221,6 +222,36 @@ describe('server conversation API helpers', () => {
         { id: 'msg-6-0', role: 'assistant', content: 'new', timestamp: 6, toolCalls: undefined, toolResults: undefined },
       ],
       metadata: { model: 'test' },
+    });
+  });
+
+  it('renames conversation titles with shared normalization and no-op detection', () => {
+    const conversation = {
+      id: 'conv-title',
+      title: 'Old title',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'msg-1', role: 'user' as const, content: 'hello', timestamp: 2 }],
+    };
+
+    expect(renameServerConversationTitle(conversation, '  "New title"  ', { maxChars: 80 })).toEqual({
+      ok: true,
+      conversation,
+      title: 'New title',
+      changed: true,
+    });
+    expect(conversation.title).toBe('New title');
+
+    expect(renameServerConversationTitle(conversation, 'New title', { maxChars: 80 })).toEqual({
+      ok: true,
+      conversation,
+      title: 'New title',
+      changed: false,
+    });
+
+    expect(renameServerConversationTitle(conversation, '   ', { maxChars: 80 })).toEqual({
+      ok: false,
+      error: 'Missing title',
     });
   });
 

@@ -19,6 +19,7 @@ import {
   buildNewServerConversation,
   buildServerConversationTitle,
   getStoredServerConversationMessages,
+  renameServerConversationTitle,
 } from "@dotagents/shared/conversation-sync"
 import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "@dotagents/shared/conversation-context-builder"
@@ -1216,22 +1217,21 @@ export class ConversationService {
   }
 
   async renameConversationTitle(conversationId: string, title: string): Promise<Conversation | null> {
-    const normalizedTitle = normalizeConversationTitleText(title, { maxChars: MAX_SESSION_TITLE_CHARS })
-    if (!normalizedTitle) {
-      return null
-    }
-
     return this.enqueueConversationMutation(conversationId, async () => {
       const conversation = await this.loadConversationFromDisk(conversationId)
       if (!conversation) {
         return null
       }
 
-      if (normalizeConversationTitleText(conversation.title, { maxChars: MAX_SESSION_TITLE_CHARS }) === normalizedTitle) {
+      const renameResult = renameServerConversationTitle(conversation, title, { maxChars: MAX_SESSION_TITLE_CHARS })
+      if (renameResult.ok === false) {
+        return null
+      }
+
+      if (!renameResult.changed) {
         return conversation
       }
 
-      conversation.title = normalizedTitle
       await this.saveConversationUnlocked(conversation)
       return conversation
     })

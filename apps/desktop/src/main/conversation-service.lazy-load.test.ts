@@ -113,6 +113,25 @@ describe("conversation lazy loading", () => {
     })
   })
 
+  it("renames conversations through shared title normalization", async () => {
+    const service = await setupConversationServiceTest()
+    await service.saveConversation({
+      id: "conv_rename_title",
+      title: "Old title",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [{ id: "m1", role: "user", content: "Start", timestamp: 1 }],
+    }, true)
+
+    const renamed = await service.renameConversationTitle("conv_rename_title", '  "New title"  ')
+    expect(renamed?.title).toBe("New title")
+
+    await expect(service.renameConversationTitle("conv_rename_title", "   ")).resolves.toBeNull()
+
+    const reloaded = await service.loadConversation("conv_rename_title")
+    expect(reloaded?.title).toBe("New title")
+  })
+
   it("persists structured compaction checkpoint metadata when compacting on load", async () => {
     summaryResult = "User identified Bin-Huang/youtube-analytics-cli as the YouTube analytics CLI repo."
     const service = await setupConversationServiceTest()
