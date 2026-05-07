@@ -1417,64 +1417,66 @@ export function ActiveAgentsSidebar({
   return (
     <div className={cn("flex min-h-0 flex-col px-2", className)}>
       {hasLaunchControls && (
-        <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 p-2">
-          <div className="flex w-full flex-wrap items-center gap-2">
-            {onSelectAgent && (
-              <div className="min-w-0 flex-1">
-                <AgentSelector
-                  selectedAgentId={selectedAgentId}
-                  onSelectAgent={onSelectAgent}
-                  compact
-                />
+        <div className="sticky top-0 z-40 -mx-2 bg-background/95 px-2 pb-2 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
+            <div className="flex w-full flex-wrap items-center gap-2">
+              {onSelectAgent && (
+                <div className="min-w-0 flex-1">
+                  <AgentSelector
+                    selectedAgentId={selectedAgentId}
+                    onSelectAgent={onSelectAgent}
+                    compact
+                  />
+                </div>
+              )}
+              <div className="ml-auto flex items-center gap-2">
+                {onClearInactiveSessions && inactiveSessionCount > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                    onClick={() => void onClearInactiveSessions()}
+                    title={`Clear ${inactiveSessionCount} completed sessions`}
+                    aria-label={`Clear ${inactiveSessionCount} completed sessions`}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  </Button>
+                )}
+                {onStartPromptSession && (
+                  <PredefinedPromptsMenu
+                    onSelectPrompt={onStartPromptSession}
+                    buttonSize="sm"
+                    className="h-8 w-8 rounded-md border border-input bg-background shadow-sm"
+                  />
+                )}
+                {onStartVoiceSession && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                    onClick={() => void onStartVoiceSession()}
+                    title="Start voice session"
+                    aria-label="Start voice session"
+                  >
+                    <Mic className="h-3.5 w-3.5 shrink-0" />
+                  </Button>
+                )}
+                {onStartTextSession && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                    onClick={() => void onStartTextSession()}
+                    title="Start text session"
+                    aria-label="Start text session"
+                  >
+                    <Plus className="h-3.5 w-3.5 shrink-0" />
+                  </Button>
+                )}
               </div>
-            )}
-            <div className="ml-auto flex items-center gap-2">
-              {onClearInactiveSessions && inactiveSessionCount > 0 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
-                  onClick={() => void onClearInactiveSessions()}
-                  title={`Clear ${inactiveSessionCount} completed sessions`}
-                  aria-label={`Clear ${inactiveSessionCount} completed sessions`}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                </Button>
-              )}
-              {onStartPromptSession && (
-                <PredefinedPromptsMenu
-                  onSelectPrompt={onStartPromptSession}
-                  buttonSize="sm"
-                  className="h-8 w-8 rounded-md border border-input bg-background shadow-sm"
-                />
-              )}
-              {onStartVoiceSession && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
-                  onClick={() => void onStartVoiceSession()}
-                  title="Start voice session"
-                  aria-label="Start voice session"
-                >
-                  <Mic className="h-3.5 w-3.5 shrink-0" />
-                </Button>
-              )}
-              {onStartTextSession && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
-                  onClick={() => void onStartTextSession()}
-                  title="Start text session"
-                  aria-label="Start text session"
-                >
-                  <Plus className="h-3.5 w-3.5 shrink-0" />
-                </Button>
-              )}
             </div>
           </div>
         </div>

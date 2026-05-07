@@ -1,0 +1,12 @@
+import { readFileSync } from "node:fs"
+import { describe, expect, it } from "vitest"
+
+const sidebarSource = readFileSync(new URL("./active-agents-sidebar.tsx", import.meta.url), "utf8")
+
+describe("active agents sidebar layout", () => {
+  it("keeps the launch controls pinned at the top while the sidebar scrolls", () => {
+    expect(sidebarSource).toContain('className="sticky top-0 z-40 -mx-2 bg-background/95 px-2 pb-2 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80"')
+    expect(sidebarSource).toContain('className="rounded-lg border border-border/60 bg-muted/20 p-2"')
+    expect(sidebarSource).toContain('title="Start text session"')
+  })
+})
