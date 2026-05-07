@@ -152,6 +152,29 @@ export type RemoteServerOperatorDeviceAllowlistFieldMetadata = {
   trustedButtonLabel: string;
 };
 
+export type ChannelOperatorAllowlistFieldKey =
+  | 'discordOperatorAllowUserIds'
+  | 'discordOperatorAllowGuildIds'
+  | 'discordOperatorAllowChannelIds'
+  | 'discordOperatorAllowRoleIds'
+  | 'whatsappOperatorAllowFrom';
+
+export type ChannelOperatorAllowlistTextFieldMetadata = {
+  key: ChannelOperatorAllowlistFieldKey;
+  label: string;
+  placeholder: string;
+  pendingLabel: string;
+  successMessage: string;
+  accessibilityLabel: string;
+};
+
+export type ChannelOperatorAllowlistsSectionMetadata = {
+  sectionTitle: string;
+  helperText: string;
+  footerText: string;
+  fields: Record<ChannelOperatorAllowlistFieldKey, ChannelOperatorAllowlistTextFieldMetadata>;
+};
+
 export type CloudflareTunnelModeOption = {
   value: CloudflareTunnelMode;
   label: string;
@@ -316,6 +339,53 @@ export const REMOTE_SERVER_OPERATOR_DEVICE_ALLOWLIST_FIELD_METADATA: RemoteServe
   trustAccessibilityLabel: 'Trust this device for operator access',
   trustButtonLabel: 'Trust this device',
   trustedButtonLabel: 'This device is trusted',
+};
+export const CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA: ChannelOperatorAllowlistsSectionMetadata = {
+  sectionTitle: 'Channel operator allowlists',
+  helperText: 'If left blank, /ops uses the current channel access rules. Once you add values here, /ops becomes restricted to the matching identities.',
+  footerText: 'Use exact Discord IDs and WhatsApp sender numbers/LIDs. For WhatsApp, the sender or chat must match one of these identities once the operator allowlist is set.',
+  fields: {
+    discordOperatorAllowUserIds: {
+      key: 'discordOperatorAllowUserIds',
+      label: 'Discord Operator User IDs',
+      placeholder: '1234567890, 9876543210',
+      pendingLabel: 'Discord operator user IDs',
+      successMessage: 'Discord operator user allowlist updated.',
+      accessibilityLabel: 'Discord operator user IDs',
+    },
+    discordOperatorAllowGuildIds: {
+      key: 'discordOperatorAllowGuildIds',
+      label: 'Discord Operator Guild IDs',
+      placeholder: '1122334455',
+      pendingLabel: 'Discord operator guild IDs',
+      successMessage: 'Discord operator guild allowlist updated.',
+      accessibilityLabel: 'Discord operator guild IDs',
+    },
+    discordOperatorAllowChannelIds: {
+      key: 'discordOperatorAllowChannelIds',
+      label: 'Discord Operator Channel IDs',
+      placeholder: '5566778899',
+      pendingLabel: 'Discord operator channel IDs',
+      successMessage: 'Discord operator channel allowlist updated.',
+      accessibilityLabel: 'Discord operator channel IDs',
+    },
+    discordOperatorAllowRoleIds: {
+      key: 'discordOperatorAllowRoleIds',
+      label: 'Discord Operator Role IDs',
+      placeholder: '9988776655',
+      pendingLabel: 'Discord operator role IDs',
+      successMessage: 'Discord operator role allowlist updated.',
+      accessibilityLabel: 'Discord operator role IDs',
+    },
+    whatsappOperatorAllowFrom: {
+      key: 'whatsappOperatorAllowFrom',
+      label: 'WhatsApp Operator Allowlist',
+      placeholder: '61400111222, 61400999888',
+      pendingLabel: 'WhatsApp operator allowlist',
+      successMessage: 'WhatsApp operator allowlist updated.',
+      accessibilityLabel: 'WhatsApp operator allowlist',
+    },
+  },
 };
 export const CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS: readonly CloudflareTunnelModeOption[] = [
   {

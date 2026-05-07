@@ -157,14 +157,22 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA\.accessibilityLabel/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.label\}>Credentials Path<\/Text>/);
   assert.doesNotMatch(operationsSource, /placeholder="\/path\/to\/credentials\.json"/);
-  assert.match(operationsSource, /Channel operator allowlists/);
-  assert.match(operationsSource, /Discord Operator User IDs/);
-  assert.match(operationsSource, /Discord Operator Guild IDs/);
-  assert.match(operationsSource, /Discord Operator Channel IDs/);
-  assert.match(operationsSource, /Discord Operator Role IDs/);
+  assert.match(operationsSource, /CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA\.sectionTitle/);
+  assert.match(operationsSource, /CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA\.helperText/);
+  assert.match(operationsSource, /CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA\.footerText/);
+  assert.match(operationsSource, /const channelAllowlistFields = CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA\.fields/);
+  assert.match(operationsSource, /channelAllowlistFields\.discordOperatorAllowUserIds\.label/);
+  assert.match(operationsSource, /channelAllowlistFields\.discordOperatorAllowGuildIds\.label/);
+  assert.match(operationsSource, /channelAllowlistFields\.discordOperatorAllowChannelIds\.label/);
+  assert.match(operationsSource, /channelAllowlistFields\.discordOperatorAllowRoleIds\.label/);
+  assert.match(operationsSource, /channelAllowlistFields\.whatsappOperatorAllowFrom\.label/);
+  assert.match(operationsSource, /channelAllowlistFields\.discordOperatorAllowUserIds\.pendingLabel/);
+  assert.match(operationsSource, /channelAllowlistFields\.discordOperatorAllowGuildIds\.successMessage/);
+  assert.match(operationsSource, /channelAllowlistFields\.discordOperatorAllowChannelIds\.placeholder/);
+  assert.match(operationsSource, /channelAllowlistFields\.discordOperatorAllowRoleIds\.accessibilityLabel/);
+  assert.match(operationsSource, /channelAllowlistFields\.whatsappOperatorAllowFrom\.successMessage/);
   assert.match(remoteAccessDraftsSource, /discordOperatorAllowRoleIds: formatConfigListInput\(settings\?\.discordOperatorAllowRoleIds\)/);
   assert.match(operationsSource, /discordOperatorAllowRoleIds: parseConfigListInput\(drafts\.discordOperatorAllowRoleIds, \{ unique: true \}\)/);
-  assert.match(operationsSource, /WhatsApp Operator Allowlist/);
   assert.match(operationsSource, /getDeviceIdentity/);
 });
 

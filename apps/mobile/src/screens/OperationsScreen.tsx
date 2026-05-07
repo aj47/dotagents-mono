@@ -65,6 +65,7 @@ import {
   getOperatorTunnelStateLabel as getTunnelStateLabel,
 } from '@dotagents/shared/operator-display-utils';
 import {
+  CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA,
   CLOUDFLARE_TUNNEL_AUTO_START_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_CREDENTIALS_PATH_FIELD_METADATA,
   CLOUDFLARE_TUNNEL_HOSTNAME_FIELD_METADATA,
@@ -707,6 +708,7 @@ export default function OperationsScreen({ navigation }: any) {
   const isDesktopMac = status?.system.platform === 'darwin';
   const trustedDeviceIds = settings?.remoteServerOperatorAllowDeviceIds ?? [];
   const currentDeviceTrusted = currentDeviceId ? trustedDeviceIds.includes(currentDeviceId) : false;
+  const channelAllowlistFields = CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA.fields;
 
   return (
     <ScrollView
@@ -2279,99 +2281,99 @@ export default function OperationsScreen({ navigation }: any) {
               />
               <Text style={styles.helperText}>Named tunnels need a tunnel ID and hostname. Credentials path is optional if the desktop already knows where to find the credentials file.</Text>
 
-              <Text style={styles.subsectionTitle}>Channel operator allowlists</Text>
-              <Text style={styles.helperText}>If left blank, /ops uses the current channel access rules. Once you add values here, /ops becomes restricted to the matching identities.</Text>
+              <Text style={styles.subsectionTitle}>{CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA.sectionTitle}</Text>
+              <Text style={styles.helperText}>{CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA.helperText}</Text>
 
-              <Text style={styles.label}>Discord Operator User IDs</Text>
+              <Text style={styles.label}>{channelAllowlistFields.discordOperatorAllowUserIds.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.discordOperatorAllowUserIds}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, discordOperatorAllowUserIds: value }))}
                 onEndEditing={() => void applySettingsUpdate(
                   { discordOperatorAllowUserIds: parseConfigListInput(drafts.discordOperatorAllowUserIds, { unique: true }) },
-                  'Discord operator user IDs',
-                  'Discord operator user allowlist updated.',
+                  channelAllowlistFields.discordOperatorAllowUserIds.pendingLabel,
+                  channelAllowlistFields.discordOperatorAllowUserIds.successMessage,
                 )}
                 editable={!controlsDisabled}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="1234567890, 9876543210"
+                placeholder={channelAllowlistFields.discordOperatorAllowUserIds.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('Discord operator user IDs')}
+                accessibilityLabel={createTextInputAccessibilityLabel(channelAllowlistFields.discordOperatorAllowUserIds.accessibilityLabel)}
               />
 
-              <Text style={styles.label}>Discord Operator Guild IDs</Text>
+              <Text style={styles.label}>{channelAllowlistFields.discordOperatorAllowGuildIds.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.discordOperatorAllowGuildIds}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, discordOperatorAllowGuildIds: value }))}
                 onEndEditing={() => void applySettingsUpdate(
                   { discordOperatorAllowGuildIds: parseConfigListInput(drafts.discordOperatorAllowGuildIds, { unique: true }) },
-                  'Discord operator guild IDs',
-                  'Discord operator guild allowlist updated.',
+                  channelAllowlistFields.discordOperatorAllowGuildIds.pendingLabel,
+                  channelAllowlistFields.discordOperatorAllowGuildIds.successMessage,
                 )}
                 editable={!controlsDisabled}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="1122334455"
+                placeholder={channelAllowlistFields.discordOperatorAllowGuildIds.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('Discord operator guild IDs')}
+                accessibilityLabel={createTextInputAccessibilityLabel(channelAllowlistFields.discordOperatorAllowGuildIds.accessibilityLabel)}
               />
 
-              <Text style={styles.label}>Discord Operator Channel IDs</Text>
+              <Text style={styles.label}>{channelAllowlistFields.discordOperatorAllowChannelIds.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.discordOperatorAllowChannelIds}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, discordOperatorAllowChannelIds: value }))}
                 onEndEditing={() => void applySettingsUpdate(
                   { discordOperatorAllowChannelIds: parseConfigListInput(drafts.discordOperatorAllowChannelIds, { unique: true }) },
-                  'Discord operator channel IDs',
-                  'Discord operator channel allowlist updated.',
+                  channelAllowlistFields.discordOperatorAllowChannelIds.pendingLabel,
+                  channelAllowlistFields.discordOperatorAllowChannelIds.successMessage,
                 )}
                 editable={!controlsDisabled}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="5566778899"
+                placeholder={channelAllowlistFields.discordOperatorAllowChannelIds.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('Discord operator channel IDs')}
+                accessibilityLabel={createTextInputAccessibilityLabel(channelAllowlistFields.discordOperatorAllowChannelIds.accessibilityLabel)}
               />
 
-              <Text style={styles.label}>Discord Operator Role IDs</Text>
+              <Text style={styles.label}>{channelAllowlistFields.discordOperatorAllowRoleIds.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.discordOperatorAllowRoleIds}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, discordOperatorAllowRoleIds: value }))}
                 onEndEditing={() => void applySettingsUpdate(
                   { discordOperatorAllowRoleIds: parseConfigListInput(drafts.discordOperatorAllowRoleIds, { unique: true }) },
-                  'Discord operator role IDs',
-                  'Discord operator role allowlist updated.',
+                  channelAllowlistFields.discordOperatorAllowRoleIds.pendingLabel,
+                  channelAllowlistFields.discordOperatorAllowRoleIds.successMessage,
                 )}
                 editable={!controlsDisabled}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="9988776655"
+                placeholder={channelAllowlistFields.discordOperatorAllowRoleIds.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('Discord operator role IDs')}
+                accessibilityLabel={createTextInputAccessibilityLabel(channelAllowlistFields.discordOperatorAllowRoleIds.accessibilityLabel)}
               />
 
-              <Text style={styles.label}>WhatsApp Operator Allowlist</Text>
+              <Text style={styles.label}>{channelAllowlistFields.whatsappOperatorAllowFrom.label}</Text>
               <TextInput
                 style={[styles.input, controlsDisabled && styles.inputDisabled]}
                 value={drafts.whatsappOperatorAllowFrom}
                 onChangeText={(value) => setDrafts((current) => ({ ...current, whatsappOperatorAllowFrom: value }))}
                 onEndEditing={() => void applySettingsUpdate(
                   { whatsappOperatorAllowFrom: parseConfigListInput(drafts.whatsappOperatorAllowFrom, { unique: true }) },
-                  'WhatsApp operator allowlist',
-                  'WhatsApp operator allowlist updated.',
+                  channelAllowlistFields.whatsappOperatorAllowFrom.pendingLabel,
+                  channelAllowlistFields.whatsappOperatorAllowFrom.successMessage,
                 )}
                 editable={!controlsDisabled}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="61400111222, 61400999888"
+                placeholder={channelAllowlistFields.whatsappOperatorAllowFrom.placeholder}
                 placeholderTextColor={theme.colors.mutedForeground}
-                accessibilityLabel={createTextInputAccessibilityLabel('WhatsApp operator allowlist')}
+                accessibilityLabel={createTextInputAccessibilityLabel(channelAllowlistFields.whatsappOperatorAllowFrom.accessibilityLabel)}
               />
-              <Text style={styles.helperText}>Use exact Discord IDs and WhatsApp sender numbers/LIDs. For WhatsApp, the sender or chat must match one of these identities once the operator allowlist is set.</Text>
+              <Text style={styles.helperText}>{CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA.footerText}</Text>
             </View>
           )}
 
