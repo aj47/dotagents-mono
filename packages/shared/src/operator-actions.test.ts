@@ -73,6 +73,7 @@ import {
   clearOperatorDiscordLogsAction,
   connectOperatorDiscordAction,
   connectOperatorWhatsAppAction,
+  createOperatorIntegrationRouteActions,
   createOperatorObservabilityRouteActions,
   getConfiguredCloudflareTunnelStartPlan,
   getOperatorAuditAction,
@@ -1669,6 +1670,66 @@ describe("operator action API helpers", () => {
         action: "whatsapp-logout",
         success: false,
         failureReason: "logout failed",
+      },
+    })
+
+    const routeActions = createOperatorIntegrationRouteActions(options)
+    expect(await routeActions.getOperatorIntegrations()).toEqual({
+      statusCode: 200,
+      body: integrationsSummary,
+    })
+    expect(routeActions.getOperatorDiscord()).toMatchObject({
+      statusCode: 200,
+      body: {
+        available: true,
+        enabled: true,
+      },
+    })
+    expect(routeActions.getOperatorDiscordLogs(1)).toMatchObject({
+      statusCode: 200,
+      body: {
+        count: 1,
+      },
+    })
+    expect(await routeActions.connectOperatorDiscord()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "discord-connect",
+      },
+    })
+    expect(await routeActions.disconnectOperatorDiscord()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "discord-disconnect",
+      },
+    })
+    expect(routeActions.clearOperatorDiscordLogs()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "discord-clear-logs",
+      },
+    })
+    expect(await routeActions.getOperatorWhatsApp()).toEqual({
+      statusCode: 200,
+      body: whatsappSummary,
+    })
+    whatsappToolResult = {
+      isError: false,
+      content: [{ type: "text", text: JSON.stringify({ status: "connected", connected: true }) }],
+    }
+    expect(await routeActions.connectOperatorWhatsApp()).toMatchObject({
+      statusCode: 200,
+      body: {
+        action: "whatsapp-connect",
+      },
+    })
+    expect(await routeActions.logoutOperatorWhatsApp()).toMatchObject({
+      statusCode: 200,
+      body: {
+        action: "whatsapp-logout",
       },
     })
     expect(calls).toEqual(expect.arrayContaining([

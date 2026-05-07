@@ -57,21 +57,13 @@ import {
   buildOperatorMcpTestFailureAuditContext,
   checkOperatorUpdaterAction,
   clearOperatorMessageQueueAction,
-  clearOperatorDiscordLogsAction,
-  connectOperatorDiscordAction,
-  connectOperatorWhatsAppAction,
-  disconnectOperatorDiscordAction,
   downloadLatestOperatorUpdateAssetAction,
+  createOperatorIntegrationRouteActions,
   createOperatorObservabilityRouteActions,
-  getOperatorDiscordAction,
-  getOperatorDiscordLogsAction,
-  getOperatorIntegrationsAction,
   getOperatorMessageQueuesAction,
   getOperatorTunnelAction,
   getOperatorTunnelSetupAction,
   getOperatorUpdaterAction,
-  getOperatorWhatsAppAction,
-  logoutOperatorWhatsAppAction,
   openOperatorReleasesPageAction,
   openOperatorUpdateAssetAction,
   pauseOperatorMessageQueueAction,
@@ -321,6 +313,8 @@ const integrationActionOptions: OperatorIntegrationActionOptions = {
   },
 }
 
+const operatorIntegrationRouteActions = createOperatorIntegrationRouteActions(integrationActionOptions)
+
 const messageQueueActionOptions: OperatorMessageQueueActionOptions = {
   service: {
     getAllQueues: () => messageQueueService.getAllQueues(),
@@ -441,42 +435,6 @@ async function stopOperatorMcpServer(body: unknown) {
 
 async function restartOperatorMcpServer(body: unknown) {
   return restartOperatorMcpServerAction(body, operatorMcpLifecycleActionOptions)
-}
-
-async function getOperatorIntegrations() {
-  return getOperatorIntegrationsAction(integrationActionOptions)
-}
-
-function getOperatorDiscord() {
-  return getOperatorDiscordAction(integrationActionOptions)
-}
-
-function getOperatorDiscordLogs(count: string | number | undefined) {
-  return getOperatorDiscordLogsAction(count, integrationActionOptions)
-}
-
-async function connectOperatorDiscord() {
-  return connectOperatorDiscordAction(integrationActionOptions)
-}
-
-async function disconnectOperatorDiscord() {
-  return disconnectOperatorDiscordAction(integrationActionOptions)
-}
-
-function clearOperatorDiscordLogs() {
-  return clearOperatorDiscordLogsAction(integrationActionOptions)
-}
-
-async function getOperatorWhatsApp() {
-  return getOperatorWhatsAppAction(integrationActionOptions)
-}
-
-async function connectOperatorWhatsApp() {
-  return connectOperatorWhatsAppAction(integrationActionOptions)
-}
-
-async function logoutOperatorWhatsApp() {
-  return logoutOperatorWhatsAppAction(integrationActionOptions)
 }
 
 function getOperatorMessageQueues() {
@@ -604,15 +562,7 @@ export const operatorRouteDesktopActions: OperatorRouteActions = {
   openOperatorReleasesPage,
   openOperatorUpdateAsset,
   revealOperatorUpdateAsset,
-  clearOperatorDiscordLogs,
-  connectOperatorDiscord,
-  connectOperatorWhatsApp,
-  disconnectOperatorDiscord,
-  getOperatorDiscord,
-  getOperatorDiscordLogs,
-  getOperatorIntegrations,
-  getOperatorWhatsApp,
-  logoutOperatorWhatsApp,
+  ...operatorIntegrationRouteActions,
   clearOperatorMessageQueue,
   getOperatorMessageQueues,
   pauseOperatorMessageQueue,

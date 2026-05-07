@@ -285,6 +285,18 @@ export interface OperatorIntegrationActionOptions {
   service: OperatorIntegrationActionService
 }
 
+export interface OperatorIntegrationRouteActions {
+  getOperatorIntegrations(): Promise<OperatorIntegrationActionResult>
+  getOperatorDiscord(): OperatorIntegrationActionResult
+  getOperatorDiscordLogs(count: string | number | undefined): OperatorIntegrationActionResult
+  connectOperatorDiscord(): Promise<OperatorIntegrationActionResult>
+  disconnectOperatorDiscord(): Promise<OperatorIntegrationActionResult>
+  clearOperatorDiscordLogs(): OperatorIntegrationActionResult
+  getOperatorWhatsApp(): Promise<OperatorIntegrationActionResult>
+  connectOperatorWhatsApp(): Promise<OperatorIntegrationActionResult>
+  logoutOperatorWhatsApp(): Promise<OperatorIntegrationActionResult>
+}
+
 export type OperatorAgentActionResult = {
   statusCode: number
   body: unknown
@@ -2301,6 +2313,22 @@ export async function logoutOperatorWhatsAppAction(
     options,
   )
   return operatorIntegrationResponseResult(response)
+}
+
+export function createOperatorIntegrationRouteActions(
+  options: OperatorIntegrationActionOptions,
+): OperatorIntegrationRouteActions {
+  return {
+    getOperatorIntegrations: () => getOperatorIntegrationsAction(options),
+    getOperatorDiscord: () => getOperatorDiscordAction(options),
+    getOperatorDiscordLogs: (count) => getOperatorDiscordLogsAction(count, options),
+    connectOperatorDiscord: () => connectOperatorDiscordAction(options),
+    disconnectOperatorDiscord: () => disconnectOperatorDiscordAction(options),
+    clearOperatorDiscordLogs: () => clearOperatorDiscordLogsAction(options),
+    getOperatorWhatsApp: () => getOperatorWhatsAppAction(options),
+    connectOperatorWhatsApp: () => connectOperatorWhatsAppAction(options),
+    logoutOperatorWhatsApp: () => logoutOperatorWhatsAppAction(options),
+  }
 }
 
 export function buildOperatorTunnelStartRemoteServerRequiredResponse(): OperatorActionResponse {
