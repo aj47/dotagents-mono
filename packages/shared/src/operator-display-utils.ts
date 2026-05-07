@@ -760,6 +760,7 @@ export const OPERATOR_HEALTH_CHECKS_PANEL_METADATA: OperatorHealthChecksPanelMet
 export type OperatorMcpServersPanelMetadata = {
   panelTitle: string
   formatSummary: (connectedCount: number, serverCount: number, toolCount: number) => string
+  formatServerSummary: (connected: boolean, enabled: boolean, serverName: string, toolCount: number) => string
   disabledSuffix: string
   restartPendingLabel: string
   restartButtonLabel: string
@@ -802,10 +803,14 @@ export type OperatorMcpServersPanelMetadata = {
   formatToolAccessibilityLabel: (toolName: string) => string
 }
 
+const OPERATOR_MCP_SERVER_DISABLED_SUFFIX = " (disabled)"
+
 export const OPERATOR_MCP_SERVERS_PANEL_METADATA: OperatorMcpServersPanelMetadata = {
   panelTitle: "MCP servers",
   formatSummary: (connectedCount, serverCount, toolCount) => `${connectedCount}/${serverCount} connected • ${toolCount} tools`,
-  disabledSuffix: " (disabled)",
+  formatServerSummary: (connected, enabled, serverName, toolCount) =>
+    `${connected ? "✓" : enabled ? "✗" : "○"} ${serverName}: ${toolCount} tools${enabled ? "" : OPERATOR_MCP_SERVER_DISABLED_SUFFIX}`,
+  disabledSuffix: OPERATOR_MCP_SERVER_DISABLED_SUFFIX,
   restartPendingLabel: "Restarting...",
   restartButtonLabel: "Restart",
   formatRestartAccessibilityLabel: (serverName) => `Restart ${serverName} MCP server`,

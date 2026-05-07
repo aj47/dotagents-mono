@@ -641,6 +641,7 @@ describe("operator display utils", () => {
     expect(OPERATOR_MCP_SERVERS_PANEL_METADATA).toEqual({
       panelTitle: "MCP servers",
       formatSummary: expect.any(Function),
+      formatServerSummary: expect.any(Function),
       disabledSuffix: " (disabled)",
       restartPendingLabel: "Restarting...",
       restartButtonLabel: "Restart",
@@ -683,6 +684,15 @@ describe("operator display utils", () => {
       formatToolAccessibilityLabel: expect.any(Function),
     })
     expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatSummary(2, 3, 9)).toBe("2/3 connected • 9 tools")
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatServerSummary(true, true, "filesystem", 4)).toBe(
+      "✓ filesystem: 4 tools",
+    )
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatServerSummary(false, true, "filesystem", 4)).toBe(
+      "✗ filesystem: 4 tools",
+    )
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatServerSummary(false, false, "filesystem", 4)).toBe(
+      "○ filesystem: 4 tools (disabled)",
+    )
     expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatRestartAccessibilityLabel("filesystem")).toBe("Restart filesystem MCP server")
     expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatRestartedMessage("filesystem")).toBe("Restarted filesystem")
     expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatStopConfirmMessage("filesystem")).toBe(

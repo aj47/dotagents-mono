@@ -1383,7 +1383,7 @@ export default function OperationsScreen({ navigation }: any) {
                     <View style={styles.mcpServerRow}>
                       <View style={styles.mcpServerCopy}>
                         <Text style={styles.detailText}>
-                          {s.connected ? '✓' : s.enabled ? '✗' : '○'} {s.name}: {s.toolCount} tools{!s.enabled ? OPERATOR_MCP_SERVERS_PANEL_METADATA.disabledSuffix : ''}
+                          {OPERATOR_MCP_SERVERS_PANEL_METADATA.formatServerSummary(s.connected, s.enabled, s.name, s.toolCount)}
                         </Text>
                         {s.error ? <Text style={styles.warningText}>{s.error}</Text> : null}
                       </View>
