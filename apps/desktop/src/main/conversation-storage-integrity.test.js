@@ -31,10 +31,12 @@ test('conversation service preserves raw messages during compaction and marks le
   assert.match(serviceSource, /syncServerConversationStorageMetadata\(conversation\)/)
   assert.match(sharedConversationSyncSource, /partialReason: isLegacyPartial \? 'legacy_summary_without_raw_messages' : undefined/)
   assert.match(serviceSource, /buildServerConversationCompactedRecord\(conversation/)
+  assert.match(serviceSource, /buildServerConversationCompactionCheckpointBackfill\(conversation/)
   assert.match(sharedConversationSyncSource, /rawMessages: \[\.\.\.fullMessageHistory\]/)
   assert.match(sharedConversationSyncSource, /storedRawMessageCount: fullMessageHistory\.length/)
   assert.match(sharedConversationSyncSource, /representedMessageCount: fullMessageHistory\.length/)
   assert.match(sharedConversationSyncSource, /export function buildServerConversationCompactedRecord/)
+  assert.match(sharedConversationSyncSource, /export function buildServerConversationCompactionCheckpointBackfill/)
   assert.match(sharedConversationSyncSource, /export function buildServerConversationCompactionCheckpointMetadata/)
 })
 

@@ -7,6 +7,7 @@ import {
   buildNewServerConversation,
   buildBranchedServerConversation,
   buildServerConversationCompactedRecord,
+  buildServerConversationCompactionCheckpointBackfill,
   buildServerConversationCompactionCheckpointMetadata,
   buildServerConversationCompactionPlan,
   buildServerConversationCompactionPrompt,
@@ -701,6 +702,57 @@ describe('server conversation API helpers', () => {
       messageCount: 25,
     });
     expect(plan.fullMessageHistory).toBe(rawMessages);
+  });
+
+  it('builds checkpoint backfills without refreshing conversation updatedAt', () => {
+    const rawMessages = Array.from({ length: 25 }, (_, index) => ({
+      id: `m${index}`,
+      role: index % 2 === 0 ? 'user' as const : 'assistant' as const,
+      content: index === 2
+        ? 'Remember the analytics repo is Bin-Huang/youtube-analytics-cli.'
+        : `Message ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }));
+    const summaryMessage = {
+      id: 'summary-1',
+      role: 'assistant' as const,
+      content: 'The user mentioned Bin-Huang/youtube-analytics-cli.',
+      timestamp: 1_700_000_000_100,
+      isSummary: true,
+      summarizedMessageCount: 15,
+    };
+    const conversation = {
+      id: 'conv-checkpoint-backfill',
+      title: 'Backfill',
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [summaryMessage, ...rawMessages.slice(15)],
+      rawMessages,
+    };
+
+    const backfill = buildServerConversationCompactionCheckpointBackfill(conversation, { fullMessageHistory: rawMessages });
+
+    expect(backfill.changed).toBe(true);
+    expect(backfill.conversation).not.toBe(conversation);
+    expect(backfill.conversation.updatedAt).toBe(200);
+    expect(backfill.conversation.compaction).toMatchObject({
+      compactedAt: summaryMessage.timestamp,
+      summary: summaryMessage.content,
+      summaryMessageId: summaryMessage.id,
+      firstKeptMessageId: 'm15',
+      firstKeptMessageIndex: 15,
+      summarizedMessageCount: 15,
+    });
+    expect(backfill.conversation.compaction?.tokensBefore).toBeGreaterThan(0);
+    expect(backfill.conversation.compaction?.extractedFacts?.[0]).toMatchObject({
+      sourceMessageId: 'm2',
+      repoSlugs: ['Bin-Huang/youtube-analytics-cli'],
+    });
+
+    const secondBackfill = buildServerConversationCompactionCheckpointBackfill(backfill.conversation, {
+      fullMessageHistory: rawMessages,
+    });
+    expect(secondBackfill).toEqual({ changed: false, conversation: backfill.conversation });
   });
 
   it('plans compaction slices from the full stored history', () => {

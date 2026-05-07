@@ -18,19 +18,15 @@ import {
   buildBranchedServerConversation,
   buildNewServerConversation,
   buildServerConversationCompactedRecord,
-  buildServerConversationCompactionCheckpointMetadata,
+  buildServerConversationCompactionCheckpointBackfill,
   buildServerConversationCompactionPlan,
   buildServerConversationCompactionPrompt,
   buildServerConversationCompactionSummaryInput,
   buildServerConversationAutoTitleSeed,
   buildServerConversationHistoryItem,
-  estimateServerConversationCompactionTokensFromText,
   getStoredServerConversationMessages,
-  getValidServerConversationCompactionTimestamp,
-  hasPersistedServerConversationCompactionCheckpoint,
   isValidServerConversationRecordShape,
   normalizeServerConversationHistoryIndex,
-  normalizeServerConversationSummarizedMessageCount,
   renameServerConversationTitle,
   repairServerConversationJsonData,
   sortServerConversationHistoryByUpdatedAt,
@@ -54,7 +50,6 @@ import {
   getRenderableVideoMimeTypeFromFileName,
   parseDataImageUrl,
 } from "@dotagents/shared/conversation-media-assets"
-import { sanitizeMessageContentForDisplay } from "@dotagents/shared/message-display-utils"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
 import {
   buildConversationImageAssetUrl,
@@ -728,59 +723,13 @@ export class ConversationService {
     return syncServerConversationStorageMetadata(conversation)
   }
 
-  private estimateCompactionTokensFromText(text: string): number {
-    return estimateServerConversationCompactionTokensFromText(text)
-  }
-
-  private getValidCompactionTimestamp(...candidates: Array<number | undefined>): number {
-    return getValidServerConversationCompactionTimestamp(...candidates)
-  }
-
-  private normalizeSummarizedMessageCount(count: number | undefined, rawMessageCount: number): number {
-    return normalizeServerConversationSummarizedMessageCount(count, rawMessageCount)
-  }
-
   private async persistCompactionCheckpointIfMissing(
     conversation: Conversation,
     fullMessageHistory: ConversationMessage[],
   ): Promise<Conversation> {
-    if (hasPersistedServerConversationCompactionCheckpoint(conversation.compaction)) {
-      return conversation
-    }
-
-    const summaryMessage = conversation.messages.find((message) => message.isSummary)
-    if (!summaryMessage) {
-      return conversation
-    }
-
-    const summarizedMessageCount = this.normalizeSummarizedMessageCount(
-      summaryMessage.summarizedMessageCount,
-      fullMessageHistory.length,
-    )
-    if (summarizedMessageCount <= 0) {
-      return conversation
-    }
-
-    const summarizedText = fullMessageHistory
-      .slice(0, summarizedMessageCount)
-      .map((message) => sanitizeMessageContentForDisplay(message.content || ""))
-      .join("\n")
-    const compactedConversation: Conversation = {
-      ...conversation,
-      compaction: buildServerConversationCompactionCheckpointMetadata({
-        existing: conversation.compaction,
-        fullMessageHistory,
-        summaryMessage,
-        summarizedMessageCount,
-        tokensBefore: this.estimateCompactionTokensFromText(summarizedText),
-        compactedAt: this.getValidCompactionTimestamp(
-          conversation.compaction?.compactedAt,
-          summaryMessage.timestamp,
-          conversation.updatedAt,
-        ),
-      }),
-      updatedAt: conversation.updatedAt,
-    }
+    const backfill = buildServerConversationCompactionCheckpointBackfill(conversation, { fullMessageHistory })
+    if (!backfill.changed) return conversation
+    const compactedConversation = backfill.conversation as Conversation
 
     try {
       await this.saveConversation(compactedConversation, true)

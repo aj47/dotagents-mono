@@ -288,6 +288,15 @@ export interface BuildServerConversationCompactedRecordOptions<TMessage extends 
   compactedAt: number;
 }
 
+export interface BuildServerConversationCompactionCheckpointBackfillOptions<TMessage extends ServerConversationRecordMessage = ServerConversationRecordMessage> {
+  fullMessageHistory: TMessage[];
+}
+
+export interface ServerConversationCompactionCheckpointBackfillResult<TConversation extends ServerConversationRecord<any> = ServerConversationRecord<any>> {
+  changed: boolean;
+  conversation: TConversation;
+}
+
 export type LimitedServerConversationRecord<TConversation extends ServerConversationRecord<any>> = TConversation & {
   messageOffset?: number;
   totalMessageCount?: number;
@@ -782,6 +791,54 @@ export function buildServerConversationCompactedRecord<TConversation extends Ser
     }),
     updatedAt: compactedAt,
   } as TConversation;
+}
+
+export function buildServerConversationCompactionCheckpointBackfill<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+  options: BuildServerConversationCompactionCheckpointBackfillOptions<TConversation['messages'][number]>,
+): ServerConversationCompactionCheckpointBackfillResult<TConversation> {
+  if (hasPersistedServerConversationCompactionCheckpoint(conversation.compaction)) {
+    return { changed: false, conversation };
+  }
+
+  const summaryMessage = conversation.messages.find((message) => message.isSummary);
+  if (!summaryMessage) {
+    return { changed: false, conversation };
+  }
+
+  const fullMessageHistory = options.fullMessageHistory;
+  const summarizedMessageCount = normalizeServerConversationSummarizedMessageCount(
+    summaryMessage.summarizedMessageCount,
+    fullMessageHistory.length,
+  );
+  if (summarizedMessageCount <= 0) {
+    return { changed: false, conversation };
+  }
+
+  const summarizedText = fullMessageHistory
+    .slice(0, summarizedMessageCount)
+    .map((message) => sanitizeMessageContentForDisplay(message.content || ''))
+    .join('\n');
+
+  return {
+    changed: true,
+    conversation: {
+      ...conversation,
+      compaction: buildServerConversationCompactionCheckpointMetadata({
+        existing: conversation.compaction,
+        fullMessageHistory,
+        summaryMessage,
+        summarizedMessageCount,
+        tokensBefore: estimateServerConversationCompactionTokensFromText(summarizedText),
+        compactedAt: getValidServerConversationCompactionTimestamp(
+          conversation.compaction?.compactedAt,
+          summaryMessage.timestamp,
+          conversation.updatedAt,
+        ),
+      }),
+      updatedAt: conversation.updatedAt,
+    } as TConversation,
+  };
 }
 
 export function buildServerConversationCompactionCheckpointMetadata(
