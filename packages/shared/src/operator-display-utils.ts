@@ -591,17 +591,31 @@ export type OperatorRuntimeStatusPanelMetadata = {
   bindLabel: string
   connectableUrlLabel: string
   lastErrorLabel: string
+  formatConfigured: (enabled?: boolean) => string
+  formatRunning: (running?: boolean) => string
+  formatBind: (bind: string, port: number) => string
+  formatConnectableUrl: (connectableUrl?: string, url?: string) => string
+  formatLastError: (lastError: string) => string
 }
+
+const OPERATOR_RUNTIME_STATUS_ENABLED_VALUE = "Enabled"
+const OPERATOR_RUNTIME_STATUS_DISABLED_VALUE = "Disabled"
 
 export const OPERATOR_RUNTIME_STATUS_PANEL_METADATA: OperatorRuntimeStatusPanelMetadata = {
   panelTitle: "Remote server runtime",
   configuredLabel: "Configured",
-  enabledValue: "Enabled",
-  disabledValue: "Disabled",
+  enabledValue: OPERATOR_RUNTIME_STATUS_ENABLED_VALUE,
+  disabledValue: OPERATOR_RUNTIME_STATUS_DISABLED_VALUE,
   runningLabel: "Running",
   bindLabel: "Bind",
   connectableUrlLabel: "Connectable URL",
   lastErrorLabel: "Last error",
+  formatConfigured: (enabled) =>
+    `Configured: ${enabled ? OPERATOR_RUNTIME_STATUS_ENABLED_VALUE : OPERATOR_RUNTIME_STATUS_DISABLED_VALUE}`,
+  formatRunning: (running) => `Running: ${formatOperatorYesNo(running)}`,
+  formatBind: (bind, port) => `Bind: ${bind}:${port}`,
+  formatConnectableUrl: (connectableUrl, url) => `Connectable URL: ${connectableUrl || url || OPERATOR_EMPTY_VALUE_LABEL}`,
+  formatLastError: (lastError) => `Last error: ${lastError}`,
 }
 
 export type OperatorTunnelStatusPanelMetadata = {

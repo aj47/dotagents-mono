@@ -228,11 +228,16 @@ test('exposes compact remote access settings for mobile remote ops', () => {
 
 test('includes tunnel, Discord, and WhatsApp operator controls and summaries', () => {
   assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.panelTitle/);
-  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.configuredLabel/);
-  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.runningLabel/);
-  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.bindLabel/);
-  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.connectableUrlLabel/);
-  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.lastErrorLabel/);
+  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.formatConfigured\(settings\?\.remoteServerEnabled\)/);
+  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.formatRunning\(status\.remoteServer\.running\)/);
+  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.formatBind\(status\.remoteServer\.bind, status\.remoteServer\.port\)/);
+  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.formatConnectableUrl\(status\.remoteServer\.connectableUrl, status\.remoteServer\.url\)/);
+  assert.match(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.formatLastError\(status\.remoteServer\.lastError\)/);
+  assert.doesNotMatch(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.configuredLabel/);
+  assert.doesNotMatch(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.runningLabel/);
+  assert.doesNotMatch(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.bindLabel/);
+  assert.doesNotMatch(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.connectableUrlLabel/);
+  assert.doesNotMatch(operationsSource, /OPERATOR_RUNTIME_STATUS_PANEL_METADATA\.lastErrorLabel/);
   assert.match(operationsSource, /OPERATOR_TUNNEL_STATUS_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_TUNNEL_STATUS_PANEL_METADATA\.setupTitle/);
   assert.match(operationsSource, /OPERATOR_TUNNEL_STATUS_PANEL_METADATA\.startButtonLabel/);

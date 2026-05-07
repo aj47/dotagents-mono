@@ -511,7 +511,25 @@ describe("operator display utils", () => {
       bindLabel: "Bind",
       connectableUrlLabel: "Connectable URL",
       lastErrorLabel: "Last error",
+      formatConfigured: expect.any(Function),
+      formatRunning: expect.any(Function),
+      formatBind: expect.any(Function),
+      formatConnectableUrl: expect.any(Function),
+      formatLastError: expect.any(Function),
     })
+    expect(OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatConfigured(true)).toBe("Configured: Enabled")
+    expect(OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatConfigured(false)).toBe("Configured: Disabled")
+    expect(OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatRunning(true)).toBe("Running: Yes")
+    expect(OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatRunning()).toBe(`Running: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatBind("127.0.0.1", 3210)).toBe("Bind: 127.0.0.1:3210")
+    expect(OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatConnectableUrl()).toBe(`Connectable URL: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatConnectableUrl("http://lan", "http://local")).toBe(
+      "Connectable URL: http://lan",
+    )
+    expect(OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatConnectableUrl(undefined, "http://local")).toBe(
+      "Connectable URL: http://local",
+    )
+    expect(OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatLastError("port unavailable")).toBe("Last error: port unavailable")
     expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA).toEqual({
       panelTitle: "Tunnel status",
       stateLabel: "State",

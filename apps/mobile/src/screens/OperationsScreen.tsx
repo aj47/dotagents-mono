@@ -2501,15 +2501,13 @@ export default function OperationsScreen({ navigation }: any) {
             <View style={styles.panel}>
               <Text style={styles.panelTitle}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.panelTitle}</Text>
               <Text style={styles.detailText}>
-                {OPERATOR_RUNTIME_STATUS_PANEL_METADATA.configuredLabel}: {settings?.remoteServerEnabled
-                  ? OPERATOR_RUNTIME_STATUS_PANEL_METADATA.enabledValue
-                  : OPERATOR_RUNTIME_STATUS_PANEL_METADATA.disabledValue}
+                {OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatConfigured(settings?.remoteServerEnabled)}
               </Text>
-              <Text style={styles.detailText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.runningLabel}: {formatYesNo(status.remoteServer.running)}</Text>
-              <Text style={styles.detailText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.bindLabel}: {status.remoteServer.bind}:{status.remoteServer.port}</Text>
-              <Text style={styles.detailText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.connectableUrlLabel}: {status.remoteServer.connectableUrl || status.remoteServer.url || '—'}</Text>
+              <Text style={styles.detailText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatRunning(status.remoteServer.running)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatBind(status.remoteServer.bind, status.remoteServer.port)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatConnectableUrl(status.remoteServer.connectableUrl, status.remoteServer.url)}</Text>
               {status.remoteServer.lastError && (
-                <Text style={styles.warningText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.lastErrorLabel}: {status.remoteServer.lastError}</Text>
+                <Text style={styles.warningText}>{OPERATOR_RUNTIME_STATUS_PANEL_METADATA.formatLastError(status.remoteServer.lastError)}</Text>
               )}
             </View>
           )}
