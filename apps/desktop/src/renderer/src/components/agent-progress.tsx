@@ -18,6 +18,7 @@ import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
 import { desktopConversationsClient } from "@renderer/lib/desktop-conversations-client"
+import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
 import { desktopTtsClient } from "@renderer/lib/desktop-tts-client"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
@@ -4282,7 +4283,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // This enables the continue conversation input to receive focus and be interactable
   useEffect(() => {
     if (variant === "overlay" && isComplete) {
-      tipcClient.setPanelFocusable({ focusable: true })
+      desktopPanelClient.setPanelFocusable({ focusable: true })
     }
   }, [variant, isComplete])
 
