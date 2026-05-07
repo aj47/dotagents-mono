@@ -16,6 +16,7 @@ import {
   describeAgentSessionId,
   getExplicitAgentStopReason,
   getPreferredDelegationOutput,
+  getRemoteAgentConversationMessages,
   resolveExpectedAgentStopReason,
   resolveAgentModeMaxIterations,
   resolveAgentIterationLimits,
@@ -438,6 +439,9 @@ describe('runRemoteAgentAction', () => {
             const conversation = conversations.get(conversationId)
             if (!conversation) return null
             conversation.messages.push({ role, content: prompt, timestamp: 3 })
+            if (Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0) {
+              conversation.rawMessages.push({ role, content: prompt, timestamp: 3 })
+            }
             return conversation
           },
           createConversationWithId: async (conversationId, prompt, role) => {
@@ -542,6 +546,42 @@ describe('runRemoteAgentAction', () => {
       { isAgentModeActive: true, shouldStopAgent: false, agentIterationCount: 0 },
       { isAgentModeActive: false, shouldStopAgent: false, agentIterationCount: 0 },
     ])
+  })
+
+  it('formats remote agent run history from preserved raw messages when present', async () => {
+    const { conversations, service } = createRemoteAgentRunService()
+    conversations.set('conv-raw', {
+      id: 'conv-raw',
+      messages: [
+        { role: 'assistant', content: 'Summary', timestamp: 10 },
+      ],
+      rawMessages: [
+        { role: 'user', content: 'raw previous', timestamp: 1 },
+        { role: 'assistant', content: 'raw answer', timestamp: 2 },
+      ],
+    })
+
+    expect(getRemoteAgentConversationMessages(conversations.get('conv-raw'))).toEqual([
+      { role: 'user', content: 'raw previous', timestamp: 1 },
+      { role: 'assistant', content: 'raw answer', timestamp: 2 },
+    ])
+
+    await expect(runRemoteAgentAction({
+      prompt: 'raw next',
+      conversationId: 'conv-raw',
+    }, {
+      service,
+      diagnostics: {
+        logInfo: () => {},
+      },
+    })).resolves.toMatchObject({
+      conversationId: 'conv-raw',
+      conversationHistory: [
+        { role: 'user', content: 'raw previous', timestamp: 1 },
+        { role: 'assistant', content: 'raw answer', timestamp: 2 },
+        { role: 'user', content: 'raw next', timestamp: 3 },
+      ],
+    })
   })
 
   it('creates a generated conversation and notifies on agent failure before resetting state', async () => {

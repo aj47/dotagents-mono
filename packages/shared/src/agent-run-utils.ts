@@ -44,9 +44,12 @@ export type RemoteAgentRunConfigLike = {
   remoteServerAutoShowPanel?: boolean
 }
 
+export type RemoteAgentConversationMessageLike = ConversationHistoryForApiEntryLike
+
 export type RemoteAgentConversationLike = {
   id: string
-  messages: ConversationHistoryForApiEntryLike[]
+  messages: RemoteAgentConversationMessageLike[]
+  rawMessages?: RemoteAgentConversationMessageLike[]
 }
 
 export type RemoteAgentSessionLike = {
@@ -158,6 +161,15 @@ export interface RemoteAgentRunActionDiagnostics {
 export interface RemoteAgentRunActionOptions<TConversation extends RemoteAgentConversationLike = RemoteAgentConversationLike> {
   service: RemoteAgentRunActionService<TConversation>
   diagnostics: RemoteAgentRunActionDiagnostics
+}
+
+export function getRemoteAgentConversationMessages<TConversation extends RemoteAgentConversationLike>(
+  conversation: TConversation | null | undefined,
+): RemoteAgentConversationMessageLike[] {
+  if (!conversation) return []
+  return Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
+    ? conversation.rawMessages
+    : conversation.messages
 }
 
 export type RemoteAgentChildSessionLike = {
@@ -587,9 +599,10 @@ export async function runRemoteAgentAction<TConversation extends RemoteAgentConv
     )
 
     if (updatedConversation) {
+      const previousMessages = getRemoteAgentConversationMessages(updatedConversation)
       diagnostics.logInfo(
         "remote-server",
-        `Continuing conversation ${conversationId} with ${Math.max(0, updatedConversation.messages.length - 1)} previous messages`,
+        `Continuing conversation ${conversationId} with ${Math.max(0, previousMessages.length - 1)} previous messages`,
       )
     } else {
       diagnostics.logInfo("remote-server", `Conversation ${conversationId} not found, creating with provided ID`)
@@ -626,7 +639,7 @@ export async function runRemoteAgentAction<TConversation extends RemoteAgentConv
 
   const loadFormattedConversationHistory = async () => {
     const latestConversation = await service.loadConversation(activeConversationId)
-    return formatConversationHistoryForApi(latestConversation?.messages || [])
+    return formatConversationHistoryForApi(getRemoteAgentConversationMessages(latestConversation))
   }
 
   try {
