@@ -12,10 +12,9 @@ import { getEnabledAcpxAgentProfiles } from "@dotagents/shared/agent-profile-que
 import {
   createTemporaryBundleFileImportService,
   createTemporaryBundleFileName,
+  createLayeredBundleActionService,
   createBundleRouteActions,
-  resolveBundleExportLayerDirs,
   resolveBundleImportTargetDir,
-  type BundleActionOptions,
   type ExportBundleRequest,
 } from "@dotagents/shared/bundle-api"
 import {
@@ -209,10 +208,6 @@ const pushActionOptions = {
 
 const pushRouteActions = createPushRouteActions(pushActionOptions)
 
-function getBundleLayerDirs(): string[] {
-  return resolveBundleExportLayerDirs(globalAgentsFolder, resolveWorkspaceAgentsFolder())
-}
-
 function getBundleImportTargetDir(): string {
   return resolveBundleImportTargetDir(globalAgentsFolder, resolveWorkspaceAgentsFolder())
 }
@@ -238,13 +233,17 @@ const temporaryBundleImportService = createTemporaryBundleFileImportService({
   },
 })
 
-const bundleActionOptions: BundleActionOptions = {
-  service: {
-    getExportableItems: () => getBundleExportableItemsFromLayers(getBundleLayerDirs()),
-    exportBundle: (request: ExportBundleRequest) => exportBundleFromLayers(getBundleLayerDirs(), request),
-    previewBundleImport: temporaryBundleImportService.previewBundleImport,
-    importBundle: temporaryBundleImportService.importBundle,
-  },
+const bundleActionService = createLayeredBundleActionService({
+  getGlobalAgentsFolder: () => globalAgentsFolder,
+  getWorkspaceAgentsFolder: resolveWorkspaceAgentsFolder,
+  getExportableItemsFromLayers,
+  exportBundleFromLayers: (layerDirs, request: ExportBundleRequest) => exportBundleFromLayers(layerDirs, request),
+  previewBundleImport: temporaryBundleImportService.previewBundleImport,
+  importBundle: temporaryBundleImportService.importBundle,
+})
+
+const bundleActionOptions = {
+  service: bundleActionService,
   diagnostics: diagnosticsService,
 }
 

@@ -1403,6 +1403,22 @@ export function resolveBundleImportTargetDir(
   return workspaceAgentsFolder ?? globalAgentsFolder
 }
 
+export function createLayeredBundleActionService(
+  options: LayeredBundleActionServiceOptions,
+): BundleActionService {
+  const getLayerDirs = () => resolveBundleExportLayerDirs(
+    options.getGlobalAgentsFolder(),
+    options.getWorkspaceAgentsFolder(),
+  )
+
+  return {
+    getExportableItems: () => options.getExportableItemsFromLayers(getLayerDirs()),
+    exportBundle: (request) => options.exportBundleFromLayers(getLayerDirs(), request),
+    previewBundleImport: options.previewBundleImport,
+    importBundle: options.importBundle,
+  }
+}
+
 export interface TemporaryBundleFileNameOptions {
   now?: () => number
   createUniqueId?: () => string
@@ -1836,6 +1852,15 @@ export interface BundleActionService {
   exportBundle(request: ExportBundleRequest): Promise<DotAgentsBundle>
   previewBundleImport(request: PreviewBundleImportRequest): Promise<BundleImportPreview | null>
   importBundle(request: ImportBundleRequest): Promise<BundleImportResult>
+}
+
+export interface LayeredBundleActionServiceOptions {
+  getGlobalAgentsFolder(): string
+  getWorkspaceAgentsFolder(): string | null | undefined
+  getExportableItemsFromLayers(layerDirs: string[]): ExportableBundleItems
+  exportBundleFromLayers(layerDirs: string[], request: ExportBundleRequest): Promise<DotAgentsBundle>
+  previewBundleImport: BundleActionService["previewBundleImport"]
+  importBundle: BundleActionService["importBundle"]
 }
 
 export type BundleTemporaryFilePreviewResult = {

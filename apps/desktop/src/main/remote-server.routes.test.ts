@@ -1189,13 +1189,14 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).not.toContain("previewBundleImportAction(body, bundleActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("importBundleAction(body, bundleActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain(
-      "return resolveBundleExportLayerDirs(globalAgentsFolder, resolveWorkspaceAgentsFolder())",
-    )
-    expect(mobileApiDesktopActionsSource).toContain(
       "return resolveBundleImportTargetDir(globalAgentsFolder, resolveWorkspaceAgentsFolder())",
     )
-    expect(mobileApiDesktopActionsSource).toContain("getBundleExportableItemsFromLayers(getBundleLayerDirs())")
-    expect(mobileApiDesktopActionsSource).toContain("exportBundleFromLayers(getBundleLayerDirs(), request)")
+    expect(mobileApiDesktopActionsSource).toContain("const bundleActionService = createLayeredBundleActionService({")
+    expect(mobileApiDesktopActionsSource).toContain("getGlobalAgentsFolder: () => globalAgentsFolder")
+    expect(mobileApiDesktopActionsSource).toContain("getWorkspaceAgentsFolder: resolveWorkspaceAgentsFolder")
+    expect(mobileApiDesktopActionsSource).toContain("getExportableItemsFromLayers")
+    expect(mobileApiDesktopActionsSource).toContain("exportBundleFromLayers: (layerDirs, request: ExportBundleRequest) => exportBundleFromLayers(layerDirs, request)")
+    expect(mobileApiDesktopActionsSource).toContain("service: bundleActionService")
     expect(mobileApiDesktopActionsSource).toContain("const temporaryBundleImportService = createTemporaryBundleFileImportService({")
     expect(mobileApiDesktopActionsSource).toContain("writeTemporaryBundleFile: (bundleJson) => {")
     expect(mobileApiDesktopActionsSource).toContain("createTemporaryBundleFileName({ createUniqueId: randomUUID })")
@@ -1214,6 +1215,9 @@ describe("remote-server route registration", () => {
     expect(sharedBundleApiSource).toContain("export async function importBundleAction")
     expect(sharedBundleApiSource).toContain("export function resolveBundleExportLayerDirs(")
     expect(sharedBundleApiSource).toContain("export function resolveBundleImportTargetDir(")
+    expect(sharedBundleApiSource).toContain("export function createLayeredBundleActionService(")
+    expect(sharedBundleApiSource).toContain("getExportableItems: () => options.getExportableItemsFromLayers(getLayerDirs())")
+    expect(sharedBundleApiSource).toContain("exportBundle: (request) => options.exportBundleFromLayers(getLayerDirs(), request)")
     expect(sharedBundleApiSource).toContain("export function createTemporaryBundleFileName(")
     expect(sharedBundleApiSource).toContain("export function createTemporaryBundleFileImportService(")
     expect(sharedBundleApiSource).toContain("export async function previewBundleImportFromTemporaryFile(")

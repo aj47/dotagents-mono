@@ -37,6 +37,7 @@ import {
   createBundleItemSelection,
   createBundleImportErrorResult,
   createBundleImportResult,
+  createLayeredBundleActionService,
   createBundleRouteActions,
   createTemporaryBundleFileImportService,
   createTemporaryBundleFileName,
@@ -1543,7 +1544,7 @@ describe("bundle API helpers", () => {
     })).toBe(3)
   })
 
-  it("resolves layered bundle export and import target directories", () => {
+  it("resolves layered bundle export and import target directories", async () => {
     expect(resolveBundleExportLayerDirs("/global/.agents")).toEqual(["/global/.agents"])
     expect(resolveBundleExportLayerDirs("/global/.agents", "/workspace/.agents")).toEqual([
       "/global/.agents",
@@ -1551,6 +1552,39 @@ describe("bundle API helpers", () => {
     ])
     expect(resolveBundleImportTargetDir("/global/.agents")).toBe("/global/.agents")
     expect(resolveBundleImportTargetDir("/global/.agents", "/workspace/.agents")).toBe("/workspace/.agents")
+
+    const serviceCalls: string[] = []
+    const layeredService = createLayeredBundleActionService({
+      getGlobalAgentsFolder: () => "/global/.agents",
+      getWorkspaceAgentsFolder: () => "/workspace/.agents",
+      getExportableItemsFromLayers: (layerDirs) => {
+        serviceCalls.push(`items:${layerDirs.join("+")}`)
+        return exportableItems
+      },
+      exportBundleFromLayers: async (layerDirs, request) => {
+        serviceCalls.push(`export:${layerDirs.join("+")}:${request.name}`)
+        return bundle
+      },
+      previewBundleImport: async (request) => {
+        serviceCalls.push(`preview:${request.bundleJson.length}`)
+        return importPreview
+      },
+      importBundle: async (request) => {
+        serviceCalls.push(`import:${request.conflictStrategy ?? "default"}`)
+        return importResult
+      },
+    })
+
+    expect(layeredService.getExportableItems()).toBe(exportableItems)
+    await expect(layeredService.exportBundle({ name: "Layered" })).resolves.toBe(bundle)
+    await expect(layeredService.previewBundleImport({ bundleJson: "{}" })).resolves.toBe(importPreview)
+    await expect(layeredService.importBundle({ bundleJson: "{}", conflictStrategy: "rename" })).resolves.toBe(importResult)
+    expect(serviceCalls).toEqual([
+      "items:/global/.agents+/workspace/.agents",
+      "export:/global/.agents+/workspace/.agents:Layered",
+      "preview:2",
+      "import:rename",
+    ])
   })
 
   it("creates temporary bundle filenames with shared .dotagents naming", () => {
