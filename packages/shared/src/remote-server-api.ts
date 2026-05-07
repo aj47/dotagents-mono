@@ -43,6 +43,7 @@ export const REMOTE_SERVER_API_PATHS = {
   operatorRestartRemoteServer: "/operator/actions/restart-remote-server",
   operatorRestartApp: "/operator/actions/restart-app",
   operatorRunAgent: "/operator/actions/run-agent",
+  operatorAgentSessionShow: "/operator/sessions/:sessionId/show",
   operatorAgentSessionStop: "/operator/sessions/:sessionId/stop",
   operatorAgentSessionSnooze: "/operator/sessions/:sessionId/snooze",
   operatorAgentSessionUnsnooze: "/operator/sessions/:sessionId/unsnooze",
@@ -159,6 +160,7 @@ export const REMOTE_SERVER_API_ROUTES = [
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorRestartRemoteServer },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorRestartApp },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorRunAgent },
+  { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorAgentSessionShow },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorAgentSessionStop },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorAgentSessionSnooze },
   { method: "POST", path: REMOTE_SERVER_API_PATHS.operatorAgentSessionUnsnooze },
@@ -350,6 +352,9 @@ export const REMOTE_SERVER_API_BUILDERS = {
   },
   operatorConversations(count: number = 10): string {
     return withQuery(REMOTE_SERVER_API_PATHS.operatorConversations, new URLSearchParams({ count: String(count) }));
+  },
+  operatorAgentSessionShow(sessionId: string): string {
+    return `/operator/sessions/${encodePathParam(sessionId)}/show`;
   },
   operatorAgentSessionStop(sessionId: string): string {
     return `/operator/sessions/${encodePathParam(sessionId)}/stop`;

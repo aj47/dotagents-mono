@@ -96,6 +96,7 @@ const actionKeys = [
 
 const operatorActionKeys = [
   'runOperatorAgent',
+  'showOperatorAgentSession',
   'stopOperatorAgentSession',
   'snoozeOperatorAgentSession',
   'unsnoozeOperatorAgentSession',
@@ -274,6 +275,7 @@ describe('remote server route contracts', () => {
     const routeActions = createOperatorRouteActions<TestRequest>({
       agent: pick(
         'runOperatorAgent',
+        'showOperatorAgentSession',
         'stopOperatorAgentSession',
         'snoozeOperatorAgentSession',
         'unsnoozeOperatorAgentSession',

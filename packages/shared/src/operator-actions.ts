@@ -588,6 +588,9 @@ export interface OperatorAgentActionDiagnostics {
 }
 
 export interface OperatorAgentActionService {
+  showAgentSession(sessionId: string): {
+    sessionId: string
+  }
   stopAgentSessionById(sessionId: string): Promise<{
     sessionId: string
     conversationId?: string
@@ -599,6 +602,9 @@ export interface OperatorAgentActionService {
 }
 
 export interface OperatorAgentActionServiceOptions {
+  showAgentSession(sessionId: string): {
+    sessionId: string
+  }
   stopAgentSessionById(sessionId: string): Promise<{
     sessionId: string
     conversationId?: string
@@ -613,6 +619,7 @@ export function createOperatorAgentActionService(
   options: OperatorAgentActionServiceOptions,
 ): OperatorAgentActionService {
   return {
+    showAgentSession: (sessionId) => options.showAgentSession(sessionId),
     stopAgentSessionById: (sessionId) => options.stopAgentSessionById(sessionId),
     setAgentSessionSnoozed: (sessionId, isSnoozed) => options.setAgentSessionSnoozed(sessionId, isSnoozed),
   }
@@ -625,6 +632,7 @@ export interface OperatorAgentActionOptions {
 
 export interface OperatorAgentRouteActions {
   runOperatorAgent(body: unknown, runAgent: AgentRunExecutor): Promise<OperatorAgentActionResult>
+  showOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
   stopOperatorAgentSession(sessionIdParam: string | undefined): Promise<OperatorAgentActionResult>
   snoozeOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
   unsnoozeOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
@@ -2157,6 +2165,15 @@ export function buildOperatorAgentSessionStopResponse(
   }
 }
 
+export function buildOperatorAgentSessionShowResponse(sessionId: string): OperatorActionResponse {
+  return {
+    success: true,
+    action: "agent-session-show",
+    message: `Showing agent session ${sessionId}`,
+    details: { sessionId },
+  }
+}
+
 export function buildOperatorAgentSessionSnoozedResponse(
   sessionId: string,
   isSnoozed: boolean,
@@ -2346,6 +2363,28 @@ export async function runOperatorAgentAction(
   }
 }
 
+export function showOperatorAgentSessionAction(
+  sessionIdParam: string | undefined,
+  options: OperatorAgentActionOptions,
+): OperatorAgentActionResult {
+  const sessionId = normalizeOperatorPathParam(sessionIdParam)
+  if (!sessionId) {
+    const response = buildOperatorActionErrorResponse("agent-session-show", "Missing session ID")
+    return operatorAgentActionResult(400, response, buildOperatorActionAuditContext(response))
+  }
+
+  try {
+    const result = options.service.showAgentSession(sessionId)
+    const response = buildOperatorAgentSessionShowResponse(result.sessionId)
+    return operatorAgentActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    const response = buildOperatorActionErrorResponse("agent-session-show", `Failed to show agent session: ${errorMessage}`)
+    options.diagnostics.logError("operator-agent-actions", `Failed to show agent session ${sessionId}: ${errorMessage}`, caughtError)
+    return operatorAgentActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
 export async function stopOperatorAgentSessionAction(
   sessionIdParam: string | undefined,
   options: OperatorAgentActionOptions,
@@ -2397,6 +2436,7 @@ export function createOperatorAgentRouteActions(
 ): OperatorAgentRouteActions {
   return {
     runOperatorAgent: (body, runAgent) => runOperatorAgentAction(body, runAgent, options),
+    showOperatorAgentSession: (sessionIdParam) => showOperatorAgentSessionAction(sessionIdParam, options),
     stopOperatorAgentSession: (sessionIdParam) => stopOperatorAgentSessionAction(sessionIdParam, options),
     snoozeOperatorAgentSession: (sessionIdParam) =>
       setOperatorAgentSessionSnoozedAction(sessionIdParam, true, options),

@@ -2194,18 +2194,27 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("buildOperatorRunAgentResponse(agentResult)")
     // Agent session controls
     expectRegisteredApiRoute(source, "POST", "operatorAgentSessionStop")
+    expectRegisteredApiRoute(source, "POST", "operatorAgentSessionShow")
     expectRegisteredApiRoute(source, "POST", "operatorAgentSessionSnooze")
     expectRegisteredApiRoute(source, "POST", "operatorAgentSessionUnsnooze")
     const agentSessionActionsSource = getAgentSessionActionsSource()
     expect(operatorRoutesSource).toContain("actions.stopOperatorAgentSession(params.sessionId)")
+    expect(operatorRoutesSource).toContain("actions.showOperatorAgentSession(params.sessionId)")
     expect(operatorRoutesSource).toContain("actions.snoozeOperatorAgentSession(params.sessionId)")
     expect(operatorRoutesSource).toContain("actions.unsnoozeOperatorAgentSession(params.sessionId)")
     expect(operatorRouteDesktopActionsSource).toContain("stopAgentSessionById")
+    expect(operatorRouteDesktopActionsSource).toContain("showAgentSession: (sessionId) =>")
+    expect(operatorRouteDesktopActionsSource).toContain('getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)')
+    expect(operatorRouteDesktopActionsSource).toContain('setPanelMode("agent")')
+    expect(operatorRouteDesktopActionsSource).toContain("showPanelWindow({})")
     expect(operatorRouteDesktopActionsSource).toContain("setTrackedAgentSessionSnoozed(sessionId, isSnoozed)")
     expect(agentSessionActionsSource).toContain("service: createStopRemoteAgentSessionActionService({")
     expect(agentSessionActionsSource).not.toContain("function createStopRemoteAgentSessionActionService(")
     expect(operatorRouteDesktopActionsSource).not.toContain("stopOperatorAgentSessionAction(sessionIdParam, agentActionOptions)")
     expect(sharedAgentRunUtilsSource).toContain("export function createStopRemoteAgentSessionActionService")
+    expect(sharedOperatorActionsSource).toContain(
+      "showOperatorAgentSession: (sessionIdParam) => showOperatorAgentSessionAction(sessionIdParam, options)",
+    )
     expect(sharedOperatorActionsSource).toContain(
       "stopOperatorAgentSession: (sessionIdParam) => stopOperatorAgentSessionAction(sessionIdParam, options)",
     )
@@ -2216,8 +2225,10 @@ describe("remote-server route registration", () => {
       "unsnoozeOperatorAgentSession: (sessionIdParam) =>",
     )
     expect(sharedOperatorActionsSource).toContain("export async function stopOperatorAgentSessionAction(")
+    expect(sharedOperatorActionsSource).toContain("export function showOperatorAgentSessionAction(")
     expect(sharedOperatorActionsSource).toContain("export function setOperatorAgentSessionSnoozedAction(")
     expect(sharedOperatorActionsSource).toContain("buildOperatorAgentSessionStopResponse(stopResult.sessionId, stopResult.conversationId)")
+    expect(sharedOperatorActionsSource).toContain("buildOperatorAgentSessionShowResponse(result.sessionId)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorAgentSessionSnoozedResponse(result.sessionId, result.isSnoozed)")
     // Message queue operator endpoints
     expectRegisteredApiRoute(source, "GET", "operatorMessageQueues")

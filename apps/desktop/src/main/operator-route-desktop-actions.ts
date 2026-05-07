@@ -104,6 +104,11 @@ import {
   openManualReleasesPage,
   revealDownloadedReleaseAsset,
 } from "./updater"
+import {
+  getWindowRendererHandlers,
+  setPanelMode,
+  showPanelWindow,
+} from "./window"
 
 const getOperatorSystemMetrics = createOperatorSystemMetricsCollector({
   getPlatform: () => os.platform(),
@@ -154,6 +159,21 @@ const agentActionOptions: OperatorAgentActionOptions = {
     getErrorMessage,
   },
   service: createOperatorAgentActionService({
+    showAgentSession: (sessionId) => {
+      setTrackedAgentSessionSnoozed(sessionId, false)
+      try {
+        getWindowRendererHandlers("panel")?.focusAgentSession.send(sessionId)
+      } catch (error) {
+        diagnosticsService.logError(
+          "operator-route-desktop-actions",
+          `Failed to focus agent session ${sessionId} in panel`,
+          error,
+        )
+      }
+      setPanelMode("agent")
+      showPanelWindow({})
+      return { sessionId }
+    },
     stopAgentSessionById,
     setAgentSessionSnoozed: (sessionId, isSnoozed) => {
       setTrackedAgentSessionSnoozed(sessionId, isSnoozed)

@@ -1503,6 +1503,12 @@ export class SettingsApiClient {
     });
   }
 
+  async showOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_BUILDERS.operatorAgentSessionShow(sessionId), {
+      method: 'POST',
+    });
+  }
+
   async snoozeOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
     return this.request<OperatorActionResponse>(API_BUILDERS.operatorAgentSessionSnooze(sessionId), {
       method: 'POST',

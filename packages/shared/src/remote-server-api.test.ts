@@ -36,6 +36,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_ROUTE_PATHS.settings).toBe('/v1/settings');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.agentSessionCandidates).toBe('/v1/agent-sessions/candidates');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.agentSessionToolApprovalResponse).toBe('/v1/agent-sessions/tool-approvals/:approvalId/respond');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionShow).toBe('/v1/operator/sessions/:sessionId/show');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionSnooze).toBe('/v1/operator/sessions/:sessionId/snooze');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.operatorAgentSessionUnsnooze).toBe('/v1/operator/sessions/:sessionId/unsnooze');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.conversation).toBe('/v1/conversations/:id');
@@ -86,6 +87,7 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_BUILDERS.conversationVideoAsset('conv 1', 'clip/name.mp4')).toBe('/conversations/conv%201/assets/videos/clip%2Fname.mp4');
     expect(REMOTE_SERVER_API_BUILDERS.operatorLogs(5, 'warning')).toBe('/operator/logs?count=5&level=warning');
     expect(REMOTE_SERVER_API_BUILDERS.operatorLogs(5)).toBe('/operator/logs?count=5');
+    expect(REMOTE_SERVER_API_BUILDERS.operatorAgentSessionShow('session/active')).toBe('/operator/sessions/session%2Factive/show');
     expect(REMOTE_SERVER_API_BUILDERS.operatorAgentSessionStop('session/active')).toBe('/operator/sessions/session%2Factive/stop');
     expect(REMOTE_SERVER_API_BUILDERS.operatorAgentSessionSnooze('session/active')).toBe('/operator/sessions/session%2Factive/snooze');
     expect(REMOTE_SERVER_API_BUILDERS.operatorAgentSessionUnsnooze('session/active')).toBe('/operator/sessions/session%2Factive/unsnooze');

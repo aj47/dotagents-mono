@@ -724,6 +724,7 @@ export default function OperationsScreen({ navigation }: any) {
               </Text>
               {status.sessions.activeSessionDetails.map((s) => {
                 const stopAction = `agent-session-stop:${s.id}`;
+                const showAction = `agent-session-show:${s.id}`;
                 const snoozeAction = `agent-session-snooze:${s.id}`;
                 const isSnoozed = s.isSnoozed === true;
                 return (
@@ -734,47 +735,64 @@ export default function OperationsScreen({ navigation }: any) {
                       </Text>
                       <Text style={styles.mutedText}>Since {formatTimestamp(s.startTime)}</Text>
                     </View>
-                    <TouchableOpacity
-                      style={[
-                        styles.sessionStopButton,
-                        styles.secondaryActionButton,
-                        controlsDisabled && styles.actionButtonDisabled,
-                      ]}
-                      onPress={() => void runAction(
-                        snoozeAction,
-                        () => isSnoozed
-                          ? settingsClient.unsnoozeOperatorAgentSession(s.id)
-                          : settingsClient.snoozeOperatorAgentSession(s.id),
-                      )}
-                      disabled={controlsDisabled}
-                      accessibilityRole="button"
-                      accessibilityLabel={createButtonAccessibilityLabel(`${isSnoozed ? 'Restore' : 'Hide'} ${s.title ?? s.id} agent session`)}
-                    >
-                      <Text style={styles.secondaryActionText}>
-                        {pendingAction === snoozeAction ? (isSnoozed ? 'Restoring...' : 'Hiding...') : (isSnoozed ? 'Restore' : 'Hide')}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.sessionStopButton,
-                        styles.secondaryActionButton,
-                        controlsDisabled && styles.actionButtonDisabled,
-                      ]}
-                      onPress={() => confirmAction(
-                        'Stop Agent Session',
-                        `Stop ${s.title ?? s.id} on the desktop app? The conversation queue for this session will be paused.`,
-                        'Stop Session',
-                        false,
-                        () => runAction(stopAction, () => settingsClient.stopOperatorAgentSession(s.id)),
-                      )}
-                      disabled={controlsDisabled}
-                      accessibilityRole="button"
-                      accessibilityLabel={createButtonAccessibilityLabel(`Stop ${s.title ?? s.id} agent session`)}
-                    >
-                      <Text style={styles.secondaryActionText}>
-                        {pendingAction === stopAction ? 'Stopping...' : 'Stop'}
-                      </Text>
-                    </TouchableOpacity>
+                    <View style={styles.mcpActionRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.sessionStopButton,
+                          styles.secondaryActionButton,
+                          controlsDisabled && styles.actionButtonDisabled,
+                        ]}
+                        onPress={() => void runAction(showAction, () => settingsClient.showOperatorAgentSession(s.id))}
+                        disabled={controlsDisabled}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Show ${s.title ?? s.id} agent session on desktop`)}
+                      >
+                        <Text style={styles.secondaryActionText}>
+                          {pendingAction === showAction ? 'Showing...' : 'Show'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.sessionStopButton,
+                          styles.secondaryActionButton,
+                          controlsDisabled && styles.actionButtonDisabled,
+                        ]}
+                        onPress={() => void runAction(
+                          snoozeAction,
+                          () => isSnoozed
+                            ? settingsClient.unsnoozeOperatorAgentSession(s.id)
+                            : settingsClient.snoozeOperatorAgentSession(s.id),
+                        )}
+                        disabled={controlsDisabled}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`${isSnoozed ? 'Restore' : 'Hide'} ${s.title ?? s.id} agent session`)}
+                      >
+                        <Text style={styles.secondaryActionText}>
+                          {pendingAction === snoozeAction ? (isSnoozed ? 'Restoring...' : 'Hiding...') : (isSnoozed ? 'Restore' : 'Hide')}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.sessionStopButton,
+                          styles.secondaryActionButton,
+                          controlsDisabled && styles.actionButtonDisabled,
+                        ]}
+                        onPress={() => confirmAction(
+                          'Stop Agent Session',
+                          `Stop ${s.title ?? s.id} on the desktop app? The conversation queue for this session will be paused.`,
+                          'Stop Session',
+                          false,
+                          () => runAction(stopAction, () => settingsClient.stopOperatorAgentSession(s.id)),
+                        )}
+                        disabled={controlsDisabled}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Stop ${s.title ?? s.id} agent session`)}
+                      >
+                        <Text style={styles.secondaryActionText}>
+                          {pendingAction === stopAction ? 'Stopping...' : 'Stop'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 );
               })}

@@ -304,6 +304,7 @@ export interface OperatorRouteActions<Request = unknown> {
     body: unknown,
     runAgent: OperatorRunAgentExecutor,
   ) => RemoteServerMaybePromise<OperatorRouteActionResult>;
+  showOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   stopOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   snoozeOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   unsnoozeOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
@@ -399,7 +400,11 @@ export interface OperatorRouteActions<Request = unknown> {
 export interface OperatorRouteActionGroups<Request = unknown> {
   agent: Pick<
     OperatorRouteActions<Request>,
-    'runOperatorAgent' | 'stopOperatorAgentSession' | 'snoozeOperatorAgentSession' | 'unsnoozeOperatorAgentSession'
+    | 'runOperatorAgent'
+    | 'showOperatorAgentSession'
+    | 'stopOperatorAgentSession'
+    | 'snoozeOperatorAgentSession'
+    | 'unsnoozeOperatorAgentSession'
   >;
   apiKey: Pick<OperatorRouteActions<Request>, 'rotateOperatorRemoteServerApiKey'>;
   mcp: Pick<
