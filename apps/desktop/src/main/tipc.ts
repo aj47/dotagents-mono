@@ -96,6 +96,7 @@ import {
 } from "./panel-position"
 import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "@dotagents/core"
 import { generateTTS } from "./tts-service"
+import { stopAllTtsPlayback } from "./tts-playback-actions"
 
 
 import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus, getRemoteServerPairingApiKey } from "./remote-server"
@@ -666,23 +667,7 @@ export const router = {
   }),
 
   stopAllTts: t.procedure.action(async () => {
-    let windowsNotified = 0
-    for (const [id, win] of WINDOWS.entries()) {
-      try {
-        const stopAllTtsHandler = getRendererHandlers<RendererHandlers>(win.webContents).stopAllTts
-        if (!stopAllTtsHandler) continue
-        stopAllTtsHandler.send()
-        windowsNotified += 1
-      } catch (e) {
-        logApp(`[tipc] stopAllTts send to ${id} failed:`, e)
-      }
-    }
-
-    logApp("[tipc] stopAllTts broadcast complete", {
-      windowsNotified,
-      totalWindows: WINDOWS.size,
-    })
-    return { success: true, windowsNotified }
+    return stopAllTtsPlayback()
   }),
 
   clearAgentProgress: t.procedure.action(async () => {

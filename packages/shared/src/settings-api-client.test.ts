@@ -1359,6 +1359,7 @@ describe('SettingsApiClient', () => {
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.operatorMcpStop }, expectedPath: REMOTE_SERVER_API_PATHS.operatorMcpStop, run: () => client.stopMCPServer(serverName) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.operatorMcpRestart }, expectedPath: REMOTE_SERVER_API_PATHS.operatorMcpRestart, run: () => client.restartMCPServer(serverName) },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.operatorConversations }, expectedPath: REMOTE_SERVER_API_BUILDERS.operatorConversations(6), run: () => client.getOperatorConversations(6) },
+      { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.operatorStopTtsPlayback }, expectedPath: REMOTE_SERVER_API_PATHS.operatorStopTtsPlayback, run: () => client.stopOperatorTtsPlayback() },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.operatorAgentSessionShow }, expectedPath: REMOTE_SERVER_API_BUILDERS.operatorAgentSessionShow(sessionId), run: () => client.showOperatorAgentSession(sessionId) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.operatorAgentSessionStop }, expectedPath: REMOTE_SERVER_API_BUILDERS.operatorAgentSessionStop(sessionId), run: () => client.stopOperatorAgentSession(sessionId) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.operatorAgentSessionSnooze }, expectedPath: REMOTE_SERVER_API_BUILDERS.operatorAgentSessionSnooze(sessionId), run: () => client.snoozeOperatorAgentSession(sessionId) },

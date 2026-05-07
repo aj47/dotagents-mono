@@ -1390,6 +1390,18 @@ export default function OperationsScreen({ navigation }: any) {
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                onPress={() => void runAction('stop-tts-playback', () => settingsClient.stopOperatorTtsPlayback(), false)}
+                disabled={pendingAction !== null}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Stop desktop speech playback')}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {pendingAction === 'stop-tts-playback' ? 'Stopping speech…' : 'Stop speech'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
                 onPress={() => confirmAction(
                   'Restart Remote Server',
                   'Restart the desktop remote server? Mobile clients may reconnect automatically after a short interruption.',

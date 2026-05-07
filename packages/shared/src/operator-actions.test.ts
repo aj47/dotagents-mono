@@ -59,6 +59,7 @@ import {
   buildOperatorRuntimeStatus,
   buildOperatorRunAgentResponse,
   buildOperatorSessionsSummary,
+  buildOperatorStopTtsPlaybackResponse,
   buildOperatorSystemMetrics,
   buildOperatorTunnelStartActionResponse,
   buildOperatorTunnelStartRemoteServerRequiredResponse,
@@ -96,6 +97,8 @@ import {
   createOperatorSystemMetricsCollector,
   createOperatorTunnelActionService,
   createOperatorTunnelRouteActions,
+  createOperatorTtsPlaybackActionService,
+  createOperatorTtsPlaybackRouteActions,
   createOperatorUpdaterActionService,
   createOperatorUpdaterRouteActions,
   createOperatorWhatsAppIntegrationSummaryActionService,
@@ -156,6 +159,7 @@ import {
   serializeOperatorAuditLogEntries,
   setOperatorAgentSessionSnoozedAction,
   showOperatorAgentSessionAction,
+  stopOperatorTtsPlaybackAction,
   stopOperatorAgentSessionAction,
   SENSITIVE_OPERATOR_SETTINGS_KEYS,
   updateOperatorQueuedMessageAction,
@@ -166,6 +170,7 @@ import {
   type OperatorMessageQueueActionOptions,
   type OperatorObservabilityActionOptions,
   type OperatorTunnelActionOptions,
+  type OperatorTtsPlaybackActionOptions,
   type OperatorUpdaterActionOptions,
   startOperatorTunnelAction,
   stopOperatorTunnelAction,
@@ -236,6 +241,70 @@ describe("operator action API helpers", () => {
       isSnoozed: true,
     })
     expect(calls).toEqual(["stop:session-1", "show:session-1", "snooze:session-1"])
+  })
+
+  it("runs TTS playback route actions through a shared service adapter", () => {
+    const calls: string[] = []
+    const options: OperatorTtsPlaybackActionOptions = {
+      diagnostics: {
+        logError: (_source, message) => { calls.push(`error:${message}`) },
+        getErrorMessage: (error) => error instanceof Error ? error.message : String(error),
+      },
+      service: createOperatorTtsPlaybackActionService({
+        stopAllTtsPlayback: () => {
+          calls.push("stop-tts")
+          return { windowsNotified: 2, totalWindows: 3 }
+        },
+      }),
+    }
+
+    expect(stopOperatorTtsPlaybackAction(options)).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "stop-tts-playback",
+        details: {
+          windowsNotified: 2,
+          totalWindows: 3,
+        },
+      },
+      auditContext: {
+        action: "stop-tts-playback",
+        success: true,
+      },
+    })
+    expect(createOperatorTtsPlaybackRouteActions(options).stopOperatorTtsPlayback()).toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        action: "stop-tts-playback",
+      },
+    })
+
+    const failingOptions: OperatorTtsPlaybackActionOptions = {
+      ...options,
+      service: createOperatorTtsPlaybackActionService({
+        stopAllTtsPlayback: () => { throw new Error("renderer gone") },
+      }),
+    }
+    expect(stopOperatorTtsPlaybackAction(failingOptions)).toMatchObject({
+      statusCode: 500,
+      body: {
+        success: false,
+        action: "stop-tts-playback",
+        error: "Failed to stop desktop speech playback: renderer gone",
+      },
+      auditContext: {
+        action: "stop-tts-playback",
+        success: false,
+        failureReason: "Failed to stop desktop speech playback: renderer gone",
+      },
+    })
+    expect(calls).toEqual([
+      "stop-tts",
+      "stop-tts",
+      "error:Failed to stop desktop speech playback: renderer gone",
+    ])
   })
 
   it("runs agent route actions through a shared service adapter", async () => {
@@ -2652,6 +2721,16 @@ describe("operator action API helpers", () => {
       message: "Showing agent session session-1",
       details: {
         sessionId: "session-1",
+      },
+    })
+
+    expect(buildOperatorStopTtsPlaybackResponse({ windowsNotified: 2, totalWindows: 3 })).toEqual({
+      success: true,
+      action: "stop-tts-playback",
+      message: "Stopped desktop speech playback",
+      details: {
+        windowsNotified: 2,
+        totalWindows: 3,
       },
     })
 

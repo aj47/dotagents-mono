@@ -55,6 +55,8 @@ import {
   createOperatorSystemMetricsCollector,
   createOperatorTunnelActionService,
   createOperatorTunnelRouteActions,
+  createOperatorTtsPlaybackActionService,
+  createOperatorTtsPlaybackRouteActions,
   createOperatorUpdaterActionService,
   createOperatorUpdaterRouteActions,
   type OperatorActionAuditContext,
@@ -64,6 +66,7 @@ import {
   type OperatorMessageQueueActionOptions,
   type OperatorObservabilityActionOptions,
   type OperatorTunnelActionOptions,
+  type OperatorTtsPlaybackActionOptions,
   type OperatorUpdaterActionOptions,
 } from "@dotagents/shared/operator-actions"
 import { agentSessionTracker } from "./agent-session-tracker"
@@ -109,6 +112,7 @@ import {
   setPanelMode,
   showPanelWindow,
 } from "./window"
+import { stopAllTtsPlayback } from "./tts-playback-actions"
 
 const getOperatorSystemMetrics = createOperatorSystemMetricsCollector({
   getPlatform: () => os.platform(),
@@ -183,6 +187,18 @@ const agentActionOptions: OperatorAgentActionOptions = {
 }
 
 const operatorAgentRouteActions = createOperatorAgentRouteActions(agentActionOptions)
+
+const ttsPlaybackActionOptions: OperatorTtsPlaybackActionOptions = {
+  diagnostics: {
+    logError: (...args) => diagnosticsService.logError(...args),
+    getErrorMessage,
+  },
+  service: createOperatorTtsPlaybackActionService({
+    stopAllTtsPlayback,
+  }),
+}
+
+const operatorTtsPlaybackRouteActions = createOperatorTtsPlaybackRouteActions(ttsPlaybackActionOptions)
 
 const localSpeechModelService = createLocalSpeechModelActionService({
   diagnostics: {
@@ -389,6 +405,7 @@ const operatorRestartRouteActions = createOperatorRestartRouteActions()
 
 export const operatorRouteDesktopActions = createOperatorRouteActions({
   agent: operatorAgentRouteActions,
+  ttsPlayback: operatorTtsPlaybackRouteActions,
   apiKey: operatorApiKeyRouteActions,
   mcp: operatorMcpRouteActions,
   localSpeechModels: operatorLocalSpeechModelRouteActions,

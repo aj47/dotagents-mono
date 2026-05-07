@@ -150,6 +150,12 @@ function getSharedTtsApiSource(): string {
   return readFileSync(sharedTtsApiPath, "utf8")
 }
 
+function getTtsPlaybackActionsSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const ttsPlaybackActionsPath = path.join(testDir, "tts-playback-actions.ts")
+  return readFileSync(ttsPlaybackActionsPath, "utf8")
+}
+
 function getSharedSettingsApiClientSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedSettingsApiClientPath = path.join(testDir, "../../../../packages/shared/src/settings-api-client.ts")
@@ -662,6 +668,7 @@ describe("remote-server route registration", () => {
     expect(operatorRouteDesktopActionsSource).not.toContain('from "./operator-routes"')
     expect(operatorRouteDesktopActionsSource).toContain('from "@dotagents/shared/remote-server-route-contracts"')
     expect(operatorRouteDesktopActionsSource).toContain("agent: operatorAgentRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("ttsPlayback: operatorTtsPlaybackRouteActions")
     expect(operatorRouteDesktopActionsSource).toContain("observability: operatorObservabilityRouteActions")
     expect(operatorRouteDesktopActionsSource).toContain("audit: operatorAuditRouteActionBundle")
     expect(injectedMcpRoutesSource).not.toContain('from "./injected-mcp-actions"')
@@ -1791,6 +1798,7 @@ describe("remote-server route registration", () => {
       ["POST", "operatorRestartRemoteServer"],
       ["POST", "operatorRestartApp"],
       ["POST", "operatorRunAgent"],
+      ["POST", "operatorStopTtsPlayback"],
       ["POST", "operatorRotateApiKey"],
     ]
 
@@ -1826,6 +1834,7 @@ describe("remote-server route registration", () => {
     const sharedOperatorActionsSource = getSharedOperatorActionsSource()
     const sharedAgentRunUtilsSource = getSharedAgentRunUtilsSource()
     const operatorRouteDesktopActionsSource = getOperatorRouteDesktopActionsSource()
+    const ttsPlaybackActionsSource = getTtsPlaybackActionsSource()
 
     expect(operatorRoutesSource).toContain("actions.getOperatorStatus(getRemoteServerStatus())")
     expect(operatorRoutesSource).toContain("actions.getOperatorHealth()")
@@ -2143,6 +2152,20 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("buildOperatorApiKeyRotationResponse(apiKey)")
     expect(sharedOperatorActionsSource).toContain("buildOperatorApiKeyRotationAuditContext()")
     expect(sharedOperatorActionsSource).toContain("buildOperatorApiKeyRotationFailureAuditContext()")
+    expectRegisteredApiRoute(source, "POST", "operatorStopTtsPlayback")
+    expect(operatorRoutesSource).toContain("actions.stopOperatorTtsPlayback()")
+    expect(operatorRouteDesktopActionsSource).toContain(
+      "const operatorTtsPlaybackRouteActions = createOperatorTtsPlaybackRouteActions(ttsPlaybackActionOptions)",
+    )
+    expect(operatorRouteDesktopActionsSource).toContain("ttsPlayback: operatorTtsPlaybackRouteActions")
+    expect(operatorRouteDesktopActionsSource).toContain("stopAllTtsPlayback")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorTtsPlaybackActionService")
+    expect(sharedOperatorActionsSource).toContain("export function createOperatorTtsPlaybackRouteActions")
+    expect(sharedOperatorActionsSource).toContain("stopOperatorTtsPlayback: () => stopOperatorTtsPlaybackAction(options)")
+    expect(sharedOperatorActionsSource).toContain("buildOperatorStopTtsPlaybackResponse(result)")
+    expect(ttsPlaybackActionsSource).toContain("export function stopAllTtsPlayback()")
+    expect(ttsPlaybackActionsSource).toContain("getRendererHandlers<RendererHandlers>(win.webContents).stopAllTts")
+    expect(ttsPlaybackActionsSource).toContain("windowsNotified")
     // Runtime status shaping stays shared while desktop supplies process and service state.
     expect(sharedOperatorActionsSource).toContain("export function createOperatorSystemMetricsCollector(")
     expect(sharedOperatorActionsSource).toContain("buildOperatorRuntimeStatus({")

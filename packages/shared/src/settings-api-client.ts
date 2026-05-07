@@ -1706,6 +1706,12 @@ export class SettingsApiClient {
     });
   }
 
+  async stopOperatorTtsPlayback(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(API_PATHS.operatorStopTtsPlayback, {
+      method: 'POST',
+    });
+  }
+
   async rotateOperatorApiKey(): Promise<OperatorApiKeyRotationResponse> {
     return this.request<OperatorApiKeyRotationResponse>(API_PATHS.operatorRotateApiKey, {
       method: 'POST',

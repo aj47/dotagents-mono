@@ -304,6 +304,7 @@ export interface OperatorRouteActions<Request = unknown> {
     body: unknown,
     runAgent: OperatorRunAgentExecutor,
   ) => RemoteServerMaybePromise<OperatorRouteActionResult>;
+  stopOperatorTtsPlayback: () => RemoteServerMaybePromise<OperatorRouteActionResult>;
   showOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   stopOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
   snoozeOperatorAgentSession: (sessionId?: string) => RemoteServerMaybePromise<OperatorRouteActionResult>;
@@ -406,6 +407,7 @@ export interface OperatorRouteActionGroups<Request = unknown> {
     | 'snoozeOperatorAgentSession'
     | 'unsnoozeOperatorAgentSession'
   >;
+  ttsPlayback: Pick<OperatorRouteActions<Request>, 'stopOperatorTtsPlayback'>;
   apiKey: Pick<OperatorRouteActions<Request>, 'rotateOperatorRemoteServerApiKey'>;
   mcp: Pick<
     OperatorRouteActions<Request>,
@@ -485,6 +487,7 @@ export function createOperatorRouteActions<Request = unknown>(
 ): OperatorRouteActions<Request> {
   return {
     ...groups.agent,
+    ...groups.ttsPlayback,
     ...groups.apiKey,
     ...groups.mcp,
     ...groups.localSpeechModels,

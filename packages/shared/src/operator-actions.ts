@@ -638,6 +638,42 @@ export interface OperatorAgentRouteActions {
   unsnoozeOperatorAgentSession(sessionIdParam: string | undefined): OperatorAgentActionResult
 }
 
+export type OperatorTtsPlaybackActionResult = {
+  statusCode: number
+  body: unknown
+  auditContext?: OperatorActionAuditContext
+}
+
+export type OperatorStopTtsPlaybackResultLike = {
+  windowsNotified: number
+  totalWindows?: number
+}
+
+export interface OperatorTtsPlaybackActionService {
+  stopAllTtsPlayback(): OperatorStopTtsPlaybackResultLike
+}
+
+export interface OperatorTtsPlaybackActionServiceOptions {
+  stopAllTtsPlayback(): OperatorStopTtsPlaybackResultLike
+}
+
+export function createOperatorTtsPlaybackActionService(
+  options: OperatorTtsPlaybackActionServiceOptions,
+): OperatorTtsPlaybackActionService {
+  return {
+    stopAllTtsPlayback: () => options.stopAllTtsPlayback(),
+  }
+}
+
+export interface OperatorTtsPlaybackActionOptions {
+  diagnostics: Pick<OperatorAgentActionDiagnostics, "logError" | "getErrorMessage">
+  service: OperatorTtsPlaybackActionService
+}
+
+export interface OperatorTtsPlaybackRouteActions {
+  stopOperatorTtsPlayback(): OperatorTtsPlaybackActionResult
+}
+
 export type RunAgentResultLike = AgentRunResult
 
 export type OperatorHealthLike = Pick<OperatorHealthSnapshot, "overall" | "checks">
@@ -2174,6 +2210,20 @@ export function buildOperatorAgentSessionShowResponse(sessionId: string): Operat
   }
 }
 
+export function buildOperatorStopTtsPlaybackResponse(
+  result: OperatorStopTtsPlaybackResultLike,
+): OperatorActionResponse {
+  return {
+    success: true,
+    action: "stop-tts-playback",
+    message: "Stopped desktop speech playback",
+    details: {
+      windowsNotified: result.windowsNotified,
+      ...(typeof result.totalWindows === "number" ? { totalWindows: result.totalWindows } : {}),
+    },
+  }
+}
+
 export function buildOperatorAgentSessionSnoozedResponse(
   sessionId: string,
   isSnoozed: boolean,
@@ -2442,6 +2492,41 @@ export function createOperatorAgentRouteActions(
       setOperatorAgentSessionSnoozedAction(sessionIdParam, true, options),
     unsnoozeOperatorAgentSession: (sessionIdParam) =>
       setOperatorAgentSessionSnoozedAction(sessionIdParam, false, options),
+  }
+}
+
+function operatorTtsPlaybackActionResult(
+  statusCode: number,
+  body: unknown,
+  auditContext?: OperatorActionAuditContext,
+): OperatorTtsPlaybackActionResult {
+  return {
+    statusCode,
+    body,
+    ...(auditContext ? { auditContext } : {}),
+  }
+}
+
+export function stopOperatorTtsPlaybackAction(
+  options: OperatorTtsPlaybackActionOptions,
+): OperatorTtsPlaybackActionResult {
+  try {
+    const result = options.service.stopAllTtsPlayback()
+    const response = buildOperatorStopTtsPlaybackResponse(result)
+    return operatorTtsPlaybackActionResult(200, response, buildOperatorActionAuditContext(response))
+  } catch (caughtError) {
+    const errorMessage = options.diagnostics.getErrorMessage(caughtError)
+    const response = buildOperatorActionErrorResponse("stop-tts-playback", `Failed to stop desktop speech playback: ${errorMessage}`)
+    options.diagnostics.logError("operator-tts-playback-actions", `Failed to stop desktop speech playback: ${errorMessage}`, caughtError)
+    return operatorTtsPlaybackActionResult(500, response, buildOperatorActionAuditContext(response))
+  }
+}
+
+export function createOperatorTtsPlaybackRouteActions(
+  options: OperatorTtsPlaybackActionOptions,
+): OperatorTtsPlaybackRouteActions {
+  return {
+    stopOperatorTtsPlayback: () => stopOperatorTtsPlaybackAction(options),
   }
 }
 
