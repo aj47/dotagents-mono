@@ -262,6 +262,16 @@ export interface ChatCompletionRouteActions<Reply extends ChatCompletionActionRe
   ): Promise<unknown>;
 }
 
+export interface ChatRouteActionBundleOptions {
+  models: ModelActionOptions;
+  chatCompletion: ChatCompletionActionOptions;
+}
+
+export interface ChatRouteActionBundle<Reply extends ChatCompletionActionReplyLike = ChatCompletionActionReplyLike> {
+  models: ModelRouteActions;
+  chatCompletion: ChatCompletionRouteActions<Reply>;
+}
+
 export type ToolArgumentEntry = {
   key: string;
   value: unknown;
@@ -912,6 +922,15 @@ export function createChatCompletionRouteActions<Reply extends ChatCompletionAct
   return {
     handleChatCompletionRequest: (body, origin, reply, runAgent) =>
       handleChatCompletionRequestAction(body, origin, reply, runAgent, options),
+  };
+}
+
+export function createChatRouteActionBundle<Reply extends ChatCompletionActionReplyLike = ChatCompletionActionReplyLike>(
+  options: ChatRouteActionBundleOptions,
+): ChatRouteActionBundle<Reply> {
+  return {
+    models: createModelRouteActions(options.models),
+    chatCompletion: createChatCompletionRouteActions<Reply>(options.chatCompletion),
   };
 }
 

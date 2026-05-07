@@ -24,6 +24,7 @@ import {
   buildOpenAICompatibleModelsResponse,
   buildProviderModelsResponse,
   createChatCompletionRouteActions,
+  createChatRouteActionBundle,
   createModelRouteActions,
   getModelsAction,
   getProviderModelsAction,
@@ -895,6 +896,53 @@ describe('handleChatCompletionRequestAction', () => {
       conversation_id: 'conv-1',
       choices: [expect.objectContaining({
         message: { role: 'assistant', content: 'Reply to Hello route' },
+      })],
+    }))
+  })
+
+  it('creates chat route action bundles for models and completions', async () => {
+    const reply = createReply()
+    const actionOptions = createActionOptions()
+    const routeActionBundle = createChatRouteActionBundle({
+      models: {
+        getConfig: actionOptions.getActiveModelConfig,
+        fetchAvailableModels: vi.fn(async () => []),
+        diagnostics: {
+          logError: vi.fn(),
+        },
+      },
+      chatCompletion: actionOptions,
+    })
+    const runAgent = vi.fn(async (options: any) => ({
+      content: `Reply to ${options.prompt}`,
+      conversationId: options.conversationId,
+      conversationHistory: [{ role: 'assistant', content: 'Done' }],
+    }))
+
+    expect(routeActionBundle.models.getModels()).toEqual({
+      statusCode: 200,
+      body: buildOpenAICompatibleModelsResponse(['gpt-test']),
+    })
+    await routeActionBundle.chatCompletion.handleChatCompletionRequest(
+      {
+        messages: [{ role: 'user', content: 'Hello bundle' }],
+        conversation_id: 'conv-1',
+        stream: false,
+      },
+      'https://mobile.example',
+      reply,
+      runAgent,
+    )
+
+    expect(runAgent).toHaveBeenCalledWith({
+      prompt: 'Hello bundle',
+      conversationId: 'conv-1',
+      profileId: undefined,
+    })
+    expect(reply.body).toEqual(expect.objectContaining({
+      conversation_id: 'conv-1',
+      choices: [expect.objectContaining({
+        message: { role: 'assistant', content: 'Reply to Hello bundle' },
       })],
     }))
   })

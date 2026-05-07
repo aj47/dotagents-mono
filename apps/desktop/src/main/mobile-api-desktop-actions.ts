@@ -23,8 +23,7 @@ import {
 } from "@dotagents/shared/knowledge-note-form"
 import {
   createChatTranscriptHistoryRecorder,
-  createChatCompletionRouteActions,
-  createModelRouteActions,
+  createChatRouteActionBundle,
   type ChatCompletionActionOptions,
   type ModelActionOptions,
 } from "@dotagents/shared/chat-utils"
@@ -115,8 +114,6 @@ const modelActionOptions: ModelActionOptions = {
   diagnostics: diagnosticsService,
 }
 
-const modelRouteActions = createModelRouteActions(modelActionOptions)
-
 const historyPath = path.join(recordingsFolder, "history.json")
 const recordHistory = createChatTranscriptHistoryRecorder({
   store: {
@@ -137,7 +134,10 @@ const chatCompletionActionOptions: ChatCompletionActionOptions = {
   logger: console,
 }
 
-const chatCompletionRouteActions = createChatCompletionRouteActions(chatCompletionActionOptions)
+const chatRouteActionBundle = createChatRouteActionBundle({
+  models: modelActionOptions,
+  chatCompletion: chatCompletionActionOptions,
+})
 
 const agentSessionCandidateActionOptions: AgentSessionCandidateActionOptions = {
   service: {
@@ -426,8 +426,8 @@ const skillActionOptions: SkillActionOptions = {
 const skillRouteActions = createSkillRouteActions(skillActionOptions)
 
 export const mobileApiDesktopActions = createMobileApiRouteActions({
-  chatCompletion: chatCompletionRouteActions,
-  models: modelRouteActions,
+  chatCompletion: chatRouteActionBundle.chatCompletion,
+  models: chatRouteActionBundle.models,
   profiles: profileRouteActionBundle.profiles,
   bundle: bundleRouteActions,
   mcp: mcpRouteActions,
