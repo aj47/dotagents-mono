@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Session } from './session';
 import {
   applyServerConversationUpdate,
+  applyServerConversationMessageLimit,
   appendServerConversationMessage,
   buildNewServerConversation,
   buildBranchedServerConversation,
@@ -23,6 +24,7 @@ import {
   getConversationAction,
   getConversationsAction,
   getRepresentedServerConversationMessageCount,
+  getRepresentedServerConversationMessageSliceCount,
   getStoredServerConversationMessages,
   parseCreateConversationRequestBody,
   parseBranchConversationRequestBody,
@@ -302,6 +304,33 @@ describe('server conversation API helpers', () => {
       ],
       rawMessages: [],
     })).toBe(6);
+  });
+
+  it('limits loaded conversation messages without returning raw history payloads', () => {
+    const limited = applyServerConversationMessageLimit({
+      id: 'conv-limit',
+      title: 'Limit',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [
+        { id: 'summary-1', role: 'assistant' as const, content: 'Summary', timestamp: 1, isSummary: true, summarizedMessageCount: 3 },
+        { id: 'msg-1', role: 'user' as const, content: 'Middle', timestamp: 2 },
+        { id: 'msg-2', role: 'assistant' as const, content: 'Answer', timestamp: 3 },
+        { id: 'msg-3', role: 'user' as const, content: 'Follow up', timestamp: 4 },
+      ],
+      rawMessages: [
+        { id: 'raw-1', role: 'user' as const, content: 'raw 1', timestamp: 1 },
+      ],
+    }, 2);
+
+    expect(limited.messages.map((message) => message.content)).toEqual(['Answer', 'Follow up']);
+    expect(limited).not.toHaveProperty('rawMessages');
+    expect(limited.messageOffset).toBe(2);
+    expect(limited.totalMessageCount).toBe(4);
+    expect(limited.branchMessageIndexOffset).toBe(4);
+    expect(getRepresentedServerConversationMessageSliceCount([
+      { id: 'summary-1', role: 'assistant', content: 'Summary', timestamp: 1, isSummary: true, summarizedMessageCount: 0 },
+    ])).toBe(1);
   });
 
   it('appends messages and updates compacted raw history consistently', () => {

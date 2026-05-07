@@ -15,6 +15,7 @@ import type {
 } from "@dotagents/shared/conversation-domain"
 import {
   appendServerConversationMessage,
+  applyServerConversationMessageLimit,
   buildBranchedServerConversation,
   buildNewServerConversation,
   buildServerConversationHistoryItem,
@@ -780,41 +781,11 @@ export class ConversationService {
     return messages.some((message) => message.isSummary)
   }
 
-  private getRepresentedCountForMessages(messages: ConversationMessage[]): number {
-    return messages.reduce((total, message) => {
-      if (message.isSummary) {
-        return total + Math.max(message.summarizedMessageCount ?? 0, 1)
-      }
-      return total + 1
-    }, 0)
-  }
-
   private applyConversationMessageLimit(
     conversation: Conversation,
     messageLimit?: number,
   ): LoadedConversation {
-    const normalizedLimit = typeof messageLimit === "number" && Number.isFinite(messageLimit)
-      ? Math.max(0, Math.floor(messageLimit ?? 0))
-      : 0
-
-    if (normalizedLimit <= 0) {
-      return conversation
-    }
-
-    const totalMessageCount = conversation.messages.length
-    const messageOffset = Math.max(0, totalMessageCount - normalizedLimit)
-    const branchMessageIndexOffset = this.getRepresentedCountForMessages(
-      conversation.messages.slice(0, messageOffset),
-    )
-    const { rawMessages: _rawMessages, ...conversationWithoutRawMessages } = conversation
-
-    return {
-      ...conversationWithoutRawMessages,
-      messages: conversation.messages.slice(messageOffset),
-      messageOffset,
-      totalMessageCount,
-      branchMessageIndexOffset,
-    }
+    return applyServerConversationMessageLimit(conversation, messageLimit) as LoadedConversation
   }
 
   private getStoredRawMessages(conversation: Conversation): ConversationMessage[] {

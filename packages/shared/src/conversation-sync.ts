@@ -198,6 +198,12 @@ export interface BuildServerConversationHistoryItemOptions {
   maxPreviewChars?: number;
 }
 
+export type LimitedServerConversationRecord<TConversation extends ServerConversationRecord<any>> = TConversation & {
+  messageOffset?: number;
+  totalMessageCount?: number;
+  branchMessageIndexOffset?: number;
+};
+
 export function createServerConversationMessageId(timestamp: number, index: number): string {
   return `msg_${timestamp}_${index}_${Math.random().toString(36).substr(2, 9)}`;
 }
@@ -411,6 +417,45 @@ export function getRepresentedServerConversationMessageCount<TConversation exten
   }
 
   return getStoredServerConversationMessages(conversation).length;
+}
+
+export function getRepresentedServerConversationMessageSliceCount(
+  messages: ServerConversationRecordMessage[],
+): number {
+  return messages.reduce((total, message) => {
+    if (message.isSummary) {
+      return total + Math.max(message.summarizedMessageCount ?? 0, 1);
+    }
+    return total + 1;
+  }, 0);
+}
+
+export function applyServerConversationMessageLimit<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+  messageLimit?: number,
+): LimitedServerConversationRecord<TConversation> {
+  const normalizedLimit = typeof messageLimit === 'number' && Number.isFinite(messageLimit)
+    ? Math.max(0, Math.floor(messageLimit ?? 0))
+    : 0;
+
+  if (normalizedLimit <= 0) {
+    return conversation;
+  }
+
+  const totalMessageCount = conversation.messages.length;
+  const messageOffset = Math.max(0, totalMessageCount - normalizedLimit);
+  const branchMessageIndexOffset = getRepresentedServerConversationMessageSliceCount(
+    conversation.messages.slice(0, messageOffset),
+  );
+  const { rawMessages: _rawMessages, ...conversationWithoutRawMessages } = conversation;
+
+  return {
+    ...conversationWithoutRawMessages,
+    messages: conversation.messages.slice(messageOffset),
+    messageOffset,
+    totalMessageCount,
+    branchMessageIndexOffset,
+  } as LimitedServerConversationRecord<TConversation>;
 }
 
 export function buildServerConversationHistoryItem<TConversation extends ServerConversationRecord<any>>(
