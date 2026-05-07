@@ -22,6 +22,7 @@ const panelPageSource = readFileSync(new URL("../pages/panel.tsx", import.meta.u
 
 describe("desktop panel renderer client", () => {
   it("centralizes panel IPC channels", () => {
+    expect(clientSource).toContain("rendererHandlers.onPanelSizeChanged.listen(listener)")
     expect(clientSource).toContain("tipcClient.setPanelFocusable(request)")
     expect(clientSource).toContain("tipcClient.getFloatingPanelVisibility()")
     expect(clientSource).toContain("tipcClient.getPanelPosition()")
@@ -62,12 +63,14 @@ describe("desktop panel renderer client", () => {
     expect(panelDragBarSource).toContain("desktopPanelClient.savePanelCustomPosition({")
     expect(panelDragBarSource).toContain("desktopPanelClient.getPanelPosition()")
     expect(panelResizeWrapperSource).toContain("desktopPanelClient.getPanelSize()")
+    expect(panelResizeWrapperSource).toContain("desktopPanelClient.onPanelSizeChanged(")
     expect(panelResizeWrapperSource).toContain("desktopPanelClient.updatePanelSize(")
     expect(panelResizeWrapperSource).toContain("desktopPanelClient.getPanelMode()")
     expect(panelResizeWrapperSource).toContain("desktopPanelClient.savePanelModeSize({")
     expect(panelResizeWrapperSource).toContain("desktopPanelClient.savePanelCustomSize(")
     expect(resizeHandleSource).toContain("desktopPanelClient.getPanelSize()")
     expect(combinedSource).not.toContain("tipcClient.getPanelPosition(")
+    expect(combinedSource).not.toContain("rendererHandlers.onPanelSizeChanged")
     expect(combinedSource).not.toContain("tipcClient.updatePanelPosition(")
     expect(combinedSource).not.toContain("tipcClient.savePanelCustomPosition(")
     expect(combinedSource).not.toContain("tipcClient.getPanelSize(")
@@ -80,9 +83,11 @@ describe("desktop panel renderer client", () => {
   it("keeps panel page mode and size plumbing off direct panel IPC", () => {
     expect(panelPageSource).toContain("desktopPanelClient.setPanelMode(mode)")
     expect(panelPageSource).toContain("desktopPanelClient.getPanelSize()")
+    expect(panelPageSource).toContain("desktopPanelClient.onPanelSizeChanged(updateNativePanelSize)")
     expect(panelPageSource).toContain("desktopPanelClient.resizePanelForWaveformPreview(hasPreview)")
     expect(panelPageSource).not.toContain("tipcClient.setPanelMode(")
     expect(panelPageSource).not.toContain("tipcClient.getPanelSize(")
+    expect(panelPageSource).not.toContain("rendererHandlers.onPanelSizeChanged")
     expect(panelPageSource).not.toContain("tipcClient.resizePanelForWaveformPreview(")
   })
 

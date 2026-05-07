@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { ResizeHandle } from "@renderer/components/resize-handle"
 import { desktopPanelClient } from "@renderer/lib/desktop-panel-client"
-import { rendererHandlers } from "@renderer/lib/tipc-client"
 import { getNativePanelResizeSize, isPanelSize, type PanelSize } from "./panel-resize-utils"
 
 export { getNativePanelResizeSize } from "./panel-resize-utils"
@@ -58,7 +57,7 @@ export function PanelResizeWrapper({
 
   // Listen for size changes from main process (when main programmatically resizes panel)
   useEffect(() => {
-    const unlisten = rendererHandlers.onPanelSizeChanged.listen((size) => {
+    const unlisten = desktopPanelClient.onPanelSizeChanged((size) => {
       if (isPanelSize(size)) {
         setCurrentSize(size)
       }

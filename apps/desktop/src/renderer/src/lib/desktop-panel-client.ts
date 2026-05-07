@@ -1,5 +1,5 @@
 import type { PanelPoint, PanelSize } from "@dotagents/shared/api-types"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 
 export interface DesktopPanelFocusableRequest {
   focusable: boolean
@@ -17,6 +17,10 @@ export interface DesktopPanelModeSizeRequest extends PanelSize {
 }
 
 export const desktopPanelClient = {
+  onPanelSizeChanged(listener: (size: PanelSize) => void): () => void {
+    return rendererHandlers.onPanelSizeChanged.listen(listener)
+  },
+
   setPanelFocusable(request: DesktopPanelFocusableRequest): Promise<void> {
     return tipcClient.setPanelFocusable(request) as Promise<void>
   },

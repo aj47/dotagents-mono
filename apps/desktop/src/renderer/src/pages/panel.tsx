@@ -328,7 +328,7 @@ export function Component() {
       console.error("Failed to get panel size for zoom compensation:", error)
     })
 
-    const unlisten = rendererHandlers.onPanelSizeChanged.listen(updateNativePanelSize)
+    const unlisten = desktopPanelClient.onPanelSizeChanged(updateNativePanelSize)
     return unlisten
   }, [])
 
