@@ -13,6 +13,7 @@ describe("remote server settings secret references", () => {
     const source = getRemoteServerSettingsSource()
 
     expect(source).toContain("REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS")
+    expect(source).toContain("REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA")
     expect(source).not.toContain("const bindOptions")
     expect(source).toContain("REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS")
     expect(source).toContain("CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS")
@@ -30,6 +31,7 @@ describe("remote server settings secret references", () => {
     expect(source).toContain("DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED")
     expect(source).toContain("DEFAULT_STREAMER_MODE_ENABLED")
     expect(source).toContain("DEFAULT_CLOUDFLARE_TUNNEL_MODE")
+    expect(source).not.toContain('label="Bind Address"')
     expect(source).not.toContain('label="Port"')
     expect(source).not.toContain('label="CORS Origins"')
     expect(source).not.toContain('placeholder="* or http://localhost:8081')

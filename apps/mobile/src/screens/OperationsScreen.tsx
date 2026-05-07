@@ -77,6 +77,7 @@ import {
   DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED,
   isRemoteServerPortUpdateValue,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
+  REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
   REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_PORT_FIELD_METADATA,
@@ -1781,7 +1782,7 @@ export default function OperationsScreen({ navigation }: any) {
               />
               <Text style={styles.helperText}>Changing the port can temporarily disconnect this mobile session.</Text>
 
-              <Text style={styles.label}>Bind Address</Text>
+              <Text style={styles.label}>{REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.label}</Text>
               <View style={styles.chipRow}>
                 {REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS.map((option) => {
                   const selected = (settings.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS) === option.value;
@@ -1801,7 +1802,7 @@ export default function OperationsScreen({ navigation }: any) {
                       disabled={controlsDisabled}
                       accessibilityRole="button"
                       accessibilityState={{ selected, disabled: controlsDisabled }}
-                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.compactLabel} for remote server bind address`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.compactLabel} for ${REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.accessibilityLabel}`)}
                     >
                       <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>
                         {option.compactLabel}
@@ -1810,7 +1811,7 @@ export default function OperationsScreen({ navigation }: any) {
                   );
                 })}
               </View>
-              <Text style={styles.helperText}>Use 0.0.0.0 for LAN/mobile access. 127.0.0.1 keeps the server on the desktop only.</Text>
+              <Text style={styles.helperText}>{REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.helperText}</Text>
 
               <Text style={styles.label}>Log Level</Text>
               <View style={styles.chipRow}>

@@ -31,6 +31,15 @@ export type RemoteServerBindAddressOption = {
   successMessage: string;
 };
 
+export type RemoteServerBindAddressFieldMetadata = {
+  key: 'remoteServerBindAddress';
+  label: string;
+  tooltip: string;
+  helperText: string;
+  lanWarningText: string;
+  accessibilityLabel: string;
+};
+
 export type RemoteServerLogLevelOption = {
   value: RemoteServerLogLevel;
   label: string;
@@ -75,6 +84,14 @@ export const REMOTE_SERVER_PORT_FIELD_METADATA: RemoteServerPortFieldMetadata = 
   accessibilityLabel: 'Remote server port',
   invalidTitle: 'Invalid Port',
   invalidMessage: `Enter a whole number between ${REMOTE_SERVER_PORT_MIN} and ${REMOTE_SERVER_PORT_MAX}.`,
+};
+export const REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA: RemoteServerBindAddressFieldMetadata = {
+  key: 'remoteServerBindAddress',
+  label: 'Bind Address',
+  tooltip: '127.0.0.1 for local-only access; 0.0.0.0 to allow LAN access (requires API key).',
+  helperText: 'Use 0.0.0.0 for LAN/mobile access. 127.0.0.1 keeps the server on the desktop only.',
+  lanWarningText: 'Warning: Exposes the server on your local network. Keep your API key secure.',
+  accessibilityLabel: 'remote server bind address',
 };
 export const REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS: readonly RemoteServerBindAddressOption[] = [
   {

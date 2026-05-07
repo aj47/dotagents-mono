@@ -55,6 +55,7 @@ import {
   normalizeRemoteHostForComparison,
   parseDotAgentsConfigDeepLink,
   REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
+  REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
@@ -100,6 +101,14 @@ describe('remote server config contracts', () => {
     expect(DEFAULT_REMOTE_SERVER_BIND_ADDRESS).toBe('127.0.0.1');
     expect(DEFAULT_REMOTE_SERVER_ENABLED).toBe(false);
     expect(REMOTE_SERVER_BIND_ADDRESS_OPTIONS).toEqual(['127.0.0.1', '0.0.0.0']);
+    expect(REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA).toEqual({
+      key: 'remoteServerBindAddress',
+      label: 'Bind Address',
+      tooltip: '127.0.0.1 for local-only access; 0.0.0.0 to allow LAN access (requires API key).',
+      helperText: 'Use 0.0.0.0 for LAN/mobile access. 127.0.0.1 keeps the server on the desktop only.',
+      lanWarningText: 'Warning: Exposes the server on your local network. Keep your API key secure.',
+      accessibilityLabel: 'remote server bind address',
+    });
     expect(REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS).toEqual([
       {
         value: '127.0.0.1',

@@ -34,6 +34,7 @@ import {
   isLoopbackRemoteHost,
   isUnconnectableRemoteHostForMobilePairing,
   isWildcardRemoteHost,
+  REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA,
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
@@ -266,7 +267,15 @@ export function RemoteServerSettingsGroups({
                 />
               </Control>
 
-              <Control label={<ControlLabel label="Bind Address" tooltip="127.0.0.1 for local-only access; 0.0.0.0 to allow LAN access (requires API key)" />} className="px-3">
+              <Control
+                label={(
+                  <ControlLabel
+                    label={REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.label}
+                    tooltip={REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.tooltip}
+                  />
+                )}
+                className="px-3"
+              >
                 <Select
                   value={cfg.remoteServerBindAddress || DEFAULT_REMOTE_SERVER_BIND_ADDRESS}
                   onValueChange={(value: RemoteServerBindAddress) =>
@@ -286,7 +295,7 @@ export function RemoteServerSettingsGroups({
                 </Select>
                 {cfg.remoteServerBindAddress === "0.0.0.0" && (
                   <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                    Warning: Exposes the server on your local network. Keep your API key secure.
+                    {REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.lanWarningText}
                   </div>
                 )}
               </Control>
