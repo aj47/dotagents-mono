@@ -4,6 +4,61 @@ export const DEFAULT_DISCORD_DM_ENABLED = true
 export const DEFAULT_DISCORD_REQUIRE_MENTION = true
 export const DEFAULT_DISCORD_LOG_MESSAGES = false
 
+export type DiscordListSettingKey =
+  | "discordAllowUserIds"
+  | "discordAllowGuildIds"
+  | "discordAllowChannelIds"
+  | "discordAllowRoleIds"
+  | "discordDmAllowUserIds"
+
+export type DiscordListSettingSection = {
+  key: DiscordListSettingKey
+  label: string
+  placeholder: string
+  helper: string
+}
+
+export const DISCORD_LIST_SETTING_KEYS: readonly DiscordListSettingKey[] = [
+  "discordAllowUserIds",
+  "discordAllowGuildIds",
+  "discordAllowChannelIds",
+  "discordAllowRoleIds",
+  "discordDmAllowUserIds",
+]
+
+export const DISCORD_LIST_SETTING_SECTIONS: readonly DiscordListSettingSection[] = [
+  {
+    key: "discordAllowUserIds",
+    label: "Allowed User IDs",
+    placeholder: "One Discord user ID per line",
+    helper: "Leave blank to allow the bot owner and configured operator allowlists.",
+  },
+  {
+    key: "discordAllowGuildIds",
+    label: "Allowed Server IDs",
+    placeholder: "One Discord server ID per line",
+    helper: "Restrict server mention handling to specific Discord servers.",
+  },
+  {
+    key: "discordAllowChannelIds",
+    label: "Allowed Channel IDs",
+    placeholder: "One Discord channel or thread ID per line",
+    helper: "Restrict server mention handling to specific channels or threads.",
+  },
+  {
+    key: "discordAllowRoleIds",
+    label: "Allowed Role IDs",
+    placeholder: "One Discord role ID per line",
+    helper: "Allow users with these roles to interact with the bot in servers.",
+  },
+  {
+    key: "discordDmAllowUserIds",
+    label: "DM Allowed User IDs",
+    placeholder: "One Discord user ID per line",
+    helper: "Restrict direct-message access to specific Discord users.",
+  },
+]
+
 export type DiscordConfigSource = "config" | "env"
 export type DiscordLifecycleAction = "noop" | "start" | "stop" | "restart"
 export type DiscordConversationEpochs = Record<string, number>

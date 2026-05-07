@@ -122,6 +122,9 @@ import {
   DEFAULT_DISCORD_DM_ENABLED,
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
+  DISCORD_LIST_SETTING_KEYS,
+  DISCORD_LIST_SETTING_SECTIONS,
+  type DiscordListSettingKey,
 } from '@dotagents/shared/discord-config';
 import {
   DEFAULT_WHATSAPP_AUTO_REPLY,
@@ -206,12 +209,6 @@ type ProviderSecretSettingKey =
   | 'chatgptWebAccessToken'
   | 'chatgptWebSessionToken';
 type ProviderBaseUrlSettingKey = 'openaiBaseUrl' | 'groqBaseUrl' | 'geminiBaseUrl' | 'chatgptWebBaseUrl';
-type DiscordListSettingKey =
-  | 'discordAllowUserIds'
-  | 'discordAllowGuildIds'
-  | 'discordAllowChannelIds'
-  | 'discordAllowRoleIds'
-  | 'discordDmAllowUserIds';
 
 type ModelPresetEditorMode = 'create' | 'edit';
 type McpServerEditorMode = 'create' | 'replace';
@@ -276,52 +273,6 @@ const PROVIDER_CREDENTIAL_SECTIONS: Array<{
     ],
     baseUrl: 'chatgptWebBaseUrl',
     baseUrlPlaceholder: 'https://chatgpt.com',
-  },
-];
-
-const DISCORD_LIST_SETTING_KEYS: DiscordListSettingKey[] = [
-  'discordAllowUserIds',
-  'discordAllowGuildIds',
-  'discordAllowChannelIds',
-  'discordAllowRoleIds',
-  'discordDmAllowUserIds',
-];
-
-const DISCORD_LIST_SETTING_SECTIONS: Array<{
-  key: DiscordListSettingKey;
-  label: string;
-  placeholder: string;
-  helper: string;
-}> = [
-  {
-    key: 'discordAllowUserIds',
-    label: 'Allowed User IDs',
-    placeholder: 'One Discord user ID per line',
-    helper: 'Leave blank to allow the bot owner and configured operator allowlists.',
-  },
-  {
-    key: 'discordAllowGuildIds',
-    label: 'Allowed Server IDs',
-    placeholder: 'One Discord server ID per line',
-    helper: 'Restrict server mention handling to specific Discord servers.',
-  },
-  {
-    key: 'discordAllowChannelIds',
-    label: 'Allowed Channel IDs',
-    placeholder: 'One Discord channel or thread ID per line',
-    helper: 'Restrict server mention handling to specific channels or threads.',
-  },
-  {
-    key: 'discordAllowRoleIds',
-    label: 'Allowed Role IDs',
-    placeholder: 'One Discord role ID per line',
-    helper: 'Allow users with these roles to interact with the bot in servers.',
-  },
-  {
-    key: 'discordDmAllowUserIds',
-    label: 'DM Allowed User IDs',
-    placeholder: 'One Discord user ID per line',
-    helper: 'Restrict direct-message access to specific Discord users.',
   },
 ];
 

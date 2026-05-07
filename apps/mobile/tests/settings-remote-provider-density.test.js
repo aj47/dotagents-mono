@@ -11,6 +11,10 @@ const remoteSettingsDraftsSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'remote-settings-input-drafts.ts'),
   'utf8'
 );
+const discordConfigSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'discord-config.ts'),
+  'utf8'
+);
 
 function extractBetween(startMarker, endMarker) {
   const start = settingsSource.indexOf(startMarker);
@@ -304,7 +308,10 @@ test('lets mobile configure desktop Discord integration settings without echoing
     '<CollapsibleSection id="langfuse" title="Langfuse">'
   );
 
+  assert.match(discordConfigSource, /DISCORD_LIST_SETTING_KEYS/);
+  assert.match(discordConfigSource, /DISCORD_LIST_SETTING_SECTIONS/);
   assert.match(settingsSource, /DISCORD_LIST_SETTING_SECTIONS/);
+  assert.match(settingsSource, /DISCORD_LIST_SETTING_KEYS/);
   assert.match(remoteSettingsDraftsSource, /discordBotToken: getRemoteSettingsSecretInputDraft\(settings\.discordBotToken, secretMask\)/);
   assert.match(settingsSource, /updates\.discordBotToken = inputDrafts\.discordBotToken \?\? ''/);
   assert.match(settingsSource, /updates\[key\] = parseConfigListInput\(inputDrafts\[key\] \?\? '', \{ unique: true \}\)/);

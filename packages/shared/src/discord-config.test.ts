@@ -5,6 +5,8 @@ import {
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
   DISCORD_SECRET_MASK,
+  DISCORD_LIST_SETTING_KEYS,
+  DISCORD_LIST_SETTING_SECTIONS,
   applyDiscordLifecycleActionToService,
   getDiscordLifecycleAction,
   getDiscordResolvedDefaultProfileId,
@@ -25,6 +27,48 @@ describe('discord config helpers', () => {
     expect(DEFAULT_DISCORD_ENABLED).toBe(false);
     expect(DEFAULT_DISCORD_REQUIRE_MENTION).toBe(true);
     expect(DEFAULT_DISCORD_LOG_MESSAGES).toBe(false);
+  });
+
+  it('describes editable Discord list setting sections', () => {
+    expect(DISCORD_LIST_SETTING_KEYS).toEqual([
+      'discordAllowUserIds',
+      'discordAllowGuildIds',
+      'discordAllowChannelIds',
+      'discordAllowRoleIds',
+      'discordDmAllowUserIds',
+    ]);
+    expect(DISCORD_LIST_SETTING_SECTIONS).toEqual([
+      {
+        key: 'discordAllowUserIds',
+        label: 'Allowed User IDs',
+        placeholder: 'One Discord user ID per line',
+        helper: 'Leave blank to allow the bot owner and configured operator allowlists.',
+      },
+      {
+        key: 'discordAllowGuildIds',
+        label: 'Allowed Server IDs',
+        placeholder: 'One Discord server ID per line',
+        helper: 'Restrict server mention handling to specific Discord servers.',
+      },
+      {
+        key: 'discordAllowChannelIds',
+        label: 'Allowed Channel IDs',
+        placeholder: 'One Discord channel or thread ID per line',
+        helper: 'Restrict server mention handling to specific channels or threads.',
+      },
+      {
+        key: 'discordAllowRoleIds',
+        label: 'Allowed Role IDs',
+        placeholder: 'One Discord role ID per line',
+        helper: 'Allow users with these roles to interact with the bot in servers.',
+      },
+      {
+        key: 'discordDmAllowUserIds',
+        label: 'DM Allowed User IDs',
+        placeholder: 'One Discord user ID per line',
+        helper: 'Restrict direct-message access to specific Discord users.',
+      },
+    ]);
   });
 
   it('exposes the persisted Discord integration config contract', () => {
