@@ -78,6 +78,7 @@ import {
   createProfileRouteActionBundle,
 } from "@dotagents/shared/profile-api"
 import {
+  createRepeatTaskActionService,
   createRepeatTaskRuntimeId,
   createRepeatTaskRouteActions,
   type RepeatTaskActionOptions,
@@ -318,12 +319,14 @@ async function loadLoopService(): Promise<RepeatTaskLoopService<LoopConfig> | nu
   }
 }
 
-const repeatTaskActionOptions: RepeatTaskActionOptions<LoopConfig, ReturnType<typeof configStore.get>> = {
-  loadLoopService,
-  getConfig: () => configStore.get(),
-  saveConfig: (config) => configStore.save(config),
-  createId: createRepeatTaskRuntimeId,
-  getProfileName: getLoopProfileName,
+const repeatTaskActionOptions: RepeatTaskActionOptions<LoopConfig> = {
+  service: createRepeatTaskActionService<LoopConfig, ReturnType<typeof configStore.get>>({
+    loadLoopService,
+    getConfig: () => configStore.get(),
+    saveConfig: (config) => configStore.save(config),
+    createId: createRepeatTaskRuntimeId,
+    getProfileName: getLoopProfileName,
+  }),
   diagnostics: diagnosticsService,
 }
 

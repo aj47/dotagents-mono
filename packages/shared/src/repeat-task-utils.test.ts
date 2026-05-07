@@ -4,6 +4,7 @@ import {
   applyRepeatTaskUpdate,
   applyRepeatTaskRuntimeStatus,
   createRepeatTaskAction,
+  createRepeatTaskActionService,
   createRepeatTaskRuntimeId,
   createRepeatTaskRouteActions,
   buildRepeatTaskMutationResponse,
@@ -774,6 +775,45 @@ describe("repeat task schedule helpers", () => {
     })
   })
 
+  it("creates repeat task action services from loop and fallback config adapters", async () => {
+    const loop = {
+      id: "loop_1",
+      name: "Morning check",
+      prompt: "summarize overnight work",
+      intervalMinutes: 60,
+      enabled: true,
+      profileId: "profile_1",
+    }
+    const loopService = {
+      getLoops: () => [loop],
+      getLoopStatuses: () => [],
+      getLoop: (id: string) => id === loop.id ? loop : undefined,
+      saveLoop: () => true,
+      startLoop: () => undefined,
+      stopLoop: () => undefined,
+      triggerLoop: () => true,
+      getLoopStatus: () => undefined,
+      deleteLoop: () => true,
+    }
+    let config = { loops: [loop], untouched: true }
+    const service = createRepeatTaskActionService({
+      loadLoopService: () => loopService,
+      getConfig: () => config,
+      saveConfig: (nextConfig: typeof config) => {
+        config = nextConfig
+      },
+      createId: () => "loop_new",
+      getProfileName: (profileId?: string) => profileId === "profile_1" ? "Research Agent" : undefined,
+    })
+
+    expect(await service.loadLoopService()).toBe(loopService)
+    expect(service.getFallbackLoops()).toEqual([loop])
+    service.saveFallbackLoops([{ ...loop, enabled: false }])
+    expect(config).toEqual({ loops: [{ ...loop, enabled: false }], untouched: true })
+    expect(service.createId()).toBe("loop_new")
+    expect(service.getProfileName?.("profile_1")).toBe("Research Agent")
+  })
+
   it("runs shared repeat task route actions through loop service adapters", async () => {
     const loop = {
       id: "loop_1",
@@ -814,7 +854,7 @@ describe("repeat task schedule helpers", () => {
         throw new Error("unexpected diagnostics log")
       },
     }
-    const options = {
+    const service = createRepeatTaskActionService({
       loadLoopService: async () => loopService,
       getConfig: () => ({ loops: [] }),
       saveConfig: () => {
@@ -822,6 +862,9 @@ describe("repeat task schedule helpers", () => {
       },
       createId: () => "loop_new",
       getProfileName: (profileId?: string) => profileId === "profile_1" ? "Research Agent" : undefined,
+    })
+    const options = {
+      service,
       diagnostics,
     }
 
@@ -829,7 +872,7 @@ describe("repeat task schedule helpers", () => {
       statusCode: 200,
       body: buildRepeatTasksResponse([loop], {
         statuses,
-        getProfileName: options.getProfileName,
+        getProfileName: service.getProfileName,
       }),
     })
     await expect(getRepeatTaskStatusesAction(options)).resolves.toEqual({
@@ -896,7 +939,7 @@ describe("repeat task schedule helpers", () => {
       statusCode: 200,
       body: buildRepeatTasksResponse([loop], {
         statuses,
-        getProfileName: options.getProfileName,
+        getProfileName: service.getProfileName,
       }),
     })
     await expect(routeActions.getRepeatTaskStatuses()).resolves.toEqual({
@@ -968,13 +1011,16 @@ describe("repeat task schedule helpers", () => {
         throw new Error("unexpected diagnostics log")
       },
     }
-    const options = {
+    const service = createRepeatTaskActionService({
       loadLoopService: async () => null,
       getConfig: () => config,
       saveConfig: (nextConfig: typeof config) => {
         config = nextConfig
       },
       createId: () => "loop_new",
+    })
+    const options = {
+      service,
       diagnostics,
     }
 
@@ -1034,22 +1080,26 @@ describe("repeat task schedule helpers", () => {
     }
 
     await expect(getRepeatTasksAction({
-      loadLoopService: () => {
-        throw caughtFailure
-      },
-      getConfig: () => ({ loops: [] }),
-      saveConfig: () => undefined,
-      createId: () => "loop_new",
+      service: createRepeatTaskActionService({
+        loadLoopService: () => {
+          throw caughtFailure
+        },
+        getConfig: () => ({ loops: [] }),
+        saveConfig: () => undefined,
+        createId: () => "loop_new",
+      }),
       diagnostics,
     })).resolves.toEqual({
       statusCode: 500,
       body: { error: "Failed to get repeat tasks" },
     })
     await expect(toggleRepeatTaskAction("missing", {
-      loadLoopService: () => null,
-      getConfig: () => ({ loops: [] }),
-      saveConfig: () => undefined,
-      createId: () => "loop_new",
+      service: createRepeatTaskActionService({
+        loadLoopService: () => null,
+        getConfig: () => ({ loops: [] }),
+        saveConfig: () => undefined,
+        createId: () => "loop_new",
+      }),
       diagnostics,
     })).resolves.toEqual({
       statusCode: 404,

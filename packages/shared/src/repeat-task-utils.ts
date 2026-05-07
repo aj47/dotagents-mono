@@ -238,6 +238,21 @@ export interface RepeatTaskConfigLike<TLoop extends RepeatTaskApiRecord = Repeat
 
 export interface RepeatTaskActionOptions<
   TLoop extends RepeatTaskApiRecord = RepeatTaskApiRecord,
+> {
+  service: RepeatTaskActionService<TLoop>
+  diagnostics: RepeatTaskActionDiagnostics
+}
+
+export interface RepeatTaskActionService<TLoop extends RepeatTaskApiRecord = RepeatTaskApiRecord> {
+  loadLoopService(): RepeatTaskMaybePromise<RepeatTaskLoopService<TLoop> | null | undefined>
+  getFallbackLoops(): TLoop[]
+  saveFallbackLoops(loops: TLoop[]): void
+  createId(): string
+  getProfileName?: (profileId?: string) => string | undefined
+}
+
+export interface RepeatTaskActionServiceOptions<
+  TLoop extends RepeatTaskApiRecord = RepeatTaskApiRecord,
   TConfig extends RepeatTaskConfigLike<TLoop> = RepeatTaskConfigLike<TLoop>,
 > {
   loadLoopService(): RepeatTaskMaybePromise<RepeatTaskLoopService<TLoop> | null | undefined>
@@ -245,7 +260,26 @@ export interface RepeatTaskActionOptions<
   saveConfig(config: TConfig): void
   createId(): string
   getProfileName?: (profileId?: string) => string | undefined
-  diagnostics: RepeatTaskActionDiagnostics
+}
+
+export function createRepeatTaskActionService<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(options: RepeatTaskActionServiceOptions<TLoop, TConfig>): RepeatTaskActionService<TLoop> {
+  const service: RepeatTaskActionService<TLoop> = {
+    loadLoopService: () => options.loadLoopService(),
+    getFallbackLoops: () => options.getConfig().loops || [],
+    saveFallbackLoops: (loops) => {
+      options.saveConfig({ ...options.getConfig(), loops } as TConfig)
+    },
+    createId: () => options.createId(),
+  }
+
+  if (options.getProfileName) {
+    service.getProfileName = options.getProfileName
+  }
+
+  return service
 }
 
 export interface RepeatTaskRouteActions {
@@ -928,16 +962,15 @@ function getUnknownErrorMessage(error: unknown, fallback: string): string {
 
 export async function getRepeatTasksAction<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+>(options: RepeatTaskActionOptions<TLoop>): Promise<RepeatTaskActionResult> {
   try {
-    const loopService = await options.loadLoopService()
-    const loops = loopService?.getLoops() ?? (options.getConfig().loops || [])
+    const loopService = await options.service.loadLoopService()
+    const loops = loopService?.getLoops() ?? options.service.getFallbackLoops()
     const statuses = loopService?.getLoopStatuses() ?? []
 
     return repeatTaskActionOk(buildRepeatTasksResponse(loops, {
       statuses,
-      getProfileName: options.getProfileName,
+      getProfileName: options.service.getProfileName,
     }))
   } catch (caughtError) {
     options.diagnostics.logError("repeat-task-actions", "Failed to get repeat tasks", caughtError)
@@ -947,10 +980,9 @@ export async function getRepeatTasksAction<
 
 export async function getRepeatTaskStatusesAction<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+>(options: RepeatTaskActionOptions<TLoop>): Promise<RepeatTaskActionResult> {
   try {
-    const loopService = await options.loadLoopService()
+    const loopService = await options.service.loadLoopService()
     const statuses = loopService?.getLoopStatuses() ?? []
 
     return repeatTaskActionOk(buildRepeatTaskStatusesResponse(statuses))
@@ -962,11 +994,10 @@ export async function getRepeatTaskStatusesAction<
 
 export async function toggleRepeatTaskAction<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop>): Promise<RepeatTaskActionResult> {
   try {
     const taskId = id ?? ""
-    const loopService = await options.loadLoopService()
+    const loopService = await options.service.loadLoopService()
 
     if (loopService) {
       const existing = loopService.getLoop(taskId)
@@ -989,8 +1020,7 @@ export async function toggleRepeatTaskAction<
       return repeatTaskActionOk(buildRepeatTaskToggleResponse(taskId, updated.enabled))
     }
 
-    const cfg = options.getConfig()
-    const loops = cfg.loops || []
+    const loops = options.service.getFallbackLoops()
     const loopIndex = loops.findIndex(loop => loop.id === id)
 
     if (loopIndex === -1) {
@@ -1003,7 +1033,7 @@ export async function toggleRepeatTaskAction<
       enabled: !updatedLoops[loopIndex].enabled,
     }
 
-    options.saveConfig({ ...cfg, loops: updatedLoops } as TConfig)
+    options.service.saveFallbackLoops(updatedLoops)
 
     return repeatTaskActionOk(buildRepeatTaskToggleResponse(taskId, updatedLoops[loopIndex].enabled))
   } catch (caughtError) {
@@ -1014,11 +1044,10 @@ export async function toggleRepeatTaskAction<
 
 export async function runRepeatTaskAction<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop>): Promise<RepeatTaskActionResult> {
   try {
     const taskId = id ?? ""
-    const loopService = await options.loadLoopService()
+    const loopService = await options.service.loadLoopService()
 
     if (loopService) {
       const loopExists = loopService.getLoop(taskId)
@@ -1044,15 +1073,14 @@ export async function runRepeatTaskAction<
 
 export async function startRepeatTaskAction<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop>): Promise<RepeatTaskActionResult> {
   try {
     const taskId = id ?? ""
     if (!taskId) {
       return repeatTaskActionError(400, "Repeat task id is required")
     }
 
-    const loopService = await options.loadLoopService()
+    const loopService = await options.service.loadLoopService()
     if (!loopService) {
       return repeatTaskActionError(503, "Repeat task service is unavailable")
     }
@@ -1080,15 +1108,14 @@ export async function startRepeatTaskAction<
 
 export async function stopRepeatTaskAction<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop>): Promise<RepeatTaskActionResult> {
   try {
     const taskId = id ?? ""
     if (!taskId) {
       return repeatTaskActionError(400, "Repeat task id is required")
     }
 
-    const loopService = await options.loadLoopService()
+    const loopService = await options.service.loadLoopService()
     if (!loopService) {
       return repeatTaskActionError(503, "Repeat task service is unavailable")
     }
@@ -1108,17 +1135,16 @@ export async function stopRepeatTaskAction<
 
 export async function createRepeatTaskAction<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(body: unknown, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+>(body: unknown, options: RepeatTaskActionOptions<TLoop>): Promise<RepeatTaskActionResult> {
   try {
     const parsedRequest = parseRepeatTaskCreateRequestBody(body)
     if (parsedRequest.ok === false) {
       return repeatTaskActionError(parsedRequest.statusCode, parsedRequest.error)
     }
 
-    const newLoop = buildRepeatTaskFromCreateRequest(options.createId(), parsedRequest.request) as TLoop
+    const newLoop = buildRepeatTaskFromCreateRequest(options.service.createId(), parsedRequest.request) as TLoop
 
-    const loopService = await options.loadLoopService()
+    const loopService = await options.service.loadLoopService()
     if (loopService) {
       const saved = loopService.saveLoop(newLoop)
       if (!saved) {
@@ -1129,14 +1155,12 @@ export async function createRepeatTaskAction<
         loopService.startLoop(newLoop.id)
       }
     } else {
-      const cfg = options.getConfig()
-      const loops = [...(cfg.loops || []), newLoop]
-      options.saveConfig({ ...cfg, loops } as TConfig)
+      options.service.saveFallbackLoops([...options.service.getFallbackLoops(), newLoop])
     }
 
     const savedLoop = loopService?.getLoop(newLoop.id) ?? newLoop
     return repeatTaskActionOk(buildRepeatTaskResponse(savedLoop, {
-      profileName: options.getProfileName?.(savedLoop.profileId),
+      profileName: options.service.getProfileName?.(savedLoop.profileId),
       status: loopService?.getLoopStatus(savedLoop.id),
     }))
   } catch (caughtError) {
@@ -1147,21 +1171,20 @@ export async function createRepeatTaskAction<
 
 export async function importRepeatTaskFromMarkdownAction<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(body: unknown, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+>(body: unknown, options: RepeatTaskActionOptions<TLoop>): Promise<RepeatTaskActionResult> {
   try {
     const parsedRequest = parseRepeatTaskImportMarkdownRequestBody(body)
     if (parsedRequest.ok === false) {
       return repeatTaskActionError(parsedRequest.statusCode, parsedRequest.error)
     }
 
-    const parsedTask = parseTaskMarkdown(parsedRequest.request.content, { fallbackId: options.createId() })
+    const parsedTask = parseTaskMarkdown(parsedRequest.request.content, { fallbackId: options.service.createId() })
     if (!parsedTask) {
       return repeatTaskActionError(400, "Invalid repeat task Markdown")
     }
 
     const importedTask = parsedTask as TLoop
-    const loopService = await options.loadLoopService()
+    const loopService = await options.service.loadLoopService()
     if (loopService) {
       const saved = loopService.saveLoop(importedTask)
       if (!saved) {
@@ -1173,18 +1196,17 @@ export async function importRepeatTaskFromMarkdownAction<
         loopService.startLoop(importedTask.id)
       }
     } else {
-      const cfg = options.getConfig()
-      const loops = cfg.loops || []
+      const loops = options.service.getFallbackLoops()
       const existingIndex = loops.findIndex(loop => loop.id === importedTask.id)
       const nextLoops = existingIndex >= 0
         ? loops.map((loop, index) => index === existingIndex ? importedTask : loop)
         : [...loops, importedTask]
-      options.saveConfig({ ...cfg, loops: nextLoops } as TConfig)
+      options.service.saveFallbackLoops(nextLoops)
     }
 
     const savedLoop = loopService?.getLoop(importedTask.id) ?? importedTask
     return repeatTaskActionOk(buildRepeatTaskMutationResponse(savedLoop, {
-      profileName: options.getProfileName?.(savedLoop.profileId),
+      profileName: options.service.getProfileName?.(savedLoop.profileId),
       status: loopService?.getLoopStatus(savedLoop.id),
     }))
   } catch (caughtError) {
@@ -1195,16 +1217,15 @@ export async function importRepeatTaskFromMarkdownAction<
 
 export async function exportRepeatTaskToMarkdownAction<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop>): Promise<RepeatTaskActionResult> {
   try {
     const taskId = id ?? ""
     if (!taskId) {
       return repeatTaskActionError(400, "Repeat task id is required")
     }
 
-    const loopService = await options.loadLoopService()
-    const loop = loopService?.getLoop(taskId) ?? (options.getConfig().loops || []).find(task => task.id === taskId)
+    const loopService = await options.service.loadLoopService()
+    const loop = loopService?.getLoop(taskId) ?? options.service.getFallbackLoops().find(task => task.id === taskId)
     if (!loop) {
       return repeatTaskActionError(404, "Repeat task not found")
     }
@@ -1218,8 +1239,7 @@ export async function exportRepeatTaskToMarkdownAction<
 
 export async function updateRepeatTaskAction<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(id: string | undefined, body: unknown, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+>(id: string | undefined, body: unknown, options: RepeatTaskActionOptions<TLoop>): Promise<RepeatTaskActionResult> {
   try {
     const parsedRequest = parseRepeatTaskUpdateRequestBody(body)
     if (parsedRequest.ok === false) {
@@ -1227,17 +1247,15 @@ export async function updateRepeatTaskAction<
     }
 
     const taskId = id ?? ""
-    const loopService = await options.loadLoopService()
+    const loopService = await options.service.loadLoopService()
     let existing: TLoop | undefined
-    let cfg: TConfig | undefined
     let loops: TLoop[] = []
     let loopIndex = -1
 
     if (loopService) {
       existing = loopService.getLoop(taskId)
     } else {
-      cfg = options.getConfig()
-      loops = cfg.loops || []
+      loops = options.service.getFallbackLoops()
       loopIndex = loops.findIndex(loop => loop.id === id)
       existing = loopIndex >= 0 ? loops[loopIndex] : undefined
     }
@@ -1260,15 +1278,15 @@ export async function updateRepeatTaskAction<
       } else {
         loopService.stopLoop(taskId)
       }
-    } else if (cfg && loopIndex >= 0) {
+    } else if (loopIndex >= 0) {
       const updatedLoops = [...loops]
       updatedLoops[loopIndex] = updated
-      options.saveConfig({ ...cfg, loops: updatedLoops } as TConfig)
+      options.service.saveFallbackLoops(updatedLoops)
     }
 
     const savedLoop = loopService?.getLoop(taskId) ?? updated
     return repeatTaskActionOk(buildRepeatTaskMutationResponse(savedLoop, {
-      profileName: options.getProfileName?.(savedLoop.profileId),
+      profileName: options.service.getProfileName?.(savedLoop.profileId),
       status: loopService?.getLoopStatus(savedLoop.id),
     }))
   } catch (caughtError) {
@@ -1279,11 +1297,10 @@ export async function updateRepeatTaskAction<
 
 export async function deleteRepeatTaskAction<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(id: string | undefined, options: RepeatTaskActionOptions<TLoop, TConfig>): Promise<RepeatTaskActionResult> {
+>(id: string | undefined, options: RepeatTaskActionOptions<TLoop>): Promise<RepeatTaskActionResult> {
   try {
     const taskId = id ?? ""
-    const loopService = await options.loadLoopService()
+    const loopService = await options.service.loadLoopService()
 
     if (loopService) {
       const existing = loopService.getLoop(taskId)
@@ -1299,8 +1316,7 @@ export async function deleteRepeatTaskAction<
       return repeatTaskActionOk(buildRepeatTaskDeleteResponse(taskId))
     }
 
-    const cfg = options.getConfig()
-    const loops = cfg.loops || []
+    const loops = options.service.getFallbackLoops()
     const loopIndex = loops.findIndex(loop => loop.id === id)
 
     if (loopIndex === -1) {
@@ -1308,7 +1324,7 @@ export async function deleteRepeatTaskAction<
     }
 
     const updatedLoops = loops.filter(loop => loop.id !== id)
-    options.saveConfig({ ...cfg, loops: updatedLoops } as TConfig)
+    options.service.saveFallbackLoops(updatedLoops)
 
     return repeatTaskActionOk(buildRepeatTaskDeleteResponse(taskId))
   } catch (caughtError) {
@@ -1319,8 +1335,7 @@ export async function deleteRepeatTaskAction<
 
 export function createRepeatTaskRouteActions<
   TLoop extends RepeatTaskApiRecord,
-  TConfig extends RepeatTaskConfigLike<TLoop>,
->(options: RepeatTaskActionOptions<TLoop, TConfig>): RepeatTaskRouteActions {
+>(options: RepeatTaskActionOptions<TLoop>): RepeatTaskRouteActions {
   return {
     getRepeatTasks: () => getRepeatTasksAction(options),
     getRepeatTaskStatuses: () => getRepeatTaskStatusesAction(options),

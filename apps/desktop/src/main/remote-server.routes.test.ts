@@ -2606,7 +2606,13 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.updateRepeatTask(params.id, req.body)")
     expect(mobileApiRoutesSource).toContain("actions.deleteRepeatTask(params.id)")
     expect(mobileApiDesktopActionsSource).toContain("await import(\"./loop-service\")")
+    expect(mobileApiDesktopActionsSource).toContain(
+      "service: createRepeatTaskActionService<LoopConfig, ReturnType<typeof configStore.get>>({",
+    )
     expect(mobileApiDesktopActionsSource).toContain("createId: createRepeatTaskRuntimeId")
+    expect(mobileApiDesktopActionsSource).not.toContain(
+      "const repeatTaskActionOptions: RepeatTaskActionOptions<LoopConfig, ReturnType<typeof configStore.get>> = {\n  loadLoopService,",
+    )
     expect(mobileApiDesktopActionsSource).not.toContain("Math.random().toString(36)")
     expect(mobileApiDesktopActionsSource).toContain(
       "const repeatTaskRouteActions = createRepeatTaskRouteActions(repeatTaskActionOptions)",
@@ -2624,6 +2630,10 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).not.toContain("updateRepeatTaskAction(id, body, repeatTaskActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("deleteRepeatTaskAction(id, repeatTaskActionOptions)")
     expect(sharedRepeatTaskUtilsSource).toContain("export interface RepeatTaskActionOptions")
+    expect(sharedRepeatTaskUtilsSource).toContain("export interface RepeatTaskActionService")
+    expect(sharedRepeatTaskUtilsSource).toContain("export function createRepeatTaskActionService")
+    expect(sharedRepeatTaskUtilsSource).toContain("getFallbackLoops: () => options.getConfig().loops || []")
+    expect(sharedRepeatTaskUtilsSource).toContain("saveFallbackLoops: (loops) =>")
     expect(sharedRepeatTaskUtilsSource).toContain("export interface RepeatTaskRouteActions")
     expect(sharedRepeatTaskUtilsSource).toContain("export function createRepeatTaskRuntimeId(")
     expect(sharedRepeatTaskUtilsSource).toContain("export function createRepeatTaskRouteActions")
@@ -2647,7 +2657,10 @@ describe("remote-server route registration", () => {
     expect(sharedRepeatTaskUtilsSource).toContain("buildRepeatTaskRunResponse(taskId)")
     expect(sharedRepeatTaskUtilsSource).toContain("parseRepeatTaskCreateRequestBody(body)")
     expect(sharedRepeatTaskUtilsSource).toContain("parseRepeatTaskImportMarkdownRequestBody(body)")
-    expect(sharedRepeatTaskUtilsSource).toContain("buildRepeatTaskFromCreateRequest(options.createId(), parsedRequest.request)")
+    expect(sharedRepeatTaskUtilsSource).toContain("buildRepeatTaskFromCreateRequest(options.service.createId(), parsedRequest.request)")
+    expect(sharedRepeatTaskUtilsSource).toContain("options.service.loadLoopService()")
+    expect(sharedRepeatTaskUtilsSource).toContain("options.service.getFallbackLoops()")
+    expect(sharedRepeatTaskUtilsSource).toContain("options.service.saveFallbackLoops(updatedLoops)")
     expect(sharedRepeatTaskUtilsSource).toContain("buildRepeatTaskExportMarkdownResponse(taskId, stringifyTaskMarkdown(loop))")
     expect(sharedRepeatTaskUtilsSource).toContain("parseRepeatTaskUpdateRequestBody(body)")
     expect(sharedRepeatTaskUtilsSource).toContain("applyRepeatTaskUpdate(existing, parsedRequest.request)")
