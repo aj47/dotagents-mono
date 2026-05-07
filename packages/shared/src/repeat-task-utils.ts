@@ -243,6 +243,20 @@ export interface RepeatTaskActionOptions<
   diagnostics: RepeatTaskActionDiagnostics
 }
 
+export interface RepeatTaskRouteActions {
+  getRepeatTasks(): Promise<RepeatTaskActionResult>
+  getRepeatTaskStatuses(): Promise<RepeatTaskActionResult>
+  toggleRepeatTask(id: string | undefined): Promise<RepeatTaskActionResult>
+  runRepeatTask(id: string | undefined): Promise<RepeatTaskActionResult>
+  startRepeatTask(id: string | undefined): Promise<RepeatTaskActionResult>
+  stopRepeatTask(id: string | undefined): Promise<RepeatTaskActionResult>
+  createRepeatTask(body: unknown): Promise<RepeatTaskActionResult>
+  importRepeatTaskFromMarkdown(body: unknown): Promise<RepeatTaskActionResult>
+  exportRepeatTaskToMarkdown(id: string | undefined): Promise<RepeatTaskActionResult>
+  updateRepeatTask(id: string | undefined, body: unknown): Promise<RepeatTaskActionResult>
+  deleteRepeatTask(id: string | undefined): Promise<RepeatTaskActionResult>
+}
+
 export const REPEAT_TASK_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const
 export const TASK_SESSION_TITLE_PREFIX = "[Repeat] "
 const REPEAT_TASK_NAME_CONNECTOR_WORDS = new Set(["a", "an", "and", "for", "of", "the", "to"])
@@ -1289,6 +1303,25 @@ export async function deleteRepeatTaskAction<
   } catch (caughtError) {
     options.diagnostics.logError("repeat-task-actions", "Failed to delete repeat task", caughtError)
     return repeatTaskActionError(500, getUnknownErrorMessage(caughtError, "Failed to delete repeat task"))
+  }
+}
+
+export function createRepeatTaskRouteActions<
+  TLoop extends RepeatTaskApiRecord,
+  TConfig extends RepeatTaskConfigLike<TLoop>,
+>(options: RepeatTaskActionOptions<TLoop, TConfig>): RepeatTaskRouteActions {
+  return {
+    getRepeatTasks: () => getRepeatTasksAction(options),
+    getRepeatTaskStatuses: () => getRepeatTaskStatusesAction(options),
+    toggleRepeatTask: (id) => toggleRepeatTaskAction(id, options),
+    runRepeatTask: (id) => runRepeatTaskAction(id, options),
+    startRepeatTask: (id) => startRepeatTaskAction(id, options),
+    stopRepeatTask: (id) => stopRepeatTaskAction(id, options),
+    createRepeatTask: (body) => createRepeatTaskAction(body, options),
+    importRepeatTaskFromMarkdown: (body) => importRepeatTaskFromMarkdownAction(body, options),
+    exportRepeatTaskToMarkdown: (id) => exportRepeatTaskToMarkdownAction(id, options),
+    updateRepeatTask: (id, body) => updateRepeatTaskAction(id, body, options),
+    deleteRepeatTask: (id) => deleteRepeatTaskAction(id, options),
   }
 }
 

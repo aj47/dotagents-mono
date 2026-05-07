@@ -4,6 +4,7 @@ import {
   applyRepeatTaskUpdate,
   applyRepeatTaskRuntimeStatus,
   createRepeatTaskAction,
+  createRepeatTaskRouteActions,
   buildRepeatTaskMutationResponse,
   buildRepeatTaskDeleteResponse,
   buildRepeatTaskResponse,
@@ -870,6 +871,73 @@ describe("repeat task schedule helpers", () => {
       body: { success: true, loop: { id: "loop_1", name: "Updated", enabled: true } },
     })
     await expect(deleteRepeatTaskAction("loop_new", options)).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskDeleteResponse("loop_new"),
+    })
+    expect(started).toEqual(["loop_1", "loop_new", "loop_imported", "loop_1"])
+    expect(stopped).toEqual(["loop_1", "loop_1", "loop_imported", "loop_1"])
+    expect(triggered).toEqual(["loop_1"])
+
+    loopsById.clear()
+    loopsById.set(loop.id, loop)
+    started.length = 0
+    stopped.length = 0
+    triggered.length = 0
+    const routeActions = createRepeatTaskRouteActions(options)
+    await expect(routeActions.getRepeatTasks()).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTasksResponse([loop], {
+        statuses,
+        getProfileName: options.getProfileName,
+      }),
+    })
+    await expect(routeActions.getRepeatTaskStatuses()).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskStatusesResponse(statuses),
+    })
+    await expect(routeActions.startRepeatTask("loop_1")).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskRuntimeActionResponse("loop_1", statuses[0]),
+    })
+    await expect(routeActions.stopRepeatTask("loop_1")).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskRuntimeActionResponse("loop_1", statuses[0]),
+    })
+    await expect(routeActions.toggleRepeatTask("loop_1")).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskToggleResponse("loop_1", false),
+    })
+    await expect(routeActions.runRepeatTask("loop_1")).resolves.toEqual({
+      statusCode: 200,
+      body: buildRepeatTaskRunResponse("loop_1"),
+    })
+    await expect(routeActions.createRepeatTask({
+      name: "New task",
+      prompt: "Do it",
+      enabled: true,
+    })).resolves.toMatchObject({
+      statusCode: 200,
+      body: { loop: { id: "loop_new", name: "New task", prompt: "Do it", enabled: true } },
+    })
+    await expect(routeActions.importRepeatTaskFromMarkdown({
+      content: "---\nkind: task\nid: loop_imported\nname: Imported task\nintervalMinutes: 30\nenabled: true\n---\nImported prompt",
+    })).resolves.toMatchObject({
+      statusCode: 200,
+      body: { success: true, loop: { id: "loop_imported", name: "Imported task", prompt: "Imported prompt", enabled: true } },
+    })
+    await expect(routeActions.exportRepeatTaskToMarkdown("loop_1")).resolves.toMatchObject({
+      statusCode: 200,
+      body: {
+        success: true,
+        loopId: "loop_1",
+        markdown: expect.stringContaining("name: Morning check"),
+      },
+    })
+    await expect(routeActions.updateRepeatTask("loop_1", { name: "Updated", enabled: true })).resolves.toMatchObject({
+      statusCode: 200,
+      body: { success: true, loop: { id: "loop_1", name: "Updated", enabled: true } },
+    })
+    await expect(routeActions.deleteRepeatTask("loop_new")).resolves.toEqual({
       statusCode: 200,
       body: buildRepeatTaskDeleteResponse("loop_new"),
     })

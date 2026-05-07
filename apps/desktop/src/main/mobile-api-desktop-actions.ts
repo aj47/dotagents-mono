@@ -100,17 +100,7 @@ import {
   type ProfileActionOptions,
 } from "@dotagents/shared/profile-api"
 import {
-  createRepeatTaskAction,
-  deleteRepeatTaskAction,
-  exportRepeatTaskToMarkdownAction,
-  getRepeatTaskStatusesAction,
-  getRepeatTasksAction,
-  importRepeatTaskFromMarkdownAction,
-  runRepeatTaskAction,
-  startRepeatTaskAction,
-  stopRepeatTaskAction,
-  toggleRepeatTaskAction,
-  updateRepeatTaskAction,
+  createRepeatTaskRouteActions,
   type RepeatTaskActionOptions,
   type RepeatTaskLoopService,
 } from "@dotagents/shared/repeat-task-utils"
@@ -454,6 +444,8 @@ const repeatTaskActionOptions: RepeatTaskActionOptions<LoopConfig, ReturnType<ty
   diagnostics: diagnosticsService,
 }
 
+const repeatTaskRouteActions = createRepeatTaskRouteActions(repeatTaskActionOptions)
+
 const mcpServerActionOptions = {
   service: mcpService,
   diagnostics: diagnosticsService,
@@ -619,50 +611,6 @@ async function updateConversation(id: string | undefined, body: unknown, onChang
   return updateConversationAction(id, body, onChanged, conversationActionOptions)
 }
 
-async function getRepeatTasks() {
-  return getRepeatTasksAction(repeatTaskActionOptions)
-}
-
-async function getRepeatTaskStatuses() {
-  return getRepeatTaskStatusesAction(repeatTaskActionOptions)
-}
-
-async function toggleRepeatTask(id: string | undefined) {
-  return toggleRepeatTaskAction(id, repeatTaskActionOptions)
-}
-
-async function runRepeatTask(id: string | undefined) {
-  return runRepeatTaskAction(id, repeatTaskActionOptions)
-}
-
-async function startRepeatTask(id: string | undefined) {
-  return startRepeatTaskAction(id, repeatTaskActionOptions)
-}
-
-async function stopRepeatTask(id: string | undefined) {
-  return stopRepeatTaskAction(id, repeatTaskActionOptions)
-}
-
-async function createRepeatTask(body: unknown) {
-  return createRepeatTaskAction(body, repeatTaskActionOptions)
-}
-
-async function importRepeatTaskFromMarkdown(body: unknown) {
-  return importRepeatTaskFromMarkdownAction(body, repeatTaskActionOptions)
-}
-
-async function exportRepeatTaskToMarkdown(id: string | undefined) {
-  return exportRepeatTaskToMarkdownAction(id, repeatTaskActionOptions)
-}
-
-async function updateRepeatTask(id: string | undefined, body: unknown) {
-  return updateRepeatTaskAction(id, body, repeatTaskActionOptions)
-}
-
-async function deleteRepeatTask(id: string | undefined) {
-  return deleteRepeatTaskAction(id, repeatTaskActionOptions)
-}
-
 function getMcpServers() {
   return getMcpServersAction(mcpServerActionOptions)
 }
@@ -764,15 +712,5 @@ export const mobileApiDesktopActions: MobileApiRouteActions = {
   toggleProfileSkill,
   ...knowledgeNoteRouteActions,
   ...agentProfileRouteActions,
-  getRepeatTasks,
-  getRepeatTaskStatuses,
-  toggleRepeatTask,
-  runRepeatTask,
-  startRepeatTask,
-  stopRepeatTask,
-  importRepeatTaskFromMarkdown,
-  exportRepeatTaskToMarkdown,
-  createRepeatTask,
-  updateRepeatTask,
-  deleteRepeatTask,
+  ...repeatTaskRouteActions,
 }
