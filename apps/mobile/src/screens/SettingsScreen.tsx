@@ -54,6 +54,9 @@ import { MicrophoneSelector } from '../ui/MicrophoneSelector';
 import Slider from '@react-native-community/slider';
 import {
   buildKnowledgeNoteSections,
+  KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS,
+  KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS,
+  KNOWLEDGE_NOTE_SORT_OPTIONS,
 } from '@dotagents/shared/knowledge-note-grouping';
 import { sortAgentProfilesWithDefaultFirst } from '@dotagents/shared/agent-selector-options';
 import { getAcpxMainAgentOptions } from '@dotagents/shared/main-agent-selection';
@@ -232,29 +235,6 @@ intervalMinutes: ${DEFAULT_REPEAT_TASK_INTERVAL_MINUTES}
 enabled: ${DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled}
 ---
 Summarize overnight work.`;
-
-const KNOWLEDGE_CONTEXT_FILTER_OPTIONS: Array<{ label: string; value: 'all' | KnowledgeNoteContext }> = [
-  { label: 'All', value: 'all' },
-  { label: 'Search', value: 'search-only' },
-  { label: 'Auto', value: 'auto' },
-];
-
-const KNOWLEDGE_DATE_FILTER_OPTIONS: Array<{ label: string; value: KnowledgeNoteDateFilter }> = [
-  { label: 'Any time', value: 'all' },
-  { label: '7 days', value: '7d' },
-  { label: '30 days', value: '30d' },
-  { label: '90 days', value: '90d' },
-  { label: 'Year', value: 'year' },
-];
-
-const KNOWLEDGE_SORT_OPTIONS: Array<{ label: string; value: KnowledgeNoteSort }> = [
-  { label: 'Best', value: 'relevance' },
-  { label: 'Updated', value: 'updated-desc' },
-  { label: 'Oldest', value: 'updated-asc' },
-  { label: 'Created', value: 'created-desc' },
-  { label: 'A-Z', value: 'title-asc' },
-  { label: 'Z-A', value: 'title-desc' },
-];
 
 const PROVIDER_CREDENTIAL_SECTIONS: Array<{
   id: string;
@@ -4938,7 +4918,7 @@ export default function SettingsScreen({ navigation }: any) {
                   returnKeyType="search"
                 />
                 <View style={styles.knowledgeFilterGroup}>
-                  {KNOWLEDGE_CONTEXT_FILTER_OPTIONS.map((option) => (
+                  {KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS.map((option) => (
                     <TouchableOpacity
                       key={option.value}
                       style={[
@@ -4956,13 +4936,13 @@ export default function SettingsScreen({ navigation }: any) {
                           knowledgeNoteContextFilter === option.value && styles.knowledgeFilterButtonTextActive,
                         ]}
                       >
-                        {option.label}
+                        {option.compactLabel}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
                 <View style={styles.knowledgeFilterGroup}>
-                  {KNOWLEDGE_DATE_FILTER_OPTIONS.map((option) => (
+                  {KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS.map((option) => (
                     <TouchableOpacity
                       key={option.value}
                       style={[
@@ -4980,13 +4960,13 @@ export default function SettingsScreen({ navigation }: any) {
                           knowledgeNoteDateFilter === option.value && styles.knowledgeFilterButtonTextActive,
                         ]}
                       >
-                        {option.label}
+                        {option.compactLabel}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
                 <View style={styles.knowledgeFilterGroup}>
-                  {KNOWLEDGE_SORT_OPTIONS.map((option) => (
+                  {KNOWLEDGE_NOTE_SORT_OPTIONS.map((option) => (
                     <TouchableOpacity
                       key={option.value}
                       style={[
@@ -5004,7 +4984,7 @@ export default function SettingsScreen({ navigation }: any) {
                           knowledgeNoteSortOption === option.value && styles.knowledgeFilterButtonTextActive,
                         ]}
                       >
-                        {option.label}
+                        {option.compactLabel}
                       </Text>
                     </TouchableOpacity>
                   ))}

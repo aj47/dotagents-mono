@@ -52,4 +52,13 @@ describe("desktop knowledge renderer client", () => {
     expect(combinedSource).not.toContain("tipcClient.openWorkspaceKnowledgeFolder(")
     expect(combinedSource).not.toContain("tipcClient.saveKnowledgeNoteFromSummary(")
   })
+
+  it("uses shared knowledge filter and sort option definitions", () => {
+    expect(knowledgePageSource).toContain("KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS")
+    expect(knowledgePageSource).toContain("KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS")
+    expect(knowledgePageSource).toContain("KNOWLEDGE_NOTE_SORT_OPTIONS")
+    expect(knowledgePageSource).not.toContain("const contextFilterOptions")
+    expect(knowledgePageSource).not.toContain("const dateFilterOptions")
+    expect(knowledgePageSource).not.toContain("const sortOptions")
+  })
 })

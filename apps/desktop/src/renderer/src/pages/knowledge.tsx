@@ -26,6 +26,12 @@ import type {
   KnowledgeNoteGroupSummary,
   KnowledgeNotesOverview,
 } from "@dotagents/shared/knowledge-note-grouping"
+import {
+  buildKnowledgeNoteSections,
+  KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS,
+  KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS,
+  KNOWLEDGE_NOTE_SORT_OPTIONS,
+} from "@dotagents/shared/knowledge-note-grouping"
 import { toast } from "sonner"
 import {
   AlertCircle,
@@ -46,7 +52,6 @@ import {
   X,
 } from "lucide-react"
 import { cn } from "@renderer/lib/utils"
-import { buildKnowledgeNoteSections } from "@dotagents/shared/knowledge-note-grouping"
 import {
   formatKnowledgeNoteReferencesInput,
   formatKnowledgeNoteTagsInput,
@@ -58,30 +63,6 @@ const contextBadgeClasses: Record<KnowledgeNoteContext, string> = {
   auto: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
   "search-only": "bg-slate-500/20 text-slate-700 dark:text-slate-300",
 }
-
-const contextFilterOptions: { label: string; value: "all" | KnowledgeNoteContext }[] = [
-  { label: "All", value: "all" },
-  { label: "Search only", value: "search-only" },
-  { label: "Auto", value: "auto" },
-]
-
-const dateFilterOptions: { label: string; value: KnowledgeNoteDateFilter }[] = [
-  { label: "Any time", value: "all" },
-  { label: "Past 7 days", value: "7d" },
-  { label: "Past 30 days", value: "30d" },
-  { label: "Past 90 days", value: "90d" },
-  { label: "Past year", value: "year" },
-]
-
-const sortOptions: { label: string; value: KnowledgeNoteSort }[] = [
-  { label: "Best match", value: "relevance" },
-  { label: "Updated newest", value: "updated-desc" },
-  { label: "Updated oldest", value: "updated-asc" },
-  { label: "Created newest", value: "created-desc" },
-  { label: "Created oldest", value: "created-asc" },
-  { label: "Title A-Z", value: "title-asc" },
-  { label: "Title Z-A", value: "title-desc" },
-]
 
 type KnowledgeViewMode = "grouped" | "flat"
 
@@ -904,7 +885,7 @@ export function Component() {
             ) : null}
           </div>
           <div className="grid w-full grid-cols-3 gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
-            {contextFilterOptions.map((option) => (
+            {KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS.map((option) => (
               <Button
                 key={option.value}
                 variant={contextFilter === option.value ? "default" : "outline"}
@@ -940,7 +921,7 @@ export function Component() {
                 <SelectValue placeholder="Date" />
               </SelectTrigger>
               <SelectContent>
-                {dateFilterOptions.map((option) => (
+                {KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -952,7 +933,7 @@ export function Component() {
                 <SelectValue placeholder="Sort" />
               </SelectTrigger>
               <SelectContent>
-                {sortOptions.map((option) => (
+                {KNOWLEDGE_NOTE_SORT_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -1182,7 +1163,7 @@ export function Component() {
               <div className="space-y-2">
                 <Label>Context</Label>
                 <div className="flex flex-wrap gap-2">
-                  {contextFilterOptions
+                  {KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS
                     .filter((option) => option.value !== "all")
                     .map((option) => (
                       <Button

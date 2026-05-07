@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest"
 import {
   buildKnowledgeNoteSections,
   getKnowledgeNoteGrouping,
+  KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS,
+  KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS,
+  KNOWLEDGE_NOTE_SORT_OPTIONS,
   inferKnowledgeNoteGrouping,
   type KnowledgeNoteGroupingInput,
   type KnowledgeNotesOverview,
@@ -18,6 +21,24 @@ function makeNote(id: string, overrides: Partial<KnowledgeNoteGroupingInput> = {
 }
 
 describe("knowledge note grouping", () => {
+  it("exposes shared filter and sort option order for app surfaces", () => {
+    expect(KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS.map((option) => option.value)).toEqual(["all", "search-only", "auto"])
+    expect(KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS.find((option) => option.value === "search-only")).toMatchObject({
+      label: "Search only",
+      compactLabel: "Search",
+    })
+    expect(KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS.map((option) => option.value)).toEqual(["all", "7d", "30d", "90d", "year"])
+    expect(KNOWLEDGE_NOTE_SORT_OPTIONS.map((option) => option.value)).toEqual([
+      "relevance",
+      "updated-desc",
+      "updated-asc",
+      "created-desc",
+      "created-asc",
+      "title-asc",
+      "title-desc",
+    ])
+  })
+
   it("uses explicit group, series, and entry type metadata when present", () => {
     const note = makeNote("2026-03-18", {
       group: " discord\\recaps ",

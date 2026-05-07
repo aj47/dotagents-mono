@@ -1,10 +1,45 @@
 import {
   normalizeKnowledgeNotePathValue,
   titleizeKnowledgeNotePath,
+  type KnowledgeNoteContext,
+  type KnowledgeNoteDateFilter,
   type KnowledgeNoteEntryType,
+  type KnowledgeNoteSort,
 } from "./knowledge-note-domain"
 
-export type { KnowledgeNoteDateFilter, KnowledgeNoteSort } from "./knowledge-note-domain"
+export type { KnowledgeNoteContext, KnowledgeNoteDateFilter, KnowledgeNoteSort } from "./knowledge-note-domain"
+
+export type KnowledgeNoteContextFilterValue = "all" | KnowledgeNoteContext
+
+export type KnowledgeNoteFilterOption<TValue extends string> = {
+  label: string
+  compactLabel: string
+  value: TValue
+}
+
+export const KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS: Array<KnowledgeNoteFilterOption<KnowledgeNoteContextFilterValue>> = [
+  { label: "All", compactLabel: "All", value: "all" },
+  { label: "Search only", compactLabel: "Search", value: "search-only" },
+  { label: "Auto", compactLabel: "Auto", value: "auto" },
+]
+
+export const KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS: Array<KnowledgeNoteFilterOption<KnowledgeNoteDateFilter>> = [
+  { label: "Any time", compactLabel: "Any time", value: "all" },
+  { label: "Past 7 days", compactLabel: "7 days", value: "7d" },
+  { label: "Past 30 days", compactLabel: "30 days", value: "30d" },
+  { label: "Past 90 days", compactLabel: "90 days", value: "90d" },
+  { label: "Past year", compactLabel: "Year", value: "year" },
+]
+
+export const KNOWLEDGE_NOTE_SORT_OPTIONS: Array<KnowledgeNoteFilterOption<KnowledgeNoteSort>> = [
+  { label: "Best match", compactLabel: "Best", value: "relevance" },
+  { label: "Updated newest", compactLabel: "Updated", value: "updated-desc" },
+  { label: "Updated oldest", compactLabel: "Oldest", value: "updated-asc" },
+  { label: "Created newest", compactLabel: "Created", value: "created-desc" },
+  { label: "Created oldest", compactLabel: "Created oldest", value: "created-asc" },
+  { label: "Title A-Z", compactLabel: "A-Z", value: "title-asc" },
+  { label: "Title Z-A", compactLabel: "Z-A", value: "title-desc" },
+]
 
 export type KnowledgeNoteGroupingInput = {
   id: string

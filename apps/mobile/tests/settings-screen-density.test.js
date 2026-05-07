@@ -206,9 +206,10 @@ test('lets mobile filter and sort desktop knowledge notes through the shared cli
   assert.match(settingsSource, /knowledgeNoteDateFilter/);
   assert.match(settingsSource, /knowledgeNoteSortOption/);
   assert.match(settingsSource, /settingsClient\.getKnowledgeNotes\(knowledgeNoteFilterRequest\)/);
-  assert.match(settingsSource, /KNOWLEDGE_CONTEXT_FILTER_OPTIONS/);
-  assert.match(settingsSource, /KNOWLEDGE_DATE_FILTER_OPTIONS/);
-  assert.match(settingsSource, /KNOWLEDGE_SORT_OPTIONS/);
+  assert.match(settingsSource, /KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS/);
+  assert.match(settingsSource, /KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS/);
+  assert.match(settingsSource, /KNOWLEDGE_NOTE_SORT_OPTIONS/);
+  assert.match(settingsSource, /option\.compactLabel/);
 });
 
 test('lets mobile delete selected and all desktop knowledge notes through the shared client', () => {
