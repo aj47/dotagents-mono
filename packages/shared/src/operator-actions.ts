@@ -585,6 +585,28 @@ export type OperatorAuditLogAppendResult = {
   shouldRewrite: boolean
 }
 
+export type OperatorAuditEventOptions = {
+  action: string
+  path?: string
+  success: boolean
+  details?: Record<string, unknown>
+  failureReason?: string
+}
+
+export interface OperatorAuditRecorderOptions {
+  appendEntry(entry: OperatorAuditEntry): void
+}
+
+export interface OperatorAuditRecorder {
+  recordRejectedDeviceAttempt(request: OperatorAuditRequestLike, failureReason: string): void
+  recordAuditEvent(request: OperatorAuditRequestLike, options: OperatorAuditEventOptions): void
+  recordResponseAuditEvent(
+    request: RemoteServerAuthRequestLike,
+    response: OperatorHttpResponseLike,
+    context?: OperatorResponseAuditContext,
+  ): void
+}
+
 export type OperatorMcpToolResultLike = {
   content?: Array<{
     type?: string
@@ -1421,6 +1443,43 @@ export function buildOperatorResponseAuditContext(
     success: context.success ?? response.statusCode < 400,
     ...(context.details ? { details: context.details } : {}),
     failureReason: context.failureReason ?? (response.statusCode >= 400 ? `http-${response.statusCode}` : undefined),
+  }
+}
+
+export function createOperatorAuditRecorder(
+  options: OperatorAuditRecorderOptions,
+): OperatorAuditRecorder {
+  function recordAuditEvent(
+    request: OperatorAuditRequestLike,
+    event: OperatorAuditEventOptions,
+  ): void {
+    options.appendEntry(buildOperatorAuditEventEntry({
+      action: event.action,
+      path: event.path ?? getOperatorAuditPath(request),
+      success: event.success,
+      deviceId: getOperatorAuditDeviceId(request),
+      source: getOperatorAuditSource(request),
+      details: event.details,
+      failureReason: event.failureReason,
+    }))
+  }
+
+  return {
+    recordRejectedDeviceAttempt: (request, failureReason) => {
+      options.appendEntry(buildRejectedOperatorDeviceAuditEntry({
+        path: getOperatorAuditPath(request),
+        deviceId: getOperatorAuditDeviceId(request),
+        source: getOperatorAuditSource(request),
+        failureReason,
+      }))
+    },
+    recordAuditEvent,
+    recordResponseAuditEvent: (request, response, context) => {
+      const auditContext = buildOperatorResponseAuditContext(request, response, context)
+      if (auditContext) {
+        recordAuditEvent(request, auditContext)
+      }
+    },
   }
 }
 

@@ -76,6 +76,7 @@ import {
   connectOperatorWhatsAppAction,
   createOperatorApiKeyRouteActions,
   createOperatorAgentRouteActions,
+  createOperatorAuditRecorder,
   createOperatorAuditRouteActions,
   createOperatorIntegrationRouteActions,
   createOperatorMessageQueueRouteActions,
@@ -1494,6 +1495,58 @@ describe("operator action API helpers", () => {
       success: false,
       failureReason: "http-500",
     }))
+  })
+
+  it("records operator audit entries from request-like metadata", () => {
+    const entries: Array<ReturnType<typeof buildOperatorAuditEventEntry>> = []
+    const recorder = createOperatorAuditRecorder({
+      appendEntry: (entry) => entries.push(entry),
+    })
+    const request = {
+      method: "POST",
+      url: "/v1/operator/actions/restart-app?x=1",
+      ip: " 10.0.0.5 ",
+      headers: {
+        "x-device-id": " device-1 ",
+        "user-agent": " DotAgents Mobile ",
+      },
+    }
+
+    recorder.recordAuditEvent(request, {
+      action: "manual-operator-event",
+      success: true,
+      details: { count: 2, token: "hidden" },
+    })
+    recorder.recordRejectedDeviceAttempt(request, " Missing allow-list entry ")
+    recorder.recordResponseAuditEvent(request, { statusCode: 500 }, { details: { scheduled: false } })
+    recorder.recordResponseAuditEvent({ ...request, method: "GET" }, { statusCode: 200 })
+
+    expect(entries).toHaveLength(3)
+    expect(entries[0]).toMatchObject({
+      action: "manual-operator-event",
+      path: "/v1/operator/actions/restart-app",
+      success: true,
+      deviceId: "device-1",
+      source: {
+        ip: "10.0.0.5",
+        userAgent: "DotAgents Mobile",
+      },
+      details: { count: 2 },
+    })
+    expect(entries[1]).toMatchObject({
+      action: "device-access-denied",
+      path: "/v1/operator/actions/restart-app",
+      success: false,
+      deviceId: "device-1",
+      failureReason: "Missing allow-list entry",
+    })
+    expect(entries[2]).toMatchObject({
+      action: "actions-restart-app",
+      path: "/v1/operator/actions/restart-app",
+      success: false,
+      failureReason: "http-500",
+      details: { scheduled: false },
+    })
   })
 
   it("parses operator JSON records defensively", () => {

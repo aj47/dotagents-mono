@@ -3,14 +3,11 @@ import type { FastifyReply, FastifyRequest } from "fastify"
 import fs from "fs"
 import path from "path"
 import {
-  buildOperatorAuditEventEntry,
-  buildOperatorResponseAuditContext,
-  buildRejectedOperatorDeviceAuditEntry,
+  createOperatorAuditRecorder,
   createOperatorAuditRouteActions,
-  getOperatorAuditDeviceId,
-  getOperatorAuditPath,
-  getOperatorAuditSource,
   type OperatorAuditActionOptions,
+  type OperatorAuditEventOptions,
+  type OperatorResponseAuditContext,
 } from "@dotagents/shared/operator-actions"
 import {
   DEFAULT_OPERATOR_AUDIT_LOG_LIMIT,
@@ -44,12 +41,7 @@ const operatorAuditLogStore = createOperatorAuditLogStore({
   },
 })
 
-export interface OperatorAuditContext {
-  action?: string
-  success?: boolean
-  details?: Record<string, unknown>
-  failureReason?: string
-}
+export type OperatorAuditContext = OperatorResponseAuditContext
 
 export type OperatorAuditActionResult = OperatorRouteActionResult
 
@@ -60,37 +52,19 @@ const operatorAuditActionOptions: OperatorAuditActionOptions = {
 
 export const operatorAuditRouteActions = createOperatorAuditRouteActions(operatorAuditActionOptions)
 
+const operatorAuditRecorder = createOperatorAuditRecorder({
+  appendEntry: (entry) => operatorAuditLogStore.append(entry),
+})
+
 export function recordRejectedOperatorDeviceAttempt(request: FastifyRequest, failureReason: string): void {
-  operatorAuditLogStore.append(buildRejectedOperatorDeviceAuditEntry({
-    path: getOperatorAuditPath(request),
-    deviceId: getOperatorAuditDeviceId(request),
-    source: getOperatorAuditSource(request),
-    failureReason,
-  }))
+  operatorAuditRecorder.recordRejectedDeviceAttempt(request, failureReason)
 }
 
 export function recordOperatorAuditEvent(
   request: FastifyRequest,
-  options: {
-    action: string
-    path?: string
-    success: boolean
-    details?: Record<string, unknown>
-    failureReason?: string
-  },
+  options: OperatorAuditEventOptions,
 ): void {
-  const deviceId = getOperatorAuditDeviceId(request)
-  const source = getOperatorAuditSource(request)
-
-  operatorAuditLogStore.append(buildOperatorAuditEventEntry({
-    action: options.action,
-    path: options.path ?? getOperatorAuditPath(request),
-    success: options.success,
-    deviceId,
-    source,
-    details: options.details,
-    failureReason: options.failureReason,
-  }))
+  operatorAuditRecorder.recordAuditEvent(request, options)
 }
 
 export function getOperatorAuditContext(request: FastifyRequest): OperatorAuditContext {
@@ -107,8 +81,5 @@ export function setOperatorAuditContext(request: FastifyRequest, context: Partia
 }
 
 export function recordOperatorResponseAuditEvent(request: FastifyRequest, reply: FastifyReply): void {
-  const auditContext = buildOperatorResponseAuditContext(request, reply, getOperatorAuditContext(request))
-  if (auditContext) {
-    recordOperatorAuditEvent(request, auditContext)
-  }
+  operatorAuditRecorder.recordResponseAuditEvent(request, reply, getOperatorAuditContext(request))
 }
