@@ -27,6 +27,7 @@ import {
   buildServerConversationAutoTitleSeed,
   buildServerConversationHistoryItem,
   resolveServerConversationGeneratedTitle,
+  getMostRecentServerConversationHistoryItem,
   getStoredServerConversationMessages,
   isValidServerConversationRecordShape,
   normalizeServerConversationHistoryIndex,
@@ -1090,8 +1091,7 @@ export class ConversationService {
    */
   async getMostRecentConversation(): Promise<{ id: string; title: string } | null> {
     const history = await this.getConversationHistory()
-    if (history.length === 0) return null
-    return { id: history[0].id, title: history[0].title }
+    return getMostRecentServerConversationHistoryItem(history)
   }
 
   async deleteAllConversations(): Promise<void> {

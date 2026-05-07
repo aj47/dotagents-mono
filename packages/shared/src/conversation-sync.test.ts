@@ -33,6 +33,7 @@ import {
   fromServerConversationMessage,
   getConversationAction,
   getConversationsAction,
+  getMostRecentServerConversationHistoryItem,
   getRepresentedServerConversationMessageCount,
   getRepresentedServerConversationMessageSliceCount,
   getStoredServerConversationMessages,
@@ -459,9 +460,9 @@ describe('server conversation API helpers', () => {
 
   it('sorts conversation history by most recent update without mutating input', () => {
     const index = [
-      { id: 'old', updatedAt: 10 },
-      { id: 'new', updatedAt: 30 },
-      { id: 'middle', updatedAt: 20 },
+      { id: 'old', title: 'Old', updatedAt: 10 },
+      { id: 'new', title: 'New', updatedAt: 30 },
+      { id: 'middle', title: 'Middle', updatedAt: 20 },
     ];
 
     expect(sortServerConversationHistoryByUpdatedAt(index).map((item) => item.id)).toEqual([
@@ -469,6 +470,11 @@ describe('server conversation API helpers', () => {
       'middle',
       'old',
     ]);
+    expect(getMostRecentServerConversationHistoryItem(index)).toEqual({
+      id: 'new',
+      title: 'New',
+    });
+    expect(getMostRecentServerConversationHistoryItem([])).toBeNull();
     expect(index.map((item) => item.id)).toEqual(['old', 'new', 'middle']);
   });
 

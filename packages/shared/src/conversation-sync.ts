@@ -615,6 +615,13 @@ export function sortServerConversationHistoryByUpdatedAt<TItem extends { updated
   return [...index].sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+export function getMostRecentServerConversationHistoryItem<TItem extends { id: string; title: string; updatedAt: number }>(
+  index: TItem[],
+): Pick<TItem, 'id' | 'title'> | null {
+  const [mostRecent] = sortServerConversationHistoryByUpdatedAt(index);
+  return mostRecent ? { id: mostRecent.id, title: mostRecent.title } : null;
+}
+
 export function getRepresentedServerConversationMessageCount<TConversation extends ServerConversationRecord<any>>(
   conversation: TConversation,
 ): number {
