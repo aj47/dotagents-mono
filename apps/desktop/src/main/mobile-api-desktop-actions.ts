@@ -18,6 +18,7 @@ import {
   type ExportBundleRequest,
 } from "@dotagents/shared/bundle-api"
 import {
+  createKnowledgeNoteActionService,
   createKnowledgeNoteRouteActions,
   type KnowledgeNoteActionOptions,
 } from "@dotagents/shared/knowledge-note-form"
@@ -310,17 +311,7 @@ const profileRouteActionBundle = createProfileRouteActionBundle({
 })
 
 const knowledgeNoteActionOptions: KnowledgeNoteActionOptions = {
-  service: {
-    getAllNotes: (filter) => knowledgeNotesService.getAllNotes(filter),
-    getNote: (id) => knowledgeNotesService.getNote(id),
-    searchNotes: (query, filter) => knowledgeNotesService.searchNotes(query, filter),
-    deleteNote: (id) => knowledgeNotesService.deleteNote(id),
-    deleteMultipleNotes: (ids) => knowledgeNotesService.deleteMultipleNotes(ids),
-    deleteAllNotes: () => knowledgeNotesService.deleteAllNotes(),
-    createNote: (request) => knowledgeNotesService.createNote(request),
-    saveNote: (note) => knowledgeNotesService.saveNote(note),
-    updateNote: (id, request) => knowledgeNotesService.updateNote(id, request),
-  },
+  service: createKnowledgeNoteActionService(knowledgeNotesService),
   diagnostics: diagnosticsService,
 }
 

@@ -82,6 +82,37 @@ export interface KnowledgeNoteActionService {
   updateNote(id: string, request: KnowledgeNoteUpdateRequest): KnowledgeNoteMaybePromise<boolean>
 }
 
+export interface KnowledgeNoteActionServiceLike {
+  getAllNotes(filter: KnowledgeNotesListRequest): KnowledgeNoteMaybePromise<KnowledgeNote[]>
+  getNote(id: string): KnowledgeNoteMaybePromise<KnowledgeNote | null | undefined>
+  searchNotes(
+    query: string,
+    filter: Omit<KnowledgeNoteSearchRequest, "query">,
+  ): KnowledgeNoteMaybePromise<KnowledgeNote[]>
+  deleteNote(id: string): KnowledgeNoteMaybePromise<boolean>
+  deleteMultipleNotes(ids: string[]): KnowledgeNoteMaybePromise<KnowledgeNotesDeleteResult>
+  deleteAllNotes(): KnowledgeNoteMaybePromise<KnowledgeNotesDeleteResult>
+  createNote(request: KnowledgeNoteCreateRequest): KnowledgeNote
+  saveNote(note: KnowledgeNote): KnowledgeNoteMaybePromise<boolean>
+  updateNote(id: string, request: KnowledgeNoteUpdateRequest): KnowledgeNoteMaybePromise<boolean>
+}
+
+export function createKnowledgeNoteActionService(
+  service: KnowledgeNoteActionServiceLike,
+): KnowledgeNoteActionService {
+  return {
+    getAllNotes: (filter) => service.getAllNotes(filter),
+    getNote: (id) => service.getNote(id),
+    searchNotes: (query, filter) => service.searchNotes(query, filter),
+    deleteNote: (id) => service.deleteNote(id),
+    deleteMultipleNotes: (ids) => service.deleteMultipleNotes(ids),
+    deleteAllNotes: () => service.deleteAllNotes(),
+    createNote: (request) => service.createNote(request),
+    saveNote: (note) => service.saveNote(note),
+    updateNote: (id, request) => service.updateNote(id, request),
+  }
+}
+
 export interface KnowledgeNoteActionOptions {
   service: KnowledgeNoteActionService
   diagnostics: KnowledgeNoteActionDiagnostics

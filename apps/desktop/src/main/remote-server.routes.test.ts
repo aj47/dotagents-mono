@@ -2401,6 +2401,7 @@ describe("remote-server route registration", () => {
       "const knowledgeNoteRouteActions = createKnowledgeNoteRouteActions(knowledgeNoteActionOptions)",
     )
     expect(mobileApiDesktopActionsSource).toContain("knowledgeNotes: knowledgeNoteRouteActions")
+    expect(mobileApiDesktopActionsSource).toContain("service: createKnowledgeNoteActionService(knowledgeNotesService)")
     expect(mobileApiDesktopActionsSource).not.toContain("getKnowledgeNotesAction(query, knowledgeNoteActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("getKnowledgeNoteAction(id, knowledgeNoteActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("searchKnowledgeNotesAction(body, knowledgeNoteActionOptions)")
@@ -2410,6 +2411,9 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).not.toContain("updateKnowledgeNoteAction(id, body, knowledgeNoteActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("deleteKnowledgeNoteAction(id, knowledgeNoteActionOptions)")
     expect(sharedKnowledgeNoteFormSource).toContain("export interface KnowledgeNoteActionOptions")
+    expect(sharedKnowledgeNoteFormSource).toContain("export function createKnowledgeNoteActionService")
+    expect(sharedKnowledgeNoteFormSource).toContain("getAllNotes: (filter) => service.getAllNotes(filter)")
+    expect(sharedKnowledgeNoteFormSource).toContain("saveNote: (note) => service.saveNote(note)")
     expect(sharedKnowledgeNoteFormSource).toContain("export interface KnowledgeNoteRouteActions")
     expect(sharedKnowledgeNoteFormSource).toContain("export function createKnowledgeNoteRouteActions")
     expect(sharedKnowledgeNoteFormSource).toContain("getKnowledgeNotes: (query) => getKnowledgeNotesAction(query, options)")

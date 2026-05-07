@@ -9,6 +9,7 @@ import {
   buildKnowledgeNoteResponse,
   buildKnowledgeNotesResponse,
   createKnowledgeNoteAction,
+  createKnowledgeNoteActionService,
   createKnowledgeNoteRouteActions,
   deleteAllKnowledgeNotesAction,
   deleteKnowledgeNoteAction,
@@ -220,6 +221,79 @@ describe("knowledge note form helpers", () => {
       ids: ["note-1"],
     })
     expect(buildKnowledgeNotesDeleteAllResponse(3)).toEqual({ success: true, deletedCount: 3 })
+  })
+
+  it("creates knowledge note action services from note service adapters", async () => {
+    const note: KnowledgeNote = {
+      id: "note-1",
+      title: "Title",
+      context: "search-only",
+      body: "Body",
+      tags: ["tag"],
+      references: [],
+      createdAt: 1,
+      updatedAt: 2,
+    }
+    const calls: string[] = []
+    const service = createKnowledgeNoteActionService({
+      getAllNotes: async (filter) => {
+        calls.push(`list:${filter.context ?? ""}`)
+        return [note]
+      },
+      getNote: async (id) => {
+        calls.push(`get:${id}`)
+        return note
+      },
+      searchNotes: async (query, filter) => {
+        calls.push(`search:${query}:${filter.sort ?? ""}`)
+        return [note]
+      },
+      deleteNote: async (id) => {
+        calls.push(`delete:${id}`)
+        return true
+      },
+      deleteMultipleNotes: async (ids) => {
+        calls.push(`delete-many:${ids.join(",")}`)
+        return { deletedCount: ids.length }
+      },
+      deleteAllNotes: async () => {
+        calls.push("delete-all")
+        return { deletedCount: 1 }
+      },
+      createNote: (request) => {
+        calls.push(`create:${request.body}`)
+        return note
+      },
+      saveNote: async (nextNote) => {
+        calls.push(`save:${nextNote.id}`)
+        return true
+      },
+      updateNote: async (id, request) => {
+        calls.push(`update:${id}:${request.title ?? ""}`)
+        return true
+      },
+    })
+
+    await expect(service.getAllNotes({ context: "search-only" })).resolves.toEqual([note])
+    await expect(service.getNote("note-1")).resolves.toBe(note)
+    await expect(service.searchNotes("body", { sort: "updated-desc" })).resolves.toEqual([note])
+    await expect(service.deleteNote("note-1")).resolves.toBe(true)
+    await expect(service.deleteMultipleNotes(["note-1", "note-2"])).resolves.toEqual({ deletedCount: 2 })
+    await expect(service.deleteAllNotes()).resolves.toEqual({ deletedCount: 1 })
+    expect(service.createNote({ body: "Body" })).toBe(note)
+    await expect(service.saveNote(note)).resolves.toBe(true)
+    await expect(service.updateNote("note-1", { title: "Updated" })).resolves.toBe(true)
+    expect(calls).toEqual([
+      "list:search-only",
+      "get:note-1",
+      "search:body:updated-desc",
+      "delete:note-1",
+      "delete-many:note-1,note-2",
+      "delete-all",
+      "create:Body",
+      "save:note-1",
+      "update:note-1:Updated",
+    ])
   })
 
   it("runs shared knowledge note route actions through service adapters", async () => {
