@@ -381,6 +381,18 @@ export function isRepeatTaskSession(
   return !!title && !!repeatTaskTitleHints?.has(title)
 }
 
+export function isRepeatTaskSessionForTasks(
+  session: RepeatTaskSessionLike,
+  tasks: readonly RepeatTaskTitleHintSource[],
+  options: { firstUserMessage?: string | null } = {},
+): boolean {
+  const titleHints = new Set(tasks.flatMap(getRepeatTaskTitleHints))
+  if (isRepeatTaskSession(session, titleHints)) return true
+
+  const firstUserMessage = options.firstUserMessage?.trim()
+  return !!firstUserMessage && tasks.some((task) => task.prompt?.trim() === firstUserMessage)
+}
+
 export function partitionRepeatTaskAndUserEntries<
   T extends { session: RepeatTaskSessionLike },
 >(

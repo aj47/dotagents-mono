@@ -125,7 +125,7 @@ import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared/api-key-error-utils"
-import { hasRepeatTaskTitlePrefix } from "@dotagents/shared/repeat-task-utils"
+import { isRepeatTaskSessionForTasks } from "@dotagents/shared/repeat-task-utils"
 import { stopAgentSessionById } from "./agent-session-actions"
 import { describeAgentSessionId } from "@dotagents/shared/agent-run-utils"
 import { resolveAgentProfileReferenceCleanupLayers } from "@dotagents/shared/agent-profile-reference-cleanup"
@@ -141,16 +141,12 @@ function parseMcpConfigImportBody(body: unknown): MCPConfig {
 }
 
 async function withRepeatTaskSessionFlag<T extends {
+  id: string
   conversationId?: string
   conversationTitle?: string
 }>(session: T): Promise<T & { isRepeatTask?: boolean }> {
-  if (hasRepeatTaskTitlePrefix(session.conversationTitle)) {
-    return { ...session, isRepeatTask: true }
-  }
-
   const loops = loopService.getLoops()
-  const title = session.conversationTitle?.trim()
-  if (title && loops.some((loop) => loop.name.trim() === title)) {
+  if (isRepeatTaskSessionForTasks(session, loops)) {
     return { ...session, isRepeatTask: true }
   }
 
@@ -159,8 +155,7 @@ async function withRepeatTaskSessionFlag<T extends {
       const conversation = await conversationService.loadConversation(session.conversationId)
       const firstUserMessage = getFirstNonEmptyStoredServerConversationUserMessageContent(conversation)
       if (
-        firstUserMessage &&
-        loops.some((loop) => loop.prompt.trim() === firstUserMessage)
+        isRepeatTaskSessionForTasks(session, loops, { firstUserMessage })
       ) {
         return { ...session, isRepeatTask: true }
       }

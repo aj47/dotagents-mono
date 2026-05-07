@@ -46,6 +46,7 @@ import {
   importRepeatTaskFromMarkdownAction,
   exportRepeatTaskToMarkdownAction,
   isContinuousRepeatTask,
+  isRepeatTaskSessionForTasks,
   mergeRepeatTaskLayers,
   parseLoopIntervalDraft,
   parseRepeatTaskCreateRequestBody,
@@ -124,6 +125,25 @@ describe("repeat task schedule helpers", () => {
       { id: "s", conversationTitle: "Conversation Knowledge Review" },
       new Set(["Conversation Knowledge Review"]),
     )).toBe(true)
+  })
+
+  it("detects repeat-task sessions from configured task titles or first stored user prompt", () => {
+    const tasks = [
+      { name: "daily-review", prompt: "Run the daily review" },
+      { name: "knowledge sweep", prompt: "# Knowledge Sweep\nSummarize new notes" },
+    ]
+
+    expect(isRepeatTaskSessionForTasks({ id: "s", conversationTitle: "Daily Review" }, tasks)).toBe(true)
+    expect(isRepeatTaskSessionForTasks(
+      { id: "s", conversationTitle: "Generated Conversation Title" },
+      tasks,
+      { firstUserMessage: " Run the daily review " },
+    )).toBe(true)
+    expect(isRepeatTaskSessionForTasks(
+      { id: "s", conversationTitle: "Generated Conversation Title" },
+      tasks,
+      { firstUserMessage: "Unrelated prompt" },
+    )).toBe(false)
   })
 
   it("partitions repeat-task entries and keeps child subagents with task parents", () => {
