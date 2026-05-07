@@ -6,7 +6,7 @@ import {
   ListToolsRequestSchema,
   isInitializeRequest,
 } from "@modelcontextprotocol/sdk/types.js"
-import type { FastifyInstance, FastifyReply } from "fastify"
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import { agentSessionStateManager, type SessionProfileSnapshot } from "@dotagents/core"
 import {
   buildInjectedMcpToolCallErrorResponse,
@@ -19,21 +19,20 @@ import {
 } from "@dotagents/shared/mcp-api"
 import type { RemoteServerRouteRegistrar } from "@dotagents/shared/remote-server-controller-contracts"
 import {
+  registerRemoteServerRouteBundle,
+  type RemoteServerRouteBundleServer,
+} from "@dotagents/shared/remote-server-route-bundle"
+import type { InjectedMcpRouteActions } from "@dotagents/shared/remote-server-route-contracts"
+import {
   getAcpSessionForClientSessionToken,
   getAppSessionForAcpSession,
   getPendingAppSessionForClientSessionToken,
 } from "./acpx/acpx-session-state"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { diagnosticsService } from "./diagnostics"
-import {
-  registerInjectedMcpRoutes,
-  type InjectedMcpRouteActions,
-} from "./injected-mcp-routes"
 import { mobileApiDesktopActions } from "./mobile-api-desktop-actions"
 import { mcpService } from "./mcp-service"
-import { registerMobileApiRoutes } from "./mobile-api-routes"
 import { operatorRouteDesktopActions } from "./operator-route-desktop-actions"
-import { registerOperatorRoutes } from "./operator-routes"
 import { isRuntimeTool } from "./runtime-tools"
 
 interface AcpMcpRequestContext {
@@ -296,29 +295,13 @@ export const registerDesktopRemoteServerRoutes: RemoteServerRouteRegistrar<
   FastifyInstance,
   FastifyReply
 > = (fastify, context) => {
-  registerOperatorRoutes(fastify, {
-    actions: operatorRouteDesktopActions,
-    providerSecretMask: context.providerSecretMask,
-    getRemoteServerStatus: context.getRemoteServerStatus,
-    getAppVersion: context.getAppVersion,
-    runAgent: context.runAgent,
-    scheduleRemoteServerRestartFromOperator: context.scheduleRemoteServerRestartFromOperator,
-    scheduleAppRestartFromOperator: context.scheduleAppRestartFromOperator,
-    scheduleRemoteServerRestartAfterReply: context.scheduleRemoteServerRestartAfterReply,
-  })
-
-  registerMobileApiRoutes(fastify, {
-    actions: mobileApiDesktopActions,
-    providerSecretMask: context.providerSecretMask,
-    remoteServerSecretMask: context.remoteServerSecretMask,
-    discordSecretMask: context.discordSecretMask,
-    langfuseSecretMask: context.langfuseSecretMask,
-    runAgent: context.runAgent,
-    notifyConversationHistoryChanged: context.notifyConversationHistoryChanged,
-    scheduleRemoteServerLifecycleActionAfterReply: context.scheduleRemoteServerLifecycleActionAfterReply,
-  })
-
-  registerInjectedMcpRoutes(fastify, {
-    actions: injectedMcpDesktopActions,
-  })
+  registerRemoteServerRouteBundle(
+    fastify as RemoteServerRouteBundleServer<FastifyRequest, FastifyReply>,
+    context,
+    {
+      operatorRouteActions: operatorRouteDesktopActions,
+      mobileApiRouteActions: mobileApiDesktopActions,
+      injectedMcpRouteActions: injectedMcpDesktopActions,
+    },
+  )
 }

@@ -76,6 +76,7 @@ export default defineConfig({
     'remote-server-injected-mcp-routes': 'src/remote-server-injected-mcp-routes.ts',
     'remote-server-mobile-api-routes': 'src/remote-server-mobile-api-routes.ts',
     'remote-server-operator-routes': 'src/remote-server-operator-routes.ts',
+    'remote-server-route-bundle': 'src/remote-server-route-bundle.ts',
     'remote-server-api': 'src/remote-server-api.ts',
     'remote-server-controller': 'src/remote-server-controller.ts',
     'remote-server-controller-contracts': 'src/remote-server-controller-contracts.ts',
