@@ -223,6 +223,25 @@ export interface BuildServerConversationAutoTitleSeedOptions {
   maxTitleChars?: number;
 }
 
+export interface BuildServerConversationAutoTitlePromptOptions {
+  maxTitleWords?: number;
+  maxUserChars?: number;
+  maxAssistantChars?: number;
+}
+
+export interface ResolveServerConversationGeneratedTitleOptions {
+  maxTitleChars?: number;
+  maxTitleWords?: number;
+}
+
+export type ApplyServerConversationGeneratedTitleResult<TConversation extends ServerConversationRecord<any>> =
+  | { ok: true; conversation: TConversation; title: string; changed: true }
+  | {
+    ok: false;
+    conversation: TConversation;
+    reason: 'missing_title' | 'same_as_fallback' | 'missing_seed' | 'stale_seed';
+  };
+
 export interface BuildServerConversationHistoryItemOptions {
   maxLastMessageChars?: number;
   maxPreviewChars?: number;
@@ -634,6 +653,90 @@ export function buildServerConversationAutoTitleSeed<TConversation extends Serve
     fallbackTitle,
     firstUserMessage,
     firstAssistantMessage,
+  };
+}
+
+export function buildServerConversationAutoTitlePrompt(
+  seed: ServerConversationAutoTitleSeed,
+  options: BuildServerConversationAutoTitlePromptOptions = {},
+): string {
+  const maxTitleWords = options.maxTitleWords ?? 10;
+  const maxUserChars = options.maxUserChars ?? 400;
+  const maxAssistantChars = options.maxAssistantChars ?? 600;
+
+  return [
+    'Generate a short session title for this conversation.',
+    `Requirements: maximum ${maxTitleWords} words, no quotes, no markdown, plain text only.`,
+    'Prefer a specific topic label over a generic sentence fragment.',
+    '',
+    `User: ${seed.firstUserMessage.slice(0, maxUserChars)}`,
+    `Assistant: ${seed.firstAssistantMessage.slice(0, maxAssistantChars)}`,
+    '',
+    'Return only the title.',
+  ].join('\n');
+}
+
+export function resolveServerConversationGeneratedTitle(
+  seed: ServerConversationAutoTitleSeed,
+  generatedTitle: string | null | undefined,
+  options: ResolveServerConversationGeneratedTitleOptions = {},
+): string | null {
+  const maxTitleChars = options.maxTitleChars ?? 80;
+  const maxTitleWords = options.maxTitleWords;
+  const normalizedTitle = normalizeConversationTitleText(generatedTitle || '', {
+    maxChars: maxTitleChars,
+    maxWords: maxTitleWords,
+  });
+  if (!normalizedTitle) {
+    return null;
+  }
+
+  if (normalizedTitle === normalizeConversationTitleText(seed.fallbackTitle, { maxChars: maxTitleChars })) {
+    return null;
+  }
+
+  return normalizedTitle;
+}
+
+export function applyServerConversationGeneratedTitle<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+  options: {
+    seed: ServerConversationAutoTitleSeed;
+    generatedTitle: string | null | undefined;
+  } & ResolveServerConversationGeneratedTitleOptions,
+): ApplyServerConversationGeneratedTitleResult<TConversation> {
+  const title = resolveServerConversationGeneratedTitle(options.seed, options.generatedTitle, options);
+  if (!title) {
+    const fallbackTitle = normalizeConversationTitleText(options.seed.fallbackTitle, {
+      maxChars: options.maxTitleChars ?? 80,
+    });
+    const generatedFallback = normalizeConversationTitleText(options.generatedTitle || '', {
+      maxChars: options.maxTitleChars ?? 80,
+      maxWords: options.maxTitleWords,
+    });
+    return {
+      ok: false,
+      conversation,
+      reason: generatedFallback && generatedFallback === fallbackTitle ? 'same_as_fallback' : 'missing_title',
+    };
+  }
+
+  const latestSeed = buildServerConversationAutoTitleSeed(conversation, {
+    maxTitleChars: options.maxTitleChars,
+  });
+  if (!latestSeed) {
+    return { ok: false, conversation, reason: 'missing_seed' };
+  }
+  if (latestSeed.fallbackTitle !== options.seed.fallbackTitle) {
+    return { ok: false, conversation, reason: 'stale_seed' };
+  }
+
+  conversation.title = title;
+  return {
+    ok: true,
+    conversation,
+    title,
+    changed: true,
   };
 }
 

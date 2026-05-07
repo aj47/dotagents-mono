@@ -14,9 +14,11 @@ import type {
 } from "@dotagents/shared/conversation-domain"
 import {
   appendServerConversationMessage,
+  applyServerConversationGeneratedTitle,
   applyServerConversationMessageLimit,
   buildBranchedServerConversation,
   buildNewServerConversation,
+  buildServerConversationAutoTitlePrompt,
   buildServerConversationCompactedRecord,
   buildServerConversationCompactionCheckpointBackfill,
   buildServerConversationCompactionPlan,
@@ -24,6 +26,7 @@ import {
   buildServerConversationCompactionSummaryInput,
   buildServerConversationAutoTitleSeed,
   buildServerConversationHistoryItem,
+  resolveServerConversationGeneratedTitle,
   getStoredServerConversationMessages,
   isValidServerConversationRecordShape,
   normalizeServerConversationHistoryIndex,
@@ -40,7 +43,6 @@ import {
 } from "@dotagents/shared/conversation-id"
 import {
   generateMessageId,
-  normalizeConversationTitleText,
 } from "@dotagents/shared/session"
 import {
   extractDataImageMarkdownReferences,
@@ -286,27 +288,19 @@ export class ConversationService {
   }
 
   private async generateAgentSessionTitle(
-    firstUserMessage: string,
-    firstAssistantMessage: string,
+    seed: NonNullable<ReturnType<typeof buildServerConversationAutoTitleSeed>>,
     sessionId?: string,
   ): Promise<string | null> {
-    const prompt = [
-      "Generate a short session title for this conversation.",
-      `Requirements: maximum ${MAX_AGENT_SESSION_TITLE_WORDS} words, no quotes, no markdown, plain text only.`,
-      "Prefer a specific topic label over a generic sentence fragment.",
-      "",
-      `User: ${firstUserMessage.slice(0, 400)}`,
-      `Assistant: ${firstAssistantMessage.slice(0, 600)}`,
-      "",
-      "Return only the title.",
-    ].join("\n")
+    const prompt = buildServerConversationAutoTitlePrompt(seed, {
+      maxTitleWords: MAX_AGENT_SESSION_TITLE_WORDS,
+    })
 
     try {
       const completion = await makeTextCompletionWithFetch(prompt, undefined, sessionId)
-      return normalizeConversationTitleText(completion, {
+      return resolveServerConversationGeneratedTitle(seed, completion, {
         maxChars: MAX_SESSION_TITLE_CHARS,
         maxWords: MAX_AGENT_SESSION_TITLE_WORDS,
-      }) || null
+      })
     } catch (error) {
       logApp("[ConversationService] Failed to auto-generate session title:", error)
       return null
@@ -990,16 +984,9 @@ export class ConversationService {
       return null
     }
 
-    const generatedTitle = await this.generateAgentSessionTitle(
-      seed.firstUserMessage,
-      seed.firstAssistantMessage,
-      sessionId,
-    )
+    const generatedTitle = await this.generateAgentSessionTitle(seed, sessionId)
 
-    if (
-      !generatedTitle ||
-      generatedTitle === normalizeConversationTitleText(seed.fallbackTitle, { maxChars: MAX_SESSION_TITLE_CHARS })
-    ) {
+    if (!generatedTitle) {
       return null
     }
 
@@ -1009,12 +996,16 @@ export class ConversationService {
         return null
       }
 
-      const latestSeed = this.getAutoTitleSeed(latestConversation)
-      if (!latestSeed || latestSeed.fallbackTitle !== seed.fallbackTitle) {
+      const titleResult = applyServerConversationGeneratedTitle(latestConversation, {
+        seed,
+        generatedTitle,
+        maxTitleChars: MAX_SESSION_TITLE_CHARS,
+        maxTitleWords: MAX_AGENT_SESSION_TITLE_WORDS,
+      })
+      if (titleResult.ok === false) {
         return latestConversation
       }
 
-      latestConversation.title = generatedTitle
       await this.saveConversationUnlocked(latestConversation)
       return latestConversation
     })

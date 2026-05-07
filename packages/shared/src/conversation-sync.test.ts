@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Session } from './session';
 import {
+  applyServerConversationGeneratedTitle,
   applyServerConversationUpdate,
   applyServerConversationMessageLimit,
   appendServerConversationMessage,
   buildNewServerConversation,
   buildBranchedServerConversation,
+  buildServerConversationAutoTitlePrompt,
   buildServerConversationCompactedRecord,
   buildServerConversationCompactionCheckpointBackfill,
   buildServerConversationCompactionCheckpointMetadata,
@@ -44,6 +46,7 @@ import {
   parseUpdateConversationRequestBody,
   renameServerConversationTitle,
   repairServerConversationJsonData,
+  resolveServerConversationGeneratedTitle,
   serverConversationToStubSession,
   sortServerConversationHistoryByUpdatedAt,
   syncConversations,
@@ -204,6 +207,52 @@ describe('server conversation API helpers', () => {
       ...seededConversation,
       rawMessages: seededConversation.rawMessages.slice(0, 1),
     })).toBeNull();
+
+    const seed = buildServerConversationAutoTitleSeed(seededConversation);
+    expect(seed).not.toBeNull();
+    if (!seed) return;
+
+    const prompt = buildServerConversationAutoTitlePrompt(seed, {
+      maxTitleWords: 8,
+      maxUserChars: 9,
+      maxAssistantChars: 13,
+    });
+    expect(prompt).toContain('Requirements: maximum 8 words');
+    expect(prompt).toContain('User: Summarize');
+    expect(prompt).toContain('Assistant: Shared server');
+    expect(resolveServerConversationGeneratedTitle(seed, '"Shared Server Extraction"', {
+      maxTitleChars: 80,
+      maxTitleWords: 4,
+    })).toBe('Shared Server Extraction');
+    expect(resolveServerConversationGeneratedTitle(seed, 'Summarize prism modularization', {
+      maxTitleChars: 80,
+      maxTitleWords: 10,
+    })).toBeNull();
+
+    const titleResult = applyServerConversationGeneratedTitle(seededConversation, {
+      seed,
+      generatedTitle: 'Shared Server Extraction',
+      maxTitleChars: 80,
+      maxTitleWords: 4,
+    });
+    expect(titleResult).toMatchObject({
+      ok: true,
+      title: 'Shared Server Extraction',
+      changed: true,
+    });
+    expect(seededConversation.title).toBe('Shared Server Extraction');
+    expect(applyServerConversationGeneratedTitle({
+      ...seededConversation,
+      title: 'Already changed',
+    }, {
+      seed,
+      generatedTitle: 'Another Title',
+      maxTitleChars: 80,
+      maxTitleWords: 4,
+    })).toMatchObject({
+      ok: false,
+      reason: 'missing_seed',
+    });
   });
 
   it('returns route-compatible validation errors for bad create and update bodies', () => {
