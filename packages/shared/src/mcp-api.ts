@@ -263,6 +263,7 @@ export interface McpServerActionService {
 export interface McpServerConfigActionService {
   getMcpConfig(): MCPConfig
   saveMcpConfig(mcpConfig: MCPConfig): void
+  onMcpServerDeleted?(context: McpServerDeletedContext): void
   onMcpConfigSaved?(context: {
     action: "upserted" | "deleted" | "imported"
     serverName: string
@@ -278,18 +279,25 @@ export type McpConfigActionStoreConfig = {
 export interface McpConfigActionStore<TConfig extends object> {
   get(): TConfig & McpConfigActionStoreConfig
   save(config: TConfig & McpConfigActionStoreConfig): void
+  onMcpServerDeleted?(context: McpServerDeletedContext): void
 }
 
 export function createMcpConfigActionService<TConfig extends object>(
   store: McpConfigActionStore<TConfig>,
 ): McpServerConfigActionService {
-  return {
+  const service: McpServerConfigActionService = {
     getMcpConfig: () => store.get().mcpConfig || { mcpServers: {} },
     saveMcpConfig: (mcpConfig) => {
       const config = store.get()
       store.save({ ...config, mcpConfig })
     },
   }
+
+  if (store.onMcpServerDeleted) {
+    service.onMcpServerDeleted = store.onMcpServerDeleted
+  }
+
+  return service
 }
 
 export type McpServerDeletedContext = {
@@ -313,7 +321,6 @@ export interface McpServerConfigActionOptions {
   service: McpServerConfigActionService
   diagnostics: McpServerActionDiagnostics
   reservedServerNames?: readonly string[]
-  onMcpServerDeleted?(context: McpServerDeletedContext): void
 }
 
 export interface McpRouteActionOptions {
@@ -1079,7 +1086,7 @@ export function deleteMcpServerConfigAction(
       previousMcpConfig: currentMcpConfig,
       nextMcpConfig,
     })
-    options.onMcpServerDeleted?.({
+    options.service.onMcpServerDeleted?.({
       serverName: normalizedServerName,
       previousMcpConfig: currentMcpConfig,
       nextMcpConfig,

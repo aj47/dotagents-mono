@@ -409,17 +409,17 @@ describe("MCP API helpers", () => {
             nextServers: Object.keys(nextMcpConfig.mcpServers).sort(),
           })
         },
+        onMcpServerDeleted: ({ serverName, previousMcpConfig, nextMcpConfig, availableServerNames }) => {
+          deletedContexts.push({
+            serverName,
+            previousServers: Object.keys(previousMcpConfig.mcpServers).sort(),
+            nextServers: Object.keys(nextMcpConfig.mcpServers).sort(),
+            availableServerNames,
+          })
+        },
       },
       diagnostics: options.diagnostics,
       reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
-      onMcpServerDeleted: ({ serverName, previousMcpConfig, nextMcpConfig, availableServerNames }) => {
-        deletedContexts.push({
-          serverName,
-          previousServers: Object.keys(previousMcpConfig.mcpServers).sort(),
-          nextServers: Object.keys(nextMcpConfig.mcpServers).sort(),
-          availableServerNames,
-        })
-      },
     }
 
     expect(getMcpServersAction(options)).toEqual({
@@ -507,6 +507,7 @@ describe("MCP API helpers", () => {
   })
 
   it("creates config-backed MCP config action services", () => {
+    const deletedContexts: unknown[] = []
     let config: { mcpConfig?: MCPConfig; unrelatedSetting: boolean } = {
       mcpConfig: {
         mcpServers: {
@@ -519,6 +520,9 @@ describe("MCP API helpers", () => {
       get: () => config,
       save: (nextConfig) => {
         config = nextConfig
+      },
+      onMcpServerDeleted: (context) => {
+        deletedContexts.push(context)
       },
     })
 
@@ -548,6 +552,30 @@ describe("MCP API helpers", () => {
       },
       unrelatedSetting: true,
     })
+    service.onMcpServerDeleted?.({
+      serverName: "filesystem",
+      previousMcpConfig: {
+        mcpServers: {
+          filesystem: { command: "filesystem-mcp" },
+        },
+      },
+      nextMcpConfig: {
+        mcpServers: {},
+      },
+      availableServerNames: [],
+    })
+    expect(deletedContexts).toEqual([{
+      serverName: "filesystem",
+      previousMcpConfig: {
+        mcpServers: {
+          filesystem: { command: "filesystem-mcp" },
+        },
+      },
+      nextMcpConfig: {
+        mcpServers: {},
+      },
+      availableServerNames: [],
+    }])
 
     let emptyConfig: { mcpConfig?: MCPConfig; unrelatedSetting: boolean } = {
       unrelatedSetting: false,

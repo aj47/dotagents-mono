@@ -371,12 +371,12 @@ const mcpServerConfigActionOptions = {
   service: createMcpConfigActionService({
     get: () => configStore.get(),
     save: (config) => configStore.save(config),
+    onMcpServerDeleted: ({ availableServerNames }) => {
+      cleanupInvalidAgentProfileMcpReferences(availableServerNames)
+    },
   }),
   diagnostics: diagnosticsService,
   reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
-  onMcpServerDeleted: ({ availableServerNames }) => {
-    cleanupInvalidAgentProfileMcpReferences(availableServerNames)
-  },
 } satisfies McpServerConfigActionOptions
 
 const mcpRouteActions = createMcpRouteActions({

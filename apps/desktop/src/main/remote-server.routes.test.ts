@@ -1429,6 +1429,9 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).not.toContain("importMcpServerConfigsAction(body, mcpServerConfigActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("exportMcpServerConfigsAction(mcpServerConfigActionOptions)")
     expect(mobileApiDesktopActionsSource).toContain("onMcpServerDeleted: ({ availableServerNames }) => {")
+    expect(mobileApiDesktopActionsSource).not.toContain(
+      "}),\n  diagnostics: diagnosticsService,\n  reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,\n  onMcpServerDeleted: ({ availableServerNames }) => {",
+    )
     expect(mobileApiDesktopActionsSource).toContain("function getAgentProfileReferenceCleanupLayers()")
     expect(mobileApiDesktopActionsSource).toContain("resolveAgentProfileReferenceCleanupLayers(")
     expect(mobileApiDesktopActionsSource).toContain("cleanupInvalidMcpServerReferencesInLayers(layers, validServerNames)")
@@ -1442,6 +1445,7 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain("getMcpConfig: () => store.get().mcpConfig || { mcpServers: {} }")
     expect(sharedMcpApiSource).toContain("store.save({ ...config, mcpConfig })")
     expect(sharedMcpApiSource).toContain("onMcpServerDeleted?(context: McpServerDeletedContext): void")
+    expect(sharedMcpApiSource).toContain("service.onMcpServerDeleted = store.onMcpServerDeleted")
     expect(sharedMcpApiSource).toContain("export interface McpRouteActions")
     expect(sharedMcpApiSource).toContain("export function getMcpServersAction")
     expect(sharedMcpApiSource).toContain("export function toggleMcpServerAction")
@@ -1468,7 +1472,7 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain("mergeImportedMcpServers(currentMcpConfig, parsedRequest.request.config")
     expect(sharedMcpApiSource).toContain("buildMcpServerConfigExportResponse(options.service.getMcpConfig())")
     expect(sharedMcpApiSource).toContain("options.service.onMcpConfigSaved?.({")
-    expect(sharedMcpApiSource).toContain("options.onMcpServerDeleted?.({")
+    expect(sharedMcpApiSource).toContain("options.service.onMcpServerDeleted?.({")
     expect(sharedMcpApiSource).not.toContain("mcpService")
     expect(sharedMcpApiSource).not.toContain("diagnosticsService")
     expect(mobileApiDesktopActionsSource).toContain("const ttsRouteActions = createTtsRouteActions(ttsActionOptions)")
