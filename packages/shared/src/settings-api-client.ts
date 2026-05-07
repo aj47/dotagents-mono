@@ -22,6 +22,10 @@ import {
   DEFAULT_MAIN_AGENT_MODE,
   isMainAgentModeUpdateValue,
 } from './main-agent-selection';
+import type {
+  ChatCompletionRequestBody,
+  ChatRequestMessageLike,
+} from './chat-utils';
 import {
   DEFAULT_THEME_PREFERENCE,
   isThemePreference,
@@ -1212,6 +1216,17 @@ export class SettingsApiClient {
     return response.json();
   }
 
+  async requestChatCompletionResponse<T extends ChatRequestMessageLike>(
+    request: ChatCompletionRequestBody<T>,
+    options: Omit<RequestInit, 'method' | 'body'> = {},
+  ): Promise<Response> {
+    return this.requestResponse(API_PATHS.chatCompletions, {
+      ...options,
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
   // Profile Management
   async getProfiles(): Promise<ProfilesResponse> {
     return this.request<ProfilesResponse>(API_PATHS.profiles);
@@ -1637,6 +1652,17 @@ export class SettingsApiClient {
 
   async getConversation(id: string): Promise<ServerConversationFull> {
     return this.request<ServerConversationFull>(API_BUILDERS.conversation(id));
+  }
+
+  async getConversationVideoAssetResponse(
+    id: string,
+    fileName: string,
+    options: Omit<RequestInit, 'method' | 'body'> = {},
+  ): Promise<Response> {
+    return this.requestResponse(API_BUILDERS.conversationVideoAsset(id, fileName), {
+      ...options,
+      method: 'GET',
+    });
   }
 
   async createConversation(data: CreateConversationRequest): Promise<ServerConversationFull> {

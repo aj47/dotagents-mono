@@ -1250,6 +1250,7 @@ describe('SettingsApiClient', () => {
     const serverName = 'filesystem/local';
     const presetId = 'custom/preset';
     const conversationId = 'conv/id';
+    const videoFileName = 'clip/name.mp4';
     const sessionId = 'session/id';
     const skillId = 'skill/id';
     const noteId = 'note/id';
@@ -1261,6 +1262,16 @@ describe('SettingsApiClient', () => {
       expectedPath: string;
       run: () => Promise<unknown>;
     }> = [
+      {
+        route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.chatCompletions },
+        expectedPath: REMOTE_SERVER_API_PATHS.chatCompletions,
+        run: () => client.requestChatCompletionResponse({
+          model: 'gpt-4.1-mini',
+          messages: [{ role: 'user', content: 'Hello' }],
+          stream: true,
+          conversation_id: conversationId,
+        }),
+      },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.profiles }, expectedPath: REMOTE_SERVER_API_PATHS.profiles, run: () => client.getProfiles() },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.currentProfile }, expectedPath: REMOTE_SERVER_API_PATHS.currentProfile, run: () => client.getCurrentProfile() },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.currentProfile }, expectedPath: REMOTE_SERVER_API_PATHS.currentProfile, run: () => client.setCurrentProfile(profileId) },
@@ -1338,6 +1349,7 @@ describe('SettingsApiClient', () => {
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.operatorRotateApiKey }, expectedPath: REMOTE_SERVER_API_PATHS.operatorRotateApiKey, run: () => client.rotateOperatorApiKey() },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.conversations }, expectedPath: REMOTE_SERVER_API_PATHS.conversations, run: () => client.getConversations() },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.conversation }, expectedPath: REMOTE_SERVER_API_BUILDERS.conversation(conversationId), run: () => client.getConversation(conversationId) },
+      { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.conversationVideoAsset }, expectedPath: REMOTE_SERVER_API_BUILDERS.conversationVideoAsset(conversationId, videoFileName), run: () => client.getConversationVideoAssetResponse(conversationId, videoFileName) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.conversations }, expectedPath: REMOTE_SERVER_API_PATHS.conversations, run: () => client.createConversation({ title: 'New', messages: [] }) },
       { route: { method: 'PUT', path: REMOTE_SERVER_API_PATHS.conversation }, expectedPath: REMOTE_SERVER_API_BUILDERS.conversation(conversationId), run: () => client.updateConversation(conversationId, { title: 'Updated' }) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.pushRegister }, expectedPath: REMOTE_SERVER_API_PATHS.pushRegister, run: () => client.registerPushToken({ token: 'ExponentPushToken[abc]', type: 'expo', platform: 'ios' }) },
@@ -1401,13 +1413,7 @@ describe('SettingsApiClient', () => {
       await scenario.run();
     }
 
-    const excludedRoutes = new Set([
-      getRemoteServerApiRouteKey({ method: 'POST', path: REMOTE_SERVER_API_PATHS.chatCompletions }),
-      getRemoteServerApiRouteKey({ method: 'GET', path: REMOTE_SERVER_API_PATHS.conversationVideoAsset }),
-    ]);
-    const expectedRouteKeys = REMOTE_SERVER_API_ROUTES
-      .map(getRemoteServerApiRouteKey)
-      .filter((key) => !excludedRoutes.has(key));
+    const expectedRouteKeys = REMOTE_SERVER_API_ROUTES.map(getRemoteServerApiRouteKey);
     const scenarioRouteKeys = scenarios.map((scenario) => getRemoteServerApiRouteKey(scenario.route));
 
     expect([...new Set(scenarioRouteKeys)].sort()).toEqual([...new Set(expectedRouteKeys)].sort());
