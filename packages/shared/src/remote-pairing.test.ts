@@ -54,6 +54,7 @@ import {
   normalizeRemoteHostForComparison,
   parseDotAgentsConfigDeepLink,
   REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
+  REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
@@ -95,6 +96,20 @@ describe('remote server config contracts', () => {
     expect(DEFAULT_REMOTE_SERVER_BIND_ADDRESS).toBe('127.0.0.1');
     expect(DEFAULT_REMOTE_SERVER_ENABLED).toBe(false);
     expect(REMOTE_SERVER_BIND_ADDRESS_OPTIONS).toEqual(['127.0.0.1', '0.0.0.0']);
+    expect(REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS).toEqual([
+      {
+        value: '127.0.0.1',
+        label: 'Localhost (127.0.0.1)',
+        compactLabel: '127.0.0.1',
+        successMessage: 'Bind address saved for local-only access.',
+      },
+      {
+        value: '0.0.0.0',
+        label: 'All Interfaces (0.0.0.0)',
+        compactLabel: '0.0.0.0',
+        successMessage: 'Bind address saved for LAN/mobile access.',
+      },
+    ]);
     expect(DEFAULT_REMOTE_SERVER_PORT).toBe(3210);
     expect(REMOTE_SERVER_PORT_MIN).toBe(1);
     expect(REMOTE_SERVER_PORT_MAX).toBe(65535);

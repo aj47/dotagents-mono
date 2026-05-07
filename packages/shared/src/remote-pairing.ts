@@ -24,10 +24,31 @@ export type RemoteServerBindAddress = (typeof REMOTE_SERVER_BIND_ADDRESS_OPTIONS
 export type RemoteServerLogLevel = (typeof REMOTE_SERVER_LOG_LEVEL_OPTIONS)[number];
 export type CloudflareTunnelMode = (typeof CLOUDFLARE_TUNNEL_MODE_OPTIONS)[number];
 
+export type RemoteServerBindAddressOption = {
+  value: RemoteServerBindAddress;
+  label: string;
+  compactLabel: string;
+  successMessage: string;
+};
+
 export const DEFAULT_REMOTE_SERVER_BIND_ADDRESS: RemoteServerBindAddress = '127.0.0.1';
 export const DEFAULT_REMOTE_SERVER_PORT = 3210;
 export const DEFAULT_REMOTE_SERVER_LOG_LEVEL: RemoteServerLogLevel = 'info';
 export const DEFAULT_CLOUDFLARE_TUNNEL_MODE: CloudflareTunnelMode = 'quick';
+export const REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS: readonly RemoteServerBindAddressOption[] = [
+  {
+    value: '127.0.0.1',
+    label: 'Localhost (127.0.0.1)',
+    compactLabel: '127.0.0.1',
+    successMessage: 'Bind address saved for local-only access.',
+  },
+  {
+    value: '0.0.0.0',
+    label: 'All Interfaces (0.0.0.0)',
+    compactLabel: '0.0.0.0',
+    successMessage: 'Bind address saved for LAN/mobile access.',
+  },
+];
 
 export function getDefaultRemoteServerCorsOrigins(): string[] {
   return [...DEFAULT_REMOTE_SERVER_CORS_ORIGINS];

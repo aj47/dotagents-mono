@@ -18,7 +18,7 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /Bind Address/);
   assert.match(operationsSource, /Log Level/);
   assert.match(operationsSource, /CORS Origins/);
-  assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_OPTIONS/);
+  assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS/);
   assert.match(operationsSource, /REMOTE_SERVER_LOG_LEVEL_OPTIONS/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_BIND_ADDRESS/);
   assert.match(operationsSource, /DEFAULT_REMOTE_SERVER_ENABLED/);
@@ -48,6 +48,8 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(remoteAccessDraftsSource, /DEFAULT_REMOTE_SERVER_PORT/);
   assert.match(remoteAccessDraftsSource, /remoteServerPort: String\(settings\?\.remoteServerPort \?\? DEFAULT_REMOTE_SERVER_PORT\)/);
   assert.match(remoteAccessDraftsSource, /remoteServerCorsOrigins: formatConfigListInput\(settings\?\.remoteServerCorsOrigins \?\? DEFAULT_REMOTE_SERVER_CORS_ORIGINS\)/);
+  assert.match(operationsSource, /remoteServerBindAddress: option\.value/);
+  assert.match(operationsSource, /option\.successMessage/);
   assert.match(operationsSource, /remoteServerLogLevel: value as RemoteServerLogLevel/);
   assert.match(operationsSource, /remoteServerCorsOrigins: origins\.length > 0 \? origins : \[\.\.\.DEFAULT_REMOTE_SERVER_CORS_ORIGINS\]/);
   assert.match(operationsSource, /Auto-Show Panel/);

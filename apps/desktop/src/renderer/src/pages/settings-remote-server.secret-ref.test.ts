@@ -12,7 +12,8 @@ describe("remote server settings secret references", () => {
   it("uses shared remote server option values", () => {
     const source = getRemoteServerSettingsSource()
 
-    expect(source).toContain("REMOTE_SERVER_BIND_ADDRESS_OPTIONS")
+    expect(source).toContain("REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS")
+    expect(source).not.toContain("const bindOptions")
     expect(source).toContain("REMOTE_SERVER_LOG_LEVEL_OPTIONS")
     expect(source).toContain("CLOUDFLARE_TUNNEL_MODE_OPTIONS")
     expect(source).toContain("DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START")

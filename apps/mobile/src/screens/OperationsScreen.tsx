@@ -76,12 +76,11 @@ import {
   DEFAULT_REMOTE_SERVER_LOG_LEVEL,
   DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED,
   isRemoteServerPortUpdateValue,
-  REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
+  REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
   type CloudflareTunnelMode,
-  type RemoteServerBindAddress,
   type RemoteServerLogLevel,
 } from '@dotagents/shared/remote-pairing';
 import {
@@ -1786,29 +1785,29 @@ export default function OperationsScreen({ navigation }: any) {
 
               <Text style={styles.label}>Bind Address</Text>
               <View style={styles.chipRow}>
-                {REMOTE_SERVER_BIND_ADDRESS_OPTIONS.map((value) => {
-                  const selected = (settings.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS) === value;
+                {REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS.map((option) => {
+                  const selected = (settings.remoteServerBindAddress ?? DEFAULT_REMOTE_SERVER_BIND_ADDRESS) === option.value;
                   return (
                     <TouchableOpacity
-                      key={value}
+                      key={option.value}
                       style={[
                         styles.chipButton,
                         selected && styles.chipButtonActive,
                         controlsDisabled && styles.actionButtonDisabled,
                       ]}
                       onPress={() => void applySettingsUpdate(
-                        { remoteServerBindAddress: value as RemoteServerBindAddress },
+                        { remoteServerBindAddress: option.value },
                         'bind address',
-                        value === '0.0.0.0'
-                          ? 'Bind address saved for LAN/mobile access.'
-                          : 'Bind address saved for local-only access.',
+                        option.successMessage,
                       )}
                       disabled={controlsDisabled}
                       accessibilityRole="button"
                       accessibilityState={{ selected, disabled: controlsDisabled }}
-                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${value} for remote server bind address`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.compactLabel} for remote server bind address`)}
                     >
-                      <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>{value}</Text>
+                      <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>
+                        {option.compactLabel}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react"
+import { useCallback } from "react"
 import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/control"
 import { Switch } from "@renderer/components/ui/switch"
 import { Input } from "@renderer/components/ui/input"
@@ -36,7 +36,7 @@ import {
   isWildcardRemoteHost,
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
-  REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
+  REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
   type CloudflareTunnelMode,
   type RemoteServerBindAddress,
@@ -156,14 +156,6 @@ export function RemoteServerSettingsGroups({
   const tunnelList: Array<{ id: string; name: string; created_at: string }> = tunnelListQuery.data?.tunnels ?? []
   const tunnelMode = cfg?.cloudflareTunnelMode ?? DEFAULT_CLOUDFLARE_TUNNEL_MODE
 
-  const bindOptions: Array<{ label: string; value: RemoteServerBindAddress }> = useMemo(
-    () => REMOTE_SERVER_BIND_ADDRESS_OPTIONS.map((value) => ({
-      label: value === DEFAULT_REMOTE_SERVER_BIND_ADDRESS ? `Localhost (${value})` : `All Interfaces (${value})`,
-      value,
-    })),
-    [],
-  )
-
   if (!cfg) return null
 
   const enabled = cfg.remoteServerEnabled ?? DEFAULT_REMOTE_SERVER_ENABLED
@@ -274,7 +266,7 @@ export function RemoteServerSettingsGroups({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {bindOptions.map((opt) => (
+                    {REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
                       </SelectItem>
