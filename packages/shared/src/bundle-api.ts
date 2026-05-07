@@ -597,6 +597,20 @@ export type ExportableBundleItems = {
   knowledgeNotes: ExportableBundleKnowledgeNote[]
 }
 
+export type BundleBuildItems = {
+  agentProfiles: BundleAgentProfile[]
+  mcpServers: BundleMcpServer[]
+  skills: BundleSkill[]
+  repeatTasks: BundleRepeatTask[]
+  knowledgeNotes: BundleKnowledgeNote[]
+}
+
+export type BuildDotAgentsBundleOptions = {
+  exportedFrom?: string
+  createdAt?: string
+  now?: () => Date
+}
+
 export type RequiredBundleComponentSelection = Required<BundleComponentSelection>
 
 export type DetailedBundleItemSelection = Required<BundleItemSelectionOptions>
@@ -685,6 +699,121 @@ export function createBundleItemSelection(items: ExportableBundleItems): Detaile
     skillIds: items.skills.map((item) => item.id),
     repeatTaskIds: items.repeatTasks.map((item) => item.id),
     knowledgeNoteIds: items.knowledgeNotes.map((item) => item.id),
+  }
+}
+
+function mergeByKey<T>(
+  values: readonly T[],
+  getKey: (value: T) => string,
+): T[] {
+  const merged = new Map<string, T>()
+  for (const value of values) {
+    merged.set(getKey(value), value)
+  }
+  return Array.from(merged.values())
+}
+
+export function sortExportableBundleItems(items: ExportableBundleItems): ExportableBundleItems {
+  return {
+    agentProfiles: [...items.agentProfiles].sort((a, b) =>
+      (a.displayName || a.name).localeCompare(b.displayName || b.name)
+    ),
+    mcpServers: [...items.mcpServers].sort((a, b) => a.name.localeCompare(b.name)),
+    skills: [...items.skills].sort((a, b) => a.name.localeCompare(b.name)),
+    repeatTasks: [...items.repeatTasks].sort((a, b) => a.name.localeCompare(b.name)),
+    knowledgeNotes: [...items.knowledgeNotes].sort((a, b) => a.title.localeCompare(b.title)),
+  }
+}
+
+export function mergeExportableBundleItems(layerItems: readonly ExportableBundleItems[]): ExportableBundleItems {
+  return sortExportableBundleItems({
+    agentProfiles: mergeByKey(
+      layerItems.flatMap((items) => items.agentProfiles),
+      (profile) => profile.id,
+    ),
+    mcpServers: mergeByKey(
+      layerItems.flatMap((items) => items.mcpServers),
+      (server) => server.name,
+    ),
+    skills: mergeByKey(
+      layerItems.flatMap((items) => items.skills),
+      (skill) => skill.id,
+    ),
+    repeatTasks: mergeByKey(
+      layerItems.flatMap((items) => items.repeatTasks),
+      (task) => task.id,
+    ),
+    knowledgeNotes: mergeByKey(
+      layerItems.flatMap((items) => items.knowledgeNotes),
+      (knowledgeNote) => knowledgeNote.id,
+    ),
+  })
+}
+
+export function mergeBundleBuildItems(layerItems: readonly BundleBuildItems[]): BundleBuildItems {
+  return {
+    agentProfiles: mergeByKey(
+      layerItems.flatMap((items) => items.agentProfiles),
+      (profile) => profile.id,
+    ),
+    mcpServers: mergeByKey(
+      layerItems.flatMap((items) => items.mcpServers),
+      (server) => server.name,
+    ),
+    skills: mergeByKey(
+      layerItems.flatMap((items) => items.skills),
+      (skill) => skill.id,
+    ),
+    repeatTasks: mergeByKey(
+      layerItems.flatMap((items) => items.repeatTasks),
+      (task) => task.id,
+    ),
+    knowledgeNotes: mergeByKey(
+      layerItems.flatMap((items) => items.knowledgeNotes),
+      (knowledgeNote) => knowledgeNote.id,
+    ),
+  }
+}
+
+export function getBundleBuildItems(bundle: DotAgentsBundle): BundleBuildItems {
+  return {
+    agentProfiles: bundle.agentProfiles,
+    mcpServers: bundle.mcpServers,
+    skills: bundle.skills,
+    repeatTasks: bundle.repeatTasks,
+    knowledgeNotes: bundle.knowledgeNotes,
+  }
+}
+
+export function buildDotAgentsBundle(
+  request: ExportBundleRequest | undefined,
+  items: BundleBuildItems,
+  options: BuildDotAgentsBundleOptions = {},
+): DotAgentsBundle {
+  const publicMetadata = sanitizeBundlePublicMetadata(request?.publicMetadata)
+  const createdAt = options.createdAt ?? (options.now ? options.now() : new Date()).toISOString()
+
+  return {
+    manifest: {
+      version: 1,
+      name: request?.name || "My Agent Configuration",
+      description: request?.description,
+      createdAt,
+      exportedFrom: options.exportedFrom ?? "dotagents",
+      ...(publicMetadata ? { publicMetadata } : {}),
+      components: {
+        agentProfiles: items.agentProfiles.length,
+        mcpServers: items.mcpServers.length,
+        skills: items.skills.length,
+        repeatTasks: items.repeatTasks.length,
+        knowledgeNotes: items.knowledgeNotes.length,
+      },
+    },
+    agentProfiles: items.agentProfiles,
+    mcpServers: items.mcpServers,
+    skills: items.skills,
+    repeatTasks: items.repeatTasks,
+    knowledgeNotes: items.knowledgeNotes,
   }
 }
 

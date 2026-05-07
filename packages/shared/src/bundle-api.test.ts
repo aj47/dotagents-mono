@@ -11,6 +11,7 @@ import {
   buildBundleExportableItemsResponse,
   buildBundleImportPreviewConflicts,
   buildBundleImportPreviewResponse,
+  buildDotAgentsBundle,
   createBundleItemSelection,
   createBundleRouteActions,
   createTemporaryBundleFileImportService,
@@ -24,6 +25,8 @@ import {
   hasSelectedBundleComponent,
   importBundleAction,
   importBundleFromTemporaryFile,
+  mergeBundleBuildItems,
+  mergeExportableBundleItems,
   parseDotAgentsBundle,
   parseExportBundleRequestBody,
   parseImportBundleRequestBody,
@@ -366,6 +369,137 @@ describe("bundle API helpers", () => {
         Authorization: "<CONFIGURE_YOUR_KEY>",
       },
       nested: [{ password: "<CONFIGURE_YOUR_KEY>", value: "ok" }],
+    })
+  })
+
+  it("builds DotAgents bundles with shared manifest defaults", () => {
+    expect(buildDotAgentsBundle({
+      name: "Shared Bundle",
+      description: "Portable setup",
+      publicMetadata: {
+        summary: "  Useful bundle  ",
+        author: { displayName: " AJ " },
+        tags: [" agents ", "agents"],
+      },
+    }, {
+      agentProfiles: bundle.agentProfiles,
+      mcpServers: [{ name: "server-1" }],
+      skills: bundle.skills,
+      repeatTasks: [],
+      knowledgeNotes: [],
+    }, {
+      exportedFrom: "dotagents-desktop",
+      now: () => new Date("2026-05-06T12:00:00.000Z"),
+    })).toEqual({
+      manifest: {
+        version: 1,
+        name: "Shared Bundle",
+        description: "Portable setup",
+        createdAt: "2026-05-06T12:00:00.000Z",
+        exportedFrom: "dotagents-desktop",
+        publicMetadata: {
+          summary: "Useful bundle",
+          author: { displayName: "AJ" },
+          tags: ["agents"],
+        },
+        components: {
+          agentProfiles: 1,
+          mcpServers: 1,
+          skills: 1,
+          repeatTasks: 0,
+          knowledgeNotes: 0,
+        },
+      },
+      agentProfiles: bundle.agentProfiles,
+      mcpServers: [{ name: "server-1" }],
+      skills: bundle.skills,
+      repeatTasks: [],
+      knowledgeNotes: [],
+    })
+  })
+
+  it("merges layered bundle items with later layers winning", () => {
+    expect(mergeBundleBuildItems([
+      {
+        agentProfiles: [{ id: "agent-1", name: "Base", enabled: true, connection: { type: "internal" } }],
+        mcpServers: [{ name: "server-1", command: "base" }],
+        skills: [{ id: "skill-1", name: "Base Skill" }],
+        repeatTasks: [{ id: "task-1", name: "Base Task", prompt: "base", intervalMinutes: 15, enabled: true }],
+        knowledgeNotes: [{
+          id: "note-1",
+          title: "Base Note",
+          context: "search-only",
+          body: "base",
+          tags: [],
+          updatedAt: 1,
+        }],
+      },
+      {
+        agentProfiles: [{ id: "agent-1", name: "Workspace", enabled: false, connection: { type: "internal" } }],
+        mcpServers: [{ name: "server-1", command: "workspace" }, { name: "server-2" }],
+        skills: [{ id: "skill-1", name: "Workspace Skill" }, { id: "skill-2", name: "Second Skill" }],
+        repeatTasks: [{ id: "task-1", name: "Workspace Task", prompt: "workspace", intervalMinutes: 30, enabled: false }],
+        knowledgeNotes: [{
+          id: "note-1",
+          title: "Workspace Note",
+          context: "auto",
+          body: "workspace",
+          tags: [],
+          updatedAt: 2,
+        }],
+      },
+    ])).toEqual({
+      agentProfiles: [{ id: "agent-1", name: "Workspace", enabled: false, connection: { type: "internal" } }],
+      mcpServers: [{ name: "server-1", command: "workspace" }, { name: "server-2" }],
+      skills: [{ id: "skill-1", name: "Workspace Skill" }, { id: "skill-2", name: "Second Skill" }],
+      repeatTasks: [{ id: "task-1", name: "Workspace Task", prompt: "workspace", intervalMinutes: 30, enabled: false }],
+      knowledgeNotes: [{
+        id: "note-1",
+        title: "Workspace Note",
+        context: "auto",
+        body: "workspace",
+        tags: [],
+        updatedAt: 2,
+      }],
+    })
+  })
+
+  it("merges and sorts exportable bundle item summaries", () => {
+    expect(mergeExportableBundleItems([
+      {
+        agentProfiles: [
+          { id: "agent-1", name: "zeta", enabled: true, referencedMcpServerNames: [], referencedSkillIds: [] },
+        ],
+        mcpServers: [{ name: "z-server" }],
+        skills: [{ id: "skill-1", name: "Z Skill" }],
+        repeatTasks: [{ id: "task-1", name: "Z Task", intervalMinutes: 15, enabled: true }],
+        knowledgeNotes: [{ id: "note-1", title: "Z Note", context: "search-only" }],
+      },
+      {
+        agentProfiles: [
+          { id: "agent-1", name: "alpha", enabled: false, referencedMcpServerNames: [], referencedSkillIds: [] },
+          { id: "agent-2", name: "Beta", enabled: true, referencedMcpServerNames: [], referencedSkillIds: [] },
+        ],
+        mcpServers: [{ name: "a-server" }],
+        skills: [{ id: "skill-2", name: "A Skill" }],
+        repeatTasks: [{ id: "task-2", name: "A Task", intervalMinutes: 30, enabled: true }],
+        knowledgeNotes: [{ id: "note-2", title: "A Note", context: "auto" }],
+      },
+    ])).toEqual({
+      agentProfiles: [
+        { id: "agent-1", name: "alpha", enabled: false, referencedMcpServerNames: [], referencedSkillIds: [] },
+        { id: "agent-2", name: "Beta", enabled: true, referencedMcpServerNames: [], referencedSkillIds: [] },
+      ],
+      mcpServers: [{ name: "a-server" }, { name: "z-server" }],
+      skills: [{ id: "skill-2", name: "A Skill" }, { id: "skill-1", name: "Z Skill" }],
+      repeatTasks: [
+        { id: "task-2", name: "A Task", intervalMinutes: 30, enabled: true },
+        { id: "task-1", name: "Z Task", intervalMinutes: 15, enabled: true },
+      ],
+      knowledgeNotes: [
+        { id: "note-2", title: "A Note", context: "auto" },
+        { id: "note-1", title: "Z Note", context: "search-only" },
+      ],
     })
   })
 

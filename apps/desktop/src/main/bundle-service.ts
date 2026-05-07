@@ -36,9 +36,13 @@ import {
 import {
   DEFAULT_BUNDLE_PUBLISH_COMPONENT_SELECTION,
   buildBundleImportPreviewConflicts,
+  buildDotAgentsBundle,
+  getBundleBuildItems,
+  mergeBundleBuildItems,
+  mergeExportableBundleItems,
   parseDotAgentsBundle,
   readBundleMcpServersFromConfig,
-  sanitizeBundlePublicMetadata,
+  sortExportableBundleItems,
   stripBundleSecretsFromObject,
   writeCanonicalBundleMcpConfig,
   type BundleAgentProfile,
@@ -356,18 +360,6 @@ function listExportableBundleItemsForLayer(layer: AgentsLayerPaths): ExportableB
   }
 }
 
-function sortExportableBundleItems(items: ExportableBundleItems): ExportableBundleItems {
-  return {
-    agentProfiles: [...items.agentProfiles].sort((a, b) =>
-      (a.displayName || a.name).localeCompare(b.displayName || b.name)
-    ),
-    mcpServers: [...items.mcpServers].sort((a, b) => a.name.localeCompare(b.name)),
-    skills: [...items.skills].sort((a, b) => a.name.localeCompare(b.name)),
-    repeatTasks: [...items.repeatTasks].sort((a, b) => a.name.localeCompare(b.name)),
-    knowledgeNotes: [...items.knowledgeNotes].sort((a, b) => a.title.localeCompare(b.title)),
-  }
-}
-
 export function getBundleExportableItems(agentsDir: string): ExportableBundleItems {
   const layer = getAgentsLayerPaths(agentsDir)
   return sortExportableBundleItems(listExportableBundleItemsForLayer(layer))
@@ -388,75 +380,7 @@ export function getBundleExportableItemsFromLayers(agentsDirs: string[]): Export
 
   const layerItems = normalizedDirs.map((dir) => getBundleExportableItems(dir))
 
-  return sortExportableBundleItems({
-    agentProfiles: mergeByKey(
-      layerItems.flatMap((items) => items.agentProfiles),
-      (profile) => profile.id
-    ),
-    mcpServers: mergeByKey(
-      layerItems.flatMap((items) => items.mcpServers),
-      (server) => server.name
-    ),
-    skills: mergeByKey(
-      layerItems.flatMap((items) => items.skills),
-      (skill) => skill.id
-    ),
-    repeatTasks: mergeByKey(
-      layerItems.flatMap((items) => items.repeatTasks),
-      (task) => task.id
-    ),
-    knowledgeNotes: mergeByKey(
-      layerItems.flatMap((items) => items.knowledgeNotes),
-      (knowledgeNote) => knowledgeNote.id
-    ),
-  })
-}
-
-function buildBundle(
-  options: ExportBundleOptions | undefined,
-  data: {
-    agentProfiles: BundleAgentProfile[]
-    mcpServers: BundleMCPServer[]
-    skills: BundleSkill[]
-    repeatTasks: BundleRepeatTask[]
-    knowledgeNotes: BundleKnowledgeNote[]
-  }
-): DotAgentsBundle {
-  const publicMetadata = sanitizeBundlePublicMetadata(options?.publicMetadata)
-
-  return {
-    manifest: {
-      version: 1,
-      name: options?.name || "My Agent Configuration",
-      description: options?.description,
-      createdAt: new Date().toISOString(),
-      exportedFrom: "dotagents-desktop",
-      ...(publicMetadata ? { publicMetadata } : {}),
-      components: {
-        agentProfiles: data.agentProfiles.length,
-        mcpServers: data.mcpServers.length,
-        skills: data.skills.length,
-        repeatTasks: data.repeatTasks.length,
-        knowledgeNotes: data.knowledgeNotes.length,
-      },
-    },
-    agentProfiles: data.agentProfiles,
-    mcpServers: data.mcpServers,
-    skills: data.skills,
-    repeatTasks: data.repeatTasks,
-    knowledgeNotes: data.knowledgeNotes,
-  }
-}
-
-function mergeByKey<T>(
-  values: T[],
-  getKey: (value: T) => string
-): T[] {
-  const merged = new Map<string, T>()
-  for (const value of values) {
-    merged.set(getKey(value), value)
-  }
-  return Array.from(merged.values())
+  return mergeExportableBundleItems(layerItems)
 }
 
 export async function exportBundle(
@@ -474,12 +398,14 @@ export async function exportBundle(
   const repeatTasks = components.repeatTasks ? loadRepeatTasksForBundle(layer, options) : []
   const knowledgeNotes = components.knowledgeNotes ? loadKnowledgeNotesForBundle(layer, options) : []
 
-  const bundle = buildBundle(options, {
+  const bundle = buildDotAgentsBundle(options, {
     agentProfiles: profiles,
     mcpServers,
     skills,
     repeatTasks,
     knowledgeNotes,
+  }, {
+    exportedFrom: "dotagents-desktop",
   })
 
   logApp("[bundle-service] Exported bundle", {
@@ -514,42 +440,18 @@ export async function exportBundleFromLayers(
     normalizedDirs.map((dir) => exportBundle(dir, options))
   )
 
-  const mergedAgentProfiles = mergeByKey(
-    layerBundles.flatMap((bundle) => bundle.agentProfiles),
-    (profile) => profile.id
-  )
-  const mergedMcpServers = mergeByKey(
-    layerBundles.flatMap((bundle) => bundle.mcpServers),
-    (server) => server.name
-  )
-  const mergedSkills = mergeByKey(
-    layerBundles.flatMap((bundle) => bundle.skills),
-    (skill) => skill.id
-  )
-  const mergedRepeatTasks = mergeByKey(
-    layerBundles.flatMap((bundle) => bundle.repeatTasks),
-    (task) => task.id
-  )
-  const mergedKnowledgeNotes = mergeByKey(
-    layerBundles.flatMap((bundle) => bundle.knowledgeNotes),
-    (knowledgeNote) => knowledgeNote.id
-  )
-
-  const mergedBundle = buildBundle(options, {
-    agentProfiles: mergedAgentProfiles,
-    mcpServers: mergedMcpServers,
-    skills: mergedSkills,
-    repeatTasks: mergedRepeatTasks,
-    knowledgeNotes: mergedKnowledgeNotes,
+  const mergedItems = mergeBundleBuildItems(layerBundles.map(getBundleBuildItems))
+  const mergedBundle = buildDotAgentsBundle(options, mergedItems, {
+    exportedFrom: "dotagents-desktop",
   })
 
   logApp("[bundle-service] Exported merged bundle", {
     layers: normalizedDirs.length,
-    profiles: mergedAgentProfiles.length,
-    mcpServers: mergedMcpServers.length,
-    skills: mergedSkills.length,
-    repeatTasks: mergedRepeatTasks.length,
-    knowledgeNotes: mergedKnowledgeNotes.length,
+    profiles: mergedItems.agentProfiles.length,
+    mcpServers: mergedItems.mcpServers.length,
+    skills: mergedItems.skills.length,
+    repeatTasks: mergedItems.repeatTasks.length,
+    knowledgeNotes: mergedItems.knowledgeNotes.length,
   })
 
   return mergedBundle
