@@ -47,6 +47,10 @@ describe("sessions in-app actions", () => {
   it("keeps sidebar active-session clicks selecting the session while past-session opens clear active focus", () => {
     expect(sidebarSource).toContain("setExpandedSessionId(sessionId)")
     expect(sidebarSource).toContain('navigate("/", { state: { clearPendingConversation: true } })')
+    expect(sidebarSource).toContain("const focusSidebarSessionComposer = useCallback(() => {")
+    expect(sidebarSource).toContain("focusSidebarSessionComposer()")
+    expect(sidebarSource).toContain("window.setTimeout(tryFocusComposer, 75)")
+    expect(sidebarSource).toContain('document.querySelector<HTMLTextAreaElement>(\'textarea[data-composer="true"]\')')
     expect(sidebarSource).toContain("setExpandedSessionId(null)")
   })
 

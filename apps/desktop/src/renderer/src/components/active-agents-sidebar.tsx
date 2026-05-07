@@ -893,6 +893,32 @@ export function ActiveAgentsSidebar({
     writeUngroupedSessionOrderToStorage(ungroupedSessionOrder)
   }, [ungroupedSessionOrder])
 
+  const focusSidebarSessionComposer = useCallback(() => {
+    let attemptCount = 0
+
+    const tryFocusComposer = () => {
+      const composer =
+        document.querySelector<HTMLTextAreaElement>('textarea[data-composer="true"]') ??
+        document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="follow-up"]') ??
+        document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="message"]')
+
+      if (composer && !composer.disabled) {
+        composer.focus()
+        const valueLength = composer.value?.length ?? 0
+        composer.setSelectionRange?.(valueLength, valueLength)
+        return
+      }
+
+      if (attemptCount >= 20) return
+      attemptCount += 1
+      window.setTimeout(tryFocusComposer, 75)
+    }
+
+    requestAnimationFrame(() => {
+      window.setTimeout(tryFocusComposer, 50)
+    })
+  }, [])
+
   const handleActiveSessionSelect = useCallback((sessionId: string) => {
     logUI("[ActiveAgentsSidebar] Active session selected:", sessionId)
     // Clear the saved-conversation view so no stale row stays highlighted.
@@ -901,7 +927,8 @@ export function ActiveAgentsSidebar({
     navigate("/", { state: { clearPendingConversation: true } })
     setFocusedSessionId(sessionId)
     setExpandedSessionId(sessionId)
-  }, [navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
+    focusSidebarSessionComposer()
+  }, [focusSidebarSessionComposer, navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
 
   const handleSavedConversationOpen = useCallback((conversationId: string) => {
     logUI(
@@ -913,7 +940,8 @@ export function ActiveAgentsSidebar({
     setExpandedSessionId(null)
     setViewedConversationId(conversationId)
     navigate(`/${conversationId}`)
-  }, [navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
+    focusSidebarSessionComposer()
+  }, [focusSidebarSessionComposer, navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
 
   // Keyboard shortcuts: Cmd/Ctrl+1..9 to jump to the Nth sidebar session
   useEffect(() => {
@@ -942,16 +970,6 @@ export function ActiveAgentsSidebar({
         handleActiveSessionSelect(session.id)
       }
 
-      // Focus the composer textarea after React re-renders
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          const composer =
-            document.querySelector<HTMLTextAreaElement>('textarea[data-composer="true"]') ??
-            document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="follow-up"]') ??
-            document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="message"]')
-          composer?.focus()
-        }, 100)
-      })
     }
 
     window.addEventListener("keydown", handleKeyDown)
