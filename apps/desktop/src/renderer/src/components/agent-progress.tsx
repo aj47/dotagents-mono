@@ -13,7 +13,6 @@ import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
-import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { desktopAgentSessionsClient } from "@renderer/lib/desktop-agent-sessions-client"
 import { desktopConfigClient } from "@renderer/lib/desktop-config-client"
@@ -3407,13 +3406,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
     respondingApprovalIdRef.current = approvalId
     setRespondingApprovalId(approvalId)
-    console.log(`[Tool Approval UI] Calling tipcClient.respondToToolApproval with approvalId=${approvalId}, approved=true`)
+    console.log(`[Tool Approval UI] Calling desktopAgentSessionsClient.respondToToolApproval with approvalId=${approvalId}, approved=true`)
     try {
-      const result = await tipcClient.respondToToolApproval({
+      const result = await desktopAgentSessionsClient.respondToToolApproval({
         approvalId,
         approved: true,
       })
-      console.log(`[Tool Approval UI] respondToToolApproval returned:`, result)
+      console.log(`[Tool Approval UI] desktopAgentSessionsClient.respondToToolApproval returned:`, result)
       // Don't reset respondingApprovalId on success - keep showing "Processing..."
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {
@@ -3442,13 +3441,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
     respondingApprovalIdRef.current = approvalId
     setRespondingApprovalId(approvalId)
-    console.log(`[Tool Approval UI] Calling tipcClient.respondToToolApproval with approvalId=${approvalId}, approved=false`)
+    console.log(`[Tool Approval UI] Calling desktopAgentSessionsClient.respondToToolApproval with approvalId=${approvalId}, approved=false`)
     try {
-      const result = await tipcClient.respondToToolApproval({
+      const result = await desktopAgentSessionsClient.respondToToolApproval({
         approvalId,
         approved: false,
       })
-      console.log(`[Tool Approval UI] respondToToolApproval (deny) returned:`, result)
+      console.log(`[Tool Approval UI] desktopAgentSessionsClient.respondToToolApproval (deny) returned:`, result)
       // Don't reset respondingApprovalId on success - keep showing "Processing..."
       // The approval bubble will be removed when pendingToolApproval is cleared from progress
     } catch (error) {

@@ -31,6 +31,15 @@ export interface DesktopSnoozeAgentSessionsResult {
   success?: boolean
 }
 
+export interface DesktopRespondToToolApprovalRequest {
+  approvalId: string
+  approved: boolean
+}
+
+export interface DesktopRespondToToolApprovalResult {
+  success?: boolean
+}
+
 export const desktopAgentSessionsClient = {
   getAgentSessions(): Promise<DesktopAgentSessionsResponse> {
     return tipcClient.getAgentSessions() as Promise<DesktopAgentSessionsResponse>
@@ -54,6 +63,12 @@ export const desktopAgentSessionsClient = {
 
   unsnoozeAgentSession(sessionId: string): Promise<void> {
     return tipcClient.unsnoozeAgentSession({ sessionId }) as Promise<void>
+  },
+
+  respondToToolApproval(
+    request: DesktopRespondToToolApprovalRequest,
+  ): Promise<DesktopRespondToToolApprovalResult> {
+    return tipcClient.respondToToolApproval(request) as Promise<DesktopRespondToToolApprovalResult>
   },
 
   focusAgentSession(sessionId: string): Promise<void> {
