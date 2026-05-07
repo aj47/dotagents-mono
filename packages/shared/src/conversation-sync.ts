@@ -813,6 +813,21 @@ export function getStoredServerConversationMessages<TConversation extends Server
     : conversation.messages;
 }
 
+export function getLatestStoredServerConversationUserMessageContent<
+  TConversation extends ServerConversationRecord<any>,
+>(conversation: TConversation | null | undefined): string | null {
+  if (!conversation) return null;
+
+  const storedMessages = getStoredServerConversationMessages(conversation);
+  for (let index = storedMessages.length - 1; index >= 0; index--) {
+    const message = storedMessages[index];
+    if (message?.role === 'user' && typeof message.content === 'string') {
+      return message.content;
+    }
+  }
+  return null;
+}
+
 export function toServerConversationHistorySnippet(value: string, maxChars: number): string {
   const sanitized = sanitizeMessageContentForDisplay(value || '')
     .replace(/\s+/g, ' ')

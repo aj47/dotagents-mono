@@ -70,6 +70,7 @@ import {
   validateRespondToUserImagePath,
   validateRespondToUserVideoFile,
 } from "@dotagents/shared/conversation-media-assets"
+import { getLatestStoredServerConversationUserMessageContent } from "@dotagents/shared/conversation-sync"
 import {
   dotagentsRuntimeToolDefinitions,
   getRuntimeToolNames as getSharedRuntimeToolNames,
@@ -145,15 +146,8 @@ async function getLatestUserMessageForSession(sessionId?: string): Promise<strin
     return null
   }
 
-  const storedMessages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
-    ? conversation.rawMessages
-    : conversation.messages
-
-  const latestUserMessage = [...storedMessages]
-    .reverse()
-    .find((message) => message.role === "user" && typeof message.content === "string" && message.content.trim().length > 0)
-
-  return latestUserMessage?.content?.trim() ?? null
+  const latestUserMessage = getLatestStoredServerConversationUserMessageContent(conversation)?.trim()
+  return latestUserMessage || null
 }
 
 async function pathExists(targetPath: string): Promise<boolean> {

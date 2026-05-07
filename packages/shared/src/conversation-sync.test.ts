@@ -43,6 +43,7 @@ import {
   getServerConversationStorageDataPath,
   getServerConversationStorageIndexPath,
   getSortedServerConversationDataFileNames,
+  getLatestStoredServerConversationUserMessageContent,
   getStoredServerConversationMessages,
   getValidServerConversationCompactionTimestamp,
   hasPersistedServerConversationCompactionCheckpoint,
@@ -1547,6 +1548,19 @@ describe('server conversation API helpers', () => {
         { id: 'raw-2', role: 'assistant' as const, content: 'second', timestamp: 2 },
       ],
     }).map((message) => message.content)).toEqual(['first', 'second']);
+    expect(getLatestStoredServerConversationUserMessageContent({
+      id: 'conv-compact',
+      title: 'Compacted Chat',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'summary-1', role: 'assistant' as const, content: 'Summary', timestamp: 2 }],
+      rawMessages: [
+        { id: 'raw-1', role: 'user' as const, content: 'first', timestamp: 1 },
+        { id: 'raw-2', role: 'assistant' as const, content: 'second', timestamp: 2 },
+        { id: 'raw-3', role: 'user' as const, content: 'latest', timestamp: 3 },
+      ],
+    })).toBe('latest');
+    expect(getLatestStoredServerConversationUserMessageContent(null)).toBeNull();
 
     const directBuild = buildBranchedServerConversation({
       id: 'conv-compact',
