@@ -21,7 +21,7 @@ import {
   buildDotAgentsConfigDeepLink,
   buildRemoteServerBaseUrl,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
-  CLOUDFLARE_TUNNEL_MODE_OPTIONS,
+  CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
   DEFAULT_REMOTE_SERVER_CORS_ORIGINS,
@@ -37,7 +37,7 @@ import {
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
-  REMOTE_SERVER_LOG_LEVEL_OPTIONS,
+  REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   type CloudflareTunnelMode,
   type RemoteServerBindAddress,
   type RemoteServerLogLevel,
@@ -332,9 +332,9 @@ export function RemoteServerSettingsGroups({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {REMOTE_SERVER_LOG_LEVEL_OPTIONS.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {value}
+                    {REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -501,9 +501,9 @@ export function RemoteServerSettingsGroups({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {CLOUDFLARE_TUNNEL_MODE_OPTIONS.map((value) => (
-                        <SelectItem key={value} value={value}>
-                          {value === DEFAULT_CLOUDFLARE_TUNNEL_MODE ? "Quick Tunnel (Random URL)" : "Named Tunnel (Persistent)"}
+                      {CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

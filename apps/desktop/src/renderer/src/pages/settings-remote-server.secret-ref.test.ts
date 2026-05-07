@@ -14,8 +14,8 @@ describe("remote server settings secret references", () => {
 
     expect(source).toContain("REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS")
     expect(source).not.toContain("const bindOptions")
-    expect(source).toContain("REMOTE_SERVER_LOG_LEVEL_OPTIONS")
-    expect(source).toContain("CLOUDFLARE_TUNNEL_MODE_OPTIONS")
+    expect(source).toContain("REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS")
+    expect(source).toContain("CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS")
     expect(source).toContain("DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START")
     expect(source).toContain("DEFAULT_REMOTE_SERVER_BIND_ADDRESS")
     expect(source).toContain("DEFAULT_REMOTE_SERVER_ENABLED")

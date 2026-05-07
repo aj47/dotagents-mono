@@ -65,7 +65,7 @@ import {
   getOperatorTunnelStateLabel as getTunnelStateLabel,
 } from '@dotagents/shared/operator-display-utils';
 import {
-  CLOUDFLARE_TUNNEL_MODE_OPTIONS,
+  CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
@@ -77,11 +77,9 @@ import {
   DEFAULT_REMOTE_SERVER_TERMINAL_QR_ENABLED,
   isRemoteServerPortUpdateValue,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
-  REMOTE_SERVER_LOG_LEVEL_OPTIONS,
+  REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
-  type CloudflareTunnelMode,
-  type RemoteServerLogLevel,
 } from '@dotagents/shared/remote-pairing';
 import {
   buildOperatorRemoteAccessDrafts as buildDrafts,
@@ -1816,27 +1814,27 @@ export default function OperationsScreen({ navigation }: any) {
 
               <Text style={styles.label}>Log Level</Text>
               <View style={styles.chipRow}>
-                {REMOTE_SERVER_LOG_LEVEL_OPTIONS.map((value) => {
-                  const selected = (settings.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL) === value;
+                {REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS.map((option) => {
+                  const selected = (settings.remoteServerLogLevel ?? DEFAULT_REMOTE_SERVER_LOG_LEVEL) === option.value;
                   return (
                     <TouchableOpacity
-                      key={value}
+                      key={option.value}
                       style={[
                         styles.chipButton,
                         selected && styles.chipButtonActive,
                         controlsDisabled && styles.actionButtonDisabled,
                       ]}
                       onPress={() => void applySettingsUpdate(
-                        { remoteServerLogLevel: value as RemoteServerLogLevel },
+                        { remoteServerLogLevel: option.value },
                         'remote server log level',
-                        `Remote server log level saved as ${value}.`,
+                        option.successMessage,
                       )}
                       disabled={controlsDisabled}
                       accessibilityRole="button"
                       accessibilityState={{ selected, disabled: controlsDisabled }}
-                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${value} remote server log level`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.label} remote server log level`)}
                     >
-                      <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>{value}</Text>
+                      <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>{option.label}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -2126,27 +2124,29 @@ export default function OperationsScreen({ navigation }: any) {
               <Text style={styles.subsectionTitle}>Cloudflare tunnel</Text>
               <Text style={styles.label}>Tunnel Mode</Text>
               <View style={styles.chipRow}>
-                {CLOUDFLARE_TUNNEL_MODE_OPTIONS.map((value) => {
-                  const selected = (settings.cloudflareTunnelMode ?? DEFAULT_CLOUDFLARE_TUNNEL_MODE) === value;
+                {CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS.map((option) => {
+                  const selected = (settings.cloudflareTunnelMode ?? DEFAULT_CLOUDFLARE_TUNNEL_MODE) === option.value;
                   return (
                     <TouchableOpacity
-                      key={value}
+                      key={option.value}
                       style={[
                         styles.chipButton,
                         selected && styles.chipButtonActive,
                         controlsDisabled && styles.actionButtonDisabled,
                       ]}
                       onPress={() => void applySettingsUpdate(
-                        { cloudflareTunnelMode: value as CloudflareTunnelMode },
+                        { cloudflareTunnelMode: option.value },
                         'tunnel mode',
-                        `Cloudflare tunnel mode set to ${value}.`,
+                        option.successMessage,
                       )}
                       disabled={controlsDisabled}
                       accessibilityRole="button"
                       accessibilityState={{ selected, disabled: controlsDisabled }}
-                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${value} Cloudflare tunnel mode`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.compactLabel} Cloudflare tunnel mode`)}
                     >
-                      <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>{value}</Text>
+                      <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>
+                        {option.compactLabel}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}

@@ -31,6 +31,19 @@ export type RemoteServerBindAddressOption = {
   successMessage: string;
 };
 
+export type RemoteServerLogLevelOption = {
+  value: RemoteServerLogLevel;
+  label: string;
+  successMessage: string;
+};
+
+export type CloudflareTunnelModeOption = {
+  value: CloudflareTunnelMode;
+  label: string;
+  compactLabel: string;
+  successMessage: string;
+};
+
 export const DEFAULT_REMOTE_SERVER_BIND_ADDRESS: RemoteServerBindAddress = '127.0.0.1';
 export const DEFAULT_REMOTE_SERVER_PORT = 3210;
 export const DEFAULT_REMOTE_SERVER_LOG_LEVEL: RemoteServerLogLevel = 'info';
@@ -47,6 +60,25 @@ export const REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS: readonly RemoteServerBi
     label: 'All Interfaces (0.0.0.0)',
     compactLabel: '0.0.0.0',
     successMessage: 'Bind address saved for LAN/mobile access.',
+  },
+];
+export const REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS: readonly RemoteServerLogLevelOption[] = [
+  { value: 'error', label: 'error', successMessage: 'Remote server log level saved as error.' },
+  { value: 'info', label: 'info', successMessage: 'Remote server log level saved as info.' },
+  { value: 'debug', label: 'debug', successMessage: 'Remote server log level saved as debug.' },
+];
+export const CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS: readonly CloudflareTunnelModeOption[] = [
+  {
+    value: 'quick',
+    label: 'Quick Tunnel (Random URL)',
+    compactLabel: 'quick',
+    successMessage: 'Cloudflare tunnel mode set to quick.',
+  },
+  {
+    value: 'named',
+    label: 'Named Tunnel (Persistent)',
+    compactLabel: 'named',
+    successMessage: 'Cloudflare tunnel mode set to named.',
   },
 ];
 

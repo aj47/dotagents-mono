@@ -11,6 +11,7 @@ import {
   buildRemoteServerCorsOptions,
   buildRemoteServerStatusSnapshot,
   CLOUDFLARE_TUNNEL_MODE_OPTIONS,
+  CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS,
   DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START,
   DEFAULT_CLOUDFLARE_TUNNEL_MODE,
   DEFAULT_REMOTE_SERVER_AUTO_SHOW_PANEL,
@@ -56,6 +57,7 @@ import {
   REMOTE_SERVER_BIND_ADDRESS_OPTIONS,
   REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS,
   REMOTE_SERVER_LOG_LEVEL_OPTIONS,
+  REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS,
   REMOTE_SERVER_PORT_MAX,
   REMOTE_SERVER_PORT_MIN,
 } from './remote-pairing';
@@ -115,6 +117,11 @@ describe('remote server config contracts', () => {
     expect(REMOTE_SERVER_PORT_MAX).toBe(65535);
     expect(DEFAULT_REMOTE_SERVER_LOG_LEVEL).toBe('info');
     expect(REMOTE_SERVER_LOG_LEVEL_OPTIONS).toEqual(['error', 'info', 'debug']);
+    expect(REMOTE_SERVER_LOG_LEVEL_DISPLAY_OPTIONS).toEqual([
+      { value: 'error', label: 'error', successMessage: 'Remote server log level saved as error.' },
+      { value: 'info', label: 'info', successMessage: 'Remote server log level saved as info.' },
+      { value: 'debug', label: 'debug', successMessage: 'Remote server log level saved as debug.' },
+    ]);
     expect(DEFAULT_REMOTE_SERVER_CORS_ORIGINS).toEqual(['*']);
     expect(getDefaultRemoteServerCorsOrigins()).toEqual(['*']);
     expect(getDefaultRemoteServerCorsOrigins()).not.toBe(DEFAULT_REMOTE_SERVER_CORS_ORIGINS);
@@ -124,6 +131,20 @@ describe('remote server config contracts', () => {
     expect(DEFAULT_CLOUDFLARE_TUNNEL_MODE).toBe('quick');
     expect(DEFAULT_CLOUDFLARE_TUNNEL_AUTO_START).toBe(false);
     expect(CLOUDFLARE_TUNNEL_MODE_OPTIONS).toEqual(['quick', 'named']);
+    expect(CLOUDFLARE_TUNNEL_MODE_DISPLAY_OPTIONS).toEqual([
+      {
+        value: 'quick',
+        label: 'Quick Tunnel (Random URL)',
+        compactLabel: 'quick',
+        successMessage: 'Cloudflare tunnel mode set to quick.',
+      },
+      {
+        value: 'named',
+        label: 'Named Tunnel (Persistent)',
+        compactLabel: 'named',
+        successMessage: 'Cloudflare tunnel mode set to named.',
+      },
+    ]);
 
     expect(isRemoteServerBindAddressUpdateValue('0.0.0.0')).toBe(true);
     expect(isRemoteServerBindAddressUpdateValue('localhost')).toBe(false);
