@@ -1,6 +1,7 @@
 import { logApp, logLLM } from "./debug"
 import { getAppSessionForAcpSession } from "./acpx/acpx-session-state"
 import {
+  createStopRemoteAgentSessionActionService,
   stopRemoteAgentSessionAction,
   type StopRemoteAgentSessionResult,
 } from "@dotagents/shared/agent-run-utils"
@@ -17,7 +18,7 @@ export async function stopAgentSessionById(sessionId: string): Promise<StopAgent
       logApp,
       logLLM,
     },
-    service: {
+    service: createStopRemoteAgentSessionActionService({
       getAppSessionForAcpSession,
       getTrackedSession: (id) => agentSessionTracker.getSession(id),
       stopSessionState: (id) => agentSessionStateManager.stopSession(id),
@@ -35,6 +36,6 @@ export async function stopAgentSessionById(sessionId: string): Promise<StopAgent
       getSessionRunId: (id) => agentSessionStateManager.getSessionRunId(id),
       emitAgentProgress,
       stopTrackedSession: (id) => agentSessionTracker.stopSession(id),
-    },
+    }),
   })
 }

@@ -69,6 +69,12 @@ function getAgentRunActionsSource(): string {
   return readFileSync(agentRunActionsPath, "utf8")
 }
 
+function getAgentSessionActionsSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const agentSessionActionsPath = path.join(testDir, "agent-session-actions.ts")
+  return readFileSync(agentSessionActionsPath, "utf8")
+}
+
 function getSharedAgentRunUtilsSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedAgentRunUtilsPath = path.join(testDir, "../../../../packages/shared/src/agent-run-utils.ts")
@@ -1759,6 +1765,7 @@ describe("remote-server route registration", () => {
     const operatorAuditActionsSource = getOperatorAuditActionsSource()
     const sharedOperatorAuditStoreSource = getSharedOperatorAuditStoreSource()
     const sharedOperatorActionsSource = getSharedOperatorActionsSource()
+    const sharedAgentRunUtilsSource = getSharedAgentRunUtilsSource()
     const operatorRouteDesktopActionsSource = getOperatorRouteDesktopActionsSource()
 
     expect(operatorRoutesSource).toContain("actions.getOperatorStatus(getRemoteServerStatus())")
@@ -2123,9 +2130,13 @@ describe("remote-server route registration", () => {
     expect(sharedOperatorActionsSource).toContain("buildOperatorRunAgentResponse(agentResult)")
     // Agent session controls
     expectRegisteredApiRoute(source, "POST", "operatorAgentSessionStop")
+    const agentSessionActionsSource = getAgentSessionActionsSource()
     expect(operatorRoutesSource).toContain("actions.stopOperatorAgentSession(params.sessionId)")
     expect(operatorRouteDesktopActionsSource).toContain("stopAgentSessionById")
+    expect(agentSessionActionsSource).toContain("service: createStopRemoteAgentSessionActionService({")
+    expect(agentSessionActionsSource).not.toContain("function createStopRemoteAgentSessionActionService(")
     expect(operatorRouteDesktopActionsSource).not.toContain("stopOperatorAgentSessionAction(sessionIdParam, agentActionOptions)")
+    expect(sharedAgentRunUtilsSource).toContain("export function createStopRemoteAgentSessionActionService")
     expect(sharedOperatorActionsSource).toContain(
       "stopOperatorAgentSession: (sessionIdParam) => stopOperatorAgentSessionAction(sessionIdParam, options)",
     )

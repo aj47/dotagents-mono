@@ -12,6 +12,7 @@ import {
   calculateLlmRetryBackoffDelay,
   createRemoteAgentRunActionService,
   createRemoteAgentRunExecutor,
+  createStopRemoteAgentSessionActionService,
   describeAgentSessionId,
   getExplicitAgentStopReason,
   getPreferredDelegationOutput,
@@ -220,20 +221,22 @@ describe('stopRemoteAgentSessionAction', () => {
     const progressUpdates: unknown[] = []
 
     const service: StopRemoteAgentSessionActionService = {
-      getAppSessionForAcpSession: (sessionId) => sessionId === 'subsession_1' ? 'session-parent' : undefined,
-      getTrackedSession: (sessionId) => trackedSessions.get(sessionId),
-      stopSessionState: (sessionId) => { stateStops.push(sessionId) },
-      cancelSessionApprovals: (sessionId) => { cancelledApprovals.push(sessionId) },
-      getChildSubSessions: () => [
-        { id: 'subsession-a', status: 'running' },
-        { id: 'subsession-b', status: 'complete' },
-      ],
-      cancelSubSession: (sessionId) => { cancelledSubSessions.push(sessionId) },
-      pauseMessageQueue: (conversationId) => { pausedQueues.push(conversationId) },
-      getMessageQueueLength: () => 2,
-      getSessionRunId: () => 7,
-      emitAgentProgress: async (update) => { progressUpdates.push(update) },
-      stopTrackedSession: (sessionId) => { stoppedTrackedSessions.push(sessionId) },
+      ...createStopRemoteAgentSessionActionService({
+        getAppSessionForAcpSession: (sessionId) => sessionId === 'subsession_1' ? 'session-parent' : undefined,
+        getTrackedSession: (sessionId) => trackedSessions.get(sessionId),
+        stopSessionState: (sessionId) => { stateStops.push(sessionId) },
+        cancelSessionApprovals: (sessionId) => { cancelledApprovals.push(sessionId) },
+        getChildSubSessions: () => [
+          { id: 'subsession-a', status: 'running' },
+          { id: 'subsession-b', status: 'complete' },
+        ],
+        cancelSubSession: (sessionId) => { cancelledSubSessions.push(sessionId) },
+        pauseMessageQueue: (conversationId) => { pausedQueues.push(conversationId) },
+        getMessageQueueLength: () => 2,
+        getSessionRunId: () => 7,
+        emitAgentProgress: async (update) => { progressUpdates.push(update) },
+        stopTrackedSession: (sessionId) => { stoppedTrackedSessions.push(sessionId) },
+      }),
       ...overrides,
     }
 
@@ -292,6 +295,75 @@ describe('stopRemoteAgentSessionAction', () => {
       trackerSessionFound: true,
       trackerConversationId: 'conv-1',
     }))
+  })
+
+  it('creates stop-session action services from platform adapters', async () => {
+    const calls: string[] = []
+    const service = createStopRemoteAgentSessionActionService({
+      getAppSessionForAcpSession: (sessionId) => {
+        calls.push(`map:${sessionId}`)
+        return 'app-session'
+      },
+      getTrackedSession: (sessionId) => {
+        calls.push(`track:${sessionId}`)
+        return { id: sessionId, status: 'active', conversationId: 'conv-1' }
+      },
+      stopSessionState: (sessionId) => { calls.push(`state:${sessionId}`) },
+      cancelSessionApprovals: (sessionId) => { calls.push(`approvals:${sessionId}`) },
+      getChildSubSessions: (sessionId) => {
+        calls.push(`children:${sessionId}`)
+        return [{ id: 'child-1', status: 'running' }]
+      },
+      cancelSubSession: (sessionId) => { calls.push(`cancel-child:${sessionId}`) },
+      pauseMessageQueue: (conversationId) => { calls.push(`pause:${conversationId}`) },
+      getMessageQueueLength: (conversationId) => {
+        calls.push(`queue-length:${conversationId}`)
+        return 1
+      },
+      getSessionRunId: (sessionId) => {
+        calls.push(`run:${sessionId}`)
+        return 42
+      },
+      emitAgentProgress: async (update) => {
+        calls.push(`progress:${update.sessionId}:${update.runId}`)
+      },
+      stopTrackedSession: (sessionId) => { calls.push(`stop-track:${sessionId}`) },
+    })
+
+    expect(service.getAppSessionForAcpSession('session-1')).toBe('app-session')
+    expect(service.getTrackedSession('session-1')).toMatchObject({ conversationId: 'conv-1' })
+    service.stopSessionState('session-1')
+    service.cancelSessionApprovals('session-1')
+    expect(await Promise.resolve(service.getChildSubSessions('session-1'))).toEqual([
+      { id: 'child-1', status: 'running' },
+    ])
+    await service.cancelSubSession('child-1')
+    service.pauseMessageQueue('conv-1')
+    expect(service.getMessageQueueLength('conv-1')).toBe(1)
+    expect(service.getSessionRunId('session-1')).toBe(42)
+    await service.emitAgentProgress({
+      sessionId: 'session-1',
+      runId: 42,
+      currentIteration: 0,
+      maxIterations: 0,
+      steps: [],
+      isComplete: true,
+    })
+    service.stopTrackedSession('session-1')
+
+    expect(calls).toEqual([
+      'map:session-1',
+      'track:session-1',
+      'state:session-1',
+      'approvals:session-1',
+      'children:session-1',
+      'cancel-child:child-1',
+      'pause:conv-1',
+      'queue-length:conv-1',
+      'run:session-1',
+      'progress:session-1:42',
+      'stop-track:session-1',
+    ])
   })
 
   it('continues cleanup when child session lookup fails and preserves mapped session diagnostics', async () => {

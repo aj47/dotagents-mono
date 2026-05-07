@@ -185,6 +185,26 @@ export interface StopRemoteAgentSessionActionService {
   stopTrackedSession(sessionId: string): void
 }
 
+export type StopRemoteAgentSessionActionServiceOptions = StopRemoteAgentSessionActionService
+
+export function createStopRemoteAgentSessionActionService(
+  options: StopRemoteAgentSessionActionServiceOptions,
+): StopRemoteAgentSessionActionService {
+  return {
+    getAppSessionForAcpSession: (sessionId) => options.getAppSessionForAcpSession(sessionId),
+    getTrackedSession: (sessionId) => options.getTrackedSession(sessionId),
+    stopSessionState: (sessionId) => options.stopSessionState(sessionId),
+    cancelSessionApprovals: (sessionId) => options.cancelSessionApprovals(sessionId),
+    getChildSubSessions: (sessionId) => options.getChildSubSessions(sessionId),
+    cancelSubSession: (sessionId) => options.cancelSubSession(sessionId),
+    pauseMessageQueue: (conversationId) => options.pauseMessageQueue(conversationId),
+    getMessageQueueLength: (conversationId) => options.getMessageQueueLength(conversationId),
+    getSessionRunId: (sessionId) => options.getSessionRunId(sessionId),
+    emitAgentProgress: (update) => options.emitAgentProgress(update),
+    stopTrackedSession: (sessionId) => options.stopTrackedSession(sessionId),
+  }
+}
+
 export interface StopRemoteAgentSessionActionDiagnostics {
   logApp(message: string, details?: unknown): void
   logLLM(message: string, details?: unknown): void
