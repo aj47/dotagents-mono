@@ -55,6 +55,9 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_ROUTE_PATHS.loopExportMarkdown).toBe('/v1/loops/:id/export/markdown');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.mcpConfigImport).toBe('/v1/mcp/config/import');
     expect(REMOTE_SERVER_API_ROUTE_PATHS.mcpConfigExport).toBe('/v1/mcp/config/export');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.mcpOAuthStatus).toBe('/v1/mcp/servers/:name/oauth');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.mcpOAuthStart).toBe('/v1/mcp/servers/:name/oauth/start');
+    expect(REMOTE_SERVER_API_ROUTE_PATHS.mcpOAuthRevoke).toBe('/v1/mcp/servers/:name/oauth/revoke');
     expect(getRemoteServerApiRoutePath('/v1/settings')).toBe('/v1/settings');
     expect(getRemoteServerApiRoutePath('settings')).toBe('/v1/settings');
     expect(getRemoteServerApiRouteKey({ method: 'patch', path: REMOTE_SERVER_API_PATHS.settings })).toBe('PATCH /v1/settings');
@@ -71,6 +74,9 @@ describe('remote server API contract', () => {
     expect(REMOTE_SERVER_API_BUILDERS.profileExport('agent/name')).toBe('/profiles/agent%2Fname/export');
     expect(REMOTE_SERVER_API_BUILDERS.mcpServerToggle('filesystem/local')).toBe('/mcp/servers/filesystem%2Flocal/toggle');
     expect(REMOTE_SERVER_API_BUILDERS.mcpConfigServer('filesystem/local')).toBe('/mcp/config/servers/filesystem%2Flocal');
+    expect(REMOTE_SERVER_API_BUILDERS.mcpOAuthStatus('filesystem/local')).toBe('/mcp/servers/filesystem%2Flocal/oauth');
+    expect(REMOTE_SERVER_API_BUILDERS.mcpOAuthStart('filesystem/local')).toBe('/mcp/servers/filesystem%2Flocal/oauth/start');
+    expect(REMOTE_SERVER_API_BUILDERS.mcpOAuthRevoke('filesystem/local')).toBe('/mcp/servers/filesystem%2Flocal/oauth/revoke');
     expect(REMOTE_SERVER_API_BUILDERS.modelsByProvider('openai')).toBe('/models/openai');
     expect(REMOTE_SERVER_API_BUILDERS.conversationImageAsset('conv 1', 'image/name.png')).toBe('/conversations/conv%201/assets/images/image%2Fname.png');
     expect(REMOTE_SERVER_API_BUILDERS.conversationVideoAsset('conv 1', 'clip/name.mp4')).toBe('/conversations/conv%201/assets/videos/clip%2Fname.mp4');

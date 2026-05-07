@@ -144,6 +144,7 @@ import {
   MCP_MAX_ITERATIONS_DEFAULT,
   parseMcpServerConfigImportRequestBody,
   parseMcpMaxIterationsDraft,
+  type McpOAuthStatusResponse,
 } from '@dotagents/shared/mcp-api';
 import { isReservedMcpServerName, parseMcpKeyValueDraft, type MCPServerConfig, type MCPTransportType } from '@dotagents/shared/mcp-utils';
 import {
@@ -413,6 +414,8 @@ export default function SettingsScreen({ navigation }: any) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentProfileId, setCurrentProfileId] = useState<string | undefined>();
   const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
+  const [mcpOAuthStatus, setMcpOAuthStatus] = useState<Record<string, McpOAuthStatusResponse>>({});
+  const [pendingMcpOAuthAction, setPendingMcpOAuthAction] = useState<string | null>(null);
   const [remoteSettings, setRemoteSettings] = useState<Settings | null>(null);
   const [localSpeechModelStatuses, setLocalSpeechModelStatuses] = useState<Partial<Record<LocalSpeechModelProviderId, LocalSpeechModelStatus>>>({});
   const [pendingLocalSpeechModelAction, setPendingLocalSpeechModelAction] = useState<string | null>(null);
@@ -670,6 +673,26 @@ export default function SettingsScreen({ navigation }: any) {
     return null;
   }, [config.baseUrl, config.apiKey]);
 
+  const refreshMcpOAuthStatuses = useCallback(async (servers: MCPServer[]) => {
+    if (!settingsClient || servers.length === 0) {
+      setMcpOAuthStatus({});
+      return;
+    }
+
+    const entries = await Promise.all(servers.map(async (server) => {
+      try {
+        return [server.name, await settingsClient.getMcpOAuthStatus(server.name)] as const;
+      } catch (error: any) {
+        return [server.name, {
+          configured: false,
+          authenticated: false,
+          error: error?.message || 'Failed to load OAuth status',
+        }] as const;
+      }
+    }));
+    setMcpOAuthStatus(Object.fromEntries(entries));
+  }, [settingsClient]);
+
   // Clear pending model update timeout when settingsClient changes
   // to prevent sending updates to the previous server
   useEffect(() => {
@@ -684,6 +707,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) {
       setProfiles([]);
       setMcpServers([]);
+      setMcpOAuthStatus({});
       setRemoteSettings(null);
       setLocalSpeechModelStatuses({});
       setIsDotAgentsServer(false);
@@ -711,6 +735,7 @@ export default function SettingsScreen({ navigation }: any) {
       }
       if (serversRes) {
         setMcpServers(serversRes.servers);
+        void refreshMcpOAuthStatuses(serversRes.servers);
         successCount++;
       }
       if (settingsRes) {
@@ -743,7 +768,7 @@ export default function SettingsScreen({ navigation }: any) {
     } finally {
       setIsLoadingRemote(false);
     }
-  }, [settingsClient]);
+  }, [refreshMcpOAuthStatuses, settingsClient]);
 
   const refreshRemoteSettingsSnapshot = useCallback(async () => {
     if (!settingsClient) return null;
@@ -1224,6 +1249,45 @@ export default function SettingsScreen({ navigation }: any) {
       fetchRemoteSettings();
     }
   };
+
+  const handleMcpOAuthStart = useCallback(async (serverName: string) => {
+    if (!settingsClient) return;
+
+    setPendingMcpOAuthAction(`${serverName}:start`);
+    setRemoteError(null);
+    setSaveStatusMessage(null);
+    try {
+      await settingsClient.initiateMcpOAuthFlow(serverName);
+      setSaveStatusMessage(`Started OAuth for ${serverName}`);
+      await refreshMcpOAuthStatuses(mcpServers);
+    } catch (error: any) {
+      console.error('[Settings] Failed to start MCP OAuth:', error);
+      setRemoteError(error.message || 'Failed to start MCP OAuth');
+    } finally {
+      setPendingMcpOAuthAction(null);
+    }
+  }, [mcpServers, refreshMcpOAuthStatuses, settingsClient]);
+
+  const handleMcpOAuthRevoke = useCallback(async (serverName: string) => {
+    if (!settingsClient) return;
+
+    setPendingMcpOAuthAction(`${serverName}:revoke`);
+    setRemoteError(null);
+    setSaveStatusMessage(null);
+    try {
+      const result = await settingsClient.revokeMcpOAuthTokens(serverName);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to revoke MCP OAuth');
+      }
+      setSaveStatusMessage(`Revoked OAuth for ${serverName}`);
+      await refreshMcpOAuthStatuses(mcpServers);
+    } catch (error: any) {
+      console.error('[Settings] Failed to revoke MCP OAuth:', error);
+      setRemoteError(error.message || 'Failed to revoke MCP OAuth');
+    } finally {
+      setPendingMcpOAuthAction(null);
+    }
+  }, [mcpServers, refreshMcpOAuthStatuses, settingsClient]);
 
   // Handle remote settings toggle
   const handleRemoteSettingToggle = async (key: keyof Settings, value: boolean) => {
@@ -4130,6 +4194,9 @@ export default function SettingsScreen({ navigation }: any) {
                   <Text style={styles.helperText}>No MCP servers configured</Text>
                 ) : mcpServers.map((server) => {
                   const canDeleteServer = !isReservedMcpServerName(server.name, RESERVED_RUNTIME_TOOL_SERVER_NAMES);
+                  const oauthStatus = mcpOAuthStatus[server.name];
+                  const pendingOAuthStart = pendingMcpOAuthAction === `${server.name}:start`;
+                  const pendingOAuthRevoke = pendingMcpOAuthAction === `${server.name}:revoke`;
 
                   return (
                     <View key={server.name} style={styles.serverRow}>
@@ -4143,6 +4210,8 @@ export default function SettingsScreen({ navigation }: any) {
                         </View>
                         <Text style={styles.serverMeta}>
                           {server.toolCount} tool{server.toolCount !== 1 ? 's' : ''}
+                          {oauthStatus?.configured && ` • OAuth ${oauthStatus.authenticated ? 'connected' : 'needs auth'}`}
+                          {oauthStatus?.error && ` • OAuth: ${oauthStatus.error}`}
                           {server.error && ` • ${server.error}`}
                         </Text>
                       </View>
@@ -4155,6 +4224,35 @@ export default function SettingsScreen({ navigation }: any) {
                           thumbColor={server.enabled ? theme.colors.primaryForeground : theme.colors.background}
                           disabled={server.configDisabled}
                         />
+                        {oauthStatus?.configured && (
+                          oauthStatus.authenticated ? (
+                            <TouchableOpacity
+                              style={[styles.agentDeleteButton, pendingOAuthRevoke && styles.agentActionButtonDisabled]}
+                              onPress={() => handleMcpOAuthRevoke(server.name)}
+                              disabled={pendingOAuthRevoke}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`Revoke OAuth for MCP server ${server.name}`)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={styles.agentDeleteButtonText}>
+                                {pendingOAuthRevoke ? 'Revoking...' : 'Revoke OAuth'}
+                              </Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <TouchableOpacity
+                              style={[styles.agentDeleteButton, pendingOAuthStart && styles.agentActionButtonDisabled]}
+                              onPress={() => handleMcpOAuthStart(server.name)}
+                              disabled={pendingOAuthStart}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`Start OAuth for MCP server ${server.name}`)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={styles.notePromoteButtonText}>
+                                {pendingOAuthStart ? 'Starting...' : 'Start OAuth'}
+                              </Text>
+                            </TouchableOpacity>
+                          )
+                        )}
                         {canDeleteServer && (
                           <>
                             <TouchableOpacity

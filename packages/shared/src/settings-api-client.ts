@@ -48,6 +48,9 @@ import {
   DEFAULT_MCP_VERIFY_COMPLETION_ENABLED,
   MCP_MAX_ITERATIONS_DEFAULT,
   normalizeMcpMaxIterationsValue,
+  type McpOAuthRevokeResponse,
+  type McpOAuthStartResponse,
+  type McpOAuthStatusResponse,
   type McpServerConfigExportResponse,
   type McpServerConfigImportResponse,
   type McpServerConfigMutationResponse,
@@ -1335,6 +1338,22 @@ export class SettingsApiClient {
   async deleteMCPServerConfig(serverName: string): Promise<McpServerConfigMutationResponse> {
     return this.request<McpServerConfigMutationResponse>(API_BUILDERS.mcpConfigServer(serverName), {
       method: 'DELETE',
+    });
+  }
+
+  async getMcpOAuthStatus(serverName: string): Promise<McpOAuthStatusResponse> {
+    return this.request<McpOAuthStatusResponse>(API_BUILDERS.mcpOAuthStatus(serverName));
+  }
+
+  async initiateMcpOAuthFlow(serverName: string): Promise<McpOAuthStartResponse> {
+    return this.request<McpOAuthStartResponse>(API_BUILDERS.mcpOAuthStart(serverName), {
+      method: 'POST',
+    });
+  }
+
+  async revokeMcpOAuthTokens(serverName: string): Promise<McpOAuthRevokeResponse> {
+    return this.request<McpOAuthRevokeResponse>(API_BUILDERS.mcpOAuthRevoke(serverName), {
+      method: 'POST',
     });
   }
 

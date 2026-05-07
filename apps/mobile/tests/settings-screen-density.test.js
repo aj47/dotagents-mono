@@ -89,6 +89,17 @@ test('lets mobile export MCP server configs through the shared client', () => {
   assert.match(settingsSource, /MCP config exports can include tokens, headers, and environment variables/);
 });
 
+test('lets mobile start and revoke desktop MCP OAuth flows through the shared client', () => {
+  assert.match(settingsSource, /McpOAuthStatusResponse/);
+  assert.match(settingsSource, /refreshMcpOAuthStatuses/);
+  assert.match(settingsSource, /settingsClient\.getMcpOAuthStatus\(server\.name\)/);
+  assert.match(settingsSource, /settingsClient\.initiateMcpOAuthFlow\(serverName\)/);
+  assert.match(settingsSource, /settingsClient\.revokeMcpOAuthTokens\(serverName\)/);
+  assert.match(settingsSource, /OAuth \$\{oauthStatus\.authenticated \? 'connected' : 'needs auth'\}/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\(`Start OAuth for MCP server \$\{server\.name\}`\)/);
+  assert.match(settingsSource, /createButtonAccessibilityLabel\(`Revoke OAuth for MCP server \$\{server\.name\}`\)/);
+});
+
 test('lets mobile export DotAgents bundles through the shared client', () => {
   assert.match(settingsSource, /handleBundleExport/);
   assert.match(settingsSource, /settingsClient\.exportBundle\(\{ name: 'DotAgents Bundle' \}\)/);

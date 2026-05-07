@@ -1165,6 +1165,26 @@ describe('SettingsApiClient', () => {
     ]);
   });
 
+  it('exposes MCP OAuth endpoints from the shared client', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ configured: true, authenticated: false }))
+      .mockResolvedValueOnce(jsonResponse({ authorizationUrl: 'https://auth.example', state: 'state-1' }))
+      .mockResolvedValueOnce(jsonResponse({ success: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new SettingsApiClient('https://example.com/v1', 'secret-token');
+
+    await client.getMcpOAuthStatus('filesystem/local');
+    await client.initiateMcpOAuthFlow('filesystem/local');
+    await client.revokeMcpOAuthTokens('filesystem/local');
+
+    expect(fetchMock.mock.calls.map((call) => [call[0], call[1]?.method, call[1]?.body])).toEqual([
+      ['https://example.com/v1/mcp/servers/filesystem%2Flocal/oauth', undefined, undefined],
+      ['https://example.com/v1/mcp/servers/filesystem%2Flocal/oauth/start', 'POST', undefined],
+      ['https://example.com/v1/mcp/servers/filesystem%2Flocal/oauth/revoke', 'POST', undefined],
+    ]);
+  });
+
   it('exposes operator and extended endpoints from the shared client', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse({ count: 5, logs: [] }))
@@ -1311,6 +1331,9 @@ describe('SettingsApiClient', () => {
       { route: { method: 'DELETE', path: REMOTE_SERVER_API_PATHS.mcpConfigServer }, expectedPath: REMOTE_SERVER_API_BUILDERS.mcpConfigServer(serverName), run: () => client.deleteMCPServerConfig(serverName) },
       { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.mcpConfigImport }, expectedPath: REMOTE_SERVER_API_PATHS.mcpConfigImport, run: () => client.importMCPServerConfigs({ mcpServers: { github: { command: 'github-mcp' } } }) },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.mcpConfigExport }, expectedPath: REMOTE_SERVER_API_PATHS.mcpConfigExport, run: () => client.exportMCPServerConfigs() },
+      { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.mcpOAuthStatus }, expectedPath: REMOTE_SERVER_API_BUILDERS.mcpOAuthStatus(serverName), run: () => client.getMcpOAuthStatus(serverName) },
+      { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.mcpOAuthStart }, expectedPath: REMOTE_SERVER_API_BUILDERS.mcpOAuthStart(serverName), run: () => client.initiateMcpOAuthFlow(serverName) },
+      { route: { method: 'POST', path: REMOTE_SERVER_API_PATHS.mcpOAuthRevoke }, expectedPath: REMOTE_SERVER_API_BUILDERS.mcpOAuthRevoke(serverName), run: () => client.revokeMcpOAuthTokens(serverName) },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.settings }, expectedPath: REMOTE_SERVER_API_PATHS.settings, run: () => client.getSettings() },
       { route: { method: 'PATCH', path: REMOTE_SERVER_API_PATHS.settings }, expectedPath: REMOTE_SERVER_API_PATHS.settings, run: () => client.updateSettings({ mcpMaxIterations: 20 }) },
       { route: { method: 'GET', path: REMOTE_SERVER_API_PATHS.agentSessionCandidates }, expectedPath: buildRemoteServerApiQueryPath(REMOTE_SERVER_API_PATHS.agentSessionCandidates, { limit: 20 }), run: () => client.getAgentSessionCandidates(20) },

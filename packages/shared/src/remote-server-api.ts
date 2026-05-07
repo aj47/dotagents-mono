@@ -76,6 +76,9 @@ export const REMOTE_SERVER_API_PATHS = {
   mcpConfigExport: "/mcp/config/export",
   mcpConfigImport: "/mcp/config/import",
   mcpConfigServer: "/mcp/config/servers/:name",
+  mcpOAuthStatus: "/mcp/servers/:name/oauth",
+  mcpOAuthStart: "/mcp/servers/:name/oauth/start",
+  mcpOAuthRevoke: "/mcp/servers/:name/oauth/revoke",
   settings: "/settings",
   agentSessionCandidates: "/agent-sessions/candidates",
   conversation: "/conversations/:id",
@@ -189,6 +192,9 @@ export const REMOTE_SERVER_API_ROUTES = [
   { method: "POST", path: REMOTE_SERVER_API_PATHS.mcpConfigImport },
   { method: "PUT", path: REMOTE_SERVER_API_PATHS.mcpConfigServer },
   { method: "DELETE", path: REMOTE_SERVER_API_PATHS.mcpConfigServer },
+  { method: "GET", path: REMOTE_SERVER_API_PATHS.mcpOAuthStatus },
+  { method: "POST", path: REMOTE_SERVER_API_PATHS.mcpOAuthStart },
+  { method: "POST", path: REMOTE_SERVER_API_PATHS.mcpOAuthRevoke },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.settings },
   { method: "PATCH", path: REMOTE_SERVER_API_PATHS.settings },
   { method: "GET", path: REMOTE_SERVER_API_PATHS.agentSessionCandidates },
@@ -400,6 +406,15 @@ export const REMOTE_SERVER_API_BUILDERS = {
   },
   mcpConfigServer(serverName: string): string {
     return `/mcp/config/servers/${encodePathParam(serverName)}`;
+  },
+  mcpOAuthStatus(serverName: string): string {
+    return `/mcp/servers/${encodePathParam(serverName)}/oauth`;
+  },
+  mcpOAuthStart(serverName: string): string {
+    return `/mcp/servers/${encodePathParam(serverName)}/oauth/start`;
+  },
+  mcpOAuthRevoke(serverName: string): string {
+    return `/mcp/servers/${encodePathParam(serverName)}/oauth/revoke`;
   },
   conversation(id: string): string {
     return `/conversations/${encodePathParam(id)}`;

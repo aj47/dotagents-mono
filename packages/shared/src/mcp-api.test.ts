@@ -761,7 +761,7 @@ describe("MCP API helpers", () => {
     expect(calls).toEqual(["status", "runtime:filesystem:true", "restart:filesystem", "stop:filesystem"])
   })
 
-  it("creates mobile MCP route actions that delegate through service adapters", () => {
+  it("creates mobile MCP route actions that delegate through service adapters", async () => {
     let mcpConfig: MCPConfig = {
       mcpServers: {
         filesystem: { command: "filesystem-mcp" },
@@ -769,6 +769,7 @@ describe("MCP API helpers", () => {
     }
     const toggles: Array<{ serverName: string; enabled: boolean }> = []
     const logs: string[] = []
+    const oauthCalls: string[] = []
     const routeActions = createMcpRouteActions({
       server: {
         service: {
@@ -802,6 +803,26 @@ describe("MCP API helpers", () => {
           logInfo: (_source, message) => logs.push(message),
         },
         reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
+      },
+      oauth: {
+        service: {
+          getOAuthStatus: async (serverName) => {
+            oauthCalls.push(`status:${serverName}`)
+            return { configured: true, authenticated: false }
+          },
+          initiateOAuthFlow: async (serverName) => {
+            oauthCalls.push(`start:${serverName}`)
+            return { authorizationUrl: "https://auth.example", state: "state-1" }
+          },
+          revokeOAuthTokens: async (serverName) => {
+            oauthCalls.push(`revoke:${serverName}`)
+            return { success: true }
+          },
+        },
+        diagnostics: {
+          logError: (_source, message) => logs.push(message),
+          logInfo: (_source, message) => logs.push(message),
+        },
       },
     })
 
@@ -844,6 +865,21 @@ describe("MCP API helpers", () => {
     })
     expect(toggles).toEqual([{ serverName: "filesystem", enabled: false }])
     expect(logs).toContain("Toggled MCP server filesystem to disabled")
+    await expect(routeActions.getMcpOAuthStatus("github")).resolves.toEqual({
+      statusCode: 200,
+      body: { configured: true, authenticated: false },
+    })
+    await expect(routeActions.initiateMcpOAuthFlow("github")).resolves.toEqual({
+      statusCode: 200,
+      body: { authorizationUrl: "https://auth.example", state: "state-1" },
+    })
+    await expect(routeActions.revokeMcpOAuthTokens("github")).resolves.toEqual({
+      statusCode: 200,
+      body: { success: true },
+    })
+    expect(oauthCalls).toEqual(["status:github", "start:github", "revoke:github"])
+    expect(logs).toContain("Started MCP OAuth flow for github")
+    expect(logs).toContain("Revoked MCP OAuth tokens for github")
   })
 
   it("builds compact operator MCP status responses", () => {

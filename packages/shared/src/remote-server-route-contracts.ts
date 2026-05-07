@@ -66,6 +66,9 @@ export interface MobileApiRouteActions<Request = unknown, Reply = unknown> {
   importMcpServerConfigs: (body: unknown) => MobileApiActionResult;
   upsertMcpServerConfig: (name: string | undefined, body: unknown) => MobileApiActionResult;
   deleteMcpServerConfig: (name?: string) => MobileApiActionResult;
+  getMcpOAuthStatus: (name?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
+  initiateMcpOAuthFlow: (name?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
+  revokeMcpOAuthTokens: (name?: string) => RemoteServerMaybePromise<MobileApiActionResult>;
   getSettings: (providerSecretMask: string) => MobileApiActionResult;
   updateSettings: (
     body: unknown,
@@ -171,6 +174,9 @@ export interface MobileApiRouteActionGroups<Request = unknown, Reply = unknown> 
     | 'importMcpServerConfigs'
     | 'upsertMcpServerConfig'
     | 'deleteMcpServerConfig'
+    | 'getMcpOAuthStatus'
+    | 'initiateMcpOAuthFlow'
+    | 'revokeMcpOAuthTokens'
   >;
   settings: Pick<MobileApiRouteActions<Request, Reply>, 'getSettings' | 'updateSettings'>;
   agentSessionCandidates: Pick<MobileApiRouteActions<Request, Reply>, 'getAgentSessionCandidates'>;

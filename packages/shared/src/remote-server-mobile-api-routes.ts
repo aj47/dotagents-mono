@@ -176,6 +176,27 @@ export function registerMobileApiRoutes<
     return reply.code(result.statusCode).send(result.body);
   });
 
+  // GET /v1/mcp/servers/:name/oauth - Check MCP OAuth status
+  fastify.get(API_ROUTES.mcpOAuthStatus, async (req, reply) => {
+    const params = req.params as { name?: string };
+    const result = await actions.getMcpOAuthStatus(params.name);
+    return reply.code(result.statusCode).send(result.body);
+  });
+
+  // POST /v1/mcp/servers/:name/oauth/start - Start MCP OAuth flow on desktop
+  fastify.post(API_ROUTES.mcpOAuthStart, async (req, reply) => {
+    const params = req.params as { name?: string };
+    const result = await actions.initiateMcpOAuthFlow(params.name);
+    return reply.code(result.statusCode).send(result.body);
+  });
+
+  // POST /v1/mcp/servers/:name/oauth/revoke - Revoke MCP OAuth tokens
+  fastify.post(API_ROUTES.mcpOAuthRevoke, async (req, reply) => {
+    const params = req.params as { name?: string };
+    const result = await actions.revokeMcpOAuthTokens(params.name);
+    return reply.code(result.statusCode).send(result.body);
+  });
+
   // GET /v1/settings - Get relevant settings for mobile app
   fastify.get(API_ROUTES.settings, async (_req, reply) => {
     const result = actions.getSettings(providerSecretMask);

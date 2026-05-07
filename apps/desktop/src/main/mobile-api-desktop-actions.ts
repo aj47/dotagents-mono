@@ -56,8 +56,10 @@ import {
 import {
   RESERVED_RUNTIME_TOOL_SERVER_NAMES,
   createMcpConfigActionService,
+  createMcpOAuthActionService,
   createMcpRouteActions,
   createMcpServerActionService,
+  type McpOAuthActionOptions,
   type McpServerConfigActionOptions,
   type McpServerActionOptions,
 } from "@dotagents/shared/mcp-api"
@@ -410,9 +412,19 @@ const mcpServerConfigActionOptions = {
   reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
 } satisfies McpServerConfigActionOptions
 
+const mcpOAuthActionOptions = {
+  service: createMcpOAuthActionService({
+    getOAuthStatus: (serverName) => mcpService.getOAuthStatus(serverName),
+    initiateOAuthFlow: (serverName) => mcpService.initiateOAuthFlow(serverName),
+    revokeOAuthTokens: (serverName) => mcpService.revokeOAuthTokens(serverName),
+  }),
+  diagnostics: diagnosticsService,
+} satisfies McpOAuthActionOptions
+
 const mcpRouteActions = createMcpRouteActions({
   server: mcpServerActionOptions,
   config: mcpServerConfigActionOptions,
+  oauth: mcpOAuthActionOptions,
 })
 
 function cleanupDeletedSkillReferences(validSkillIds: string[]): void {

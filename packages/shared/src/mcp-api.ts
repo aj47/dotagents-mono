@@ -59,6 +59,23 @@ export type McpServerConfigExportResponse = {
   config: MCPConfig
 }
 
+export type McpOAuthStatusResponse = {
+  configured: boolean
+  authenticated: boolean
+  tokenExpiry?: number
+  error?: string
+}
+
+export type McpOAuthStartResponse = {
+  authorizationUrl: string
+  state: string
+}
+
+export type McpOAuthRevokeResponse = {
+  success: boolean
+  error?: string
+}
+
 export type McpServerConfigUpsertRequest = {
   config: MCPServerConfig
 }
@@ -292,6 +309,28 @@ export function createMcpServerActionService(
   }
 }
 
+export interface McpOAuthActionService {
+  getOAuthStatus(serverName: string): Promise<McpOAuthStatusResponse>
+  initiateOAuthFlow(serverName: string): Promise<McpOAuthStartResponse>
+  revokeOAuthTokens(serverName: string): Promise<McpOAuthRevokeResponse>
+}
+
+export interface McpOAuthActionServiceOptions {
+  getOAuthStatus(serverName: string): Promise<McpOAuthStatusResponse>
+  initiateOAuthFlow(serverName: string): Promise<McpOAuthStartResponse>
+  revokeOAuthTokens(serverName: string): Promise<McpOAuthRevokeResponse>
+}
+
+export function createMcpOAuthActionService(
+  options: McpOAuthActionServiceOptions,
+): McpOAuthActionService {
+  return {
+    getOAuthStatus: (serverName) => options.getOAuthStatus(serverName),
+    initiateOAuthFlow: (serverName) => options.initiateOAuthFlow(serverName),
+    revokeOAuthTokens: (serverName) => options.revokeOAuthTokens(serverName),
+  }
+}
+
 export interface McpServerConfigActionService {
   getMcpConfig(): MCPConfig
   saveMcpConfig(mcpConfig: MCPConfig): void
@@ -355,9 +394,15 @@ export interface McpServerConfigActionOptions {
   reservedServerNames?: readonly string[]
 }
 
+export interface McpOAuthActionOptions {
+  service: McpOAuthActionService
+  diagnostics: McpServerActionDiagnostics
+}
+
 export interface McpRouteActionOptions {
   server: McpServerActionOptions
   config: McpServerConfigActionOptions
+  oauth: McpOAuthActionOptions
 }
 
 export interface McpRouteActions {
@@ -367,6 +412,9 @@ export interface McpRouteActions {
   importMcpServerConfigs(body: unknown): McpServerActionResult
   upsertMcpServerConfig(serverName: string | undefined, body: unknown): McpServerActionResult
   deleteMcpServerConfig(serverName?: string): McpServerActionResult
+  getMcpOAuthStatus(serverName?: string): Promise<McpServerActionResult>
+  initiateMcpOAuthFlow(serverName?: string): Promise<McpServerActionResult>
+  revokeMcpOAuthTokens(serverName?: string): Promise<McpServerActionResult>
 }
 
 export interface OperatorMcpReadActionService {
@@ -1187,6 +1235,75 @@ export function exportMcpServerConfigsAction(
   }
 }
 
+function normalizeMcpOAuthServerName(serverName: string | undefined): McpRequestParseResult<{ serverName: string }> {
+  const normalizedServerName = typeof serverName === "string" ? serverName.trim() : ""
+  if (!normalizedServerName) {
+    return { ok: false, statusCode: 400, error: "Missing server name" }
+  }
+  return { ok: true, request: { serverName: normalizedServerName } }
+}
+
+export async function getMcpOAuthStatusAction(
+  serverName: string | undefined,
+  options: McpOAuthActionOptions,
+): Promise<McpServerActionResult> {
+  const parsed = normalizeMcpOAuthServerName(serverName)
+  if (parsed.ok === false) {
+    return mcpServerActionError(parsed.statusCode, parsed.error)
+  }
+
+  try {
+    return mcpServerActionOk(await options.service.getOAuthStatus(parsed.request.serverName))
+  } catch (caughtError) {
+    options.diagnostics.logError("mcp-oauth-actions", "Failed to get MCP OAuth status", caughtError)
+    return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to get MCP OAuth status"))
+  }
+}
+
+export async function initiateMcpOAuthFlowAction(
+  serverName: string | undefined,
+  options: McpOAuthActionOptions,
+): Promise<McpServerActionResult> {
+  const parsed = normalizeMcpOAuthServerName(serverName)
+  if (parsed.ok === false) {
+    return mcpServerActionError(parsed.statusCode, parsed.error)
+  }
+
+  try {
+    const result = await options.service.initiateOAuthFlow(parsed.request.serverName)
+    options.diagnostics.logInfo?.(
+      "mcp-oauth-actions",
+      `Started MCP OAuth flow for ${parsed.request.serverName}`,
+    )
+    return mcpServerActionOk(result)
+  } catch (caughtError) {
+    options.diagnostics.logError("mcp-oauth-actions", "Failed to start MCP OAuth flow", caughtError)
+    return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to start MCP OAuth flow"))
+  }
+}
+
+export async function revokeMcpOAuthTokensAction(
+  serverName: string | undefined,
+  options: McpOAuthActionOptions,
+): Promise<McpServerActionResult> {
+  const parsed = normalizeMcpOAuthServerName(serverName)
+  if (parsed.ok === false) {
+    return mcpServerActionError(parsed.statusCode, parsed.error)
+  }
+
+  try {
+    const result = await options.service.revokeOAuthTokens(parsed.request.serverName)
+    options.diagnostics.logInfo?.(
+      "mcp-oauth-actions",
+      `Revoked MCP OAuth tokens for ${parsed.request.serverName}`,
+    )
+    return mcpServerActionOk(result)
+  } catch (caughtError) {
+    options.diagnostics.logError("mcp-oauth-actions", "Failed to revoke MCP OAuth tokens", caughtError)
+    return mcpServerActionError(500, getUnknownErrorMessage(caughtError, "Failed to revoke MCP OAuth tokens"))
+  }
+}
+
 export function createMcpRouteActions(options: McpRouteActionOptions): McpRouteActions {
   return {
     getMcpServers: () => getMcpServersAction(options.server),
@@ -1195,6 +1312,9 @@ export function createMcpRouteActions(options: McpRouteActionOptions): McpRouteA
     importMcpServerConfigs: (body) => importMcpServerConfigsAction(body, options.config),
     upsertMcpServerConfig: (serverName, body) => upsertMcpServerConfigAction(serverName, body, options.config),
     deleteMcpServerConfig: (serverName) => deleteMcpServerConfigAction(serverName, options.config),
+    getMcpOAuthStatus: (serverName) => getMcpOAuthStatusAction(serverName, options.oauth),
+    initiateMcpOAuthFlow: (serverName) => initiateMcpOAuthFlowAction(serverName, options.oauth),
+    revokeMcpOAuthTokens: (serverName) => revokeMcpOAuthTokensAction(serverName, options.oauth),
   }
 }
 

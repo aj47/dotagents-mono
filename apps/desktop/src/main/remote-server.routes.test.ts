@@ -1394,6 +1394,9 @@ describe("remote-server route registration", () => {
     expectRegisteredApiRoute(source, "DELETE", "mcpConfigServer")
     expectRegisteredApiRoute(source, "POST", "mcpConfigImport")
     expectRegisteredApiRoute(source, "GET", "mcpConfigExport")
+    expectRegisteredApiRoute(source, "GET", "mcpOAuthStatus")
+    expectRegisteredApiRoute(source, "POST", "mcpOAuthStart")
+    expectRegisteredApiRoute(source, "POST", "mcpOAuthRevoke")
     expectRegisteredApiRoute(source, "POST", "ttsSpeak")
     expectRegisteredApiRoute(source, "POST", "pushRegister")
     expectRegisteredApiRoute(source, "POST", "pushUnregister")
@@ -1407,6 +1410,9 @@ describe("remote-server route registration", () => {
     expect(mobileApiRoutesSource).toContain("actions.deleteMcpServerConfig(params.name)")
     expect(mobileApiRoutesSource).toContain("actions.importMcpServerConfigs(req.body)")
     expect(mobileApiRoutesSource).toContain("actions.exportMcpServerConfigs()")
+    expect(mobileApiRoutesSource).toContain("actions.getMcpOAuthStatus(params.name)")
+    expect(mobileApiRoutesSource).toContain("actions.initiateMcpOAuthFlow(params.name)")
+    expect(mobileApiRoutesSource).toContain("actions.revokeMcpOAuthTokens(params.name)")
     expect(mobileApiRoutesSource).toContain("actions.synthesizeSpeech(req.body)")
     expect(mobileApiRoutesSource).toContain("actions.registerPushToken(req.body)")
     expect(mobileApiRoutesSource).toContain("actions.unregisterPushToken(req.body)")
@@ -1442,6 +1448,7 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain("const mcpRouteActions = createMcpRouteActions({")
     expect(mobileApiDesktopActionsSource).toContain("server: mcpServerActionOptions")
     expect(mobileApiDesktopActionsSource).toContain("config: mcpServerConfigActionOptions")
+    expect(mobileApiDesktopActionsSource).toContain("oauth: mcpOAuthActionOptions")
     expect(mobileApiDesktopActionsSource).toContain("mcp: mcpRouteActions")
     expect(mobileApiDesktopActionsSource).toContain("service: createMcpServerActionService({")
     expect(mobileApiDesktopActionsSource).toContain("getServerStatus: () => mcpService.getServerStatus()")
@@ -1449,6 +1456,10 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).not.toContain("service: mcpService")
     expect(mobileApiDesktopActionsSource).toContain("service: createMcpConfigActionService({")
     expect(mobileApiDesktopActionsSource).toContain("save: (config) => configStore.save(config)")
+    expect(mobileApiDesktopActionsSource).toContain("service: createMcpOAuthActionService({")
+    expect(mobileApiDesktopActionsSource).toContain("getOAuthStatus: (serverName) => mcpService.getOAuthStatus(serverName)")
+    expect(mobileApiDesktopActionsSource).toContain("initiateOAuthFlow: (serverName) => mcpService.initiateOAuthFlow(serverName)")
+    expect(mobileApiDesktopActionsSource).toContain("revokeOAuthTokens: (serverName) => mcpService.revokeOAuthTokens(serverName)")
     expect(mobileApiDesktopActionsSource).not.toContain("getMcpServersAction(mcpServerActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain("toggleMcpServerAction(serverName, body, mcpServerActionOptions)")
     expect(mobileApiDesktopActionsSource).not.toContain(
@@ -1472,6 +1483,8 @@ describe("remote-server route registration", () => {
     )
     expect(sharedMcpApiSource).toContain("export interface McpServerActionService")
     expect(sharedMcpApiSource).toContain("export function createMcpServerActionService")
+    expect(sharedMcpApiSource).toContain("export interface McpOAuthActionService")
+    expect(sharedMcpApiSource).toContain("export function createMcpOAuthActionService")
     expect(sharedMcpApiSource).toContain("export interface McpServerConfigActionService")
     expect(sharedMcpApiSource).toContain("export function createMcpConfigActionService")
     expect(sharedMcpApiSource).toContain("getMcpConfig: () => store.get().mcpConfig || { mcpServers: {} }")
@@ -1485,6 +1498,9 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain("export function deleteMcpServerConfigAction")
     expect(sharedMcpApiSource).toContain("export function importMcpServerConfigsAction")
     expect(sharedMcpApiSource).toContain("export function exportMcpServerConfigsAction")
+    expect(sharedMcpApiSource).toContain("export async function getMcpOAuthStatusAction")
+    expect(sharedMcpApiSource).toContain("export async function initiateMcpOAuthFlowAction")
+    expect(sharedMcpApiSource).toContain("export async function revokeMcpOAuthTokensAction")
     expect(sharedMcpApiSource).toContain("export function createMcpRouteActions")
     expect(sharedMcpApiSource).toContain("getMcpServers: () => getMcpServersAction(options.server)")
     expect(sharedMcpApiSource).toContain(
@@ -1498,8 +1514,16 @@ describe("remote-server route registration", () => {
     expect(sharedMcpApiSource).toContain(
       "deleteMcpServerConfig: (serverName) => deleteMcpServerConfigAction(serverName, options.config)",
     )
+    expect(sharedMcpApiSource).toContain("getMcpOAuthStatus: (serverName) => getMcpOAuthStatusAction(serverName, options.oauth)")
+    expect(sharedMcpApiSource).toContain(
+      "initiateMcpOAuthFlow: (serverName) => initiateMcpOAuthFlowAction(serverName, options.oauth)",
+    )
+    expect(sharedMcpApiSource).toContain(
+      "revokeMcpOAuthTokens: (serverName) => revokeMcpOAuthTokensAction(serverName, options.oauth)",
+    )
     expect(sharedMcpApiSource).toContain("buildMcpServersResponse(options.service.getServerStatus())")
     expect(sharedMcpApiSource).toContain("options.service.setServerRuntimeEnabled(normalizedServerName, enabled)")
+    expect(sharedMcpApiSource).toContain("options.service.initiateOAuthFlow(parsed.request.serverName)")
     expect(sharedMcpApiSource).toContain("options.service.saveMcpConfig(nextMcpConfig)")
     expect(sharedMcpApiSource).toContain("mergeImportedMcpServers(currentMcpConfig, parsedRequest.request.config")
     expect(sharedMcpApiSource).toContain("buildMcpServerConfigExportResponse(options.service.getMcpConfig())")

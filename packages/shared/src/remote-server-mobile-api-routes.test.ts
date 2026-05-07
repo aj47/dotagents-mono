@@ -133,6 +133,9 @@ describe('remote server mobile API routes', () => {
         auditContext,
       })),
       deleteSkills: vi.fn(() => ({ statusCode: 200, body: { success: true, deletedCount: 1 } })),
+      getMcpOAuthStatus: vi.fn(() => ({ statusCode: 200, body: { configured: true, authenticated: false } })),
+      initiateMcpOAuthFlow: vi.fn(() => ({ statusCode: 200, body: { authorizationUrl: 'https://auth.example', state: 'state-1' } })),
+      revokeMcpOAuthTokens: vi.fn(() => ({ statusCode: 200, body: { success: true } })),
       recordOperatorAuditEvent: vi.fn(),
       getConversationImageAsset: vi.fn(() => ({
         statusCode: 200,
@@ -196,6 +199,30 @@ describe('remote server mobile API routes', () => {
 
     expect(actions.deleteSkills).toHaveBeenCalledWith(skillsDeleteBody);
     expect(skillsDeleteReply.statusCode).toBe(200);
+
+    const oauthStatusReply = createReply();
+    await routes.get(`GET ${REMOTE_SERVER_API_ROUTE_PATHS.mcpOAuthStatus}`)!(
+      createRequest({ params: { name: 'notion' } }),
+      oauthStatusReply,
+    );
+    expect(actions.getMcpOAuthStatus).toHaveBeenCalledWith('notion');
+    expect(oauthStatusReply.body).toEqual({ configured: true, authenticated: false });
+
+    const oauthStartReply = createReply();
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.mcpOAuthStart}`)!(
+      createRequest({ params: { name: 'notion' } }),
+      oauthStartReply,
+    );
+    expect(actions.initiateMcpOAuthFlow).toHaveBeenCalledWith('notion');
+    expect(oauthStartReply.body).toEqual({ authorizationUrl: 'https://auth.example', state: 'state-1' });
+
+    const oauthRevokeReply = createReply();
+    await routes.get(`POST ${REMOTE_SERVER_API_ROUTE_PATHS.mcpOAuthRevoke}`)!(
+      createRequest({ params: { name: 'notion' } }),
+      oauthRevokeReply,
+    );
+    expect(actions.revokeMcpOAuthTokens).toHaveBeenCalledWith('notion');
+    expect(oauthRevokeReply.body).toEqual({ success: true });
 
     const imageReply = createReply();
     await routes.get(`GET ${REMOTE_SERVER_API_ROUTE_PATHS.conversationImageAsset}`)!(
