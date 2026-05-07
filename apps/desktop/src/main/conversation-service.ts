@@ -42,6 +42,8 @@ import {
   repairServerConversationJsonData,
   resolveServerConversationGeneratedTitle,
   SERVER_CONVERSATION_INDEX_FILE_NAME,
+  serializeServerConversationHistoryIndex,
+  serializeServerConversationRecord,
   sortServerConversationHistoryByUpdatedAt,
   syncServerConversationStorageMetadata,
   upsertServerConversationHistoryIndex,
@@ -387,7 +389,7 @@ export class ConversationService {
 
       if (persistRepairs && conversationPath) {
         try {
-          await this.writeConversationFileAtomic(conversationPath, JSON.stringify(repairedConversation, null, 2))
+          await this.writeConversationFileAtomic(conversationPath, serializeServerConversationRecord(repairedConversation))
           logApp(`[ConversationService] Repaired corrupted conversation file: ${conversationId}`)
         } catch (repairSaveError) {
           logApp(
@@ -509,7 +511,7 @@ export class ConversationService {
     if (!this.indexCache) return
     try {
       const indexPath = this.getConversationIndexPath()
-      await fsPromises.writeFile(indexPath, JSON.stringify(this.indexCache, null, 2))
+      await fsPromises.writeFile(indexPath, serializeServerConversationHistoryIndex(this.indexCache))
     } catch (error) {
       logApp("[ConversationService] Error writing index to disk:", error)
     }
@@ -631,7 +633,7 @@ export class ConversationService {
     try {
       await this.writeConversationFileAtomic(
         conversationPath,
-        JSON.stringify(conversation, null, 2),
+        serializeServerConversationRecord(conversation),
       )
       await this.updateConversationIndex(conversation)
       logApp(`[ConversationService] Normalized conversation storage metadata for ${conversationId}`)
@@ -664,7 +666,7 @@ export class ConversationService {
 
     await this.writeConversationFileAtomic(
       conversationPath,
-      JSON.stringify(conversation, null, 2),
+      serializeServerConversationRecord(conversation),
     )
 
     // Update the index (in-memory immediately, disk write debounced)

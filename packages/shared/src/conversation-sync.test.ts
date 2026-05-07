@@ -59,6 +59,8 @@ import {
   resolveServerConversationGeneratedTitle,
   SERVER_CONVERSATION_DATA_FILE_EXTENSION,
   SERVER_CONVERSATION_INDEX_FILE_NAME,
+  serializeServerConversationHistoryIndex,
+  serializeServerConversationRecord,
   serverConversationToStubSession,
   sortServerConversationHistoryByUpdatedAt,
   syncConversations,
@@ -148,6 +150,28 @@ describe('server conversation API helpers', () => {
     expect(getServerConversationIdFromDataFileName(SERVER_CONVERSATION_INDEX_FILE_NAME)).toBeNull();
     expect(getSortedServerConversationDataFileNames(fileNames)).toEqual(['conv-a.json', 'conv-b.json']);
     expect(countServerConversationDataFileNames(fileNames)).toBe(2);
+  });
+
+  it('serializes portable server conversation storage records with stable indentation', () => {
+    const conversation = {
+      id: 'conv-serialize',
+      title: 'Serialize',
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [{ id: 'm1', role: 'user' as const, content: 'hello', timestamp: 2 }],
+    };
+    const index = [{
+      id: 'conv-serialize',
+      title: 'Serialize',
+      createdAt: 1,
+      updatedAt: 2,
+      messageCount: 1,
+      lastMessage: 'hello',
+      preview: 'user: hello',
+    }];
+
+    expect(serializeServerConversationRecord(conversation)).toBe(JSON.stringify(conversation, null, 2));
+    expect(serializeServerConversationHistoryIndex(index)).toBe(JSON.stringify(index, null, 2));
   });
 
   it('parses and builds a new server conversation consistently', () => {

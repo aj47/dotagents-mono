@@ -413,6 +413,18 @@ export function countServerConversationDataFileNames(fileNames: readonly string[
   return fileNames.filter(isServerConversationDataFileName).length;
 }
 
+export function serializeServerConversationRecord<TConversation extends ServerConversationRecord<any>>(
+  conversation: TConversation,
+): string {
+  return JSON.stringify(conversation, null, 2);
+}
+
+export function serializeServerConversationHistoryIndex<TItem extends ServerConversation>(
+  index: TItem[],
+): string {
+  return JSON.stringify(index, null, 2);
+}
+
 function isRequestObject(body: unknown): body is Record<string, unknown> {
   return !!body && typeof body === 'object' && !Array.isArray(body);
 }
