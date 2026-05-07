@@ -141,6 +141,12 @@ function getSharedSettingsApiClientSource(): string {
   return readFileSync(sharedSettingsApiClientPath, "utf8")
 }
 
+function getSharedDiscordConfigSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const sharedDiscordConfigPath = path.join(testDir, "../../../../packages/shared/src/discord-config.ts")
+  return readFileSync(sharedDiscordConfigPath, "utf8")
+}
+
 function getSharedSkillsApiSource(): string {
   const testDir = path.dirname(fileURLToPath(import.meta.url))
   const sharedSkillsApiPath = path.join(testDir, "../../../../packages/shared/src/skills-api.ts")
@@ -942,6 +948,7 @@ describe("remote-server route registration", () => {
     const mobileApiRoutesSource = getMobileApiRoutesSource()
     const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedSettingsApiClientSource = getSharedSettingsApiClientSource()
+    const sharedDiscordConfigSource = getSharedDiscordConfigSource()
     const settingsGetSection = getSection(
       mobileApiRoutesSource,
       getApiRouteRegistrationMarker(mobileApiRoutesSource, "GET", "settings"),
@@ -974,7 +981,15 @@ describe("remote-server route registration", () => {
     expect(mobileApiDesktopActionsSource).toContain(
       "getAcpxAgents: () => getEnabledAcpxAgentProfiles(agentProfileService.getAll())",
     )
+    expect(mobileApiDesktopActionsSource).toContain(
+      "applyDiscordLifecycleAction: (action) => applyDiscordLifecycleActionToService(action, discordService)",
+    )
+    expect(mobileApiDesktopActionsSource).not.toContain("async function applyDiscordLifecycleAction(")
     expect(mobileApiDesktopActionsSource).not.toContain("p.connection.type === 'acpx'")
+    expect(sharedDiscordConfigSource).toContain("export async function applyDiscordLifecycleActionToService(")
+    expect(sharedDiscordConfigSource).toContain('if (action === "start")')
+    expect(sharedDiscordConfigSource).toContain('} else if (action === "restart")')
+    expect(sharedDiscordConfigSource).toContain('} else if (action === "stop")')
     expect(sharedSettingsApiClientSource).toContain("export interface SettingsActionOptions")
     expect(sharedSettingsApiClientSource).toContain("export interface SettingsRouteActions")
     expect(sharedSettingsApiClientSource).toContain("export function getSettingsAction")

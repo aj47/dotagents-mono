@@ -50,6 +50,12 @@ export interface DiscordLifecycleConfigLike extends DiscordTokenConfigLike {
   discordEnabled?: boolean | null
 }
 
+export interface DiscordLifecycleRuntimeService {
+  start(): void | Promise<void>
+  restart(): void | Promise<void>
+  stop(): void | Promise<void>
+}
+
 function trimValue(value: string | undefined | null): string | undefined {
   const trimmed = value?.trim()
   return trimmed ? trimmed : undefined
@@ -124,4 +130,17 @@ export function getDiscordLifecycleAction(
   }
 
   return "noop"
+}
+
+export async function applyDiscordLifecycleActionToService(
+  action: DiscordLifecycleAction,
+  service: DiscordLifecycleRuntimeService,
+): Promise<void> {
+  if (action === "start") {
+    await service.start()
+  } else if (action === "restart") {
+    await service.restart()
+  } else if (action === "stop") {
+    await service.stop()
+  }
 }

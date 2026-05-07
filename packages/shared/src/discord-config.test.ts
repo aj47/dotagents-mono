@@ -5,6 +5,7 @@ import {
   DEFAULT_DISCORD_LOG_MESSAGES,
   DEFAULT_DISCORD_REQUIRE_MENTION,
   DISCORD_SECRET_MASK,
+  applyDiscordLifecycleActionToService,
   getDiscordLifecycleAction,
   getDiscordResolvedDefaultProfileId,
   getDiscordResolvedToken,
@@ -90,6 +91,22 @@ describe('discord config helpers', () => {
     expect(getDiscordLifecycleAction({ discordEnabled: true, discordBotToken: 'old' }, { discordEnabled: true, discordBotToken: 'new' })).toBe('restart');
     expect(getDiscordLifecycleAction({ discordEnabled: true, discordBotToken: 'token' }, { discordEnabled: false, discordBotToken: 'token' })).toBe('stop');
     expect(getDiscordLifecycleAction({ discordEnabled: true, discordBotToken: 'token' }, { discordEnabled: true, discordBotToken: 'token' })).toBe('noop');
+  });
+
+  it('applies lifecycle actions to a runtime service adapter', async () => {
+    const calls: string[] = [];
+    const service = {
+      start: async () => { calls.push('start'); },
+      restart: async () => { calls.push('restart'); },
+      stop: async () => { calls.push('stop'); },
+    };
+
+    await applyDiscordLifecycleActionToService('start', service);
+    await applyDiscordLifecycleActionToService('restart', service);
+    await applyDiscordLifecycleActionToService('stop', service);
+    await applyDiscordLifecycleActionToService('noop', service);
+
+    expect(calls).toEqual(['start', 'restart', 'stop']);
   });
 
   it('treats clearing the bot token while enabled as an implicit stop', () => {

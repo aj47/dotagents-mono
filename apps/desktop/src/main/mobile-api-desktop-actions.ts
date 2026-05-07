@@ -36,6 +36,7 @@ import {
   type ConversationVideoAssetActionOptions,
 } from "@dotagents/shared/conversation-media-assets"
 import {
+  applyDiscordLifecycleActionToService,
   getDiscordLifecycleAction,
   getDiscordResolvedDefaultProfileId,
   getMaskedDiscordBotToken,
@@ -168,16 +169,6 @@ const emergencyStopActionOptions: EmergencyStopActionOptions = {
 
 const emergencyStopRouteActions = createEmergencyStopRouteActions(emergencyStopActionOptions)
 
-async function applyDiscordLifecycleAction(discordLifecycleAction: ReturnType<typeof getDiscordLifecycleAction>): Promise<void> {
-  if (discordLifecycleAction === "start") {
-    await discordService.start()
-  } else if (discordLifecycleAction === "restart") {
-    await discordService.restart()
-  } else if (discordLifecycleAction === "stop") {
-    await discordService.stop()
-  }
-}
-
 const settingsActionOptions: SettingsActionOptions<Config> = {
   config: {
     get: () => configStore.get(),
@@ -190,7 +181,7 @@ const settingsActionOptions: SettingsActionOptions<Config> = {
   getAcpxAgents: () => getEnabledAcpxAgentProfiles(agentProfileService.getAll())
     .map(p => ({ name: p.name, displayName: p.displayName })),
   getDiscordLifecycleAction: (prev, next) => getDiscordLifecycleAction(prev, next, process.env),
-  applyDiscordLifecycleAction,
+  applyDiscordLifecycleAction: (action) => applyDiscordLifecycleActionToService(action, discordService),
   applyWhatsappToggle: handleWhatsAppToggle,
   applyDesktopShellSettings,
 }
