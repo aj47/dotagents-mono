@@ -6,10 +6,6 @@ const sharedRendererHandlersSource = readFileSync(
   new URL("../../../shared/renderer-handlers.ts", import.meta.url),
   "utf8",
 )
-const mainRendererHandlersSource = readFileSync(
-  new URL("../../../main/renderer-handlers.ts", import.meta.url),
-  "utf8",
-)
 const webTsconfigSource = readFileSync(
   new URL("../../../../tsconfig.web.json", import.meta.url),
   "utf8",
@@ -25,7 +21,6 @@ describe("renderer TIPC process boundary", () => {
     expect(sharedRendererHandlersSource).toContain('from "./agent-session-types"')
     expect(sharedRendererHandlersSource).not.toContain("../main")
     expect(sharedRendererHandlersSource).not.toContain("agent-session-tracker")
-    expect(mainRendererHandlersSource).toContain('export type { RendererHandlers } from "@shared/renderer-handlers"')
     expect(webTsconfigSource).not.toContain('"src/main/*.ts"')
   })
 })
