@@ -99,12 +99,14 @@ import {
   type CHAT_PROVIDER_ID,
 } from '@dotagents/shared/providers';
 import {
+  applyRepeatTaskRuntimeStatusInList,
   applyRepeatTaskRuntimeStatuses,
-  applyRepeatTaskRuntimeStatus,
   DEFAULT_REPEAT_TASK_IMPORT_MARKDOWN_PLACEHOLDER,
   describeLoopCadence,
   describeRepeatTaskRuntime,
   formatRepeatTaskRuntimeTimestamp,
+  removeRepeatTaskFromList,
+  setRepeatTaskEnabledInList,
 } from '@dotagents/shared/repeat-task-utils';
 import { parseConfigListInput } from '@dotagents/shared/config-list-input';
 import { getErrorMessage } from '@dotagents/shared/error-utils';
@@ -1906,7 +1908,7 @@ export default function SettingsScreen({ navigation }: any) {
     confirmDestructiveAction('Delete Loop', `Are you sure you want to delete "${loop.name}"?`, async () => {
       try {
         await settingsClient.deleteLoop(loop.id);
-        setLoops(prev => prev.filter(item => item.id !== loop.id));
+        setLoops(prev => removeRepeatTaskFromList(prev, loop.id));
       } catch (error: any) {
         console.error('[Settings] Failed to delete loop:', error);
         Alert.alert('Error', error.message || 'Failed to delete loop');
@@ -1919,9 +1921,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) return;
     try {
       const res = await settingsClient.toggleLoop(loopId);
-      setLoops(prev =>
-        prev.map(l => (l.id === loopId ? { ...l, enabled: res.enabled } : l))
-      );
+      setLoops(prev => setRepeatTaskEnabledInList(prev, loopId, res.enabled));
       void fetchLoops();
     } catch (error: any) {
       console.error('[Settings] Failed to toggle loop:', error);
@@ -1949,9 +1949,7 @@ export default function SettingsScreen({ navigation }: any) {
     setRemoteError(null);
     try {
       const result = await settingsClient.startLoop(loop.id);
-      setLoops(prev =>
-        prev.map(item => (item.id === loop.id ? applyRepeatTaskRuntimeStatus(item, result.status) : item))
-      );
+      setLoops(prev => applyRepeatTaskRuntimeStatusInList(prev, loop.id, result.status));
       setSaveStatusMessage(`Started loop "${loop.name}"`);
       await fetchLoops();
     } catch (error: any) {
@@ -1971,9 +1969,7 @@ export default function SettingsScreen({ navigation }: any) {
     setRemoteError(null);
     try {
       const result = await settingsClient.stopLoop(loop.id);
-      setLoops(prev =>
-        prev.map(item => (item.id === loop.id ? applyRepeatTaskRuntimeStatus(item, result.status) : item))
-      );
+      setLoops(prev => applyRepeatTaskRuntimeStatusInList(prev, loop.id, result.status));
       setSaveStatusMessage(`Stopped loop "${loop.name}"`);
       await fetchLoops();
     } catch (error: any) {

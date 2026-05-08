@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   applyRepeatTaskUpdate,
   applyRepeatTaskRuntimeStatus,
+  applyRepeatTaskRuntimeStatusInList,
   applyRepeatTaskRuntimeStatuses,
   createRepeatTaskAction,
   createRepeatTaskActionService,
@@ -63,8 +64,10 @@ import {
   partitionPinnedAndUnpinnedRepeatTaskEntries,
   partitionRepeatTaskAndUserEntries,
   REPEAT_TASK_INTERVAL_PRESETS,
+  removeRepeatTaskFromList,
   runRepeatTaskAction,
   sanitizeScheduleTimes,
+  setRepeatTaskEnabledInList,
   startAllRepeatTasksAction,
   startRepeatTaskAction,
   stopAllRepeatTasksAction,
@@ -326,6 +329,20 @@ describe("repeat task schedule helpers", () => {
         schedule: undefined,
       },
     ])
+    expect(applyRepeatTaskRuntimeStatusInList([loop], "daily-review", {
+      id: "daily-review",
+      enabled: false,
+      isRunning: true,
+    })).toEqual([{
+      ...loop,
+      enabled: false,
+      isRunning: true,
+      lastRunAt: undefined,
+      nextRunAt: undefined,
+      schedule: null,
+    }])
+    expect(setRepeatTaskEnabledInList([loop], "daily-review", false)).toEqual([{ ...loop, enabled: false }])
+    expect(removeRepeatTaskFromList([loop], "daily-review")).toEqual([])
   })
 
   it("computes local repeat task scheduling timestamps and delay fallbacks", () => {

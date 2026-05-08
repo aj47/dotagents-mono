@@ -182,6 +182,14 @@ export type RepeatTaskRuntimeMergeTarget = RepeatTaskRuntimeDescriptionLike & {
   schedule?: RepeatTaskSchedule | null
 }
 
+export type RepeatTaskIdLike = {
+  id: string
+}
+
+export type RepeatTaskEnabledLike = RepeatTaskIdLike & {
+  enabled: boolean
+}
+
 export type RepeatTaskSessionLike = {
   id: string
   conversationId?: string | null
@@ -1682,6 +1690,33 @@ export function applyRepeatTaskRuntimeStatuses<TLoop extends RepeatTaskRuntimeMe
 ): TLoop[] {
   const statusesById = new Map(statuses.map((status) => [status.id, status]))
   return loops.map((loop) => applyRepeatTaskRuntimeStatus(loop, statusesById.get(loop.id)))
+}
+
+export function applyRepeatTaskRuntimeStatusInList<TLoop extends RepeatTaskRuntimeMergeTarget & RepeatTaskIdLike>(
+  loops: readonly TLoop[],
+  loopId: string,
+  status?: RepeatTaskStatusLike,
+): TLoop[] {
+  return loops.map((loop) => (
+    loop.id === loopId ? applyRepeatTaskRuntimeStatus(loop, status) : loop
+  ))
+}
+
+export function setRepeatTaskEnabledInList<TLoop extends RepeatTaskEnabledLike>(
+  loops: readonly TLoop[],
+  loopId: string,
+  enabled: boolean,
+): TLoop[] {
+  return loops.map((loop) => (
+    loop.id === loopId ? { ...loop, enabled } : loop
+  ))
+}
+
+export function removeRepeatTaskFromList<TLoop extends RepeatTaskIdLike>(
+  loops: readonly TLoop[],
+  loopId: string,
+): TLoop[] {
+  return loops.filter((loop) => loop.id !== loopId)
 }
 
 export function formatLoopIntervalDraft(minutes?: number): string {
