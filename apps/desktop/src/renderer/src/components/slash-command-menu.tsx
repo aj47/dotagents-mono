@@ -10,6 +10,7 @@ import { getRepeatTaskRunNowDescription } from "@dotagents/shared/repeat-task-ut
 import {
   buildPromptLibraryCommandItems,
   filterPromptLibraryCommandItems,
+  resolveSlashCommandInputState,
   type PromptLibraryCommandItem,
 } from "@dotagents/shared/predefined-prompts"
 
@@ -155,20 +156,21 @@ export function useSlashCommands(
   const menuRef = useRef<SlashCommandMenuHandle>(null)
 
   useEffect(() => {
-    // Detect /command at start of input
-    if (text.startsWith("/")) {
-      const query = text.slice(1)
-      // Close menu if there's a space (user finished typing the command portion)
-      if (query.includes(" ") || query.includes("\n")) {
-        setIsSlashMenuOpen(false)
-      } else {
-        setIsSlashMenuOpen(true)
-        setSlashQuery(query)
-      }
-    } else {
+    const slashState = resolveSlashCommandInputState(text)
+
+    if (slashState.mode === "inactive") {
       setIsSlashMenuOpen(false)
       setSlashQuery("")
+      return
     }
+
+    if (slashState.mode === "complete") {
+      setIsSlashMenuOpen(false)
+      return
+    }
+
+    setIsSlashMenuOpen(true)
+    setSlashQuery(slashState.query)
   }, [text])
 
   const handleSlashSelect = async (item: SlashCommandItem) => {

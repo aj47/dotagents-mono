@@ -15,6 +15,7 @@ import {
   getPromptLibraryTaskDescription,
   isSlashCommandPrompt,
   isSlashCommandPromptName,
+  resolveSlashCommandInputState,
   PREDEFINED_PROMPT_SKILL_FALLBACK_DESCRIPTION,
   PREDEFINED_PROMPT_TASK_FALLBACK_DESCRIPTION,
   sortPredefinedPromptsByUpdatedAt,
@@ -31,6 +32,14 @@ describe("predefined prompt helpers", () => {
     expect(isSlashCommandPromptName("/")).toBe(false)
     expect(isSlashCommandPromptName("standup")).toBe(false)
     expect(isSlashCommandPrompt({ name: "/ship" })).toBe(true)
+  })
+
+  it("resolves slash command input state", () => {
+    expect(resolveSlashCommandInputState("hello")).toEqual({ mode: "inactive", query: "" })
+    expect(resolveSlashCommandInputState("/")).toEqual({ mode: "active", query: "" })
+    expect(resolveSlashCommandInputState("/review")).toEqual({ mode: "active", query: "review" })
+    expect(resolveSlashCommandInputState("/review this")).toEqual({ mode: "complete", query: "review this" })
+    expect(resolveSlashCommandInputState("/review\nbody")).toEqual({ mode: "complete", query: "review\nbody" })
   })
 
   it("builds shared prompt-library prompt labels and content", () => {

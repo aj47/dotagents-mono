@@ -37,6 +37,11 @@ export interface PromptLibraryCommandItem {
   type: PromptLibraryCommandItemType
 }
 
+export type SlashCommandInputState =
+  | { mode: "inactive"; query: "" }
+  | { mode: "active"; query: string }
+  | { mode: "complete"; query: string }
+
 export type PromptLibrarySearchText = string | null | undefined
 
 export type PromptLibrarySearchTextGetter<TItem> = (
@@ -49,6 +54,19 @@ export function isSlashCommandPromptName(name: string): boolean {
 
 export function isSlashCommandPrompt(prompt: Pick<PredefinedPromptSummary, "name">): boolean {
   return isSlashCommandPromptName(prompt.name)
+}
+
+export function resolveSlashCommandInputState(text: string): SlashCommandInputState {
+  if (!text.startsWith("/")) {
+    return { mode: "inactive", query: "" }
+  }
+
+  const query = text.slice(1)
+  if (query.includes(" ") || query.includes("\n")) {
+    return { mode: "complete", query }
+  }
+
+  return { mode: "active", query }
 }
 
 export function getPromptLibraryPromptContent(prompt: PromptLibraryPromptLike): string {
