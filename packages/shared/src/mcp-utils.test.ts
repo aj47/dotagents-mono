@@ -4,6 +4,7 @@ import {
   countEnabledMcpTools,
   EMPTY_MCP_SERVER_CONFIG_DRAFT,
   filterMcpTools,
+  groupMcpToolsBySource,
   MCP_TRANSPORT_OPTIONS,
   inferTransportType,
   formatMcpKeyValueDraft,
@@ -182,6 +183,18 @@ describe('MCP tool list helpers', () => {
       ['search', false],
     ])
     expect(countEnabledMcpTools(updated)).toBe(0)
+  })
+
+  it('groups tools by source while preserving tool order', () => {
+    expect(groupMcpToolsBySource(tools)).toEqual({
+      filesystem: [
+        { name: 'read_file', sourceName: 'filesystem', enabled: true },
+        { name: 'write_file', sourceName: 'filesystem', enabled: false },
+      ],
+      web: [
+        { name: 'search', sourceName: 'web', enabled: false },
+      ],
+    })
   })
 
   it('updates a selected set of tools by name', () => {

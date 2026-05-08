@@ -37,6 +37,7 @@ import { toast } from "sonner"
 import {
   countEnabledMcpTools,
   filterMcpTools,
+  groupMcpToolsBySource,
   restoreMcpToolEnabledStatesInList,
   setMcpSourceToolsEnabledInList,
   setMcpToolEnabledInList,
@@ -76,16 +77,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
   const toolsFromEnabledSources = tools.filter((tool) => tool.serverEnabled)
 
   // Group tools by source (real MCP server or DotAgents runtime tools)
-  const toolsBySource = toolsFromEnabledSources.reduce(
-    (acc, tool) => {
-      if (!acc[tool.sourceName]) {
-        acc[tool.sourceName] = []
-      }
-      acc[tool.sourceName].push(tool)
-      return acc
-    },
-    {} as Record<string, DetailedTool[]>,
-  )
+  const toolsBySource = groupMcpToolsBySource(toolsFromEnabledSources)
 
   // Filter tools based on search and server selection
   const filteredToolsBySource = (Object.entries(toolsBySource) as Array<[string, DetailedTool[]]>).reduce<Record<string, DetailedTool[]>>(

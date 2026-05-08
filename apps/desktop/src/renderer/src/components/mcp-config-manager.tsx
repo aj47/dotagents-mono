@@ -82,6 +82,7 @@ import {
   countEnabledMcpTools,
   filterMcpTools,
   formatMcpKeyValueDraft,
+  groupMcpToolsBySource,
   isReservedMcpServerName,
   mergeImportedMcpServers,
   removeMcpServerConfig,
@@ -1096,16 +1097,7 @@ export function MCPConfigManager({
 
 
   // Group tools by source
-  const toolsByServer = tools.reduce(
-    (acc, tool) => {
-      if (!acc[tool.sourceName]) {
-        acc[tool.sourceName] = []
-      }
-      acc[tool.sourceName].push(tool)
-      return acc
-    },
-    {} as Record<string, DetailedTool[]>,
-  )
+  const toolsByServer = groupMcpToolsBySource(tools)
 
   // Filter tools for a specific source
   // Only include tools from enabled sources
@@ -1764,13 +1756,7 @@ export function MCPConfigManager({
               ) : (
                 // Group filtered tools by source
                 (Object.entries(
-                  getAllFilteredTools().reduce((acc, tool) => {
-                    if (!acc[tool.sourceName]) {
-                      acc[tool.sourceName] = []
-                    }
-                    acc[tool.sourceName].push(tool)
-                    return acc
-                  }, {} as Record<string, DetailedTool[]>)
+                  groupMcpToolsBySource(getAllFilteredTools()),
                 ) as Array<[string, DetailedTool[]]>).map(([serverName, serverTools]) => {
                   const sourceLabel = serverTools[0]?.sourceLabel || serverName
                   const isRuntimeBuiltinSource = serverTools[0]?.sourceKind === "runtime"

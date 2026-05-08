@@ -154,6 +154,10 @@ export type McpSourceToolEnabledLike = McpToolEnabledLike & {
   sourceName: string
 }
 
+export type McpSourceNamedLike = {
+  sourceName: string
+}
+
 export type McpServerRuntimeEnabledLike = {
   name: string
   enabled: boolean
@@ -205,6 +209,18 @@ export function setMcpSourceToolsEnabledInList<TTool extends McpSourceToolEnable
   return tools.map((tool) => (
     tool.sourceName === sourceName ? { ...tool, enabled } : tool
   ))
+}
+
+export function groupMcpToolsBySource<TTool extends McpSourceNamedLike>(
+  tools: readonly TTool[],
+): Record<string, TTool[]> {
+  return tools.reduce<Record<string, TTool[]>>((acc, tool) => {
+    if (!acc[tool.sourceName]) {
+      acc[tool.sourceName] = []
+    }
+    acc[tool.sourceName].push(tool)
+    return acc
+  }, {})
 }
 
 export function countEnabledMcpTools(tools: readonly Pick<McpToolEnabledLike, "enabled">[]): number {
