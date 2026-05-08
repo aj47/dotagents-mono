@@ -631,6 +631,43 @@ export function sanitizeScheduleTimes(times: string[]): string[] {
   return out.sort()
 }
 
+export function updateRepeatTaskScheduleTimeAt(
+  scheduleTimes: readonly string[],
+  index: number,
+  time: string,
+): string[] {
+  return scheduleTimes.map((entry, entryIndex) => (entryIndex === index ? time : entry))
+}
+
+export function removeRepeatTaskScheduleTimeAt(
+  scheduleTimes: readonly string[],
+  index: number,
+): string[] {
+  return scheduleTimes.filter((_, entryIndex) => entryIndex !== index)
+}
+
+export function addRepeatTaskScheduleTime(
+  scheduleTimes: readonly string[],
+  time: string = DEFAULT_REPEAT_TASK_SCHEDULE_TIMES[0],
+): string[] {
+  return [...scheduleTimes, time]
+}
+
+export function toggleRepeatTaskScheduleDayOfWeek(
+  scheduleDaysOfWeek: readonly number[],
+  day: number,
+): number[] {
+  if (!Number.isInteger(day) || day < 0 || day > 6) {
+    return [...scheduleDaysOfWeek]
+  }
+
+  if (scheduleDaysOfWeek.includes(day)) {
+    return scheduleDaysOfWeek.filter((entry) => entry !== day)
+  }
+
+  return Array.from(new Set([...scheduleDaysOfWeek, day])).sort((a, b) => a - b)
+}
+
 export function buildRepeatTaskScheduleFromDraft(
   draft: RepeatTaskScheduleDraft,
 ): RepeatTaskScheduleDraftResult {

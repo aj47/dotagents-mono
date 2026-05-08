@@ -21,8 +21,10 @@ import {
   buildRepeatTasksResponse,
   buildRepeatTaskToggleResponse,
   buildRepeatTaskScheduleFromDraft,
+  addRepeatTaskScheduleTime,
   DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
   DEFAULT_REPEAT_TASK_IMPORT_MARKDOWN_PLACEHOLDER,
+  DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
   computeNextScheduledRun,
   createRepeatTaskIdFromName,
   DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
@@ -76,7 +78,10 @@ import {
   slugifyRepeatTaskName,
   TASK_SESSION_TITLE_PREFIX,
   toggleRepeatTaskAction,
+  toggleRepeatTaskScheduleDayOfWeek,
   updateRepeatTaskAction,
+  removeRepeatTaskScheduleTimeAt,
+  updateRepeatTaskScheduleTimeAt,
 } from "./repeat-task-utils"
 
 describe("repeat task schedule helpers", () => {
@@ -523,6 +528,21 @@ Summarize overnight work.`)
       scheduleTimes: ["09:00"],
       scheduleDaysOfWeek: [],
     })).toEqual({ ok: false, error: "missing-weekly-days" })
+  })
+
+  it("edits repeat task schedule draft times and days without mutating inputs", () => {
+    const times = ["09:00", "17:00"]
+    const days = [1, 5]
+
+    expect(updateRepeatTaskScheduleTimeAt(times, 1, "18:30")).toEqual(["09:00", "18:30"])
+    expect(removeRepeatTaskScheduleTimeAt(times, 0)).toEqual(["17:00"])
+    expect(addRepeatTaskScheduleTime(times)).toEqual(["09:00", "17:00", DEFAULT_REPEAT_TASK_SCHEDULE_TIMES[0]])
+    expect(addRepeatTaskScheduleTime(times, "22:00")).toEqual(["09:00", "17:00", "22:00"])
+    expect(toggleRepeatTaskScheduleDayOfWeek(days, 5)).toEqual([1])
+    expect(toggleRepeatTaskScheduleDayOfWeek(days, 3)).toEqual([1, 3, 5])
+    expect(toggleRepeatTaskScheduleDayOfWeek(days, 9)).toEqual([1, 5])
+    expect(times).toEqual(["09:00", "17:00"])
+    expect(days).toEqual([1, 5])
   })
 
   it("parses remote repeat task schedule input", () => {

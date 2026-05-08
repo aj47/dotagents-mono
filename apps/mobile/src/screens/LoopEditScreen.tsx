@@ -33,15 +33,18 @@ import {
   type AgentSessionCandidateOption,
 } from '@dotagents/shared/agent-session-candidates';
 import {
+  addRepeatTaskScheduleTime,
   buildRepeatTaskScheduleFromDraft,
   DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
   DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
-  DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
   REPEAT_TASK_DAY_LABELS,
   formatRepeatTaskEditFormData,
   parseLoopIntervalDraft,
+  removeRepeatTaskScheduleTimeAt,
   resolveRepeatTaskIntervalMinutesDraft,
+  toggleRepeatTaskScheduleDayOfWeek,
   type RepeatTaskEditFormData,
+  updateRepeatTaskScheduleTimeAt,
 } from '@dotagents/shared/repeat-task-utils';
 
 function formatMobileSessionCandidateTime(candidate: AgentSessionCandidateOption): string {
@@ -363,9 +366,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
                 style={[styles.input, styles.timeInput]}
                 value={time}
                 onChangeText={v => {
-                  const next = [...formData.scheduleTimes];
-                  next[idx] = v;
-                  updateField('scheduleTimes', next);
+                  updateField('scheduleTimes', updateRepeatTaskScheduleTimeAt(formData.scheduleTimes, idx, v));
                 }}
                 placeholder="09:00"
                 placeholderTextColor={theme.colors.mutedForeground}
@@ -375,8 +376,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
               {formData.scheduleTimes.length > 1 && (
                 <TouchableOpacity
                   onPress={() => {
-                    const next = formData.scheduleTimes.filter((_, i) => i !== idx);
-                    updateField('scheduleTimes', next);
+                    updateField('scheduleTimes', removeRepeatTaskScheduleTimeAt(formData.scheduleTimes, idx));
                   }}
                   style={styles.timeRemoveBtn}
                   accessibilityRole="button"
@@ -389,7 +389,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           ))}
           <TouchableOpacity
             onPress={() =>
-              updateField('scheduleTimes', [...formData.scheduleTimes, DEFAULT_REPEAT_TASK_SCHEDULE_TIMES[0]])
+              updateField('scheduleTimes', addRepeatTaskScheduleTime(formData.scheduleTimes))
             }
             style={styles.addTimeBtn}
             accessibilityRole="button"
@@ -409,10 +409,10 @@ export default function LoopEditScreen({ navigation, route }: any) {
                 <TouchableOpacity
                   key={dayIdx}
                   onPress={() => {
-                    const next = active
-                      ? formData.scheduleDaysOfWeek.filter(d => d !== dayIdx)
-                      : [...formData.scheduleDaysOfWeek, dayIdx].sort();
-                    updateField('scheduleDaysOfWeek', next);
+                    updateField(
+                      'scheduleDaysOfWeek',
+                      toggleRepeatTaskScheduleDayOfWeek(formData.scheduleDaysOfWeek, dayIdx),
+                    );
                   }}
                   style={[styles.modeChip, active && styles.modeChipActive]}
                   accessibilityRole="button"

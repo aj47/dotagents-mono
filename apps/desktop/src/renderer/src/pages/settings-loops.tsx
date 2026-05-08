@@ -27,6 +27,7 @@ import {
 } from "@dotagents/shared/agent-session-candidates"
 import type { AgentSessionCandidatesResponse, LoopRuntimeStatus } from "@dotagents/shared/api-types"
 import {
+  addRepeatTaskScheduleTime,
   buildRepeatTaskScheduleFromDraft,
   DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
   DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
@@ -41,8 +42,11 @@ import {
   getLoopScheduleTimes,
   parseLoopIntervalDraft,
   REPEAT_TASK_INTERVAL_PRESETS,
+  removeRepeatTaskScheduleTimeAt,
   resolveRepeatTaskIntervalMinutesDraft,
+  toggleRepeatTaskScheduleDayOfWeek,
   type RepeatTaskScheduleMode,
+  updateRepeatTaskScheduleTimeAt,
 } from "@dotagents/shared/repeat-task-utils"
 
 interface EditingLoop {
@@ -508,9 +512,10 @@ export function SettingsLoops() {
                       type="time"
                       value={time}
                       onChange={(e) => {
-                        const next = [...editing.scheduleTimes]
-                        next[idx] = e.target.value
-                        setEditing({ ...editing, scheduleTimes: next })
+                        setEditing({
+                          ...editing,
+                          scheduleTimes: updateRepeatTaskScheduleTimeAt(editing.scheduleTimes, idx, e.target.value),
+                        })
                       }}
                       className="h-8 w-28"
                     />
@@ -521,8 +526,10 @@ export function SettingsLoops() {
                         className="h-7 w-7"
                         title="Remove time"
                         onClick={() => {
-                          const next = editing.scheduleTimes.filter((_, i) => i !== idx)
-                          setEditing({ ...editing, scheduleTimes: next })
+                          setEditing({
+                            ...editing,
+                            scheduleTimes: removeRepeatTaskScheduleTimeAt(editing.scheduleTimes, idx),
+                          })
                         }}
                       >
                         <X className="h-3.5 w-3.5" />
@@ -537,7 +544,7 @@ export function SettingsLoops() {
                   onClick={() =>
                     setEditing({
                       ...editing,
-                      scheduleTimes: [...editing.scheduleTimes, DEFAULT_REPEAT_TASK_SCHEDULE_TIMES[0]],
+                      scheduleTimes: addRepeatTaskScheduleTime(editing.scheduleTimes),
                     })
                   }
                 >
@@ -560,10 +567,10 @@ export function SettingsLoops() {
                       size="sm"
                       className="h-7 px-2 text-xs"
                       onClick={() => {
-                        const next = active
-                          ? editing.scheduleDaysOfWeek.filter((d) => d !== dayIdx)
-                          : [...editing.scheduleDaysOfWeek, dayIdx].sort()
-                        setEditing({ ...editing, scheduleDaysOfWeek: next })
+                        setEditing({
+                          ...editing,
+                          scheduleDaysOfWeek: toggleRepeatTaskScheduleDayOfWeek(editing.scheduleDaysOfWeek, dayIdx),
+                        })
                       }}
                     >
                       {label}
