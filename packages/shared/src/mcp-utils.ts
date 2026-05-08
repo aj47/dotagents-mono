@@ -307,6 +307,28 @@ export function getMcpServerNamesInList(
   return servers.map((server) => server.name)
 }
 
+export function getMcpToolSourceNamesInList(
+  tools: readonly McpSourceNamedLike[],
+): string[] {
+  return Array.from(new Set(tools.map((tool) => tool.sourceName)))
+}
+
+export function getExpandedMcpNames(
+  names: readonly string[],
+  collapsedNames: readonly string[] = [],
+): string[] {
+  const collapsedSet = new Set(collapsedNames)
+  return names.filter((name) => !collapsedSet.has(name))
+}
+
+export function getCollapsedMcpNames(
+  names: readonly string[],
+  expandedNames: ReadonlySet<string> | readonly string[],
+): string[] {
+  const expandedSet = new Set(expandedNames)
+  return names.filter((name) => !expandedSet.has(name))
+}
+
 export function inferTransportType(config: MCPServerConfigLike): MCPTransportType {
   if (config.transport) return config.transport
   const normalizedUrl = config.url?.trim()

@@ -5,6 +5,8 @@ import {
   EMPTY_MCP_SERVER_CONFIG_DRAFT,
   filterMcpToolSourceGroups,
   filterMcpTools,
+  getCollapsedMcpNames,
+  getExpandedMcpNames,
   groupMcpToolsBySource,
   MCP_TRANSPORT_OPTIONS,
   inferTransportType,
@@ -18,6 +20,7 @@ import {
   renameMcpServerConfig,
   restoreMcpToolEnabledStatesInList,
   getMcpServerNamesInList,
+  getMcpToolSourceNamesInList,
   setMcpServerRuntimeEnabledInList,
   setMcpSourceToolsEnabledInList,
   setMcpToolEnabledInList,
@@ -285,6 +288,22 @@ describe('MCP tool list helpers', () => {
       ],
     })
     expect(filterMcpToolSourceGroups(groupedTools, { selectedSource: 'all' })).toEqual(groupedTools)
+  })
+
+  it('derives source names and expanded/collapsed names in stable order', () => {
+    const tools = [
+      { name: 'read_file', sourceName: 'filesystem' },
+      { name: 'write_file', sourceName: 'filesystem' },
+      { name: 'search', sourceName: 'web' },
+      { name: 'shell', sourceName: 'runtime' },
+    ]
+
+    const sourceNames = getMcpToolSourceNamesInList(tools)
+
+    expect(sourceNames).toEqual(['filesystem', 'web', 'runtime'])
+    expect(getExpandedMcpNames(sourceNames, ['web'])).toEqual(['filesystem', 'runtime'])
+    expect(getCollapsedMcpNames(sourceNames, new Set(['filesystem', 'runtime']))).toEqual(['web'])
+    expect(getCollapsedMcpNames(sourceNames, ['filesystem'])).toEqual(['web', 'runtime'])
   })
 })
 

@@ -80,6 +80,9 @@ import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@dotagents/shared/mcp-api"
 import {
   buildMcpServerConfigFromDraft,
   countEnabledMcpTools,
+  getCollapsedMcpNames,
+  getExpandedMcpNames,
+  getMcpToolSourceNamesInList,
   filterMcpToolSourceGroups,
   formatMcpKeyValueDraft,
   groupMcpToolsBySource,
@@ -831,8 +834,7 @@ export function MCPConfigManager({
 
     // If collapsedServers is an empty array, user explicitly set "no servers collapsed" (all expanded)
     // Otherwise, expand servers not in the collapsed list
-    const collapsedSet = new Set(collapsedServers)
-    return new Set(allServerNames.filter(name => !collapsedSet.has(name)))
+    return new Set(getExpandedMcpNames(allServerNames, collapsedServers))
   })
   // Tool management state
   const [tools, setTools] = useState<DetailedTool[]>([])
@@ -958,8 +960,9 @@ export function MCPConfigManager({
       } else {
         // [] = explicitly "no servers collapsed" (all expanded)
         // [...names] = specific servers are collapsed
-        const collapsedSet = new Set<string>(collapsedServers)
-        const newExpanded = new Set<string>([...currentServerNames].filter(name => !collapsedSet.has(name)))
+        const newExpanded = new Set<string>(
+          getExpandedMcpNames([...currentServerNames], collapsedServers),
+        )
         setExpandedServers(newExpanded)
       }
     }
@@ -1045,12 +1048,13 @@ export function MCPConfigManager({
   // All sources are expanded by default; only persisted collapsed groups stay collapsed.
   useEffect(() => {
     if (tools.length > 0) {
-      const allToolServerNames = [...new Set<string>(tools.map(t => t.sourceName))]
-      const collapsedSet = new Set<string>(collapsedToolServers ?? [])
+      const allToolServerNames = getMcpToolSourceNamesInList(tools)
 
       if (!toolServersInitialized) {
         // Initial setup: all sources expanded by default, except those persisted as collapsed
-        const expanded = new Set<string>(allToolServerNames.filter(name => !collapsedSet.has(name)))
+        const expanded = new Set<string>(
+          getExpandedMcpNames(allToolServerNames, collapsedToolServers),
+        )
         setExpandedToolServers(expanded)
         setKnownToolServers(new Set<string>(allToolServerNames))
         setToolServersInitialized(true)
@@ -1087,9 +1091,10 @@ export function MCPConfigManager({
     if (collapsedChanged && toolServersInitialized) {
       prevCollapsedToolServersRef.current = collapsedToolServers
       // Re-sync expandedToolServers from the new collapsed list
-      const allToolServerNames = [...new Set<string>(tools.map(t => t.sourceName))]
-      const collapsedSet = new Set<string>(collapsedToolServers ?? [])
-      const newExpanded = new Set<string>(allToolServerNames.filter(name => !collapsedSet.has(name)))
+      const allToolServerNames = getMcpToolSourceNamesInList(tools)
+      const newExpanded = new Set<string>(
+        getExpandedMcpNames(allToolServerNames, collapsedToolServers),
+      )
       setExpandedToolServers(newExpanded)
     }
   }, [collapsedToolServers, tools, toolServersInitialized])
@@ -1196,14 +1201,15 @@ export function MCPConfigManager({
 
   const toggleToolsExpansion = (serverName: string) => {
     setExpandedToolServers(prev => {
-      const allToolServerNames = [...new Set<string>(tools.map(t => t.sourceName))]
-      const collapsedSet = new Set<string>(collapsedToolServers ?? [])
+      const allToolServerNames = getMcpToolSourceNamesInList(tools)
 
       // If not yet initialized, start with all sources expanded (minus persisted collapsed ones)
       // This ensures first toggle behaves correctly even before useEffect runs
       let newSet: Set<string>
       if (!toolServersInitialized && prev.size === 0) {
-        newSet = new Set<string>(allToolServerNames.filter(name => !collapsedSet.has(name)))
+        newSet = new Set<string>(
+          getExpandedMcpNames(allToolServerNames, collapsedToolServers),
+        )
       } else {
         newSet = new Set<string>(prev)
       }
@@ -1215,7 +1221,7 @@ export function MCPConfigManager({
       }
       // Persist the collapsed state (servers NOT in expanded set are collapsed)
       if (onCollapsedToolServersChange) {
-        const collapsed = allToolServerNames.filter(name => !newSet.has(name))
+        const collapsed = getCollapsedMcpNames(allToolServerNames, newSet)
         onCollapsedToolServersChange(collapsed)
       }
       return newSet
@@ -1501,7 +1507,7 @@ export function MCPConfigManager({
       // Persist the collapsed state (servers NOT in expanded set are collapsed)
       if (onCollapsedServersChange) {
         const allServerNames = Object.keys(allServers)
-        const collapsed = allServerNames.filter(name => !newSet.has(name))
+        const collapsed = getCollapsedMcpNames(allServerNames, newSet)
         onCollapsedServersChange(collapsed)
       }
       return newSet
