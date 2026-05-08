@@ -554,7 +554,44 @@ describe("operator display utils", () => {
       stopButtonLabel: "Stop tunnel",
       stopAccessibilityLabel: "Stop tunnel",
       helperText: "The remote server must be running before a tunnel can start.",
+      formatState: expect.any(Function),
+      formatMode: expect.any(Function),
+      formatUrl: expect.any(Function),
+      formatRemoteServerRunning: expect.any(Function),
+      formatInstalled: expect.any(Function),
+      formatLoggedIn: expect.any(Function),
+      formatNamedTunnelConfigured: expect.any(Function),
+      formatCredentialsPathConfigured: expect.any(Function),
+      formatDiscoveredNamedTunnels: expect.any(Function),
+      formatConfiguredTunnelId: expect.any(Function),
+      formatConfiguredHostname: expect.any(Function),
+      formatNamedTunnel: expect.any(Function),
+      formatTunnelError: expect.any(Function),
+      formatSetupError: expect.any(Function),
     })
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatState({ running: true, starting: false, mode: "quick" })).toBe(
+      "State: Running",
+    )
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatMode()).toBe(`Mode: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatMode("quick")).toBe("Mode: quick")
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatUrl()).toBe(`URL: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatUrl("https://example.com")).toBe("URL: https://example.com")
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatRemoteServerRunning(true)).toBe("Remote server running: Yes")
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatInstalled(false)).toBe("Installed: No")
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatLoggedIn()).toBe(`Logged in: ${OPERATOR_EMPTY_VALUE_LABEL}`)
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatNamedTunnelConfigured(true)).toBe("Named tunnel configured: Yes")
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatCredentialsPathConfigured(false)).toBe(
+      "Credentials path configured: No",
+    )
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatDiscoveredNamedTunnels()).toBe("Discovered named tunnels: 0")
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatDiscoveredNamedTunnels(2)).toBe("Discovered named tunnels: 2")
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatConfiguredTunnelId("tunnel-id")).toBe("Configured tunnel ID: tunnel-id")
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatConfiguredHostname("example.com")).toBe(
+      "Configured hostname: example.com",
+    )
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatNamedTunnel("prod", "abc")).toBe("• prod (abc)")
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatTunnelError("failed")).toBe("Tunnel error: failed")
+    expect(OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatSetupError("missing")).toBe("Setup error: missing")
   })
 
   it("exports operator Discord and WhatsApp panel metadata", () => {

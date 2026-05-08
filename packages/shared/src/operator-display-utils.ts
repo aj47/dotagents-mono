@@ -642,6 +642,20 @@ export type OperatorTunnelStatusPanelMetadata = {
   stopButtonLabel: string
   stopAccessibilityLabel: string
   helperText: string
+  formatState: (status?: OperatorRuntimeStatus["tunnel"] | null) => string
+  formatMode: (mode?: string) => string
+  formatUrl: (url?: string) => string
+  formatRemoteServerRunning: (running?: boolean) => string
+  formatInstalled: (installed?: boolean) => string
+  formatLoggedIn: (loggedIn?: boolean) => string
+  formatNamedTunnelConfigured: (configured?: boolean) => string
+  formatCredentialsPathConfigured: (configured?: boolean) => string
+  formatDiscoveredNamedTunnels: (tunnelCount?: number) => string
+  formatConfiguredTunnelId: (tunnelId: string) => string
+  formatConfiguredHostname: (hostname: string) => string
+  formatNamedTunnel: (name: string, tunnelId: string) => string
+  formatTunnelError: (error: string) => string
+  formatSetupError: (error: string) => string
 }
 
 export const OPERATOR_TUNNEL_STATUS_PANEL_METADATA: OperatorTunnelStatusPanelMetadata = {
@@ -668,6 +682,20 @@ export const OPERATOR_TUNNEL_STATUS_PANEL_METADATA: OperatorTunnelStatusPanelMet
   stopButtonLabel: "Stop tunnel",
   stopAccessibilityLabel: "Stop tunnel",
   helperText: "The remote server must be running before a tunnel can start.",
+  formatState: (status) => `State: ${getOperatorTunnelStateLabel(status)}`,
+  formatMode: (mode) => `Mode: ${mode || OPERATOR_EMPTY_VALUE_LABEL}`,
+  formatUrl: (url) => `URL: ${url || OPERATOR_EMPTY_VALUE_LABEL}`,
+  formatRemoteServerRunning: (running) => `Remote server running: ${formatOperatorYesNo(running)}`,
+  formatInstalled: (installed) => `Installed: ${formatOperatorYesNo(installed)}`,
+  formatLoggedIn: (loggedIn) => `Logged in: ${formatOperatorYesNo(loggedIn)}`,
+  formatNamedTunnelConfigured: (configured) => `Named tunnel configured: ${formatOperatorYesNo(configured)}`,
+  formatCredentialsPathConfigured: (configured) => `Credentials path configured: ${formatOperatorYesNo(configured)}`,
+  formatDiscoveredNamedTunnels: (tunnelCount) => `Discovered named tunnels: ${tunnelCount ?? 0}`,
+  formatConfiguredTunnelId: (tunnelId) => `Configured tunnel ID: ${tunnelId}`,
+  formatConfiguredHostname: (hostname) => `Configured hostname: ${hostname}`,
+  formatNamedTunnel: (name, tunnelId) => `• ${name} (${tunnelId})`,
+  formatTunnelError: (error) => `Tunnel error: ${error}`,
+  formatSetupError: (error) => `Setup error: ${error}`,
 }
 
 export type OperatorDiscordPanelMetadata = {

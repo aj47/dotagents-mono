@@ -88,9 +88,7 @@ import {
   formatOperatorLogSummary as formatLogSummary,
   formatOperatorRecentAgentSessionSummary as formatRecentAgentSessionSummary,
   formatOperatorTimestamp as formatTimestamp,
-  formatOperatorYesNo as formatYesNo,
   getOperatorAgentSessionDisplayName as getAgentSessionDisplayName,
-  getOperatorTunnelStateLabel as getTunnelStateLabel,
 } from '@dotagents/shared/operator-display-utils';
 import {
   CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA,
@@ -2515,23 +2513,35 @@ export default function OperationsScreen({ navigation }: any) {
           {(tunnelStatus || tunnelSetup) && (
             <View style={styles.panel}>
               <Text style={styles.panelTitle}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.panelTitle}</Text>
-              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.stateLabel}: {getTunnelStateLabel(tunnelStatus)}</Text>
-              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.modeLabel}: {tunnelStatus?.mode || tunnelSetup?.mode || settings?.cloudflareTunnelMode || '—'}</Text>
-              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.urlLabel}: {tunnelStatus?.url || '—'}</Text>
-              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.remoteServerRunningLabel}: {formatYesNo(status?.remoteServer.running)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatState(tunnelStatus)}</Text>
+              <Text style={styles.detailText}>
+                {OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatMode(tunnelStatus?.mode || tunnelSetup?.mode || settings?.cloudflareTunnelMode)}
+              </Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatUrl(tunnelStatus?.url)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatRemoteServerRunning(status?.remoteServer.running)}</Text>
               <Text style={styles.sectionCaption}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.setupTitle}</Text>
-              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.installedLabel}: {formatYesNo(tunnelSetup?.installed)}</Text>
-              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.loggedInLabel}: {formatYesNo(tunnelSetup?.loggedIn)}</Text>
-              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.namedTunnelConfiguredLabel}: {formatYesNo(tunnelSetup?.namedTunnelConfigured)}</Text>
-              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.credentialsPathConfiguredLabel}: {formatYesNo(tunnelSetup?.credentialsPathConfigured)}</Text>
-              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.discoveredNamedTunnelsLabel}: {tunnelSetup?.tunnelCount ?? 0}</Text>
-              {tunnelSetup?.configuredTunnelId ? <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.configuredTunnelIdLabel}: {tunnelSetup.configuredTunnelId}</Text> : null}
-              {tunnelSetup?.configuredHostname ? <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.configuredHostnameLabel}: {tunnelSetup.configuredHostname}</Text> : null}
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatInstalled(tunnelSetup?.installed)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatLoggedIn(tunnelSetup?.loggedIn)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatNamedTunnelConfigured(tunnelSetup?.namedTunnelConfigured)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatCredentialsPathConfigured(tunnelSetup?.credentialsPathConfigured)}</Text>
+              <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatDiscoveredNamedTunnels(tunnelSetup?.tunnelCount)}</Text>
+              {tunnelSetup?.configuredTunnelId ? (
+                <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatConfiguredTunnelId(tunnelSetup.configuredTunnelId)}</Text>
+              ) : null}
+              {tunnelSetup?.configuredHostname ? (
+                <Text style={styles.detailText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatConfiguredHostname(tunnelSetup.configuredHostname)}</Text>
+              ) : null}
               {tunnelSetup?.tunnels.slice(0, 3).map((tunnel) => (
-                <Text key={tunnel.id} style={styles.helperText}>• {tunnel.name} ({tunnel.id})</Text>
+                <Text key={tunnel.id} style={styles.helperText}>
+                  {OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatNamedTunnel(tunnel.name, tunnel.id)}
+                </Text>
               ))}
-              {tunnelStatus?.error && <Text style={styles.warningText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.tunnelErrorLabel}: {tunnelStatus.error}</Text>}
-              {tunnelSetup?.error && <Text style={styles.warningText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.setupErrorLabel}: {tunnelSetup.error}</Text>}
+              {tunnelStatus?.error && (
+                <Text style={styles.warningText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatTunnelError(tunnelStatus.error)}</Text>
+              )}
+              {tunnelSetup?.error && (
+                <Text style={styles.warningText}>{OPERATOR_TUNNEL_STATUS_PANEL_METADATA.formatSetupError(tunnelSetup.error)}</Text>
+              )}
 
               <View style={styles.actionGrid}>
                 <TouchableOpacity
