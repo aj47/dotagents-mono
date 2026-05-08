@@ -77,10 +77,12 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /REMOTE_SERVER_ENABLED_FIELD_METADATA\.accessibilityLabel/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.label\}>Remote Server<\/Text>/);
   assert.doesNotMatch(operationsSource, /createSwitchAccessibilityLabel\('Remote Server'\)/);
-  assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA\.accessibilityLabel/);
+  assert.match(operationsSource, /REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA\.formatButtonAccessibilityLabel\(option\.compactLabel\)/);
+  assert.doesNotMatch(operationsSource, /Use \$\{option\.compactLabel\} for \$\{REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA\.accessibilityLabel\}/);
   assert.match(operationsSource, /remoteServerLogLevel: option\.value/);
   assert.match(operationsSource, /REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA\.pendingLabel/);
-  assert.match(operationsSource, /REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA\.accessibilityLabel/);
+  assert.match(operationsSource, /REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA\.formatButtonAccessibilityLabel\(option\.label\)/);
+  assert.doesNotMatch(operationsSource, /Use \$\{option\.label\} \$\{REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA\.accessibilityLabel\}/);
   assert.match(operationsSource, /remoteServerCorsOrigins: origins\.length > 0 \? origins : \[\.\.\.DEFAULT_REMOTE_SERVER_CORS_ORIGINS\]/);
   assert.match(operationsSource, /REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA\.pendingLabel/);
   assert.match(operationsSource, /REMOTE_SERVER_CORS_ORIGINS_FIELD_METADATA\.successMessage/);
@@ -163,7 +165,8 @@ test('exposes compact remote access settings for mobile remote ops', () => {
   assert.match(operationsSource, /panelPosition: option\.value/);
   assert.match(operationsSource, /CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA/);
   assert.match(operationsSource, /CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA\.pendingLabel/);
-  assert.match(operationsSource, /CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA\.accessibilityLabel/);
+  assert.match(operationsSource, /CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA\.formatButtonAccessibilityLabel\(option\.compactLabel\)/);
+  assert.doesNotMatch(operationsSource, /Use \$\{option\.compactLabel\} \$\{CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA\.accessibilityLabel\}/);
   assert.match(operationsSource, /CLOUDFLARE_TUNNEL_SECTION_METADATA\.sectionTitle/);
   assert.match(operationsSource, /CLOUDFLARE_TUNNEL_SECTION_METADATA\.namedTunnelHelperText/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.label\}>Tunnel Mode<\/Text>/);

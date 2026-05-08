@@ -49,6 +49,7 @@ export type RemoteServerBindAddressFieldMetadata = {
   lanWarningText: string;
   pendingLabel: string;
   accessibilityLabel: string;
+  formatButtonAccessibilityLabel: (compactLabel: string) => string;
 };
 
 export type RemoteServerEnabledFieldMetadata = {
@@ -89,6 +90,7 @@ export type RemoteServerLogLevelFieldMetadata = {
   tooltip: string;
   pendingLabel: string;
   accessibilityLabel: string;
+  formatButtonAccessibilityLabel: (label: string) => string;
 };
 
 export type RemoteServerApiKeyFieldMetadata = {
@@ -189,6 +191,7 @@ export type CloudflareTunnelModeFieldMetadata = {
   tooltip: string;
   pendingLabel: string;
   accessibilityLabel: string;
+  formatButtonAccessibilityLabel: (compactLabel: string) => string;
 };
 
 export type CloudflareTunnelSectionMetadata = {
@@ -273,6 +276,7 @@ export const REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA: RemoteServerBindAddressF
   lanWarningText: 'Warning: Exposes the server on your local network. Keep your API key secure.',
   pendingLabel: 'bind address',
   accessibilityLabel: 'remote server bind address',
+  formatButtonAccessibilityLabel: (compactLabel) => `Use ${compactLabel} for remote server bind address`,
 };
 export const REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA: RemoteServerLogLevelFieldMetadata = {
   key: 'remoteServerLogLevel',
@@ -280,6 +284,7 @@ export const REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA: RemoteServerLogLevelFieldMe
   tooltip: 'Fastify logger level.',
   pendingLabel: 'remote server log level',
   accessibilityLabel: 'remote server log level',
+  formatButtonAccessibilityLabel: (label) => `Use ${label} remote server log level`,
 };
 export const REMOTE_SERVER_API_KEY_FIELD_METADATA: RemoteServerApiKeyFieldMetadata = {
   key: 'remoteServerApiKey',
@@ -417,6 +422,7 @@ export const CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA: CloudflareTunnelModeFieldMet
   tooltip: 'Quick tunnels are easy but have random URLs. Named tunnels require setup but have persistent URLs.',
   pendingLabel: 'tunnel mode',
   accessibilityLabel: 'Cloudflare tunnel mode',
+  formatButtonAccessibilityLabel: (compactLabel) => `Use ${compactLabel} Cloudflare tunnel mode`,
 };
 export const CLOUDFLARE_TUNNEL_SECTION_METADATA: CloudflareTunnelSectionMetadata = {
   sectionTitle: 'Cloudflare tunnel',

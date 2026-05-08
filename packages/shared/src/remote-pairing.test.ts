@@ -137,7 +137,11 @@ describe('remote server config contracts', () => {
       lanWarningText: 'Warning: Exposes the server on your local network. Keep your API key secure.',
       pendingLabel: 'bind address',
       accessibilityLabel: 'remote server bind address',
+      formatButtonAccessibilityLabel: expect.any(Function),
     });
+    expect(REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.formatButtonAccessibilityLabel('0.0.0.0')).toBe(
+      'Use 0.0.0.0 for remote server bind address',
+    );
     expect(REMOTE_SERVER_BIND_ADDRESS_DISPLAY_OPTIONS).toEqual([
       {
         value: '127.0.0.1',
@@ -175,7 +179,11 @@ describe('remote server config contracts', () => {
       tooltip: 'Fastify logger level.',
       pendingLabel: 'remote server log level',
       accessibilityLabel: 'remote server log level',
+      formatButtonAccessibilityLabel: expect.any(Function),
     });
+    expect(REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA.formatButtonAccessibilityLabel('Debug')).toBe(
+      'Use Debug remote server log level',
+    );
     expect(REMOTE_SERVER_API_KEY_FIELD_METADATA).toEqual({
       key: 'remoteServerApiKey',
       label: 'API Key',
@@ -329,7 +337,11 @@ describe('remote server config contracts', () => {
       tooltip: 'Quick tunnels are easy but have random URLs. Named tunnels require setup but have persistent URLs.',
       pendingLabel: 'tunnel mode',
       accessibilityLabel: 'Cloudflare tunnel mode',
+      formatButtonAccessibilityLabel: expect.any(Function),
     });
+    expect(CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA.formatButtonAccessibilityLabel('named')).toBe(
+      'Use named Cloudflare tunnel mode',
+    );
     expect(CLOUDFLARE_TUNNEL_SECTION_METADATA).toEqual({
       sectionTitle: 'Cloudflare tunnel',
       namedTunnelHelperText: 'Named tunnels need a tunnel ID and hostname. Credentials path is optional if the desktop already knows where to find the credentials file.',

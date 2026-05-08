@@ -1951,7 +1951,9 @@ export default function OperationsScreen({ navigation }: any) {
                       disabled={controlsDisabled}
                       accessibilityRole="button"
                       accessibilityState={{ selected, disabled: controlsDisabled }}
-                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.compactLabel} for ${REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.accessibilityLabel}`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(
+                        REMOTE_SERVER_BIND_ADDRESS_FIELD_METADATA.formatButtonAccessibilityLabel(option.compactLabel),
+                      )}
                     >
                       <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>
                         {option.compactLabel}
@@ -1982,7 +1984,9 @@ export default function OperationsScreen({ navigation }: any) {
                       disabled={controlsDisabled}
                       accessibilityRole="button"
                       accessibilityState={{ selected, disabled: controlsDisabled }}
-                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.label} ${REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA.accessibilityLabel}`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(
+                        REMOTE_SERVER_LOG_LEVEL_FIELD_METADATA.formatButtonAccessibilityLabel(option.label),
+                      )}
                     >
                       <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>{option.label}</Text>
                     </TouchableOpacity>
@@ -2298,7 +2302,9 @@ export default function OperationsScreen({ navigation }: any) {
                       disabled={controlsDisabled}
                       accessibilityRole="button"
                       accessibilityState={{ selected, disabled: controlsDisabled }}
-                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${option.compactLabel} ${CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA.accessibilityLabel}`)}
+                      accessibilityLabel={createButtonAccessibilityLabel(
+                        CLOUDFLARE_TUNNEL_MODE_FIELD_METADATA.formatButtonAccessibilityLabel(option.compactLabel),
+                      )}
                     >
                       <Text style={[styles.chipButtonText, selected && styles.chipButtonTextActive]}>
                         {option.compactLabel}
