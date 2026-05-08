@@ -34,7 +34,12 @@ import {
 } from "lucide-react"
 import { desktopMcpToolsClient } from "@renderer/lib/desktop-mcp-tools-client"
 import { toast } from "sonner"
-import type { DetailedToolInfo } from "@dotagents/shared/mcp-utils"
+import {
+  countEnabledMcpTools,
+  setMcpSourceToolsEnabledInList,
+  setMcpToolEnabledInList,
+  type DetailedToolInfo,
+} from "@dotagents/shared/mcp-utils"
 
 type DetailedTool = DetailedToolInfo
 
@@ -107,9 +112,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
     try {
       // Update local state immediately for better UX
       setTools((prevTools) =>
-        prevTools.map((tool) =>
-          tool.name === toolName ? { ...tool, enabled } : tool,
-        ),
+        setMcpToolEnabledInList(prevTools, toolName, enabled),
       )
 
       // Call the backend API
@@ -124,9 +127,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
       } else {
         // Revert local state if backend call failed
         setTools((prevTools) =>
-          prevTools.map((tool) =>
-            tool.name === toolName ? { ...tool, enabled: !enabled } : tool,
-          ),
+          setMcpToolEnabledInList(prevTools, toolName, !enabled),
         )
         toast.error(
           `Failed to ${enabled ? "enable" : "disable"} tool ${toolName}`,
@@ -135,9 +136,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
     } catch (error) {
       // Revert local state on error
       setTools((prevTools) =>
-        prevTools.map((tool) =>
-          tool.name === toolName ? { ...tool, enabled: !enabled } : tool,
-        ),
+        setMcpToolEnabledInList(prevTools, toolName, !enabled),
       )
       toast.error(`Error toggling tool: ${error.message}`)
     }
@@ -161,12 +160,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
     const sourceLabel = sourceTools[0]?.sourceLabel || sourceName
 
     // Update local state immediately for better UX
-    const updatedTools = tools.map((tool) => {
-      if (tool.sourceName === sourceName) {
-        return { ...tool, enabled: enable }
-      }
-      return tool
-    })
+    const updatedTools = setMcpSourceToolsEnabledInList(tools, sourceName, enable)
     setTools(updatedTools)
 
     // Track promises for all backend calls
@@ -209,12 +203,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
       }
     } catch (error) {
       // Revert all tools on error
-      const revertedTools = tools.map((tool) => {
-        if (tool.sourceName === sourceName) {
-          return { ...tool, enabled: !enable }
-        }
-        return tool
-      })
+      const revertedTools = setMcpSourceToolsEnabledInList(tools, sourceName, !enable)
       setTools(revertedTools)
       toast.error(`Error toggling tools for ${sourceLabel}: ${error.message}`)
     }
@@ -222,7 +211,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
 
   const sourceNames = Object.keys(toolsBySource)
   const totalTools = toolsFromEnabledSources.length
-  const enabledTools = toolsFromEnabledSources.filter((tool) => tool.enabled).length
+  const enabledTools = countEnabledMcpTools(toolsFromEnabledSources)
 
   return (
     <div className="min-w-0 space-y-6">

@@ -52,6 +52,7 @@ import { useTheme } from '../ui/ThemeProvider';
 import { radius, spacing } from '../ui/theme';
 import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
 import { getErrorMessage } from '@dotagents/shared/error-utils';
+import { setMcpToolEnabledInList } from '@dotagents/shared/mcp-utils';
 import {
   DESKTOP_TEXT_INPUT_FIELD_METADATA,
   DEFAULT_TEXT_INPUT_ENABLED,
@@ -588,9 +589,7 @@ export default function OperationsScreen({ navigation }: any) {
       }
       setMcpServerTools((current) => ({
         ...current,
-        [serverName]: (current[serverName] ?? []).map((tool) => (
-          tool.name === toolName ? { ...tool, enabled } : tool
-        )),
+        [serverName]: setMcpToolEnabledInList(current[serverName] ?? [], toolName, enabled),
       }));
       setActionFeedback(response.message);
     } catch (actionError) {

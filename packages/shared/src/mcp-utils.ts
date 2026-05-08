@@ -134,6 +134,39 @@ export interface DetailedToolInfo {
   inputSchema: any
 }
 
+export type McpToolEnabledLike = {
+  name: string
+  enabled: boolean
+}
+
+export type McpSourceToolEnabledLike = McpToolEnabledLike & {
+  sourceName: string
+}
+
+export function setMcpToolEnabledInList<TTool extends McpToolEnabledLike>(
+  tools: readonly TTool[],
+  toolName: string,
+  enabled: boolean,
+): TTool[] {
+  return tools.map((tool) => (
+    tool.name === toolName ? { ...tool, enabled } : tool
+  ))
+}
+
+export function setMcpSourceToolsEnabledInList<TTool extends McpSourceToolEnabledLike>(
+  tools: readonly TTool[],
+  sourceName: string,
+  enabled: boolean,
+): TTool[] {
+  return tools.map((tool) => (
+    tool.sourceName === sourceName ? { ...tool, enabled } : tool
+  ))
+}
+
+export function countEnabledMcpTools(tools: readonly Pick<McpToolEnabledLike, "enabled">[]): number {
+  return tools.filter((tool) => tool.enabled).length
+}
+
 export function inferTransportType(config: MCPServerConfigLike): MCPTransportType {
   if (config.transport) return config.transport
   const normalizedUrl = config.url?.trim()

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildMcpServerConfigFromDraft,
+  countEnabledMcpTools,
   EMPTY_MCP_SERVER_CONFIG_DRAFT,
   MCP_TRANSPORT_OPTIONS,
   inferTransportType,
@@ -11,6 +12,8 @@ import {
   parseMcpKeyValueDraft,
   removeMcpServerConfig,
   renameMcpServerConfig,
+  setMcpSourceToolsEnabledInList,
+  setMcpToolEnabledInList,
   upsertMcpServerConfig,
   type MCPConfig,
   type MCPConfigLike,
@@ -143,6 +146,36 @@ describe('inferTransportType', () => {
 
   it('infers streamableHttp when url starts with https://', () => {
     expect(inferTransportType({ url: 'https://exa.ai/mcp' })).toBe('streamableHttp')
+  })
+})
+
+describe('MCP tool list helpers', () => {
+  const tools = [
+    { name: 'read_file', sourceName: 'filesystem', enabled: true },
+    { name: 'write_file', sourceName: 'filesystem', enabled: false },
+    { name: 'search', sourceName: 'web', enabled: false },
+  ]
+
+  it('updates a single tool enabled state by name', () => {
+    const updated = setMcpToolEnabledInList(tools, 'write_file', true)
+
+    expect(updated.map((tool) => [tool.name, tool.enabled])).toEqual([
+      ['read_file', true],
+      ['write_file', true],
+      ['search', false],
+    ])
+    expect(countEnabledMcpTools(updated)).toBe(2)
+  })
+
+  it('updates every tool for a source', () => {
+    const updated = setMcpSourceToolsEnabledInList(tools, 'filesystem', false)
+
+    expect(updated.map((tool) => [tool.name, tool.enabled])).toEqual([
+      ['read_file', false],
+      ['write_file', false],
+      ['search', false],
+    ])
+    expect(countEnabledMcpTools(updated)).toBe(0)
   })
 })
 

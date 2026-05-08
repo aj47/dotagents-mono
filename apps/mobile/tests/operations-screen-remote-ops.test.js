@@ -540,6 +540,7 @@ test('displays desktop message queues from operator API', () => {
   assert.match(operationsSource, /removeOperatorQueuedMessageSummary/);
   assert.match(operationsSource, /setOperatorMessageQueueSummaryPaused/);
   assert.match(operationsSource, /clearOperatorMessageQueueSummary/);
+  assert.match(operationsSource, /setMcpToolEnabledInList\(current\[serverName\] \?\? \[\], toolName, enabled\)/);
   assert.match(operationsSource, /hasProcessingQueuedMessage\(queue\.messages\)/);
   assert.match(operationsSource, /canMutateQueuedMessage\(message\)/);
   assert.match(operationsSource, /canEditQueuedMessage\(message\)/);
@@ -566,6 +567,7 @@ test('displays desktop message queues from operator API', () => {
   assert.doesNotMatch(operationsSource, /queue\.messages\.some\(\(message\) => message\.status === 'processing'\)/);
   assert.doesNotMatch(operationsSource, /message\.status !== 'processing'/);
   assert.doesNotMatch(operationsSource, /message\.status === 'failed'/);
+  assert.doesNotMatch(operationsSource, /tool\.name === toolName \? \{ \.\.\.tool, enabled \} : tool/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\(`Clear \$\{queue\.conversationId\} desktop message queue`\)/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\(`Retry queued message \$\{message\.id\}`\)/);
 });
