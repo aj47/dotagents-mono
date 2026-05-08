@@ -51,6 +51,20 @@ export type SkillDisplaySortLike = {
   enabledForProfile?: boolean | null
 }
 
+export type SkillEnabledForProfileLike = {
+  id: string
+  enabledForProfile?: boolean | null
+}
+
+export type SkillIdLike = {
+  id: string
+}
+
+export type SkillDeleteResultLike = {
+  id: string
+  success: boolean
+}
+
 export type SkillActionProfileLike = SkillProfileLike & {
   id: string
 }
@@ -464,6 +478,35 @@ export function sortSkillsByProfileEnablement<TSkill extends SkillDisplaySortLik
     if (enabledDiff !== 0) return enabledDiff
     return a.name.localeCompare(b.name)
   })
+}
+
+export function setSkillEnabledForProfileInList<TSkill extends SkillEnabledForProfileLike>(
+  skills: readonly TSkill[],
+  skillId: string,
+  enabledForProfile: boolean,
+): TSkill[] {
+  return skills.map((skill) => (
+    skill.id === skillId ? { ...skill, enabledForProfile } : skill
+  ))
+}
+
+export function removeSkillFromList<TSkill extends SkillIdLike>(
+  skills: readonly TSkill[],
+  skillId: string,
+): TSkill[] {
+  return skills.filter((skill) => skill.id !== skillId)
+}
+
+export function removeSkillsFromList<TSkill extends SkillIdLike>(
+  skills: readonly TSkill[],
+  skillIds: Iterable<string>,
+): TSkill[] {
+  const ids = new Set(skillIds)
+  return skills.filter((skill) => !ids.has(skill.id))
+}
+
+export function getSuccessfulSkillDeleteIds(results: readonly SkillDeleteResultLike[]): string[] {
+  return results.filter((result) => result.success).map((result) => result.id)
 }
 
 export function formatSkillForApi(skill: SkillApiLike, enabledForProfile: boolean): Skill {

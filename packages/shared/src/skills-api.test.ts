@@ -27,6 +27,7 @@ import {
   getSkillAction,
   getGitHubSkillCandidateRelativePaths,
   getEnabledSkillIdsForProfile,
+  getSuccessfulSkillDeleteIds,
   getSkillFolderIdFromFilePath,
   getSkillRuntimeIds,
   parseSkillImportGitHubRequestBody,
@@ -38,7 +39,10 @@ import {
   parseGitHubSkillIdentifier,
   parseSkillImportMarkdownRequestBody,
   parseRuntimeSkillIdArg,
+  removeSkillFromList,
+  removeSkillsFromList,
   resolveRuntimeSkill,
+  setSkillEnabledForProfileInList,
   sortSkillsByProfileEnablement,
   toggleProfileSkillAction,
   updateSkillAction,
@@ -142,6 +146,28 @@ describe("skills API helpers", () => {
       "beta",
       "offline",
     ])
+  })
+
+  it("updates skill list state without app-specific mutation logic", () => {
+    const input = [
+      { id: "research", name: "Research", enabledForProfile: false, updatedAt: 1 },
+      { id: "writing", name: "Writing", enabledForProfile: true, updatedAt: 2 },
+      { id: "review", name: "Review", enabledForProfile: true, updatedAt: 3 },
+    ]
+
+    expect(setSkillEnabledForProfileInList(input, "research", true)).toEqual([
+      { id: "research", name: "Research", enabledForProfile: true, updatedAt: 1 },
+      { id: "writing", name: "Writing", enabledForProfile: true, updatedAt: 2 },
+      { id: "review", name: "Review", enabledForProfile: true, updatedAt: 3 },
+    ])
+    expect(input[0].enabledForProfile).toBe(false)
+    expect(removeSkillFromList(input, "writing").map((skill) => skill.id)).toEqual(["research", "review"])
+    expect(removeSkillsFromList(input, ["research", "review"]).map((skill) => skill.id)).toEqual(["writing"])
+    expect(getSuccessfulSkillDeleteIds([
+      { id: "research", success: true },
+      { id: "missing", success: false },
+      { id: "review", success: true },
+    ])).toEqual(["research", "review"])
   })
 
   it("enables all skills when a profile has default skill semantics", () => {

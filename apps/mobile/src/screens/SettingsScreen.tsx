@@ -181,7 +181,13 @@ import {
   setMcpServerRuntimeEnabledInList,
   type McpServerConfigDraft as McpServerDraft,
 } from '@dotagents/shared/mcp-utils';
-import { sortSkillsByProfileEnablement } from '@dotagents/shared/skills-api';
+import {
+  getSuccessfulSkillDeleteIds,
+  removeSkillFromList,
+  removeSkillsFromList,
+  setSkillEnabledForProfileInList,
+  sortSkillsByProfileEnablement,
+} from '@dotagents/shared/skills-api';
 import {
   REMOTE_SETTINGS_SECRET_MASK as SECRET_MASK,
   buildRemoteSettingsInputDrafts,
@@ -1260,9 +1266,7 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       const res = await settingsClient.toggleSkillForProfile(skillId);
       // Optimistically update the UI
-      setSkills(prev =>
-        prev.map(s => (s.id === skillId ? { ...s, enabledForProfile: res.enabledForProfile } : s))
-      );
+      setSkills(prev => setSkillEnabledForProfileInList(prev, skillId, res.enabledForProfile));
     } catch (error: any) {
       console.error('[Settings] Failed to toggle skill:', error);
       Alert.alert('Error', 'Failed to toggle skill');
@@ -1753,7 +1757,7 @@ export default function SettingsScreen({ navigation }: any) {
     confirmDestructiveAction('Delete Skill', `Are you sure you want to delete "${skill.name}"?`, async () => {
       try {
         await settingsClient.deleteSkill(skill.id);
-        setSkills(prev => prev.filter(item => item.id !== skill.id));
+        setSkills(prev => removeSkillFromList(prev, skill.id));
         setSelectedSkillIds(prev => {
           const next = new Set(prev);
           next.delete(skill.id);
@@ -1775,8 +1779,8 @@ export default function SettingsScreen({ navigation }: any) {
       async () => {
         try {
           const result = await settingsClient.deleteSkills(visibleSelectedSkillIds);
-          const deletedIds = new Set(result.results.filter(item => item.success).map(item => item.id));
-          setSkills(prev => prev.filter(item => !deletedIds.has(item.id)));
+          const deletedIds = getSuccessfulSkillDeleteIds(result.results);
+          setSkills(prev => removeSkillsFromList(prev, deletedIds));
           setSelectedSkillIds(prev => {
             const next = new Set(prev);
             for (const id of visibleSelectedSkillIds) next.delete(id);
