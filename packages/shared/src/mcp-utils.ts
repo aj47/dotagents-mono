@@ -143,6 +143,17 @@ export type McpSourceToolEnabledLike = McpToolEnabledLike & {
   sourceName: string
 }
 
+export type McpServerRuntimeEnabledLike = {
+  name: string
+  enabled: boolean
+  runtimeEnabled: boolean
+  configDisabled?: boolean
+}
+
+export type McpServerNamedLike = {
+  name: string
+}
+
 export function setMcpToolEnabledInList<TTool extends McpToolEnabledLike>(
   tools: readonly TTool[],
   toolName: string,
@@ -187,6 +198,35 @@ export function setMcpSourceToolsEnabledInList<TTool extends McpSourceToolEnable
 
 export function countEnabledMcpTools(tools: readonly Pick<McpToolEnabledLike, "enabled">[]): number {
   return tools.filter((tool) => tool.enabled).length
+}
+
+export function setMcpServerRuntimeEnabledInList<TServer extends McpServerRuntimeEnabledLike>(
+  servers: readonly TServer[],
+  serverName: string,
+  runtimeEnabled: boolean,
+): TServer[] {
+  return servers.map((server) => (
+    server.name === serverName
+      ? {
+          ...server,
+          runtimeEnabled,
+          enabled: runtimeEnabled && !server.configDisabled,
+        }
+      : server
+  ))
+}
+
+export function removeMcpServerFromList<TServer extends McpServerNamedLike>(
+  servers: readonly TServer[],
+  serverName: string,
+): TServer[] {
+  return servers.filter((server) => server.name !== serverName)
+}
+
+export function getMcpServerNamesInList(
+  servers: readonly McpServerNamedLike[],
+): string[] {
+  return servers.map((server) => server.name)
 }
 
 export function inferTransportType(config: MCPServerConfigLike): MCPTransportType {

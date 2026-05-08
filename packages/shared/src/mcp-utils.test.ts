@@ -11,8 +11,11 @@ import {
   normalizeMcpConfig,
   parseMcpKeyValueDraft,
   removeMcpServerConfig,
+  removeMcpServerFromList,
   renameMcpServerConfig,
   restoreMcpToolEnabledStatesInList,
+  getMcpServerNamesInList,
+  setMcpServerRuntimeEnabledInList,
   setMcpSourceToolsEnabledInList,
   setMcpToolEnabledInList,
   setMcpToolsEnabledByNameInList,
@@ -203,6 +206,32 @@ describe('MCP tool list helpers', () => {
       ['write_file', false],
       ['search', false],
     ])
+  })
+})
+
+describe('MCP server list helpers', () => {
+  const servers = [
+    { name: 'filesystem', enabled: true, runtimeEnabled: true, configDisabled: false, toolCount: 2 },
+    { name: 'disabled-config', enabled: false, runtimeEnabled: false, configDisabled: true, toolCount: 1 },
+  ]
+
+  it('updates runtime enablement while respecting config-disabled servers', () => {
+    expect(setMcpServerRuntimeEnabledInList(servers, 'filesystem', false)).toEqual([
+      { name: 'filesystem', enabled: false, runtimeEnabled: false, configDisabled: false, toolCount: 2 },
+      { name: 'disabled-config', enabled: false, runtimeEnabled: false, configDisabled: true, toolCount: 1 },
+    ])
+
+    expect(setMcpServerRuntimeEnabledInList(servers, 'disabled-config', true)).toEqual([
+      { name: 'filesystem', enabled: true, runtimeEnabled: true, configDisabled: false, toolCount: 2 },
+      { name: 'disabled-config', enabled: false, runtimeEnabled: true, configDisabled: true, toolCount: 1 },
+    ])
+  })
+
+  it('removes servers and extracts names for editor validation', () => {
+    expect(removeMcpServerFromList(servers, 'filesystem')).toEqual([
+      { name: 'disabled-config', enabled: false, runtimeEnabled: false, configDisabled: true, toolCount: 1 },
+    ])
+    expect(getMcpServerNamesInList(servers)).toEqual(['filesystem', 'disabled-config'])
   })
 })
 

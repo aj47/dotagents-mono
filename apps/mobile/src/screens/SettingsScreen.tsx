@@ -174,8 +174,11 @@ import {
 import {
   buildMcpServerConfigFromDraft,
   EMPTY_MCP_SERVER_CONFIG_DRAFT as EMPTY_MCP_SERVER_DRAFT,
+  getMcpServerNamesInList,
   MCP_TRANSPORT_OPTIONS,
+  removeMcpServerFromList,
   isReservedMcpServerName,
+  setMcpServerRuntimeEnabledInList,
   type McpServerConfigDraft as McpServerDraft,
 } from '@dotagents/shared/mcp-utils';
 import { sortSkillsByProfileEnablement } from '@dotagents/shared/skills-api';
@@ -1098,9 +1101,7 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       await settingsClient.toggleMCPServer(serverName, enabled);
       // Update local state optimistically
-      setMcpServers(prev => prev.map(s =>
-        s.name === serverName ? { ...s, enabled, runtimeEnabled: enabled } : s
-      ));
+      setMcpServers(prev => setMcpServerRuntimeEnabledInList(prev, serverName, enabled));
     } catch (error: any) {
       console.error('[Settings] Failed to toggle server:', error);
       setRemoteError(error.message || 'Failed to toggle server');
@@ -1454,7 +1455,7 @@ export default function SettingsScreen({ navigation }: any) {
       async () => {
         try {
           await settingsClient.deleteMCPServerConfig(server.name);
-          setMcpServers(prev => prev.filter(item => item.name !== server.name));
+          setMcpServers(prev => removeMcpServerFromList(prev, server.name));
         } catch (error: any) {
           console.error('[Settings] Failed to delete MCP server:', error);
           Alert.alert('Error', error.message || 'Failed to delete MCP server');
@@ -1505,7 +1506,7 @@ export default function SettingsScreen({ navigation }: any) {
 
     const draftConfig = buildMcpServerConfigFromDraft(mcpServerDraft, {
       mode: mcpServerEditorMode,
-      existingServerNames: mcpServers.map(server => server.name),
+      existingServerNames: getMcpServerNamesInList(mcpServers),
       reservedServerNames: RESERVED_RUNTIME_TOOL_SERVER_NAMES,
     });
     if (!draftConfig.ok) {
