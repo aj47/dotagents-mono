@@ -116,6 +116,11 @@
       "import": "./dist/conversation-state.mjs",
       "require": "./dist/conversation-state.js"
     },
+    "./collection-state": {
+      "types": "./dist/collection-state.d.ts",
+      "import": "./dist/collection-state.mjs",
+      "require": "./dist/collection-state.js"
+    },
     "./legacy-settings-redirect": {
       "types": "./dist/legacy-settings-redirect.d.ts",
       "import": "./dist/legacy-settings-redirect.mjs",

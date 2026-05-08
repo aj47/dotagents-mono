@@ -19,6 +19,7 @@ import {
   createSwitchAccessibilityLabel,
   createTextInputAccessibilityLabel,
 } from '@dotagents/shared/accessibility-utils';
+import { toggleSetValue } from '@dotagents/shared/collection-state';
 import { getDeviceIdentity } from '../lib/deviceIdentity';
 import {
   DEFAULT_FLOATING_PANEL_AUTO_SHOW,
@@ -533,14 +534,10 @@ export default function OperationsScreen({ navigation }: any) {
 
   const toggleMcpLogsForServer = useCallback((serverName: string) => {
     setExpandedMcpLogs((current) => {
-      const next = new Set(current);
-      if (next.has(serverName)) {
-        next.delete(serverName);
-      } else {
-        next.add(serverName);
+      if (!current.has(serverName)) {
         void fetchMcpLogsForServer(serverName);
       }
-      return next;
+      return toggleSetValue(current, serverName);
     });
   }, [fetchMcpLogsForServer]);
 
@@ -564,14 +561,10 @@ export default function OperationsScreen({ navigation }: any) {
 
   const toggleMcpToolsForServer = useCallback((serverName: string) => {
     setExpandedMcpTools((current) => {
-      const next = new Set(current);
-      if (next.has(serverName)) {
-        next.delete(serverName);
-      } else {
-        next.add(serverName);
+      if (!current.has(serverName)) {
         void fetchMcpToolsForServer(serverName);
       }
-      return next;
+      return toggleSetValue(current, serverName);
     });
   }, [fetchMcpToolsForServer]);
 

@@ -25,6 +25,12 @@ import {
   createSwitchAccessibilityLabel,
 } from '@dotagents/shared/accessibility-utils';
 import {
+  getVisibleSelectedValues,
+  removeSetValue,
+  removeSetValues,
+  toggleSetValue,
+} from '@dotagents/shared/collection-state';
+import {
   DEFAULT_AUTO_SAVE_CONVERSATIONS,
   DEFAULT_CONVERSATIONS_ENABLED,
   DEFAULT_MAX_CONVERSATIONS_TO_KEEP,
@@ -325,7 +331,7 @@ export default function SettingsScreen({ navigation }: any) {
     [displaySkills]
   );
   const visibleSelectedSkillIds = useMemo(
-    () => [...selectedSkillIds].filter((id) => displayedSkillIds.has(id)),
+    () => getVisibleSelectedValues(selectedSkillIds, displayedSkillIds),
     [selectedSkillIds, displayedSkillIds]
   );
   const sortedAgentProfiles = useMemo(
@@ -345,7 +351,7 @@ export default function SettingsScreen({ navigation }: any) {
     [displayedKnowledgeNotes]
   );
   const visibleSelectedKnowledgeNoteIds = useMemo(
-    () => [...selectedKnowledgeNoteIds].filter((id) => displayedKnowledgeNoteIds.has(id)),
+    () => getVisibleSelectedValues(selectedKnowledgeNoteIds, displayedKnowledgeNoteIds),
     [selectedKnowledgeNoteIds, displayedKnowledgeNoteIds]
   );
   const knowledgeNoteSections = useMemo(
@@ -1650,11 +1656,7 @@ export default function SettingsScreen({ navigation }: any) {
         await settingsClient.deleteKnowledgeNote(noteId);
         setKnowledgeNotes(prev => removeKnowledgeNoteFromList(prev, noteId));
         setKnowledgeNoteSearchResults(prev => removeKnowledgeNoteFromList(prev, noteId));
-        setSelectedKnowledgeNoteIds(prev => {
-          const next = new Set(prev);
-          next.delete(noteId);
-          return next;
-        });
+        setSelectedKnowledgeNoteIds(prev => removeSetValue(prev, noteId));
       } catch (error: any) {
         console.error('[Settings] Failed to delete knowledge note:', error);
         Alert.alert('Error', 'Failed to delete note');
@@ -1673,11 +1675,7 @@ export default function SettingsScreen({ navigation }: any) {
           await settingsClient.deleteKnowledgeNotes(ids);
           setKnowledgeNotes(prev => removeKnowledgeNotesFromList(prev, ids));
           setKnowledgeNoteSearchResults(prev => removeKnowledgeNotesFromList(prev, ids));
-          setSelectedKnowledgeNoteIds(prev => {
-            const next = new Set(prev);
-            ids.forEach((id) => next.delete(id));
-            return next;
-          });
+          setSelectedKnowledgeNoteIds(prev => removeSetValues(prev, ids));
         } catch (error: any) {
           console.error('[Settings] Failed to delete selected knowledge notes:', error);
           Alert.alert('Error', 'Failed to delete selected notes');
@@ -1727,12 +1725,7 @@ export default function SettingsScreen({ navigation }: any) {
   }, [navigation]);
 
   const toggleKnowledgeNoteSelection = useCallback((noteId: string) => {
-    setSelectedKnowledgeNoteIds(prev => {
-      const next = new Set(prev);
-      if (next.has(noteId)) next.delete(noteId);
-      else next.add(noteId);
-      return next;
-    });
+    setSelectedKnowledgeNoteIds(prev => toggleSetValue(prev, noteId));
   }, []);
 
   const handleSkillEdit = useCallback((skill?: Skill) => {
@@ -1743,12 +1736,7 @@ export default function SettingsScreen({ navigation }: any) {
   }, [navigation]);
 
   const toggleSkillSelection = useCallback((skillId: string) => {
-    setSelectedSkillIds(prev => {
-      const next = new Set(prev);
-      if (next.has(skillId)) next.delete(skillId);
-      else next.add(skillId);
-      return next;
-    });
+    setSelectedSkillIds(prev => toggleSetValue(prev, skillId));
   }, []);
 
   const handleSkillDelete = useCallback((skill: Skill) => {
@@ -1757,11 +1745,7 @@ export default function SettingsScreen({ navigation }: any) {
       try {
         await settingsClient.deleteSkill(skill.id);
         setSkills(prev => removeSkillFromList(prev, skill.id));
-        setSelectedSkillIds(prev => {
-          const next = new Set(prev);
-          next.delete(skill.id);
-          return next;
-        });
+        setSelectedSkillIds(prev => removeSetValue(prev, skill.id));
       } catch (error: any) {
         console.error('[Settings] Failed to delete skill:', error);
         Alert.alert('Error', error.message || 'Failed to delete skill');
@@ -1780,11 +1764,7 @@ export default function SettingsScreen({ navigation }: any) {
           const result = await settingsClient.deleteSkills(visibleSelectedSkillIds);
           const deletedIds = getSuccessfulSkillDeleteIds(result.results);
           setSkills(prev => removeSkillsFromList(prev, deletedIds));
-          setSelectedSkillIds(prev => {
-            const next = new Set(prev);
-            for (const id of visibleSelectedSkillIds) next.delete(id);
-            return next;
-          });
+          setSelectedSkillIds(prev => removeSetValues(prev, visibleSelectedSkillIds));
           if (result.deletedCount < visibleSelectedSkillIds.length) {
             Alert.alert('Partial Delete', `Deleted ${result.deletedCount} of ${visibleSelectedSkillIds.length} selected skills.`);
           }

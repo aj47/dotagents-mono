@@ -25,6 +25,7 @@ export * from './predefined-prompts';
 export * from './bundle-api';
 export * from './hub';
 export * from './conversation-state';
+export * from './collection-state';
 export * from './legacy-settings-redirect';
 export * from './session-presentation';
 export * from './session-progress-hydration';
