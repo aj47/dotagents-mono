@@ -67,6 +67,12 @@ export function buildOperatorMessageQueuesResponse(
   };
 }
 
+export function getOperatorMessageQueueTotalMessageCount(
+  queues: readonly Pick<OperatorMessageQueueSummary, 'messageCount'>[],
+): number {
+  return queues.reduce((sum, queue) => sum + queue.messageCount, 0);
+}
+
 export function hasQueuedMessages(queues: MessageQueueMap, conversationId: string): boolean {
   return (queues.get(conversationId)?.length ?? 0) > 0;
 }
@@ -130,6 +136,98 @@ function resetMessageStatusToPending(message: QueuedMessage): QueuedMessage {
     ...messageWithoutError,
     status: 'pending',
   };
+}
+
+export function setOperatorMessageQueueSummaryPaused(
+  queues: readonly OperatorMessageQueueSummary[],
+  conversationId: string,
+  isPaused: boolean,
+): OperatorMessageQueueSummary[] {
+  return queues.map((queue) => (
+    queue.conversationId === conversationId
+      ? { ...queue, isPaused }
+      : queue
+  ));
+}
+
+export function clearOperatorMessageQueueSummary(
+  queues: readonly OperatorMessageQueueSummary[],
+  conversationId: string,
+): OperatorMessageQueueSummary[] {
+  return queues.filter((queue) => queue.conversationId !== conversationId);
+}
+
+export function updateOperatorQueuedMessageSummaryText(
+  queues: readonly OperatorMessageQueueSummary[],
+  conversationId: string,
+  messageId: string,
+  text: string,
+): OperatorMessageQueueSummary[] {
+  const trimmedText = text.trim();
+
+  return queues.map((queue) => (
+    queue.conversationId === conversationId
+      ? {
+        ...queue,
+        messages: queue.messages.map((message) => {
+          if (message.id !== messageId) {
+            return message;
+          }
+
+          const nextMessage = message.status === 'failed'
+            ? resetMessageStatusToPending(message)
+            : message;
+
+          return {
+            ...nextMessage,
+            text: trimmedText,
+          };
+        }),
+      }
+      : queue
+  ));
+}
+
+export function retryOperatorQueuedMessageSummary(
+  queues: readonly OperatorMessageQueueSummary[],
+  conversationId: string,
+  messageId: string,
+): OperatorMessageQueueSummary[] {
+  return queues.map((queue) => (
+    queue.conversationId === conversationId
+      ? {
+        ...queue,
+        messages: queue.messages.map((message) => (
+          message.id === messageId
+            ? resetMessageStatusToPending(message)
+            : message
+        )),
+      }
+      : queue
+  ));
+}
+
+export function removeOperatorQueuedMessageSummary(
+  queues: readonly OperatorMessageQueueSummary[],
+  conversationId: string,
+  messageId: string,
+): OperatorMessageQueueSummary[] {
+  return queues
+    .map((queue) => {
+      if (queue.conversationId !== conversationId) {
+        return queue;
+      }
+
+      const messages = queue.messages.filter((message) => message.id !== messageId);
+      const removedMessageCount = queue.messages.length - messages.length;
+
+      return {
+        ...queue,
+        messageCount: Math.max(0, queue.messageCount - removedMessageCount),
+        messages,
+      };
+    })
+    .filter((queue) => queue.messageCount > 0);
 }
 
 export function enqueueQueuedMessage(

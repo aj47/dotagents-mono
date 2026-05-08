@@ -62,6 +62,14 @@ import {
   THEME_PREFERENCE_OPTIONS,
 } from '@dotagents/shared/theme-preference';
 import {
+  clearOperatorMessageQueueSummary,
+  getOperatorMessageQueueTotalMessageCount,
+  removeOperatorQueuedMessageSummary,
+  retryOperatorQueuedMessageSummary,
+  setOperatorMessageQueueSummaryPaused,
+  updateOperatorQueuedMessageSummaryText,
+} from '@dotagents/shared/message-queue-utils';
+import {
   OPERATOR_ACTIONS_PANEL_METADATA,
   OPERATOR_AGENT_SESSIONS_PANEL_METADATA,
   OPERATOR_ALERT_METADATA,
@@ -1065,7 +1073,7 @@ export default function OperationsScreen({ navigation }: any) {
               <Text style={styles.panelTitle}>{OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.panelTitle}</Text>
               <Text style={styles.detailText}>
                 {OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatSummary(
-                  messageQueues.reduce((sum, queue) => sum + queue.messageCount, 0),
+                  getOperatorMessageQueueTotalMessageCount(messageQueues),
                   messageQueues.length,
                 )}
               </Text>
@@ -1138,18 +1146,12 @@ export default function OperationsScreen({ navigation }: any) {
                                         const response = await settingsClient.updateOperatorQueuedMessageText(queue.conversationId, message.id, editedText);
                                         if (response.success) {
                                           setEditingQueuedMessage(null);
-                                          setMessageQueues((current) => current.map((entry) => (
-                                            entry.conversationId === queue.conversationId
-                                              ? {
-                                                ...entry,
-                                                messages: entry.messages.map((queuedMessage) => (
-                                                  queuedMessage.id === message.id
-                                                    ? { ...queuedMessage, text: editedText.trim(), status: queuedMessage.status === 'failed' ? 'pending' : queuedMessage.status }
-                                                    : queuedMessage
-                                                )),
-                                              }
-                                              : entry
-                                          )));
+                                          setMessageQueues((current) => updateOperatorQueuedMessageSummaryText(
+                                            current,
+                                            queue.conversationId,
+                                            message.id,
+                                            editedText,
+                                          ));
                                         }
                                         return response;
                                       })}
@@ -1172,21 +1174,11 @@ export default function OperationsScreen({ navigation }: any) {
                                         onPress={() => void runAction(retryAction, async () => {
                                           const response = await settingsClient.retryOperatorQueuedMessage(queue.conversationId, message.id);
                                           if (response.success) {
-                                            setMessageQueues((current) => current.map((entry) => (
-                                              entry.conversationId === queue.conversationId
-                                                ? {
-                                                  ...entry,
-                                                  messages: entry.messages.map((queuedMessage) => (
-                                                    queuedMessage.id === message.id
-                                                      ? (() => {
-                                                        const { errorMessage: _errorMessage, ...queuedMessageWithoutError } = queuedMessage;
-                                                        return { ...queuedMessageWithoutError, status: 'pending' as const };
-                                                      })()
-                                                      : queuedMessage
-                                                  )),
-                                                }
-                                                : entry
-                                            )));
+                                            setMessageQueues((current) => retryOperatorQueuedMessageSummary(
+                                              current,
+                                              queue.conversationId,
+                                              message.id,
+                                            ));
                                           }
                                           return response;
                                         })}
@@ -1223,17 +1215,11 @@ export default function OperationsScreen({ navigation }: any) {
                                           () => runAction(removeAction, async () => {
                                             const response = await settingsClient.removeOperatorQueuedMessage(queue.conversationId, message.id);
                                             if (response.success) {
-                                              setMessageQueues((current) => current
-                                                .map((entry) => (
-                                                  entry.conversationId === queue.conversationId
-                                                    ? {
-                                                      ...entry,
-                                                      messageCount: Math.max(0, entry.messageCount - 1),
-                                                      messages: entry.messages.filter((queuedMessage) => queuedMessage.id !== message.id),
-                                                    }
-                                                    : entry
-                                                ))
-                                                .filter((entry) => entry.messageCount > 0));
+                                              setMessageQueues((current) => removeOperatorQueuedMessageSummary(
+                                                current,
+                                                queue.conversationId,
+                                                message.id,
+                                              ));
                                             }
                                             return response;
                                           }, false),
@@ -1268,11 +1254,11 @@ export default function OperationsScreen({ navigation }: any) {
                           onPress={() => void runAction(resumeAction, async () => {
                             const response = await settingsClient.resumeOperatorMessageQueue(queue.conversationId);
                             if (response.success) {
-                              setMessageQueues((current) => current.map((entry) => (
-                                entry.conversationId === queue.conversationId
-                                  ? { ...entry, isPaused: false }
-                                  : entry
-                              )));
+                              setMessageQueues((current) => setOperatorMessageQueueSummaryPaused(
+                                current,
+                                queue.conversationId,
+                                false,
+                              ));
                             }
                             return response;
                           })}
@@ -1296,11 +1282,11 @@ export default function OperationsScreen({ navigation }: any) {
                           onPress={() => void runAction(pauseAction, async () => {
                             const response = await settingsClient.pauseOperatorMessageQueue(queue.conversationId);
                             if (response.success) {
-                              setMessageQueues((current) => current.map((entry) => (
-                                entry.conversationId === queue.conversationId
-                                  ? { ...entry, isPaused: true }
-                                  : entry
-                              )));
+                              setMessageQueues((current) => setOperatorMessageQueueSummaryPaused(
+                                current,
+                                queue.conversationId,
+                                true,
+                              ));
                             }
                             return response;
                           }, false)}
@@ -1329,7 +1315,7 @@ export default function OperationsScreen({ navigation }: any) {
                           () => runAction(clearAction, async () => {
                             const response = await settingsClient.clearOperatorMessageQueue(queue.conversationId);
                             if (response.success) {
-                              setMessageQueues((current) => current.filter((entry) => entry.conversationId !== queue.conversationId));
+                              setMessageQueues((current) => clearOperatorMessageQueueSummary(current, queue.conversationId));
                             }
                             return response;
                           }, false),

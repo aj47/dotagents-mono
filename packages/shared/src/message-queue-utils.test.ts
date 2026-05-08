@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   buildQueuedMessage,
   buildOperatorMessageQueuesResponse,
+  clearOperatorMessageQueueSummary,
   clearQueuedMessages,
   enqueueQueuedMessage,
   getAllMessageQueues,
+  getOperatorMessageQueueTotalMessageCount,
   getQueuedMessages,
   hasQueuedMessages,
   markQueuedMessageAddedToHistory,
@@ -13,9 +15,13 @@ import {
   markQueuedMessageProcessed,
   markQueuedMessageProcessing,
   peekNextQueuedMessage,
+  removeOperatorQueuedMessageSummary,
   removeQueuedMessage,
   reorderQueuedMessages,
   resetQueuedMessageToPending,
+  retryOperatorQueuedMessageSummary,
+  setOperatorMessageQueueSummaryPaused,
+  updateOperatorQueuedMessageSummaryText,
   updateQueuedMessageText,
   type MessageQueueMap,
 } from './message-queue-utils';
@@ -65,6 +71,65 @@ describe('message-queue-utils', () => {
     queues = removed.queues;
     expect(removed.ok).toBe(true);
     expect(getQueuedMessages(queues, 'conversation-1').map((message) => message.id)).toEqual(['msg-2']);
+  });
+
+  it('updates operator message queue summaries for optimistic previews', () => {
+    const failedMessage = makeMessage('msg-1', {
+      status: 'failed',
+      errorMessage: 'No session available',
+    });
+    const processingMessage = makeMessage('msg-2', {
+      status: 'processing',
+      text: 'running',
+    });
+    const summaries = [
+      {
+        conversationId: 'conversation-1',
+        isPaused: true,
+        messageCount: 2,
+        messages: [failedMessage, processingMessage],
+      },
+      {
+        conversationId: 'conversation-2',
+        isPaused: false,
+        messageCount: 1,
+        messages: [
+          {
+            ...makeMessage('msg-3'),
+            conversationId: 'conversation-2',
+          },
+        ],
+      },
+    ];
+
+    expect(getOperatorMessageQueueTotalMessageCount(summaries)).toBe(3);
+    expect(setOperatorMessageQueueSummaryPaused(summaries, 'conversation-1', false)[0].isPaused).toBe(false);
+    expect(clearOperatorMessageQueueSummary(summaries, 'conversation-2')).toHaveLength(1);
+
+    const updated = updateOperatorQueuedMessageSummaryText(summaries, 'conversation-1', 'msg-1', ' retry text ');
+    expect(updated[0].messages[0]).toMatchObject({
+      id: 'msg-1',
+      status: 'pending',
+      text: 'retry text',
+    });
+    expect(updated[0].messages[0].errorMessage).toBeUndefined();
+
+    const retried = retryOperatorQueuedMessageSummary(summaries, 'conversation-1', 'msg-1');
+    expect(retried[0].messages[0]).toMatchObject({
+      id: 'msg-1',
+      status: 'pending',
+    });
+    expect(retried[0].messages[0].errorMessage).toBeUndefined();
+
+    const removed = removeOperatorQueuedMessageSummary(summaries, 'conversation-1', 'msg-1');
+    expect(removed[0]).toMatchObject({
+      conversationId: 'conversation-1',
+      messageCount: 1,
+    });
+    expect(removed[0].messages.map((message) => message.id)).toEqual(['msg-2']);
+    expect(removeOperatorQueuedMessageSummary(removed, 'conversation-1', 'msg-2')).toEqual([
+      summaries[1],
+    ]);
   });
 
   it('blocks remove and clear while a message is processing', () => {
