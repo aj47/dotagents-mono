@@ -4,6 +4,7 @@ import {
   createPredefinedPromptId,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  filterPromptLibraryItemsByQuery,
   getPromptLibraryPromptContent,
   getPromptLibraryPromptDescription,
   getPromptLibrarySkillContent,
@@ -61,6 +62,22 @@ describe("predefined prompt helpers", () => {
     expect(getPromptLibraryTaskDescription({ prompt: "  Review open PRs  " })).toBe("Review open PRs")
     expect(getPromptLibraryTaskDescription({ prompt: "" })).toBe(PREDEFINED_PROMPT_TASK_FALLBACK_DESCRIPTION)
     expect(getPromptLibraryTaskDescription({ prompt: "" }, "Run this desktop task now.")).toBe("Run this desktop task now.")
+  })
+
+  it("filters prompt-library items by normalized searchable fields", () => {
+    const items = [
+      { name: "Review", description: "Inspect a diff", prompt: "Check regressions" },
+      { name: "Ship", description: null, prompt: "Prepare release notes" },
+      { name: "Research", description: "Find citations", prompt: "" },
+    ]
+
+    expect(filterPromptLibraryItemsByQuery(items, "", (item) => [item.name, item.description, item.prompt])).toEqual(items)
+    expect(filterPromptLibraryItemsByQuery(items, " RELEASE ", (item) => [item.name, item.description, item.prompt])).toEqual([
+      items[1],
+    ])
+    expect(filterPromptLibraryItemsByQuery(items, "citation", (item) => [item.name, item.description, item.prompt])).toEqual([
+      items[2],
+    ])
   })
 
   it("creates stable prompt ids and trimmed records", () => {

@@ -24,6 +24,12 @@ export type PromptLibraryTaskLike = {
   prompt?: string | null
 }
 
+export type PromptLibrarySearchText = string | null | undefined
+
+export type PromptLibrarySearchTextGetter<TItem> = (
+  item: TItem,
+) => PromptLibrarySearchText | PromptLibrarySearchText[]
+
 export function isSlashCommandPromptName(name: string): boolean {
   return /^\/\S+/.test(name.trim())
 }
@@ -62,6 +68,25 @@ export function getPromptLibraryTaskDescription(
   fallbackDescription: string = PREDEFINED_PROMPT_TASK_FALLBACK_DESCRIPTION,
 ): string {
   return getPromptLibraryTaskContent(task) || fallbackDescription
+}
+
+function promptLibrarySearchTextMatches(value: PromptLibrarySearchText, normalizedQuery: string): boolean {
+  return typeof value === "string" && value.toLowerCase().includes(normalizedQuery)
+}
+
+export function filterPromptLibraryItemsByQuery<TItem>(
+  items: readonly TItem[],
+  searchQuery: string,
+  getSearchText: PromptLibrarySearchTextGetter<TItem>,
+): TItem[] {
+  const normalizedQuery = searchQuery.trim().toLowerCase()
+  if (!normalizedQuery) return [...items]
+
+  return items.filter((item) => {
+    const searchText = getSearchText(item)
+    const values = Array.isArray(searchText) ? searchText : [searchText]
+    return values.some((value) => promptLibrarySearchTextMatches(value, normalizedQuery))
+  })
 }
 
 export function createPredefinedPromptId(now: number, random: () => number = Math.random): string {

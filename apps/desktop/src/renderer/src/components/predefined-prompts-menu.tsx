@@ -29,6 +29,7 @@ import type { LoopConfig } from "@dotagents/shared/types"
 import {
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  filterPromptLibraryItemsByQuery,
   getPromptLibraryPromptContent,
   getPromptLibraryPromptDescription,
   getPromptLibrarySkillContent,
@@ -88,18 +89,19 @@ export function PredefinedPromptsMenu({
   const entryClassName = "flex min-w-0 items-start gap-2.5 py-2 cursor-pointer"
   const entryTextClassName = "min-w-0 flex-1 space-y-0.5"
   const secondaryTextClassName = "line-clamp-2 text-xs leading-4 text-muted-foreground [overflow-wrap:anywhere]"
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
-  const matchesSearch = (...values: Array<string | undefined | null>) => {
-    if (!normalizedSearchQuery) return true
-    return values.some((value) => value?.toLowerCase().includes(normalizedSearchQuery))
-  }
-  const filteredPrompts = prompts.filter((prompt) => matchesSearch(prompt.name, prompt.content))
-  const filteredSkills = availableSkills.filter((skill) => matchesSearch(
+  const filteredPrompts = filterPromptLibraryItemsByQuery(prompts, searchQuery, (prompt) => [
+    prompt.name,
+    prompt.content,
+  ])
+  const filteredSkills = filterPromptLibraryItemsByQuery(availableSkills, searchQuery, (skill) => [
     skill.name,
     skill.description,
     skill.instructions,
-  ))
-  const filteredTasks = availableTasks.filter((task) => matchesSearch(task.name, task.prompt))
+  ])
+  const filteredTasks = filterPromptLibraryItemsByQuery(availableTasks, searchQuery, (task) => [
+    task.name,
+    task.prompt,
+  ])
 
   const handleSelectPrompt = (prompt: PredefinedPrompt) => {
     onSelectPrompt(getPromptLibraryPromptContent(prompt))
