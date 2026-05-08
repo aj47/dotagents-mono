@@ -7,6 +7,7 @@ import type {
   OperatorRuntimeStatus,
   OperatorWhatsAppIntegrationSummary,
 } from "./api-types"
+import { formatQueuedMessageSummary, type QueuedMessage } from "./message-queue-utils"
 
 export const OPERATOR_EMPTY_VALUE_LABEL = "—"
 
@@ -544,7 +545,7 @@ export type OperatorMessageQueuesPanelMetadata = {
   panelTitle: string
   formatSummary: (queuedMessageCount: number, conversationCount: number) => string
   formatQueueSummary: (conversationId: string, messageCount: number, isPaused: boolean) => string
-  formatMessageSummary: (status: string, text: string) => string
+  formatMessageSummary: (message: Pick<QueuedMessage, "status" | "text">) => string
   formatMessageInputAccessibilityLabel: (messageId: string) => string
   formatCancelEditAccessibilityLabel: (messageId: string) => string
   cancelEditButtonLabel: string
@@ -582,7 +583,7 @@ export const OPERATOR_MESSAGE_QUEUES_PANEL_METADATA: OperatorMessageQueuesPanelM
     `${queuedMessageCount} queued messages across ${conversationCount} conversations`,
   formatQueueSummary: (conversationId, messageCount, isPaused) =>
     `${conversationId}: ${messageCount} queued${isPaused ? " (paused)" : ""}`,
-  formatMessageSummary: (status, text) => `${status}: ${text}`,
+  formatMessageSummary: formatQueuedMessageSummary,
   formatMessageInputAccessibilityLabel: (messageId) => `Queued message ${messageId}`,
   formatCancelEditAccessibilityLabel: (messageId) => `Cancel editing queued message ${messageId}`,
   cancelEditButtonLabel: "Cancel",

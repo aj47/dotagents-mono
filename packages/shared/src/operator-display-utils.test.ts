@@ -515,7 +515,9 @@ describe("operator display utils", () => {
     expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatQueueSummary("conversation-1", 3, true)).toBe(
       "conversation-1: 3 queued (paused)",
     )
-    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatMessageSummary("pending", "Ship it")).toBe("pending: Ship it")
+    expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatMessageSummary({ status: "pending", text: "Ship it" })).toBe(
+      "Queued: Ship it",
+    )
     expect(OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatMessageInputAccessibilityLabel("message-1")).toBe(
       "Queued message message-1",
     )

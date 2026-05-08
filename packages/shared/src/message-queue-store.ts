@@ -5,6 +5,7 @@ import {
   getAllMessageQueues,
   getQueuedMessages,
   hasQueuedMessages,
+  isQueuedMessageFailed,
   markQueuedMessageAddedToHistory,
   markQueuedMessageFailed,
   markQueuedMessageProcessed,
@@ -341,7 +342,7 @@ export function updateQueuedMessageTextAction(
   options: MessageQueueRuntimeActionOptions,
 ): QueuedMessageActionResult {
   const wasFailed = options.service.getQueue(conversationId)
-    .find((message) => message.id === messageId)?.status === 'failed';
+    .some((message) => message.id === messageId && isQueuedMessageFailed(message));
   const success = options.service.updateMessageText(conversationId, messageId, text);
   return buildQueuedMessageActionResult(
     conversationId,

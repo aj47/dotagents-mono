@@ -8,12 +8,16 @@ import {
   enqueueQueuedMessage,
   canEditQueuedMessage,
   canMutateQueuedMessage,
+  formatQueuedMessageSummary,
   getAllMessageQueues,
   getOperatorMessageQueueTotalMessageCount,
   getQueuedMessages,
+  getQueuedMessageStatusLabel,
   hasProcessingQueuedMessage,
   hasQueuedMessages,
+  isQueuedMessageCancelled,
   isQueuedMessageFailed,
+  isQueuedMessagePending,
   isQueuedMessageProcessing,
   markQueuedMessageAddedToHistory,
   markQueuedMessageFailed,
@@ -161,12 +165,21 @@ describe('message-queue-utils', () => {
   it('reports queued message edit and retry eligibility', () => {
     const pendingMessage = makeMessage('msg-1');
     const failedMessage = makeMessage('msg-2', { status: 'failed', errorMessage: 'timeout' });
+    const processingMessage = makeMessage('msg-4', { status: 'processing' });
+    const cancelledMessage = makeMessage('msg-5', { status: 'cancelled' });
     const addedToHistoryMessage = makeMessage('msg-3', { addedToHistory: true });
 
+    expect(isQueuedMessagePending(pendingMessage)).toBe(true);
     expect(isQueuedMessageFailed(failedMessage)).toBe(true);
+    expect(isQueuedMessageCancelled(cancelledMessage)).toBe(true);
     expect(canMutateQueuedMessage(pendingMessage)).toBe(true);
     expect(canEditQueuedMessage(pendingMessage)).toBe(true);
     expect(canEditQueuedMessage(addedToHistoryMessage)).toBe(false);
+    expect(getQueuedMessageStatusLabel(pendingMessage)).toBe('Queued');
+    expect(getQueuedMessageStatusLabel(processingMessage)).toBe('Processing...');
+    expect(getQueuedMessageStatusLabel(failedMessage)).toBe('Failed');
+    expect(getQueuedMessageStatusLabel(cancelledMessage)).toBe('Cancelled');
+    expect(formatQueuedMessageSummary(failedMessage)).toBe('Failed: msg-2');
   });
 
   it('updates failed message text by resetting it to pending', () => {

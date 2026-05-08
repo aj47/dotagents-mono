@@ -77,12 +77,20 @@ export function hasQueuedMessages(queues: MessageQueueMap, conversationId: strin
   return (queues.get(conversationId)?.length ?? 0) > 0;
 }
 
+export function isQueuedMessagePending(message: Pick<QueuedMessage, 'status'>): boolean {
+  return message.status === 'pending';
+}
+
 export function isQueuedMessageProcessing(message: Pick<QueuedMessage, 'status'>): boolean {
   return message.status === 'processing';
 }
 
 export function isQueuedMessageFailed(message: Pick<QueuedMessage, 'status'>): boolean {
   return message.status === 'failed';
+}
+
+export function isQueuedMessageCancelled(message: Pick<QueuedMessage, 'status'>): boolean {
+  return message.status === 'cancelled';
 }
 
 export function canMutateQueuedMessage(message: Pick<QueuedMessage, 'status'>): boolean {
@@ -95,6 +103,17 @@ export function canEditQueuedMessage(message: Pick<QueuedMessage, 'status' | 'ad
 
 export function hasProcessingQueuedMessage(messages: readonly Pick<QueuedMessage, 'status'>[]): boolean {
   return messages.some(isQueuedMessageProcessing);
+}
+
+export function getQueuedMessageStatusLabel(message: Pick<QueuedMessage, 'status'>): string {
+  if (isQueuedMessageFailed(message)) return 'Failed';
+  if (isQueuedMessageProcessing(message)) return 'Processing...';
+  if (isQueuedMessageCancelled(message)) return 'Cancelled';
+  return 'Queued';
+}
+
+export function formatQueuedMessageSummary(message: Pick<QueuedMessage, 'status' | 'text'>): string {
+  return `${getQueuedMessageStatusLabel(message)}: ${message.text}`;
 }
 
 function setConversationQueue(
@@ -194,7 +213,7 @@ export function updateOperatorQueuedMessageSummaryText(
             return message;
           }
 
-          const nextMessage = message.status === 'failed'
+          const nextMessage = isQueuedMessageFailed(message)
             ? resetMessageStatusToPending(message)
             : message;
 
@@ -312,7 +331,7 @@ export function updateQueuedMessageText(
     return { ok: false, queues, message: found.message, index: found.index, reason: 'added_to_history' };
   }
 
-  const resetFailedToPending = found.message.status === 'failed';
+  const resetFailedToPending = isQueuedMessageFailed(found.message);
   const updatedMessage = resetFailedToPending
     ? { ...resetMessageStatusToPending(found.message), text }
     : { ...found.message, text };
@@ -328,7 +347,7 @@ export function updateQueuedMessageText(
 
 export function peekNextQueuedMessage(queues: MessageQueueMap, conversationId: string): QueuedMessage | null {
   const firstMessage = queues.get(conversationId)?.[0];
-  return firstMessage?.status === 'pending' ? firstMessage : null;
+  return firstMessage && isQueuedMessagePending(firstMessage) ? firstMessage : null;
 }
 
 export function markQueuedMessageProcessing(
@@ -406,7 +425,7 @@ export function resetQueuedMessageToPending(
 ): MessageQueueMutationResult {
   const found = findQueuedMessage(queues, conversationId, messageId);
   if (!found) return { ok: false, queues, reason: 'not_found' };
-  if (found.message.status !== 'failed') {
+  if (!isQueuedMessageFailed(found.message)) {
     return { ok: false, queues, message: found.message, index: found.index, reason: 'not_failed' };
   }
 

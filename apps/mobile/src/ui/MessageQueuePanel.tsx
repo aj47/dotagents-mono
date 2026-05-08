@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   canEditQueuedMessage,
   canMutateQueuedMessage,
+  getQueuedMessageStatusLabel,
   hasProcessingQueuedMessage,
   isQueuedMessageFailed,
   isQueuedMessageProcessing,
@@ -54,6 +55,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const isProcessing = isQueuedMessageProcessing(message);
   const canMutateMessage = canMutateQueuedMessage(message);
   const canEditMessage = canEditQueuedMessage(message);
+  const statusLabel = getQueuedMessageStatusLabel(message);
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -270,7 +272,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
           <View style={styles.metaRow}>
             <Text style={styles.metaText}>
               {formatTime(message.createdAt)} •{' '}
-              {isFailed ? 'Failed' : isProcessing ? 'Processing...' : 'Queued'}
+              {statusLabel}
             </Text>
             {isLongMessage && (
               <TouchableOpacity

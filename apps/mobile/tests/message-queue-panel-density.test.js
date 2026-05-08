@@ -38,9 +38,11 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.match(source, /isQueuedMessageFailed\(message\)/);
   assert.match(source, /canMutateQueuedMessage\(message\)/);
   assert.match(source, /canEditQueuedMessage\(message\)/);
+  assert.match(source, /getQueuedMessageStatusLabel\(message\)/);
   assert.match(source, /hasProcessingQueuedMessage\(messages\)/);
 
   assert.doesNotMatch(source, /message\.status === ['"]processing['"]/);
   assert.doesNotMatch(source, /message\.status === ['"]failed['"]/);
+  assert.doesNotMatch(source, /isFailed \? 'Failed' : isProcessing \? 'Processing\.\.\.' : 'Queued'/);
   assert.doesNotMatch(source, /messages\.some\(\(m\) => m\.status === ['"]processing['"]\)/);
 });
