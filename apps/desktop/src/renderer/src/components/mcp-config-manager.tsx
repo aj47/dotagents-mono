@@ -79,10 +79,15 @@ import type {
 import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@dotagents/shared/mcp-api"
 import {
   buildMcpServerConfigFromDraft,
+  countEnabledMcpTools,
   formatMcpKeyValueDraft,
   mergeImportedMcpServers,
   removeMcpServerConfig,
   renameMcpServerConfig,
+  restoreMcpToolEnabledStatesInList,
+  setMcpSourceToolsEnabledInList,
+  setMcpToolEnabledInList,
+  setMcpToolsEnabledByNameInList,
   upsertMcpServerConfig,
 } from "@dotagents/shared/mcp-utils"
 import { desktopMcpOAuthClient } from "@renderer/lib/desktop-mcp-oauth-client"
@@ -1119,9 +1124,7 @@ export function MCPConfigManager({
     try {
       // Update local state immediately for better UX
       setTools((prevTools) =>
-        prevTools.map((tool) =>
-          tool.name === toolName ? { ...tool, enabled } : tool,
-        ),
+        setMcpToolEnabledInList(prevTools, toolName, enabled),
       )
 
       // Call the backend API
@@ -1132,9 +1135,7 @@ export function MCPConfigManager({
       } else {
         // Revert local state if backend call failed
         setTools((prevTools) =>
-          prevTools.map((tool) =>
-            tool.name === toolName ? { ...tool, enabled: !enabled } : tool,
-          ),
+          setMcpToolEnabledInList(prevTools, toolName, !enabled),
         )
         toast.error(
           `Failed to ${enabled ? "enable" : "disable"} tool ${toolName}`,
@@ -1143,9 +1144,7 @@ export function MCPConfigManager({
     } catch (error: any) {
       // Revert local state on error
       setTools((prevTools) =>
-        prevTools.map((tool) =>
-          tool.name === toolName ? { ...tool, enabled: !enabled } : tool,
-        ),
+        setMcpToolEnabledInList(prevTools, toolName, !enabled),
       )
       toast.error(`Error toggling tool: ${error.message}`)
     }
@@ -1155,14 +1154,12 @@ export function MCPConfigManager({
     const serverTools = tools.filter((tool) => tool.sourceName === serverName)
     if (serverTools.length === 0) return
     const sourceLabel = serverTools[0]?.sourceLabel || serverName
+    const originalStates = new Map(
+      serverTools.map((tool) => [tool.name, tool.enabled]),
+    )
 
     // Update local state immediately for better UX
-    const updatedTools = tools.map((tool) => {
-      if (tool.sourceName === serverName) {
-        return { ...tool, enabled: enable }
-      }
-      return tool
-    })
+    const updatedTools = setMcpSourceToolsEnabledInList(tools, serverName, enable)
     setTools(updatedTools)
 
     // Track promises for all backend calls
@@ -1191,12 +1188,13 @@ export function MCPConfigManager({
             return r.status === "rejected" || !(r.value as any)?.success
           },
         )
-        const revertedTools = tools.map((tool) => {
-          if (tool.sourceName === serverName && failedTools.includes(tool)) {
-            return { ...tool, enabled: !enable }
-          }
-          return tool
-        })
+        const failedOriginalStates = new Map(
+          failedTools.map((tool) => [
+            tool.name,
+            originalStates.get(tool.name) ?? tool.enabled,
+          ]),
+        )
+        const revertedTools = restoreMcpToolEnabledStatesInList(updatedTools, failedOriginalStates)
         setTools(revertedTools)
 
         toast.warning(
@@ -1205,12 +1203,7 @@ export function MCPConfigManager({
       }
     } catch (error: any) {
       // Revert all tools on error
-      const revertedTools = tools.map((tool) => {
-        if (tool.sourceName === serverName) {
-          return { ...tool, enabled: !enable }
-        }
-        return tool
-      })
+      const revertedTools = restoreMcpToolEnabledStatesInList(updatedTools, originalStates)
       setTools(revertedTools)
       toast.error(`Error toggling tools for ${sourceLabel}: ${error.message}`)
     }
@@ -1560,7 +1553,7 @@ export function MCPConfigManager({
   // Calculate total tools count (only from enabled servers)
   const toolsFromEnabledServers = tools.filter((t) => t.serverEnabled)
   const totalToolsCount = toolsFromEnabledServers.length
-  const enabledToolsCount = toolsFromEnabledServers.filter((t) => t.enabled).length
+  const enabledToolsCount = countEnabledMcpTools(toolsFromEnabledServers)
   const disabledToolsCount = totalToolsCount - enabledToolsCount
 
   // State for collapsible sections
@@ -1593,12 +1586,11 @@ export function MCPConfigManager({
     })
 
     // Update local state immediately for better UX
-    const updatedTools = tools.map((tool) => {
-      if (filteredTools.some(ft => ft.name === tool.name)) {
-        return { ...tool, enabled: enable }
-      }
-      return tool
-    })
+    const updatedTools = setMcpToolsEnabledByNameInList(
+      tools,
+      filteredTools.map((tool) => tool.name),
+      enable,
+    )
     setTools(updatedTools)
 
     // Track promises for all backend calls
@@ -1624,12 +1616,13 @@ export function MCPConfigManager({
             (results[index].status === "fulfilled" &&
               (results[index] as PromiseFulfilledResult<any>).value.success !== true),
         )
-        const revertedTools = updatedTools.map((tool) => {
-          if (failedTools.some(ft => ft.name === tool.name)) {
-            return { ...tool, enabled: originalStates.get(tool.name) ?? tool.enabled }
-          }
-          return tool
-        })
+        const failedOriginalStates = new Map(
+          failedTools.map((tool) => [
+            tool.name,
+            originalStates.get(tool.name) ?? tool.enabled,
+          ]),
+        )
+        const revertedTools = restoreMcpToolEnabledStatesInList(updatedTools, failedOriginalStates)
         setTools(revertedTools)
 
         toast.warning(
@@ -1638,12 +1631,7 @@ export function MCPConfigManager({
       }
     } catch (error: any) {
       // Revert all tools on error
-      const revertedTools = updatedTools.map((tool) => {
-        if (filteredTools.some(ft => ft.name === tool.name)) {
-          return { ...tool, enabled: originalStates.get(tool.name) ?? tool.enabled }
-        }
-        return tool
-      })
+      const revertedTools = restoreMcpToolEnabledStatesInList(updatedTools, originalStates)
       setTools(revertedTools)
       toast.error(`Error toggling tools: ${error.message}`)
     }
@@ -1825,7 +1813,7 @@ export function MCPConfigManager({
                           : <Server className="h-4 w-4 text-muted-foreground" />}
                         <span className="text-sm font-medium">{sourceLabel}</span>
                         <Badge variant="secondary" className="text-xs">
-                          {serverTools.filter(t => t.enabled).length}/{serverTools.length} enabled
+                          {countEnabledMcpTools(serverTools)}/{serverTools.length} enabled
                         </Badge>
 
                       </div>
@@ -1988,7 +1976,7 @@ export function MCPConfigManager({
               {Object.entries(allServers).map(([name, serverConfig]) => {
                 const status = serverStatus[name]
                 const serverTools = toolsByServer[name] || []
-                const enabledToolCount = serverTools.filter((t) => t.enabled).length
+                const enabledToolCount = countEnabledMcpTools(serverTools)
 
                 return (
                   <Card key={name} className="overflow-hidden">

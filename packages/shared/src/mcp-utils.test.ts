@@ -12,8 +12,10 @@ import {
   parseMcpKeyValueDraft,
   removeMcpServerConfig,
   renameMcpServerConfig,
+  restoreMcpToolEnabledStatesInList,
   setMcpSourceToolsEnabledInList,
   setMcpToolEnabledInList,
+  setMcpToolsEnabledByNameInList,
   upsertMcpServerConfig,
   type MCPConfig,
   type MCPConfigLike,
@@ -176,6 +178,31 @@ describe('MCP tool list helpers', () => {
       ['search', false],
     ])
     expect(countEnabledMcpTools(updated)).toBe(0)
+  })
+
+  it('updates a selected set of tools by name', () => {
+    const updated = setMcpToolsEnabledByNameInList(tools, ['write_file', 'search'], true)
+
+    expect(updated.map((tool) => [tool.name, tool.enabled])).toEqual([
+      ['read_file', true],
+      ['write_file', true],
+      ['search', true],
+    ])
+    expect(countEnabledMcpTools(updated)).toBe(3)
+  })
+
+  it('restores selected tool enabled states from an original-state map', () => {
+    const updated = setMcpToolsEnabledByNameInList(tools, ['read_file', 'write_file'], false)
+    const restored = restoreMcpToolEnabledStatesInList(updated, new Map([
+      ['read_file', true],
+      ['write_file', false],
+    ]))
+
+    expect(restored.map((tool) => [tool.name, tool.enabled])).toEqual([
+      ['read_file', true],
+      ['write_file', false],
+      ['search', false],
+    ])
   })
 })
 

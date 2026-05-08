@@ -153,6 +153,28 @@ export function setMcpToolEnabledInList<TTool extends McpToolEnabledLike>(
   ))
 }
 
+export function setMcpToolsEnabledByNameInList<TTool extends McpToolEnabledLike>(
+  tools: readonly TTool[],
+  toolNames: readonly string[],
+  enabled: boolean,
+): TTool[] {
+  const toolNameSet = new Set(toolNames)
+  return tools.map((tool) => (
+    toolNameSet.has(tool.name) ? { ...tool, enabled } : tool
+  ))
+}
+
+export function restoreMcpToolEnabledStatesInList<TTool extends McpToolEnabledLike>(
+  tools: readonly TTool[],
+  enabledByToolName: ReadonlyMap<string, boolean>,
+): TTool[] {
+  return tools.map((tool) => (
+    enabledByToolName.has(tool.name)
+      ? { ...tool, enabled: enabledByToolName.get(tool.name) ?? tool.enabled }
+      : tool
+  ))
+}
+
 export function setMcpSourceToolsEnabledInList<TTool extends McpSourceToolEnabledLike>(
   tools: readonly TTool[],
   sourceName: string,

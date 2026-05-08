@@ -36,6 +36,7 @@ import { desktopMcpToolsClient } from "@renderer/lib/desktop-mcp-tools-client"
 import { toast } from "sonner"
 import {
   countEnabledMcpTools,
+  restoreMcpToolEnabledStatesInList,
   setMcpSourceToolsEnabledInList,
   setMcpToolEnabledInList,
   type DetailedToolInfo,
@@ -158,6 +159,9 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
     const sourceTools = tools.filter((tool) => tool.sourceName === sourceName)
     if (sourceTools.length === 0) return
     const sourceLabel = sourceTools[0]?.sourceLabel || sourceName
+    const originalStates = new Map(
+      sourceTools.map((tool) => [tool.name, tool.enabled]),
+    )
 
     // Update local state immediately for better UX
     const updatedTools = setMcpSourceToolsEnabledInList(tools, sourceName, enable)
@@ -189,12 +193,13 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
             return r.status === "rejected" || !(r.value as any)?.success
           },
         )
-        const revertedTools = tools.map((tool) => {
-          if (tool.sourceName === sourceName && failedTools.includes(tool)) {
-            return { ...tool, enabled: !enable }
-          }
-          return tool
-        })
+        const failedOriginalStates = new Map(
+          failedTools.map((tool) => [
+            tool.name,
+            originalStates.get(tool.name) ?? tool.enabled,
+          ]),
+        )
+        const revertedTools = restoreMcpToolEnabledStatesInList(updatedTools, failedOriginalStates)
         setTools(revertedTools)
 
         toast.warning(
@@ -203,7 +208,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
       }
     } catch (error) {
       // Revert all tools on error
-      const revertedTools = setMcpSourceToolsEnabledInList(tools, sourceName, !enable)
+      const revertedTools = restoreMcpToolEnabledStatesInList(updatedTools, originalStates)
       setTools(revertedTools)
       toast.error(`Error toggling tools for ${sourceLabel}: ${error.message}`)
     }
@@ -303,7 +308,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
                         : <Server className="h-4 w-4 shrink-0 text-muted-foreground" />}
                       <CardTitle className="truncate text-base">{sourceTools[0]?.sourceLabel || sourceName}</CardTitle>
                       <Badge variant="secondary" className="shrink-0">
-                        {sourceTools.filter((t) => t.enabled).length}/
+                        {countEnabledMcpTools(sourceTools)}/
                         {sourceTools.length} enabled
                       </Badge>
                     </div>
