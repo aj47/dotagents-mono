@@ -7,6 +7,7 @@ import {
 } from '@dotagents/shared/message-display-utils'
 import { logUI } from '@renderer/lib/debug'
 import { getLatestAgentResponseTimestamp } from '@dotagents/shared/sidebar-sessions'
+import { setSetValuePresence, toggleSetValue } from '@dotagents/shared/collection-state'
 
 const getProgressActivityTimestamp = (progress: AgentProgressUpdate): number => {
   const historyTs =
@@ -644,7 +645,6 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   updateMessageQueue: (conversationId: string, queue: QueuedMessage[], isPaused: boolean) => {
     set((state) => {
       const newQueueMap = new Map(state.messageQueuesByConversation)
-      const newPausedSet = new Set(state.pausedQueueConversations)
 
       if (queue.length === 0) {
         newQueueMap.delete(conversationId)
@@ -652,15 +652,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         newQueueMap.set(conversationId, queue)
       }
 
-      if (isPaused) {
-        newPausedSet.add(conversationId)
-      } else {
-        newPausedSet.delete(conversationId)
-      }
-
       return {
         messageQueuesByConversation: newQueueMap,
-        pausedQueueConversations: newPausedSet,
+        pausedQueueConversations: setSetValuePresence(state.pausedQueueConversations, conversationId, isPaused),
       }
     })
   },
@@ -692,14 +686,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   togglePinSession: (sessionId: string) => {
     set((state) => {
-      const newPinned = new Set(state.pinnedSessionIds)
-      if (newPinned.has(sessionId)) {
-        newPinned.delete(sessionId)
-      } else {
-        newPinned.add(sessionId)
-      }
       return {
-        pinnedSessionIds: newPinned,
+        pinnedSessionIds: toggleSetValue(state.pinnedSessionIds, sessionId),
         pinnedSessionIdsRevision: state.pinnedSessionIdsRevision + 1,
       }
     })
@@ -715,14 +703,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   toggleArchiveSession: (sessionId: string) => {
     set((state) => {
-      const newArchived = new Set(state.archivedSessionIds)
-      if (newArchived.has(sessionId)) {
-        newArchived.delete(sessionId)
-      } else {
-        newArchived.add(sessionId)
-      }
       return {
-        archivedSessionIds: newArchived,
+        archivedSessionIds: toggleSetValue(state.archivedSessionIds, sessionId),
         archivedSessionIdsRevision: state.archivedSessionIdsRevision + 1,
       }
     })

@@ -11,6 +11,15 @@ export function toggleSetValue<TValue>(
   return next
 }
 
+export function addSetValue<TValue>(
+  values: ReadonlySet<TValue>,
+  value: TValue,
+): Set<TValue> {
+  const next = new Set(values)
+  next.add(value)
+  return next
+}
+
 export function addSetValues<TValue>(
   values: ReadonlySet<TValue>,
   valuesToAdd: Iterable<TValue>,
@@ -40,6 +49,14 @@ export function removeSetValues<TValue>(
     next.delete(value)
   }
   return next
+}
+
+export function setSetValuePresence<TValue>(
+  values: ReadonlySet<TValue>,
+  value: TValue,
+  isPresent: boolean,
+): Set<TValue> {
+  return isPresent ? addSetValue(values, value) : removeSetValue(values, value)
 }
 
 export function getVisibleSelectedValues<TValue>(

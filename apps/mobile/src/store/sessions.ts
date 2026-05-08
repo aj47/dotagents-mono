@@ -19,6 +19,11 @@ import {
   syncConversations,
   type SyncResult,
 } from '@dotagents/shared/conversation-sync';
+import {
+  addSetValue,
+  removeSetValue,
+  setSetValuePresence,
+} from '@dotagents/shared/collection-state';
 
 const SESSIONS_KEY = 'chat_sessions_v1';
 const CURRENT_SESSION_KEY = 'current_session_id_v1';
@@ -190,7 +195,7 @@ export function useSessions(): SessionStore {
     pendingServerConversationSessionIdsRef.current.delete(id);
 
     // Mark session as being deleted to prevent race conditions
-    setDeletingSessionIds(prev => new Set(prev).add(id));
+    setDeletingSessionIds(prev => addSetValue(prev, id));
 
     // Check if we're deleting the current session for immediate UI update
     const isCurrentSession = currentSessionIdRef.current === id;
@@ -234,11 +239,7 @@ export function useSessions(): SessionStore {
       });
     } finally {
       // Remove from deleting set after save completes
-      setDeletingSessionIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      setDeletingSessionIds(prev => removeSetValue(prev, id));
     }
   }, [queueSave]);
 
@@ -348,12 +349,12 @@ export function useSessions(): SessionStore {
             const serverPinnedIds = new Set<string>(
               Array.isArray(serverSettings.pinnedSessionIds) ? serverSettings.pinnedSessionIds : []
             );
-            if (toggledSession.isPinned) {
-              serverPinnedIds.add(toggledSession.serverConversationId);
-            } else {
-              serverPinnedIds.delete(toggledSession.serverConversationId);
-            }
-            await client.updateSettings({ pinnedSessionIds: [...serverPinnedIds] });
+            const nextServerPinnedIds = setSetValuePresence(
+              serverPinnedIds,
+              toggledSession.serverConversationId,
+              Boolean(toggledSession.isPinned),
+            );
+            await client.updateSettings({ pinnedSessionIds: [...nextServerPinnedIds] });
           }
         }
       } catch {
@@ -394,12 +395,12 @@ export function useSessions(): SessionStore {
             const serverArchivedIds = new Set<string>(
               Array.isArray(serverSettings.archivedSessionIds) ? serverSettings.archivedSessionIds : []
             );
-            if (toggledSession.isArchived) {
-              serverArchivedIds.add(toggledSession.serverConversationId);
-            } else {
-              serverArchivedIds.delete(toggledSession.serverConversationId);
-            }
-            await client.updateSettings({ archivedSessionIds: [...serverArchivedIds] });
+            const nextServerArchivedIds = setSetValuePresence(
+              serverArchivedIds,
+              toggledSession.serverConversationId,
+              Boolean(toggledSession.isArchived),
+            );
+            await client.updateSettings({ archivedSessionIds: [...nextServerArchivedIds] });
           }
         }
       } catch {
