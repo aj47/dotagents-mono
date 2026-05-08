@@ -5,7 +5,10 @@ import {
   createReadableKnowledgeNoteId,
   matchesKnowledgeNoteDateFilter,
   normalizeKnowledgeNoteForStorage,
+  removeKnowledgeNoteFromList,
+  removeKnowledgeNotesFromList,
   scoreKnowledgeNoteSearchEntry,
+  setKnowledgeNoteContextInList,
   slugifyKnowledgeNoteId,
   sortKnowledgeNotes,
 } from './knowledge-note-domain';
@@ -67,6 +70,23 @@ describe('knowledge note domain helpers', () => {
     expect(matchesKnowledgeNoteDateFilter(notes[1], '7d', now)).toBe(false);
     expect(sortKnowledgeNotes(notes, 'title-asc').map((note) => note.id)).toEqual(['alpha', 'beta', 'gamma']);
     expect(sortKnowledgeNotes(notes, 'created-desc').map((note) => note.id)).toEqual(['beta', 'alpha', 'gamma']);
+  });
+
+  it('updates note list state without app-specific mutation logic', () => {
+    const notes = [
+      { id: 'alpha', title: 'Alpha', context: 'search-only', body: 'A', tags: [], updatedAt: 1 },
+      { id: 'beta', title: 'Beta', context: 'auto', body: 'B', tags: [], updatedAt: 2 },
+      { id: 'gamma', title: 'Gamma', context: 'search-only', body: 'G', tags: [], updatedAt: 3 },
+    ] satisfies KnowledgeNote[];
+
+    expect(removeKnowledgeNoteFromList(notes, 'beta').map((note) => note.id)).toEqual(['alpha', 'gamma']);
+    expect(removeKnowledgeNotesFromList(notes, ['alpha', 'gamma']).map((note) => note.id)).toEqual(['beta']);
+    expect(setKnowledgeNoteContextInList(notes, 'alpha', 'auto', 42)).toEqual([
+      { id: 'alpha', title: 'Alpha', context: 'auto', body: 'A', tags: [], updatedAt: 42 },
+      { id: 'beta', title: 'Beta', context: 'auto', body: 'B', tags: [], updatedAt: 2 },
+      { id: 'gamma', title: 'Gamma', context: 'search-only', body: 'G', tags: [], updatedAt: 3 },
+    ]);
+    expect(notes[0].context).toBe('search-only');
   });
 
   it('shares fuzzy note search scoring and relevance ranking', () => {

@@ -58,6 +58,11 @@ import {
   KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS,
   KNOWLEDGE_NOTE_SORT_OPTIONS,
 } from '@dotagents/shared/knowledge-note-grouping';
+import {
+  removeKnowledgeNoteFromList,
+  removeKnowledgeNotesFromList,
+  setKnowledgeNoteContextInList,
+} from '@dotagents/shared/knowledge-note-domain';
 import { sortAgentProfilesWithDefaultFirst } from '@dotagents/shared/agent-selector-options';
 import { getAcpxMainAgentOptions } from '@dotagents/shared/main-agent-selection';
 import {
@@ -1637,8 +1642,8 @@ export default function SettingsScreen({ navigation }: any) {
     confirmDestructiveAction('Delete Note', 'Are you sure you want to delete this note?', async () => {
       try {
         await settingsClient.deleteKnowledgeNote(noteId);
-        setKnowledgeNotes(prev => prev.filter(note => note.id !== noteId));
-        setKnowledgeNoteSearchResults(prev => prev.filter(note => note.id !== noteId));
+        setKnowledgeNotes(prev => removeKnowledgeNoteFromList(prev, noteId));
+        setKnowledgeNoteSearchResults(prev => removeKnowledgeNoteFromList(prev, noteId));
         setSelectedKnowledgeNoteIds(prev => {
           const next = new Set(prev);
           next.delete(noteId);
@@ -1660,9 +1665,8 @@ export default function SettingsScreen({ navigation }: any) {
       async () => {
         try {
           await settingsClient.deleteKnowledgeNotes(ids);
-          const deletedIds = new Set(ids);
-          setKnowledgeNotes(prev => prev.filter(note => !deletedIds.has(note.id)));
-          setKnowledgeNoteSearchResults(prev => prev.filter(note => !deletedIds.has(note.id)));
+          setKnowledgeNotes(prev => removeKnowledgeNotesFromList(prev, ids));
+          setKnowledgeNoteSearchResults(prev => removeKnowledgeNotesFromList(prev, ids));
           setSelectedKnowledgeNoteIds(prev => {
             const next = new Set(prev);
             ids.forEach((id) => next.delete(id));
@@ -1699,20 +1703,9 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient || note.context === 'auto') return;
     try {
       await settingsClient.updateKnowledgeNote(note.id, { context: 'auto' });
-      setKnowledgeNotes(prev =>
-        prev.map(existing =>
-          existing.id === note.id
-            ? { ...existing, context: 'auto', updatedAt: Date.now() }
-            : existing
-        )
-      );
-      setKnowledgeNoteSearchResults(prev =>
-        prev.map(existing =>
-          existing.id === note.id
-            ? { ...existing, context: 'auto', updatedAt: Date.now() }
-            : existing
-        )
-      );
+      const promotedAt = Date.now();
+      setKnowledgeNotes(prev => setKnowledgeNoteContextInList(prev, note.id, 'auto', promotedAt));
+      setKnowledgeNoteSearchResults(prev => setKnowledgeNoteContextInList(prev, note.id, 'auto', promotedAt));
     } catch (error: any) {
       console.error('[Settings] Failed to promote knowledge note to auto context:', error);
       Alert.alert('Error', 'Failed to promote note to auto context');

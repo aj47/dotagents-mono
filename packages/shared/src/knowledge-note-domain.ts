@@ -43,6 +43,15 @@ export type KnowledgeNoteSearchIndexEntry = {
   allText: string;
 };
 
+export type KnowledgeNoteIdLike = {
+  id: string;
+};
+
+export type KnowledgeNoteContextUpdateLike = KnowledgeNoteIdLike & {
+  context: KnowledgeNoteContext;
+  updatedAt: number;
+};
+
 const VALID_CONTEXT_VALUES = new Set<KnowledgeNoteContext>(['auto', 'search-only']);
 const VALID_ENTRY_TYPE_VALUES = new Set<KnowledgeNoteEntryType>(['note', 'entry', 'overview']);
 const LEGACY_NOTE_META_PREFIX = '<!-- dotagents-memory-meta:';
@@ -207,6 +216,32 @@ export function sortKnowledgeNotes(
     if (effectiveSort === 'title-desc') return b.title.localeCompare(a.title);
     return getKnowledgeNoteTimestamp(b, 'updated') - getKnowledgeNoteTimestamp(a, 'updated');
   });
+}
+
+export function removeKnowledgeNoteFromList<TNote extends KnowledgeNoteIdLike>(
+  notes: readonly TNote[],
+  noteId: string,
+): TNote[] {
+  return notes.filter((note) => note.id !== noteId);
+}
+
+export function removeKnowledgeNotesFromList<TNote extends KnowledgeNoteIdLike>(
+  notes: readonly TNote[],
+  noteIds: Iterable<string>,
+): TNote[] {
+  const ids = new Set(noteIds);
+  return notes.filter((note) => !ids.has(note.id));
+}
+
+export function setKnowledgeNoteContextInList<TNote extends KnowledgeNoteContextUpdateLike>(
+  notes: readonly TNote[],
+  noteId: string,
+  context: KnowledgeNoteContext,
+  updatedAt: number,
+): TNote[] {
+  return notes.map((note) => (
+    note.id === noteId ? { ...note, context, updatedAt } : note
+  ));
 }
 
 export function normalizeKnowledgeNoteSearchText(text: string | undefined): string {
