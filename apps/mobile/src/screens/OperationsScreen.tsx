@@ -1566,8 +1566,8 @@ export default function OperationsScreen({ navigation }: any) {
                         ) : (
                           logs.map((entry, index) => (
                             <View key={`${entry.timestamp}-${index}`} style={styles.logItem}>
-                              <Text style={styles.logTimestamp}>{formatTimestamp(entry.timestamp)}</Text>
-                              <Text style={styles.logMessage}>{entry.message}</Text>
+                              <Text style={styles.logTimestamp}>{OPERATOR_MCP_SERVERS_PANEL_METADATA.formatLogTimestamp(entry)}</Text>
+                              <Text style={styles.logMessage}>{OPERATOR_MCP_SERVERS_PANEL_METADATA.formatLogMessage(entry)}</Text>
                             </View>
                           ))
                         )}
@@ -2657,10 +2657,10 @@ export default function OperationsScreen({ navigation }: any) {
                 discordLogs.map((entry) => (
                   <View key={entry.id} style={styles.logItem}>
                     <View style={styles.logHeader}>
-                      <Text style={styles.logLevel}>{entry.level}</Text>
-                      <Text style={styles.logTimestamp}>{formatTimestamp(entry.timestamp)}</Text>
+                      <Text style={styles.logLevel}>{OPERATOR_DISCORD_PANEL_METADATA.formatLogLevel(entry)}</Text>
+                      <Text style={styles.logTimestamp}>{OPERATOR_DISCORD_PANEL_METADATA.formatLogTimestamp(entry)}</Text>
                     </View>
-                    <Text style={styles.logMessage}>{entry.message}</Text>
+                    <Text style={styles.logMessage}>{OPERATOR_DISCORD_PANEL_METADATA.formatLogMessage(entry)}</Text>
                   </View>
                 ))
               )}
@@ -2897,10 +2897,10 @@ export default function OperationsScreen({ navigation }: any) {
               operatorLogs.map((entry) => (
                 <View key={`${entry.timestamp}-${entry.component}-${entry.level}-${entry.message}`} style={styles.logItem}>
                   <View style={styles.logHeader}>
-                    <Text style={styles.logLevel}>{entry.level} • {entry.component}</Text>
-                    <Text style={styles.logTimestamp}>{formatTimestamp(entry.timestamp)}</Text>
+                    <Text style={styles.logLevel}>{OPERATOR_LOGS_PANEL_METADATA.formatEntryHeader(entry)}</Text>
+                    <Text style={styles.logTimestamp}>{OPERATOR_LOGS_PANEL_METADATA.formatEntryTimestamp(entry)}</Text>
                   </View>
-                  <Text style={styles.logMessage}>{entry.message}</Text>
+                  <Text style={styles.logMessage}>{OPERATOR_LOGS_PANEL_METADATA.formatEntryMessage(entry)}</Text>
                 </View>
               ))
             )}
@@ -2914,11 +2914,11 @@ export default function OperationsScreen({ navigation }: any) {
               recentErrors.map((entry) => (
                 <View key={`${entry.timestamp}-${entry.component}-${entry.message}`} style={styles.errorItem}>
                   <View style={styles.errorHeader}>
-                    <Text style={styles.errorComponent}>{entry.component}</Text>
-                    <Text style={styles.errorLevel}>{entry.level}</Text>
+                    <Text style={styles.errorComponent}>{OPERATOR_ERRORS_PANEL_METADATA.formatEntryComponent(entry)}</Text>
+                    <Text style={styles.errorLevel}>{OPERATOR_ERRORS_PANEL_METADATA.formatEntryLevel(entry)}</Text>
                   </View>
-                  <Text style={styles.errorMessage}>{entry.message}</Text>
-                  <Text style={styles.errorTimestamp}>{formatTimestamp(entry.timestamp)}</Text>
+                  <Text style={styles.errorMessage}>{OPERATOR_ERRORS_PANEL_METADATA.formatEntryMessage(entry)}</Text>
+                  <Text style={styles.errorTimestamp}>{OPERATOR_ERRORS_PANEL_METADATA.formatEntryTimestamp(entry)}</Text>
                 </View>
               ))
             )}

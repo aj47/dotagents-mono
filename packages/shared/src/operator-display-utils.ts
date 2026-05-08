@@ -1,6 +1,9 @@
 import type {
   OperatorAuditEntry,
   OperatorDiscordIntegrationSummary,
+  OperatorDiscordLogEntry,
+  OperatorMCPServerLogEntry,
+  OperatorRecentError,
   OperatorRuntimeStatus,
   OperatorWhatsAppIntegrationSummary,
 } from "./api-types"
@@ -380,6 +383,9 @@ export type OperatorLogsPanelMetadata = {
   clearPendingLabel: string
   clearButtonLabel: string
   emptyText: string
+  formatEntryHeader: (entry: Pick<OperatorRecentError, "level" | "component">) => string
+  formatEntryTimestamp: (entry: Pick<OperatorRecentError, "timestamp">) => string
+  formatEntryMessage: (entry: Pick<OperatorRecentError, "message">) => string
 }
 
 export const OPERATOR_LOGS_PANEL_METADATA: OperatorLogsPanelMetadata = {
@@ -391,16 +397,27 @@ export const OPERATOR_LOGS_PANEL_METADATA: OperatorLogsPanelMetadata = {
   clearPendingLabel: "Clearing log…",
   clearButtonLabel: "Clear log",
   emptyText: "No recent operator log entries returned by the desktop server.",
+  formatEntryHeader: (entry) => `${entry.level} • ${entry.component}`,
+  formatEntryTimestamp: (entry) => formatOperatorTimestamp(entry.timestamp),
+  formatEntryMessage: (entry) => entry.message,
 }
 
 export type OperatorErrorsPanelMetadata = {
   panelTitle: string
   emptyText: string
+  formatEntryComponent: (entry: Pick<OperatorRecentError, "component">) => string
+  formatEntryLevel: (entry: Pick<OperatorRecentError, "level">) => string
+  formatEntryMessage: (entry: Pick<OperatorRecentError, "message">) => string
+  formatEntryTimestamp: (entry: Pick<OperatorRecentError, "timestamp">) => string
 }
 
 export const OPERATOR_ERRORS_PANEL_METADATA: OperatorErrorsPanelMetadata = {
   panelTitle: "Recent errors",
   emptyText: "No recent errors returned by the desktop server.",
+  formatEntryComponent: (entry) => entry.component,
+  formatEntryLevel: (entry) => entry.level,
+  formatEntryMessage: (entry) => entry.message,
+  formatEntryTimestamp: (entry) => formatOperatorTimestamp(entry.timestamp),
 }
 
 export type OperatorConversationsPanelMetadata = {
@@ -713,6 +730,9 @@ export type OperatorDiscordPanelMetadata = {
   clearLogsAction: OperatorConfirmedActionMetadata
   logsSectionTitle: string
   emptyLogsText: string
+  formatLogLevel: (entry: Pick<OperatorDiscordLogEntry, "level">) => string
+  formatLogTimestamp: (entry: Pick<OperatorDiscordLogEntry, "timestamp">) => string
+  formatLogMessage: (entry: Pick<OperatorDiscordLogEntry, "message">) => string
 }
 
 export const OPERATOR_DISCORD_PANEL_METADATA: OperatorDiscordPanelMetadata = {
@@ -747,6 +767,9 @@ export const OPERATOR_DISCORD_PANEL_METADATA: OperatorDiscordPanelMetadata = {
   },
   logsSectionTitle: "Discord log preview",
   emptyLogsText: "No Discord log entries returned.",
+  formatLogLevel: (entry) => entry.level,
+  formatLogTimestamp: (entry) => formatOperatorTimestamp(entry.timestamp),
+  formatLogMessage: (entry) => entry.message,
 }
 
 export type OperatorWhatsAppPanelMetadata = {
@@ -803,6 +826,8 @@ export type OperatorMcpServersPanelMetadata = {
   panelTitle: string
   formatSummary: (connectedCount: number, serverCount: number, toolCount: number) => string
   formatServerSummary: (connected: boolean, enabled: boolean, serverName: string, toolCount: number) => string
+  formatLogTimestamp: (entry: Pick<OperatorMCPServerLogEntry, "timestamp">) => string
+  formatLogMessage: (entry: Pick<OperatorMCPServerLogEntry, "message">) => string
   disabledSuffix: string
   restartPendingLabel: string
   restartButtonLabel: string
@@ -852,6 +877,8 @@ export const OPERATOR_MCP_SERVERS_PANEL_METADATA: OperatorMcpServersPanelMetadat
   formatSummary: (connectedCount, serverCount, toolCount) => `${connectedCount}/${serverCount} connected • ${toolCount} tools`,
   formatServerSummary: (connected, enabled, serverName, toolCount) =>
     `${connected ? "✓" : enabled ? "✗" : "○"} ${serverName}: ${toolCount} tools${enabled ? "" : OPERATOR_MCP_SERVER_DISABLED_SUFFIX}`,
+  formatLogTimestamp: (entry) => formatOperatorTimestamp(entry.timestamp),
+  formatLogMessage: (entry) => entry.message,
   disabledSuffix: OPERATOR_MCP_SERVER_DISABLED_SUFFIX,
   restartPendingLabel: "Restarting...",
   restartButtonLabel: "Restart",

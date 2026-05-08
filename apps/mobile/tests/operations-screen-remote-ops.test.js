@@ -293,6 +293,9 @@ test('includes tunnel, Discord, and WhatsApp operator controls and summaries', (
   assert.match(operationsSource, /OPERATOR_DISCORD_PANEL_METADATA\.clearLogsAction\.buttonLabel/);
   assert.match(operationsSource, /OPERATOR_DISCORD_PANEL_METADATA\.logsSectionTitle/);
   assert.match(operationsSource, /OPERATOR_DISCORD_PANEL_METADATA\.emptyLogsText/);
+  assert.match(operationsSource, /OPERATOR_DISCORD_PANEL_METADATA\.formatLogLevel\(entry\)/);
+  assert.match(operationsSource, /OPERATOR_DISCORD_PANEL_METADATA\.formatLogTimestamp\(entry\)/);
+  assert.match(operationsSource, /OPERATOR_DISCORD_PANEL_METADATA\.formatLogMessage\(entry\)/);
   assert.match(operationsSource, /OPERATOR_WHATSAPP_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_WHATSAPP_PANEL_METADATA\.formatStatus\(whatsApp\)/);
   assert.match(operationsSource, /OPERATOR_WHATSAPP_PANEL_METADATA\.formatServerConfigured\(whatsApp\.serverConfigured\)/);
@@ -317,6 +320,7 @@ test('includes tunnel, Discord, and WhatsApp operator controls and summaries', (
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Connect WhatsApp'\)/);
   assert.doesNotMatch(operationsSource, /confirmAction\(\s*'Disconnect Discord'/);
   assert.doesNotMatch(operationsSource, /confirmAction\(\s*'Log Out of WhatsApp'/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.logLevel\}>\{entry\.level\}<\/Text>/);
 });
 
 test('surfaces recent operator audit entries and rotates the API key using the saved mobile config', () => {
@@ -602,12 +606,23 @@ test('displays recent operator logs from operator API', () => {
   assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.clearPendingLabel/);
   assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.clearButtonLabel/);
   assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.emptyText/);
+  assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.formatEntryHeader\(entry\)/);
+  assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.formatEntryTimestamp\(entry\)/);
+  assert.match(operationsSource, /OPERATOR_LOGS_PANEL_METADATA\.formatEntryMessage\(entry\)/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Recent operator logs<\/Text>/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Clear desktop operator error log'\)/);
   assert.match(operationsSource, /OPERATOR_ERRORS_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_ERRORS_PANEL_METADATA\.emptyText/);
+  assert.match(operationsSource, /OPERATOR_ERRORS_PANEL_METADATA\.formatEntryComponent\(entry\)/);
+  assert.match(operationsSource, /OPERATOR_ERRORS_PANEL_METADATA\.formatEntryLevel\(entry\)/);
+  assert.match(operationsSource, /OPERATOR_ERRORS_PANEL_METADATA\.formatEntryMessage\(entry\)/);
+  assert.match(operationsSource, /OPERATOR_ERRORS_PANEL_METADATA\.formatEntryTimestamp\(entry\)/);
   assert.match(operationsSource, /recentErrors\.map/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Recent errors<\/Text>/);
+  assert.doesNotMatch(operationsSource, /\{entry\.level\} • \{entry\.component\}/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.errorComponent\}>\{entry\.component\}<\/Text>/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.errorLevel\}>\{entry\.level\}<\/Text>/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.errorMessage\}>\{entry\.message\}<\/Text>/);
 });
 
 test('displays MCP servers from operator API', () => {
@@ -633,6 +648,8 @@ test('displays MCP servers from operator API', () => {
   assert.match(operationsSource, /OPERATOR_MCP_SERVERS_PANEL_METADATA\.formatToolAccessibilityLabel\(tool\.name\)/);
   assert.match(operationsSource, /OPERATOR_MCP_SERVERS_PANEL_METADATA\.logsSectionTitle/);
   assert.match(operationsSource, /OPERATOR_MCP_SERVERS_PANEL_METADATA\.toolsSectionTitle/);
+  assert.match(operationsSource, /OPERATOR_MCP_SERVERS_PANEL_METADATA\.formatLogTimestamp\(entry\)/);
+  assert.match(operationsSource, /OPERATOR_MCP_SERVERS_PANEL_METADATA\.formatLogMessage\(entry\)/);
   assert.match(operationsSource, /OPERATOR_MCP_SERVERS_PANEL_METADATA\.formatClearLogsConfirmMessage\(s\.name\)/);
   assert.match(operationsSource, /OPERATOR_MCP_SERVERS_PANEL_METADATA\.formatClearLogsAccessibilityLabel\(s\.name\)/);
   assert.match(operationsSource, /settingsClient\.startMCPServer\(s\.name\)/);
@@ -642,4 +659,5 @@ test('displays MCP servers from operator API', () => {
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>MCP servers<\/Text>/);
   assert.doesNotMatch(operationsSource, /s\.connected \? '✓' : s\.enabled \? '✗' : '○'/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\(`Restart \$\{s\.name\} MCP server`\)/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.logMessage\}>\{entry\.message\}<\/Text>/);
 });

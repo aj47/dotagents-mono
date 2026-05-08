@@ -327,14 +327,40 @@ describe("operator display utils", () => {
       clearPendingLabel: "Clearing log…",
       clearButtonLabel: "Clear log",
       emptyText: "No recent operator log entries returned by the desktop server.",
+      formatEntryHeader: expect.any(Function),
+      formatEntryTimestamp: expect.any(Function),
+      formatEntryMessage: expect.any(Function),
     })
+    const entry = {
+      timestamp: Date.UTC(2026, 4, 6, 16, 30, 0),
+      level: "warning" as const,
+      component: "remote-server",
+      message: "connection dropped",
+    }
+    expect(OPERATOR_LOGS_PANEL_METADATA.formatEntryHeader(entry)).toBe("warning • remote-server")
+    expect(OPERATOR_LOGS_PANEL_METADATA.formatEntryTimestamp(entry)).toBe(formatOperatorTimestamp(entry.timestamp))
+    expect(OPERATOR_LOGS_PANEL_METADATA.formatEntryMessage(entry)).toBe("connection dropped")
   })
 
   it("exports operator errors panel metadata", () => {
     expect(OPERATOR_ERRORS_PANEL_METADATA).toEqual({
       panelTitle: "Recent errors",
       emptyText: "No recent errors returned by the desktop server.",
+      formatEntryComponent: expect.any(Function),
+      formatEntryLevel: expect.any(Function),
+      formatEntryMessage: expect.any(Function),
+      formatEntryTimestamp: expect.any(Function),
     })
+    const entry = {
+      timestamp: Date.UTC(2026, 4, 6, 16, 30, 0),
+      level: "error" as const,
+      component: "mcp",
+      message: "tool failed",
+    }
+    expect(OPERATOR_ERRORS_PANEL_METADATA.formatEntryComponent(entry)).toBe("mcp")
+    expect(OPERATOR_ERRORS_PANEL_METADATA.formatEntryLevel(entry)).toBe("error")
+    expect(OPERATOR_ERRORS_PANEL_METADATA.formatEntryMessage(entry)).toBe("tool failed")
+    expect(OPERATOR_ERRORS_PANEL_METADATA.formatEntryTimestamp(entry)).toBe(formatOperatorTimestamp(entry.timestamp))
   })
 
   it("exports operator conversations panel metadata", () => {
@@ -625,6 +651,9 @@ describe("operator display utils", () => {
       },
       logsSectionTitle: "Discord log preview",
       emptyLogsText: "No Discord log entries returned.",
+      formatLogLevel: expect.any(Function),
+      formatLogTimestamp: expect.any(Function),
+      formatLogMessage: expect.any(Function),
     })
     expect(OPERATOR_DISCORD_PANEL_METADATA.formatStatus({ connected: true, connecting: false, enabled: true })).toBe(
       "Status: Connected",
@@ -645,6 +674,17 @@ describe("operator display utils", () => {
     expect(OPERATOR_DISCORD_PANEL_METADATA.formatLogs({ total: 3, errorCount: 1 })).toBe("Logs: 3 total • 1 error")
     expect(OPERATOR_DISCORD_PANEL_METADATA.formatLastEvent()).toBe(`Last event: ${OPERATOR_EMPTY_VALUE_LABEL}`)
     expect(OPERATOR_DISCORD_PANEL_METADATA.formatLastError("token missing")).toBe("Last error: token missing")
+    const discordLogEntry = {
+      id: "log-1",
+      level: "info",
+      message: "connected",
+      timestamp: Date.UTC(2026, 4, 6, 16, 30, 0),
+    }
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatLogLevel(discordLogEntry)).toBe("info")
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatLogTimestamp(discordLogEntry)).toBe(
+      formatOperatorTimestamp(discordLogEntry.timestamp),
+    )
+    expect(OPERATOR_DISCORD_PANEL_METADATA.formatLogMessage(discordLogEntry)).toBe("connected")
 
     expect(OPERATOR_WHATSAPP_PANEL_METADATA).toEqual({
       panelTitle: "WhatsApp",
@@ -697,6 +737,8 @@ describe("operator display utils", () => {
       panelTitle: "MCP servers",
       formatSummary: expect.any(Function),
       formatServerSummary: expect.any(Function),
+      formatLogTimestamp: expect.any(Function),
+      formatLogMessage: expect.any(Function),
       disabledSuffix: " (disabled)",
       restartPendingLabel: "Restarting...",
       restartButtonLabel: "Restart",
@@ -748,6 +790,14 @@ describe("operator display utils", () => {
     expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatServerSummary(false, false, "filesystem", 4)).toBe(
       "○ filesystem: 4 tools (disabled)",
     )
+    const logEntry = {
+      timestamp: Date.UTC(2026, 4, 6, 16, 30, 0),
+      message: "server exited",
+    }
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatLogTimestamp(logEntry)).toBe(
+      formatOperatorTimestamp(logEntry.timestamp),
+    )
+    expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatLogMessage(logEntry)).toBe("server exited")
     expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatRestartAccessibilityLabel("filesystem")).toBe("Restart filesystem MCP server")
     expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatRestartedMessage("filesystem")).toBe("Restarted filesystem")
     expect(OPERATOR_MCP_SERVERS_PANEL_METADATA.formatStopConfirmMessage("filesystem")).toBe(
