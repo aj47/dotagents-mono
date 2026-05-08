@@ -327,14 +327,19 @@ test('surfaces recent operator audit entries and rotates the API key using the s
   assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.helperText/);
   assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.emptyText/);
-  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.successStatusLabel/);
-  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.failedStatusLabel/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.formatAction\(entry\)/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.formatStatus\(entry\)/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.formatPath\(entry\)/);
+  assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.formatTimestamp\(entry\)/);
   assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.formatSource\(sourceText\)/);
   assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.formatDetails\(detailsText\)/);
   assert.match(operationsSource, /OPERATOR_AUDIT_PANEL_METADATA\.formatFailure\(entry\.failureReason\)/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Recent operator audit<\/Text>/);
   assert.doesNotMatch(operationsSource, /No recent operator audit entries returned by the desktop server\./);
   assert.doesNotMatch(operationsSource, /entry\.success \? 'success' : 'failed'/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.auditAction\}>\{entry\.action\}<\/Text>/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.auditPath\}>\{entry\.path\}<\/Text>/);
+  assert.doesNotMatch(operationsSource, /<Text style=\{styles\.auditTimestamp\}>\{formatTimestamp\(entry\.timestamp\)\}<\/Text>/);
   assert.doesNotMatch(operationsSource, />Source: \{sourceText\}</);
   assert.doesNotMatch(operationsSource, />Details: \{detailsText\}</);
   assert.doesNotMatch(operationsSource, />Failure: \{entry\.failureReason\}</);
@@ -384,6 +389,7 @@ test('surfaces recent operator audit entries and rotates the API key using the s
   assert.match(operationsSource, /OPERATOR_ACTIONS_PANEL_METADATA\.runAgentButton\.accessibilityLabel/);
   assert.match(operationsSource, /OPERATOR_ACTIONS_PANEL_METADATA\.runAgentButton\.pendingLabel/);
   assert.match(operationsSource, /OPERATOR_ACTIONS_PANEL_METADATA\.runAgentButton\.buttonLabel/);
+  assert.match(operationsSource, /OPERATOR_ACTIONS_PANEL_METADATA\.formatAgentRunCompletedMessage/);
   assert.match(operationsSource, /settingsClient\.runOperatorAgent\(\{ prompt \}\)/);
   assert.match(operationsSource, /OPERATOR_UPDATER_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_UPDATER_PANEL_METADATA\.formatMode\(status\.updater\.mode\)/);
@@ -452,6 +458,7 @@ test('surfaces recent operator audit entries and rotates the API key using the s
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>Actions<\/Text>/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\('Stop desktop speech playback'\)/);
   assert.doesNotMatch(operationsSource, /'Restart Remote Server'/);
+  assert.doesNotMatch(operationsSource, /Agent run finished in \$\{response\.conversationId\}/);
   assert.match(operationsSource, /setConfig\(nextConfig\)/);
   assert.match(operationsSource, /saveConfig\(nextConfig\)/);
 });

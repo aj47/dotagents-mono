@@ -127,6 +127,7 @@ describe("operator display utils", () => {
       runAgentPromptPlaceholder: "Ask the desktop agent to run a task",
       runAgentPromptAccessibilityLabel: "Desktop agent prompt",
       runAgentPromptAccessibilityHint: "Enter a task for the connected desktop agent to run through the operator API.",
+      formatAgentRunCompletedMessage: expect.any(Function),
       runAgentButton: {
         accessibilityLabel: "Run agent on desktop",
         pendingLabel: "Running agent…",
@@ -194,6 +195,12 @@ describe("operator display utils", () => {
         buttonLabel: "Emergency stop",
       },
     })
+    expect(OPERATOR_ACTIONS_PANEL_METADATA.formatAgentRunCompletedMessage("conversation-1", 2, "Done\n\nwith details")).toBe(
+      "Agent run finished in conversation-1 (2 messages). Done with details",
+    )
+    expect(OPERATOR_ACTIONS_PANEL_METADATA.formatAgentRunCompletedMessage("conversation-1", 2, "   ")).toBe(
+      "Agent run finished in conversation-1 (2 messages).",
+    )
   })
 
   it("exports operator updater panel metadata", () => {
@@ -280,10 +287,27 @@ describe("operator display utils", () => {
       emptyText: "No recent operator audit entries returned by the desktop server.",
       successStatusLabel: "success",
       failedStatusLabel: "failed",
+      formatAction: expect.any(Function),
+      formatStatus: expect.any(Function),
+      formatPath: expect.any(Function),
+      formatTimestamp: expect.any(Function),
       formatSource: expect.any(Function),
       formatDetails: expect.any(Function),
       formatFailure: expect.any(Function),
     })
+    const auditEntry = {
+      timestamp: Date.UTC(2026, 4, 6, 16, 30, 0),
+      action: "settings-update",
+      path: "remoteServerEnabled",
+      success: true,
+      source: "mobile",
+      deviceId: "device-1",
+    }
+    expect(OPERATOR_AUDIT_PANEL_METADATA.formatAction(auditEntry)).toBe("settings-update")
+    expect(OPERATOR_AUDIT_PANEL_METADATA.formatStatus(auditEntry)).toBe("success")
+    expect(OPERATOR_AUDIT_PANEL_METADATA.formatStatus({ ...auditEntry, success: false })).toBe("failed")
+    expect(OPERATOR_AUDIT_PANEL_METADATA.formatPath(auditEntry)).toBe("remoteServerEnabled")
+    expect(OPERATOR_AUDIT_PANEL_METADATA.formatTimestamp(auditEntry)).toBe(formatOperatorTimestamp(auditEntry.timestamp))
     expect(OPERATOR_AUDIT_PANEL_METADATA.formatSource("device • 127.0.0.1")).toBe("Source: device • 127.0.0.1")
     expect(OPERATOR_AUDIT_PANEL_METADATA.formatDetails("enabled: true")).toBe("Details: enabled: true")
     expect(OPERATOR_AUDIT_PANEL_METADATA.formatFailure("denied")).toBe("Failure: denied")

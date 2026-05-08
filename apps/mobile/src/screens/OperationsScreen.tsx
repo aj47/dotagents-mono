@@ -609,9 +609,12 @@ export default function OperationsScreen({ navigation }: any) {
         throw new Error(response.error || OPERATOR_ALERT_METADATA.defaultAgentRunFailureMessage);
       }
 
-      const preview = response.content.trim().replace(/\s+/g, ' ').slice(0, 140);
       setActionFeedback(
-        `Agent run finished in ${response.conversationId} (${response.messageCount} messages).${preview ? ` ${preview}` : ''}`,
+        OPERATOR_ACTIONS_PANEL_METADATA.formatAgentRunCompletedMessage(
+          response.conversationId,
+          response.messageCount,
+          response.content,
+        ),
       );
       setOperatorAgentPrompt('');
       setTimeout(() => {
@@ -1864,15 +1867,13 @@ export default function OperationsScreen({ navigation }: any) {
                 return (
                   <View key={`${entry.timestamp}-${entry.action}-${entry.path}`} style={styles.auditItem}>
                     <View style={styles.auditHeader}>
-                      <Text style={styles.auditAction}>{entry.action}</Text>
+                      <Text style={styles.auditAction}>{OPERATOR_AUDIT_PANEL_METADATA.formatAction(entry)}</Text>
                       <Text style={[styles.auditStatus, entry.success ? styles.auditStatusSuccess : styles.auditStatusFailure]}>
-                        {entry.success
-                          ? OPERATOR_AUDIT_PANEL_METADATA.successStatusLabel
-                          : OPERATOR_AUDIT_PANEL_METADATA.failedStatusLabel}
+                        {OPERATOR_AUDIT_PANEL_METADATA.formatStatus(entry)}
                       </Text>
                     </View>
-                    <Text style={styles.auditPath}>{entry.path}</Text>
-                    <Text style={styles.auditTimestamp}>{formatTimestamp(entry.timestamp)}</Text>
+                    <Text style={styles.auditPath}>{OPERATOR_AUDIT_PANEL_METADATA.formatPath(entry)}</Text>
+                    <Text style={styles.auditTimestamp}>{OPERATOR_AUDIT_PANEL_METADATA.formatTimestamp(entry)}</Text>
                     {sourceText ? (
                       <Text style={styles.helperText}>{OPERATOR_AUDIT_PANEL_METADATA.formatSource(sourceText)}</Text>
                     ) : null}

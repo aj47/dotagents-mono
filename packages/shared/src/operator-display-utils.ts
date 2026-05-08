@@ -152,6 +152,7 @@ export type OperatorActionsPanelMetadata = {
   runAgentPromptPlaceholder: string
   runAgentPromptAccessibilityLabel: string
   runAgentPromptAccessibilityHint: string
+  formatAgentRunCompletedMessage: (conversationId: string, messageCount: number, content: string) => string
   runAgentButton: OperatorActionButtonMetadata
   refreshButton: OperatorActionButtonMetadata
   stopSpeechButton: OperatorActionButtonMetadata
@@ -172,6 +173,10 @@ export const OPERATOR_ACTIONS_PANEL_METADATA: OperatorActionsPanelMetadata = {
   runAgentPromptPlaceholder: "Ask the desktop agent to run a task",
   runAgentPromptAccessibilityLabel: "Desktop agent prompt",
   runAgentPromptAccessibilityHint: "Enter a task for the connected desktop agent to run through the operator API.",
+  formatAgentRunCompletedMessage: (conversationId, messageCount, content) => {
+    const preview = content.trim().replace(/\s+/g, " ").slice(0, 140)
+    return `Agent run finished in ${conversationId} (${messageCount} messages).${preview ? ` ${preview}` : ""}`
+  },
   runAgentButton: {
     accessibilityLabel: "Run agent on desktop",
     pendingLabel: "Running agent…",
@@ -319,17 +324,28 @@ export type OperatorAuditPanelMetadata = {
   emptyText: string
   successStatusLabel: string
   failedStatusLabel: string
+  formatAction: (entry: Pick<OperatorAuditEntry, "action">) => string
+  formatStatus: (entry: Pick<OperatorAuditEntry, "success">) => string
+  formatPath: (entry: Pick<OperatorAuditEntry, "path">) => string
+  formatTimestamp: (entry: Pick<OperatorAuditEntry, "timestamp">) => string
   formatSource: (source: string) => string
   formatDetails: (details: string) => string
   formatFailure: (failureReason: string) => string
 }
 
+const OPERATOR_AUDIT_SUCCESS_STATUS_LABEL = "success"
+const OPERATOR_AUDIT_FAILED_STATUS_LABEL = "failed"
+
 export const OPERATOR_AUDIT_PANEL_METADATA: OperatorAuditPanelMetadata = {
   panelTitle: "Recent operator audit",
   helperText: "Recent operator actions from the desktop audit log, including the stable device ID attached by this mobile client.",
   emptyText: "No recent operator audit entries returned by the desktop server.",
-  successStatusLabel: "success",
-  failedStatusLabel: "failed",
+  successStatusLabel: OPERATOR_AUDIT_SUCCESS_STATUS_LABEL,
+  failedStatusLabel: OPERATOR_AUDIT_FAILED_STATUS_LABEL,
+  formatAction: (entry) => entry.action,
+  formatStatus: (entry) => entry.success ? OPERATOR_AUDIT_SUCCESS_STATUS_LABEL : OPERATOR_AUDIT_FAILED_STATUS_LABEL,
+  formatPath: (entry) => entry.path,
+  formatTimestamp: (entry) => formatOperatorTimestamp(entry.timestamp),
   formatSource: (source) => `Source: ${source}`,
   formatDetails: (details) => `Details: ${details}`,
   formatFailure: (failureReason) => `Failure: ${failureReason}`,
