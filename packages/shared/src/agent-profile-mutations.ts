@@ -14,6 +14,14 @@ export type AgentProfileUpdateTargetLike = {
   isBuiltIn?: boolean
 }
 
+export type AgentProfileIdLike = {
+  id: string
+}
+
+export type AgentProfileEnabledLike = AgentProfileIdLike & {
+  enabled: boolean
+}
+
 export type AgentProfileProtectedUpdateFields = {
   id?: unknown
   createdAt?: unknown
@@ -84,6 +92,23 @@ export function canSetCurrentAgentProfile<TProfile extends { id: string }>(
   id: string,
 ): boolean {
   return profiles.some((profile) => profile.id === id)
+}
+
+export function setAgentProfileEnabledInList<TProfile extends AgentProfileEnabledLike>(
+  profiles: readonly TProfile[],
+  profileId: string,
+  enabled: boolean,
+): TProfile[] {
+  return profiles.map((profile) => (
+    profile.id === profileId ? { ...profile, enabled } : profile
+  ))
+}
+
+export function removeAgentProfileFromList<TProfile extends AgentProfileIdLike>(
+  profiles: readonly TProfile[],
+  profileId: string,
+): TProfile[] {
+  return profiles.filter((profile) => profile.id !== profileId)
 }
 
 export function normalizeAgentProfileProperties(

@@ -64,6 +64,10 @@ import {
   setKnowledgeNoteContextInList,
 } from '@dotagents/shared/knowledge-note-domain';
 import { sortAgentProfilesWithDefaultFirst } from '@dotagents/shared/agent-selector-options';
+import {
+  removeAgentProfileFromList,
+  setAgentProfileEnabledInList,
+} from '@dotagents/shared/agent-profile-mutations';
 import { getAcpxMainAgentOptions } from '@dotagents/shared/main-agent-selection';
 import {
   buildModelPresetDraftFromSummary,
@@ -1795,9 +1799,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) return;
     try {
       const res = await settingsClient.toggleAgentProfile(profileId);
-      setAgentProfiles(prev =>
-        prev.map(p => (p.id === profileId ? { ...p, enabled: res.enabled } : p))
-      );
+      setAgentProfiles(prev => setAgentProfileEnabledInList(prev, profileId, res.enabled));
     } catch (error: any) {
       console.error('[Settings] Failed to toggle agent profile:', error);
       Alert.alert('Error', 'Failed to toggle agent profile');
@@ -1830,7 +1832,7 @@ export default function SettingsScreen({ navigation }: any) {
     confirmDestructiveAction('Delete Agent', `Are you sure you want to delete "${profile.displayName}"?`, async () => {
       try {
         await settingsClient.deleteAgentProfile(profile.id);
-        setAgentProfiles(prev => prev.filter(p => p.id !== profile.id));
+        setAgentProfiles(prev => removeAgentProfileFromList(prev, profile.id));
       } catch (error: any) {
         console.error('[Settings] Failed to delete agent profile:', error);
         Alert.alert('Error', error.message || 'Failed to delete agent profile');

@@ -14,6 +14,8 @@ import {
   getDeletableAgentProfileIndex,
   MAX_AGENT_PROFILE_AVATAR_FILE_SIZE_BYTES,
   normalizeAgentProfileProperties,
+  removeAgentProfileFromList,
+  setAgentProfileEnabledInList,
 } from "./agent-profile-mutations"
 
 describe("agent profile mutations", () => {
@@ -95,6 +97,25 @@ describe("agent profile mutations", () => {
   it("checks whether current profile can be set", () => {
     expect(canSetCurrentAgentProfile([{ id: "profile-1" }], "profile-1")).toBe(true)
     expect(canSetCurrentAgentProfile([{ id: "profile-1" }], "missing")).toBe(false)
+  })
+
+  it("updates profile list state without app-specific mutation logic", () => {
+    const profiles = [
+      { id: "default", displayName: "Default", enabled: true, isBuiltIn: true },
+      { id: "research", displayName: "Research", enabled: false },
+      { id: "writing", displayName: "Writing", enabled: true },
+    ]
+
+    expect(setAgentProfileEnabledInList(profiles, "research", true)).toEqual([
+      { id: "default", displayName: "Default", enabled: true, isBuiltIn: true },
+      { id: "research", displayName: "Research", enabled: true },
+      { id: "writing", displayName: "Writing", enabled: true },
+    ])
+    expect(profiles[1].enabled).toBe(false)
+    expect(removeAgentProfileFromList(profiles, "writing").map((profile) => profile.id)).toEqual([
+      "default",
+      "research",
+    ])
   })
 
   it("normalizes and formats profile properties for editable request payloads", () => {
