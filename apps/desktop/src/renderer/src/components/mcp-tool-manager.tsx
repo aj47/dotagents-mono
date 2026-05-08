@@ -41,6 +41,7 @@ import {
   setMcpToolEnabledInList,
   type DetailedToolInfo,
 } from "@dotagents/shared/mcp-utils"
+import { toggleSetValue } from "@dotagents/shared/collection-state"
 
 type DetailedTool = DetailedToolInfo
 
@@ -144,15 +145,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
   }
 
   const toggleSourceExpansion = (sourceName: string) => {
-    setExpandedSources((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(sourceName)) {
-        newSet.delete(sourceName)
-      } else {
-        newSet.add(sourceName)
-      }
-      return newSet
-    })
+    setExpandedSources((prev) => toggleSetValue(prev, sourceName))
   }
 
   const handleToggleAllTools = async (sourceName: string, enable: boolean) => {

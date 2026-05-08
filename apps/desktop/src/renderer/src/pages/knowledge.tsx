@@ -59,6 +59,12 @@ import {
   parseKnowledgeNoteReferencesInput,
   parseKnowledgeNoteTagsInput,
 } from "@dotagents/shared/knowledge-note-form"
+import {
+  addSetValues,
+  getVisibleSelectedValues,
+  removeSetValues,
+  toggleSetValue,
+} from "@dotagents/shared/collection-state"
 
 const contextBadgeClasses: Record<KnowledgeNoteContext, string> = {
   auto: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
@@ -772,40 +778,28 @@ export function Component() {
   }
 
   const handleToggleSelect = (id: string) =>
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    setSelectedIds((prev) => toggleSetValue(prev, id))
 
   const toggleGroupCollapsed = (key: string) =>
-    setCollapsedGroupKeys((prev) => {
-      const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
-      return next
-    })
+    setCollapsedGroupKeys((prev) => toggleSetValue(prev, key))
 
   const toggleSeriesCollapsed = (key: string) =>
-    setCollapsedSeriesKeys((prev) => {
-      const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
-      return next
-    })
+    setCollapsedSeriesKeys((prev) => toggleSetValue(prev, key))
 
   // Visible notes depend on whether we're searching or browsing groups.
   // When browsing, only loaded (expanded) notes are selectable.
   const visibleNotes = isSearching ? searchFilteredResults : isFlatView ? flatNotes : Array.from(loadedNotesById.values())
-  const visibleIds = new Set(visibleNotes.map((note) => note.id))
-  const visibleSelectedCount = [...selectedIds].filter((id) => visibleIds.has(id)).length
+  const visibleIds = useMemo(() => new Set(visibleNotes.map((note) => note.id)), [visibleNotes])
+  const visibleSelectedIds = useMemo(
+    () => getVisibleSelectedValues(selectedIds, visibleIds),
+    [selectedIds, visibleIds],
+  )
+  const visibleSelectedCount = visibleSelectedIds.length
 
   const handleSelectAll = () =>
     visibleSelectedCount === visibleNotes.length && visibleNotes.length > 0
-      ? setSelectedIds((prev) => {
-          const next = new Set(prev)
-          visibleNotes.forEach((note) => next.delete(note.id))
-          return next
-        })
-      : setSelectedIds((prev) => new Set([...prev, ...visibleNotes.map((note) => note.id)]))
+      ? setSelectedIds((prev) => removeSetValues(prev, visibleSelectedIds))
+      : setSelectedIds((prev) => addSetValues(prev, visibleNotes.map((note) => note.id)))
 
   const allSelected = visibleNotes.length > 0 && visibleSelectedCount === visibleNotes.length
   const someSelected = visibleSelectedCount > 0 && visibleSelectedCount < visibleNotes.length
@@ -1290,7 +1284,7 @@ export function Component() {
             <Button
               variant="destructive"
               className="gap-2"
-              onClick={() => deleteMultipleMutation.mutate([...selectedIds].filter((id) => visibleIds.has(id)))}
+              onClick={() => deleteMultipleMutation.mutate(visibleSelectedIds)}
               disabled={deleteMultipleMutation.isPending}
             >
               {deleteMultipleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

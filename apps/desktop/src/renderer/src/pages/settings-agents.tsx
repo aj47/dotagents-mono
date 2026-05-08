@@ -78,6 +78,7 @@ import { getAgentAvatarColors } from "@dotagents/shared/agent-avatar-colors"
 import {
   sortAgentProfilesWithDefaultFirst as sortAgentsWithDefaultFirst,
 } from "@dotagents/shared/agent-selector-options"
+import { toggleSetValue } from "@dotagents/shared/collection-state"
 import {
   desktopAgentProfilesClient,
   type DesktopMcpServerStatus,
@@ -429,18 +430,10 @@ export function SettingsAgents() {
   // Section collapse helpers
   const isSectionCollapsed = (section: string) => collapsedSections.has(section)
   const toggleSection = (section: string) => {
-    setCollapsedSections(prev => {
-      const next = new Set(prev)
-      if (next.has(section)) next.delete(section); else next.add(section)
-      return next
-    })
+    setCollapsedSections(prev => toggleSetValue(prev, section))
   }
   const toggleExpandServer = (serverName: string) => {
-    setExpandedServers(prev => {
-      const next = new Set(prev)
-      if (next.has(serverName)) next.delete(serverName); else next.add(serverName)
-      return next
-    })
+    setExpandedServers(prev => toggleSetValue(prev, serverName))
   }
 
   // Property helpers

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  addSetValues,
   getVisibleSelectedValues,
   removeSetValue,
   removeSetValues,
@@ -13,6 +14,7 @@ describe("collection state helpers", () => {
 
     expect([...toggleSetValue(selected, "beta")]).toEqual(["alpha"])
     expect([...toggleSetValue(selected, "gamma")]).toEqual(["alpha", "beta", "gamma"])
+    expect([...addSetValues(selected, ["beta", "gamma"])]).toEqual(["alpha", "beta", "gamma"])
     expect([...removeSetValue(selected, "alpha")]).toEqual(["beta"])
     expect([...removeSetValues(selected, ["alpha", "missing"])]).toEqual(["beta"])
     expect(getVisibleSelectedValues(selected, new Set(["beta", "gamma"]))).toEqual(["beta"])

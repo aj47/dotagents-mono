@@ -27,6 +27,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { AgentProfile } from "@dotagents/shared/agent-profile-domain"
 import type { LegacyProfileRecord as Profile } from "@dotagents/shared/agent-profile-legacy-converters"
 import type { AgentSkill } from "@dotagents/shared/types"
+import { toggleSetValue } from "@dotagents/shared/collection-state"
 import { isSkillEnabledForProfile, sortSkillsByProfileEnablement } from "@dotagents/shared/skills-api"
 import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Download, Upload, FolderOpen, RefreshCw, Loader2, ChevronDown, FolderUp, Github, CheckSquare, Square, X, FileText, Package, MoreHorizontal, AlertTriangle } from "lucide-react"
@@ -439,12 +440,7 @@ export function Component() {
   }
 
   const toggleSkillSelection = (id: string) => {
-    setSelectedSkillIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    setSelectedSkillIds((prev) => toggleSetValue(prev, id))
   }
 
   const toggleSelectAll = () => {

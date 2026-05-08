@@ -11,6 +11,17 @@ export function toggleSetValue<TValue>(
   return next
 }
 
+export function addSetValues<TValue>(
+  values: ReadonlySet<TValue>,
+  valuesToAdd: Iterable<TValue>,
+): Set<TValue> {
+  const next = new Set(values)
+  for (const value of valuesToAdd) {
+    next.add(value)
+  }
+  return next
+}
+
 export function removeSetValue<TValue>(
   values: ReadonlySet<TValue>,
   value: TValue,
