@@ -139,6 +139,17 @@ export type McpToolEnabledLike = {
   enabled: boolean
 }
 
+export type McpToolFilterLike = McpToolEnabledLike & {
+  description?: string | null
+  serverEnabled?: boolean
+}
+
+export interface FilterMcpToolsOptions {
+  searchQuery?: string
+  showDisabledTools?: boolean
+  requireEnabledServer?: boolean
+}
+
 export type McpSourceToolEnabledLike = McpToolEnabledLike & {
   sourceName: string
 }
@@ -198,6 +209,25 @@ export function setMcpSourceToolsEnabledInList<TTool extends McpSourceToolEnable
 
 export function countEnabledMcpTools(tools: readonly Pick<McpToolEnabledLike, "enabled">[]): number {
   return tools.filter((tool) => tool.enabled).length
+}
+
+export function filterMcpTools<TTool extends McpToolFilterLike>(
+  tools: readonly TTool[],
+  options: FilterMcpToolsOptions = {},
+): TTool[] {
+  const normalizedSearchQuery = options.searchQuery?.trim().toLowerCase() ?? ""
+  const showDisabledTools = options.showDisabledTools ?? true
+
+  return tools.filter((tool) => {
+    if (options.requireEnabledServer && !tool.serverEnabled) return false
+    if (!showDisabledTools && !tool.enabled) return false
+    if (!normalizedSearchQuery) return true
+
+    return (
+      tool.name.toLowerCase().includes(normalizedSearchQuery) ||
+      (tool.description ?? "").toLowerCase().includes(normalizedSearchQuery)
+    )
+  })
 }
 
 export function setMcpServerRuntimeEnabledInList<TServer extends McpServerRuntimeEnabledLike>(

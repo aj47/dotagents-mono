@@ -36,6 +36,7 @@ import { desktopMcpToolsClient } from "@renderer/lib/desktop-mcp-tools-client"
 import { toast } from "sonner"
 import {
   countEnabledMcpTools,
+  filterMcpTools,
   restoreMcpToolEnabledStatesInList,
   setMcpSourceToolsEnabledInList,
   setMcpToolEnabledInList,
@@ -93,12 +94,9 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
         return acc
       }
 
-      const filteredTools = sourceTools.filter((tool) => {
-        const matchesSearch =
-          tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          tool.description.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesVisibility = showDisabledTools || tool.enabled
-        return matchesSearch && matchesVisibility
+      const filteredTools = filterMcpTools(sourceTools, {
+        searchQuery,
+        showDisabledTools,
       })
 
       if (filteredTools.length > 0) {

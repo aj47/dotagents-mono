@@ -80,7 +80,9 @@ import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@dotagents/shared/mcp-api"
 import {
   buildMcpServerConfigFromDraft,
   countEnabledMcpTools,
+  filterMcpTools,
   formatMcpKeyValueDraft,
+  isReservedMcpServerName,
   mergeImportedMcpServers,
   removeMcpServerConfig,
   renameMcpServerConfig,
@@ -1109,14 +1111,10 @@ export function MCPConfigManager({
   // Only include tools from enabled sources
   const getFilteredToolsForServer = (serverName: string) => {
     const serverTools = toolsByServer[serverName] || []
-    return serverTools.filter((tool) => {
-      // Hide tools from disabled servers
-      if (!tool.serverEnabled) return false
-      const matchesSearch =
-        tool.name.toLowerCase().includes(toolSearchQuery.toLowerCase()) ||
-        tool.description.toLowerCase().includes(toolSearchQuery.toLowerCase())
-      const matchesVisibility = showDisabledTools || tool.enabled
-      return matchesSearch && matchesVisibility
+    return filterMcpTools(serverTools, {
+      searchQuery: toolSearchQuery,
+      showDisabledTools,
+      requireEnabledServer: true,
     })
   }
 
@@ -1563,14 +1561,10 @@ export function MCPConfigManager({
   // Get all filtered tools (global, across all servers)
   // Only include tools from enabled servers
   const getAllFilteredTools = () => {
-    return tools.filter((tool) => {
-      // Hide tools from disabled servers
-      if (!tool.serverEnabled) return false
-      const matchesSearch =
-        tool.name.toLowerCase().includes(toolSearchQuery.toLowerCase()) ||
-        tool.description.toLowerCase().includes(toolSearchQuery.toLowerCase())
-      const matchesVisibility = showDisabledTools || tool.enabled
-      return matchesSearch && matchesVisibility
+    return filterMcpTools(tools, {
+      searchQuery: toolSearchQuery,
+      showDisabledTools,
+      requireEnabledServer: true,
     })
   }
 

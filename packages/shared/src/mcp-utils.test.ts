@@ -3,6 +3,7 @@ import {
   buildMcpServerConfigFromDraft,
   countEnabledMcpTools,
   EMPTY_MCP_SERVER_CONFIG_DRAFT,
+  filterMcpTools,
   MCP_TRANSPORT_OPTIONS,
   inferTransportType,
   formatMcpKeyValueDraft,
@@ -205,6 +206,51 @@ describe('MCP tool list helpers', () => {
       ['read_file', true],
       ['write_file', false],
       ['search', false],
+    ])
+  })
+
+  it('filters tools by search query, enabled state, and server visibility', () => {
+    const detailedTools = [
+      {
+        name: 'read_file',
+        description: 'Read workspace files',
+        enabled: true,
+        serverEnabled: true,
+      },
+      {
+        name: 'write_file',
+        description: 'Write workspace files',
+        enabled: false,
+        serverEnabled: true,
+      },
+      {
+        name: 'remote_search',
+        description: 'Search remote docs',
+        enabled: true,
+        serverEnabled: false,
+      },
+      {
+        name: 'shell',
+        description: null,
+        enabled: true,
+        serverEnabled: true,
+      },
+    ]
+
+    expect(filterMcpTools(detailedTools, { searchQuery: ' workspace ' }).map((tool) => tool.name)).toEqual([
+      'read_file',
+      'write_file',
+    ])
+    expect(filterMcpTools(detailedTools, {
+      searchQuery: 'WRITE',
+      showDisabledTools: false,
+    }).map((tool) => tool.name)).toEqual([])
+    expect(filterMcpTools(detailedTools, {
+      requireEnabledServer: true,
+    }).map((tool) => tool.name)).toEqual([
+      'read_file',
+      'write_file',
+      'shell',
     ])
   })
 })
