@@ -540,11 +540,24 @@ describe('model preset helpers', () => {
       { id: 'gpt-4.1-mini', name: 'GPT 4.1 Mini' },
       { id: 'openai/gpt-oss-120b', name: 'GPT OSS 120B' },
       { id: 'gemini-2.5-flash', name: 'Flash' },
+      { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', description: 'Local reasoning model' },
     ];
 
     expect(filterModelOptionsByQuery(models, '')).toBe(models);
     expect(filterModelOptionsByQuery(models, ' oss ')).toEqual([models[1]]);
     expect(filterModelOptionsByQuery(models, 'gemini')).toEqual([models[2]]);
+    expect(filterModelOptionsByQuery(models, 'reasoning')).toEqual([models[3]]);
+  });
+
+  it('filters model options by extra selector-provided search text', () => {
+    const models = [
+      { id: 'gpt-4.1-mini', name: 'GPT 4.1 Mini' },
+      { id: 'gpt-5.4-mini', name: 'GPT 5.4 Mini' },
+    ];
+
+    expect(filterModelOptionsByQuery(models, 'flagship', {
+      getSearchText: (model) => (model.id === 'gpt-5.4-mini' ? ['OpenAI flagship', null] : undefined),
+    })).toEqual([models[1]]);
   });
 
   it('normalizes model preset string inputs', () => {

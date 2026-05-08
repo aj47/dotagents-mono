@@ -13,6 +13,7 @@ import { AlertCircle, Search } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { logUI, logFocus, logStateChange, logRender } from "@renderer/lib/debug"
 import { DEFAULT_MODEL_PRESET_ID } from "@dotagents/shared/providers"
+import { filterModelOptionsByQuery } from "@dotagents/shared/model-presets"
 
 interface ModelSelectorProps {
   providerId: string
@@ -142,16 +143,7 @@ export function ModelSelector({
     }
   }, [value, selectableModels, useCustomInput, onValueChange])
 
-  // Filter models based on search query
-  const filteredModels = selectableModels.filter((model) => {
-    if (!searchQuery.trim()) return true
-    const query = searchQuery.toLowerCase()
-    return (
-      model.id.toLowerCase().includes(query) ||
-      model.name.toLowerCase().includes(query) ||
-      (model.description && model.description.toLowerCase().includes(query))
-    )
-  })
+  const filteredModels = filterModelOptionsByQuery(selectableModels, searchQuery)
 
   const handleToggleCustom = () => {
     if (useCustomInput) {

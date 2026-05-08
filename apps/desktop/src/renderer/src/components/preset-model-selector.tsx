@@ -18,6 +18,7 @@ import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { desktopModelsClient } from "@renderer/lib/desktop-models-client"
 import type { ModelInfo, ModelsDevModel } from "@dotagents/shared/api-types"
+import { filterModelOptionsByQuery } from "@dotagents/shared/model-presets"
 
 interface PresetModelSelectorProps {
   presetId: string
@@ -154,15 +155,8 @@ export function PresetModelSelector({
     return modelsDevData[modelId]
   }
 
-  const filteredModels = models.filter((model) => {
-    if (!searchQuery.trim()) return true
-    const query = searchQuery.toLowerCase()
-    const info = getModelInfo(model.id)
-    return (
-      model.id.toLowerCase().includes(query) ||
-      model.name.toLowerCase().includes(query) ||
-      info?.name?.toLowerCase().includes(query)
-    )
+  const filteredModels = filterModelOptionsByQuery(models, searchQuery, {
+    getSearchText: (model) => getModelInfo(model.id)?.name,
   })
 
   const selectedDisplayValue = (() => {

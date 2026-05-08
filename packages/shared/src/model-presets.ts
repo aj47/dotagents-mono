@@ -66,8 +66,15 @@ export type OpenAiPresetModelSettingKey =
 
 export type ModelOptionLike = {
   id: string;
-  name?: string;
+  name?: string | null;
+  description?: string | null;
 };
+
+export type ModelOptionSearchText = string | null | undefined;
+
+export interface FilterModelOptionsByQueryOptions<T extends ModelOptionLike> {
+  getSearchText?: (model: T) => ModelOptionSearchText | ModelOptionSearchText[];
+}
 
 export type ResolveConfiguredAgentModelOptions = {
   includeFallback?: boolean;
@@ -786,13 +793,30 @@ export function buildModelPresetDeleteUpdates(
   };
 }
 
-export function filterModelOptionsByQuery<T extends ModelOptionLike>(models: T[], searchQuery: string): T[] {
+function modelOptionSearchTextMatches(value: ModelOptionSearchText, query: string): boolean {
+  return typeof value === 'string' && value.toLowerCase().includes(query);
+}
+
+export function filterModelOptionsByQuery<T extends ModelOptionLike>(
+  models: T[],
+  searchQuery: string,
+  options: FilterModelOptionsByQueryOptions<T> = {},
+): T[] {
   const query = searchQuery.trim().toLowerCase();
   if (!query) return models;
-  return models.filter((model) => (
-    model.id.toLowerCase().includes(query)
-    || (model.name ?? '').toLowerCase().includes(query)
-  ));
+  return models.filter((model) => {
+    const extraSearchText = options.getSearchText?.(model);
+    const extraSearchValues = Array.isArray(extraSearchText)
+      ? extraSearchText
+      : [extraSearchText];
+
+    return (
+      modelOptionSearchTextMatches(model.id, query)
+      || modelOptionSearchTextMatches(model.name, query)
+      || modelOptionSearchTextMatches(model.description, query)
+      || extraSearchValues.some((value) => modelOptionSearchTextMatches(value, query))
+    );
+  });
 }
 
 export function normalizeModelPresetString(value: unknown, maxLength: number = 500): string | undefined {
