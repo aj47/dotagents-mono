@@ -341,6 +341,8 @@ export function SettingsAgents() {
   const runtimeTools = allTools.filter(t => t.sourceKind === "runtime")
   const externalTools = allTools.filter(t => t.sourceKind === "mcp")
   const serverNames = Object.keys(serverStatus)
+  const skillIds = skills.map(s => s.id)
+  const runtimeToolNames = runtimeTools.map(t => t.name)
   const toolsByServer = (serverName: string) => externalTools.filter(t => t.sourceName === serverName)
 
   // Tool config helpers
@@ -377,7 +379,7 @@ export function SettingsAgents() {
       toolConfig: getAgentProfileRuntimeToolsConfigAfterToggle(
         editing.toolConfig,
         toolName,
-        runtimeTools.map(t => t.name),
+        runtimeToolNames,
       ),
     })
   }
@@ -386,7 +388,7 @@ export function SettingsAgents() {
     if (!editing) return
     setEditing({
       ...editing,
-      skillsConfig: toggleAgentProfileSkillConfig(editing.skillsConfig, skillId, skills.map(s => s.id)),
+      skillsConfig: toggleAgentProfileSkillConfig(editing.skillsConfig, skillId, skillIds),
     })
   }
 
@@ -399,8 +401,8 @@ export function SettingsAgents() {
     if (!editing) return
     setEditing({ ...editing, skillsConfig: getAgentProfileSkillsConfigAfterSetAllEnabled(false) })
   }
-  const allSkillsEnabled = hasAllAgentProfileSkillsEnabled(editing?.skillsConfig, skills.map(s => s.id))
-  const allSkillsDisabled = hasNoAgentProfileSkillsEnabled(editing?.skillsConfig, skills.map(s => s.id))
+  const allSkillsEnabled = hasAllAgentProfileSkillsEnabled(editing?.skillsConfig, skillIds)
+  const allSkillsDisabled = hasNoAgentProfileSkillsEnabled(editing?.skillsConfig, skillIds)
 
   const enableAllServers = () => {
     if (!editing) return
@@ -421,7 +423,7 @@ export function SettingsAgents() {
     if (!editing) return
     setEditing({ ...editing, toolConfig: getAgentProfileRuntimeToolsConfigAfterSetAllEnabled(editing.toolConfig, false) })
   }
-  const allRuntimeEnabled = hasAllAgentProfileRuntimeToolsEnabled(editing?.toolConfig, runtimeTools.map(t => t.name))
+  const allRuntimeEnabled = hasAllAgentProfileRuntimeToolsEnabled(editing?.toolConfig, runtimeToolNames)
   const allRuntimeDisabled = hasOnlyEssentialAgentProfileRuntimeToolsEnabled(editing?.toolConfig)
 
   // Section collapse helpers
@@ -581,8 +583,8 @@ export function SettingsAgents() {
           const summaryItems = getAgentCardSummaryItems(
             agent,
             serverNames,
-            skills.map(skill => skill.id),
-            runtimeTools.map(tool => tool.name),
+            skillIds,
+            runtimeToolNames,
           )
 
           return (
@@ -925,7 +927,7 @@ export function SettingsAgents() {
                         <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allSkillsDisabled} onClick={(e) => { e.stopPropagation(); disableAllSkills() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{skills.filter(s => isSkillEnabled(s.id)).length} of {skills.length} enabled</Badge>
+                    <Badge variant="secondary" className="text-xs">{countEnabledAgentProfileSkills(editing?.skillsConfig, skillIds)} of {skills.length} enabled</Badge>
                   </div>
                 </div>
                 {!isSectionCollapsed("skills") && (
@@ -963,7 +965,7 @@ export function SettingsAgents() {
                         <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allServersDisabled} onClick={(e) => { e.stopPropagation(); disableAllServers() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{serverNames.filter(n => isServerEnabled(n)).length} of {serverNames.length} enabled</Badge>
+                    <Badge variant="secondary" className="text-xs">{countEnabledAgentProfileMcpServers(editing?.toolConfig, serverNames)} of {serverNames.length} enabled</Badge>
                   </div>
                 </div>
                 {!isSectionCollapsed("mcp-servers") && (
@@ -1036,7 +1038,7 @@ export function SettingsAgents() {
                         <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" disabled={allRuntimeDisabled} onClick={(e) => { e.stopPropagation(); disableAllRuntimeTools() }}>Disable All</Button>
                       </div>
                     )}
-                    <Badge variant="secondary" className="text-xs">{runtimeTools.filter(t => isRuntimeToolEnabled(t.name)).length} of {runtimeTools.length} enabled</Badge>
+                    <Badge variant="secondary" className="text-xs">{countEnabledAgentProfileRuntimeTools(editing?.toolConfig, runtimeToolNames)} of {runtimeTools.length} enabled</Badge>
                   </div>
                 </div>
                 {!isSectionCollapsed("runtime-tools") && (
