@@ -36,7 +36,7 @@ import { desktopMcpToolsClient } from "@renderer/lib/desktop-mcp-tools-client"
 import { toast } from "sonner"
 import {
   countEnabledMcpTools,
-  filterMcpTools,
+  filterMcpToolSourceGroups,
   groupMcpToolsBySource,
   restoreMcpToolEnabledStatesInList,
   setMcpSourceToolsEnabledInList,
@@ -80,25 +80,11 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
   const toolsBySource = groupMcpToolsBySource(toolsFromEnabledSources)
 
   // Filter tools based on search and server selection
-  const filteredToolsBySource = (Object.entries(toolsBySource) as Array<[string, DetailedTool[]]>).reduce<Record<string, DetailedTool[]>>(
-    (acc, [sourceName, sourceTools]) => {
-      if (selectedSource !== "all" && sourceName !== selectedSource) {
-        return acc
-      }
-
-      const filteredTools = filterMcpTools(sourceTools, {
-        searchQuery,
-        showDisabledTools,
-      })
-
-      if (filteredTools.length > 0) {
-        acc[sourceName] = filteredTools
-      }
-
-      return acc
-    },
-    {},
-  )
+  const filteredToolsBySource = filterMcpToolSourceGroups(toolsBySource, {
+    selectedSource,
+    searchQuery,
+    showDisabledTools,
+  })
 
   const handleToolToggle = async (toolName: string, enabled: boolean) => {
     try {

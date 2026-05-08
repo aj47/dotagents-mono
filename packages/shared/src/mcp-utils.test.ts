@@ -3,6 +3,7 @@ import {
   buildMcpServerConfigFromDraft,
   countEnabledMcpTools,
   EMPTY_MCP_SERVER_CONFIG_DRAFT,
+  filterMcpToolSourceGroups,
   filterMcpTools,
   groupMcpToolsBySource,
   MCP_TRANSPORT_OPTIONS,
@@ -265,6 +266,25 @@ describe('MCP tool list helpers', () => {
       'write_file',
       'shell',
     ])
+  })
+
+  it('filters grouped tools by selected source and tool criteria', () => {
+    const groupedTools = groupMcpToolsBySource([
+      { name: 'read_file', description: 'Read workspace files', sourceName: 'filesystem', enabled: true },
+      { name: 'write_file', description: 'Write workspace files', sourceName: 'filesystem', enabled: false },
+      { name: 'search', description: 'Search docs', sourceName: 'web', enabled: true },
+    ])
+
+    expect(filterMcpToolSourceGroups(groupedTools, {
+      selectedSource: 'filesystem',
+      searchQuery: 'workspace',
+      showDisabledTools: false,
+    })).toEqual({
+      filesystem: [
+        { name: 'read_file', description: 'Read workspace files', sourceName: 'filesystem', enabled: true },
+      ],
+    })
+    expect(filterMcpToolSourceGroups(groupedTools, { selectedSource: 'all' })).toEqual(groupedTools)
   })
 })
 

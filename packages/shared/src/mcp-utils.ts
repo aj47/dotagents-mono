@@ -150,6 +150,11 @@ export interface FilterMcpToolsOptions {
   requireEnabledServer?: boolean
 }
 
+export interface FilterMcpToolSourceGroupsOptions extends FilterMcpToolsOptions {
+  selectedSource?: string
+  allSourcesValue?: string
+}
+
 export type McpSourceToolEnabledLike = McpToolEnabledLike & {
   sourceName: string
 }
@@ -244,6 +249,33 @@ export function filterMcpTools<TTool extends McpToolFilterLike>(
       (tool.description ?? "").toLowerCase().includes(normalizedSearchQuery)
     )
   })
+}
+
+export function filterMcpToolSourceGroups<TTool extends McpToolFilterLike>(
+  toolsBySource: Record<string, readonly TTool[]>,
+  options: FilterMcpToolSourceGroupsOptions = {},
+): Record<string, TTool[]> {
+  const {
+    selectedSource = "all",
+    allSourcesValue = "all",
+    ...filterOptions
+  } = options
+
+  return Object.entries(toolsBySource).reduce<Record<string, TTool[]>>(
+    (acc, [sourceName, sourceTools]) => {
+      if (selectedSource !== allSourcesValue && sourceName !== selectedSource) {
+        return acc
+      }
+
+      const filteredTools = filterMcpTools(sourceTools, filterOptions)
+      if (filteredTools.length > 0) {
+        acc[sourceName] = filteredTools
+      }
+
+      return acc
+    },
+    {},
+  )
 }
 
 export function setMcpServerRuntimeEnabledInList<TServer extends McpServerRuntimeEnabledLike>(
