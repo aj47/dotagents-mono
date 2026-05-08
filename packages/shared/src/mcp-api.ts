@@ -1358,12 +1358,26 @@ export function buildOperatorMcpStatusResponse(
       configDisabled: !!status.configDisabled,
       error: status.error,
     }))
+  const summary = summarizeOperatorMcpServers(servers)
 
+  return {
+    ...summary,
+    servers,
+  }
+}
+
+export type OperatorMcpServerSummaryStats = Pick<
+  OperatorMCPStatusResponse,
+  "totalServers" | "connectedServers" | "totalTools"
+>
+
+export function summarizeOperatorMcpServers(
+  servers: readonly Pick<OperatorMCPServerSummary, "connected" | "toolCount">[],
+): OperatorMcpServerSummaryStats {
   return {
     totalServers: servers.length,
     connectedServers: servers.filter((server) => server.connected).length,
     totalTools: servers.reduce((sum, server) => sum + server.toolCount, 0),
-    servers,
   }
 }
 

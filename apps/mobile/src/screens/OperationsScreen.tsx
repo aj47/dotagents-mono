@@ -52,6 +52,7 @@ import { useTheme } from '../ui/ThemeProvider';
 import { radius, spacing } from '../ui/theme';
 import { formatConfigListInput, parseConfigListInput } from '@dotagents/shared/config-list-input';
 import { getErrorMessage } from '@dotagents/shared/error-utils';
+import { summarizeOperatorMcpServers } from '@dotagents/shared/mcp-api';
 import { setMcpToolEnabledInList } from '@dotagents/shared/mcp-utils';
 import {
   DESKTOP_TEXT_INPUT_FIELD_METADATA,
@@ -743,6 +744,10 @@ export default function OperationsScreen({ navigation }: any) {
   const whatsApp = whatsAppSummary ?? status?.integrations.whatsapp ?? null;
   const tunnelStatus = status?.tunnel ?? null;
   const isDesktopMac = status?.system.platform === 'darwin';
+  const mcpServerSummary = useMemo(
+    () => summarizeOperatorMcpServers(mcpServers),
+    [mcpServers],
+  );
   const trustedDeviceIds = settings?.remoteServerOperatorAllowDeviceIds ?? [];
   const currentDeviceTrusted = currentDeviceId ? trustedDeviceIds.includes(currentDeviceId) : false;
   const channelAllowlistFields = CHANNEL_OPERATOR_ALLOWLISTS_SECTION_METADATA.fields;
@@ -1345,9 +1350,9 @@ export default function OperationsScreen({ navigation }: any) {
               <Text style={styles.panelTitle}>{OPERATOR_MCP_SERVERS_PANEL_METADATA.panelTitle}</Text>
               <Text style={styles.detailText}>
                 {OPERATOR_MCP_SERVERS_PANEL_METADATA.formatSummary(
-                  mcpServers.filter((s) => s.connected).length,
-                  mcpServers.length,
-                  mcpServers.reduce((sum, s) => sum + s.toolCount, 0),
+                  mcpServerSummary.connectedServers,
+                  mcpServerSummary.totalServers,
+                  mcpServerSummary.totalTools,
                 )}
               </Text>
               {mcpServers.map((s) => {

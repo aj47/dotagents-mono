@@ -659,6 +659,7 @@ test('displays recent operator logs from operator API', () => {
 test('displays MCP servers from operator API', () => {
   assert.match(operationsSource, /getOperatorMCP/);
   assert.match(operationsSource, /setMcpServers/);
+  assert.match(operationsSource, /summarizeOperatorMcpServers\(mcpServers\)/);
   assert.match(operationsSource, /OPERATOR_MCP_SERVERS_PANEL_METADATA\.panelTitle/);
   assert.match(operationsSource, /OPERATOR_MCP_SERVERS_PANEL_METADATA\.formatSummary/);
   assert.match(operationsSource, /OPERATOR_MCP_SERVERS_PANEL_METADATA\.formatServerSummary\(s\.connected, s\.enabled, s\.name, s\.toolCount\)/);
@@ -688,6 +689,8 @@ test('displays MCP servers from operator API', () => {
   assert.match(operationsSource, /settingsClient\.restartMCPServer\(s\.name\)/);
   assert.match(operationsSource, /OPERATOR_MCP_SERVERS_PANEL_METADATA\.formatRestartedMessage\(s\.name\)/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.panelTitle\}>MCP servers<\/Text>/);
+  assert.doesNotMatch(operationsSource, /mcpServers\.filter\(\(s\) => s\.connected\)\.length/);
+  assert.doesNotMatch(operationsSource, /mcpServers\.reduce\(\(sum, s\) => sum \+ s\.toolCount, 0\)/);
   assert.doesNotMatch(operationsSource, /s\.connected \? '✓' : s\.enabled \? '✗' : '○'/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\(`Restart \$\{s\.name\} MCP server`\)/);
   assert.doesNotMatch(operationsSource, /<Text style=\{styles\.logMessage\}>\{entry\.message\}<\/Text>/);

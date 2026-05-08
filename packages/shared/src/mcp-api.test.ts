@@ -72,6 +72,7 @@ import {
   resolveInjectedMcpRequestContext,
   resolveInjectedRuntimeToolsForAcpSession,
   stripSamplingToolMarkerTokens,
+  summarizeOperatorMcpServers,
   toggleMcpServerAction,
   upsertMcpServerConfigAction,
   deleteMcpServerConfigAction,
@@ -902,6 +903,15 @@ describe("MCP API helpers", () => {
   })
 
   it("builds compact operator MCP status responses", () => {
+    expect(summarizeOperatorMcpServers([
+      { connected: true, toolCount: 3 },
+      { connected: false, toolCount: 1 },
+    ])).toEqual({
+      totalServers: 2,
+      connectedServers: 1,
+      totalTools: 4,
+    })
+
     expect(buildOperatorMcpStatusResponse({
       "dotagents-internal": {
         connected: true,
