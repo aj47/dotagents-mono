@@ -77,6 +77,26 @@ export function hasQueuedMessages(queues: MessageQueueMap, conversationId: strin
   return (queues.get(conversationId)?.length ?? 0) > 0;
 }
 
+export function isQueuedMessageProcessing(message: Pick<QueuedMessage, 'status'>): boolean {
+  return message.status === 'processing';
+}
+
+export function isQueuedMessageFailed(message: Pick<QueuedMessage, 'status'>): boolean {
+  return message.status === 'failed';
+}
+
+export function canMutateQueuedMessage(message: Pick<QueuedMessage, 'status'>): boolean {
+  return !isQueuedMessageProcessing(message);
+}
+
+export function canEditQueuedMessage(message: Pick<QueuedMessage, 'status' | 'addedToHistory'>): boolean {
+  return canMutateQueuedMessage(message) && !message.addedToHistory;
+}
+
+export function hasProcessingQueuedMessage(messages: readonly Pick<QueuedMessage, 'status'>[]): boolean {
+  return messages.some(isQueuedMessageProcessing);
+}
+
 function setConversationQueue(
   queues: MessageQueueMap,
   conversationId: string,
@@ -249,7 +269,7 @@ export function removeQueuedMessage(
 ): MessageQueueMutationResult {
   const found = findQueuedMessage(queues, conversationId, messageId);
   if (!found) return { ok: false, queues, reason: 'not_found' };
-  if (found.message.status === 'processing') {
+  if (isQueuedMessageProcessing(found.message)) {
     return { ok: false, queues, message: found.message, index: found.index, reason: 'processing' };
   }
 
@@ -267,7 +287,7 @@ export function clearQueuedMessages(
 ): MessageQueueMutationResult {
   const queue = queues.get(conversationId);
   if (!queue) return { ok: true, queues };
-  if (queue.some((message) => message.status === 'processing')) {
+  if (hasProcessingQueuedMessage(queue)) {
     return { ok: false, queues, reason: 'processing' };
   }
 
@@ -285,7 +305,7 @@ export function updateQueuedMessageText(
 ): MessageQueueMutationResult {
   const found = findQueuedMessage(queues, conversationId, messageId);
   if (!found) return { ok: false, queues, reason: 'not_found' };
-  if (found.message.status === 'processing') {
+  if (isQueuedMessageProcessing(found.message)) {
     return { ok: false, queues, message: found.message, index: found.index, reason: 'processing' };
   }
   if (found.message.addedToHistory) {

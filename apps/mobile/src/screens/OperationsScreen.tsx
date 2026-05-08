@@ -62,8 +62,12 @@ import {
   THEME_PREFERENCE_OPTIONS,
 } from '@dotagents/shared/theme-preference';
 import {
+  canEditQueuedMessage,
+  canMutateQueuedMessage,
   clearOperatorMessageQueueSummary,
   getOperatorMessageQueueTotalMessageCount,
+  hasProcessingQueuedMessage,
+  isQueuedMessageFailed,
   removeOperatorQueuedMessageSummary,
   retryOperatorQueuedMessageSummary,
   setOperatorMessageQueueSummaryPaused,
@@ -1081,7 +1085,7 @@ export default function OperationsScreen({ navigation }: any) {
                 const clearAction = `message-queue-clear:${queue.conversationId}`;
                 const pauseAction = `message-queue-pause:${queue.conversationId}`;
                 const resumeAction = `message-queue-resume:${queue.conversationId}`;
-                const hasProcessingMessage = queue.messages.some((message) => message.status === 'processing');
+                const hasProcessingMessage = hasProcessingQueuedMessage(queue.messages);
                 return (
                   <View key={queue.conversationId} style={styles.agentSessionRow}>
                     <View style={styles.agentSessionCopy}>
@@ -1096,8 +1100,8 @@ export default function OperationsScreen({ navigation }: any) {
                           const retryAction = `message-queue-message-retry:${queue.conversationId}:${message.id}`;
                           const removeAction = `message-queue-message-remove:${queue.conversationId}:${message.id}`;
                           const updateAction = `message-queue-message-update:${queue.conversationId}:${message.id}`;
-                          const canMutateMessage = message.status !== 'processing';
-                          const canEditMessage = canMutateMessage && !message.addedToHistory;
+                          const canMutateMessage = canMutateQueuedMessage(message);
+                          const canEditMessage = canEditQueuedMessage(message);
 
                           return (
                             <View key={message.id} style={styles.queueMessageItem}>
@@ -1113,7 +1117,7 @@ export default function OperationsScreen({ navigation }: any) {
                                 ) : (
                                   <>
                                     <Text
-                                      style={message.status === 'failed' ? styles.warningText : styles.mutedText}
+                                      style={isQueuedMessageFailed(message) ? styles.warningText : styles.mutedText}
                                       numberOfLines={2}
                                     >
                                       {OPERATOR_MESSAGE_QUEUES_PANEL_METADATA.formatMessageSummary(message.status, message.text)}
@@ -1168,7 +1172,7 @@ export default function OperationsScreen({ navigation }: any) {
                                   </>
                                 ) : (
                                   <>
-                                    {message.status === 'failed' ? (
+                                    {isQueuedMessageFailed(message) ? (
                                       <TouchableOpacity
                                         style={[styles.queueMessageButton, styles.secondaryActionButton, controlsDisabled && styles.actionButtonDisabled]}
                                         onPress={() => void runAction(retryAction, async () => {

@@ -6,10 +6,15 @@ import {
   clearOperatorMessageQueueSummary,
   clearQueuedMessages,
   enqueueQueuedMessage,
+  canEditQueuedMessage,
+  canMutateQueuedMessage,
   getAllMessageQueues,
   getOperatorMessageQueueTotalMessageCount,
   getQueuedMessages,
+  hasProcessingQueuedMessage,
   hasQueuedMessages,
+  isQueuedMessageFailed,
+  isQueuedMessageProcessing,
   markQueuedMessageAddedToHistory,
   markQueuedMessageFailed,
   markQueuedMessageProcessed,
@@ -135,6 +140,12 @@ describe('message-queue-utils', () => {
   it('blocks remove and clear while a message is processing', () => {
     let queues: MessageQueueMap = new Map();
     queues = enqueueQueuedMessage(queues, makeMessage('msg-1', { status: 'processing' })).queues;
+    const processingMessage = getQueuedMessages(queues, 'conversation-1')[0];
+
+    expect(isQueuedMessageProcessing(processingMessage)).toBe(true);
+    expect(hasProcessingQueuedMessage(getQueuedMessages(queues, 'conversation-1'))).toBe(true);
+    expect(canMutateQueuedMessage(processingMessage)).toBe(false);
+    expect(canEditQueuedMessage(processingMessage)).toBe(false);
 
     expect(removeQueuedMessage(queues, 'conversation-1', 'msg-1')).toMatchObject({
       ok: false,
@@ -145,6 +156,17 @@ describe('message-queue-utils', () => {
       reason: 'processing',
     });
     expect(getQueuedMessages(queues, 'conversation-1')).toHaveLength(1);
+  });
+
+  it('reports queued message edit and retry eligibility', () => {
+    const pendingMessage = makeMessage('msg-1');
+    const failedMessage = makeMessage('msg-2', { status: 'failed', errorMessage: 'timeout' });
+    const addedToHistoryMessage = makeMessage('msg-3', { addedToHistory: true });
+
+    expect(isQueuedMessageFailed(failedMessage)).toBe(true);
+    expect(canMutateQueuedMessage(pendingMessage)).toBe(true);
+    expect(canEditQueuedMessage(pendingMessage)).toBe(true);
+    expect(canEditQueuedMessage(addedToHistoryMessage)).toBe(false);
   });
 
   it('updates failed message text by resetting it to pending', () => {

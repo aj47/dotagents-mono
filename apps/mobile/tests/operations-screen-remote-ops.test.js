@@ -540,6 +540,10 @@ test('displays desktop message queues from operator API', () => {
   assert.match(operationsSource, /removeOperatorQueuedMessageSummary/);
   assert.match(operationsSource, /setOperatorMessageQueueSummaryPaused/);
   assert.match(operationsSource, /clearOperatorMessageQueueSummary/);
+  assert.match(operationsSource, /hasProcessingQueuedMessage\(queue\.messages\)/);
+  assert.match(operationsSource, /canMutateQueuedMessage\(message\)/);
+  assert.match(operationsSource, /canEditQueuedMessage\(message\)/);
+  assert.match(operationsSource, /isQueuedMessageFailed\(message\)/);
   assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatClearQueueAccessibilityLabel\(queue\.conversationId\)/);
   assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatPauseQueueAccessibilityLabel\(queue\.conversationId\)/);
   assert.match(operationsSource, /OPERATOR_MESSAGE_QUEUES_PANEL_METADATA\.formatResumeQueueAccessibilityLabel\(queue\.conversationId\)/);
@@ -558,6 +562,9 @@ test('displays desktop message queues from operator API', () => {
   assert.doesNotMatch(operationsSource, /messages: entry\.messages\.filter\(\(queuedMessage\)/);
   assert.doesNotMatch(operationsSource, /messageCount: Math\.max\(0, entry\.messageCount - 1\)/);
   assert.doesNotMatch(operationsSource, /current\.filter\(\(entry\) => entry\.conversationId !== queue\.conversationId\)/);
+  assert.doesNotMatch(operationsSource, /queue\.messages\.some\(\(message\) => message\.status === 'processing'\)/);
+  assert.doesNotMatch(operationsSource, /message\.status !== 'processing'/);
+  assert.doesNotMatch(operationsSource, /message\.status === 'failed'/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\(`Clear \$\{queue\.conversationId\} desktop message queue`\)/);
   assert.doesNotMatch(operationsSource, /createButtonAccessibilityLabel\(`Retry queued message \$\{message\.id\}`\)/);
 });
