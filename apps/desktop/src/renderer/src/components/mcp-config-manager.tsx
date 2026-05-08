@@ -80,7 +80,7 @@ import { RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "@dotagents/shared/mcp-api"
 import {
   buildMcpServerConfigFromDraft,
   countEnabledMcpTools,
-  filterMcpTools,
+  filterMcpToolSourceGroups,
   formatMcpKeyValueDraft,
   groupMcpToolsBySource,
   isReservedMcpServerName,
@@ -1098,17 +1098,12 @@ export function MCPConfigManager({
 
   // Group tools by source
   const toolsByServer = groupMcpToolsBySource(tools)
-
-  // Filter tools for a specific source
-  // Only include tools from enabled sources
-  const getFilteredToolsForServer = (serverName: string) => {
-    const serverTools = toolsByServer[serverName] || []
-    return filterMcpTools(serverTools, {
-      searchQuery: toolSearchQuery,
-      showDisabledTools,
-      requireEnabledServer: true,
-    })
-  }
+  const filteredToolsByServer = filterMcpToolSourceGroups(toolsByServer, {
+    searchQuery: toolSearchQuery,
+    showDisabledTools,
+    requireEnabledServer: true,
+  })
+  const filteredTools = Object.values(filteredToolsByServer).flat()
 
   const handleToolToggle = async (toolName: string, enabled: boolean) => {
     try {
@@ -1550,19 +1545,8 @@ export function MCPConfigManager({
   const [toolsSectionExpanded, setToolsSectionExpanded] = useState(true)
   const [serversSectionExpanded, setServersSectionExpanded] = useState(true)
 
-  // Get all filtered tools (global, across all servers)
-  // Only include tools from enabled servers
-  const getAllFilteredTools = () => {
-    return filterMcpTools(tools, {
-      searchQuery: toolSearchQuery,
-      showDisabledTools,
-      requireEnabledServer: true,
-    })
-  }
-
   // Handle toggle all tools (global)
   const handleToggleAllTools = async (enable: boolean) => {
-    const filteredTools = getAllFilteredTools()
     if (filteredTools.length === 0) return
 
     // Capture original enabled states before any changes
@@ -1747,7 +1731,7 @@ export function MCPConfigManager({
 
             {/* Tools List - Grouped by Server with Collapsible Groups */}
             <div className="space-y-2 flex-1 min-h-0 overflow-y-auto">
-              {getAllFilteredTools().length === 0 ? (
+              {filteredTools.length === 0 ? (
                 <div className="text-sm text-muted-foreground text-center py-4">
                   {totalToolsCount === 0
                     ? "No tools available. Connect a server to see its tools."
@@ -1755,9 +1739,7 @@ export function MCPConfigManager({
                 </div>
               ) : (
                 // Group filtered tools by source
-                (Object.entries(
-                  groupMcpToolsBySource(getAllFilteredTools()),
-                ) as Array<[string, DetailedTool[]]>).map(([serverName, serverTools]) => {
+                (Object.entries(filteredToolsByServer) as Array<[string, DetailedTool[]]>).map(([serverName, serverTools]) => {
                   const sourceLabel = serverTools[0]?.sourceLabel || serverName
                   const isRuntimeBuiltinSource = serverTools[0]?.sourceKind === "runtime"
                   // Before initialization: expanded unless in collapsedToolServers (respects persisted state)
