@@ -8,14 +8,13 @@ const slashCommandMenuSource = readFileSync(
 
 describe("slash command menu repeat-task support", () => {
   it("loads repeat tasks into the shared slash-command list", () => {
-    expect(slashCommandMenuSource).toContain("getPromptLibraryPromptContent(p)")
-    expect(slashCommandMenuSource).toContain("getPromptLibraryPromptDescription(p, 80)")
-    expect(slashCommandMenuSource).toContain("getPromptLibrarySkillContent(s)")
-    expect(slashCommandMenuSource).toContain("getPromptLibrarySkillDescription(s)")
-    expect(slashCommandMenuSource).toContain("getRepeatTaskRunNowDescription(loop)")
+    expect(slashCommandMenuSource).toContain("buildPromptLibraryCommandItems")
+    expect(slashCommandMenuSource).toContain("filterPromptLibraryCommandItems")
+    expect(slashCommandMenuSource).toContain("promptDescriptionMaxLength: 80")
+    expect(slashCommandMenuSource).toContain("getTaskDescription: getRepeatTaskRunNowDescription")
     expect(slashCommandMenuSource).toContain('queryKey: ["loops"]')
     expect(slashCommandMenuSource).toContain("queryFn: () => desktopLoopsClient.getLoops()")
-    expect(slashCommandMenuSource).toContain('type: "loop" as const')
+    expect(slashCommandMenuSource).toContain("type PromptLibraryCommandItem")
   })
 
   it("triggers repeat tasks instead of inserting them into the composer", () => {

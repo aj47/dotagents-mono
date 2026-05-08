@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  buildPromptLibraryCommandItems,
   createPredefinedPromptId,
   createPredefinedPromptRecord,
   deletePredefinedPromptFromList,
+  filterPromptLibraryCommandItems,
   filterPromptLibraryItemsByQuery,
   getPromptLibraryPromptContent,
   getPromptLibraryPromptDescription,
@@ -78,6 +80,54 @@ describe("predefined prompt helpers", () => {
     expect(filterPromptLibraryItemsByQuery(items, "citation", (item) => [item.name, item.description, item.prompt])).toEqual([
       items[2],
     ])
+  })
+
+  it("builds and filters shared command menu items for prompts, skills, and tasks", () => {
+    const items = buildPromptLibraryCommandItems({
+      prompts: [{
+        id: "prompt-1",
+        name: "/review",
+        content: "Review this diff for regressions.",
+        createdAt: 1,
+        updatedAt: 1,
+      }],
+      skills: [{
+        id: "skill-1",
+        name: "Research",
+        description: "Find citations",
+      }],
+      tasks: [{
+        id: "task-1",
+        name: "Ship notes",
+        prompt: "Draft release notes",
+      }],
+      getTaskDescription: (task) => `Run ${task.name}`,
+    })
+
+    expect(items).toEqual([
+      {
+        id: "prompt-1",
+        name: "/review",
+        description: "Review this diff for regressions.",
+        content: "Review this diff for regressions.",
+        type: "prompt",
+      },
+      {
+        id: "skill-1",
+        name: "Research",
+        description: "Find citations",
+        content: 'Use the "Research" skill for this request.\n\nFind citations',
+        type: "skill",
+      },
+      {
+        id: "task-1",
+        name: "Ship notes",
+        description: "Run Ship notes",
+        type: "loop",
+      },
+    ])
+    expect(filterPromptLibraryCommandItems(items, "citation").map((item) => item.id)).toEqual(["skill-1"])
+    expect(filterPromptLibraryCommandItems(items, "ship").map((item) => item.id)).toEqual(["task-1"])
   })
 
   it("creates stable prompt ids and trimmed records", () => {

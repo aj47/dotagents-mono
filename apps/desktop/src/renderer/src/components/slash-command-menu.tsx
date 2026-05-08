@@ -8,19 +8,12 @@ import { desktopSkillsClient } from "@renderer/lib/desktop-skills-client"
 import { toast } from "sonner"
 import { getRepeatTaskRunNowDescription } from "@dotagents/shared/repeat-task-utils"
 import {
-  getPromptLibraryPromptContent,
-  getPromptLibraryPromptDescription,
-  getPromptLibrarySkillContent,
-  getPromptLibrarySkillDescription,
+  buildPromptLibraryCommandItems,
+  filterPromptLibraryCommandItems,
+  type PromptLibraryCommandItem,
 } from "@dotagents/shared/predefined-prompts"
 
-export interface SlashCommandItem {
-  id: string
-  name: string
-  description: string
-  content?: string
-  type: "prompt" | "skill" | "loop"
-}
+export type SlashCommandItem = PromptLibraryCommandItem
 
 export interface SlashCommandMenuHandle {
   moveSelection: (delta: number) => void
@@ -60,37 +53,17 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
   })
 
   const items = useMemo<SlashCommandItem[]>(() => {
-    const prompts = (configQuery.data?.predefinedPrompts || []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: getPromptLibraryPromptDescription(p, 80),
-      content: getPromptLibraryPromptContent(p),
-      type: "prompt" as const,
-    }))
-    const skills = (skillsQuery.data ?? []).map((s) => ({
-      id: s.id,
-      name: s.name,
-      description: getPromptLibrarySkillDescription(s),
-      content: getPromptLibrarySkillContent(s),
-      type: "skill" as const,
-    }))
-    const loops = (loopsQuery.data ?? []).map((loop) => ({
-      id: loop.id,
-      name: loop.name,
-      description: getRepeatTaskRunNowDescription(loop),
-      type: "loop" as const,
-    }))
-    return [...prompts, ...skills, ...loops]
+    return buildPromptLibraryCommandItems({
+      prompts: configQuery.data?.predefinedPrompts || [],
+      skills: skillsQuery.data ?? [],
+      tasks: loopsQuery.data ?? [],
+      promptDescriptionMaxLength: 80,
+      getTaskDescription: getRepeatTaskRunNowDescription,
+    })
   }, [configQuery.data, skillsQuery.data, loopsQuery.data])
 
   const filtered = useMemo(() => {
-    if (!query) return items
-    const q = query.toLowerCase()
-    return items.filter(
-      (item) =>
-        item.name.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q),
-    )
+    return filterPromptLibraryCommandItems(items, query)
   }, [items, query])
 
   useEffect(() => {

@@ -15,13 +15,26 @@ export type PromptLibraryPromptLike = {
 }
 
 export type PromptLibrarySkillLike = {
+  id?: string
   name: string
   description?: string | null
   instructions?: string | null
 }
 
 export type PromptLibraryTaskLike = {
+  id?: string
+  name?: string
   prompt?: string | null
+}
+
+export type PromptLibraryCommandItemType = "prompt" | "skill" | "loop"
+
+export interface PromptLibraryCommandItem {
+  id: string
+  name: string
+  description: string
+  content?: string
+  type: PromptLibraryCommandItemType
 }
 
 export type PromptLibrarySearchText = string | null | undefined
@@ -87,6 +100,60 @@ export function filterPromptLibraryItemsByQuery<TItem>(
     const values = Array.isArray(searchText) ? searchText : [searchText]
     return values.some((value) => promptLibrarySearchTextMatches(value, normalizedQuery))
   })
+}
+
+export interface BuildPromptLibraryCommandItemsOptions<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TSkill extends PromptLibrarySkillLike & { id: string } = PromptLibrarySkillLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string } = PromptLibraryTaskLike & { id: string; name: string },
+> {
+  prompts?: readonly TPrompt[]
+  skills?: readonly TSkill[]
+  tasks?: readonly TTask[]
+  promptDescriptionMaxLength?: number
+  getTaskDescription?: (task: TTask) => string
+}
+
+export function buildPromptLibraryCommandItems<
+  TPrompt extends PredefinedPromptSummary,
+  TSkill extends PromptLibrarySkillLike & { id: string },
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+>(
+  options: BuildPromptLibraryCommandItemsOptions<TPrompt, TSkill, TTask>,
+): PromptLibraryCommandItem[] {
+  const promptDescriptionMaxLength = options.promptDescriptionMaxLength ?? 80
+  const prompts = (options.prompts ?? []).map((prompt) => ({
+    id: prompt.id,
+    name: prompt.name,
+    description: getPromptLibraryPromptDescription(prompt, promptDescriptionMaxLength),
+    content: getPromptLibraryPromptContent(prompt),
+    type: "prompt" as const,
+  }))
+  const skills = (options.skills ?? []).map((skill) => ({
+    id: skill.id,
+    name: skill.name,
+    description: getPromptLibrarySkillDescription(skill),
+    content: getPromptLibrarySkillContent(skill),
+    type: "skill" as const,
+  }))
+  const tasks = (options.tasks ?? []).map((task) => ({
+    id: task.id,
+    name: task.name,
+    description: options.getTaskDescription?.(task) ?? getPromptLibraryTaskDescription(task),
+    type: "loop" as const,
+  }))
+
+  return [...prompts, ...skills, ...tasks]
+}
+
+export function filterPromptLibraryCommandItems(
+  items: readonly PromptLibraryCommandItem[],
+  searchQuery: string,
+): PromptLibraryCommandItem[] {
+  return filterPromptLibraryItemsByQuery(items, searchQuery, (item) => [
+    item.name,
+    item.description,
+  ])
 }
 
 export function createPredefinedPromptId(now: number, random: () => number = Math.random): string {
