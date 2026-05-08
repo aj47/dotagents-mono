@@ -21,6 +21,7 @@ test('preserves the inline settings helper when loop editing is unavailable', ()
 });
 
 test('uses shared repeat task schedule draft edit helpers', () => {
+  assert.match(screenSource, /buildRepeatTaskEditFormSavePayload\(formData,/);
   assert.match(screenSource, /updateRepeatTaskScheduleTimeAt\(formData\.scheduleTimes, idx, v\)/);
   assert.match(screenSource, /removeRepeatTaskScheduleTimeAt\(formData\.scheduleTimes, idx\)/);
   assert.match(screenSource, /addRepeatTaskScheduleTime\(formData\.scheduleTimes\)/);
@@ -31,4 +32,6 @@ test('uses shared repeat task schedule draft edit helpers', () => {
   assert.doesNotMatch(screenSource, /const next = \[\.\.\.formData\.scheduleTimes\]/);
   assert.doesNotMatch(screenSource, /formData\.scheduleTimes\.filter\(\(_, i\) => i !== idx\)/);
   assert.doesNotMatch(screenSource, /formData\.scheduleDaysOfWeek\.filter\(d => d !== dayIdx\)/);
+  assert.doesNotMatch(screenSource, /resolveRepeatTaskIntervalMinutesDraft/);
+  assert.doesNotMatch(screenSource, /buildRepeatTaskScheduleFromDraft/);
 });

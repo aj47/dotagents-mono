@@ -34,14 +34,11 @@ import {
 } from '@dotagents/shared/agent-session-candidates';
 import {
   addRepeatTaskScheduleTime,
-  buildRepeatTaskScheduleFromDraft,
+  buildRepeatTaskEditFormSavePayload,
   DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
-  DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
   REPEAT_TASK_DAY_LABELS,
   formatRepeatTaskEditFormData,
-  parseLoopIntervalDraft,
   removeRepeatTaskScheduleTimeAt,
-  resolveRepeatTaskIntervalMinutesDraft,
   toggleRepeatTaskScheduleDayOfWeek,
   type RepeatTaskEditFormData,
   updateRepeatTaskScheduleTimeAt,
@@ -192,74 +189,48 @@ export default function LoopEditScreen({ navigation, route }: any) {
       return;
     }
 
-    const name = formData.name.trim();
-    const prompt = formData.prompt.trim();
-    if (!name || !prompt) {
-      setError('Name and prompt are required');
-      return;
-    }
-    const intervalResolution = resolveRepeatTaskIntervalMinutesDraft(formData.intervalMinutes, {
+    const savePayloadResult = buildRepeatTaskEditFormSavePayload(formData, {
       existingIntervalMinutes: isEditing ? existingLoopIntervalMinutes : null,
-      fallbackIntervalMinutes: DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
     });
-    if (formData.scheduleMode === 'interval' && !intervalResolution.isValid) {
-      setError('Interval must be a positive whole number of minutes');
-      return;
-    }
-    const maxIterationsInput = formData.maxIterations.trim();
-    const parsedMaxIterations = maxIterationsInput ? parseLoopIntervalDraft(maxIterationsInput) : null;
-    if (maxIterationsInput && parsedMaxIterations === null) {
-      setError('Max iterations must be a positive whole number');
-      return;
-    }
-
-    const scheduleResult = buildRepeatTaskScheduleFromDraft({
-      scheduleMode: formData.scheduleMode,
-      scheduleTimes: formData.scheduleTimes,
-      scheduleDaysOfWeek: formData.scheduleDaysOfWeek,
-    });
-    if (scheduleResult.ok === false) {
-      const message = scheduleResult.error === 'missing-schedule-times'
-        ? 'Add at least one time in HH:MM format'
-        : 'Select at least one day of the week';
-      setError(message);
+    if (savePayloadResult.ok === false) {
+      setError(savePayloadResult.message);
       return;
     }
 
     setIsSaving(true);
     setError(null);
     try {
-      const lastSessionId = formData.lastSessionId.trim();
+      const payload = savePayloadResult.payload;
       if (isEditing && effectiveLoopId) {
         const updatePayload: LoopUpdateRequest = {
-          name,
-          prompt,
-          intervalMinutes: intervalResolution.intervalMinutes,
-          enabled: formData.enabled,
-          profileId: formData.profileId || undefined,
-          runOnStartup: formData.runOnStartup,
-          speakOnTrigger: formData.speakOnTrigger,
-          continueInSession: formData.continueInSession,
-          lastSessionId: formData.continueInSession ? (lastSessionId || null) : null,
-          maxIterations: parsedMaxIterations ?? null,
-          runContinuously: scheduleResult.runContinuously,
-          schedule: scheduleResult.schedule,
+          name: payload.name,
+          prompt: payload.prompt,
+          intervalMinutes: payload.intervalMinutes,
+          enabled: payload.enabled,
+          profileId: payload.profileId || undefined,
+          runOnStartup: payload.runOnStartup,
+          speakOnTrigger: payload.speakOnTrigger,
+          continueInSession: payload.continueInSession,
+          lastSessionId: payload.continueInSession ? (payload.lastSessionId || null) : null,
+          maxIterations: payload.maxIterations ?? null,
+          runContinuously: payload.runContinuously,
+          schedule: payload.schedule,
         };
         await settingsClient.updateLoop(effectiveLoopId, updatePayload);
       } else {
         const createPayload: LoopCreateRequest = {
-          name,
-          prompt,
-          intervalMinutes: intervalResolution.intervalMinutes,
-          enabled: formData.enabled,
-          profileId: formData.profileId || undefined,
-          runOnStartup: formData.runOnStartup,
-          speakOnTrigger: formData.speakOnTrigger,
-          continueInSession: formData.continueInSession,
-          ...(formData.continueInSession && lastSessionId ? { lastSessionId } : {}),
-          ...(parsedMaxIterations ? { maxIterations: parsedMaxIterations } : {}),
-          runContinuously: scheduleResult.runContinuously,
-          schedule: scheduleResult.schedule,
+          name: payload.name,
+          prompt: payload.prompt,
+          intervalMinutes: payload.intervalMinutes,
+          enabled: payload.enabled,
+          profileId: payload.profileId || undefined,
+          runOnStartup: payload.runOnStartup,
+          speakOnTrigger: payload.speakOnTrigger,
+          continueInSession: payload.continueInSession,
+          ...(payload.continueInSession && payload.lastSessionId ? { lastSessionId: payload.lastSessionId } : {}),
+          ...(payload.maxIterations ? { maxIterations: payload.maxIterations } : {}),
+          runContinuously: payload.runContinuously,
+          schedule: payload.schedule,
         };
         await settingsClient.createLoop(createPayload);
       }

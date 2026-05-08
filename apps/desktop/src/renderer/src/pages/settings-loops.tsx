@@ -28,9 +28,8 @@ import {
 import type { AgentSessionCandidatesResponse, LoopRuntimeStatus } from "@dotagents/shared/api-types"
 import {
   addRepeatTaskScheduleTime,
-  buildRepeatTaskScheduleFromDraft,
+  buildRepeatTaskEditFormSavePayload,
   DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
-  DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
   REPEAT_TASK_DAY_LABELS,
   createRepeatTaskIdFromName,
   describeLoopCadence,
@@ -39,7 +38,6 @@ import {
   parseLoopIntervalDraft,
   REPEAT_TASK_INTERVAL_PRESETS,
   removeRepeatTaskScheduleTimeAt,
-  resolveRepeatTaskIntervalMinutesDraft,
   toggleRepeatTaskScheduleDayOfWeek,
   type RepeatTaskEditFormData,
   updateRepeatTaskScheduleTimeAt,
@@ -160,59 +158,36 @@ export function SettingsLoops() {
   }
 
   const handleSave = async () => {
-    if (!editing || !editing.name.trim() || !editing.prompt.trim()) {
-      toast.error("Name and prompt are required")
-      return
-    }
+    if (!editing) return
 
     const existingIntervalMinutes = editingLoopId
       ? loops.find((loop) => loop.id === editingLoopId)?.intervalMinutes
       : undefined
-    const intervalResolution = resolveRepeatTaskIntervalMinutesDraft(editing.intervalMinutes, {
+    const savePayloadResult = buildRepeatTaskEditFormSavePayload(editing, {
       existingIntervalMinutes,
-      fallbackIntervalMinutes: DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
     })
-    if (editing.scheduleMode === "interval" && !intervalResolution.isValid) {
-      toast.error("Interval must be a positive whole number of minutes")
-      return
-    }
-    const maxIterationsInput = editing.maxIterations.trim()
-    const parsedMaxIterations = maxIterationsInput ? parseLoopIntervalDraft(maxIterationsInput) : null
-    if (maxIterationsInput && parsedMaxIterations === null) {
-      toast.error("Max iterations must be a positive whole number")
+    if (savePayloadResult.ok === false) {
+      toast.error(savePayloadResult.message)
       return
     }
 
-    const scheduleResult = buildRepeatTaskScheduleFromDraft({
-      scheduleMode: editing.scheduleMode,
-      scheduleTimes: editing.scheduleTimes,
-      scheduleDaysOfWeek: editing.scheduleDaysOfWeek,
-    })
-    if (scheduleResult.ok === false) {
-      const message = scheduleResult.error === "missing-schedule-times"
-        ? "Add at least one time (HH:MM)"
-        : "Select at least one day of the week"
-      toast.error(message)
-      return
-    }
-
-    const lastSessionId = editing.lastSessionId.trim()
+    const payload = savePayloadResult.payload
     const loopData: LoopConfig = {
-      id: editingLoopId || createRepeatTaskIdFromName(editing.name, () => crypto.randomUUID()),
-      name: editing.name.trim(),
-      prompt: editing.prompt.trim(),
-      intervalMinutes: intervalResolution.intervalMinutes,
-      enabled: editing.enabled,
-      ...(editing.profileId ? { profileId: editing.profileId } : {}),
-      runOnStartup: editing.runOnStartup,
-      speakOnTrigger: editing.speakOnTrigger,
-      continueInSession: editing.continueInSession,
-      runContinuously: scheduleResult.runContinuously,
-      ...(editing.continueInSession && lastSessionId
-        ? { lastSessionId }
+      id: editingLoopId || createRepeatTaskIdFromName(payload.name, () => crypto.randomUUID()),
+      name: payload.name,
+      prompt: payload.prompt,
+      intervalMinutes: payload.intervalMinutes,
+      enabled: payload.enabled,
+      ...(payload.profileId ? { profileId: payload.profileId } : {}),
+      runOnStartup: payload.runOnStartup,
+      speakOnTrigger: payload.speakOnTrigger,
+      continueInSession: payload.continueInSession,
+      runContinuously: payload.runContinuously,
+      ...(payload.continueInSession && payload.lastSessionId
+        ? { lastSessionId: payload.lastSessionId }
         : {}),
-      ...(parsedMaxIterations ? { maxIterations: parsedMaxIterations } : {}),
-      ...(scheduleResult.schedule ? { schedule: scheduleResult.schedule } : {}),
+      ...(payload.maxIterations ? { maxIterations: payload.maxIterations } : {}),
+      ...(payload.schedule ? { schedule: payload.schedule } : {}),
     }
 
     try {

@@ -77,6 +77,36 @@ export type RepeatTaskScheduleDraftResult =
   | { ok: true; schedule: RepeatTaskSchedule | null; runContinuously: boolean }
   | { ok: false; error: RepeatTaskScheduleDraftError }
 
+export type RepeatTaskEditFormSaveError =
+  | "missing-required-fields"
+  | "invalid-interval-minutes"
+  | "invalid-max-iterations"
+  | RepeatTaskScheduleDraftError
+
+export type RepeatTaskEditFormSavePayload = {
+  name: string
+  prompt: string
+  intervalMinutes: number
+  enabled: boolean
+  profileId: string
+  runOnStartup: boolean
+  speakOnTrigger: boolean
+  continueInSession: boolean
+  lastSessionId: string
+  maxIterations: number | null
+  runContinuously: boolean
+  schedule: RepeatTaskSchedule | null
+}
+
+export type RepeatTaskEditFormSaveOptions = {
+  existingIntervalMinutes?: number | null
+  fallbackIntervalMinutes?: number
+}
+
+export type RepeatTaskEditFormSaveResult =
+  | { ok: true; payload: RepeatTaskEditFormSavePayload }
+  | { ok: false; error: RepeatTaskEditFormSaveError; message: string }
+
 export type RepeatTaskRequestParseResult<T> =
   | { ok: true; request: T }
   | { ok: false; statusCode: 400; error: string }
@@ -704,6 +734,82 @@ export function buildRepeatTaskScheduleFromDraft(
     ok: true,
     schedule: { type: "daily", times },
     runContinuously: false,
+  }
+}
+
+export function getRepeatTaskEditFormSaveErrorMessage(error: RepeatTaskEditFormSaveError): string {
+  switch (error) {
+    case "missing-required-fields":
+      return "Name and prompt are required"
+    case "invalid-interval-minutes":
+      return "Interval must be a positive whole number of minutes"
+    case "invalid-max-iterations":
+      return "Max iterations must be a positive whole number"
+    case "missing-schedule-times":
+      return "Add at least one time in HH:MM format"
+    case "missing-weekly-days":
+      return "Select at least one day of the week"
+    default:
+      return "Unable to save repeat task"
+  }
+}
+
+export function buildRepeatTaskEditFormSavePayload(
+  formData: RepeatTaskEditFormData,
+  options: RepeatTaskEditFormSaveOptions = {},
+): RepeatTaskEditFormSaveResult {
+  const name = formData.name.trim()
+  const prompt = formData.prompt.trim()
+  if (!name || !prompt) {
+    const error: RepeatTaskEditFormSaveError = "missing-required-fields"
+    return { ok: false, error, message: getRepeatTaskEditFormSaveErrorMessage(error) }
+  }
+
+  const intervalResolution = resolveRepeatTaskIntervalMinutesDraft(formData.intervalMinutes, {
+    existingIntervalMinutes: options.existingIntervalMinutes,
+    fallbackIntervalMinutes: options.fallbackIntervalMinutes ?? DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
+  })
+  if (formData.scheduleMode === "interval" && !intervalResolution.isValid) {
+    const error: RepeatTaskEditFormSaveError = "invalid-interval-minutes"
+    return { ok: false, error, message: getRepeatTaskEditFormSaveErrorMessage(error) }
+  }
+
+  const maxIterationsInput = formData.maxIterations.trim()
+  const maxIterations = maxIterationsInput ? parseLoopIntervalDraft(maxIterationsInput) : null
+  if (maxIterationsInput && maxIterations === null) {
+    const error: RepeatTaskEditFormSaveError = "invalid-max-iterations"
+    return { ok: false, error, message: getRepeatTaskEditFormSaveErrorMessage(error) }
+  }
+
+  const scheduleResult = buildRepeatTaskScheduleFromDraft({
+    scheduleMode: formData.scheduleMode,
+    scheduleTimes: formData.scheduleTimes,
+    scheduleDaysOfWeek: formData.scheduleDaysOfWeek,
+  })
+  if (scheduleResult.ok === false) {
+    return {
+      ok: false,
+      error: scheduleResult.error,
+      message: getRepeatTaskEditFormSaveErrorMessage(scheduleResult.error),
+    }
+  }
+
+  return {
+    ok: true,
+    payload: {
+      name,
+      prompt,
+      intervalMinutes: intervalResolution.intervalMinutes,
+      enabled: formData.enabled,
+      profileId: formData.profileId.trim(),
+      runOnStartup: formData.runOnStartup,
+      speakOnTrigger: formData.speakOnTrigger,
+      continueInSession: formData.continueInSession,
+      lastSessionId: formData.lastSessionId.trim(),
+      maxIterations,
+      runContinuously: scheduleResult.runContinuously,
+      schedule: scheduleResult.schedule,
+    },
   }
 }
 

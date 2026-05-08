@@ -20,6 +20,7 @@ import {
   buildRepeatTaskStatusesResponse,
   buildRepeatTasksResponse,
   buildRepeatTaskToggleResponse,
+  buildRepeatTaskEditFormSavePayload,
   buildRepeatTaskScheduleFromDraft,
   addRepeatTaskScheduleTime,
   DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
@@ -543,6 +544,59 @@ Summarize overnight work.`)
     expect(toggleRepeatTaskScheduleDayOfWeek(days, 9)).toEqual([1, 5])
     expect(times).toEqual(["09:00", "17:00"])
     expect(days).toEqual([1, 5])
+  })
+
+  it("normalizes repeat task edit form data for desktop and mobile save flows", () => {
+    expect(buildRepeatTaskEditFormSavePayload({
+      ...DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
+      name: "  Weekly review ",
+      prompt: " Summarize project state ",
+      intervalMinutes: "bad",
+      profileId: " agent-1 ",
+      continueInSession: true,
+      lastSessionId: " session-1 ",
+      maxIterations: "4",
+      scheduleMode: "weekly",
+      scheduleTimes: ["09:00"],
+      scheduleDaysOfWeek: [5, 1],
+    }, {
+      existingIntervalMinutes: 30,
+    })).toEqual({
+      ok: true,
+      payload: {
+        name: "Weekly review",
+        prompt: "Summarize project state",
+        intervalMinutes: 30,
+        enabled: DEFAULT_REPEAT_TASK_EDIT_FORM_DATA.enabled,
+        profileId: "agent-1",
+        runOnStartup: DEFAULT_REPEAT_TASK_EDIT_FORM_DATA.runOnStartup,
+        speakOnTrigger: DEFAULT_REPEAT_TASK_EDIT_FORM_DATA.speakOnTrigger,
+        continueInSession: true,
+        lastSessionId: "session-1",
+        maxIterations: 4,
+        runContinuously: false,
+        schedule: { type: "weekly", times: ["09:00"], daysOfWeek: [1, 5] },
+      },
+    })
+
+    expect(buildRepeatTaskEditFormSavePayload({
+      ...DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
+      name: "",
+      prompt: "Do work",
+    })).toMatchObject({ ok: false, error: "missing-required-fields" })
+    expect(buildRepeatTaskEditFormSavePayload({
+      ...DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
+      name: "Task",
+      prompt: "Do work",
+      intervalMinutes: "bad",
+      scheduleMode: "interval",
+    })).toMatchObject({ ok: false, error: "invalid-interval-minutes" })
+    expect(buildRepeatTaskEditFormSavePayload({
+      ...DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
+      name: "Task",
+      prompt: "Do work",
+      maxIterations: "bad",
+    })).toMatchObject({ ok: false, error: "invalid-max-iterations" })
   })
 
   it("parses remote repeat task schedule input", () => {
