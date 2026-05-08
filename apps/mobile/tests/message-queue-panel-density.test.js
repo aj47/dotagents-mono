@@ -32,3 +32,15 @@ test('mobile queue panel exposes an explicit send-next action for queued drafts'
   assert.match(source, /accessibilityLabel="Send next queued message"/);
   assert.match(source, /<Text style=\{styles\.processButtonText\}>Send Next<\/Text>/);
 });
+
+test('mobile queue panel uses shared queued-message eligibility rules', () => {
+  assert.match(source, /isQueuedMessageProcessing\(message\)/);
+  assert.match(source, /isQueuedMessageFailed\(message\)/);
+  assert.match(source, /canMutateQueuedMessage\(message\)/);
+  assert.match(source, /canEditQueuedMessage\(message\)/);
+  assert.match(source, /hasProcessingQueuedMessage\(messages\)/);
+
+  assert.doesNotMatch(source, /message\.status === ['"]processing['"]/);
+  assert.doesNotMatch(source, /message\.status === ['"]failed['"]/);
+  assert.doesNotMatch(source, /messages\.some\(\(m\) => m\.status === ['"]processing['"]\)/);
+});

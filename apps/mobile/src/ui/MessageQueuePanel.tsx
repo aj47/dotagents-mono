@@ -15,7 +15,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { QueuedMessage } from '@dotagents/shared/message-queue-utils';
+import {
+  canEditQueuedMessage,
+  canMutateQueuedMessage,
+  hasProcessingQueuedMessage,
+  isQueuedMessageFailed,
+  isQueuedMessageProcessing,
+  type QueuedMessage,
+} from '@dotagents/shared/message-queue-utils';
 import { useTheme } from './ThemeProvider';
 
 interface MessageQueuePanelProps {
@@ -42,6 +49,11 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
+  const isLongMessage = message.text.length > 100;
+  const isFailed = isQueuedMessageFailed(message);
+  const isProcessing = isQueuedMessageProcessing(message);
+  const canMutateMessage = canMutateQueuedMessage(message);
+  const canEditMessage = canEditQueuedMessage(message);
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -52,11 +64,11 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
 
   // Exit edit mode when the message starts processing
   useEffect(() => {
-    if (message.status === 'processing') {
+    if (isProcessing) {
       setIsEditing(false);
       setEditText(message.text);
     }
-  }, [message.status, message.text]);
+  }, [isProcessing, message.text]);
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -75,11 +87,6 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
     setIsEditing(false);
     setEditText(message.text);
   };
-
-  const isLongMessage = message.text.length > 100;
-  const isFailed = message.status === 'failed';
-  const isProcessing = message.status === 'processing';
-  const isAddedToHistory = message.addedToHistory === true;
 
   const styles = StyleSheet.create({
     container: {
@@ -281,7 +288,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
               </TouchableOpacity>
             )}
           </View>
-          {!isProcessing && (
+          {canMutateMessage && (
             <View style={styles.actions}>
               {isFailed && (
                 <TouchableOpacity
@@ -294,7 +301,7 @@ function QueuedMessageItem({ message, onRemove, onUpdate, onRetry }: QueuedMessa
                   <Text style={styles.retryActionText}>Retry</Text>
                 </TouchableOpacity>
               )}
-              {!isAddedToHistory && (
+              {canEditMessage && (
                 <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => setIsEditing(true)}
@@ -343,7 +350,7 @@ export function MessageQueuePanel({
     setIsListCollapsed(false);
   }, [conversationId]);
 
-  const hasProcessingMessage = messages.some((m) => m.status === 'processing');
+  const hasProcessingMessage = hasProcessingQueuedMessage(messages);
 
   if (messages.length === 0) {
     return null;

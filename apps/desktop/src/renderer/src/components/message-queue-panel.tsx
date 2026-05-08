@@ -2,7 +2,14 @@ import React, { useState, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
-import type { QueuedMessage } from "@dotagents/shared/message-queue-utils"
+import {
+  canEditQueuedMessage,
+  canMutateQueuedMessage,
+  hasProcessingQueuedMessage,
+  isQueuedMessageFailed,
+  isQueuedMessageProcessing,
+  type QueuedMessage,
+} from "@dotagents/shared/message-queue-utils"
 import { useMutation } from "@tanstack/react-query"
 import { desktopMessageQueueClient } from "@renderer/lib/desktop-message-queue-client"
 
@@ -27,6 +34,11 @@ function QueuedMessageItem({
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editText, setEditText] = useState(message.text)
+  const isLongMessage = message.text.length > 100
+  const isFailed = isQueuedMessageFailed(message)
+  const isProcessing = isQueuedMessageProcessing(message)
+  const canMutateMessage = canMutateQueuedMessage(message)
+  const canEditMessage = canEditQueuedMessage(message)
 
   // Sync editText with message.text when it changes via IPC (only when not editing)
   useEffect(() => {
@@ -37,11 +49,11 @@ function QueuedMessageItem({
 
   // Exit edit mode when the message starts processing to prevent editing text that no longer matches what's being processed
   useEffect(() => {
-    if (message.status === 'processing') {
+    if (isProcessing) {
       setIsEditing(false)
       setEditText(message.text)
     }
-  }, [message.status, message.text])
+  }, [isProcessing, message.text])
 
   const removeMutation = useMutation({
     mutationFn: async () => {
@@ -81,11 +93,6 @@ function QueuedMessageItem({
     setIsEditing(false)
     setEditText(message.text)
   }
-
-  const isLongMessage = message.text.length > 100
-  const isFailed = message.status === "failed"
-  const isProcessing = message.status === "processing"
-  const isAddedToHistory = message.addedToHistory === true
 
   // Mutation to retry a failed message by resetting its status to pending
   const retryMutation = useMutation({
@@ -188,7 +195,7 @@ function QueuedMessageItem({
                 </Button>
               )}
             </div>
-            {!isProcessing && (
+            {canMutateMessage && (
               <div className="ml-auto flex shrink-0 items-center gap-0.5 self-start">
                 {isFailed && (
                   <Button
@@ -203,7 +210,7 @@ function QueuedMessageItem({
                     <RotateCcw className={cn("h-3.5 w-3.5", retryMutation.isPending && "animate-spin")} />
                   </Button>
                 )}
-                {!isAddedToHistory && (
+                {canEditMessage && (
                   <Button
                     variant="ghost"
                     size="sm-icon"
@@ -275,7 +282,7 @@ export function MessageQueuePanel({
   // Check if any message is currently being processed
   // Disable Clear All when processing to prevent confusing UX where user thinks
   // they cancelled a running prompt while it actually continues running
-  const hasProcessingMessage = messages.some((m) => m.status === "processing")
+  const hasProcessingMessage = hasProcessingQueuedMessage(messages)
 
   if (messages.length === 0) {
     return null
