@@ -29,53 +29,21 @@ import type { AgentSessionCandidatesResponse, LoopRuntimeStatus } from "@dotagen
 import {
   addRepeatTaskScheduleTime,
   buildRepeatTaskScheduleFromDraft,
-  DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS,
-  DEFAULT_REPEAT_TASK_SCHEDULE_TIMES,
-  DEFAULT_REPEAT_TASK_WEEKDAYS,
+  DEFAULT_REPEAT_TASK_EDIT_FORM_DATA,
+  DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
   REPEAT_TASK_DAY_LABELS,
   createRepeatTaskIdFromName,
   describeLoopCadence,
   formatRepeatTaskRuntimeTimestampOrFallback,
-  formatLoopIntervalDraft,
-  getLoopScheduleDaysOfWeek,
-  getLoopScheduleMode,
-  getLoopScheduleTimes,
+  formatRepeatTaskEditFormData,
   parseLoopIntervalDraft,
   REPEAT_TASK_INTERVAL_PRESETS,
   removeRepeatTaskScheduleTimeAt,
   resolveRepeatTaskIntervalMinutesDraft,
   toggleRepeatTaskScheduleDayOfWeek,
-  type RepeatTaskScheduleMode,
+  type RepeatTaskEditFormData,
   updateRepeatTaskScheduleTimeAt,
 } from "@dotagents/shared/repeat-task-utils"
-
-interface EditingLoop {
-  id?: string
-  name: string
-  prompt: string
-  intervalMinutesDraft: string
-  enabled: boolean
-  runOnStartup: boolean
-  speakOnTrigger: boolean
-  continueInSession: boolean
-  lastSessionId?: string
-  scheduleMode: RepeatTaskScheduleMode
-  scheduleTimes: string[]       // HH:MM entries (used by daily + weekly)
-  scheduleDaysOfWeek: number[]  // 0-6 Sun..Sat (used by weekly)
-}
-
-const emptyLoop: EditingLoop = {
-  name: "",
-  prompt: "",
-  intervalMinutesDraft: "15",
-  enabled: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.enabled,
-  runOnStartup: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runOnStartup,
-  speakOnTrigger: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.speakOnTrigger,
-  continueInSession: DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.continueInSession,
-  scheduleMode: "interval",
-  scheduleTimes: [...DEFAULT_REPEAT_TASK_SCHEDULE_TIMES],
-  scheduleDaysOfWeek: [...DEFAULT_REPEAT_TASK_WEEKDAYS],
-}
 
 // Sentinel used by the session picker to represent "no pinned session";
 // Radix Select does not accept an empty string as an item value.
@@ -125,7 +93,8 @@ function SessionPicker({
 
 export function SettingsLoops() {
   const queryClient = useQueryClient()
-  const [editing, setEditing] = useState<EditingLoop | null>(null)
+  const [editing, setEditing] = useState<RepeatTaskEditFormData | null>(null)
+  const [editingLoopId, setEditingLoopId] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
 
   const loopsQuery = useQuery({
@@ -162,33 +131,20 @@ export function SettingsLoops() {
 
   const handleCreate = () => {
     setIsCreating(true)
-    setEditing({ ...emptyLoop })
+    setEditing({ ...DEFAULT_REPEAT_TASK_EDIT_FORM_DATA })
+    setEditingLoopId(null)
   }
 
   const handleCancel = () => {
     setEditing(null)
+    setEditingLoopId(null)
     setIsCreating(false)
   }
 
   const handleEdit = (loop: LoopConfig) => {
     setIsCreating(false)
-    const scheduleMode = getLoopScheduleMode(loop)
-    const scheduleTimes = getLoopScheduleTimes(loop)
-    const scheduleDaysOfWeek = getLoopScheduleDaysOfWeek(loop)
-    setEditing({
-      id: loop.id,
-      name: loop.name,
-      prompt: loop.prompt,
-      intervalMinutesDraft: formatLoopIntervalDraft(loop.intervalMinutes),
-      enabled: loop.enabled,
-      runOnStartup: loop.runOnStartup ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.runOnStartup,
-      speakOnTrigger: loop.speakOnTrigger ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.speakOnTrigger,
-      continueInSession: loop.continueInSession ?? DEFAULT_REPEAT_TASK_EXECUTION_OPTIONS.continueInSession,
-      lastSessionId: loop.lastSessionId,
-      scheduleMode,
-      scheduleTimes,
-      scheduleDaysOfWeek,
-    })
+    setEditingLoopId(loop.id)
+    setEditing(formatRepeatTaskEditFormData(loop))
   }
 
   const handleDelete = async (id: string) => {
@@ -209,15 +165,21 @@ export function SettingsLoops() {
       return
     }
 
-    const existingIntervalMinutes = editing.id
-      ? loops.find((loop) => loop.id === editing.id)?.intervalMinutes
+    const existingIntervalMinutes = editingLoopId
+      ? loops.find((loop) => loop.id === editingLoopId)?.intervalMinutes
       : undefined
-    const intervalResolution = resolveRepeatTaskIntervalMinutesDraft(editing.intervalMinutesDraft, {
+    const intervalResolution = resolveRepeatTaskIntervalMinutesDraft(editing.intervalMinutes, {
       existingIntervalMinutes,
-      fallbackIntervalMinutes: 15,
+      fallbackIntervalMinutes: DEFAULT_REPEAT_TASK_INTERVAL_MINUTES,
     })
     if (editing.scheduleMode === "interval" && !intervalResolution.isValid) {
       toast.error("Interval must be a positive whole number of minutes")
+      return
+    }
+    const maxIterationsInput = editing.maxIterations.trim()
+    const parsedMaxIterations = maxIterationsInput ? parseLoopIntervalDraft(maxIterationsInput) : null
+    if (maxIterationsInput && parsedMaxIterations === null) {
+      toast.error("Max iterations must be a positive whole number")
       return
     }
 
@@ -234,19 +196,22 @@ export function SettingsLoops() {
       return
     }
 
+    const lastSessionId = editing.lastSessionId.trim()
     const loopData: LoopConfig = {
-      id: editing.id || createRepeatTaskIdFromName(editing.name, () => crypto.randomUUID()),
+      id: editingLoopId || createRepeatTaskIdFromName(editing.name, () => crypto.randomUUID()),
       name: editing.name.trim(),
       prompt: editing.prompt.trim(),
       intervalMinutes: intervalResolution.intervalMinutes,
       enabled: editing.enabled,
+      ...(editing.profileId ? { profileId: editing.profileId } : {}),
       runOnStartup: editing.runOnStartup,
       speakOnTrigger: editing.speakOnTrigger,
       continueInSession: editing.continueInSession,
       runContinuously: scheduleResult.runContinuously,
-      ...(editing.continueInSession && editing.lastSessionId
-        ? { lastSessionId: editing.lastSessionId }
+      ...(editing.continueInSession && lastSessionId
+        ? { lastSessionId }
         : {}),
+      ...(parsedMaxIterations ? { maxIterations: parsedMaxIterations } : {}),
       ...(scheduleResult.schedule ? { schedule: scheduleResult.schedule } : {}),
     }
 
@@ -258,6 +223,7 @@ export function SettingsLoops() {
       }
       queryClient.invalidateQueries({ queryKey: ["loops"] })
       setEditing(null)
+      setEditingLoopId(null)
       setIsCreating(false)
       toast.success(isCreating ? "Task created" : "Task updated")
 
@@ -476,8 +442,8 @@ export function SettingsLoops() {
                   id="interval"
                   type="number"
                   min={1}
-                  value={editing.intervalMinutesDraft}
-                  onChange={(e) => setEditing({ ...editing, intervalMinutesDraft: e.target.value })}
+                  value={editing.intervalMinutes}
+                  onChange={(e) => setEditing({ ...editing, intervalMinutes: e.target.value })}
                   className="h-8 w-20"
                 />
                 <span className="self-center text-xs text-muted-foreground">minutes</span>
@@ -486,10 +452,10 @@ export function SettingsLoops() {
                 {REPEAT_TASK_INTERVAL_PRESETS.map((preset) => (
                   <Button
                     key={preset.value}
-                    variant={parseLoopIntervalDraft(editing.intervalMinutesDraft) === preset.value ? "secondary" : "ghost"}
+                    variant={parseLoopIntervalDraft(editing.intervalMinutes) === preset.value ? "secondary" : "ghost"}
                     size="sm"
                     className="h-7 px-2 text-xs"
-                    onClick={() => setEditing({ ...editing, intervalMinutesDraft: String(preset.value) })}
+                    onClick={() => setEditing({ ...editing, intervalMinutes: String(preset.value) })}
                   >
                     {preset.label}
                   </Button>
@@ -616,8 +582,8 @@ export function SettingsLoops() {
           </div>
           {editing.continueInSession && (
             <SessionPicker
-              value={editing.lastSessionId}
-              onChange={(v) => setEditing({ ...editing, lastSessionId: v })}
+              value={editing.lastSessionId || undefined}
+              onChange={(v) => setEditing({ ...editing, lastSessionId: v || "" })}
               candidates={sessionCandidatesQuery.data}
             />
           )}
