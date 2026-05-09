@@ -28,6 +28,7 @@ import {
   getSidebarSessionGroupKey,
   getLatestAgentResponseTimestamp,
   getSidebarProgressTitle,
+  hasSidebarSessionGroupKey,
   getSessionIdsWithActiveChildProgress,
   getSubagentTitleBySessionIdMap,
   getSubagentParentSessionIdMap,
@@ -696,7 +697,7 @@ export function ActiveAgentsSidebar({
         const conversationId = entry.session.conversationId
         return (
           (!!conversationId && pinnedSessionIds.has(conversationId)) ||
-          alwaysVisibleSessionKeys.has(getSidebarSessionGroupKey(entry.session))
+          hasSidebarSessionGroupKey(entry.session, alwaysVisibleSessionKeys)
         )
       }),
     [allUserSidebarSessions, alwaysVisibleSessionKeys, pinnedSessionIds, sessionGroups],
@@ -731,7 +732,7 @@ export function ActiveAgentsSidebar({
       if (!entry.isSavedConversation) return false
       const conversationId = entry.session.conversationId
       if (conversationId && pinnedSessionIds.has(conversationId)) return false
-      return !alwaysVisibleSessionKeys.has(getSidebarSessionGroupKey(entry.session))
+      return !hasSidebarSessionGroupKey(entry.session, alwaysVisibleSessionKeys)
     }).length,
     [alwaysVisibleSessionKeys, pinnedSessionIds, userSidebarSessions],
   )
@@ -1709,6 +1710,7 @@ export function ActiveAgentsSidebar({
               Math.min(nestingDepth, 2),
             )
             const isNestedSubagent = isSubagent && normalizedNestingDepth > 0
+            const isSelectedNestedSubagent = isNestedSubagent && isCurrentView
             const subagentIndentClass = normalizedNestingDepth > 1 ? "ml-12" : "ml-8"
             const showSessionDetails =
               !forceSingleLine &&
@@ -1728,6 +1730,7 @@ export function ActiveAgentsSidebar({
                   ? (event) => handleSessionRowDrop(event, reorderContainerGroupId, sessionGroupKey)
                   : undefined}
                 onClick={() => handleActiveSessionSelect(session.id)}
+                aria-current={isCurrentView ? "true" : undefined}
                 className={cn(
                   "group relative flex cursor-pointer items-start rounded text-xs transition-all",
                   isNestedSubagent
@@ -1736,8 +1739,8 @@ export function ActiveAgentsSidebar({
                   isNestedSubagent
                     ? isLifecycleNeedsInput
                       ? "text-amber-700 hover:bg-amber-500/5 dark:text-amber-300"
-                      : isCurrentView
-                        ? "bg-muted/25 text-foreground"
+                      : isSelectedNestedSubagent
+                        ? "bg-blue-500/15 text-foreground ring-1 ring-inset ring-blue-500/25 shadow-[inset_2px_0_0_rgb(59_130_246)]"
                         : "text-muted-foreground hover:bg-muted/20"
                     : isLifecycleNeedsInput
                       ? "bg-amber-500/10"
@@ -1754,7 +1757,10 @@ export function ActiveAgentsSidebar({
                 {isNestedSubagent && (
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -left-6 top-0 h-1/2 w-6 rounded-bl border-b border-l border-border/70"
+                    className={cn(
+                      "pointer-events-none absolute -left-6 top-0 h-1/2 w-6 rounded-bl border-b border-l",
+                      isSelectedNestedSubagent ? "border-blue-500/60" : "border-border/70",
+                    )}
                   />
                 )}
                 {!isNestedSubagent && isActivePinned ? (
@@ -1785,7 +1791,10 @@ export function ActiveAgentsSidebar({
                     {isNestedSubagent && (
                       <CornerDownRight
                         aria-hidden="true"
-                        className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/60"
+                        className={cn(
+                          "mt-0.5 h-3 w-3 shrink-0",
+                          isSelectedNestedSubagent ? "text-blue-500" : "text-muted-foreground/60",
+                        )}
                       />
                     )}
                     {isNestedSubagent && (
@@ -1793,7 +1802,7 @@ export function ActiveAgentsSidebar({
                         aria-hidden="true"
                         className={cn(
                           "mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full",
-                          statusRailColor,
+                          isSelectedNestedSubagent ? "bg-blue-500" : statusRailColor,
                           shouldPulseStatus && "animate-pulse",
                         )}
                       />

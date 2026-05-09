@@ -1348,22 +1348,38 @@ export const router = {
       // Cancel any pending tool approvals for this session so executeToolCall doesn't hang
       toolApprovalManager.cancelSessionApprovals(input.sessionId)
 
+      const conversationIdsToPause = new Set<string>()
       let requestedSubSessionConversationId: string | undefined
 
       // Cancel any internal sub-sessions spawned by this session
       try {
-        const { getChildSubSessions, cancelSubSession, getInternalSubSession } = await import("./acp/internal-agent")
+        const {
+          getChildSubSessions,
+          getAllSubSessionsForParent,
+          cancelSubSession,
+          getInternalSubSession,
+        } = await import("./acp/internal-agent")
         requestedSubSessionConversationId = requestedSessionKind === "subsession"
           ? getInternalSubSession(requestedSessionId)?.conversationId
           : undefined
+        if (requestedSubSessionConversationId) {
+          conversationIdsToPause.add(requestedSubSessionConversationId)
+        }
         const cancelledRequestedSubSession = requestedSessionKind === "subsession"
           ? cancelSubSession(requestedSessionId)
           : false
-        const childSessions = getChildSubSessions(input.sessionId)
+        const childSessionsById = new Map(
+          [...getChildSubSessions(input.sessionId), ...getAllSubSessionsForParent(input.sessionId)]
+            .map((child) => [child.id, child] as const),
+        )
+        const childSessions = Array.from(childSessionsById.values())
         const runningChildSessionIds = childSessions
           .filter((child) => child.status === "running")
           .map((child) => child.id)
         for (const child of childSessions) {
+          if (child.conversationId) {
+            conversationIdsToPause.add(child.conversationId)
+          }
           if (child.status === "running") {
             cancelSubSession(child.id)
             logLLM(`[stopAgentSession] Cancelled internal sub-session ${child.id}`)
@@ -1384,13 +1400,22 @@ export const router = {
       const session = agentSessionTracker.getSession(input.sessionId)
       const conversationIdToPause = session?.conversationId ?? requestedSubSessionConversationId ?? mappedTrackedSession?.conversationId
       if (conversationIdToPause) {
-        messageQueueService.pauseQueue(conversationIdToPause)
-        logLLM(`[stopAgentSession] Paused queue for conversation ${conversationIdToPause}`)
-        logApp("[stopAgentSession] Queue paused", {
+        conversationIdsToPause.add(conversationIdToPause)
+      }
+
+      if (conversationIdsToPause.size > 0) {
+        for (const conversationId of conversationIdsToPause) {
+          messageQueueService.pauseQueue(conversationId)
+          logLLM(`[stopAgentSession] Paused queue for conversation ${conversationId}`)
+        }
+        logApp("[stopAgentSession] Queues paused", {
           requestedSessionId,
-          pausedConversationId: conversationIdToPause,
+          pausedConversationIds: Array.from(conversationIdsToPause),
           pausedByTrackedSessionId: session?.id ?? mappedTrackedSession?.id ?? null,
-          queueLength: messageQueueService.getQueue(conversationIdToPause).length,
+          queueLengths: Array.from(conversationIdsToPause).map((conversationId) => ({
+            conversationId,
+            queueLength: messageQueueService.getQueue(conversationId).length,
+          })),
         })
       } else {
         logApp("[stopAgentSession] Queue pause skipped because requested session is not tracked", {
