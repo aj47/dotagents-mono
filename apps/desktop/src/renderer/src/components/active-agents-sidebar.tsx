@@ -1737,6 +1737,10 @@ export function ActiveAgentsSidebar({
             )
             const isNestedSubagent = isSubagent && normalizedNestingDepth > 0
             const isSelectedNestedSubagent = isNestedSubagent && isCurrentView
+            const canShowHotkeyBadge =
+              hotkeyIndex !== undefined &&
+              hotkeyIndex < 9 &&
+              !isNestedSubagent
             const subagentIndentClass = normalizedNestingDepth > 1 ? "ml-12" : "ml-8"
             const showSessionDetails =
               !forceSingleLine &&
@@ -1861,7 +1865,7 @@ export function ActiveAgentsSidebar({
                         {lastMessageMinutesAgo}
                       </span>
                     )}
-                    {!isNestedSubagent && hotkeyIndex !== undefined && hotkeyIndex < 9 && (sessionPreview || lastMessageMinutesAgo) && (
+                    {canShowHotkeyBadge && (sessionPreview || lastMessageMinutesAgo) && (
                       <span
                         className="shrink-0 text-[10px] leading-4 tabular-nums text-muted-foreground/60 transition-opacity group-hover:opacity-0"
                         title={`${IS_MAC ? "⌘" : "Ctrl+"}${hotkeyIndex + 1} to focus this session`}

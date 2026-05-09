@@ -96,6 +96,19 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("const tasksListVisible = visibleTaskSidebarSessions.length > 0")
   })
 
+  it("keeps hotkey targets aligned with active parent rows and visible badges", () => {
+    expect(sidebarSource).toContain("const isSidebarHotkeyEligible = useCallback")
+    expect(sidebarSource).toContain("if (entry.isSubagent && (entry.nestingDepth ?? 0) > 0) return false")
+    expect(sidebarSource).toContain("const hasActiveChildProgress = sessionsWithActiveChildProgress.has(entry.session.id)")
+    expect(sidebarSource).toContain("return hasActiveChildProgress || (")
+    expect(sidebarSource).toContain("return entries.filter(isSidebarHotkeyEligible)")
+    expect(sidebarSource).toContain("const hotkeyIndexBySessionId = useMemo")
+    expect(sidebarSource).toContain("const hotkeyIndex = hotkeyIndexBySessionId.get(session.id)")
+    expect(sidebarSource).toContain("const canShowHotkeyBadge =")
+    expect(sidebarSource).toContain("!isNestedSubagent")
+    expect(sidebarSource).toContain("canShowHotkeyBadge && (sessionPreview || lastMessageMinutesAgo)")
+  })
+
   it("lets the session list size naturally instead of keeping a collapsed gap", () => {
     expect(sidebarSource).not.toContain("max-h-[45vh]")
     expect(sidebarSource).toContain("mt-1 space-y-0.5 overflow-visible")
