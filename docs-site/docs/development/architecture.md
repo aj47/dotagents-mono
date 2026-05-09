@@ -20,6 +20,7 @@ dotagents-mono/
 │   │   │   │   ├── llm.ts                    # Core agent loop (3500+ lines)
 │   │   │   │   ├── mcp-service.ts            # MCP client (2500+ lines)
 │   │   │   │   ├── acp-service.ts            # ACP agent manager (2000+ lines)
+│   │   │   │   ├── acpx/                     # acpx runtime/session support
 │   │   │   │   ├── remote-server.ts          # Fastify HTTP server (3500+ lines)
 │   │   │   │   ├── tipc.ts                   # IPC handlers (5800+ lines)
 │   │   │   │   ├── agent-profile-service.ts  # Agent CRUD (1200+ lines)
@@ -31,6 +32,8 @@ dotagents-mono/
 │   │   │   │   ├── knowledge-notes-service.ts # Knowledge note management
 │   │   │   │   ├── oauth-client.ts           # OAuth 2.1 client
 │   │   │   │   ├── langfuse-service.ts       # Langfuse integration
+│   │   │   │   ├── discord-service.ts        # Discord bot integration
+│   │   │   │   ├── cloudflare-tunnel.ts      # Tunnel management
 │   │   │   │   ├── bundle-service.ts         # Agent bundle export/import
 │   │   │   │   ├── agents-files/             # .agents/ protocol implementation
 │   │   │   │   │   ├── modular-config.ts     # Layered config loading
@@ -58,9 +61,9 @@ dotagents-mono/
 │   └── mobile/                               # React Native app (Expo)
 │       ├── src/
 │       │   ├── screens/                      # App screens
-│       │   ├── store/                        # State management
-│       │   ├── lib/                          # API client
-│       │   └── hooks/                        # Custom hooks
+│       │   ├── lib/                          # API clients, connection recovery, push, voice
+│       │   ├── store/                        # AsyncStorage-backed state
+│       │   └── ui/                           # Mobile UI components
 │       └── App.tsx                           # Entry point
 ├── packages/
 │   ├── core/src/                             # Cross-app runtime/config primitives
@@ -76,10 +79,10 @@ dotagents-mono/
 │   │   ├── shell-parse.ts                    # Shell command parsing
 │   │   ├── connection-recovery.ts            # Retry logic
 │   │   └── hub.ts                            # Agent bundle publishing
-│   ├── acpx/                                 # ACP adapter/proxy package
 │   └── mcp-whatsapp/                         # WhatsApp MCP server
 ├── website/                                  # Static marketing site
 ├── docs-site/                                # Docusaurus documentation site
+├── apps/promo-studio/                        # Tracked promotional/demo renders
 ├── scripts/                                  # Build, installer, and release scripts
 └── tests/                                    # Integration tests
 ```
@@ -122,6 +125,14 @@ Manages agent-to-agent delegation:
 - **JSON-RPC** — Sends requests and receives responses
 - **Bidirectional** — Handles permission requests from sub-agents
 - **Session tracking** — Manages in-flight and completed delegations
+
+### acpx Runtime (`acpx/`)
+
+Supports acpx-managed agents and scoped runtime tool injection:
+
+- **Environment construction** — Prepares variables and connection context for acpx processes
+- **Session state** — Tracks app sessions, ACP sessions, and client session tokens
+- **Injected MCP transport** — Lets delegated agents call permitted runtime tools through scoped `/mcp/:acpSessionToken` endpoints
 
 ### TIPC Handlers (`tipc.ts`)
 
@@ -228,8 +239,9 @@ apps/desktop/src/main/acp/types.ts
 | `settings-providers.tsx` | `/settings/providers` | API key management |
 | `settings-models.tsx` | `/settings/models` | Model selection |
 | `settings-capabilities.tsx` | `/settings/capabilities` | MCP servers/tools |
+| `settings-discord.tsx` | `/settings/discord` | Discord bot integration |
 | `settings-agents.tsx` | `/settings/agents` | Agent profiles |
-| `settings-loops.tsx` | `/settings/loops` | Recurring tasks |
+| `settings-loops.tsx` | `/settings/repeat-tasks` | Recurring tasks |
 | `settings-whatsapp.tsx` | `/settings/whatsapp` | WhatsApp config |
 | `knowledge.tsx` | `/knowledge` | Knowledge note management |
 | `onboarding.tsx` | `/onboarding` | First-time setup |

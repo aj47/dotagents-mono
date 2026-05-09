@@ -12,7 +12,8 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "format": "pnpm -r format"
+    "format": "pnpm -r format",
+    "docs:coverage": "node scripts/check-docs-coverage.mjs"
   },
   "engines": {
     "node": ">=20.19.4",

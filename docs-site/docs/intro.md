@@ -59,6 +59,7 @@ Prefer the full guide? See [Installation](getting-started/installation).
 
 - **[MCP Tools](tools/mcp)** — Connect to any tool via the Model Context Protocol
 - **[WhatsApp Integration](tools/whatsapp)** — Send and receive messages through WhatsApp
+- **[Discord Integration](tools/discord)** — Connect a Discord bot to trusted agents and operator commands
 - **[Observability (Langfuse)](tools/observability)** — Monitor, trace, and debug your agents
 - **[AI Providers](tools/providers)** — Configure OpenAI, Groq, Google Gemini, and local models
 

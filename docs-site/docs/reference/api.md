@@ -87,11 +87,19 @@ Lists known models for one provider profile when the desktop runtime can resolve
 | `POST /v1/conversations` | Create a conversation. |
 | `GET /v1/conversations/:id` | Fetch a conversation and messages. |
 | `PUT /v1/conversations/:id` | Update conversation metadata/messages. |
+| `GET /v1/conversations/:id/assets/videos/:fileName` | Stream a video attachment that belongs to a conversation. |
 | `POST /v1/emergency-stop` | Stop the active remote run. |
 | `POST /v1/push/register` | Register a push notification token. |
 | `POST /v1/push/unregister` | Remove a push notification token. |
 | `GET /v1/push/status` | Read push notification status. |
 | `POST /v1/push/clear-badge` | Clear the mobile badge count. |
+
+## Speech and Media
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /v1/tts/speak` | Generate speech audio with the desktop-configured TTS provider. |
+| `GET /v1/conversations/:id/assets/videos/:fileName` | Stream conversation-local video assets for mobile clients. |
 
 ## MCP and Settings
 
@@ -106,6 +114,20 @@ Lists known models for one provider profile when the desktop runtime can resolve
 | `POST /v1/profiles/current` | Switch the active provider/model profile. |
 | `GET /v1/profiles/:id/export` | Export a provider/model profile. |
 | `POST /v1/profiles/import` | Import a provider/model profile. |
+
+## ACP-Injected MCP Transport
+
+These endpoints are active runtime endpoints used by ACP/acpx delegation and injected runtime tools. They are not the normal user-facing MCP configuration API above.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /mcp/:acpSessionToken` | Initialize or send a Streamable HTTP MCP request scoped to an ACP session token. |
+| `GET /mcp/:acpSessionToken` | Open the Streamable HTTP server-to-client stream for an ACP session token. |
+| `DELETE /mcp/:acpSessionToken` | Close the injected MCP transport for an ACP session token. |
+| `POST /mcp/tools/list` | List injected runtime tools for the current request context. |
+| `POST /mcp/:acpSessionToken/tools/list` | List injected runtime tools scoped to an ACP session token. |
+| `POST /mcp/tools/call` | Call an injected runtime tool in the current request context. |
+| `POST /mcp/:acpSessionToken/tools/call` | Call an injected runtime tool scoped to an ACP session token. |
 
 ## Operator Endpoints
 
@@ -158,6 +180,7 @@ See [Remote Server & Mobile Pairing](/desktop/remote-server) for setup and secur
 ## Compatibility Notes
 
 - Legacy endpoints like `/chat`, `/conversations`, and `/mcp/execute` are no longer the documented surface. Use `/v1/*` endpoints.
+- The `/mcp/:acpSessionToken` endpoints above are current internal ACP/acpx runtime transport endpoints, not legacy `/mcp/execute` endpoints.
 - The API is local-first. Do not expose it without an API key, CORS review, and tunnel/firewall controls.
 - Provider model catalogs change frequently; use `/v1/models` or provider APIs for exact availability.
 
