@@ -19,7 +19,7 @@ export interface MessageQueueStore {
   queues: Map<string, QueuedMessage[]>;
   
   /** Add a message to the queue for a conversation */
-  enqueue: (conversationId: string, text: string) => QueuedMessage;
+  enqueue: (conversationId: string, text: string, sessionId?: string) => QueuedMessage;
   
   /** Get all queued messages for a conversation */
   getQueue: (conversationId: string) => QueuedMessage[];
@@ -66,10 +66,11 @@ export function useMessageQueue(): MessageQueueStore {
     });
   }, []);
 
-  const enqueue = useCallback((conversationId: string, text: string): QueuedMessage => {
+  const enqueue = useCallback((conversationId: string, text: string, sessionId = conversationId): QueuedMessage => {
     const message: QueuedMessage = {
       id: generateMessageId(),
       conversationId,
+      sessionId,
       text,
       createdAt: Date.now(),
       status: 'pending',
@@ -309,4 +310,3 @@ export function useMessageQueueContext(): MessageQueueStore {
   if (!ctx) throw new Error('MessageQueueContext missing');
   return ctx;
 }
-
