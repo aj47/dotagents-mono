@@ -159,7 +159,11 @@ nvm use
 pnpm install && pnpm --filter @dotagents/desktop build-rs && pnpm dev
 ```
 
-See **[DEVELOPMENT.md](DEVELOPMENT.md)** for full setup, build commands, troubleshooting, and architecture details.
+See **[DEVELOPMENT.md](DEVELOPMENT.md)** for contributor entry points, or jump straight to the canonical docs:
+
+- [Development Setup](docs-site/docs/development/setup.md)
+- [Apps & Packages](docs-site/docs/development/apps-and-packages.md)
+- [Build, Release, Deploy](docs-site/docs/development/build-release-deploy.md)
 
 For the static marketing site, run:
 
@@ -178,8 +182,8 @@ dotagents-mono/
 ├── packages/
 │   ├── core/        # Cross-app runtime/config primitives
 │   ├── shared/      # Shared utilities, types, and constants
-│   ├── acpx/        # Agent delegation adapter/proxy
 │   └── mcp-whatsapp/# WhatsApp MCP server
+├── docs-site/       # Docusaurus documentation site
 ├── website/         # Static marketing site for dotagents.app
 └── .agents/         # The open standard — skills, knowledge notes, commands
 ```

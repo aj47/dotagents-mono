@@ -86,6 +86,8 @@ If you change `packages/shared`, run `pnpm build:shared` before `pnpm dev`.
 | `scripts` | Root install, release, migration, Linux smoke, docs coverage helpers | Use the documented root/package scripts first |
 | `tests` | Repo-level integration tests | `pnpm test` or package-specific test commands |
 
+See [Build, Release, Deploy](build-release-deploy) for signing, packaging, release artifacts, and deployment workflows.
+
 ## Validation
 
 For docs coverage work:

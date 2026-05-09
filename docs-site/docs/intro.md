@@ -78,6 +78,7 @@ Prefer the full guide? See [Installation](getting-started/installation).
 
 - **[Development Setup](development/setup)** — Clone, build, and run from source
 - **[Apps & Packages](development/apps-and-packages)** — Monorepo map for every app, package, server, and support area
+- **[Build, Release, Deploy](development/build-release-deploy)** — Packaging, signing, release artifacts, and deployments
 - **[Architecture Deep Dive](development/architecture)** — Technical architecture for contributors
 - **[Contributing](development/contributing)** — How to contribute to DotAgents
 

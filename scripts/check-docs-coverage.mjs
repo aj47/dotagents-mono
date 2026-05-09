@@ -46,6 +46,7 @@ const sourceAreas = [
     source: "apps/desktop",
     docs: [
       "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/build-release-deploy.md",
       "docs-site/docs/desktop/overview.md",
       "docs-site/docs/development/architecture.md",
       "docs-site/docs/reference/api.md",
@@ -84,6 +85,7 @@ const sourceAreas = [
     source: "apps/desktop/dotagents-rs",
     docs: [
       "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/build-release-deploy.md",
       "docs-site/docs/development/architecture.md",
       "docs-site/docs/development/setup.md",
     ],
@@ -131,6 +133,7 @@ const sourceAreas = [
     source: "docs-site",
     docs: [
       "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/build-release-deploy.md",
       "docs-site/docs/development/setup.md",
       "docs-site/docs/development/docs-coverage.md",
     ],
@@ -140,6 +143,7 @@ const sourceAreas = [
     source: "website",
     docs: [
       "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/build-release-deploy.md",
       "README.md",
       "website/README.md",
       "docs-site/docs/development/docs-coverage.md",
@@ -158,6 +162,7 @@ const sourceAreas = [
     source: "scripts",
     docs: [
       "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/build-release-deploy.md",
       "docs-site/docs/development/setup.md",
       "docs-site/docs/development/docs-coverage.md",
     ],
