@@ -45,6 +45,7 @@ const sourceAreas = [
     label: "desktop app",
     source: "apps/desktop",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/desktop/overview.md",
       "docs-site/docs/development/architecture.md",
       "docs-site/docs/reference/api.md",
@@ -54,6 +55,7 @@ const sourceAreas = [
     label: "desktop main process",
     source: "apps/desktop/src/main",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/development/architecture.md",
       "docs-site/docs/desktop/remote-server.md",
       "docs-site/docs/reference/api.md",
@@ -63,6 +65,7 @@ const sourceAreas = [
     label: "desktop renderer",
     source: "apps/desktop/src/renderer/src",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/desktop/overview.md",
       "docs-site/docs/development/architecture.md",
     ],
@@ -71,6 +74,7 @@ const sourceAreas = [
     label: "desktop shared/preload boundary",
     source: "apps/desktop/src/shared",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/development/architecture.md",
       "docs-site/docs/development/docs-coverage.md",
     ],
@@ -79,6 +83,7 @@ const sourceAreas = [
     label: "desktop Rust binary",
     source: "apps/desktop/dotagents-rs",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/development/architecture.md",
       "docs-site/docs/development/setup.md",
     ],
@@ -87,6 +92,7 @@ const sourceAreas = [
     label: "mobile app",
     source: "apps/mobile",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/mobile/overview.md",
       "docs-site/docs/getting-started/installation.md",
     ],
@@ -95,22 +101,27 @@ const sourceAreas = [
     label: "core package",
     source: "packages/core",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/development/architecture.md",
       "docs-site/docs/concepts/dot-agents-protocol.md",
+      "packages/core/README.md",
     ],
   },
   {
     label: "shared package",
     source: "packages/shared",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/development/architecture.md",
       "docs-site/docs/reference/api.md",
+      "packages/shared/README.md",
     ],
   },
   {
     label: "whatsapp MCP package",
     source: "packages/mcp-whatsapp",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/tools/whatsapp.md",
       "packages/mcp-whatsapp/README.md",
     ],
@@ -119,6 +130,7 @@ const sourceAreas = [
     label: "documentation site",
     source: "docs-site",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/development/setup.md",
       "docs-site/docs/development/docs-coverage.md",
     ],
@@ -127,6 +139,7 @@ const sourceAreas = [
     label: "marketing website",
     source: "website",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "README.md",
       "website/README.md",
       "docs-site/docs/development/docs-coverage.md",
@@ -136,6 +149,7 @@ const sourceAreas = [
     label: "promo studio renders",
     source: "apps/promo-studio",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/development/docs-coverage.md",
     ],
   },
@@ -143,6 +157,7 @@ const sourceAreas = [
     label: "repository scripts",
     source: "scripts",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/development/setup.md",
       "docs-site/docs/development/docs-coverage.md",
     ],
@@ -151,6 +166,7 @@ const sourceAreas = [
     label: "integration tests",
     source: "tests",
     docs: [
+      "docs-site/docs/development/apps-and-packages.md",
       "docs-site/docs/development/setup.md",
       "docs-site/docs/development/docs-coverage.md",
     ],
