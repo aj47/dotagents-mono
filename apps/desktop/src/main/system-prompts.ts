@@ -124,7 +124,7 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - To send images, use respond_to_user.images with either URL/data URL entries or local file paths
 - MEDIA DELIVERY: When your final output includes generated, downloaded, or fetched media assets (images, videos, screenshots, thumbnails), prefer delivering them inline through respond_to_user.images / respond_to_user.videos rather than only returning a local filepath
 - Treat local paths as a secondary reference for follow-up, not the primary delivery mechanism — include them alongside the inline asset when useful, but do not rely on a bare path when inline display is supported
-- Only fall back to path-only responses when inline display/attachment is genuinely unavailable (no respond_to_user, unsupported media type, or the user explicitly asked for a path)`)
+- Only fall back to path-only responses when inline display/attachment is genuinely unavailable (unsupported media type, or the user explicitly asked for a path)`)
   } else {
     sections.push(`RESPONDING TO USER:
 - No direct user-response tool is available in this run. Put the final user-facing answer in normal assistant text.`)
