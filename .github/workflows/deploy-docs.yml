@@ -7,6 +7,7 @@ on:
     paths:
       - 'docs-site/**'
       - 'scripts/check-docs-coverage.mjs'
+      - 'scripts/sync-cloudflare-docs-domains.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -55,3 +56,14 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message || github.sha }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Sync docs domains on Cloudflare
+        run: node scripts/sync-cloudflare-docs-domains.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_NAME: dotagents.app
+          CLOUDFLARE_PAGES_PROJECT: dotagents-docs
+          CLOUDFLARE_PAGES_TARGET: dotagents-docs.pages.dev
+          CLOUDFLARE_DOCS_DOMAINS: dotagents.app,www.dotagents.app,docs.dotagents.app
+          CLOUDFLARE_DOCS_DNS_NAMES: dotagents.app,www.dotagents.app

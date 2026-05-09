@@ -219,7 +219,7 @@ pnpm docs:coverage
 pnpm --filter docs-site build
 ```
 
-`dotagents.app` is deployed by `.github/workflows/deploy-docs.yml`. On pushes to `main` that touch docs, the workflow installs from the root lockfile, runs `pnpm docs:coverage`, builds `docs-site`, and uploads `docs-site/build` to the Cloudflare Pages project `dotagents-docs`.
+`dotagents.app` is deployed by `.github/workflows/deploy-docs.yml`. On pushes to `main` that touch docs, the workflow installs from the root lockfile, runs `pnpm docs:coverage`, builds `docs-site`, uploads `docs-site/build` to the Cloudflare Pages project `dotagents-docs`, and syncs the `dotagents.app` / `www.dotagents.app` DNS records to `dotagents-docs.pages.dev`.
 
 ## Web Deployments
 
@@ -228,11 +228,11 @@ There are two different web surfaces:
 | Surface | Source | Deployment path |
 |---------|--------|-----------------|
 | Primary website and docs | `docs-site/` | GitHub Actions workflow `.github/workflows/deploy-docs.yml` builds Docusaurus and deploys Cloudflare Pages project `dotagents-docs` at `dotagents.app`. |
-| Expo mobile web app | `apps/mobile` | GitHub Actions workflow `.github/workflows/deploy-web.yml` exports Expo web to `apps/mobile/dist` and deploys Cloudflare Pages project `dotagents-app`. |
+| Expo mobile web app | `apps/mobile` | GitHub Actions workflow `.github/workflows/deploy-mobile-web.yml` exports Expo web to `apps/mobile/dist` and deploys Cloudflare Pages project `dotagents-app`. |
 
 The deploy-docs workflow runs on pushes to `main` that touch `docs-site/**`, docs coverage tooling, or the docs deploy workflow itself. It can also be run manually with `workflow_dispatch`.
 
-The deploy-web workflow runs on pushes to `main` that touch `apps/mobile/**` or `packages/shared/**`, and can also be run manually with `workflow_dispatch`.
+The deploy-mobile-web workflow runs on pushes to `main` that touch `apps/mobile/**` or `packages/shared/**`, and can also be run manually with `workflow_dispatch`.
 
 ## GitHub Actions Artifacts
 
