@@ -1,0 +1,57 @@
+name: Deploy Docs to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs-site/**'
+      - 'scripts/check-docs-coverage.mjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.nvmrc'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check docs coverage
+        run: pnpm docs:coverage
+
+      - name: Build docs site
+        run: pnpm --filter docs-site build
+
+      - name: Deploy docs to Cloudflare Pages
+        run: >
+          pnpm dlx wrangler@4.42.2 pages deploy docs-site/build
+          --project-name dotagents-docs
+          --branch "${{ github.ref_name }}"
+          --commit-hash "${{ github.sha }}"
+          --commit-message "$COMMIT_MESSAGE"
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message || github.sha }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
