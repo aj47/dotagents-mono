@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   showPanelWindow: vi.fn(),
   resizePanelForAgentMode: vi.fn(),
   isSessionSnoozed: vi.fn(),
+  getSession: vi.fn(),
   shouldStopSession: vi.fn(() => false),
   getSessionRunId: vi.fn(() => undefined),
   mainWindow: { isVisible: vi.fn(() => true), isFocused: vi.fn(() => false), webContents: { id: "main" } },
@@ -27,7 +28,7 @@ vi.mock("./state", () => ({
 }))
 
 vi.mock("./agent-session-tracker", () => ({
-  agentSessionTracker: { isSessionSnoozed: mocks.isSessionSnoozed },
+  agentSessionTracker: { isSessionSnoozed: mocks.isSessionSnoozed, getSession: mocks.getSession },
 }))
 
 vi.mock("./config", () => ({
@@ -46,6 +47,7 @@ describe("emitAgentProgress snoozed propagation", () => {
     mocks.showPanelWindow.mockClear()
     mocks.resizePanelForAgentMode.mockClear()
     mocks.isSessionSnoozed.mockReset()
+    mocks.getSession.mockReset()
     mocks.shouldStopSession.mockClear()
     mocks.getSessionRunId.mockClear()
   })
@@ -77,6 +79,17 @@ describe("emitAgentProgress snoozed propagation", () => {
 
     expect(mocks.resizePanelForAgentMode).toHaveBeenCalledTimes(1)
     expect(mocks.showPanelWindow).toHaveBeenCalledWith({ markOpenedWithMain: false })
+  })
+
+  it("keeps unsnoozed sessions from auto-showing the panel when launch state suppresses it", async () => {
+    mocks.isSessionSnoozed.mockReturnValue(false)
+    mocks.getSession.mockReturnValue({ suppressPanelAutoShow: true })
+
+    await emitAgentProgress({ sessionId: "session-tile-visible", currentIteration: 0, maxIterations: 1, steps: [], isComplete: false })
+
+    expect(mocks.sendSpy).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-tile-visible", isSnoozed: false }))
+    expect(mocks.resizePanelForAgentMode).not.toHaveBeenCalled()
+    expect(mocks.showPanelWindow).not.toHaveBeenCalled()
   })
 
   it("sends terminal delegation updates immediately instead of leaving them behind the throttle", async () => {

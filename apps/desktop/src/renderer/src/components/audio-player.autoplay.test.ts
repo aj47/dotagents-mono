@@ -12,7 +12,8 @@ describe("audio player autoplay recovery", () => {
     expect(audioPlayerSource).toContain('window.addEventListener("keydown", retryPlayback, { once: true, capture: true })')
     expect(audioPlayerSource).toContain('setHasAutoPlayed(false)')
     expect(audioPlayerSource).toContain('setIsAutoplayBlocked(false)')
-    expect(audioPlayerSource).toContain('if (source !== "manual" && isAutoplayPolicyBlockedError(playError))')
+    expect(audioPlayerSource).toContain('if (requestSource !== "manual" && isAutoplayPolicyBlockedError(playError))')
+    expect(audioPlayerSource).toContain('tipcClient.requestTTSPlayback')
   })
 
   it("scopes cross-instance autoplay suppression by a caller-supplied key in addition to the normalized text", () => {

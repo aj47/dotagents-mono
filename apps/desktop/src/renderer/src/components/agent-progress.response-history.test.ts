@@ -190,7 +190,13 @@ async function loadAgentProgress(
 
   const Null = () => null
   const icon = (name: string) => (props: any) => ({ type: name, props })
-  const tipcMock = { tipcClient: new Proxy({ generateSpeech: vi.fn(), setPanelFocusable: vi.fn() }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
+  const tipcMock = { tipcClient: new Proxy({
+    generateSpeech: vi.fn(),
+    setPanelFocusable: vi.fn(),
+    claimTTSPlaybackKeys: vi.fn().mockResolvedValue({ claimed: true }),
+    releaseTTSPlaybackKeys: vi.fn().mockResolvedValue({ success: true }),
+    controlTTSPlayback: vi.fn().mockResolvedValue({ success: true }),
+  }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
   const queriesMock = {
     useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: options?.ttsAutoPlay ?? false, dualModelEnabled: false } }),
     useAvailableModelsQuery: () => ({ data: [{ id: "gpt-4.1-mini", name: "GPT 4.1 Mini" }], isLoading: false }),
@@ -357,6 +363,7 @@ async function loadAgentProgress(
     hasTTSPlayed: () => false,
     markTTSPlayed: vi.fn(),
     removeTTSKey: vi.fn(),
+    consumeSessionForcedAutoPlay: vi.fn(() => false),
     buildResponseEventTTSKey: vi.fn(() => null),
     buildContentTTSKey: vi.fn(() => null),
   }))
@@ -1099,7 +1106,10 @@ describe("agent progress response history", () => {
     let tree = runtime.render(AgentProgress, { progress, variant: "overlay" })
     runtime.commitEffects()
     await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
 
+    expect(tipcMock.tipcClient.claimTTSPlaybackKeys).toHaveBeenCalled()
     expect(tipcMock.tipcClient.generateSpeech).toHaveBeenCalledWith({ text: "Mid-conversation answer" })
   })
 
