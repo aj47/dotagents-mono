@@ -201,6 +201,19 @@ function assertListedFiles({ dir, pattern, docText, label }) {
   }
 }
 
+function assertNoPatternInTrackedFiles({ prefixes, pattern, label }) {
+  const files = prefixes.flatMap((prefix) => trackedFiles(prefix))
+    .filter((file, index, all) => all.indexOf(file) === index)
+    .filter((file) => /\.(md|mdx)$/.test(file))
+
+  for (const file of files) {
+    const text = readText(file)
+    if (pattern.test(text)) {
+      fail(`${file} contains stale docs pattern: ${label}`)
+    }
+  }
+}
+
 assertListedFiles({
   dir: "apps/desktop/src/renderer/src/pages",
   pattern: /\.tsx$/,
@@ -213,6 +226,32 @@ assertListedFiles({
   pattern: /Screen\.tsx$/,
   docText: coverageDoc,
   label: "mobile screen",
+})
+
+assertNoPatternInTrackedFiles({
+  prefixes: [
+    "docs-site/docs",
+    "README.md",
+    "BUILDING.md",
+    "DEVELOPMENT.md",
+    "apps/mobile/README.md",
+    "packages/core/README.md",
+    "packages/shared/README.md",
+    "packages/mcp-whatsapp/README.md",
+    "website/README.md",
+  ],
+  pattern: /\benabledSkills\b/,
+  label: "use skillsConfig.enabledSkillIds with allSkillsDisabledByDefault, not enabledSkills",
+})
+
+assertNoPatternInTrackedFiles({
+  prefixes: [
+    "docs-site/docs/agents",
+    "docs-site/docs/getting-started/first-agent.md",
+    "docs-site/docs/concepts/dot-agents-protocol.md",
+  ],
+  pattern: /"connection"\s*:\s*\{[^}]*"type"\s*:\s*"(?:internal|acpx|acp|stdio|remote)"/s,
+  label: "agent file docs should use agent.md connection-type, not config.json connection.type",
 })
 
 const apiDocPath = "docs-site/docs/reference/api.md"

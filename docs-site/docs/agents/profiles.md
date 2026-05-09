@@ -1,146 +1,173 @@
 ---
 sidebar_position: 1
-sidebar_label: "Agent Profiles"
+sidebar_label: "Agents"
 ---
 
-# Agent Profiles
+# Agents
 
-Agent profiles define specialized AI agents — each with its own identity, behavior, skills, tools, and connection method. Think of them as job descriptions for your agents.
+Agents are specialized AI workers with their own identity, system prompt, tool access, skills, model overrides, and connection mode. The UI writes the same files described here, so anything created in **Settings > Agents** can also be reviewed and versioned on disk.
 
----
+The route for this page remains `/agents/profiles` because the desktop API and TypeScript types still use `AgentProfile` internally.
 
-## Profile Structure
+## File Layout
 
-Every agent profile has these components:
+Each agent lives under `.agents/agents/<agent-id>/`:
 
-```
-AgentProfile
-├── Identity
-│   ├── id              — Unique identifier
-│   ├── name            — Canonical name for lookup
-│   ├── displayName     — User-facing name
-│   ├── description     — What this agent does
-│   └── avatarDataUrl   — Optional avatar image
-│
-├── Behavior
-│   ├── systemPrompt    — Core instructions
-│   ├── guidelines      — Additional rules
-│   └── properties      — Key-value metadata
-│
-├── Model Configuration
-│   ├── provider        — AI provider override
-│   └── model           — Model override
-│
-├── Tool Access
-│   ├── enabledServers      — Whitelist of MCP servers
-│   ├── disabledServers     — Blacklist of MCP servers
-│   ├── disabledTools       — Specific tools to block
-│   └── enabledRuntimeTools — Whitelist of DotAgents runtime tools
-│
-├── Skills
-│   └── enabledSkills   — Which skills this agent can use
-│
-├── Connection
-│   ├── type            — internal | acp | stdio | remote
-│   ├── command         — Process to spawn (acp/stdio)
-│   ├── args            — Process arguments
-│   ├── env             — Environment variables
-│   └── baseUrl         — Remote endpoint URL
-│
-└── State
-    ├── enabled         — Is this agent active?
-    ├── isDefault       — Is this the default agent?
-    ├── isBuiltIn       — Is this a system agent?
-    └── role            — chat-agent | delegation-target | external-agent
+```text
+.agents/
+`-- agents/
+    `-- code-reviewer/
+        |-- agent.md      # identity, role, connection type, system prompt
+        `-- config.json   # tool, model, skill, and connection details
 ```
 
-## Creating Profiles
+`agent.md` is required. `config.json` is optional and is only needed for nested settings that do not fit in simple frontmatter.
 
-### Via the UI
+The global layer is `~/.agents/`. A workspace can add `./.agents/`; workspace agents with the same `id` override global agents.
 
-1. Go to **Settings > Agents**
-2. Click **Create Agent**
-3. Fill in the identity fields (name, description)
-4. Write a system prompt that defines the agent's behavior
-5. Configure tool access (which MCP servers and tools to enable)
-6. Optionally override the model/provider
-7. Save
+## `agent.md`
 
-### Via Files
-
-Create an `agent.md` file in `~/.agents/agents/<agent-id>/`:
+`agent.md` uses simple `key: value` frontmatter, followed by the system prompt body. It is not full YAML.
 
 ```markdown
 ---
-id: devops-assistant
-name: devops-assistant
-displayName: DevOps Assistant
-description: Manages infrastructure, deployments, and CI/CD pipelines
+kind: agent
+id: code-reviewer
+name: code-reviewer
+displayName: Code Reviewer
+description: Reviews TypeScript changes for bugs and security issues
 enabled: true
+role: chat-agent
+connection-type: internal
+guidelines: Prioritize correctness, security, and actionable feedback.
 ---
 
-You are a DevOps expert specializing in cloud infrastructure and CI/CD.
+You are an expert code reviewer specializing in TypeScript, React, and Electron.
 
-## Core Competencies
+When reviewing changes:
 
-- AWS, GCP, and Azure infrastructure
-- Docker and Kubernetes
-- GitHub Actions and CI/CD pipelines
-- Terraform and infrastructure as code
-- Monitoring and alerting
-
-## Guidelines
-
-- Always verify before running destructive commands
-- Prefer infrastructure as code over manual changes
-- Suggest monitoring and rollback strategies
-- Follow the principle of least privilege
+- Focus on behavior, security, and maintainability
+- Reference concrete files and lines when possible
+- Separate blocking issues from optional suggestions
 ```
 
-Optionally add `config.json` in the same directory:
+### Frontmatter Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `kind` | No | Usually `agent`. |
+| `id` | Yes | Stable unique identifier. Defaults from the folder name if omitted. |
+| `name` | Yes | Canonical lookup name. Defaults to `id` if omitted. |
+| `displayName` | Yes | User-facing name. Defaults to `name` if omitted. |
+| `description` | No | Short summary shown in pickers and settings. |
+| `enabled` | No | `true` by default. |
+| `role` | No | `chat-agent`, `delegation-target`, or `external-agent`. |
+| `connection-type` | No | `internal`, `acpx`, `acp`, `stdio`, or `remote`. Defaults to `internal`. Prefer `acpx` for external local agents. |
+| `guidelines` | No | Short single-line behavior guidance. Longer instructions belong in the body. |
+| `isDefault` | No | Marks the default chat agent. |
+| `isStateful` | No | Keeps conversation state for the agent. |
+| `autoSpawn` | No | Starts the external agent automatically when applicable. |
+
+`user-profile` is accepted as a legacy alias for `chat-agent`, but new configs should use `chat-agent`.
+
+## `config.json`
+
+`config.json` stores nested configuration. Do not put the connection `type` here; the loader reads it from `connection-type` in `agent.md`.
 
 ```json
 {
   "toolConfig": {
-    "enabledServers": ["github", "filesystem", "docker"],
-    "disabledTools": ["filesystem:delete_file"]
+    "enabledServers": ["github", "filesystem"],
+    "disabledTools": ["filesystem:delete_file"],
+    "enabledRuntimeTools": [
+      "list_available_agents",
+      "delegate_to_agent",
+      "mark_work_complete",
+      "respond_to_user"
+    ]
   },
   "modelConfig": {
     "provider": "openai",
     "model": "gpt-5.4-mini"
   },
   "skillsConfig": {
-    "enabledSkills": ["docker-management", "ci-cd"]
+    "allSkillsDisabledByDefault": true,
+    "enabledSkillIds": ["api-testing", "ci-cd"]
   }
 }
 ```
+
+### Config Sections
+
+| Section | Description |
+|---------|-------------|
+| `toolConfig` | MCP server, MCP tool, and DotAgents runtime-tool access. |
+| `modelConfig` | Provider/model overrides for internal agents. |
+| `skillsConfig` | Per-agent skill access. Missing config means all skills are available. |
+| `connection` | Extra connection fields such as `agent`, `command`, `args`, `cwd`, `env`, or `baseUrl`. |
 
 ## Connection Types
 
 ### Internal
 
-The default. The agent runs within DotAgents using your configured AI provider.
+Internal agents run inside DotAgents with the configured model provider.
+
+```markdown
+---
+id: product-advisor
+name: product-advisor
+displayName: Product Advisor
+enabled: true
+role: chat-agent
+connection-type: internal
+---
+
+You help evaluate product tradeoffs.
+```
+
+Internal agents usually do not need a `connection` section in `config.json`.
+
+### acpx
+
+Use `acpx` for external local agents that DotAgents can run through the `acpx` CLI.
+
+```markdown
+---
+id: claude-reviewer
+name: claude-reviewer
+displayName: Claude Reviewer
+description: Delegation target backed by Claude Code through acpx
+enabled: true
+role: delegation-target
+connection-type: acpx
+---
+
+You review code changes and return prioritized findings.
+```
 
 ```json
 {
   "connection": {
-    "type": "internal"
+    "agent": "claude-code",
+    "cwd": "/path/to/workspace"
   }
 }
 ```
 
-### ACP (Agent Client Protocol)
+`connection.agent` is the preferred acpx token. Known command names such as `codex-acp`, `claude-code-acp`, `auggie`, and `opencode` are also mapped to acpx tokens when only `connection.command` is set.
 
-Spawns an external agent process for delegation. Used for Claude Code, Auggie, and other ACP-compatible agents.
+### Custom acpx Adapter
+
+For a custom local adapter, keep `connection-type: acpx` in `agent.md` and put the command details in `config.json`:
 
 ```json
 {
   "connection": {
-    "type": "acp",
-    "command": "claude-code-acp",
-    "args": ["--acp"],
+    "command": "python",
+    "args": ["my_agent.py", "--acp"],
+    "cwd": "/path/to/agent",
     "env": {
-      "ANTHROPIC_API_KEY": "sk-..."
+      "AGENT_CONFIG": "production"
     }
   }
 }
@@ -148,118 +175,105 @@ Spawns an external agent process for delegation. Used for Claude Code, Auggie, a
 
 ### Remote
 
-Connects to an HTTP endpoint hosting an agent.
+Remote agents connect to an HTTP endpoint.
+
+```markdown
+---
+id: hosted-analyst
+name: hosted-analyst
+displayName: Hosted Analyst
+enabled: true
+role: delegation-target
+connection-type: remote
+---
+
+You handle long-running analysis tasks.
+```
 
 ```json
 {
   "connection": {
-    "type": "remote",
-    "baseUrl": "https://my-agent-server.com/api"
+    "baseUrl": "https://agent.example.com/api"
   }
 }
 ```
 
-### stdio
+### stdio and Legacy ACP
 
-Communicates with a local process via stdin/stdout.
+`stdio` and `acp` are still accepted connection types for compatibility. Prefer `acpx` for new local external agents unless you are maintaining an existing integration.
 
-```json
-{
-  "connection": {
-    "type": "stdio",
-    "command": "python",
-    "args": ["my_agent.py"]
-  }
-}
-```
+## Tool Access
 
-## Tool Access Control
-
-### MCP Server Access
-
-Control which MCP servers an agent can use:
+`toolConfig` controls which MCP servers, MCP tools, and runtime tools an agent can use.
 
 ```json
 {
   "toolConfig": {
     "enabledServers": ["github", "filesystem"],
-    "disabledServers": ["database"]
-  }
-}
-```
-
-- **enabledServers** — Only these servers are available (whitelist)
-- **disabledServers** — These servers are blocked (blacklist)
-- If neither is set, the agent has access to all configured MCP servers
-
-### Individual Tool Control
-
-Disable specific tools within enabled servers:
-
-```json
-{
-  "toolConfig": {
-    "disabledTools": [
-      "filesystem:delete_file",
-      "github:delete_repository"
-    ]
-  }
-}
-```
-
-### Runtime Tool Control
-
-Control access to DotAgents runtime tools:
-
-```json
-{
-  "toolConfig": {
+    "disabledServers": ["database"],
+    "disabledTools": ["filesystem:delete_file"],
     "enabledRuntimeTools": [
+      "list_available_agents",
+      "delegate_to_agent",
       "mark_work_complete",
-      "respond_to_user",
-      "load_skill_instructions"
-    ]
+      "respond_to_user"
+    ],
+    "allServersDisabledByDefault": true
   }
 }
 ```
 
-- `undefined` or `null` → all runtime tools available
-- `[]` → all runtime tools available (unconfigured)
-- `["tool1", "tool2"]` → only listed tools + essential tools
-- `mark_work_complete` is always enabled regardless of configuration
+| Field | Behavior |
+|-------|----------|
+| `enabledServers` | Whitelist of MCP servers available to the agent. |
+| `disabledServers` | Servers blocked even if configured globally. |
+| `disabledTools` | Individual tools blocked by server/tool identifier. |
+| `enabledRuntimeTools` | Runtime-tool whitelist. Omit it to allow all runtime tools. |
+| `allServersDisabledByDefault` | New MCP servers remain disabled until explicitly enabled. |
 
-## Agent Roles
+`mark_work_complete` remains available even when runtime tools are restricted.
+
+## Skill Access
+
+Missing `skillsConfig`, or `allSkillsDisabledByDefault: false`, means all loaded skills are available to the agent. To opt into specific skills, set `allSkillsDisabledByDefault: true` and list `enabledSkillIds`.
+
+```json
+{
+  "skillsConfig": {
+    "allSkillsDisabledByDefault": true,
+    "enabledSkillIds": ["api-testing", "document-processing"]
+  }
+}
+```
+
+## Roles
 
 | Role | Description |
 |------|-------------|
-| **chat-agent** | Selectable chat/voice agent shown in the agent picker |
-| **delegation-target** | Can receive delegated tasks from other agents |
-| **external-agent** | Agent backed by an external ACP/stdio/remote connection |
+| `chat-agent` | Selectable chat or voice agent shown in the agent picker. |
+| `delegation-target` | Can receive delegated tasks from another agent. |
+| `external-agent` | Backed by an external acpx, stdio, ACP, or remote connection. |
 
-`user-profile` is still accepted as a legacy alias for `chat-agent`, but new configs should use `chat-agent`.
+External connection types default to delegation behavior when no role is set.
 
-## Sharing Profiles
+## Creating Agents
 
-### Export
+### Via the UI
 
-1. Go to **Settings > Agents**
-2. Click **Export** on any agent
-3. A bundle file is created containing the profile, skills, and configuration
+1. Go to **Settings > Agents**.
+2. Click **Create Agent**.
+3. Fill in identity, prompt, role, connection, tools, skills, and optional model settings.
+4. Save.
 
-### Import
+### Via Files
 
-1. Go to **Settings > Agents**
-2. Click **Import**
-3. Select a bundle file
-4. The agent is recreated with all its configuration
+Create `~/.agents/agents/<agent-id>/agent.md`, then add `config.json` only if the agent needs nested tool, model, skill, or connection settings.
 
-Bundles are portable across machines and users.
-
----
+For workspace-specific agents, use `./.agents/agents/<agent-id>/` inside the project. Workspace agents with matching IDs override global agents.
 
 ## Next Steps
 
-- **[Skills](skills)** — Teach agents specialized knowledge
-- **[Knowledge & Notes](knowledge-notes)** — Give agents durable knowledge
-- **[Multi-Agent Delegation](delegation)** — Set up agent coordination
-- **[MCP Tools](/tools/mcp)** — Configure available tools
+- **[Your First Agent](/getting-started/first-agent)** - Build a simple agent from the UI or files
+- **[Skills](skills)** - Add reusable instructions to agents
+- **[Multi-Agent Delegation](delegation)** - Configure agents that delegate work
+- **[The .agents Protocol](/concepts/dot-agents-protocol)** - Understand layered file-based config

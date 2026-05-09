@@ -15,7 +15,7 @@ The `.agents/` directory is an open standard for agent configuration. Define you
 
 AI agents are proliferating across tools — coding assistants, voice interfaces, automation platforms. But each tool locks agent configuration into its own format. The `.agents` protocol solves this by providing a shared, file-based standard that any tool can read.
 
-Your skills, knowledge notes, and agent profiles become **portable assets** that travel with your projects.
+Your agents, skills, and knowledge notes become **portable assets** that travel with your projects.
 
 ## Directory Structure
 
@@ -30,7 +30,7 @@ Your skills, knowledge notes, and agent profiles become **portable assets** that
 │   └── ui.json              # UI/layout settings
 ├── agents/
 │   └── <agent-id>/
-│       ├── agent.md         # Agent profile definition
+│       ├── agent.md         # Agent definition
 │       └── config.json      # Agent-specific configuration
 ├── tasks/
 │   └── <task-id>/
@@ -55,7 +55,7 @@ The `.agents` protocol uses a **two-layer** configuration system:
 - Canonical source of truth for your global agent configuration
 - Created automatically on first app launch
 - Shared across all workspaces and projects
-- Stores global skills, agent profiles, and knowledge notes
+- Stores global agents, skills, and knowledge notes
 
 ### Workspace Layer (`./.agents/`)
 
@@ -77,17 +77,20 @@ Agents, tasks, skills, and notes merge by ID — workspace versions override glo
 
 Markdown files in `.agents/` use simple `key: value` frontmatter. It is **not full YAML**.
 
-### Agent Profiles (`agent.md`)
+### Agents (`agent.md`)
 
-Agent profiles use markdown with frontmatter:
+Agents use markdown with frontmatter. Connection type is stored as `connection-type` in `agent.md`; nested connection details live in `config.json`.
 
 ```markdown
 ---
+kind: agent
 id: code-reviewer
 name: code-reviewer
 displayName: Code Reviewer
 description: Reviews code for bugs and security issues
 enabled: true
+role: chat-agent
+connection-type: internal
 ---
 
 You are an expert code reviewer...

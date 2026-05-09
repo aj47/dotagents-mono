@@ -162,12 +162,13 @@ By default, agents have access to all loaded skills.
 
 ### Selective Skills
 
-Restrict which skills an agent can use via the agent's `config.json`:
+Restrict which skills an agent can use via the agent's `config.json`. Missing `skillsConfig`, or `allSkillsDisabledByDefault: false`, means all loaded skills are available. To use an allowlist, turn on `allSkillsDisabledByDefault` and list `enabledSkillIds`:
 
 ```json
 {
   "skillsConfig": {
-    "enabledSkills": ["api-testing", "document-processing"]
+    "allSkillsDisabledByDefault": true,
+    "enabledSkillIds": ["api-testing", "document-processing"]
   }
 }
 ```
@@ -210,5 +211,5 @@ Anyone who clones the repo gets the skills automatically.
 ## Next Steps
 
 - **[Knowledge & Notes](knowledge-notes)** — Durable agent knowledge
-- **[Agent Profiles](profiles)** — Assign skills to agents
+- **[Agents](profiles)** — Assign skills to agents
 - **[The .agents Protocol](/concepts/dot-agents-protocol)** — Cross-tool compatibility

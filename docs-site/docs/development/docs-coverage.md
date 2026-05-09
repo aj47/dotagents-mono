@@ -16,6 +16,7 @@ Documentation is considered covered only when all of the following are true:
 - Every tracked app, package, server surface, and shipped artifact area has a primary documentation owner.
 - Every desktop renderer page and mobile screen is named in the coverage checklist below.
 - Every Fastify route registered in `apps/desktop/src/main/remote-server.ts` is listed in [Remote API Reference](/reference/api).
+- Agent file examples use current on-disk fields: `connection-type` in `agent.md`, and `skillsConfig.enabledSkillIds` with `allSkillsDisabledByDefault` in `config.json`.
 - Platform commands are written with `pnpm`; the repo does not use npm or yarn.
 - The verifier passes:
 
@@ -32,7 +33,7 @@ pnpm docs:coverage
 | `apps/desktop/src/renderer/src` | React renderer app, routes, settings surfaces, session UI, panel UI | [Desktop App](/desktop/overview), [Architecture Deep Dive](architecture) | Renderer must use IPC/preload boundaries instead of importing from `src/main`. |
 | `apps/desktop/src/shared` | Desktop-only shared types used by main, preload, and renderer | [Architecture Deep Dive](architecture), this page | Cross-app types belong in `packages/shared`; desktop-only types stay here. |
 | `apps/desktop/src/preload` | Secure Electron bridge from renderer to main process | [Architecture Deep Dive](architecture), [Security](/security/model) | Treat this as part of the process boundary. |
-| `apps/desktop/dotagents-rs` | Native keyboard/input binary built by desktop scripts | [Architecture Deep Dive](architecture), [Development Setup](setup) | Build with `pnpm --filter @dotagents/desktop build-rs`. |
+| `apps/desktop/dotagents-rs` | Native keyboard/input binary built by desktop scripts | [Architecture Deep Dive](architecture), [Development Setup](setup), [Build, Release, Deploy](build-release-deploy) | Build with `pnpm --filter @dotagents/desktop build-rs`. |
 | `apps/mobile` | Expo/React Native mobile client, native Android folder, screens, stores, voice, push, connection recovery | [Mobile App](/mobile/overview), [Installation](/getting-started/installation) | Native devices require development builds for `expo-speech-recognition`. |
 | `packages/core` | Platform-agnostic config, `.agents` file parsing, service container, state primitives, test adapters | [Apps & Packages](apps-and-packages), [Architecture Deep Dive](architecture), [.agents Protocol](/concepts/dot-agents-protocol), package README | Keep this package dependency-light and usable outside Electron. |
 | `packages/shared` | Cross-app API contracts, progress/session/message types, providers, colors, language/STT/TTS utilities | [Apps & Packages](apps-and-packages), [Architecture Deep Dive](architecture), [Remote API Reference](/reference/api), package README | If mobile and desktop both import it, document the shape here or in the feature doc that owns it. |
@@ -53,7 +54,7 @@ These files are the user-facing desktop page surfaces that must stay covered by 
 | `onboarding.tsx` | `/onboarding` first-run flow | [Quick Start](/getting-started/quickstart), [Desktop App](/desktop/overview) |
 | `panel.tsx` | `/panel` floating panel | [Desktop App](/desktop/overview), [Voice Interface](/voice/overview) |
 | `sessions.tsx` | `/`, `/:id`, `/history`, `/history/:id` sessions | [Desktop App](/desktop/overview) |
-| `settings-agents.tsx` | `/settings/agents` | [Agent Profiles](/agents/profiles) |
+| `settings-agents.tsx` | `/settings/agents` | [Agents](/agents/profiles) |
 | `settings-capabilities.tsx` | `/settings/capabilities` | [MCP Tools](/tools/mcp), [MCP Server Configuration](/configuration/mcp-servers) |
 | `settings-discord.tsx` | `/settings/discord` | [Remote API Reference](/reference/api), [Settings Reference](/configuration/settings) |
 | `settings-general.tsx` | `/settings`, `/settings/general` | [Settings Reference](/configuration/settings) |
@@ -72,7 +73,7 @@ These mobile screens must stay covered by [Mobile App](/mobile/overview), [Remot
 
 | Screen file | Purpose | Documentation owner |
 |-------------|---------|---------------------|
-| `AgentEditScreen.tsx` | Create/edit agent profiles | [Agent Profiles](/agents/profiles), [Mobile App](/mobile/overview) |
+| `AgentEditScreen.tsx` | Create/edit agents | [Agents](/agents/profiles), [Mobile App](/mobile/overview) |
 | `ChatScreen.tsx` | Text, voice, streaming chat, TTS, hands-free mode | [Mobile App](/mobile/overview), [Voice Interface](/voice/overview) |
 | `ConnectionSettingsScreen.tsx` | QR pairing, manual API setup, connection tests | [Remote Server & Mobile Pairing](/desktop/remote-server), [Mobile App](/mobile/overview) |
 | `KnowledgeNoteEditScreen.tsx` | Create/edit knowledge notes | [Knowledge & Notes](/agents/knowledge-notes), [Mobile App](/mobile/overview) |
@@ -85,6 +86,8 @@ These mobile screens must stay covered by [Mobile App](/mobile/overview), [Remot
 ## Remote Server Route Coverage
 
 `pnpm docs:coverage` extracts every Fastify route from `apps/desktop/src/main/remote-server.ts` and requires the exact `METHOD /path` string to appear in [Remote API Reference](/reference/api). This prevents the server and docs from drifting when endpoints are added for mobile, operator dashboards, ACP-injected MCP transports, push, TTS, assets, or integrations.
+
+The same verifier rejects stale agent configuration examples that use the old skill allowlist key or put `connection.type` inside file-based `config.json` examples.
 
 ## Maintenance Checklist
 
