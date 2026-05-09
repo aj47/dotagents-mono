@@ -637,7 +637,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     // Queue message for the target agent's conversation
-    const queuedMessage = messageQueueService.enqueue(session.conversationId, message)
+    const queuedMessage = messageQueueService.enqueue(session.conversationId, message, sessionId)
 
     return {
       content: [

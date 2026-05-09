@@ -98,6 +98,7 @@ export function SessionActionDialog({
       const result = await tipcClient.createMcpTextInput({
         text,
         conversationId,
+        sessionId,
         fromTile: true,
       })
 

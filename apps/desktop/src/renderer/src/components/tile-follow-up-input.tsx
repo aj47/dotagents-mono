@@ -115,6 +115,7 @@ export function TileFollowUpInput({
         return await tipcClient.createMcpTextInput({
           text: message,
           conversationId,
+          sessionId,
           fromTile: true,
         })
       }
@@ -459,4 +460,3 @@ export function TileFollowUpInput({
     </form>
   )
 }
-
