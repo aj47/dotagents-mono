@@ -827,8 +827,46 @@ async function maybeHandleWhatsAppOperatorCommand(message: WhatsAppMessage): Pro
 }
 
 // Track users who have requested a new session via /new command
-// Key: normalized chatId (numeric only), Value: true if new session requested
-const newSessionRequested: Set<string> = new Set()
+// Key: normalized chatId (numeric only), Value: pre-generated conversationId for the next message
+// Pre-generating lets us include the new session id in the confirmation reply.
+const pendingNewSessions: Map<string, string> = new Map()
+
+// Recognised user-facing commands. Aliases are intentionally accommodating
+// because WhatsApp users frequently include trailing whitespace, punctuation,
+// or natural-language phrasings.
+type ParsedUserCommand = { kind: "new" } | { kind: "help" } | null
+
+function parseUserCommand(rawText: string): ParsedUserCommand {
+  const trimmed = rawText.trim().toLowerCase().replace(/[.!]+$/, "")
+  if (!trimmed) return null
+
+  const newAliases = new Set([
+    "/new",
+    "\\new",
+    "/reset",
+    "\\reset",
+    "/newsession",
+    "/new-session",
+    "/new_session",
+    "new session",
+    "reset session",
+  ])
+  if (newAliases.has(trimmed)) return { kind: "new" }
+
+  if (trimmed === "/help" || trimmed === "\\help" || trimmed === "help") {
+    return { kind: "help" }
+  }
+
+  return null
+}
+
+const HELP_MESSAGE = [
+  "🤖 *DotAgents WhatsApp commands*",
+  "",
+  "• /new — start a fresh DotAgents session (previous history is preserved)",
+  "  aliases: /reset, /newsession, new session",
+  "• /help — show this message",
+].join("\n")
 
 // Track active conversation IDs per chat
 // Key: normalized chatId (numeric only), Value: current active conversationId (with timestamp if created via /new)
@@ -960,10 +998,12 @@ async function processMessage(message: WhatsAppMessage): Promise<void> {
       // Otherwise use the active conversation for this chat (persists the timestamped ID)
       // Use normalized chatId in conversation IDs for consistency across @lid/@s.whatsapp.net formats
       let conversationId: string
-      if (newSessionRequested.has(chatId)) {
-        // Generate a unique conversation ID for this new session
-        conversationId = `whatsapp_${chatId}_${Date.now()}`
-        newSessionRequested.delete(chatId)
+      const pendingId = pendingNewSessions.get(chatId)
+      if (pendingId) {
+        // Use the conversation ID that was pre-generated when the user sent /new,
+        // so the confirmation message and the actual session match.
+        conversationId = pendingId
+        pendingNewSessions.delete(chatId)
         activeConversations.set(chatId, conversationId)
         saveActiveConversations() // Persist new conversation ID to disk
         console.error(`[MCP-WhatsApp] Starting new session for ${chatId}: ${conversationId}`)
@@ -1069,43 +1109,41 @@ whatsapp.on("message", async (message: WhatsAppMessage) => {
   const chatId = normalizeChatId(rawChatId) // Normalize for consistent key lookups
   const messageText = message.text || ""
 
-  // Debug log for /new command detection - show character codes for debugging
-  const trimmed = messageText.trim()
-  const lower = trimmed.toLowerCase()
-  const charCodes = [...trimmed].map(c => c.charCodeAt(0)).join(',')
   console.error(`[MCP-WhatsApp] === MESSAGE RECEIVED ===`)
-  console.error(`[MCP-WhatsApp] Raw text: "${messageText}"`)
-  console.error(`[MCP-WhatsApp] Trimmed: "${trimmed}" (length: ${trimmed.length})`)
-  console.error(`[MCP-WhatsApp] Lower: "${lower}"`)
-  console.error(`[MCP-WhatsApp] Char codes: [${charCodes}]`)
-  console.error(`[MCP-WhatsApp] Expected: "/new" (char codes: [47,110,101,119])`)
-  console.error(`[MCP-WhatsApp] Match check: "${lower}" === "/new" ? ${lower === "/new"}`)
   console.error(`[MCP-WhatsApp] Chat ID: ${rawChatId} (normalized: ${chatId})`)
 
   if (await maybeHandleWhatsAppOperatorCommand(message)) {
     return
   }
 
-  // Handle /new command - start a new session on next message
-  // Also check for common variations
-  const isNewCommand = lower === "/new" || lower === "\\new" || lower === "/new\n" || trimmed === "/new"
-  console.error(`[MCP-WhatsApp] isNewCommand: ${isNewCommand}`)
+  const command = parseUserCommand(messageText)
 
-  if (isNewCommand) {
-    newSessionRequested.add(chatId)
-    console.error(`[MCP-WhatsApp] /new command received from ${chatId} - next message will start a new session`)
+  if (command?.kind === "new") {
+    // Pre-generate the conversation ID so we can echo it back in the confirmation.
+    // processMessage() will pick this up on the next inbound message instead of
+    // minting a fresh one.
+    const newConversationId = `whatsapp_${chatId}_${Date.now()}`
+    pendingNewSessions.set(chatId, newConversationId)
+    console.error(`[MCP-WhatsApp] /new command from ${chatId} - next message will use ${newConversationId}`)
 
-    // Send confirmation to the user (use rawChatId for WhatsApp API)
     try {
       await whatsapp.sendMessage({
         to: rawChatId,
-        text: "✅ New session requested. Your next message will start a fresh conversation.",
+        text: `✅ New session requested. Your next message will start a fresh conversation.\nSession id: ${newConversationId}\n(Your previous session history is preserved.)`,
       })
     } catch (error) {
       console.error("[MCP-WhatsApp] Failed to send /new confirmation:", error)
     }
 
-    // Don't forward /new command to the agent
+    return
+  }
+
+  if (command?.kind === "help") {
+    try {
+      await whatsapp.sendMessage({ to: rawChatId, text: HELP_MESSAGE })
+    } catch (error) {
+      console.error("[MCP-WhatsApp] Failed to send /help reply:", error)
+    }
     return
   }
 
