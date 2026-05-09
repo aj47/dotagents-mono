@@ -5,7 +5,7 @@ sidebar_label: "Architecture"
 
 # Architecture Overview
 
-DotAgents is a monorepo containing a desktop app, mobile app, shared libraries, and a marketing website — all built around the `.agents` open protocol.
+DotAgents is a monorepo containing a desktop app, mobile app, shared libraries, and a Docusaurus website — all built around the `.agents` open protocol.
 
 ---
 
@@ -66,8 +66,7 @@ dotagents-mono/
 │   ├── core/                 # Platform-agnostic config/runtime primitives
 │   ├── shared/               # Shared types, utilities, constants
 │   └── mcp-whatsapp/         # WhatsApp MCP server package
-├── docs-site/                # Docusaurus documentation site
-├── website/                  # Static marketing site (dotagents.app)
+├── docs-site/                # Docusaurus docs and primary website
 ├── apps/promo-studio/        # Tracked promotional/demo renders
 ├── scripts/                  # Build and release scripts
 └── tests/                    # Integration tests

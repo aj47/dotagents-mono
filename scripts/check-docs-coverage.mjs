@@ -139,17 +139,6 @@ const sourceAreas = [
     ],
   },
   {
-    label: "marketing website",
-    source: "website",
-    docs: [
-      "docs-site/docs/development/apps-and-packages.md",
-      "docs-site/docs/development/build-release-deploy.md",
-      "README.md",
-      "website/README.md",
-      "docs-site/docs/development/docs-coverage.md",
-    ],
-  },
-  {
     label: "promo studio renders",
     source: "apps/promo-studio",
     docs: [
@@ -238,7 +227,6 @@ assertNoPatternInTrackedFiles({
     "packages/core/README.md",
     "packages/shared/README.md",
     "packages/mcp-whatsapp/README.md",
-    "website/README.md",
   ],
   pattern: /\benabledSkills\b/,
   label: "use skillsConfig.enabledSkillIds with allSkillsDisabledByDefault, not enabledSkills",

@@ -99,7 +99,7 @@ Tests use **Vitest**. Write tests for:
 
 - **[Discord](https://discord.gg/cK9WeQ7jPq)** — Chat with the community
 - **[GitHub Issues](https://github.com/aj47/dotagents-mono/issues)** — Report bugs and request features
-- **[Website](https://dotagents.app)** — Project homepage
+- **[Docs](https://dotagents.app)** — Project homepage and documentation
 
 ---
 

@@ -55,7 +55,7 @@ pnpm dev         # Start development server
 | `pnpm typecheck` | TypeScript type checking |
 | `pnpm lint` | ESLint across all packages |
 
-For signing, release packaging, GitHub Actions artifacts, docs builds, and website/mobile-web deployments, see [Build, Release, Deploy](build-release-deploy).
+For signing, release packaging, GitHub Actions artifacts, docs builds, and web deployments, see [Build, Release, Deploy](build-release-deploy).
 
 ## Debug Mode
 

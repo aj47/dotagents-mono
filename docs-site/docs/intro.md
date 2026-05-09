@@ -71,4 +71,4 @@ DotAgents has four core pieces:
 
 - [Discord](https://discord.gg/cK9WeQ7jPq)
 - [GitHub](https://github.com/aj47/dotagents-mono)
-- [Website](https://dotagents.app)
+- [Docs](https://dotagents.app)

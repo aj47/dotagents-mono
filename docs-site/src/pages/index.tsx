@@ -109,7 +109,7 @@ const systemHubs: DocPath[] = [
   },
   {
     title: 'Build and Release',
-    description: 'Desktop packaging, signing, docs builds, website deploys, and release checks.',
+    description: 'Desktop packaging, signing, docs builds, web deploys, and release checks.',
     to: '/development/build-release-deploy',
   },
 ];

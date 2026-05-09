@@ -80,8 +80,7 @@ dotagents-mono/
 │   │   ├── connection-recovery.ts            # Retry logic
 │   │   └── hub.ts                            # Agent bundle publishing
 │   └── mcp-whatsapp/                         # WhatsApp MCP server
-├── website/                                  # Static marketing site
-├── docs-site/                                # Docusaurus documentation site
+├── docs-site/                                # Docusaurus docs and primary website
 ├── apps/promo-studio/                        # Tracked promotional/demo renders
 ├── scripts/                                  # Build, installer, and release scripts
 └── tests/                                    # Integration tests

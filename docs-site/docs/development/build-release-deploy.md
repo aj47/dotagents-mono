@@ -5,13 +5,13 @@ sidebar_label: "Build, Release, Deploy"
 
 # Build, Release, Deploy
 
-This page is the canonical build and release map for DotAgents. Use it when producing desktop artifacts, mobile builds, docs builds, website/mobile-web deployments, or GitHub Actions artifacts.
+This page is the canonical build and release map for DotAgents. Use it when producing desktop artifacts, mobile builds, docs builds, web deployments, or GitHub Actions artifacts.
 
 ---
 
 ## Local Build Model
 
-DotAgents is a pnpm monorepo with Electron desktop, Expo mobile, shared packages, a Docusaurus docs site, and a static marketing website.
+DotAgents is a pnpm monorepo with Electron desktop, Expo mobile, shared packages, and a Docusaurus docs site that also serves as the primary website.
 
 Root build scripts:
 
@@ -219,16 +219,15 @@ pnpm docs:coverage
 pnpm --filter docs-site build
 ```
 
-`docs.dotagents.app` is deployed by `.github/workflows/deploy-docs.yml`. On pushes to `main` that touch docs, the workflow installs from the root lockfile, runs `pnpm docs:coverage`, builds `docs-site`, and uploads `docs-site/build` to the Cloudflare Pages project `dotagents-docs`.
+`dotagents.app` is deployed by `.github/workflows/deploy-docs.yml`. On pushes to `main` that touch docs, the workflow installs from the root lockfile, runs `pnpm docs:coverage`, builds `docs-site`, and uploads `docs-site/build` to the Cloudflare Pages project `dotagents-docs`.
 
-## Website and Mobile Web Deployments
+## Web Deployments
 
 There are two different web surfaces:
 
 | Surface | Source | Deployment path |
 |---------|--------|-----------------|
-| Documentation site | `docs-site/` | GitHub Actions workflow `.github/workflows/deploy-docs.yml` builds Docusaurus and deploys Cloudflare Pages project `dotagents-docs` at `docs.dotagents.app`. |
-| Static marketing website | `website/` | Static files with `website/wrangler.toml`; preview with `cd website && python3 -m http.server 4321`. |
+| Primary website and docs | `docs-site/` | GitHub Actions workflow `.github/workflows/deploy-docs.yml` builds Docusaurus and deploys Cloudflare Pages project `dotagents-docs` at `dotagents.app`. |
 | Expo mobile web app | `apps/mobile` | GitHub Actions workflow `.github/workflows/deploy-web.yml` exports Expo web to `apps/mobile/dist` and deploys Cloudflare Pages project `dotagents-app`. |
 
 The deploy-docs workflow runs on pushes to `main` that touch `docs-site/**`, docs coverage tooling, or the docs deploy workflow itself. It can also be run manually with `workflow_dispatch`.

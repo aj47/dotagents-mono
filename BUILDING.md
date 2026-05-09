@@ -22,4 +22,4 @@ cd apps/desktop
 pnpm release
 ```
 
-For macOS signing, Linux package targets, Windows packaging, GitHub Actions artifacts, docs builds, website/mobile-web deployment, and release credential env files, use the canonical docs page above.
+For macOS signing, Linux package targets, Windows packaging, GitHub Actions artifacts, docs builds, web deployment, and release credential env files, use the canonical docs page above.

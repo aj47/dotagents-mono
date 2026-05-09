@@ -15,11 +15,12 @@ The pnpm workspace is defined in `pnpm-workspace.yaml`:
 
 ```yaml
 packages:
+  - 'docs-site'
   - 'apps/*'
   - 'packages/*'
 ```
 
-`docs-site` is a separate Docusaurus package outside that workspace glob. Use `pnpm --dir docs-site ...` for docs-site commands.
+`docs-site` is the Docusaurus package and primary public website. Use `pnpm --filter docs-site ...` for docs commands.
 
 ## Apps
 
@@ -27,7 +28,7 @@ packages:
 |------|---------|------|---------------|
 | `apps/desktop` | Electron, React, Rust helper binary | Desktop UI, main-process agent runtime, MCP/ACP/acpx, remote server, integrations, updater, release packaging | `pnpm --filter @dotagents/desktop dev`, `pnpm --filter @dotagents/desktop build`, `pnpm --filter @dotagents/desktop test:run` |
 | `apps/mobile` | Expo, React Native, React Native Web | iOS/Android/web mobile client, voice UX, QR pairing, remote API client, operator dashboard | `pnpm --filter @dotagents/mobile start`, `pnpm --filter @dotagents/mobile web`, `pnpm --filter @dotagents/mobile test` |
-| `apps/promo-studio` | Tracked media output only | Demo and marketing renders used by launch/website assets | No package script currently; add a README if source project files are added |
+| `apps/promo-studio` | Tracked media output only | Demo and marketing renders used by launch materials | No package script currently; add a README if source project files are added |
 
 ## Desktop App Boundaries
 
@@ -77,12 +78,11 @@ Native iOS/Android devices require a development build for `expo-speech-recognit
 
 If you change `packages/shared`, run `pnpm build:shared` before `pnpm dev`.
 
-## Docs, Website, Scripts, and Tests
+## Docs, Scripts, and Tests
 
 | Path | Owns | Commands |
 |------|------|----------|
-| `docs-site` | Docusaurus documentation site | `pnpm --dir docs-site start`, `pnpm --dir docs-site build`, `pnpm --dir docs-site typecheck` |
-| `website` | Static marketing site for dotagents.app | `cd website && python3 -m http.server 4321` |
+| `docs-site` | Docusaurus docs and primary website | `pnpm --filter docs-site start`, `pnpm --filter docs-site build`, `pnpm --filter docs-site typecheck` |
 | `scripts` | Root install, release, migration, Linux smoke, docs coverage helpers | Use the documented root/package scripts first |
 | `tests` | Repo-level integration tests | `pnpm test` or package-specific test commands |
 
@@ -94,7 +94,7 @@ For docs coverage work:
 
 ```bash
 pnpm docs:coverage
-pnpm --dir docs-site build
+pnpm --filter docs-site build
 ```
 
 For code changes:

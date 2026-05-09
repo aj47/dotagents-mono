@@ -26,7 +26,7 @@ Core validation:
 pnpm typecheck
 pnpm test
 pnpm docs:coverage
-pnpm --dir docs-site build
+pnpm --filter docs-site build
 ```
 
 Important repo rules:

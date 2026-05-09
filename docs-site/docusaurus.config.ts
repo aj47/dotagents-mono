@@ -11,7 +11,7 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://docs.dotagents.app',
+  url: 'https://dotagents.app',
   baseUrl: '/',
 
   organizationName: 'aj47',
@@ -88,11 +88,6 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://dotagents.app',
-          label: 'Website',
-          position: 'right',
-        },
-        {
           href: 'https://dotagentsprotocol.com',
           label: 'Protocol',
           position: 'right',
@@ -156,10 +151,6 @@ const config: Config = {
             {
               label: 'GitHub',
               href: 'https://github.com/aj47/dotagents-mono',
-            },
-            {
-              label: 'Website',
-              href: 'https://dotagents.app',
             },
             {
               label: 'Protocol',
