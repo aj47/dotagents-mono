@@ -909,6 +909,17 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
       }
 
       try {
+        if (queuedMessage.sessionId?.startsWith("subsession_")) {
+          const { continueInternalSubSession } = await import("./acp/internal-agent")
+          const result = await continueInternalSubSession(queuedMessage.sessionId, queuedMessage.text)
+          if (!result.success) {
+            throw new Error(result.error || `Failed to continue internal sub-session ${queuedMessage.sessionId}`)
+          }
+
+          messageQueueService.markProcessed(conversationId, queuedMessage.id)
+          continue
+        }
+
         // Only add to conversation history if not already added (prevents duplicates on retry)
         if (!queuedMessage.addedToHistory) {
           // Add the queued message to the conversation
@@ -1337,9 +1348,17 @@ export const router = {
       // Cancel any pending tool approvals for this session so executeToolCall doesn't hang
       toolApprovalManager.cancelSessionApprovals(input.sessionId)
 
+      let requestedSubSessionConversationId: string | undefined
+
       // Cancel any internal sub-sessions spawned by this session
       try {
-        const { getChildSubSessions, cancelSubSession } = await import("./acp/internal-agent")
+        const { getChildSubSessions, cancelSubSession, getInternalSubSession } = await import("./acp/internal-agent")
+        requestedSubSessionConversationId = requestedSessionKind === "subsession"
+          ? getInternalSubSession(requestedSessionId)?.conversationId
+          : undefined
+        const cancelledRequestedSubSession = requestedSessionKind === "subsession"
+          ? cancelSubSession(requestedSessionId)
+          : false
         const childSessions = getChildSubSessions(input.sessionId)
         const runningChildSessionIds = childSessions
           .filter((child) => child.status === "running")
@@ -1352,6 +1371,7 @@ export const router = {
         }
         logApp("[stopAgentSession] Internal sub-session scan complete", {
           requestedSessionId,
+          cancelledRequestedSubSession,
           childSessionCount: childSessions.length,
           runningChildSessionIds,
         })
@@ -1362,14 +1382,15 @@ export const router = {
       // Pause the message queue for this conversation to prevent processing the next queued message
       // The user can resume the queue later if they want to continue
       const session = agentSessionTracker.getSession(input.sessionId)
-      if (session?.conversationId) {
-        messageQueueService.pauseQueue(session.conversationId)
-        logLLM(`[stopAgentSession] Paused queue for conversation ${session.conversationId}`)
+      const conversationIdToPause = session?.conversationId ?? requestedSubSessionConversationId ?? mappedTrackedSession?.conversationId
+      if (conversationIdToPause) {
+        messageQueueService.pauseQueue(conversationIdToPause)
+        logLLM(`[stopAgentSession] Paused queue for conversation ${conversationIdToPause}`)
         logApp("[stopAgentSession] Queue paused", {
           requestedSessionId,
-          pausedConversationId: session.conversationId,
-          pausedByTrackedSessionId: session.id,
-          queueLength: messageQueueService.getQueue(session.conversationId).length,
+          pausedConversationId: conversationIdToPause,
+          pausedByTrackedSessionId: session?.id ?? mappedTrackedSession?.id ?? null,
+          queueLength: messageQueueService.getQueue(conversationIdToPause).length,
         })
       } else {
         logApp("[stopAgentSession] Queue pause skipped because requested session is not tracked", {
@@ -1404,8 +1425,11 @@ export const router = {
         finalContent: "(Agent mode was stopped by emergency kill switch)",
       })
 
-      // Mark the session as stopped in the tracker (removes from active sessions UI)
-      agentSessionTracker.stopSession(input.sessionId)
+      // Mark tracked top-level sessions as stopped. Internal sub-sessions are
+      // tracked by the internal-agent service, not AgentSessionTracker.
+      if (requestedSessionKind !== "subsession") {
+        agentSessionTracker.stopSession(input.sessionId)
+      }
 
       return { success: true }
     }),
@@ -1980,6 +2004,7 @@ export const router = {
     .input<{
       text: string
       conversationId?: string
+      sessionId?: string
       fromTile?: boolean // When true, session runs in background (snoozed) - panel won't show
     }>()
     .action(async ({ input }) => {
@@ -1988,6 +2013,8 @@ export const router = {
 
       logApp("[createMcpTextInput] Request received", {
         conversationId: input.conversationId ?? null,
+        sessionId: input.sessionId ?? null,
+        sessionKind: describeAgentSessionId(input.sessionId),
         fromTile: input.fromTile ?? false,
         messageLength: input.text.length,
         queueEnabled,
@@ -2004,6 +2031,9 @@ export const router = {
       // Create or get conversation ID
       let conversationId = input.conversationId
       let agentInputText = input.text
+      const requestedSessionId = input.sessionId && !input.sessionId.startsWith("pending-")
+        ? input.sessionId
+        : undefined
       if (!conversationId) {
         const conversation = await conversationService.createConversation(
           input.text,
@@ -2012,9 +2042,51 @@ export const router = {
         conversationId = conversation.id
         agentInputText = getLatestStoredUserMessageContent(conversation, input.text)
       } else {
+        if (requestedSessionId?.startsWith("subsession_")) {
+          const { getInternalSubSession, continueInternalSubSession } = await import("./acp/internal-agent")
+          const subSession = getInternalSubSession(requestedSessionId)
+          if (!subSession) {
+            throw new Error(`Internal sub-session not found: ${requestedSessionId}`)
+          }
+
+          const targetConversationId = subSession.conversationId ?? conversationId
+          const targetText = await conversationService.materializeInlineDataImagesInContent(targetConversationId, input.text)
+
+          if (queueEnabled && (subSession.status === "running" || subSession.status === "pending")) {
+            const queuedMessage = messageQueueService.enqueue(targetConversationId, targetText, requestedSessionId)
+            logApp("[createMcpTextInput] Queued message for running internal sub-session", {
+              conversationId: targetConversationId,
+              queuedMessageId: queuedMessage.id,
+              requestedSessionId,
+              subSessionStatus: subSession.status,
+              fromTile: input.fromTile ?? false,
+              messageLength: input.text.length,
+              queueLength: messageQueueService.getQueue(targetConversationId).length,
+            })
+            return { conversationId: targetConversationId, queued: true, queuedMessageId: queuedMessage.id }
+          }
+
+          continueInternalSubSession(requestedSessionId, targetText)
+            .catch((error) => {
+              logLLM("[createMcpTextInput] Internal sub-session continuation error:", error)
+            })
+
+          logApp("[createMcpTextInput] Continuing internal sub-session", {
+            conversationId: targetConversationId,
+            requestedSessionId,
+            subSessionStatus: subSession.status,
+            fromTile: input.fromTile ?? false,
+            messageLength: input.text.length,
+          })
+
+          return { conversationId: targetConversationId }
+        }
+
         // Check if message queuing is enabled and there's an active session
         if (queueEnabled) {
-          const activeSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
+          const activeSessionId = requestedSessionId && agentSessionTracker.getSession(requestedSessionId)?.conversationId === conversationId
+            ? requestedSessionId
+            : agentSessionTracker.findSessionByConversationId(conversationId)
           if (activeSessionId) {
             const session = agentSessionTracker.getSession(activeSessionId)
             if (session && session.status === "active") {
@@ -2058,7 +2130,9 @@ export const router = {
       // This handles the case where user continues from history
       let existingSessionId: string | undefined
       if (input.conversationId) {
-        const foundSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
+        const foundSessionId = requestedSessionId && agentSessionTracker.getConversationIdForSession(requestedSessionId) === input.conversationId
+          ? requestedSessionId
+          : agentSessionTracker.findSessionByConversationId(input.conversationId)
         if (foundSessionId) {
           // Pass fromTile to reviveSession so it stays snoozed when continuing from a tile
           const revived = agentSessionTracker.reviveSession(foundSessionId, input.fromTile ?? false)

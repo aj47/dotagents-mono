@@ -101,6 +101,7 @@ export function OverlayFollowUpInput({
         return await tipcClient.createMcpTextInput({
           text: message,
           conversationId,
+          sessionId,
         })
       }
     },
