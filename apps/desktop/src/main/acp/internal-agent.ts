@@ -190,12 +190,51 @@ function removeParentChildLink(parentSessionId: string, subSessionId: string): v
   }
 }
 
+function countPersistedSeedMessages(
+  seedHistory: ACPSubAgentMessage[],
+  persistedMessages: Array<{ role: string; content?: string }>,
+): number {
+  let seedIndex = 0;
+  for (const persistedMessage of persistedMessages) {
+    const seedMessage = seedHistory[seedIndex];
+    if (!seedMessage) {
+      break;
+    }
+
+    if (
+      persistedMessage.role === seedMessage.role &&
+      persistedMessage.content === seedMessage.content
+    ) {
+      seedIndex += 1;
+    }
+  }
+  return seedIndex;
+}
+
+async function appendMissingSeedMessages(
+  conversationId: string,
+  seedHistory: ACPSubAgentMessage[],
+  startIndex: number,
+): Promise<void> {
+  for (const message of seedHistory.slice(startIndex)) {
+    await conversationService.addMessageToConversation(
+      conversationId,
+      message.content,
+      message.role,
+    );
+  }
+}
+
 async function ensureDedicatedSubSessionConversation(
   subSession: InternalSubSession,
   seedHistory: ACPSubAgentMessage[],
 ): Promise<string | undefined> {
   const parentConversationId = agentSessionTracker.getConversationIdForSession(subSession.parentSessionId);
   if (subSession.conversationId && subSession.conversationId !== parentConversationId) {
+    const conversation = await conversationService.loadConversation(subSession.conversationId);
+    const persistedMessages = conversation?.rawMessages ?? conversation?.messages ?? [];
+    const persistedSeedCount = countPersistedSeedMessages(seedHistory, persistedMessages);
+    await appendMissingSeedMessages(subSession.conversationId, seedHistory, persistedSeedCount);
     return subSession.conversationId;
   }
 
@@ -210,14 +249,8 @@ async function ensureDedicatedSubSessionConversation(
   );
   subSession.conversationId = conversation.id;
 
-  for (const message of seedHistory) {
-    if (message === firstMessage) continue;
-    await conversationService.addMessageToConversation(
-      conversation.id,
-      message.content,
-      message.role,
-    );
-  }
+  const firstMessageIndex = seedHistory.indexOf(firstMessage);
+  await appendMissingSeedMessages(conversation.id, seedHistory, firstMessageIndex + 1);
 
   return conversation.id;
 }
@@ -235,12 +268,10 @@ async function drainQueuedInternalSubSessionMessages(subSessionId: string): Prom
 
   try {
     while (true) {
-      const queuedMessage = messageQueueService.peek(conversationId);
+      const queuedMessage = messageQueueService
+        .getQueue(conversationId)
+        .find(message => message.status === 'pending' && message.sessionId === subSessionId);
       if (!queuedMessage) {
-        return;
-      }
-
-      if (queuedMessage.sessionId !== subSessionId) {
         return;
       }
 
@@ -729,7 +760,11 @@ export async function runInternalSubSession(
       ?? (cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? DEFAULT_SUB_SESSION_MAX_ITERATIONS));
 
     subSession.conversationId = conversationId;
-    await ensureDedicatedSubSessionConversation(subSession, subSession.conversationHistory);
+    try {
+      await ensureDedicatedSubSessionConversation(subSession, subSession.conversationHistory);
+    } catch (error) {
+      logSubSession(`Failed to create dedicated conversation for ${subSessionId}, continuing without persistence:`, error);
+    }
 
     const result = await processTranscriptWithAgentMode(
       fullPrompt,
@@ -881,6 +916,7 @@ export async function continueInternalSubSession(
   const parentSessionId = subSession.parentSessionId;
   const startedAt = Date.now();
   const previousConversationHistory = toAgentConversationHistory(subSession.conversationHistory);
+  const historyLengthBeforeContinuation = subSession.conversationHistory.length;
   const effectiveProfileSnapshot = subSession.profileSnapshot
     ?? agentSessionStateManager.getSessionProfileSnapshot(parentSessionId)
     ?? agentSessionTracker.getSessionProfileSnapshot(parentSessionId);
@@ -893,11 +929,6 @@ export async function continueInternalSubSession(
   subSession.delegationRunId = `${subSession.id}:turn:${startedAt}`;
   subSession.profileSnapshot = effectiveProfileSnapshot;
   subSession.parentRunId = agentSessionStateManager.getSessionRunId(parentSessionId);
-  subSession.conversationHistory.push({
-    role: 'user',
-    content: message,
-    timestamp: startedAt,
-  });
 
   addParentChildLink(parentSessionId, subSessionId);
   setAcpToAppSessionMapping(subSessionId, parentSessionId, subSession.parentRunId, { registerAppSession: true });
@@ -908,6 +939,12 @@ export async function continueInternalSubSession(
   } catch (error) {
     logSubSession(`Failed to create dedicated conversation for ${subSessionId}, continuing without persistence:`, error);
   }
+
+  subSession.conversationHistory.push({
+    role: 'user',
+    content: message,
+    timestamp: startedAt,
+  });
 
   emitSubSessionDelegationProgress(subSession, parentSessionId);
 
@@ -1013,6 +1050,16 @@ export async function continueInternalSubSession(
           timestamp: Date.now(),
         });
       }
+
+      try {
+        await ensureDedicatedSubSessionConversation(subSession, subSession.conversationHistory);
+      } catch (error) {
+        logSubSession(`Failed to persist continuation history for ${subSessionId}:`, error);
+      }
+    }
+
+    if (wasCancelled) {
+      subSession.conversationHistory.splice(historyLengthBeforeContinuation);
     }
 
     emitSubSessionDelegationProgress(subSession, parentSessionId);
@@ -1049,6 +1096,7 @@ export async function continueInternalSubSession(
       ? 'Sub-session was cancelled'
       : error instanceof Error ? error.message : String(error);
 
+    subSession.conversationHistory.splice(historyLengthBeforeContinuation);
     emitSubSessionDelegationProgress(subSession, parentSessionId);
 
     if (wasCancelled) {
