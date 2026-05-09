@@ -30,6 +30,7 @@ import type {
   SendMessageResult,
   WhatsAppChat,
 } from "./types.js"
+import { normalizeWhatsAppId } from "./whatsapp-id.js"
 
 // Simple pino logger for Baileys
 const logger = pino({
@@ -81,7 +82,7 @@ export class WhatsAppSession extends EventEmitter {
         const data = JSON.parse(fs.readFileSync(mappingsFile, "utf-8"))
         for (const [lid, phone] of Object.entries(data)) {
           if (typeof phone === "string") {
-            this.lidToPhoneMap.set(lid.replace(/[^0-9]/g, ""), phone.replace(/[^0-9]/g, ""))
+            this.lidToPhoneMap.set(normalizeWhatsAppId(lid), normalizeWhatsAppId(phone))
           }
         }
         console.error(`[WhatsApp] Loaded ${this.lidToPhoneMap.size} LID mappings from file`)
@@ -126,8 +127,8 @@ export class WhatsAppSession extends EventEmitter {
       if (creds && creds.lid && creds.me) {
         const me = creds.me as { id?: string; lid?: string }
         if (me.id && me.lid) {
-          const phoneNumber = me.id.replace(/@.*$/, "").replace(/[^0-9]/g, "").split(":")[0]
-          const lid = me.lid.replace(/@.*$/, "").replace(/[^0-9]/g, "")
+          const phoneNumber = normalizeWhatsAppId(me.id)
+          const lid = normalizeWhatsAppId(me.lid)
           if (lid && phoneNumber) {
             this.lidToPhoneMap.set(lid, phoneNumber)
             console.error(`[WhatsApp] Loaded own LID mapping from creds: ${lid} -> ${phoneNumber}`)
@@ -224,8 +225,8 @@ export class WhatsAppSession extends EventEmitter {
         for (const contact of contacts) {
           // contacts.update can include LID info
           if (contact.id && contact.lid) {
-            const phoneNumber = contact.id.replace(/@.*$/, "").replace(/[^0-9]/g, "")
-            const lid = contact.lid.replace(/@.*$/, "").replace(/[^0-9]/g, "")
+            const phoneNumber = normalizeWhatsAppId(contact.id)
+            const lid = normalizeWhatsAppId(contact.lid)
             if (lid && phoneNumber && !this.lidToPhoneMap.has(lid)) {
               this.lidToPhoneMap.set(lid, phoneNumber)
               newMappings++
@@ -382,12 +383,13 @@ export class WhatsAppSession extends EventEmitter {
 
       // Check allowlist if configured
       if (this.config.allowFrom && this.config.allowFrom.length > 0) {
-        // Get the sender identifier - could be phone number or LID
-        const senderNumber = message.from.replace(/[^0-9]/g, "")
-
-        // Also try to get the phone number from the chatId (which may have both formats)
-        // LIDs look like "98389177934034@lid", phone numbers like "61406142826@s.whatsapp.net"
-        const chatIdNumber = message.chatId?.replace(/@.*$/, "").replace(/[^0-9]/g, "") || ""
+        // Normalize sender and chat identifiers consistently with allowlist
+        // entries. This must strip JID suffixes (@s.whatsapp.net, @lid),
+        // multi-device tags (e.g. ":23"), and user-entered formatting like
+        // "+", spaces or dashes — otherwise a phone number on the allowlist
+        // never matches a JID like "61406142826:23@s.whatsapp.net".
+        const senderNumber = normalizeWhatsAppId(message.from)
+        const chatIdNumber = normalizeWhatsAppId(message.chatId)
 
         // Detect if this is a LID-based message by checking the chatId (not message.from)
         // message.from is already split at "@" so it won't contain "@lid"
@@ -403,7 +405,7 @@ export class WhatsAppSession extends EventEmitter {
           // If not found, try to get it from the message's verifiedBizName or pushName
           // which might contain the phone number
           if (!mappedPhoneNumber && msg.verifiedBizName) {
-            const bizPhone = msg.verifiedBizName.replace(/[^0-9]/g, "")
+            const bizPhone = normalizeWhatsAppId(msg.verifiedBizName)
             if (bizPhone.length >= 10) {
               mappedPhoneNumber = bizPhone
               this.lidToPhoneMap.set(senderNumber, bizPhone)
@@ -413,7 +415,7 @@ export class WhatsAppSession extends EventEmitter {
         }
 
         const isAllowed = this.config.allowFrom.some((allowed) => {
-          const normalizedAllowed = allowed.replace(/[^0-9]/g, "")
+          const normalizedAllowed = normalizeWhatsAppId(allowed)
           // Security: Require minimum length for allowlist entries to prevent weak matches
           if (normalizedAllowed.length < 7) {
             console.error(`[WhatsApp] Skipping allowlist entry "${allowed}" - too short (min 7 digits)`)
@@ -587,7 +589,7 @@ export class WhatsAppSession extends EventEmitter {
       let fallbackJid: string | null = null
 
       if (!jid.includes("@")) {
-        const numericId = jid.replace(/[^0-9]/g, "")
+        const numericId = normalizeWhatsAppId(jid)
 
         // Check if this ID is a known LID from our mapping (reverse lookup)
         const isKnownLid = Array.from(this.lidToPhoneMap.keys()).includes(numericId)
@@ -761,7 +763,7 @@ export class WhatsAppSession extends EventEmitter {
       let fallbackJid: string | null = null
 
       if (!jid.includes("@")) {
-        const numericId = jid.replace(/[^0-9]/g, "")
+        const numericId = normalizeWhatsAppId(jid)
 
         // Check if this ID is a known LID from our mapping
         const isKnownLid = Array.from(this.lidToPhoneMap.keys()).includes(numericId)
@@ -819,7 +821,7 @@ export class WhatsAppSession extends EventEmitter {
       let fallbackJid: string | null = null
 
       if (!jid.includes("@")) {
-        const numericId = jid.replace(/[^0-9]/g, "")
+        const numericId = normalizeWhatsAppId(jid)
 
         // Check if this ID is a known LID from our mapping
         const isKnownLid = Array.from(this.lidToPhoneMap.keys()).includes(numericId)
