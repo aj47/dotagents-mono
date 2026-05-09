@@ -445,7 +445,7 @@ function readDotAgentsSecretReference(value: string): string | undefined {
   return undefined
 }
 
-function getResolvedRemoteServerApiKey(cfg: Pick<Config, "remoteServerApiKey"> = configStore.get()): string {
+export function getResolvedRemoteServerApiKey(cfg: Pick<Config, "remoteServerApiKey"> = configStore.get()): string {
   const resolved = cfg.remoteServerApiKey
     ? readDotAgentsSecretReference(cfg.remoteServerApiKey)
     : undefined

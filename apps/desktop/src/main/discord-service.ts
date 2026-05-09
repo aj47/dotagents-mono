@@ -1,5 +1,6 @@
 import type { Client, Message } from "discord.js"
 import { configStore } from "./config"
+import { getResolvedRemoteServerApiKey } from "./remote-server"
 import { emergencyStopAll } from "./emergency-stop"
 import { logApp } from "./debug"
 import { agentProfileService } from "./agent-profile-service"
@@ -774,7 +775,8 @@ async function executeDiscordOperatorCommand(command: ParsedOperatorCommand): Pr
   }
 
   const cfg = configStore.get()
-  const apiKey = cfg.remoteServerApiKey?.trim()
+  // Resolve dotagents-secret:// references so we get the actual API key
+  const apiKey = getResolvedRemoteServerApiKey(cfg)
   const port = cfg.remoteServerPort || 3210
 
   if (!apiKey) {

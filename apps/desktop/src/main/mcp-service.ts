@@ -15,6 +15,7 @@ import type {
   ClientCapabilities,
 } from "@modelcontextprotocol/sdk/types.js"
 import { configStore, dataFolder, trySaveConfig } from "./config"
+import { getResolvedRemoteServerApiKey } from "./remote-server"
 import {
   MCPConfig,
   MCPServerConfig,
@@ -3052,7 +3053,8 @@ export class MCPService {
         environment.WHATSAPP_AUTO_REPLY = "true"
         const port = config.remoteServerPort || 3210
         environment.WHATSAPP_CALLBACK_URL = `http://localhost:${port}/v1/chat/completions`
-        environment.WHATSAPP_CALLBACK_API_KEY = config.remoteServerApiKey
+        // Resolve dotagents-secret:// references so the MCP server gets the actual API key
+        environment.WHATSAPP_CALLBACK_API_KEY = getResolvedRemoteServerApiKey(config)
       }
 
       // Inject log messages setting
