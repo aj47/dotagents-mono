@@ -1,202 +1,274 @@
 import type {ReactNode} from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
 
 import styles from './index.module.css';
 
-type FeatureItem = {
+type DocPath = {
   title: string;
-  emoji: string;
-  description: ReactNode;
-  link: string;
+  description: string;
+  to: string;
 };
 
-const FeatureList: FeatureItem[] = [
+type QuickStep = {
+  step: string;
+  title: string;
+  command?: string;
+  description: string;
+  to: string;
+};
+
+const startPaths: DocPath[] = [
   {
-    title: 'Voice-First Interface',
-    emoji: '\uD83C\uDF99\uFE0F',
-    description: (
-      <>
-        Hold to speak, release to act. Your agents listen, think, and execute
-        tools &mdash; all triggered by your voice. 30+ languages supported.
-      </>
-    ),
-    link: '/voice/overview',
+    title: 'New to DotAgents',
+    description: 'Start with the guided setup, install the desktop app, and send the first message.',
+    to: '/getting-started/quickstart',
   },
   {
-    title: 'MCP Tools',
-    emoji: '\uD83D\uDD27',
-    description: (
-      <>
-        Connect to any tool via the Model Context Protocol. GitHub, filesystem,
-        web search, databases &mdash; if there&apos;s an MCP server, your agent can use it.
-      </>
-    ),
-    link: '/tools/mcp',
+    title: 'Ready to install',
+    description: 'Use the release downloads or one-line scripts for macOS, Windows, and Linux.',
+    to: '/getting-started/installation',
   },
   {
-    title: 'Multi-Agent Orchestration',
-    emoji: '\uD83E\uDD16',
-    description: (
-      <>
-        Create specialized agents with distinct skills and tools. Agents can
-        delegate tasks to each other through `acpx`, which runs ACP-compatible agents.
-      </>
-    ),
-    link: '/agents/profiles',
+    title: 'Pairing mobile',
+    description: 'Enable the desktop remote server, scan the QR code, and connect the mobile app.',
+    to: '/desktop/remote-server',
   },
   {
-    title: 'The .agents Protocol',
-    emoji: '\uD83D\uDCC1',
-    description: (
-      <>
-        An open standard for agent configuration. Define skills once in{' '}
-        <code>.agents/</code>, and they work across Claude Code, Cursor, and
-        every tool adopting the protocol.
-      </>
-    ),
-    link: '/concepts/dot-agents-protocol',
+    title: 'Configuring agents',
+    description: 'Define agent files, tools, skills, model overrides, and delegation targets.',
+    to: '/agents/profiles',
   },
   {
-    title: 'Desktop & Mobile',
-    emoji: '\uD83D\uDCF1',
-    description: (
-      <>
-        Full-featured Electron desktop app for macOS, Windows, and Linux. Plus a
-        React Native mobile app for iOS, Android, and web.
-      </>
-    ),
-    link: '/desktop/overview',
+    title: 'Adding integrations',
+    description: 'Connect MCP servers, WhatsApp, Discord, providers, and observability.',
+    to: '/tools/mcp',
   },
   {
-    title: 'Skills & Knowledge',
-    emoji: '\uD83E\uDDE0',
-    description: (
-      <>
-        Agents learn with portable skills and remember context across sessions.
-        Export, share, and import agent bundles with your team.
-      </>
-    ),
-    link: '/agents/skills',
+    title: 'Contributing',
+    description: 'Build the monorepo, run checks, and understand desktop/mobile boundaries.',
+    to: '/development/setup',
   },
 ];
 
-function Feature({title, emoji, description, link}: FeatureItem) {
-  return (
-    <div className={clsx('col col--4')}>
-      <Link to={link} className={styles.featureCard}>
-        <div className="text--center padding-horiz--md">
-          <div style={{fontSize: '2.5rem', marginBottom: '0.5rem'}}>{emoji}</div>
-          <Heading as="h3">{title}</Heading>
-          <p>{description}</p>
-        </div>
-      </Link>
-    </div>
-  );
-}
+const quickSteps: QuickStep[] = [
+  {
+    step: '01',
+    title: 'Install DotAgents',
+    command: 'curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | bash',
+    description: 'Install from source or download a signed release build.',
+    to: '/getting-started/installation',
+  },
+  {
+    step: '02',
+    title: 'Run setup',
+    description: 'Choose providers, configure the desktop runtime, and verify the app can talk to an agent.',
+    to: '/getting-started/quickstart',
+  },
+  {
+    step: '03',
+    title: 'Create an agent',
+    description: 'Give it a system prompt, tools, skills, and optional model overrides.',
+    to: '/getting-started/first-agent',
+  },
+  {
+    step: '04',
+    title: 'Connect tools and surfaces',
+    description: 'Add MCP servers, pair mobile, and route trusted WhatsApp or Discord messages.',
+    to: '/tools/mcp',
+  },
+];
 
-function QuickLink({to, label, description}: {to: string; label: string; description: string}) {
+const systemHubs: DocPath[] = [
+  {
+    title: 'Desktop Runtime',
+    description: 'Electron main process, renderer, panel, sessions, updater, and remote API.',
+    to: '/desktop/overview',
+  },
+  {
+    title: 'Mobile App',
+    description: 'Expo app, QR pairing, voice UX, operator dashboard, and mobile settings.',
+    to: '/mobile/overview',
+  },
+  {
+    title: '.agents Protocol',
+    description: 'Layered file-based config for agents, skills, tasks, notes, MCP, and models.',
+    to: '/concepts/dot-agents-protocol',
+  },
+  {
+    title: 'Agent Delegation',
+    description: 'Use acpx and ACP-compatible agents for multi-agent work and handoffs.',
+    to: '/agents/delegation',
+  },
+  {
+    title: 'Remote API',
+    description: 'HTTP routes used by mobile, external clients, push, TTS, assets, and operators.',
+    to: '/reference/api',
+  },
+  {
+    title: 'Build and Release',
+    description: 'Desktop packaging, signing, docs builds, website deploys, and release checks.',
+    to: '/development/build-release-deploy',
+  },
+];
+
+const capabilityRows = [
+  ['Voice', 'Hold-to-talk, hands-free mode, STT, TTS, and language controls.'],
+  ['Tools', 'MCP server configuration, approvals, runtime tools, and scoped access.'],
+  ['Agents', 'File-backed agents with prompts, roles, model overrides, skills, and tool access.'],
+  ['Channels', 'Trusted WhatsApp and Discord entry points for selected agents.'],
+  ['Operations', 'Remote server status, Cloudflare/Tailscale paths, logs, health, and updater actions.'],
+  ['Privacy', 'Local-first storage, explicit pairing, API keys, and integration allowlists.'],
+];
+
+function StartPath({title, description, to}: DocPath) {
   return (
-    <Link to={to} className={styles.quickLink}>
-      <strong>{label}</strong>
-      <span>{description}</span>
+    <Link to={to} className={styles.pathRow}>
+      <span>{title}</span>
+      <p>{description}</p>
     </Link>
   );
 }
 
-function HomepageHeader() {
-  const {siteConfig} = useDocusaurusContext();
-  const releasesUrl = 'https://github.com/aj47/dotagents-mono/releases/latest';
-
+function QuickStepCard({step, title, command, description, to}: QuickStep) {
   return (
-    <header className={clsx('hero hero--primary', styles.heroBanner)}>
-      <div className="container">
-        <div className={styles.eyebrowRow}>
-          <span className={styles.eyebrow}>{siteConfig.title}</span>
-          <span className={styles.eyebrowDetail}>Desktop and mobile agent runtime</span>
-        </div>
-        <Heading as="h1" className={clsx('hero__title', styles.heroTitle)}>
-          Agents that do real work in the background.
-        </Heading>
-        <p className={clsx('hero__subtitle', styles.heroSubtitle)}>
-          Free, transparent, and works with any agent provider.
-        </p>
-        <p className={styles.heroBody}>
-          Talk to agents naturally, give them tools and context, and let them keep
-          going without babysitting every step.
-        </p>
-        <div className={styles.installPanel}>
-          <span className={styles.installLabel}>Install in one line</span>
-          <code className={styles.installCommand}>curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | bash</code>
-          <span className={styles.installSubtext}>Windows PowerShell: <code>irm https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.ps1 | iex</code></span>
-          <div className={styles.releaseLinks}>
-            <Link to={releasesUrl}>Download for macOS</Link>
-            <Link to={releasesUrl}>Download for Windows</Link>
-            <Link to={releasesUrl}>Download for Linux</Link>
-          </div>
-        </div>
-        <div className={styles.buttons}>
-          <Link
-            className="button button--secondary button--lg"
-            to="/getting-started/quickstart">
-            Get Started
-          </Link>
-          <Link
-            className="button button--outline button--lg"
-            style={{color: 'white', borderColor: 'rgba(255,255,255,0.4)', marginLeft: '1rem'}}
-            to="/getting-started/installation">
-            Install guide
-          </Link>
-        </div>
-        <div className={styles.signalGrid}>
-          <div className={styles.signalCard}>
-            <strong>Free to use</strong>
-            <span>Bring your own providers, tools, and local workflows.</span>
-          </div>
-          <div className={styles.signalCard}>
-            <strong>Transparent by default</strong>
-            <span>See agent progress, tool calls, artifacts, and handoffs as they happen.</span>
-          </div>
-          <div className={styles.signalCard}>
-            <strong>Provider-agnostic</strong>
-            <span>Open standards like <code>.agents</code>, MCP, ACP, and `acpx` keep you out of lock-in.</span>
-          </div>
-        </div>
+    <Link to={to} className={styles.stepCard}>
+      <span className={styles.stepNumber}>{step}</span>
+      <div>
+        <Heading as="h3">{title}</Heading>
+        {command ? <code>{command}</code> : null}
+        <p>{description}</p>
       </div>
-    </header>
+    </Link>
+  );
+}
+
+function HubCard({title, description, to}: DocPath) {
+  return (
+    <Link to={to} className={styles.hubCard}>
+      <Heading as="h3">{title}</Heading>
+      <p>{description}</p>
+    </Link>
   );
 }
 
 export default function Home(): ReactNode {
+  const releasesUrl = 'https://github.com/aj47/dotagents-mono/releases/latest';
+
   return (
     <Layout
       title="Documentation"
-      description="DotAgents documentation — voice-first AI agent orchestrator with MCP tools, multi-agent delegation, and the .agents open standard.">
-      <HomepageHeader />
-      <main>
-        {/* Quick Links */}
-        <section className={styles.quickLinks}>
+      description="DotAgents documentation for desktop, mobile, agents, MCP tools, remote API, and the .agents protocol.">
+      <main className={styles.pageShell}>
+        <section className={styles.hero}>
           <div className="container">
-            <div className={styles.quickLinksGrid}>
-              <QuickLink to="/getting-started/quickstart" label="Quick Start" description="Up and running in 5 minutes" />
-              <QuickLink to="/getting-started/installation" label="Install" description="One-line install or releases" />
-              <QuickLink to="/getting-started/first-agent" label="First Agent" description="Create your first AI agent" />
-              <QuickLink to="/tools/mcp" label="Add Tools" description="Connect MCP tool servers" />
-              <QuickLink to="/desktop/remote-server" label="Mobile Pairing" description="Remote server and QR setup" />
+            <div className={styles.heroGrid}>
+              <div className={styles.heroCopy}>
+                <span className={styles.kicker}>DotAgents Documentation</span>
+                <Heading as="h1">Run agents from your desktop, phone, and chat tools.</Heading>
+                <p>
+                  DotAgents is a desktop-first agent runtime with mobile control, voice input,
+                  file-backed agent config, MCP tools, and acpx delegation. These docs are organized
+                  around the jobs operators actually need to finish.
+                </p>
+                <div className={styles.heroActions}>
+                  <Link className={clsx('button button--primary button--lg', styles.primaryAction)} to="/getting-started/quickstart">
+                    Start quick setup
+                  </Link>
+                  <Link className={clsx('button button--secondary button--lg', styles.secondaryAction)} to={releasesUrl}>
+                    Download release
+                  </Link>
+                </div>
+              </div>
+
+              <div className={styles.commandPanel} aria-label="Install commands">
+                <div className={styles.panelHeader}>
+                  <span>Install</span>
+                  <Link to="/getting-started/installation">Full guide</Link>
+                </div>
+                <div className={styles.commandBlock}>
+                  <span>macOS / Linux</span>
+                  <code>curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | bash</code>
+                </div>
+                <div className={styles.commandBlock}>
+                  <span>Windows PowerShell</span>
+                  <code>irm https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.ps1 | iex</code>
+                </div>
+                <dl className={styles.runtimeFacts}>
+                  <div>
+                    <dt>Runtime</dt>
+                    <dd>Electron desktop app with local agent services</dd>
+                  </div>
+                  <div>
+                    <dt>Mobile</dt>
+                    <dd>Expo client paired through the desktop remote server</dd>
+                  </div>
+                  <div>
+                    <dt>Config</dt>
+                    <dd>Layered global and workspace <code>.agents</code> files</dd>
+                  </div>
+                </dl>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Features */}
-        <section className={styles.features}>
+        <section className={styles.startSection}>
           <div className="container">
-            <div className="row">
-              {FeatureList.map((props, idx) => (
-                <Feature key={idx} {...props} />
+            <div className={styles.sectionHeader}>
+              <span>Start here</span>
+              <Heading as="h2">Choose the path that matches what you are trying to do.</Heading>
+            </div>
+            <div className={styles.pathsGrid}>
+              {startPaths.map((path) => (
+                <StartPath key={path.title} {...path} />
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.stepsSection}>
+          <div className="container">
+            <div className={styles.sectionHeader}>
+              <span>Quick setup</span>
+              <Heading as="h2">A practical first run in four steps.</Heading>
+            </div>
+            <div className={styles.stepsGrid}>
+              {quickSteps.map((step) => (
+                <QuickStepCard key={step.step} {...step} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.systemSection}>
+          <div className="container">
+            <div className={styles.systemLayout}>
+              <div>
+                <div className={styles.sectionHeader}>
+                  <span>Docs hubs</span>
+                  <Heading as="h2">Everything is grouped by operational surface.</Heading>
+                </div>
+                <div className={styles.hubsGrid}>
+                  {systemHubs.map((hub) => (
+                    <HubCard key={hub.title} {...hub} />
+                  ))}
+                </div>
+              </div>
+              <aside className={styles.capabilityTable}>
+                <div className={styles.panelHeader}>
+                  <span>What is covered</span>
+                  <Link to="/intro">All docs</Link>
+                </div>
+                {capabilityRows.map(([label, description]) => (
+                  <div key={label} className={styles.capabilityRow}>
+                    <strong>{label}</strong>
+                    <p>{description}</p>
+                  </div>
+                ))}
+              </aside>
             </div>
           </div>
         </section>

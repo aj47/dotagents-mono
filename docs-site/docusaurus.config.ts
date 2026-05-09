@@ -65,17 +65,37 @@ const config: Config = {
           type: 'docSidebar',
           sidebarId: 'docsSidebar',
           position: 'left',
-          label: 'Docs',
+          label: 'All docs',
+        },
+        {
+          to: '/getting-started/quickstart',
+          label: 'Get started',
+          position: 'left',
+        },
+        {
+          to: '/agents/profiles',
+          label: 'Agents',
+          position: 'left',
+        },
+        {
+          to: '/tools/mcp',
+          label: 'Tools',
+          position: 'left',
+        },
+        {
+          to: '/reference/api',
+          label: 'Reference',
+          position: 'left',
         },
         {
           href: 'https://dotagents.app',
           label: 'Website',
-          position: 'left',
+          position: 'right',
         },
         {
           href: 'https://dotagentsprotocol.com',
           label: 'Protocol',
-          position: 'left',
+          position: 'right',
         },
         {
           href: 'https://discord.gg/cK9WeQ7jPq',
@@ -117,7 +137,7 @@ const config: Config = {
               to: '/concepts/architecture',
             },
             {
-              label: 'Agent System',
+              label: 'Agents',
               to: '/agents/profiles',
             },
             {

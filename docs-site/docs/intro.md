@@ -6,111 +6,69 @@ slug: /intro
 
 # DotAgents Documentation
 
-> **One dot. Every agent.** Your assistant. Your machine. Your rules.
+DotAgents is a desktop-first agent runtime with mobile control, voice input, file-backed agent configuration, MCP tools, and acpx delegation. These docs are organized around setup paths and operating surfaces, not feature marketing.
 
-Welcome to the DotAgents documentation. DotAgents is a voice-first AI agent orchestrator that gives you a team of AI specialists — each with durable knowledge, skills, and tools — controlled by your voice.
+## Who Are You?
 
-Built on the `.agents` open standard, your skills and notes work across Claude Code, Cursor, Codex, and every tool adopting the protocol.
+| You want to... | Start with... |
+|----------------|---------------|
+| Install DotAgents and send a first message | [Quick Start](getting-started/quickstart) |
+| Download or build the desktop app | [Installation](getting-started/installation) |
+| Create a specialized agent | [Your First Agent](getting-started/first-agent) |
+| Pair the mobile app | [Remote Server & Mobile Pairing](desktop/remote-server) |
+| Connect tools | [MCP Tools](tools/mcp) |
+| Connect chat channels | [WhatsApp](tools/whatsapp) or [Discord](tools/discord) |
+| Understand the file format | [The .agents Protocol](concepts/dot-agents-protocol) |
+| Contribute to the repo | [Development Setup](development/setup) |
 
-## Install in one line
+## Quick Setup
+
+Install from source with the platform script:
 
 ```bash
-# macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.sh | bash
 ```
 
+Windows PowerShell:
+
 ```powershell
-# Windows PowerShell
 irm https://raw.githubusercontent.com/aj47/dotagents-mono/main/scripts/install.ps1 | iex
 ```
 
-Prefer the full guide? See [Installation](getting-started/installation).
+Then follow [Quick Start](getting-started/quickstart) to configure a provider, run the app, and send a first message.
 
----
+## How DotAgents Is Organized
 
-## Quick Navigation
+| Area | What it covers |
+|------|----------------|
+| [Getting Started](getting-started/quickstart) | Install, first run, first agent, and setup flow |
+| [Desktop](desktop/overview) | Electron app, sessions, panel, remote server, updater, and desktop integrations |
+| [Mobile](mobile/overview) | Expo app, QR pairing, voice UX, operations dashboard, and mobile settings |
+| [Agents](agents/profiles) | Agent files, roles, skills, knowledge notes, and acpx delegation |
+| [Tools & Integrations](tools/mcp) | MCP tools, providers, WhatsApp, Discord, and Langfuse |
+| [Configuration](configuration/settings) | Settings, MCP server config, and keyboard shortcuts |
+| [Security](security/model) | Local-first data model, pairing, permissions, and privacy |
+| [Reference](reference/api) | Remote API, headless CLI, diagnostics, and glossary |
+| [Development](development/setup) | Monorepo map, build/release workflow, architecture, and docs coverage |
 
-### Get Started
+## Core Concepts
 
-- **[Installation](getting-started/installation)** — Download and install DotAgents on macOS, Windows, or Linux
-- **[Quick Start](getting-started/quickstart)** — Up and running in under 5 minutes
-- **[Your First Agent](getting-started/first-agent)** — Create and configure your first AI agent
+DotAgents has four core pieces:
 
-### Core Concepts
+1. **Desktop runtime** - The Electron app owns local agent sessions, tools, remote server APIs, integrations, and privileged system access.
+2. **Mobile control surface** - The mobile app pairs to the desktop remote server for chat, voice, settings, and operations.
+3. **Agent configuration** - Agents, skills, tasks, notes, MCP servers, and models live in layered `.agents` files.
+4. **Tool and delegation layer** - MCP connects tools; acpx and ACP-compatible agents handle delegated work.
 
-- **[Architecture Overview](concepts/architecture)** — How DotAgents is built and how the pieces fit together
-- **[The .agents Protocol](concepts/dot-agents-protocol)** — The open standard for agent configuration
-- **[Protocol Ecosystem](concepts/protocol-ecosystem)** — MCP, ACP, `acpx`, Skills, and how they interoperate
+## Important References
 
-### Platform Guides
+- [Remote API](reference/api) - Every documented Fastify route used by mobile and external clients
+- [Build, Release, Deploy](development/build-release-deploy) - Packaging, signing, docs builds, and deployment flow
+- [Docs Coverage](development/docs-coverage) - The checklist and verifier used to keep docs aligned with source
+- [Debug & Diagnostics](reference/debug) - Logs, diagnostic checks, and troubleshooting commands
 
-- **[Desktop App](desktop/overview)** — The full-featured Electron desktop experience
-- **[Mobile App](mobile/overview)** — AI agents on iOS, Android, and the web
-- **[Voice Interface](voice/overview)** — Hold to speak, release to act
+## Community
 
-### Agent System
-
-- **[Agent Profiles](agents/profiles)** — Specialized AI agents with distinct skills and tools
-- **[Skills](agents/skills)** — Portable, reusable agent capabilities
-- **[Knowledge & Notes](agents/knowledge-notes)** — Durable knowledge across sessions
-- **[Multi-Agent Delegation (acpx/ACP)](agents/delegation)** — Agents delegating tasks to other agents
-
-### Tools & Integrations
-
-- **[MCP Tools](tools/mcp)** — Connect to any tool via the Model Context Protocol
-- **[WhatsApp Integration](tools/whatsapp)** — Send and receive messages through WhatsApp
-- **[Discord Integration](tools/discord)** — Connect a Discord bot to trusted agents and operator commands
-- **[Observability (Langfuse)](tools/observability)** — Monitor, trace, and debug your agents
-- **[AI Providers](tools/providers)** — Configure OpenAI, Groq, Google Gemini, and local models
-
-### Configuration
-
-- **[Settings Reference](configuration/settings)** — All configurable options in one place
-- **[MCP Server Configuration](configuration/mcp-servers)** — Add and manage tool servers
-- **[Keyboard Shortcuts](configuration/shortcuts)** — Every hotkey and shortcut
-
-### Security & Privacy
-
-- **[Security Model](security/model)** — How DotAgents protects your data
-- **[Privacy Policy](security/privacy)** — Zero data collection, local-first design
-
-### Development
-
-- **[Development Setup](development/setup)** — Clone, build, and run from source
-- **[Apps & Packages](development/apps-and-packages)** — Monorepo map for every app, package, server, and support area
-- **[Build, Release, Deploy](development/build-release-deploy)** — Packaging, signing, release artifacts, and deployments
-- **[Architecture Deep Dive](development/architecture)** — Technical architecture for contributors
-- **[Contributing](development/contributing)** — How to contribute to DotAgents
-
-### Reference
-
-- **[Remote API](reference/api)** — HTTP API for mobile and external clients
-- **[Headless CLI](reference/cli)** — Terminal setup, chat, status, config, and Discord commands
-- **[Debug & Diagnostics](reference/debug)** — Debug logging and diagnostic tools
-- **[Glossary](reference/glossary)** — Key terms and definitions
-
----
-
-## What is DotAgents?
-
-DotAgents is three things:
-
-**1. An App** — A voice-first AI agent interface. Hold to speak, release to act. Your agents listen, think, and execute tools on your behalf. Available on desktop (macOS, Windows, Linux) and mobile (iOS, Android).
-
-**2. The `.agents` Protocol** — An open standard for agent skills, knowledge notes, and commands. Define them once in `.agents/`, and they work across Claude Code, Cursor, OpenCode, and any tool that adopts the protocol.
-
-**3. Agent Skills** — Reusable capabilities your agents can learn. Skills are portable, shareable, and composable — not locked into any single tool or vendor.
-
----
-
-## Community & Support
-
-- **[Discord](https://discord.gg/cK9WeQ7jPq)** — Join the DotAgents community
-- **[GitHub](https://github.com/aj47/dotagents-mono)** — Source code, issues, and releases
-- **[Website](https://dotagents.app)** — dotagents.app
-
----
-
-## License
-
-DotAgents is open source under the [AGPL-3.0 License](https://github.com/aj47/dotagents-mono/blob/main/LICENSE).
+- [Discord](https://discord.gg/cK9WeQ7jPq)
+- [GitHub](https://github.com/aj47/dotagents-mono)
+- [Website](https://dotagents.app)
