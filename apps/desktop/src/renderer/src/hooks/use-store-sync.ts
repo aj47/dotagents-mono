@@ -125,6 +125,16 @@ export function useStoreSync() {
   useEffect(() => {
     tipcClient.getTTSPlaybackState?.().then((state: DesktopTTSPlaybackState) => {
       if (state) {
+        const currentState = useAgentStore.getState().ttsPlaybackState
+        if (currentState.updatedAt > state.updatedAt) {
+          logUI("[StoreSync][TTS] skipped stale hydrated playback state", {
+            playbackId: state.playbackId,
+            status: state.status,
+            hydratedUpdatedAt: state.updatedAt,
+            currentUpdatedAt: currentState.updatedAt,
+          })
+          return
+        }
         logUI("[StoreSync][TTS] hydrated initial playback state", {
           playbackId: state.playbackId,
           status: state.status,

@@ -245,7 +245,12 @@ export function useTTSPlaybackController() {
       publishState({ status: "playing", error: undefined })
     }
     const onPause = () => {
-      if (!requestRef.current || stateRef.current.status === "ended" || stateRef.current.status === "idle") return
+      if (
+        !requestRef.current ||
+        stateRef.current.status === "ended" ||
+        stateRef.current.status === "idle" ||
+        stateRef.current.status === "error"
+      ) return
       logUI("[TTSPlaybackController] pause event", { playbackId: stateRef.current.playbackId })
       publishState({ status: "paused" })
     }

@@ -1100,7 +1100,12 @@ function broadcastTTSPlaybackState(state: DesktopTTSPlaybackState): number {
   })
   for (const [id, win] of WINDOWS.entries()) {
     try {
-      getRendererHandlers<RendererHandlers>(win.webContents).ttsPlaybackStateChanged?.send(state)
+      const handler = getRendererHandlers<RendererHandlers>(win.webContents).ttsPlaybackStateChanged
+      if (!handler) {
+        logApp(`[tipc] ttsPlaybackStateChanged handler missing for ${id}`)
+        continue
+      }
+      handler.send(state)
       windowsNotified += 1
     } catch (e) {
       logApp(`[tipc] ttsPlaybackStateChanged send to ${id} failed:`, e)
@@ -1121,7 +1126,12 @@ function sendTTSPlaybackCommandToHost(command: DesktopTTSPlaybackCommand): boole
   }
 
   try {
-    getRendererHandlers<RendererHandlers>(main.webContents).ttsPlaybackCommand?.send(command)
+    const handler = getRendererHandlers<RendererHandlers>(main.webContents).ttsPlaybackCommand
+    if (!handler) {
+      logApp("[tipc] Main renderer has no TTS playback command handler", { command })
+      return false
+    }
+    handler.send(command)
     return true
   } catch (error) {
     logApp("[tipc] Failed to route TTS playback command to main renderer:", error)
@@ -1155,7 +1165,15 @@ function sendTTSPlaybackRequestToHost(request: DesktopTTSPlaybackRequest): boole
   }
 
   try {
-    getRendererHandlers<RendererHandlers>(main.webContents).ttsPlaybackRequest?.send(request)
+    const handler = getRendererHandlers<RendererHandlers>(main.webContents).ttsPlaybackRequest
+    if (!handler) {
+      logApp("[tipc] Main renderer has no TTS playback request handler", {
+        playbackId: request.playbackId,
+        sessionId: request.sessionId,
+      })
+      return false
+    }
+    handler.send(request)
     return true
   } catch (error) {
     logApp("[tipc] Failed to route TTS playback request to main renderer:", error)

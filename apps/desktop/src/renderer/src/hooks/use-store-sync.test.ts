@@ -283,6 +283,45 @@ describe('useStoreSync pinned session persistence', () => {
 
     runtime.cleanupAllEffects()
   })
+
+  it('does not overwrite newer TTS playback state with stale hydration', async () => {
+    const runtime = createHookRuntime()
+    const storeState = createAgentStoreState()
+    const loaded = await loadUseStoreSync(runtime, storeState, { pinnedSessionIds: [] })
+    const deferredTTSState = createDeferred<typeof storeState.ttsPlaybackState>()
+    loaded.tipcClient.getTTSPlaybackState.mockReturnValue(deferredTTSState.promise)
+
+    runtime.render(loaded.useStoreSync)
+    runtime.commitEffects()
+
+    storeState.ttsPlaybackState = {
+      playbackId: 'newer-playback',
+      status: 'playing',
+      currentTime: 1,
+      duration: 3,
+      volume: 1,
+      muted: false,
+      updatedAt: 10,
+    }
+
+    deferredTTSState.resolve({
+      playbackId: 'older-playback',
+      status: 'paused',
+      currentTime: 0,
+      duration: 3,
+      volume: 1,
+      muted: false,
+      updatedAt: 2,
+    })
+    await flushPromises()
+
+    expect(storeState.setTTSPlaybackState).not.toHaveBeenCalledWith(
+      expect.objectContaining({ playbackId: 'older-playback' }),
+    )
+    expect(storeState.ttsPlaybackState.playbackId).toBe('newer-playback')
+
+    runtime.cleanupAllEffects()
+  })
 })
 
 function createAgentStoreState() {
@@ -295,7 +334,10 @@ function createAgentStoreState() {
     setSessionSnoozed: vi.fn(),
     setScrollToSessionId: vi.fn(),
     setFloatingPanelVisible: vi.fn(),
-    setTTSPlaybackState: vi.fn(),
+    ttsPlaybackState: { playbackId: null, status: 'idle', currentTime: 0, duration: 0, volume: 1, muted: false, updatedAt: 1 },
+    setTTSPlaybackState: vi.fn((ttsPlaybackState) => {
+      state.ttsPlaybackState = ttsPlaybackState
+    }),
     updateMessageQueue: vi.fn(),
     pinnedSessionIds: new Set<string>(),
     pinnedSessionIdsRevision: 0,

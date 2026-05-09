@@ -17,4 +17,8 @@ describe("tts playback controller", () => {
     expect(controllerSource).toContain('audio.addEventListener("timeupdate", onTimeUpdate)')
     expect(controllerSource).toContain('audio.addEventListener("ended", onEnded)')
   })
+
+  it("does not let late pause events overwrite an error state", () => {
+    expect(controllerSource).toContain('stateRef.current.status === "error"')
+  })
 })

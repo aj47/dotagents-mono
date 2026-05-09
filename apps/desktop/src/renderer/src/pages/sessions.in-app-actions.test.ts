@@ -187,6 +187,15 @@ describe("sessions in-app actions", () => {
     expect(recordingBlock).toContain("suppressPanelAutoShow(2000)")
   })
 
+  it("reports centralized TTS IPC delivery only when handlers are available", () => {
+    expect(tipcSource).toContain("const handler = getRendererHandlers<RendererHandlers>(win.webContents).ttsPlaybackStateChanged")
+    expect(tipcSource).toContain("handler.send(state)")
+    expect(tipcSource).toContain("windowsNotified += 1")
+    expect(tipcSource).toContain("const handler = getRendererHandlers<RendererHandlers>(main.webContents).ttsPlaybackCommand")
+    expect(tipcSource).toContain("Main renderer has no TTS playback command handler")
+    expect(tipcSource).toContain("Main renderer has no TTS playback request handler")
+  })
+
   it("derives the active session tile's isFocused from the focusedSessionId store rather than hardcoding true", () => {
     expect(sessionsSource).toContain("const focusedSessionId = useAgentStore((state) => state.focusedSessionId)")
     expect(sessionsSource).toContain("const isFocused = focusedSessionId === sessionId")
