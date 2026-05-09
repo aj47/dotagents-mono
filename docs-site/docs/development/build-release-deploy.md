@@ -161,8 +161,8 @@ Linux package scripts use `apps/desktop/scripts/build-linux.ts`.
 The Linux builder supports:
 
 ```bash
-npx tsx scripts/build-linux.ts --arch current --publish never --formats AppImage,deb
-npx tsx scripts/build-linux.ts --arch x64 --no-clean
+pnpm exec tsx scripts/build-linux.ts --arch current --publish never --formats AppImage,deb
+pnpm exec tsx scripts/build-linux.ts --arch x64 --no-clean
 ```
 
 Required Linux packaging tools include `dpkg-deb`; GitHub Actions also installs `dpkg-dev`, `fakeroot`, `libarchive-tools`, and `rpm`.
@@ -204,20 +204,22 @@ The root release script has mobile package paths for IPA/APK builds, but mobile 
 
 ## Docs Site
 
-The docs site is outside the `apps/*` and `packages/*` workspace globs. Use `--dir`:
+The docs site is a pnpm workspace package at `docs-site`:
 
 ```bash
-pnpm --dir docs-site start
-pnpm --dir docs-site build
-pnpm --dir docs-site typecheck
+pnpm --filter docs-site start
+pnpm --filter docs-site build
+pnpm --filter docs-site typecheck
 ```
 
 Before merging docs changes:
 
 ```bash
 pnpm docs:coverage
-pnpm --dir docs-site build
+pnpm --filter docs-site build
 ```
+
+`docs.dotagents.app` is deployed by `.github/workflows/deploy-docs.yml`. On pushes to `main` that touch docs, the workflow installs from the root lockfile, runs `pnpm docs:coverage`, builds `docs-site`, and uploads `docs-site/build` to the Cloudflare Pages project `dotagents-docs`.
 
 ## Website and Mobile Web Deployments
 
@@ -225,8 +227,11 @@ There are two different web surfaces:
 
 | Surface | Source | Deployment path |
 |---------|--------|-----------------|
+| Documentation site | `docs-site/` | GitHub Actions workflow `.github/workflows/deploy-docs.yml` builds Docusaurus and deploys Cloudflare Pages project `dotagents-docs` at `docs.dotagents.app`. |
 | Static marketing website | `website/` | Static files with `website/wrangler.toml`; preview with `cd website && python3 -m http.server 4321`. |
 | Expo mobile web app | `apps/mobile` | GitHub Actions workflow `.github/workflows/deploy-web.yml` exports Expo web to `apps/mobile/dist` and deploys Cloudflare Pages project `dotagents-app`. |
+
+The deploy-docs workflow runs on pushes to `main` that touch `docs-site/**`, docs coverage tooling, or the docs deploy workflow itself. It can also be run manually with `workflow_dispatch`.
 
 The deploy-web workflow runs on pushes to `main` that touch `apps/mobile/**` or `packages/shared/**`, and can also be run manually with `workflow_dispatch`.
 
@@ -251,7 +256,7 @@ Before calling a build/release docs change complete:
 
 ```bash
 pnpm docs:coverage
-pnpm --dir docs-site build
+pnpm --filter docs-site build
 ```
 
 4. For release code changes, also run the package-specific build or packaging command you changed.
