@@ -67,3 +67,4 @@ jobs:
           CLOUDFLARE_PAGES_TARGET: dotagents-docs.pages.dev
           CLOUDFLARE_DOCS_DOMAINS: dotagents.app,www.dotagents.app,docs.dotagents.app
           CLOUDFLARE_DOCS_DNS_NAMES: dotagents.app,www.dotagents.app
+          CLOUDFLARE_DNS_SYNC_REQUIRED: "false"

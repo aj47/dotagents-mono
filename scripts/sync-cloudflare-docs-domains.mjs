@@ -187,6 +187,20 @@ async function main() {
 }
 
 main().catch((error) => {
+  const isDnsPermissionError =
+    error.message.includes('/dns_records') && error.message.includes('(403)');
+  const dnsSyncRequired = ['1', 'true', 'yes'].includes(
+    String(env.CLOUDFLARE_DNS_SYNC_REQUIRED || '').toLowerCase(),
+  );
+
+  if (isDnsPermissionError && !dnsSyncRequired) {
+    console.warn(
+      `::warning::Cloudflare token cannot access DNS records for ${zoneName}. Grant Zone DNS Edit for ${zoneName}, then rerun the docs deploy to sync ${dnsNames.join(', ')} to ${pagesTarget}.`,
+    );
+    console.warn(error.message);
+    return;
+  }
+
   console.error(error.message);
   process.exitCode = 1;
 });

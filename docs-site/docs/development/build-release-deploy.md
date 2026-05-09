@@ -219,7 +219,9 @@ pnpm docs:coverage
 pnpm --filter docs-site build
 ```
 
-`dotagents.app` is deployed by `.github/workflows/deploy-docs.yml`. On pushes to `main` that touch docs, the workflow installs from the root lockfile, runs `pnpm docs:coverage`, builds `docs-site`, uploads `docs-site/build` to the Cloudflare Pages project `dotagents-docs`, and syncs the `dotagents.app` / `www.dotagents.app` DNS records to `dotagents-docs.pages.dev`.
+`dotagents.app` is deployed by `.github/workflows/deploy-docs.yml`. On pushes to `main` that touch docs, the workflow installs from the root lockfile, runs `pnpm docs:coverage`, builds `docs-site`, uploads `docs-site/build` to the Cloudflare Pages project `dotagents-docs`, and attempts to sync the `dotagents.app` / `www.dotagents.app` DNS records to `dotagents-docs.pages.dev`.
+
+The `CLOUDFLARE_API_TOKEN` secret must include Cloudflare Pages edit plus Zone DNS edit for `dotagents.app` before the DNS sync can complete. Without DNS edit permission, the workflow still deploys the docs build and emits a warning; the custom domains stay pending until the DNS records are updated manually or the token scope is expanded and the workflow is rerun.
 
 ## Web Deployments
 
