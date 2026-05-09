@@ -15,7 +15,7 @@ import type {
   ClientCapabilities,
 } from "@modelcontextprotocol/sdk/types.js"
 import { configStore, dataFolder, trySaveConfig } from "./config"
-import { getResolvedRemoteServerApiKey } from "./remote-server"
+import { getResolvedRemoteServerApiKey } from "./remote-server-secret"
 import {
   MCPConfig,
   MCPServerConfig,

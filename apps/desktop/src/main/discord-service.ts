@@ -1,10 +1,9 @@
 import type { Client, Message } from "discord.js"
 import { configStore } from "./config"
-import { getResolvedRemoteServerApiKey } from "./remote-server"
+import { getResolvedRemoteServerApiKey } from "./remote-server-secret"
 import { emergencyStopAll } from "./emergency-stop"
 import { logApp } from "./debug"
 import { agentProfileService } from "./agent-profile-service"
-import { runAgent } from "./remote-server"
 import {
   getDiscordResolvedDefaultProfileId,
   getDiscordResolvedToken,
@@ -1316,6 +1315,7 @@ class DiscordService {
         }
 
         try {
+          const { runAgent } = await import("./remote-server")
           const result = await runAgent({
             prompt: enrichedPrompt,
             conversationId,

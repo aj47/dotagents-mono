@@ -157,6 +157,16 @@ export function getChildSubSessions(parentSessionId: string): InternalSubSession
 }
 
 /**
+ * Get all retained sub-sessions for a parent, including completed children
+ * whose parent link was removed after the run ended but can still receive
+ * queued follow-up continuations.
+ */
+export function getAllSubSessionsForParent(parentSessionId: string): InternalSubSession[] {
+  return Array.from(activeSubSessions.values())
+    .filter(subSession => subSession.parentSessionId === parentSessionId);
+}
+
+/**
  * Get an internal sub-session by ID, including completed/cancelled sub-sessions
  * retained for UI history and follow-up continuations.
  */
@@ -217,11 +227,14 @@ async function appendMissingSeedMessages(
   startIndex: number,
 ): Promise<void> {
   for (const message of seedHistory.slice(startIndex)) {
-    await conversationService.addMessageToConversation(
+    const updatedConversation = await conversationService.addMessageToConversation(
       conversationId,
       message.content,
       message.role,
     );
+    if (!updatedConversation) {
+      throw new Error(`Failed to persist ${message.role} seed message to conversation ${conversationId}`);
+    }
   }
 }
 
@@ -232,10 +245,14 @@ async function ensureDedicatedSubSessionConversation(
   const parentConversationId = agentSessionTracker.getConversationIdForSession(subSession.parentSessionId);
   if (subSession.conversationId && subSession.conversationId !== parentConversationId) {
     const conversation = await conversationService.loadConversation(subSession.conversationId);
-    const persistedMessages = conversation?.rawMessages ?? conversation?.messages ?? [];
-    const persistedSeedCount = countPersistedSeedMessages(seedHistory, persistedMessages);
-    await appendMissingSeedMessages(subSession.conversationId, seedHistory, persistedSeedCount);
-    return subSession.conversationId;
+    if (conversation) {
+      const persistedMessages = conversation.rawMessages ?? conversation.messages ?? [];
+      const persistedSeedCount = countPersistedSeedMessages(seedHistory, persistedMessages);
+      await appendMissingSeedMessages(subSession.conversationId, seedHistory, persistedSeedCount);
+      return subSession.conversationId;
+    }
+
+    delete subSession.conversationId;
   }
 
   const firstMessage = seedHistory.find(msg => msg.role === 'user' || msg.role === 'assistant');
@@ -268,10 +285,15 @@ async function drainQueuedInternalSubSessionMessages(subSessionId: string): Prom
 
   try {
     while (true) {
-      const queuedMessage = messageQueueService
-        .getQueue(conversationId)
-        .find(message => message.status === 'pending' && message.sessionId === subSessionId);
+      const queuedMessage = messageQueueService.peek(conversationId);
       if (!queuedMessage) {
+        return;
+      }
+
+      if (queuedMessage.sessionId !== subSessionId) {
+        logSubSession(
+          `Queue head ${queuedMessage.id} for ${conversationId} belongs to ${queuedMessage.sessionId ?? 'unknown session'}, not ${subSessionId}; preserving FIFO order`,
+        );
         return;
       }
 

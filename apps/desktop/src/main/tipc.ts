@@ -1353,7 +1353,12 @@ export const router = {
 
       // Cancel any internal sub-sessions spawned by this session
       try {
-        const { getChildSubSessions, cancelSubSession, getInternalSubSession } = await import("./acp/internal-agent")
+        const {
+          getChildSubSessions,
+          getAllSubSessionsForParent,
+          cancelSubSession,
+          getInternalSubSession,
+        } = await import("./acp/internal-agent")
         requestedSubSessionConversationId = requestedSessionKind === "subsession"
           ? getInternalSubSession(requestedSessionId)?.conversationId
           : undefined
@@ -1363,7 +1368,11 @@ export const router = {
         const cancelledRequestedSubSession = requestedSessionKind === "subsession"
           ? cancelSubSession(requestedSessionId)
           : false
-        const childSessions = getChildSubSessions(input.sessionId)
+        const childSessionsById = new Map(
+          [...getChildSubSessions(input.sessionId), ...getAllSubSessionsForParent(input.sessionId)]
+            .map((child) => [child.id, child] as const),
+        )
+        const childSessions = Array.from(childSessionsById.values())
         const runningChildSessionIds = childSessions
           .filter((child) => child.status === "running")
           .map((child) => child.id)

@@ -2113,7 +2113,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // If message queue is enabled and we're already responding, queue the message
     if (messageQueueEnabled && responding) {
       console.log('[ChatScreen] Agent busy, queuing message:', getMessageLogMeta(text));
-      messageQueue.enqueue(currentConversationId, text);
+      messageQueue.enqueue(currentConversationId, text, currentConversationId);
       setInput('');
       if (options?.fromComposer) {
         setPendingImages([]);
@@ -2957,7 +2957,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const composedMessage = buildMessageWithPendingImages(input, pendingImages);
     if (!composedMessage.trim()) return;
 
-    messageQueue.enqueue(currentConversationId, composedMessage);
+    messageQueue.enqueue(currentConversationId, composedMessage, currentConversationId);
     setInput('');
     setPendingImages([]);
     setDebugInfo('Message queued. Use Send Next when you are ready.');
