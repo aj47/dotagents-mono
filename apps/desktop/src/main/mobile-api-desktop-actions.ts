@@ -215,7 +215,17 @@ const settingsActionOptions: SettingsActionOptions<Config> = {
     getAcpxAgents: () => getEnabledAcpxAgentProfiles(agentProfileService.getAll())
       .map(p => ({ name: p.name, displayName: p.displayName })),
     getDiscordLifecycleAction: (prev, next) => getDiscordLifecycleAction(prev, next, process.env),
-    applyDiscordLifecycleAction: (action) => applyDiscordLifecycleActionToService(action, discordService),
+    applyDiscordLifecycleAction: (action) => applyDiscordLifecycleActionToService(action, {
+      start: async () => {
+        await discordService.start()
+      },
+      restart: async () => {
+        await discordService.restart()
+      },
+      stop: async () => {
+        await discordService.stop()
+      },
+    }),
     applyWhatsappToggle: handleWhatsAppToggle,
     applyDesktopShellSettings,
   }),
@@ -270,7 +280,7 @@ const temporaryBundleImportService = createTemporaryBundleFileImportService({
 const bundleActionService = createLayeredBundleActionService({
   getGlobalAgentsFolder: () => globalAgentsFolder,
   getWorkspaceAgentsFolder: resolveWorkspaceAgentsFolder,
-  getExportableItemsFromLayers,
+  getExportableItemsFromLayers: getBundleExportableItemsFromLayers,
   exportBundleFromLayers: (layerDirs, request: ExportBundleRequest) => exportBundleFromLayers(layerDirs, request),
   previewBundleImport: temporaryBundleImportService.previewBundleImport,
   importBundle: temporaryBundleImportService.importBundle,

@@ -9,24 +9,24 @@ DotAgents lets you create specialized AI agents — each with its own operating 
 
 ---
 
-## What is an Agent Profile?
+## What is an Agent?
 
-An agent profile defines an AI specialist. Think of it as a job description for an AI: who it is, what it knows, what tools it can use, and how it behaves.
+An agent is an AI specialist. Think of it as a job description for an AI: who it is, what it knows, what tools it can use, and how it behaves.
 
-Every agent profile has:
+Every agent has:
 
 - **Identity** — Name, description, avatar
 - **System Prompt** — Core instructions that shape behavior
 - **Guidelines** — Additional rules and constraints
 - **Skills** — Specialized knowledge it can access
 - **Tool Access** — Which MCP servers and tools it can use
-- **Model** — Which AI model powers it (optional override)
+- **Model** — Which AI model powers it (optional override for internal agents)
 
 ## Creating an Agent via the UI
 
 1. Navigate to **Settings > Agents**
 2. Click **"Create Agent"**
-3. Fill in the profile:
+3. Fill in the agent:
 
 | Field | Example |
 |-------|---------|
@@ -55,6 +55,8 @@ name: code-reviewer
 displayName: Code Reviewer
 description: Reviews code for bugs, security issues, and best practices
 enabled: true
+role: chat-agent
+connection-type: internal
 ---
 
 You are an expert code reviewer specializing in TypeScript and React applications.
@@ -77,7 +79,7 @@ You are an expert code reviewer specializing in TypeScript and React application
 
 ### Agent Configuration
 
-Optionally, create `~/.agents/agents/<agent-id>/config.json` for tool and model settings:
+Optionally, create `~/.agents/agents/<agent-id>/config.json` for nested tool, model, skill, and connection settings. The connection type belongs in `agent.md` as `connection-type`, not in `config.json`.
 
 ```json
 {
@@ -113,9 +115,9 @@ Agents can run in different modes:
 | Connection Type | Description |
 |----------------|-------------|
 | **Internal** | Runs within DotAgents using your configured AI provider |
-| **ACP** | Spawns an external process (e.g., Claude Code) |
+| **acpx** | Runs an external local agent through the `acpx` CLI |
 | **Remote** | Connects to an HTTP endpoint |
-| **stdio** | Communicates via stdin/stdout with a local process |
+| **stdio / ACP** | Legacy local process connection types retained for compatibility |
 
 ## Example: Research Agent
 
@@ -128,6 +130,8 @@ name: researcher
 displayName: Research Assistant
 description: Deep research on any topic with web search and document analysis
 enabled: true
+role: chat-agent
+connection-type: internal
 ---
 
 You are a thorough research assistant. When given a topic:
@@ -150,7 +154,8 @@ With `config.json`:
     "disabledServers": ["github"]
   },
   "skillsConfig": {
-    "enabledSkills": ["document-processing"]
+    "allSkillsDisabledByDefault": true,
+    "enabledSkillIds": ["document-processing"]
   }
 }
 ```
@@ -164,13 +169,13 @@ DotAgents supports exporting and importing agent bundles:
 3. Share the bundle file with others
 4. They can **Import** it from their settings
 
-Bundles include the agent profile, skills, and configuration — everything needed to recreate the agent on another machine.
+Bundles include the agent definition, skills, and configuration — everything needed to recreate the agent on another machine.
 
 ---
 
 ## Next Steps
 
-- **[Agent Profiles](/agents/profiles)** — Deep dive into profile configuration
+- **[Agents](/agents/profiles)** — Deep dive into agent configuration
 - **[Skills](/agents/skills)** — Teach your agent new capabilities
 - **[Knowledge & Notes](/agents/knowledge-notes)** — Give your agent durable knowledge
 - **[Multi-Agent Delegation](/agents/delegation)** — Set up agent-to-agent coordination

@@ -55,6 +55,8 @@ pnpm dev         # Start development server
 | `pnpm typecheck` | TypeScript type checking |
 | `pnpm lint` | ESLint across all packages |
 
+For signing, release packaging, GitHub Actions artifacts, docs builds, and web deployments, see [Build, Release, Deploy](build-release-deploy).
+
 ## Debug Mode
 
 ```bash
@@ -141,4 +143,6 @@ nvm use    # Uses the repository .nvmrc
 ## Next Steps
 
 - **[Architecture Deep Dive](architecture)** — Technical details for contributors
+- **[Build, Release, Deploy](build-release-deploy)** — Release packaging, signing, and deployment map
+- **[Apps & Packages](apps-and-packages)** — Every app, package, and support area in the monorepo
 - **[Contributing](contributing)** — How to contribute

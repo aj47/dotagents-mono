@@ -15,6 +15,7 @@ import type {
   ClientCapabilities,
 } from "@modelcontextprotocol/sdk/types.js"
 import { configStore, dataFolder, trySaveConfig } from "./config"
+import { getResolvedRemoteServerApiKey } from "./remote-server-secret"
 import type {
   ProfilesData,
   ProfileMcpServerConfig,
@@ -49,7 +50,7 @@ import { randomUUID } from "crypto"
 import {
   createToolSpan,
   endToolSpan,
-  isLangfuseEnabled,
+  isTracingEnabled,
   getAgentTrace,
 } from "./langfuse-service"
 
@@ -2668,8 +2669,8 @@ export class MCPService {
     sessionId?: string,
     profileMcpConfig?: ProfileMcpServerConfig
   ): Promise<MCPToolResult> {
-    // Create Langfuse span for tool call if enabled and we have a trace
-    const spanId = isLangfuseEnabled() && sessionId ? randomUUID() : null
+    // Create tool span event if observability is enabled and we have a trace
+    const spanId = isTracingEnabled() && sessionId ? randomUUID() : null
     if (spanId && sessionId) {
       createToolSpan(sessionId, spanId, {
         name: `Tool: ${toolCall.name}`,
@@ -3056,7 +3057,8 @@ export class MCPService {
         environment.WHATSAPP_AUTO_REPLY = "true"
         const port = config.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
         environment.WHATSAPP_CALLBACK_URL = `http://localhost:${port}/v1/chat/completions`
-        environment.WHATSAPP_CALLBACK_API_KEY = config.remoteServerApiKey
+        // Resolve dotagents-secret:// references so the MCP server gets the actual API key
+        environment.WHATSAPP_CALLBACK_API_KEY = getResolvedRemoteServerApiKey(config)
       }
 
       // Inject log messages setting

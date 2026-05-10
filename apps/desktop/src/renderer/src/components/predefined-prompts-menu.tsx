@@ -109,7 +109,7 @@ export function PredefinedPromptsMenu({
 
   const handleTriggerTask = async (task: LoopConfig) => {
     try {
-      const result = await desktopLoopsClient.triggerLoop(task.id)
+      const result = await desktopLoopsClient.runLoop(task.id)
       if (result && !result.success) {
         toast.error(`Could not trigger "${task.name}" right now`)
         return

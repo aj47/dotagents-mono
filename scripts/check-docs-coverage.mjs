@@ -1,0 +1,270 @@
+#!/usr/bin/env node
+
+import { execFileSync } from "node:child_process"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+
+const fromRoot = (relativePath) => path.join(root, relativePath)
+const readText = (relativePath) => readFileSync(fromRoot(relativePath), "utf8")
+
+const failures = []
+
+function fail(message) {
+  failures.push(message)
+}
+
+function trackedFiles(prefix) {
+  const output = execFileSync("git", ["ls-files", prefix], {
+    cwd: root,
+    encoding: "utf8",
+  })
+  return output.split("\n").filter(Boolean)
+}
+
+function assertFile(relativePath, label = relativePath) {
+  if (!existsSync(fromRoot(relativePath))) {
+    fail(`${label} is missing (${relativePath})`)
+  }
+}
+
+function assertTracked(prefix, label = prefix) {
+  if (trackedFiles(prefix).length === 0) {
+    fail(`${label} has no tracked files (${prefix})`)
+  }
+}
+
+const coverageDocPath = "docs-site/docs/development/docs-coverage.md"
+assertFile(coverageDocPath)
+const coverageDoc = existsSync(fromRoot(coverageDocPath)) ? readText(coverageDocPath) : ""
+
+const sourceAreas = [
+  {
+    label: "desktop app",
+    source: "apps/desktop",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/build-release-deploy.md",
+      "docs-site/docs/desktop/overview.md",
+      "docs-site/docs/development/architecture.md",
+      "docs-site/docs/reference/api.md",
+    ],
+  },
+  {
+    label: "desktop main process",
+    source: "apps/desktop/src/main",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/architecture.md",
+      "docs-site/docs/desktop/remote-server.md",
+      "docs-site/docs/reference/api.md",
+    ],
+  },
+  {
+    label: "desktop renderer",
+    source: "apps/desktop/src/renderer/src",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/desktop/overview.md",
+      "docs-site/docs/development/architecture.md",
+    ],
+  },
+  {
+    label: "desktop shared/preload boundary",
+    source: "apps/desktop/src/shared",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/architecture.md",
+      "docs-site/docs/development/docs-coverage.md",
+    ],
+  },
+  {
+    label: "desktop Rust binary",
+    source: "apps/desktop/dotagents-rs",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/build-release-deploy.md",
+      "docs-site/docs/development/architecture.md",
+      "docs-site/docs/development/setup.md",
+    ],
+  },
+  {
+    label: "mobile app",
+    source: "apps/mobile",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/mobile/overview.md",
+      "docs-site/docs/getting-started/installation.md",
+    ],
+  },
+  {
+    label: "core package",
+    source: "packages/core",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/architecture.md",
+      "docs-site/docs/concepts/dot-agents-protocol.md",
+      "packages/core/README.md",
+    ],
+  },
+  {
+    label: "shared package",
+    source: "packages/shared",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/architecture.md",
+      "docs-site/docs/reference/api.md",
+      "packages/shared/README.md",
+    ],
+  },
+  {
+    label: "whatsapp MCP package",
+    source: "packages/mcp-whatsapp",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/tools/whatsapp.md",
+      "packages/mcp-whatsapp/README.md",
+    ],
+  },
+  {
+    label: "documentation site",
+    source: "docs-site",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/build-release-deploy.md",
+      "docs-site/docs/development/setup.md",
+      "docs-site/docs/development/docs-coverage.md",
+    ],
+  },
+  {
+    label: "promo studio renders",
+    source: "apps/promo-studio",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/docs-coverage.md",
+    ],
+  },
+  {
+    label: "repository scripts",
+    source: "scripts",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/build-release-deploy.md",
+      "docs-site/docs/development/setup.md",
+      "docs-site/docs/development/docs-coverage.md",
+    ],
+  },
+  {
+    label: "integration tests",
+    source: "tests",
+    docs: [
+      "docs-site/docs/development/apps-and-packages.md",
+      "docs-site/docs/development/setup.md",
+      "docs-site/docs/development/docs-coverage.md",
+    ],
+  },
+]
+
+for (const area of sourceAreas) {
+  assertTracked(area.source, area.label)
+  if (!coverageDoc.includes(area.source)) {
+    fail(`coverage doc does not mention source area ${area.source}`)
+  }
+  for (const docPath of area.docs) {
+    assertFile(docPath, `${area.label} doc`)
+  }
+}
+
+function assertListedFiles({ dir, pattern, docText, label }) {
+  const files = readdirSync(fromRoot(dir))
+    .filter((file) => pattern.test(file))
+    .filter((file) => !file.includes(".test."))
+    .sort()
+
+  for (const file of files) {
+    if (!docText.includes(file)) {
+      fail(`${label} ${file} is not listed in ${coverageDocPath}`)
+    }
+  }
+}
+
+function assertNoPatternInTrackedFiles({ prefixes, pattern, label }) {
+  const files = prefixes.flatMap((prefix) => trackedFiles(prefix))
+    .filter((file, index, all) => all.indexOf(file) === index)
+    .filter((file) => /\.(md|mdx)$/.test(file))
+
+  for (const file of files) {
+    const text = readText(file)
+    if (pattern.test(text)) {
+      fail(`${file} contains stale docs pattern: ${label}`)
+    }
+  }
+}
+
+assertListedFiles({
+  dir: "apps/desktop/src/renderer/src/pages",
+  pattern: /\.tsx$/,
+  docText: coverageDoc,
+  label: "desktop renderer page",
+})
+
+assertListedFiles({
+  dir: "apps/mobile/src/screens",
+  pattern: /Screen\.tsx$/,
+  docText: coverageDoc,
+  label: "mobile screen",
+})
+
+assertNoPatternInTrackedFiles({
+  prefixes: [
+    "docs-site/docs",
+    "README.md",
+    "BUILDING.md",
+    "DEVELOPMENT.md",
+    "apps/mobile/README.md",
+    "packages/core/README.md",
+    "packages/shared/README.md",
+    "packages/mcp-whatsapp/README.md",
+  ],
+  pattern: /\benabledSkills\b/,
+  label: "use skillsConfig.enabledSkillIds with allSkillsDisabledByDefault, not enabledSkills",
+})
+
+assertNoPatternInTrackedFiles({
+  prefixes: [
+    "docs-site/docs/agents",
+    "docs-site/docs/getting-started/first-agent.md",
+    "docs-site/docs/concepts/dot-agents-protocol.md",
+  ],
+  pattern: /"connection"\s*:\s*\{[^}]*"type"\s*:\s*"(?:internal|acpx|acp|stdio|remote)"/s,
+  label: "agent file docs should use agent.md connection-type, not config.json connection.type",
+})
+
+const apiDocPath = "docs-site/docs/reference/api.md"
+const apiDoc = existsSync(fromRoot(apiDocPath)) ? readText(apiDocPath) : ""
+const remoteServerSource = readText("apps/desktop/src/main/remote-server.ts")
+const routePattern = /fastify\.(get|post|patch|put|delete)\(\s*["`]([^"`]+)["`]/g
+const routes = new Set()
+let match
+
+while ((match = routePattern.exec(remoteServerSource))) {
+  routes.add(`${match[1].toUpperCase()} ${match[2]}`)
+}
+
+for (const route of [...routes].sort()) {
+  if (!apiDoc.includes(route)) {
+    fail(`${apiDocPath} does not document route ${route}`)
+  }
+}
+
+if (failures.length > 0) {
+  console.error("Docs coverage check failed:")
+  for (const message of failures) {
+    console.error(`- ${message}`)
+  }
+  process.exit(1)
+}
+
+console.log(`Docs coverage check passed (${sourceAreas.length} source areas, ${routes.size} remote routes).`)

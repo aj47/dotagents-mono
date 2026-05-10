@@ -8,6 +8,15 @@ type DebugFlags = DesktopDebugFlags
 let cachedFlags: DebugFlags | null = null
 let flagsFetchPromise: Promise<DebugFlags> | null = null
 
+function getLocalDebugFlag(key: string): string | null {
+  if (typeof localStorage === 'undefined' || typeof localStorage.getItem !== 'function') return null
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
 export async function initDebugFlags(): Promise<void> {
   if (cachedFlags) return
 
@@ -20,8 +29,8 @@ export async function initDebugFlags(): Promise<void> {
       tools: false,
       keybinds: false,
       app: false,
-      ui: localStorage.getItem('DEBUG_UI') === 'true' || localStorage.getItem('DEBUG') === '*',
-      all: localStorage.getItem('DEBUG') === '*',
+      ui: getLocalDebugFlag('DEBUG_UI') === 'true' || getLocalDebugFlag('DEBUG') === '*',
+      all: getLocalDebugFlag('DEBUG') === '*',
     }
   }
 }
@@ -38,8 +47,8 @@ function getFlags(): DebugFlags {
     tools: false,
     keybinds: false,
     app: false,
-    ui: localStorage.getItem('DEBUG_UI') === 'true' || localStorage.getItem('DEBUG') === '*',
-    all: localStorage.getItem('DEBUG') === '*',
+    ui: getLocalDebugFlag('DEBUG_UI') === 'true' || getLocalDebugFlag('DEBUG') === '*',
+    all: getLocalDebugFlag('DEBUG') === '*',
   }
 }
 
@@ -66,21 +75,23 @@ function safeStringify(value: any): string {
   }
 }
 
+function formatDebugArg(arg: any): string {
+  if (arg instanceof Error) {
+    return `${arg.name}: ${arg.message}\n${arg.stack}`
+  }
+  if (typeof arg === 'string') return arg
+  if (typeof arg === 'object' && arg !== null) {
+    return safeStringify(arg)
+  }
+  return String(arg)
+}
+
 export function logUI(...args: any[]) {
   if (!isDebugUI()) return
 
-  const clonedArgs = args.map(arg => {
-    if (typeof arg === 'object' && arg !== null) {
-      try {
-        return JSON.parse(JSON.stringify(arg))
-      } catch {
-        return arg
-      }
-    }
-    return arg
-  })
+  const formattedArgs = args.map(formatDebugArg)
 
-  console.log(`[${ts()}] [DEBUG][UI]`, ...clonedArgs)
+  console.log(`[${ts()}] [DEBUG][UI]`, ...formattedArgs)
 }
 
 export function logComponentLifecycle(componentName: string, event: string, data?: any) {

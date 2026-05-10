@@ -52,6 +52,7 @@ displayName: Code Reviewer
 description: Reviews code for bugs, security issues, and best practices
 enabled: true
 role: delegation-target
+connection-type: internal
 ---
 
 You are a meticulous code reviewer...
@@ -61,39 +62,55 @@ Key: set `role: delegation-target` so the main agent knows this agent is availab
 
 ### 2. Configure the Connection
 
-In the agent's `config.json`, define how to run the agent:
+Set the connection type in the agent's `agent.md` frontmatter. Put command details, environment variables, working directory, or remote URL in `config.json`.
 
 #### Internal Agent (uses DotAgents' LLM)
 
+```markdown
+---
+id: code-reviewer
+name: code-reviewer
+displayName: Code Reviewer
+description: Reviews code for bugs, security issues, and best practices
+enabled: true
+role: delegation-target
+connection-type: internal
+---
+
+You are a meticulous code reviewer...
+```
+
+#### Claude Code via acpx
+
+```markdown
+---
+id: claude-reviewer
+name: claude-reviewer
+displayName: Claude Reviewer
+description: Reviews code through Claude Code
+enabled: true
+role: delegation-target
+connection-type: acpx
+---
+
+You are a meticulous code reviewer...
+```
+
 ```json
 {
   "connection": {
-    "type": "internal"
+    "agent": "claude-code"
   }
 }
 ```
 
-#### Claude Code via ACP
+#### Custom acpx Adapter
+
+This example assumes the agent's `agent.md` has `connection-type: acpx`.
 
 ```json
 {
   "connection": {
-    "type": "acp",
-    "command": "claude-code-acp",
-    "args": ["--acp"],
-    "env": {
-      "ANTHROPIC_API_KEY": "sk-ant-..."
-    }
-  }
-}
-```
-
-#### Custom ACP Agent
-
-```json
-{
-  "connection": {
-    "type": "acp",
     "command": "python",
     "args": ["my_agent.py", "--acp"],
     "cwd": "/path/to/agent",
@@ -125,7 +142,7 @@ Ensure the main agent has access to the delegation runtime tools:
 
 ### Communication
 
-ACP uses **JSON-RPC 2.0** for communication between agents:
+ACP uses **JSON-RPC 2.0** for agent-to-agent communication. DotAgents routes local external agents through `acpx`:
 
 ```
 Main Agent                    Sub-Agent
@@ -244,6 +261,6 @@ The main agent will:
 
 ## Next Steps
 
-- **[Agent Profiles](profiles)** — Configure agent connections
+- **[Agents](profiles)** — Configure agent connections
 - **[MCP Tools](/tools/mcp)** — Tools available to delegated agents
 - **[Architecture](/concepts/architecture)** — System design overview

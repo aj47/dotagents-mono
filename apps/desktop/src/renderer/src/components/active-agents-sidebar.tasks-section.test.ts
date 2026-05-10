@@ -23,7 +23,7 @@ describe("active agents sidebar task section", () => {
   it("renders Tasks above regular sessions with separate pagination", () => {
     const tasksHeaderIndex = sidebarSource.indexOf("{hasTaskSessions && (")
     const sessionsHeaderIndex = sidebarSource.indexOf('<span className="select-none">Sessions</span>')
-    const sessionsListIndex = sidebarSource.indexOf("userSidebarSessions.map((entry, idx) =>")
+    const sessionsListIndex = sidebarSource.lastIndexOf("orderedUngroupedUserSidebarSessions.map((entry)")
 
     expect(tasksHeaderIndex).toBeGreaterThan(-1)
     expect(sessionsHeaderIndex).toBeGreaterThan(-1)
@@ -47,11 +47,21 @@ describe("active agents sidebar task section", () => {
   })
 
   it("forces task rows to remain one line", () => {
-    expect(sidebarSource).toContain("options: { forceSingleLine?: boolean } = {}")
+    expect(sidebarSource).toContain("forceSingleLine?: boolean")
+    expect(sidebarSource).toContain("reorderContainerGroupId?: string | null")
     expect(sidebarSource).toContain("const forceSingleLine = options.forceSingleLine ?? false")
     expect(sidebarSource).toContain("!forceSingleLine &&")
-    expect(sidebarSource).toContain("visibleTaskSidebarSessions.map((entry, idx) =>")
-    expect(sidebarSource).toContain("renderSessionRow(entry, tasksOffset + idx, { forceSingleLine: true })")
+    expect(sidebarSource).toContain("visibleTaskSidebarSessions.map((entry) =>")
+    expect(sidebarSource).toContain("renderSessionRow(entry, { forceSingleLine: true })")
+  })
+
+  it("supports dragging session groups to reorder them", () => {
+    expect(sidebarSource).toContain("SIDEBAR_GROUP_DRAG_MIME")
+    expect(sidebarSource).toContain("const [draggingGroupId, setDraggingGroupId]")
+    expect(sidebarSource).toContain("handleGroupHeaderDragOver")
+    expect(sidebarSource).toContain("handleGroupHeaderDrop")
+    expect(sidebarSource).toContain("reorderSidebarSessionGroups(")
+    expect(sidebarSource).toContain('title="Drag to reorder group"')
   })
 
   it("distinguishes task rows from regular sessions with section headings", () => {
@@ -87,25 +97,42 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("const tasksListVisible = visibleTaskSidebarSessions.length > 0")
   })
 
+  it("keeps hotkey targets aligned with active parent rows and visible badges", () => {
+    expect(sidebarSource).toContain("const isSidebarHotkeyEligible = useCallback")
+    expect(sidebarSource).toContain("if (entry.isSubagent && (entry.nestingDepth ?? 0) > 0) return false")
+    expect(sidebarSource).toContain("const hasActiveChildProgress = sessionsWithActiveChildProgress.has(entry.session.id)")
+    expect(sidebarSource).toContain("return hasActiveChildProgress || (")
+    expect(sidebarSource).toContain("return entries.filter(isSidebarHotkeyEligible)")
+    expect(sidebarSource).toContain("const hotkeyIndexBySessionId = useMemo")
+    expect(sidebarSource).toContain("const hotkeyIndex = hotkeyIndexBySessionId.get(session.id)")
+    expect(sidebarSource).toContain("const canShowHotkeyBadge =")
+    expect(sidebarSource).toContain("!isNestedSubagent")
+    expect(sidebarSource).toContain("canShowHotkeyBadge && (sessionPreview || lastMessageMinutesAgo)")
+  })
+
   it("lets the session list size naturally instead of keeping a collapsed gap", () => {
     expect(sidebarSource).not.toContain("max-h-[45vh]")
     expect(sidebarSource).toContain("mt-1 space-y-0.5 overflow-visible")
   })
 
-  it("defaults regular sessions to five rows and only expands from the explicit show more action", () => {
+  it("defaults regular sessions to five rows and supports shrinking below the default", () => {
     expect(sidebarSource).toContain("const DEFAULT_VISIBLE_SIDEBAR_SESSIONS = 5")
     expect(sidebarSource).toContain("const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 5")
+    expect(sidebarSource).toContain("const MIN_VISIBLE_SIDEBAR_ITEMS = 1")
     expect(sidebarSource).toContain("DEFAULT_VISIBLE_SIDEBAR_SESSIONS - activeUserSidebarSessionCount")
-    expect(sidebarSource).toContain("prev > 0 ? prev : defaultSavedConversationRows")
+    expect(sidebarSource).toContain("useState<number | null>(null)")
+    expect(sidebarSource).toContain("visibleSavedConversationCount ?? defaultSavedConversationRows")
+    expect(sidebarSource).toContain("Math.max(next, minimumVisibleSavedConversationRows)")
     expect(sidebarSource).not.toContain("handleSidebarSessionsScroll")
     expect(sidebarSource).not.toContain("onScroll=")
   })
 
   it("renders show less to the right of show more", () => {
-    const showMoreIndex = sidebarSource.indexOf("Show more")
-    const showLessIndex = sidebarSource.indexOf("Show less")
+    const showMoreIndex = sidebarSource.lastIndexOf("Show more")
+    const showLessIndex = sidebarSource.lastIndexOf("Show less")
 
     expect(sidebarSource).toContain("const canShowLessSavedConversations =")
+    expect(sidebarSource).toContain("visiblePageableSavedConversationCount > minimumVisibleSavedConversationRows")
     expect(sidebarSource).toContain("const showLessSavedConversations = useCallback")
     expect(sidebarSource).toContain("hasMoreSavedConversations || canShowLessSavedConversations")
     expect(showMoreIndex).toBeGreaterThan(-1)

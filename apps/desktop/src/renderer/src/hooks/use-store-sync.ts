@@ -9,6 +9,7 @@ import { desktopTtsClient } from '@renderer/lib/desktop-tts-client'
 import { useAgentStore, useConversationStore } from '@renderer/stores'
 import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress'
 import type { QueuedMessage } from '@dotagents/shared/message-queue-utils'
+import type { DesktopTTSPlaybackState } from '@shared/types'
 import { queryClient } from '@renderer/lib/queries'
 import { ttsManager } from '@renderer/lib/tts-manager'
 import { clearSessionTTSTracking, markSessionForcedAutoPlay } from '@renderer/lib/tts-tracking'
@@ -44,6 +45,7 @@ export function useStoreSync() {
   const archivedSessionIdsRevision = useAgentStore((s) => s.archivedSessionIdsRevision)
   const setArchivedSessionIds = useAgentStore((s) => s.setArchivedSessionIds)
   const setFloatingPanelVisible = useAgentStore((s) => s.setFloatingPanelVisible)
+  const setTTSPlaybackState = useAgentStore((s) => s.setTTSPlaybackState)
   const markConversationCompleted = useConversationStore((s) => s.markConversationCompleted)
 
   // Capture the initial store snapshot once per module load so remounts
@@ -108,6 +110,50 @@ export function useStoreSync() {
     )
     return unlisten
   }, [clearInactiveSessions])
+
+  useEffect(() => {
+    const unlisten = desktopTtsClient.onPlaybackStateChanged(
+      (state: DesktopTTSPlaybackState) => {
+        logUI("[StoreSync][TTS] ttsPlaybackStateChanged received", {
+          playbackId: state.playbackId,
+          status: state.status,
+          sessionId: state.sessionId,
+          source: state.source,
+          currentTime: state.currentTime,
+          duration: state.duration,
+          error: state.error,
+        })
+        setTTSPlaybackState(state)
+      },
+    )
+    return unlisten
+  }, [setTTSPlaybackState])
+
+  useEffect(() => {
+    desktopTtsClient.getPlaybackState().then((state: DesktopTTSPlaybackState | undefined) => {
+      if (state) {
+        const currentState = useAgentStore.getState().ttsPlaybackState
+        if (currentState.updatedAt > state.updatedAt) {
+          logUI("[StoreSync][TTS] skipped stale hydrated playback state", {
+            playbackId: state.playbackId,
+            status: state.status,
+            hydratedUpdatedAt: state.updatedAt,
+            currentUpdatedAt: currentState.updatedAt,
+          })
+          return
+        }
+        logUI("[StoreSync][TTS] hydrated initial playback state", {
+          playbackId: state.playbackId,
+          status: state.status,
+          sessionId: state.sessionId,
+          source: state.source,
+        })
+        setTTSPlaybackState(state)
+      }
+    }).catch(() => {
+      // Best-effort hydration; the local idle default remains valid.
+    })
+  }, [setTTSPlaybackState])
 
   useEffect(() => {
     const unlisten = desktopTtsClient.onStopAllTts(() => {

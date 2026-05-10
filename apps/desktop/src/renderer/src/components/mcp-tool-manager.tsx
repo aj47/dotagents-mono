@@ -77,7 +77,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
   const toolsFromEnabledSources = tools.filter((tool) => tool.serverEnabled)
 
   // Group tools by source (real MCP server or DotAgents runtime tools)
-  const toolsBySource = groupMcpToolsBySource(toolsFromEnabledSources)
+  const toolsBySource: Record<string, DetailedTool[]> = groupMcpToolsBySource(toolsFromEnabledSources)
 
   // Filter tools based on search and server selection
   const filteredToolsBySource = filterMcpToolSourceGroups(toolsBySource, {
@@ -128,7 +128,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
     const sourceTools = tools.filter((tool) => tool.sourceName === sourceName)
     if (sourceTools.length === 0) return
     const sourceLabel = sourceTools[0]?.sourceLabel || sourceName
-    const originalStates = new Map(
+    const originalStates = new Map<string, boolean>(
       sourceTools.map((tool) => [tool.name, tool.enabled]),
     )
 
@@ -162,7 +162,7 @@ export function MCPToolManager({ onToolToggle }: MCPToolManagerProps) {
             return r.status === "rejected" || !(r.value as any)?.success
           },
         )
-        const failedOriginalStates = new Map(
+        const failedOriginalStates = new Map<string, boolean>(
           failedTools.map((tool) => [
             tool.name,
             originalStates.get(tool.name) ?? tool.enabled,

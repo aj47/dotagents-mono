@@ -8,6 +8,12 @@ const mockOff = vi.fn()
 const mockEmitAgentProgress = vi.fn(() => Promise.resolve())
 const mockLoadConversation = vi.fn()
 const mockAddMessageToConversation = vi.fn(() => Promise.resolve())
+const mockIsTracingEnabled = vi.fn(() => false)
+const mockCreateAgentTrace = vi.fn()
+const mockEndAgentTrace = vi.fn()
+const mockCreateToolSpan = vi.fn()
+const mockEndToolSpan = vi.fn()
+const mockFlushLangfuse = vi.fn(() => Promise.resolve())
 let sessionUpdateHandler: ((event: any) => void) | undefined
 
 vi.mock("./acp-service", () => ({
@@ -45,6 +51,15 @@ vi.mock("./debug", () => ({
   logApp: vi.fn(),
 }))
 
+vi.mock("./langfuse-service", () => ({
+  isTracingEnabled: mockIsTracingEnabled,
+  createAgentTrace: mockCreateAgentTrace,
+  endAgentTrace: mockEndAgentTrace,
+  createToolSpan: mockCreateToolSpan,
+  endToolSpan: mockEndToolSpan,
+  flushLangfuse: mockFlushLangfuse,
+}))
+
 describe("acp-main-agent", () => {
   beforeEach(() => {
     vi.resetModules()
@@ -53,6 +68,7 @@ describe("acp-main-agent", () => {
 
     mockLoadConversation.mockResolvedValue(undefined)
     mockAddMessageToConversation.mockResolvedValue(undefined)
+    mockIsTracingEnabled.mockReturnValue(false)
     mockGetOrCreateSession.mockResolvedValue("acp-session-1")
     mockSendPrompt.mockResolvedValue({ success: true, response: "done" })
     mockOn.mockImplementation((eventName: string, handler: (event: any) => void) => {
@@ -364,6 +380,70 @@ describe("acp-main-agent", () => {
         }),
       ]),
     )
+  })
+
+  it("creates local trace events for ACP sessions when tracing is enabled", async () => {
+    mockIsTracingEnabled.mockReturnValue(true)
+    mockSendPrompt.mockImplementation(async () => {
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-123",
+          title: "Tool: web_search",
+          status: "running",
+          rawInput: { query: "trace this" },
+        },
+        isComplete: false,
+      })
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-123",
+          title: "Tool: web_search",
+          status: "completed",
+          rawInput: { query: "trace this" },
+          rawOutput: { content: "traced" },
+        },
+        isComplete: false,
+      })
+
+      return { success: true, response: "done", stopReason: "complete" }
+    })
+
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+
+    await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      profileSnapshot: { profileId: "profile-1", profileName: "Debug Agent" } as any,
+    })
+
+    expect(mockCreateAgentTrace).toHaveBeenCalledWith("ui-session-1", expect.objectContaining({
+      name: "ACP Agent Session",
+      sessionId: "conversation-1",
+      input: "hello",
+      tags: ["profile:Debug Agent", "acp"],
+    }))
+    expect(mockCreateToolSpan).toHaveBeenCalledWith("ui-session-1", "acp-tool-tool-123", expect.objectContaining({
+      name: "ACP Tool: web_search",
+      input: { query: "trace this" },
+    }))
+    expect(mockEndToolSpan).toHaveBeenCalledWith("acp-tool-tool-123", expect.objectContaining({
+      level: "DEFAULT",
+    }))
+    expect(mockEndAgentTrace).toHaveBeenCalledWith("ui-session-1", expect.objectContaining({
+      output: "done",
+      metadata: expect.objectContaining({
+        agentName: "test-agent",
+        conversationId: "conversation-1",
+        acpSessionId: "acp-session-1",
+        success: true,
+        stopReason: "complete",
+      }),
+    }))
+    expect(mockFlushLangfuse).toHaveBeenCalled()
   })
 
   it("keeps fallback ACP toolCall ids unique when updates omit toolCallId", async () => {

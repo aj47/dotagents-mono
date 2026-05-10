@@ -1,6 +1,6 @@
 # DotAgents Brand Guide
 
-Canonical reference for visual identity across dotagents.app, dotagentsprotocol.com, and docs.dotagents.app.
+Canonical reference for visual identity across dotagents.app and dotagentsprotocol.com.
 
 ---
 
@@ -135,5 +135,4 @@ If DotAgents needs to pivot or expand its visual identity, here are three potent
 ---
 
 Source of truth: `dotagentsprotocol-website/src/styles/global.css` and component files.
-
 

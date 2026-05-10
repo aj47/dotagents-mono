@@ -14,6 +14,7 @@ import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
+import { desktopTTSPlaybackCoordinator } from "./tts-playback-coordinator"
 import {
   getTasksDir,
   loadTasksLayer,
@@ -439,6 +440,8 @@ class LoopService {
       // assistant response. The session ran silently in the background; this
       // wakes it up only after the result is ready.
       if (loop.speakOnTrigger && sessionId) {
+        desktopTTSPlaybackCoordinator.clearSessionKeys(sessionId)
+
         // Clear stale TTS tracking keys for this session in all renderer
         // windows.  For continueInSession loops the sessionId is reused across
         // runs, so keys from the previous run would still be in the module-level

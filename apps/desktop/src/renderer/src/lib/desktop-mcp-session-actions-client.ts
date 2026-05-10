@@ -3,7 +3,9 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 export interface DesktopMcpTextInputRequest {
   text: string
   conversationId?: string
+  sessionId?: string
   fromTile?: boolean
+  startSnoozed?: boolean
 }
 
 export interface DesktopMcpSessionActionResult {
@@ -23,6 +25,7 @@ export interface DesktopMcpRecordingRequest {
     dataUrl: string
   }
   fromTile?: boolean
+  startSnoozed?: boolean
 }
 
 export interface DesktopMcpTriggerRecordingRequest {

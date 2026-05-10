@@ -34,8 +34,10 @@ import {
   formatArgumentsPreview,
   formatToolArguments,
   getToolArgumentEntries,
-  getIndividualToolCallPreview,
+  getCompactToolExecutionPreview,
+  getExecuteCommandResultPreview,
   getToolResultsSummary,
+  getToolCallPreview,
 } from "@dotagents/shared/chat-utils"
 import {
   formatAgentDelegationDisplayStatus,
@@ -54,12 +56,14 @@ import {
 } from "@dotagents/shared/tool-activity-grouping"
 import {
   AGENT_MODEL_FALLBACKS,
+  type AgentModelConfigLike,
   buildAgentModelConfigUpdates,
   getActiveModelPreset,
   resolveAgentProviderId,
   resolveConfiguredAgentModel,
 } from "@dotagents/shared/model-presets"
 import {
+  getBuiltInModelPresets,
   DEFAULT_MODEL_PRESET_ID,
   type CHAT_PROVIDER_ID,
 } from "@dotagents/shared/providers"
@@ -147,6 +151,7 @@ type DisplayItem =
       isComplete: boolean
       timestamp: number
       isThinking: boolean
+      isAssistantThought?: boolean
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
       responseEvent?: AgentUserResponseEvent
@@ -194,6 +199,8 @@ type DisplayItem =
       items: DisplayItem[]
       /** Short single-line preview strings for the collapsed tool group. */
       previewLines: string[]
+      /** Total number of underlying tool calls across all collapsed items. */
+      callCount: number
     } }
 
 type SessionModelInfo = NonNullable<AgentProgressUpdate["modelInfo"]>
@@ -230,8 +237,8 @@ const SessionModelPicker: React.FC<{
     try {
       await desktopConfigClient.saveConfig({
         ...config,
-        ...buildAgentModelConfigUpdates(config, providerId, modelId),
-      })
+        ...buildAgentModelConfigUpdates(config as AgentModelConfigLike, providerId, modelId),
+      } as Config)
       await queryClient.invalidateQueries({ queryKey: ["config"] })
       await queryClient.invalidateQueries({ queryKey: ["available-models"] })
       toast.success("Agent model updated")
@@ -664,14 +671,13 @@ function messageStableId(message: { timestamp: number; role: string }): string {
 }
 
 function shouldAutoPlayTTSForVariant(
-  variant: "default" | "overlay" | "tile",
+  _variant: "default" | "overlay" | "tile",
   isSnoozed: boolean,
-  isFocused: boolean = false,
-  isFloatingPanelVisible: boolean = false,
 ): boolean {
-  // The floating panel owns TTS auto-play while it is visible. Tile surfaces
-  // in the main window defer so the same session isn't spoken twice.
-  if (variant === "tile") return isFocused && !isFloatingPanelVisible
+  // TTS playback ownership is centralized in the main renderer, so focus no
+  // longer decides whether a tile may request auto-play. The central
+  // coordinator prevents duplicate/overlapping speech. Snoozed/background
+  // sessions stay quiet until they are unsnoozed/revealed.
   return !isSnoozed
 }
 
@@ -707,6 +713,7 @@ type CompactMessageProps = {
     content: string
     isComplete?: boolean
     isThinking?: boolean
+    isAssistantThought?: boolean
     toolCalls?: Array<{ name: string; arguments: any }>
     toolResults?: Array<{ success: boolean; content: string; error?: string }>
     timestamp: number
@@ -719,14 +726,16 @@ type CompactMessageProps = {
   wasStopped?: boolean
   isExpanded: boolean
   onToggleExpand: () => void
-  /** Variant controls TTS auto-play; tile variants only auto-play when focused. */
+  /** Variant controls TTS presentation; focus does not gate centralized auto-play. */
   variant?: "default" | "overlay" | "tile"
-  /** Focused session tiles are the primary conversation surface and may auto-play TTS. */
+  /** Focused session tiles are the primary conversation surface for layout/scrolling. */
   isFocused?: boolean
   /** Session ID for tracking TTS playback across remounts */
   sessionId?: string
-  /** Snoozed/background sessions must never auto-play overlay TTS */
+  /** Snoozed/background sessions must not auto-play TTS */
   isSnoozed?: boolean
+  /** True when the parent session surface observed this run while it was live. */
+  parentObservedLiveProgress?: boolean
   /** Conversation ID for branching */
   conversationId?: string
   /** Absolute raw-history index to use when branching from this message */
@@ -738,7 +747,7 @@ type CompactMessageProps = {
 }
 
 // Compact message component for space efficiency
-const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", isFocused = false, sessionId, isSnoozed = false, conversationId, branchMessageIndex, turnDurationMs, turnIsLive }) => {
+const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", isFocused = false, sessionId, isSnoozed = false, parentObservedLiveProgress = false, conversationId, branchMessageIndex, turnDurationMs, turnIsLive }) => {
   const messageVariant = normalizeProgressVariant(variant)
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
@@ -752,13 +761,12 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const inFlightTtsKeysRef = useRef<string[]>([])
   // Track the last ttsSource that was successfully auto-played to prevent replay on follow-up messages
   const lastAutoPlayedSourceRef = useRef<string | null>(null)
-  // Track whether the agent's progress was ever observed in a non-complete state during
-  // this component's lifetime. Live runs (including mid-turn respond_to_user emissions)
-  // always pass through `isComplete=false` first; reopened/historical sessions mount with
-  // `isComplete=true` from the start. Auto-play is gated on having observed an active run.
+  // Track whether this message instance, or its parent session surface, ever observed
+  // the agent in a non-complete state. Final assistant messages can be created only
+  // after completion, so parentObservedLiveProgress keeps live-session final replies
+  // eligible for autoplay while reopened history still stays quiet.
   const observedLiveProgressRef = useRef(false)
   const configQuery = useConfigQuery()
-  const isFloatingPanelVisible = useAgentStore((s) => s.isFloatingPanelVisible)
 
   // Cleanup copy timeout on unmount
   // NOTE: We intentionally do NOT remove TTS tracking keys on unmount.
@@ -834,8 +842,13 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const ttsGenerationIdRef = useRef(0)
 
   // TTS functionality
-  const generateAudio = async (): Promise<ArrayBuffer> => {
+  const generateAudio = async (): Promise<{ audio: ArrayBuffer; mimeType: string }> => {
     if (!(configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED)) {
+      logUI("[AgentProgress][TTS] generateAudio blocked because TTS disabled", {
+        playbackId,
+        sessionId,
+        textPreview: ttsSource.slice(0, 80),
+      })
       throw new Error("TTS is not enabled")
     }
 
@@ -846,8 +859,22 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     setTtsError(null)
 
     try {
+      logUI("[AgentProgress][TTS] generateSpeech start", {
+        playbackId,
+        sessionId,
+        generationId,
+        textLength: generationSource.length,
+        textPreview: generationSource.slice(0, 80),
+      })
       const result = await desktopTtsClient.generateSpeech({
         text: generationSource,
+      })
+      logUI("[AgentProgress][TTS] generateSpeech success", {
+        playbackId,
+        sessionId,
+        generationId,
+        mimeType: result.mimeType,
+        audioByteLength: result.audio?.byteLength,
       })
 
       // Ignore stale completions if the TTS source changed while this request was in-flight.
@@ -855,14 +882,27 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         ttsGenerationIdRef.current !== generationId ||
         latestTtsSourceRef.current !== generationSource
       ) {
-        return result.audio
+        logUI("[AgentProgress][TTS] generateSpeech result is stale", {
+          playbackId,
+          sessionId,
+          generationId,
+          currentGenerationId: ttsGenerationIdRef.current,
+          latestTextPreview: latestTtsSourceRef.current.slice(0, 80),
+        })
+        return { audio: result.audio, mimeType: result.mimeType }
       }
 
       setAudioData(result.audio)
       setAudioMimeType(result.mimeType)
-      return result.audio
+      return { audio: result.audio, mimeType: result.mimeType }
     } catch (error) {
       console.error("[TTS UI] Failed to generate TTS audio:", error)
+      logUI("[AgentProgress][TTS] generateSpeech failed", {
+        playbackId,
+        sessionId,
+        generationId,
+        error: error instanceof Error ? error.message : String(error),
+      })
 
       // Set user-friendly error message
       let errorMessage = "Failed to generate audio"
@@ -909,104 +949,221 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     }
   }, [ttsSource])
 
-  // Detect whether this component has observed the parent agent in a non-complete
-  // state. Reopened/historical sessions mount with `isComplete=true` from the very
-  // first render, so the ref stays false and the auto-play effect treats those
-  // messages as historical. Live runs (including mid-turn respond_to_user updates
-  // before the agent overall completes) pass through `isComplete=false`, flipping
-  // the ref so subsequent final renders may auto-play.
+  // Detect whether this message component has observed the parent agent in a
+  // non-complete state. The parent session also passes a session-level signal
+  // for final messages that only mount after completion.
   useEffect(() => {
     if (!isComplete) {
       observedLiveProgressRef.current = true
     }
   }, [isComplete])
+  const hasObservedLiveProgress = observedLiveProgressRef.current || parentObservedLiveProgress || !isComplete
 
-  // Check if TTS button should be shown for this message (any completed assistant message with content)
+  const isThoughtEligibleForTTS = !!message.responseEvent
+
+  // Check if TTS button should be shown for this message. The overall session
+  // can remain incomplete briefly after the final assistant prose is visible
+  // (e.g. verification/title cleanup). Treat the latest non-thinking assistant
+  // text as TTS-eligible immediately so hiding/snoozing the panel after seeing
+  // the answer does not race ahead of autoplay. Provider thinking/thought blocks
+  // stay silent by default; they should only become speakable via an explicit
+  // user-facing response event or a future opt-in setting.
+  const canUseTTSForAssistantMessage =
+    isComplete ||
+    !!message.responseEvent ||
+    message.isComplete ||
+    (isLast && !message.isThinking && (!message.isAssistantThought || isThoughtEligibleForTTS))
   const shouldShowTTSButton =
     message.role === "assistant" &&
     (configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED) &&
     !!ttsSource &&
-    (isComplete || !!message.responseEvent)
+    !message.isThinking &&
+    (!message.isAssistantThought || isThoughtEligibleForTTS) &&
+    canUseTTSForAssistantMessage
   // Auto-play only the latest assistant message. Older response-linked messages
   // remain manually replayable but should not all auto-play after reload/remount.
   const shouldAutoPlayTTS = shouldShowTTSButton && isLast
+  const ttsKeys = useMemo(() => [
+    message.responseEvent ? buildResponseEventTTSKey(sessionId, message.responseEvent.id, "final") : null,
+    buildContentTTSKey(sessionId, ttsSource, "final"),
+  ].filter((key, index, arr): key is string => Boolean(key) && arr.indexOf(key) === index), [message.responseEvent, sessionId, ttsSource])
+  const playbackId = `agent-progress:${sessionId ?? "no-session"}:${message.responseEvent?.id ?? message.timestamp}`
   const shouldAutoPlayLoadedAudio =
     shouldAutoPlayTTS &&
-    shouldAutoPlayTTSForVariant(messageVariant, isSnoozed, isFocused, isFloatingPanelVisible) &&
+    shouldAutoPlayTTSForVariant(messageVariant, isSnoozed) &&
     (configQuery.data?.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY) &&
+    !ttsKeys.some((key) => hasTTSPlayed(key)) &&
     lastAutoPlayedSourceRef.current === ttsSource
 
   // Auto-play TTS when assistant message completes (but NOT if agent was stopped by kill switch)
   //
   // TTS AUTO-PLAY STRATEGY:
-  // - Auto-play in the primary full conversation and overlay surfaces.
-  // - Never auto-play tile previews/expansion content.
+  // - Auto-play in the primary full conversation, overlay, and tile surfaces.
+  // - Tile focus is layout state only; it does not block auto-play requests.
   // - Snoozed sessions intentionally don't auto-play TTS
   //   (they run silently in background - user can unsnooze to see/hear them)
   // - Additionally, we track which sessions have already played TTS in a module-level set
   //   to prevent double playback when AgentProgress remounts (e.g., when switching between
   //   single-session and multi-session views in the panel)
   useEffect(() => {
-    const shouldAutoPlay = shouldAutoPlayTTSForVariant(messageVariant, isSnoozed, isFocused, isFloatingPanelVisible)
+    const shouldAutoPlay = shouldAutoPlayTTSForVariant(messageVariant, isSnoozed)
     const ttsAutoPlayEnabled = configQuery.data?.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY
 
     if (!shouldAutoPlay || !shouldAutoPlayTTS || !ttsAutoPlayEnabled || audioData || isGeneratingAudio || ttsError || wasStopped) {
-      return
+      logUI("[AgentProgress][TTS] autoplay skipped by initial gate", {
+        playbackId,
+        sessionId,
+        shouldAutoPlay,
+        shouldAutoPlayTTS,
+        ttsAutoPlayEnabled,
+        hasAudioData: !!audioData,
+        isGeneratingAudio,
+        hasTtsError: !!ttsError,
+        wasStopped,
+        messageVariant,
+        isSnoozed,
+        isFocused,
+      })
+      return undefined
     }
 
     // Synthetic pending-resume tiles render saved conversation history before a
     // live session exists (e.g. after branching). The last assistant message is
     // historical, so auto-playing its TTS would replay an already-heard response.
     if (sessionId?.startsWith("pending-")) {
-      return
+      logUI("[AgentProgress][TTS] autoplay skipped for pending session", { playbackId, sessionId })
+      return undefined
     }
 
     // Reopening a previous session re-renders its last assistant message with
-    // `isComplete=true` from the first render. Treat as historical when the
-    // component never observed the parent agent in a non-complete state under
-    // its own lifetime. Manual TTS playback remains available via the play
-    // button. The speakOnTrigger path explicitly authorizes one auto-play via
-    // markSessionForcedAutoPlay, which we consume here so the historical guard
-    // does not suppress that flow.
-    if (!observedLiveProgressRef.current) {
-      const forced = sessionId ? consumeSessionForcedAutoPlay(sessionId) : false
+    // `isComplete=true` from the first render. Treat as historical when neither
+    // the message nor its parent session surface observed live progress. Manual
+    // TTS playback remains available via the play button. The speakOnTrigger path
+    // explicitly authorizes one auto-play via markSessionForcedAutoPlay, which we
+    // consume here so the historical guard does not suppress that flow.
+    let forced = false
+    if (!hasObservedLiveProgress) {
+      forced = sessionId ? consumeSessionForcedAutoPlay(sessionId) : false
       if (!forced) {
-        return
+        logUI("[AgentProgress][TTS] autoplay skipped for historical complete mount", {
+          playbackId,
+          sessionId,
+          observedLiveProgress: hasObservedLiveProgress,
+          parentObservedLiveProgress,
+        })
+        return undefined
       }
+      logUI("[AgentProgress][TTS] forced autoplay consumed", { playbackId, sessionId })
     }
 
     // Guard against replaying the same content on follow-up user messages.
     // When a user sends a follow-up, the message list re-evaluates and this effect
     // can re-fire even though the agent response hasn't changed. (fixes #72)
     if (ttsSource && lastAutoPlayedSourceRef.current === ttsSource) {
-      return
+      logUI("[AgentProgress][TTS] autoplay skipped because source already auto-played locally", {
+        playbackId,
+        sessionId,
+        textPreview: ttsSource.slice(0, 80),
+      })
+      return undefined
     }
-
-    const ttsKeys = [
-      message.responseEvent ? buildResponseEventTTSKey(sessionId, message.responseEvent.id, "final") : null,
-      buildContentTTSKey(sessionId, ttsSource, "final"),
-    ].filter((key, index, arr): key is string => Boolean(key) && arr.indexOf(key) === index)
 
     // If this response was already spoken from a mid-turn card or an earlier render, skip.
     if (ttsKeys.some((key) => hasTTSPlayed(key))) {
-      return
+      logUI("[AgentProgress][TTS] autoplay skipped because local TTS key already played", {
+        playbackId,
+        sessionId,
+        ttsKeys,
+      })
+      return undefined
     }
 
-    // Mark as playing before starting generation to prevent race conditions
-    if (ttsKeys.length > 0) {
-      ttsKeys.forEach((key) => markTTSPlayed(key))
-      inFlightTtsKeysRef.current = ttsKeys
-    }
+    logUI("[AgentProgress][TTS] claiming central autoplay keys", {
+      playbackId,
+      sessionId,
+      forced,
+      ttsKeys,
+      textPreview: ttsSource.slice(0, 80),
+    })
+    void desktopTtsClient.claimPlaybackKeys({ ttsKeys, sessionId, forced })
+      .then((claimResult: { claimed: boolean }) => {
+        logUI("[AgentProgress][TTS] central autoplay claim result", {
+          playbackId,
+          sessionId,
+          forced,
+          claimed: claimResult?.claimed,
+        })
+        if (!claimResult?.claimed) return undefined
 
-    // Track the source we're auto-playing to prevent replay on follow-up
-    lastAutoPlayedSourceRef.current = ttsSource
+        // Mark as playing before starting generation to prevent renderer-local rerender races.
+        if (ttsKeys.length > 0) {
+          ttsKeys.forEach((key) => markTTSPlayed(key))
+          inFlightTtsKeysRef.current = ttsKeys
+        }
 
-    generateAudio()
-      .then(() => {
-        // Generation succeeded, clear the in-flight ref (keys stay in the set permanently)
+        // Track the source we're auto-playing to prevent replay on follow-up.
+        lastAutoPlayedSourceRef.current = ttsSource
+
+        return generateAudio()
+      })
+      .then((generated) => {
+        if (!generated) return undefined
+        if (latestTtsSourceRef.current !== ttsSource) {
+          logUI("[AgentProgress][TTS] releasing generated autoplay because source became stale", {
+            playbackId,
+            sessionId,
+            ttsKeys,
+          })
+          void desktopTtsClient.releasePlaybackKeys({ ttsKeys })
+          ttsKeys.forEach((key) => removeTTSKey(key))
+          inFlightTtsKeysRef.current = []
+          if (lastAutoPlayedSourceRef.current === ttsSource) {
+            lastAutoPlayedSourceRef.current = null
+          }
+          return undefined
+        }
+
+        // Generation succeeded, clear the in-flight ref (keys stay claimed centrally)
         inFlightTtsKeysRef.current = []
+        logUI("[AgentProgress][TTS] autoplay generation ready for playback request", {
+          playbackId,
+          sessionId,
+          mimeType: generated.mimeType,
+          audioByteLength: generated.audio.byteLength,
+        })
+
+        return desktopTtsClient.requestPlayback({
+          playbackId,
+          sourceWindowId: typeof window !== "undefined" ? window.location?.pathname || "renderer" : "renderer",
+          source: messageVariant,
+          sessionId,
+          ttsKeys,
+          text: ttsSource,
+          textPreview: ttsSource.slice(0, 120),
+          audio: generated.audio,
+          mimeType: generated.mimeType,
+          autoPlay: true,
+          audioOutputDeviceId: configQuery.data?.audioOutputDeviceId,
+        })
+          .then((result) => {
+            if (result?.success === false) {
+              throw new Error(result.error || "Failed to request autoplay playback")
+            }
+            logUI("[AgentProgress][TTS] autoplay requestPlayback success", {
+              playbackId,
+              sessionId,
+              source: messageVariant,
+            })
+            return undefined
+          })
       })
       .catch((error) => {
+        logUI("[AgentProgress][TTS] autoplay generation promise failed", {
+          playbackId,
+          sessionId,
+          ttsKeys,
+          error: error instanceof Error ? error.message : String(error),
+        })
         // If generation fails, remove from the set so user can retry
         // Only remove if these are still the in-flight keys (prevents race conditions
         // where a newer render re-added the keys and this old catch handler would delete them).
@@ -1015,6 +1172,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
           inFlightTtsKeysRef.current.length === ttsKeys.length &&
           inFlightTtsKeysRef.current.every((key) => ttsKeys.includes(key))
         ) {
+          void desktopTtsClient.releasePlaybackKeys({ ttsKeys })
           ttsKeys.forEach((key) => removeTTSKey(key))
           inFlightTtsKeysRef.current = []
         }
@@ -1024,7 +1182,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         }
         // Error is already handled in generateAudio function
       })
-  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isFocused, isSnoozed, isFloatingPanelVisible, ttsError, wasStopped, variant, sessionId, ttsSource, message.responseEvent])
+  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isFocused, isSnoozed, ttsError, wasStopped, messageVariant, sessionId, ttsSource, message.responseEvent, ttsKeys, hasObservedLiveProgress, parentObservedLiveProgress])
 
   const getRoleStyle = () => {
     switch (message.role) {
@@ -1216,7 +1374,11 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                ttsManager.stopAll("agent-progress-message-pause")
+                void desktopTtsClient.controlPlayback({
+                  type: "pause",
+                  playbackId,
+                  reason: "agent-progress-message-pause",
+                })
               }}
               className={cn(
                 "p-1 rounded hover:bg-muted/30 transition-colors",
@@ -1287,6 +1449,10 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             error={ttsError}
             compact={true}
             autoPlay={shouldAutoPlayLoadedAudio}
+            playbackId={playbackId}
+            sessionId={sessionId}
+            ttsKeys={ttsKeys}
+            source={messageVariant}
             onPlayStateChange={setIsTTSPlaying}
             audioOutputDeviceId={configQuery.data?.audioOutputDeviceId}
             autoPlaySuppressionKey={
@@ -1312,6 +1478,7 @@ const CompactMessage = React.memo(CompactMessageBase, (prev, next) => (
   prev.variant === next.variant &&
   prev.sessionId === next.sessionId &&
   prev.isSnoozed === next.isSnoozed &&
+  prev.parentObservedLiveProgress === next.parentObservedLiveProgress &&
   prev.message.responseEvent?.id === next.message.responseEvent?.id &&
   prev.conversationId === next.conversationId &&
   prev.branchMessageIndex === next.branchMessageIndex &&
@@ -1365,7 +1532,10 @@ const CompactToolExecutionList: React.FC<{
         {toolCallEntries.map(({ call, result }, idx) => {
           const callIsPending = !result
           const callSuccess = result?.success
-          const toolPreview = getIndividualToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
+          const toolPreview = getCompactToolExecutionPreview(
+            { name: call.name, arguments: call.arguments ?? {} },
+            result ?? null,
+          )
 
           return (
             <div key={idx}>
@@ -1528,10 +1698,25 @@ const AssistantWithToolsBubble: React.FC<{
   const toolCallEntries = data.calls.map((call, idx) => ({ call, result: data.results[idx] }))
   const resolvedResults = data.results.filter((result): result is NonNullable<typeof result> => Boolean(result))
   const isPending = toolCallEntries.some(({ result }) => !result)
+  const hasFailedTool = toolCallEntries.some(({ result }) => result?.success === false)
+  const allToolsSucceeded = toolCallEntries.length > 0 && toolCallEntries.every(({ result }) => result?.success === true)
   const hasThought = data.thought && data.thought.trim().length > 0
   const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
+  const toolStatusTextClass = isPending
+    ? "text-blue-600 dark:text-blue-400"
+    : hasFailedTool
+      ? "text-red-600 dark:text-red-400"
+      : allToolsSucceeded
+        ? "text-green-600 dark:text-green-400"
+        : "text-sky-700 dark:text-sky-300"
   const collapsedToolPreviewLine = data.calls
-    .map((call) => getIndividualToolCallPreview({ name: call.name, arguments: call.arguments ?? {} }))
+    .map((call, idx) => {
+      const result = data.results[idx]
+      return getCompactToolExecutionPreview(
+        { name: call.name, arguments: call.arguments ?? {} },
+        result ?? null,
+      )
+    })
     .join(", ")
 
   // Generate result summary for collapsed state
@@ -1588,7 +1773,7 @@ const AssistantWithToolsBubble: React.FC<{
           </div>
         )}
         <div className="flex min-w-0 items-center gap-1.5">
-          <Wrench className="h-3 w-3 shrink-0 text-sky-600 dark:text-sky-300" aria-hidden="true" />
+          <Wrench className={cn("h-3 w-3 shrink-0", toolStatusTextClass)} aria-hidden="true" />
           {hasThought && (
             <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
           )}
@@ -1596,7 +1781,7 @@ const AssistantWithToolsBubble: React.FC<{
             {!showToolDetails ? (
               <button
                 type="button"
-                className="flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] text-sky-700 transition-colors hover:bg-muted/30 dark:text-sky-300"
+                className={cn("flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition-colors hover:bg-muted/30", toolStatusTextClass)}
                 onClick={handleToggleToolDetails}
                 title={collapsedToolPreviewLine}
               >
@@ -1636,6 +1821,7 @@ const ToolActivityGroupBubble: React.FC<{
   group: {
     items: DisplayItem[]
     previewLines: string[]
+    callCount: number
   }
   isExpanded: boolean
   onToggleExpand: () => void
@@ -1644,6 +1830,7 @@ const ToolActivityGroupBubble: React.FC<{
 }> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
   const collapsedPreviewLine = group.previewLines.join(', ')
   const thinkingCount = group.items.filter((item) => item.kind === "assistant_with_tools" && item.data.thought.trim().length > 0).length
+  const callCount = group.callCount
 
   return (
     <div className={cn(
@@ -1657,6 +1844,15 @@ const ToolActivityGroupBubble: React.FC<{
         onClick={() => !isExpanded && onToggleExpand()}
       >
         <Wrench className="h-3 w-3 shrink-0 text-sky-600/80 dark:text-sky-300/80" aria-hidden="true" />
+        {callCount > 0 && (
+          <span
+            className="shrink-0 rounded bg-sky-100/70 px-1 py-px font-mono text-[9px] font-semibold text-sky-800/80 dark:bg-sky-900/40 dark:text-sky-100/80"
+            aria-label={`${callCount} tool call${callCount === 1 ? "" : "s"}`}
+            title={`${callCount} tool call${callCount === 1 ? "" : "s"}`}
+          >
+            {callCount}
+          </span>
+        )}
         <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono text-[10px] text-sky-900/80 dark:text-sky-100/80">
           {collapsedPreviewLine || "Tool activity"}
         </span>
@@ -3485,6 +3681,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     steps?.some(step => step.title === "Agent stopped" ||
                                step.description?.includes("emergency kill switch"))
   const shouldAutoScrollContent = variant !== "tile" || !!isFocused || !!isExpanded || !isComplete
+  const observedSessionIdRef = useRef(progress.sessionId)
+  const observedSessionLiveProgressRef = useRef(false)
+
+  if (observedSessionIdRef.current !== progress.sessionId) {
+    observedSessionIdRef.current = progress.sessionId
+    observedSessionLiveProgressRef.current = false
+  }
+
+  useEffect(() => {
+    if (!isComplete) {
+      observedSessionLiveProgressRef.current = true
+    }
+  }, [isComplete, progress.sessionId])
 
   const messages = useMemo<Array<{
     role: "user" | "assistant" | "tool"
@@ -3492,6 +3701,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     isComplete: boolean
     timestamp: number
     isThinking: boolean
+    isAssistantThought?: boolean
     toolCalls?: Array<{ name: string; arguments: any }>
     toolResults?: Array<{ success: boolean; content: string; error?: string }>
     /** Absolute raw-history index to use when branching from this message */
@@ -3503,6 +3713,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       isComplete: boolean
       timestamp: number
       isThinking: boolean
+      isAssistantThought?: boolean
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
       branchMessageIndex?: number
@@ -3575,6 +3786,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             isComplete: false,
             timestamp: currentThinkingStep.timestamp,
             isThinking: false,
+            isAssistantThought: true,
           })
         } else if (!isStreaming) {
           const isVerificationStep = currentThinkingStep.title?.toLowerCase().includes("verifying")
@@ -3600,6 +3812,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               isComplete: step.status === "completed",
               timestamp: step.timestamp ?? fallbackBaseTimestamp + index,
               isThinking: false,
+                isAssistantThought: true,
             })
           } else if (step.status === "in_progress" && !isComplete) {
             const isVerificationStep = step.title?.toLowerCase().includes("verifying")
@@ -4040,22 +4253,42 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         return
       }
       const runItems = sortedItems.slice(runStart, runEnd + 1)
+      // Collapsed preview surfaces every tool call in the run as a compact
+      // token, in chronological order. execute_command renders as a balanced
+      // `<command>:<output-preview>` label; other tools fall back to the tool
+      // name. The CSS truncate handles overflow on narrow tiles, so we emit the
+      // full list and let the layout shrink it.
       const previewLines: string[] = []
-      const previewStart = Math.max(0, runItems.length - TOOL_GROUP_PREVIEW_COUNT)
-      for (let j = previewStart; j < runItems.length; j++) {
+      let callCount = 0
+      for (let j = 0; j < runItems.length; j++) {
         const it = runItems[j]
-        if (it.kind === "assistant_with_tools") {
-          const line = getToolActivitySummaryLine({
-            role: "assistant",
-            toolCalls: it.data.calls,
-          })
-          if (line) previewLines.push(line)
-        } else if (it.kind === "tool_execution") {
-          const line = getToolActivitySummaryLine({
-            role: "tool",
-            toolResults: it.data.results,
-          })
-          if (line) previewLines.push(line)
+        const calls =
+          it.kind === "assistant_with_tools"
+            ? it.data.calls
+            : it.kind === "tool_execution"
+              ? it.data.calls
+              : []
+        const results =
+          it.kind === "assistant_with_tools"
+            ? it.data.results
+            : it.kind === "tool_execution"
+              ? it.data.results
+              : []
+        for (let k = 0; k < calls.length; k++) {
+          const call = calls[k]
+          if (!call) continue
+          callCount += 1
+          const result = results[k] ?? null
+          const execPreview = getExecuteCommandResultPreview(
+            { name: call.name, arguments: call.arguments ?? {} },
+            result,
+          )
+          if (execPreview) {
+            previewLines.push(execPreview)
+            continue
+          }
+          const namePreview = getToolCallPreview({ name: call.name, arguments: call.arguments ?? {} })
+          if (namePreview) previewLines.push(namePreview)
         }
       }
       // Prefix the first child ID so the group stays stable as the run grows
@@ -4064,7 +4297,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       grouped.push({
         kind: "tool_activity_group",
         id: groupId,
-        data: { items: runItems, previewLines: previewLines.length > 0 ? [previewLines.join(', ')] : [] },
+        data: { items: runItems, previewLines, callCount },
       })
       runStart = null
     }
@@ -4667,6 +4900,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             isFocused={isFocused}
                             sessionId={progress.sessionId}
                             isSnoozed={progress.isSnoozed}
+                            parentObservedLiveProgress={observedSessionLiveProgressRef.current}
                             conversationId={progress.conversationId}
                             branchMessageIndex={item.data.branchMessageIndex}
                             turnDurationMs={turnEntry?.durationMs}
@@ -4800,68 +5034,63 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </div>
             )}
 
-            {/* Footer with status/model controls — keep controls visible during live runs even before session metadata arrives */}
-            {(profileName || modelInfo || contextInfo || !isComplete) && (
-              <div
-                className={cn(
-                  "border-t bg-muted/20 text-muted-foreground flex-shrink-0",
-                  "px-3 py-1.5 text-xs",
-                )}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 flex-1 items-center gap-x-2">
-                    {profileName && (
-                      <span className="text-[10px] text-primary/70 truncate max-w-[60px]">
-                        {profileName}
-                      </span>
-                    )}
-                    {(profileName || modelInfo || !isComplete) && (
-                      <>
-                        {profileName && <span className="text-muted-foreground/50">•</span>}
-                        <SessionModelPicker modelInfo={modelInfo} compact />
-                        <SessionThinkingPicker compact />
-                        <SessionVerbosityPicker compact />
-                      </>
-                    )}
-                    {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
-                      <div className="flex shrink-0 items-center gap-1">
-                        <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={cn(
-                              "h-full transition-all duration-300 ease-out rounded-full",
-                              contextInfo.estTokens / contextInfo.maxTokens > 0.9
-                                ? "bg-red-500"
-                                : contextInfo.estTokens / contextInfo.maxTokens > 0.7
-                                ? "bg-amber-500"
-                                : "bg-emerald-500"
-                            )}
-                            style={{
-                              width: `${Math.min(100, (contextInfo.estTokens / contextInfo.maxTokens) * 100)}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  {turnDurations.totalMs > 0 && (
-                    <span
-                      className={cn(
-                        "shrink-0 inline-flex items-center gap-0.5 whitespace-nowrap tabular-nums",
-                        turnDurations.hasLive && "animate-pulse text-amber-600 dark:text-amber-400",
-                      )}
-                      title={turnDurations.hasLive ? "Total agent time (running)" : "Total agent time"}
-                    >
-                      <Clock className="h-2.5 w-2.5" aria-hidden="true" />
-                      {formatTurnDuration(turnDurations.totalMs)}
+            {/* Footer with status/model controls — always render so model picker, thinking,
+                and verbosity stay reachable on inactive sessions too. */}
+            <div
+              className={cn(
+                "border-t bg-muted/20 text-muted-foreground flex-shrink-0",
+                "px-3 py-1.5 text-xs",
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-x-2">
+                  {profileName && (
+                    <span className="text-[10px] text-primary/70 truncate max-w-[60px]">
+                      {profileName}
                     </span>
                   )}
-                  {!isComplete && (
-                    <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
+                  {profileName && <span className="text-muted-foreground/50">•</span>}
+                  <SessionModelPicker modelInfo={modelInfo} compact />
+                  <SessionThinkingPicker compact />
+                  <SessionVerbosityPicker compact />
+                  {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full transition-all duration-300 ease-out rounded-full",
+                            contextInfo.estTokens / contextInfo.maxTokens > 0.9
+                              ? "bg-red-500"
+                              : contextInfo.estTokens / contextInfo.maxTokens > 0.7
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          )}
+                          style={{
+                            width: `${Math.min(100, (contextInfo.estTokens / contextInfo.maxTokens) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
+                {turnDurations.totalMs > 0 && (
+                  <span
+                    className={cn(
+                      "shrink-0 inline-flex items-center gap-0.5 whitespace-nowrap tabular-nums",
+                      turnDurations.hasLive && "animate-pulse text-amber-600 dark:text-amber-400",
+                    )}
+                    title={turnDurations.hasLive ? "Total agent time (running)" : "Total agent time"}
+                  >
+                    <Clock className="h-2.5 w-2.5" aria-hidden="true" />
+                    {formatTurnDuration(turnDurations.totalMs)}
+                  </span>
+                )}
+                {!isComplete && (
+                  <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
+                )}
               </div>
-            )}
+            </div>
           </>
         )}
 
@@ -5129,6 +5358,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       isFocused={isFocused}
                       sessionId={progress.sessionId}
                       isSnoozed={progress.isSnoozed}
+                      parentObservedLiveProgress={observedSessionLiveProgressRef.current}
                       conversationId={progress.conversationId}
                       branchMessageIndex={item.data.branchMessageIndex}
                       turnDurationMs={turnEntry?.durationMs}

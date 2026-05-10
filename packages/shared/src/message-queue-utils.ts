@@ -23,6 +23,7 @@ export interface BuildQueuedMessageParams {
   text: string;
   createdAt?: number;
   sessionId?: string;
+  launchState?: QueuedMessage['launchState'];
 }
 
 export function buildQueuedMessage(params: BuildQueuedMessageParams): QueuedMessage {
@@ -30,6 +31,7 @@ export function buildQueuedMessage(params: BuildQueuedMessageParams): QueuedMess
     id: params.id,
     conversationId: params.conversationId,
     sessionId: params.sessionId,
+    ...(params.launchState ? { launchState: params.launchState } : {}),
     text: params.text,
     createdAt: params.createdAt ?? Date.now(),
     status: 'pending',

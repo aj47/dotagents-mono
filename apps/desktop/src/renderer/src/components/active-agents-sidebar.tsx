@@ -12,6 +12,7 @@ import {
   X,
   Clock,
   CornerDownRight,
+  GripVertical,
   Mic,
   Plus,
 } from "lucide-react"
@@ -22,22 +23,34 @@ import { logUI, logStateChange, logExpand } from "@renderer/lib/debug"
 import { useSavedConversationsQuery } from "@renderer/lib/queries"
 import { getRepeatTaskTitleHints } from "@dotagents/shared/repeat-task-utils"
 import {
+  assignSidebarSessionToGroup,
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
   getSidebarActivityPresentation,
+  getSidebarSessionGroupKey,
   getLatestAgentResponseTimestamp,
   getSidebarProgressTitle,
+  hasSidebarSessionGroupKey,
   getSessionIdsWithActiveChildProgress,
   getSubagentTitleBySessionIdMap,
   getSubagentParentSessionIdMap,
+  groupSidebarSessionEntries,
   hasUnreadAgentResponse,
   isSidebarSessionCurrentlyViewed,
+  moveSidebarSessionToGroupPosition,
   nestSubagentSessionEntries,
+  normalizeSidebarSessionKeyOrder,
+  normalizeSidebarSessionGroups,
   orderActiveSessionsByPinnedFirst,
+  orderSidebarSessionEntriesByKeys,
   paginateSidebarEntries,
   partitionPinnedAndUnpinnedTaskEntries,
   partitionTaskAndUserEntries,
+  reorderSidebarSessionGroups,
+  reorderSidebarSessionKeys,
+  summarizeSidebarSessionLifecycleStates,
 } from "@dotagents/shared/sidebar-sessions"
+import type { SidebarBadgeLifecycleState, SidebarSessionDropPosition, SidebarSessionGroup } from "@dotagents/shared/sidebar-sessions"
 import {
   ACTIVE_AGENTS_SIDEBAR_EXPANDED_STORAGE_KEY,
   SIDEBAR_TASKS_SECTION_EXPANDED_STORAGE_KEY,
@@ -51,7 +64,7 @@ import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import type { LoopConfig } from "@dotagents/shared/types"
-import { getSidebarStatusPresentation } from "@dotagents/shared/session-presentation"
+import { deriveLifecycleState, getSidebarStatusPresentation } from "@dotagents/shared/session-presentation"
 
 interface SidebarSessionRecord {
   id: string
@@ -106,10 +119,93 @@ function formatMinutesAgo(timestamp: number): string | null {
 
 const DEFAULT_VISIBLE_SIDEBAR_SESSIONS = 5
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 5
+const MIN_VISIBLE_SIDEBAR_ITEMS = 1
+const SIDEBAR_TASKS_MIN_VISIBLE = 3
 const FINAL_RESPONSE_RETENTION_MS = 10_000
 
 const IS_MAC = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")
 const SHORTCUT_MOD_SYMBOL = IS_MAC ? "⌘" : "Ctrl"
+
+const SESSION_GROUPS_STORAGE_KEY = "sidebar-session-groups-v1"
+const UNGROUPED_SESSION_ORDER_STORAGE_KEY = "sidebar-ungrouped-session-order-v1"
+const SIDEBAR_SESSION_DRAG_MIME = "application/x-dotagents-sidebar-session-key"
+const SIDEBAR_GROUP_DRAG_MIME = "application/x-dotagents-sidebar-group-id"
+
+function readSidebarSessionGroupsFromStorage(): SidebarSessionGroup[] {
+  try {
+    const stored = localStorage.getItem(SESSION_GROUPS_STORAGE_KEY)
+    return stored ? normalizeSidebarSessionGroups(JSON.parse(stored)) : []
+  } catch {
+    return []
+  }
+}
+
+function writeSidebarSessionGroupsToStorage(groups: SidebarSessionGroup[]): void {
+  try {
+    localStorage.setItem(SESSION_GROUPS_STORAGE_KEY, JSON.stringify(groups))
+  } catch {
+    // localStorage may be unavailable; ignore.
+  }
+}
+
+function readUngroupedSessionOrderFromStorage(): string[] {
+  try {
+    const stored = localStorage.getItem(UNGROUPED_SESSION_ORDER_STORAGE_KEY)
+    return stored ? normalizeSidebarSessionKeyOrder(JSON.parse(stored)) : []
+  } catch {
+    return []
+  }
+}
+
+function writeUngroupedSessionOrderToStorage(sessionKeys: string[]): void {
+  try {
+    localStorage.setItem(
+      UNGROUPED_SESSION_ORDER_STORAGE_KEY,
+      JSON.stringify(normalizeSidebarSessionKeyOrder(sessionKeys)),
+    )
+  } catch {
+    // localStorage may be unavailable; ignore.
+  }
+}
+
+function createSidebarSessionGroupId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `group-${Date.now().toString(36)}`
+}
+
+function getNextSidebarSessionGroupName(groups: SidebarSessionGroup[]): string {
+  const existingNames = new Set(groups.map((group) => group.name.trim().toLowerCase()))
+  if (!existingNames.has("new group")) return "New group"
+
+  for (let index = 2; index < 100; index += 1) {
+    const name = `New group ${index}`
+    if (!existingNames.has(name.toLowerCase())) return name
+  }
+
+  return `New group ${groups.length + 1}`
+}
+
+const GROUP_STATE_BADGE_META = {
+  needs_input: {
+    label: "Need",
+    title: "Needs input",
+    className: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  },
+  blocked: {
+    label: "Err",
+    title: "Blocked",
+    className: "bg-red-500/10 text-red-700 dark:text-red-300",
+  },
+  running: {
+    label: "Live",
+    title: "Running",
+    className: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  },
+  complete: {
+    label: "Done",
+    title: "Complete",
+    className: "bg-green-500/10 text-green-700 dark:text-green-300",
+  },
+} as const
 
 function ArchiveSessionButton({
   sessionTitle,
@@ -186,16 +282,45 @@ export function ActiveAgentsSidebar({
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
   const toggleArchiveSession = useAgentStore((s) => s.toggleArchiveSession)
-  const [visibleSavedConversationCount, setVisibleSavedConversationCount] = useState(0)
+  const [visibleSavedConversationCount, setVisibleSavedConversationCount] = useState<number | null>(null)
   const [visibleTaskConversationCount, setVisibleTaskConversationCount] = useState(
     SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
   )
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState("")
+  const [sessionGroups, setSessionGroups] = useState<SidebarSessionGroup[]>(
+    readSidebarSessionGroupsFromStorage,
+  )
+  const [ungroupedSessionOrder, setUngroupedSessionOrder] = useState<string[]>(
+    readUngroupedSessionOrderFromStorage,
+  )
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
+  const [editingGroupName, setEditingGroupName] = useState("")
+  const [draggingSessionKey, setDraggingSessionKey] = useState<string | null>(null)
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null)
+  const [sessionDropTarget, setSessionDropTarget] = useState<{
+    containerGroupId: string | null
+    targetSessionKey: string
+    position: SidebarSessionDropPosition
+  } | null>(null)
+  const [groupDropTarget, setGroupDropTarget] = useState<{
+    targetGroupId: string
+    position: SidebarSessionDropPosition
+  } | null>(null)
+  const [isUngroupDropTargetActive, setIsUngroupDropTargetActive] = useState(false)
   const skipTitleSaveOnBlurRef = useRef(false)
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
+
+  const isSessionsRoute =
+    location.pathname === "/" ||
+    (!location.pathname.startsWith("/settings") &&
+      !location.pathname.startsWith("/onboarding") &&
+      !location.pathname.startsWith("/setup") &&
+      !location.pathname.startsWith("/panel") &&
+      !location.pathname.startsWith("/knowledge"))
 
   const { data, refetch } = useQuery<SidebarSessionsResponse>({
     queryKey: ["agentSessions"],
@@ -471,7 +596,17 @@ export function ActiveAgentsSidebar({
       sidebarSessions,
       repeatTaskTitleHints,
     )
-    const dedupedTaskEntries = dedupeTaskEntriesByTitle(taskEntries)
+    // Re-derive nesting after dedup: when two task entries share a
+    // conversationId (e.g. an active running session + its saved-conversation
+    // counterpart), nestSubagentSessionEntries flags the active one as a
+    // subagent of the saved one. dedupeTaskEntriesByTitle then drops the
+    // parent and keeps the active child, leaving the survivor flagged as a
+    // nested subagent with no parent in view. Recomputing nesting on the
+    // deduped set promotes orphaned children back to top level while still
+    // preserving real parent/child relationships across surviving entries.
+    const dedupedTaskEntries = nestSubagentSessionEntries(
+      dedupeTaskEntriesByTitle(taskEntries),
+    )
     const { pinnedTaskEntries, unpinnedTaskEntries } =
       partitionPinnedAndUnpinnedTaskEntries(dedupedTaskEntries, pinnedSessionIds)
     return {
@@ -492,11 +627,31 @@ export function ActiveAgentsSidebar({
   )
 
   const displayedSavedConversationCount =
-    visibleSavedConversationCount > 0
-      ? visibleSavedConversationCount
-      : defaultSavedConversationRows
-  const canShowLessSavedConversations =
-    visibleSavedConversationCount > defaultSavedConversationRows
+    visibleSavedConversationCount ?? defaultSavedConversationRows
+  const groupedSessionKeys = useMemo(
+    () => new Set(sessionGroups.flatMap((group) => group.sessionKeys)),
+    [sessionGroups],
+  )
+  const alwaysVisibleSessionKeys = useMemo(
+    () => new Set([...groupedSessionKeys, ...ungroupedSessionOrder]),
+    [groupedSessionKeys, ungroupedSessionOrder],
+  )
+  const hasAlwaysVisibleUserSidebarAnchor = useMemo(
+    () =>
+      sessionGroups.some((group) => group.expanded !== false) ||
+      allUserSidebarSessions.some((entry) => {
+        if (!entry.isSavedConversation) return true
+        const conversationId = entry.session.conversationId
+        return (
+          (!!conversationId && pinnedSessionIds.has(conversationId)) ||
+          hasSidebarSessionGroupKey(entry.session, alwaysVisibleSessionKeys)
+        )
+      }),
+    [allUserSidebarSessions, alwaysVisibleSessionKeys, pinnedSessionIds, sessionGroups],
+  )
+  const minimumVisibleSavedConversationRows = hasAlwaysVisibleUserSidebarAnchor
+    ? 0
+    : MIN_VISIBLE_SIDEBAR_ITEMS
 
   const {
     visibleEntries: userSidebarSessions,
@@ -506,8 +661,53 @@ export function ActiveAgentsSidebar({
       allUserSidebarSessions,
       pinnedSessionIds,
       displayedSavedConversationCount,
+      alwaysVisibleSessionKeys,
     ),
-    [allUserSidebarSessions, displayedSavedConversationCount, pinnedSessionIds],
+    [allUserSidebarSessions, alwaysVisibleSessionKeys, displayedSavedConversationCount, pinnedSessionIds],
+  )
+
+  const {
+    groupedSections: userSidebarGroupSections,
+    ungroupedEntries: ungroupedUserSidebarSessions,
+  } = useMemo(
+    () => groupSidebarSessionEntries(userSidebarSessions, sessionGroups),
+    [userSidebarSessions, sessionGroups],
+  )
+
+  const visiblePageableSavedConversationCount = useMemo(
+    () => userSidebarSessions.filter((entry) => {
+      if (!entry.isSavedConversation) return false
+      const conversationId = entry.session.conversationId
+      if (conversationId && pinnedSessionIds.has(conversationId)) return false
+      return !hasSidebarSessionGroupKey(entry.session, alwaysVisibleSessionKeys)
+    }).length,
+    [alwaysVisibleSessionKeys, pinnedSessionIds, userSidebarSessions],
+  )
+  const canShowLessSavedConversations =
+    visiblePageableSavedConversationCount > minimumVisibleSavedConversationRows
+
+  const orderedUngroupedUserSidebarSessions = useMemo(
+    () => orderSidebarSessionEntriesByKeys(
+      ungroupedUserSidebarSessions,
+      ungroupedSessionOrder,
+    ),
+    [ungroupedSessionOrder, ungroupedUserSidebarSessions],
+  )
+  const orderedUngroupedSessionKeys = useMemo(
+    () => orderedUngroupedUserSidebarSessions.map((entry) =>
+      getSidebarSessionGroupKey(entry.session),
+    ),
+    [orderedUngroupedUserSidebarSessions],
+  )
+
+  const visibleGroupedUserSidebarSessions = useMemo(
+    () => [
+      ...userSidebarGroupSections.flatMap((section) =>
+        section.group.expanded ? section.entries : [],
+      ),
+      ...orderedUngroupedUserSidebarSessions,
+    ],
+    [orderedUngroupedUserSidebarSessions, userSidebarGroupSections],
   )
 
   const taskSidebarSessions = useMemo(
@@ -517,17 +717,37 @@ export function ActiveAgentsSidebar({
     ],
     [pinnedTaskSidebarSessions, unpinnedTaskSidebarSessions],
   )
-  const {
-    visibleEntries: paginatedTaskSidebarSessions,
-    hasMoreEntries: hasMoreTaskSessions,
-  } = useMemo(
-    () => paginateSidebarEntries(
-      taskSidebarSessions,
-      pinnedSessionIds,
-      visibleTaskConversationCount,
-    ),
-    [pinnedSessionIds, taskSidebarSessions, visibleTaskConversationCount],
-  )
+  // Tasks list uses a flat slice so "Show less" can shrink the list past
+  // active rows. paginateSidebarEntries pins active rows in place, which
+  // would prevent the visible count from ever dropping below the running
+  // task count. Always keep the currently-viewed task entry in the slice so
+  // the row the user is on never disappears when shrinking the list.
+  const paginatedTaskSidebarSessions = useMemo(() => {
+    const limit = Math.max(visibleTaskConversationCount, 0)
+    const sliced = taskSidebarSessions.slice(0, limit)
+    if (limit === 0) return sliced
+    const isViewed = (entry: typeof taskSidebarSessions[number]) =>
+      isSidebarSessionCurrentlyViewed(entry.session, {
+        isPast: entry.isSavedConversation,
+        focusedSessionId,
+        expandedSessionId,
+        viewedConversationId: isSessionsRoute ? viewedConversationId : null,
+      })
+    if (!sliced.some(isViewed)) {
+      const focused = taskSidebarSessions.find(isViewed)
+      if (focused) sliced.push(focused)
+    }
+    return sliced
+  }, [
+    taskSidebarSessions,
+    visibleTaskConversationCount,
+    focusedSessionId,
+    expandedSessionId,
+    viewedConversationId,
+    isSessionsRoute,
+  ])
+  const hasMoreTaskSessions =
+    taskSidebarSessions.length > paginatedTaskSidebarSessions.length
   const activeTaskSidebarSessions = useMemo(
     () => taskSidebarSessions.filter((entry) => {
       const progress = agentProgressById.get(entry.session.id)
@@ -546,22 +766,71 @@ export function ActiveAgentsSidebar({
   const hasTaskSessions = taskSidebarSessions.length > 0
   const tasksListVisible = visibleTaskSidebarSessions.length > 0
 
-  // Hotkeys (Cmd/Ctrl+1..9) target only entries that are currently rendered,
-  // in the same order as they appear: visible task rows → user sessions.
-  // Running task rows remain visible even when historical task rows are collapsed.
+  // Hotkeys (Cmd/Ctrl+1..9) only target *active* sessions/tasks, in the order
+  // they appear in the sidebar (visible task rows → user sessions). Saved
+  // conversations and completed/stopped sessions are skipped so the numbered
+  // shortcuts always cycle through running work.
+  const isSidebarHotkeyEligible = useCallback((entry: SidebarSessionEntry) => {
+    if (entry.isSavedConversation) return false
+    if (entry.isSubagent && (entry.nestingDepth ?? 0) > 0) return false
+    const progress = agentProgressById.get(entry.session.id)
+    const hasActiveChildProgress = sessionsWithActiveChildProgress.has(entry.session.id)
+    return hasActiveChildProgress || (
+      entry.session.status === "active" &&
+      progress?.isComplete !== true
+    )
+  }, [agentProgressById, sessionsWithActiveChildProgress])
+
   const visibleSidebarSessions = useMemo(
-    () => [
-      ...visibleTaskSidebarSessions,
-      ...(isExpanded ? userSidebarSessions : []),
-    ],
+    () => {
+      const entries = [
+        ...visibleTaskSidebarSessions,
+        ...(isExpanded ? visibleGroupedUserSidebarSessions : []),
+      ]
+      return entries.filter(isSidebarHotkeyEligible)
+    },
     [
       isExpanded,
       visibleTaskSidebarSessions,
-      userSidebarSessions,
+      visibleGroupedUserSidebarSessions,
+      isSidebarHotkeyEligible,
     ],
   )
 
-  const hasAnySessions = sidebarSessions.length > 0
+  // Per-session shortcut index (0-based) so each row can render its `⌘N`
+  // badge in sync with the hotkey handler above.
+  const hotkeyIndexBySessionId = useMemo(() => {
+    const map = new Map<string, number>()
+    visibleSidebarSessions.forEach((entry, idx) => {
+      map.set(entry.session.id, idx)
+    })
+    return map
+  }, [visibleSidebarSessions])
+
+  const hasUserSidebarContent = userSidebarSessions.length > 0 || sessionGroups.length > 0
+  const hasAnySessions = sidebarSessions.length > 0 || sessionGroups.length > 0
+
+  const getEntryLifecycleState = useCallback((entry: SidebarSessionEntry): SidebarBadgeLifecycleState => {
+    const { session, isSavedConversation } = entry
+    const sessionProgress = agentProgressById.get(session.id)
+    const hasPendingApproval = !isSavedConversation && !!sessionProgress?.pendingToolApproval
+    const hasActiveChildProgress = sessionsWithActiveChildProgress.has(session.id)
+    const hasProgressErrors = !!sessionProgress?.steps?.some(
+      (step) => step.status === "error" || step.toolResult?.error,
+    )
+    const progressLifecycleState =
+      session.status === "active" || hasActiveChildProgress
+        ? "running"
+        : (sessionProgress?.isComplete ? "complete" : "running")
+
+    return deriveLifecycleState({
+      conversationState: sessionProgress?.conversationState ?? progressLifecycleState,
+      isComplete: sessionProgress?.isComplete,
+      pendingToolApproval: hasPendingApproval,
+      hasErrors: hasProgressErrors,
+      sessionStatus: session.status,
+    }) as SidebarBadgeLifecycleState
+  }, [agentProgressById, sessionsWithActiveChildProgress])
 
   useEffect(() => {
     logStateChange("ActiveAgentsSidebar", "isExpanded", !isExpanded, isExpanded)
@@ -588,6 +857,40 @@ export function ActiveAgentsSidebar({
     writeBooleanPreference(SIDEBAR_TASKS_SECTION_EXPANDED_STORAGE_KEY, tasksSectionExpanded)
   }, [tasksSectionExpanded])
 
+  useEffect(() => {
+    writeSidebarSessionGroupsToStorage(sessionGroups)
+  }, [sessionGroups])
+
+  useEffect(() => {
+    writeUngroupedSessionOrderToStorage(ungroupedSessionOrder)
+  }, [ungroupedSessionOrder])
+
+  const focusSidebarSessionComposer = useCallback(() => {
+    let attemptCount = 0
+
+    const tryFocusComposer = () => {
+      const composer =
+        document.querySelector<HTMLTextAreaElement>('textarea[data-composer="true"]') ??
+        document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="follow-up"]') ??
+        document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="message"]')
+
+      if (composer && !composer.disabled) {
+        composer.focus()
+        const valueLength = composer.value?.length ?? 0
+        composer.setSelectionRange?.(valueLength, valueLength)
+        return
+      }
+
+      if (attemptCount >= 20) return
+      attemptCount += 1
+      window.setTimeout(tryFocusComposer, 75)
+    }
+
+    requestAnimationFrame(() => {
+      window.setTimeout(tryFocusComposer, 50)
+    })
+  }, [])
+
   const handleActiveSessionSelect = useCallback((sessionId: string) => {
     logUI("[ActiveAgentsSidebar] Active session selected:", sessionId)
     // Clear the saved-conversation view so no stale row stays highlighted.
@@ -596,7 +899,8 @@ export function ActiveAgentsSidebar({
     navigate("/", { state: { clearPendingConversation: true } })
     setFocusedSessionId(sessionId)
     setExpandedSessionId(sessionId)
-  }, [navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
+    focusSidebarSessionComposer()
+  }, [focusSidebarSessionComposer, navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
 
   const handleSavedConversationOpen = useCallback((conversationId: string) => {
     logUI(
@@ -608,15 +912,8 @@ export function ActiveAgentsSidebar({
     setExpandedSessionId(null)
     setViewedConversationId(conversationId)
     navigate(`/${conversationId}`)
-  }, [navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
-
-  const isSessionsRoute =
-    location.pathname === "/" ||
-    (!location.pathname.startsWith("/settings") &&
-      !location.pathname.startsWith("/onboarding") &&
-      !location.pathname.startsWith("/setup") &&
-      !location.pathname.startsWith("/panel") &&
-      !location.pathname.startsWith("/knowledge"))
+    focusSidebarSessionComposer()
+  }, [focusSidebarSessionComposer, navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
 
   // Keyboard shortcuts: Cmd/Ctrl+1..9 to jump to the Nth sidebar session
   useEffect(() => {
@@ -645,16 +942,6 @@ export function ActiveAgentsSidebar({
         handleActiveSessionSelect(session.id)
       }
 
-      // Focus the composer textarea after React re-renders
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          const composer =
-            document.querySelector<HTMLTextAreaElement>('textarea[data-composer="true"]') ??
-            document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="follow-up"]') ??
-            document.querySelector<HTMLTextAreaElement>('textarea[placeholder*="message"]')
-          composer?.focus()
-        }, 100)
-      })
     }
 
     window.addEventListener("keydown", handleKeyDown)
@@ -677,7 +964,7 @@ export function ActiveAgentsSidebar({
     async (loop: LoopConfig, e: React.MouseEvent) => {
       e.stopPropagation()
       try {
-        const result = await desktopLoopsClient.triggerLoop(loop.id)
+        const result = await desktopLoopsClient.runLoop(loop.id)
         if (result && !result.success) {
           toast.error(`Could not trigger "${loop.name}" right now`)
           return
@@ -720,6 +1007,239 @@ export function ActiveAgentsSidebar({
     })
     setIsExpanded(newState)
   }
+
+  const createSessionGroup = useCallback(() => {
+    const group: SidebarSessionGroup = {
+      id: createSidebarSessionGroupId(),
+      name: getNextSidebarSessionGroupName(sessionGroups),
+      sessionKeys: [],
+      expanded: true,
+    }
+    setSessionGroups((prev) => [...prev, group])
+    setEditingGroupId(group.id)
+    setEditingGroupName(group.name)
+    setIsExpanded(true)
+  }, [sessionGroups])
+
+  const startGroupEditing = useCallback((group: SidebarSessionGroup) => {
+    setEditingGroupId(group.id)
+    setEditingGroupName(group.name)
+  }, [])
+
+  const clearGroupEditing = useCallback(() => {
+    setEditingGroupId(null)
+    setEditingGroupName("")
+  }, [])
+
+  const saveGroupNameEdit = useCallback((groupId: string) => {
+    const nextName = editingGroupName.trim() || "Untitled group"
+    setSessionGroups((prev) => prev.map((group) =>
+      group.id === groupId ? { ...group, name: nextName } : group,
+    ))
+    clearGroupEditing()
+  }, [clearGroupEditing, editingGroupName])
+
+  const removeSessionGroup = useCallback((groupId: string) => {
+    setSessionGroups((prev) => prev.filter((group) => group.id !== groupId))
+    if (editingGroupId === groupId) clearGroupEditing()
+  }, [clearGroupEditing, editingGroupId])
+
+  const toggleSessionGroupExpanded = useCallback((groupId: string) => {
+    setSessionGroups((prev) => prev.map((group) =>
+      group.id === groupId ? { ...group, expanded: !group.expanded } : group,
+    ))
+  }, [])
+
+  const getDraggedSessionKey = useCallback((event: React.DragEvent): string | null => {
+    const dataTransferKey = event.dataTransfer.getData(SIDEBAR_SESSION_DRAG_MIME).trim()
+    return dataTransferKey || draggingSessionKey
+  }, [draggingSessionKey])
+
+  const getDraggedGroupId = useCallback((event: React.DragEvent): string | null => {
+    const dataTransferGroupId = event.dataTransfer.getData(SIDEBAR_GROUP_DRAG_MIME).trim()
+    return dataTransferGroupId || draggingGroupId
+  }, [draggingGroupId])
+
+  const getSessionDropPosition = useCallback((event: React.DragEvent): SidebarSessionDropPosition => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    return event.clientY < rect.top + rect.height / 2 ? "before" : "after"
+  }, [])
+
+  const handleSessionDragStart = useCallback((
+    event: React.DragEvent,
+    session: SidebarSessionRecord,
+  ) => {
+    const sessionKey = getSidebarSessionGroupKey(session)
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData(SIDEBAR_SESSION_DRAG_MIME, sessionKey)
+    setDraggingSessionKey(sessionKey)
+    setDraggingGroupId(null)
+    setGroupDropTarget(null)
+  }, [])
+
+  const handleGroupDragStart = useCallback((
+    event: React.DragEvent,
+    groupId: string,
+  ) => {
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData(SIDEBAR_GROUP_DRAG_MIME, groupId)
+    setDraggingGroupId(groupId)
+    setDraggingSessionKey(null)
+    setDragOverGroupId(null)
+    setSessionDropTarget(null)
+    setIsUngroupDropTargetActive(false)
+  }, [])
+
+  const clearSessionDragState = useCallback(() => {
+    setDraggingSessionKey(null)
+    setDraggingGroupId(null)
+    setDragOverGroupId(null)
+    setSessionDropTarget(null)
+    setGroupDropTarget(null)
+    setIsUngroupDropTargetActive(false)
+  }, [])
+
+  const handleSessionRowDragOver = useCallback((
+    event: React.DragEvent,
+    containerGroupId: string | null,
+    targetSessionKey: string,
+  ) => {
+    if (!draggingSessionKey || draggingSessionKey === targetSessionKey) return
+    event.preventDefault()
+    event.stopPropagation()
+    event.dataTransfer.dropEffect = "move"
+    setDragOverGroupId(containerGroupId)
+    setIsUngroupDropTargetActive(containerGroupId === null)
+    setSessionDropTarget({
+      containerGroupId,
+      targetSessionKey,
+      position: getSessionDropPosition(event),
+    })
+    setGroupDropTarget(null)
+  }, [draggingSessionKey, getSessionDropPosition])
+
+  const handleSessionRowDrop = useCallback((
+    event: React.DragEvent,
+    containerGroupId: string | null,
+    targetSessionKey: string,
+  ) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const sessionKey = getDraggedSessionKey(event)
+    if (!sessionKey || sessionKey === targetSessionKey) {
+      clearSessionDragState()
+      return
+    }
+
+    const position = getSessionDropPosition(event)
+    if (containerGroupId) {
+      setSessionGroups((prev) => moveSidebarSessionToGroupPosition(
+        prev,
+        sessionKey,
+        containerGroupId,
+        targetSessionKey,
+        position,
+      ))
+      setUngroupedSessionOrder((prev) => prev.filter((key) => key !== sessionKey))
+    } else {
+      setSessionGroups((prev) => assignSidebarSessionToGroup(prev, sessionKey, null))
+      setUngroupedSessionOrder(() => reorderSidebarSessionKeys(
+        orderedUngroupedSessionKeys,
+        sessionKey,
+        targetSessionKey,
+        position,
+      ))
+    }
+    clearSessionDragState()
+  }, [
+    clearSessionDragState,
+    getDraggedSessionKey,
+    getSessionDropPosition,
+    orderedUngroupedSessionKeys,
+  ])
+
+  const handleGroupDragOver = useCallback((event: React.DragEvent, groupId: string) => {
+    if (!draggingSessionKey) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
+    setDragOverGroupId(groupId)
+    setSessionDropTarget(null)
+    setGroupDropTarget(null)
+    setIsUngroupDropTargetActive(false)
+  }, [draggingSessionKey])
+
+  const handleGroupDrop = useCallback((event: React.DragEvent, groupId: string) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const sessionKey = getDraggedSessionKey(event)
+    if (!sessionKey) {
+      clearSessionDragState()
+      return
+    }
+    setSessionGroups((prev) => assignSidebarSessionToGroup(
+      prev,
+      sessionKey,
+      groupId,
+    ))
+    setUngroupedSessionOrder((prev) => prev.filter((key) => key !== sessionKey))
+    clearSessionDragState()
+  }, [clearSessionDragState, getDraggedSessionKey])
+
+  const handleGroupHeaderDragOver = useCallback((event: React.DragEvent, targetGroupId: string) => {
+    if (!draggingGroupId || draggingGroupId === targetGroupId) return
+    event.preventDefault()
+    event.stopPropagation()
+    event.dataTransfer.dropEffect = "move"
+    setDragOverGroupId(null)
+    setSessionDropTarget(null)
+    setIsUngroupDropTargetActive(false)
+    setGroupDropTarget({
+      targetGroupId,
+      position: getSessionDropPosition(event),
+    })
+  }, [draggingGroupId, getSessionDropPosition])
+
+  const handleGroupHeaderDrop = useCallback((event: React.DragEvent, targetGroupId: string) => {
+    const groupId = getDraggedGroupId(event)
+    if (!groupId) return
+    event.preventDefault()
+    event.stopPropagation()
+    if (groupId !== targetGroupId) {
+      setSessionGroups((prev) => reorderSidebarSessionGroups(
+        prev,
+        groupId,
+        targetGroupId,
+        getSessionDropPosition(event),
+      ))
+    }
+    clearSessionDragState()
+  }, [clearSessionDragState, getDraggedGroupId, getSessionDropPosition])
+
+  const handleUngroupDragOver = useCallback((event: React.DragEvent) => {
+    if (!draggingSessionKey) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
+    setDragOverGroupId(null)
+    setSessionDropTarget(null)
+    setGroupDropTarget(null)
+    setIsUngroupDropTargetActive(true)
+  }, [draggingSessionKey])
+
+  const handleUngroupDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const sessionKey = getDraggedSessionKey(event)
+    if (sessionKey) {
+      setSessionGroups((prev) => assignSidebarSessionToGroup(prev, sessionKey, null))
+      setUngroupedSessionOrder(() => reorderSidebarSessionKeys(
+        orderedUngroupedSessionKeys,
+        sessionKey,
+        null,
+        "after",
+      ))
+    }
+    clearSessionDragState()
+  }, [clearSessionDragState, getDraggedSessionKey, orderedUngroupedSessionKeys])
 
   const clearTitleEditing = useCallback(() => {
     setEditingConversationId(null)
@@ -772,7 +1292,7 @@ export function ActiveAgentsSidebar({
   )
 
   const renderEditableTitle = useCallback(
-    (session: SidebarSessionRecord, className: string, prefix?: string, canRenameOnClick = false) => {
+    (session: SidebarSessionRecord, className: string, prefix?: string) => {
       const conversationId = session.conversationId
       const title = session.conversationTitle || "Untitled conversation"
 
@@ -824,29 +1344,21 @@ export function ActiveAgentsSidebar({
         )
       }
 
-      if (!canRenameOnClick) {
-        return (
-          <span
-            className={cn("min-w-0 truncate text-left", className)}
-            title={conversationId ? "Select conversation to rename" : title}
-          >
-            {prefix ? `${prefix}${title}` : title}
-          </span>
-        )
-      }
-
+      // Single-click is reserved for selecting the row. Rename is opt-in via
+      // double-click so subagents and other rows can be focused without
+      // accidentally entering edit mode.
       return (
-        <button
-          type="button"
-          onClick={(event) => {
+        <span
+          onDoubleClick={(event) => {
             event.stopPropagation()
+            event.preventDefault()
             startTitleEditing(session)
           }}
-          className={cn("min-w-0 truncate text-left cursor-text", className)}
-          title="Rename conversation title"
+          className={cn("min-w-0 truncate text-left select-none", className)}
+          title="Double-click to rename"
         >
           {prefix ? `${prefix}${title}` : title}
-        </button>
+        </span>
       )
     },
     [
@@ -860,22 +1372,30 @@ export function ActiveAgentsSidebar({
 
   const loadMoreSavedConversations = useCallback(() => {
     setVisibleSavedConversationCount((prev) =>
-      (prev > 0 ? prev : defaultSavedConversationRows) +
+      (prev ?? defaultSavedConversationRows) +
         SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
     )
   }, [defaultSavedConversationRows])
 
   const showLessSavedConversations = useCallback(() => {
     setVisibleSavedConversationCount((prev) => {
-      const next = prev - SIDEBAR_PAST_SESSIONS_PAGE_SIZE
-      return next > defaultSavedConversationRows ? next : 0
+      const current = prev ?? defaultSavedConversationRows
+      const next = current - SIDEBAR_PAST_SESSIONS_PAGE_SIZE
+      return Math.max(next, minimumVisibleSavedConversationRows)
     })
-  }, [defaultSavedConversationRows])
+  }, [defaultSavedConversationRows, minimumVisibleSavedConversationRows])
 
   const loadMoreTaskConversations = useCallback(() => {
     setVisibleTaskConversationCount((prev) =>
       prev + SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
     )
+  }, [])
+
+  const showLessTaskConversations = useCallback(() => {
+    setVisibleTaskConversationCount((prev) => {
+      const next = prev - SIDEBAR_PAST_SESSIONS_PAGE_SIZE
+      return next > SIDEBAR_TASKS_MIN_VISIBLE ? next : SIDEBAR_TASKS_MIN_VISIBLE
+    })
   }, [])
 
   const hasLaunchControls =
@@ -884,64 +1404,66 @@ export function ActiveAgentsSidebar({
   return (
     <div className={cn("flex min-h-0 flex-col px-2", className)}>
       {hasLaunchControls && (
-        <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 p-2">
-          <div className="flex w-full flex-wrap items-center gap-2">
-            {onSelectAgent && (
-              <div className="min-w-0 flex-1">
-                <AgentSelector
-                  selectedAgentId={selectedAgentId}
-                  onSelectAgent={onSelectAgent}
-                  compact
-                />
+        <div className="sticky top-0 z-40 -mx-2 bg-background/95 px-2 pb-2 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
+            <div className="flex w-full flex-wrap items-center gap-2">
+              {onSelectAgent && (
+                <div className="min-w-0 flex-1">
+                  <AgentSelector
+                    selectedAgentId={selectedAgentId}
+                    onSelectAgent={onSelectAgent}
+                    compact
+                  />
+                </div>
+              )}
+              <div className="ml-auto flex items-center gap-2">
+                {onClearInactiveSessions && inactiveSessionCount > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                    onClick={() => void onClearInactiveSessions()}
+                    title={`Clear ${inactiveSessionCount} completed sessions`}
+                    aria-label={`Clear ${inactiveSessionCount} completed sessions`}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  </Button>
+                )}
+                {onStartPromptSession && (
+                  <PredefinedPromptsMenu
+                    onSelectPrompt={onStartPromptSession}
+                    buttonSize="sm"
+                    className="h-8 w-8 rounded-md border border-input bg-background shadow-sm"
+                  />
+                )}
+                {onStartVoiceSession && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                    onClick={() => void onStartVoiceSession()}
+                    title="Start voice session"
+                    aria-label="Start voice session"
+                  >
+                    <Mic className="h-3.5 w-3.5 shrink-0" />
+                  </Button>
+                )}
+                {onStartTextSession && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                    onClick={() => void onStartTextSession()}
+                    title="Start text session"
+                    aria-label="Start text session"
+                  >
+                    <Plus className="h-3.5 w-3.5 shrink-0" />
+                  </Button>
+                )}
               </div>
-            )}
-            <div className="ml-auto flex items-center gap-2">
-              {onClearInactiveSessions && inactiveSessionCount > 0 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
-                  onClick={() => void onClearInactiveSessions()}
-                  title={`Clear ${inactiveSessionCount} completed sessions`}
-                  aria-label={`Clear ${inactiveSessionCount} completed sessions`}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                </Button>
-              )}
-              {onStartPromptSession && (
-                <PredefinedPromptsMenu
-                  onSelectPrompt={onStartPromptSession}
-                  buttonSize="sm"
-                  className="h-8 w-8 rounded-md border border-input bg-background shadow-sm"
-                />
-              )}
-              {onStartVoiceSession && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
-                  onClick={() => void onStartVoiceSession()}
-                  title="Start voice session"
-                  aria-label="Start voice session"
-                >
-                  <Mic className="h-3.5 w-3.5 shrink-0" />
-                </Button>
-              )}
-              {onStartTextSession && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
-                  onClick={() => void onStartTextSession()}
-                  title="Start text session"
-                  aria-label="Start text session"
-                >
-                  <Plus className="h-3.5 w-3.5 shrink-0" />
-                </Button>
-              )}
             </div>
           </div>
         </div>
@@ -958,10 +1480,25 @@ export function ActiveAgentsSidebar({
                 isSubagent = false,
                 nestingDepth = 0,
               }: SidebarSessionEntry,
-              index: number,
-              options: { forceSingleLine?: boolean } = {},
+              options: {
+                forceSingleLine?: boolean
+                reorderContainerGroupId?: string | null
+              } = {},
             ) => {
             const forceSingleLine = options.forceSingleLine ?? false
+            const canReorderSession = "reorderContainerGroupId" in options
+            const reorderContainerGroupId = options.reorderContainerGroupId ?? null
+            const sessionGroupKey = getSidebarSessionGroupKey(session)
+            const isSessionDropTarget =
+              canReorderSession &&
+              sessionDropTarget?.containerGroupId === reorderContainerGroupId &&
+              sessionDropTarget.targetSessionKey === sessionGroupKey
+            const rowDropIndicatorClassName = isSessionDropTarget
+              ? cn(
+                "before:pointer-events-none before:absolute before:left-1 before:right-1 before:z-30 before:h-0.5 before:rounded-full before:bg-blue-500 before:shadow-[0_0_0_1px_rgba(59,130,246,0.35)]",
+                sessionDropTarget.position === "before" ? "before:top-0" : "before:bottom-0",
+              )
+              : null
             const isFocused = focusedSessionId === session.id
             const isSessionExpanded = expandedSessionId === session.id
             const isCurrentView = isSidebarSessionCurrentlyViewed(session, {
@@ -1035,6 +1572,15 @@ export function ActiveAgentsSidebar({
               return (
                 <div
                   key={key}
+                  draggable
+                  onDragStart={(event) => handleSessionDragStart(event, session)}
+                  onDragEnd={clearSessionDragState}
+                  onDragOver={canReorderSession
+                    ? (event) => handleSessionRowDragOver(event, reorderContainerGroupId, sessionGroupKey)
+                    : undefined}
+                  onDrop={canReorderSession
+                    ? (event) => handleSessionRowDrop(event, reorderContainerGroupId, sessionGroupKey)
+                    : undefined}
                   onClick={() => {
                     if (session.conversationId) {
                       handleSavedConversationOpen(session.conversationId)
@@ -1047,6 +1593,7 @@ export function ActiveAgentsSidebar({
                       : "text-muted-foreground",
                     session.conversationId &&
                       "hover:bg-accent/50 cursor-pointer",
+                    rowDropIndicatorClassName,
                   )}
                 >
                   {isPinned ? (
@@ -1072,8 +1619,6 @@ export function ActiveAgentsSidebar({
                     {renderEditableTitle(
                       session,
                       cn("block flex-1", isCurrentView && "text-foreground"),
-                      undefined,
-                      isCurrentView,
                     )}
                   </div>
                   {lastMessageMinutesAgo && (
@@ -1107,12 +1652,17 @@ export function ActiveAgentsSidebar({
 
             // Active session row
             // Retained completed turns should stay visually active until the user dismisses them.
+            const hotkeyIndex = hotkeyIndexBySessionId.get(session.id)
             const repeatTaskLoop = findLoopForSession(session)
             const isInactiveRepeatTask =
               !!repeatTaskLoop &&
               (session.status !== "active" || sessionProgress?.isComplete === true)
-            const canStopSession =
+            const isSessionRunning =
               session.status === "active" && sessionProgress?.isComplete !== true
+            // Always offer a hover X to dismiss active session rows; for running
+            // sessions handleStopSession stops first, otherwise it just clears
+            // the row from the sidebar.
+            const canDismissSession = true
             const statusRailColor = sidebarStatusPresentation.railClassName
             const shouldPulseStatus = sidebarStatusPresentation.shouldPulse
             const isLifecycleNeedsInput = sidebarStatusPresentation.lifecycleState === "needs_input"
@@ -1128,6 +1678,11 @@ export function ActiveAgentsSidebar({
               Math.min(nestingDepth, 2),
             )
             const isNestedSubagent = isSubagent && normalizedNestingDepth > 0
+            const isSelectedNestedSubagent = isNestedSubagent && isCurrentView
+            const canShowHotkeyBadge =
+              hotkeyIndex !== undefined &&
+              hotkeyIndex < 9 &&
+              !isNestedSubagent
             const subagentIndentClass = normalizedNestingDepth > 1 ? "ml-12" : "ml-8"
             const showSessionDetails =
               !forceSingleLine &&
@@ -1137,7 +1692,17 @@ export function ActiveAgentsSidebar({
             return (
               <div
                 key={key}
+                draggable
+                onDragStart={(event) => handleSessionDragStart(event, session)}
+                onDragEnd={clearSessionDragState}
+                onDragOver={canReorderSession
+                  ? (event) => handleSessionRowDragOver(event, reorderContainerGroupId, sessionGroupKey)
+                  : undefined}
+                onDrop={canReorderSession
+                  ? (event) => handleSessionRowDrop(event, reorderContainerGroupId, sessionGroupKey)
+                  : undefined}
                 onClick={() => handleActiveSessionSelect(session.id)}
+                aria-current={isCurrentView ? "true" : undefined}
                 className={cn(
                   "group relative flex cursor-pointer items-start rounded text-xs transition-all",
                   isNestedSubagent
@@ -1146,8 +1711,8 @@ export function ActiveAgentsSidebar({
                   isNestedSubagent
                     ? isLifecycleNeedsInput
                       ? "text-amber-700 hover:bg-amber-500/5 dark:text-amber-300"
-                      : isCurrentView
-                        ? "bg-muted/25 text-foreground"
+                      : isSelectedNestedSubagent
+                        ? "bg-blue-500/15 text-foreground ring-1 ring-inset ring-blue-500/25 shadow-[inset_2px_0_0_rgb(59_130_246)]"
                         : "text-muted-foreground hover:bg-muted/20"
                     : isLifecycleNeedsInput
                       ? "bg-amber-500/10"
@@ -1158,12 +1723,16 @@ export function ActiveAgentsSidebar({
                           : isFocused
                             ? "bg-blue-500/10"
                             : "hover:bg-accent/50",
+                  rowDropIndicatorClassName,
                 )}
               >
                 {isNestedSubagent && (
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -left-6 top-0 h-1/2 w-6 rounded-bl border-b border-l border-border/70"
+                    className={cn(
+                      "pointer-events-none absolute -left-6 top-0 h-1/2 w-6 rounded-bl border-b border-l",
+                      isSelectedNestedSubagent ? "border-blue-500/60" : "border-border/70",
+                    )}
                   />
                 )}
                 {!isNestedSubagent && isActivePinned ? (
@@ -1194,7 +1763,10 @@ export function ActiveAgentsSidebar({
                     {isNestedSubagent && (
                       <CornerDownRight
                         aria-hidden="true"
-                        className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/60"
+                        className={cn(
+                          "mt-0.5 h-3 w-3 shrink-0",
+                          isSelectedNestedSubagent ? "text-blue-500" : "text-muted-foreground/60",
+                        )}
                       />
                     )}
                     {isNestedSubagent && (
@@ -1202,7 +1774,7 @@ export function ActiveAgentsSidebar({
                         aria-hidden="true"
                         className={cn(
                           "mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full",
-                          statusRailColor,
+                          isSelectedNestedSubagent ? "bg-blue-500" : statusRailColor,
                           shouldPulseStatus && "animate-pulse",
                         )}
                       />
@@ -1229,20 +1801,19 @@ export function ActiveAgentsSidebar({
                         isFinalResponsePreview && !isNestedSubagent && "text-[11px] font-normal text-muted-foreground",
                       ),
                       isLifecycleNeedsInput ? "⚠ " : undefined,
-                      isCurrentView,
                     )}
                     {isNestedSubagent && lastMessageMinutesAgo && (
                       <span className="shrink-0 text-[10px] leading-4 tabular-nums text-muted-foreground/60 transition-opacity group-hover:opacity-0">
                         {lastMessageMinutesAgo}
                       </span>
                     )}
-                    {!isNestedSubagent && index < 9 && (sessionPreview || lastMessageMinutesAgo) && (
+                    {canShowHotkeyBadge && (sessionPreview || lastMessageMinutesAgo) && (
                       <span
                         className="shrink-0 text-[10px] leading-4 tabular-nums text-muted-foreground/60 transition-opacity group-hover:opacity-0"
-                        title={`${IS_MAC ? "⌘" : "Ctrl+"}${index + 1} to focus this session`}
+                        title={`${IS_MAC ? "⌘" : "Ctrl+"}${hotkeyIndex + 1} to focus this session`}
                         aria-hidden="true"
                       >
-                        {SHORTCUT_MOD_SYMBOL}{IS_MAC ? "" : "+"}{index + 1}
+                        {SHORTCUT_MOD_SYMBOL}{IS_MAC ? "" : "+"}{hotkeyIndex + 1}
                       </span>
                     )}
                   </div>
@@ -1288,7 +1859,7 @@ export function ActiveAgentsSidebar({
                     <Play className="h-3 w-3" />
                   </button>
                 )}
-                {canStopSession && (
+                {canDismissSession && (
                   <div
                     className={cn(
                       "bg-background/90 absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0 rounded-sm pl-1 opacity-0 transition-opacity",
@@ -1299,8 +1870,8 @@ export function ActiveAgentsSidebar({
                       type="button"
                       onClick={(e) => handleStopSession(session.id, e)}
                       className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-all hover:bg-destructive/20 hover:text-destructive"
-                      title="Stop this agent session"
-                      aria-label="Stop this agent session"
+                      title={isSessionRunning ? "Stop this agent session" : "Remove from sidebar"}
+                      aria-label={isSessionRunning ? "Stop this agent session" : "Remove from sidebar"}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -1310,11 +1881,159 @@ export function ActiveAgentsSidebar({
             )
             }
 
-            // Hotkey ordering must mirror render ordering exactly; see
-            // visibleSidebarSessions above.
-            const tasksOffset = 0
-            const userOffset = visibleTaskSidebarSessions.length
+            const renderSessionGroupSection = (
+              section: typeof userSidebarGroupSections[number],
+            ) => {
+              const { group, entries } = section
+              const isDragOver = dragOverGroupId === group.id
+              const isGroupDropTarget = groupDropTarget?.targetGroupId === group.id
+              const groupDropIndicatorClassName = isGroupDropTarget
+                ? cn(
+                  "before:pointer-events-none before:absolute before:left-0 before:right-0 before:z-30 before:h-0.5 before:rounded-full before:bg-blue-500 before:shadow-[0_0_0_1px_rgba(59,130,246,0.35)]",
+                  groupDropTarget.position === "before" ? "before:top-0" : "before:bottom-0",
+                )
+                : null
+              const groupStateSummaries = summarizeSidebarSessionLifecycleStates(
+                entries.map(getEntryLifecycleState),
+              )
 
+              return (
+                <div
+                  key={group.id}
+                  onDragOver={(event) => handleGroupDragOver(event, group.id)}
+                  onDragLeave={(event) => {
+                    const nextTarget = event.relatedTarget
+                    if (
+                      nextTarget instanceof Node &&
+                      event.currentTarget.contains(nextTarget)
+                    ) {
+                      return
+                    }
+                    if (dragOverGroupId === group.id) {
+                      setDragOverGroupId(null)
+                      setSessionDropTarget(null)
+                    }
+                  }}
+                  onDrop={(event) => handleGroupDrop(event, group.id)}
+                  className={cn(
+                    "relative mt-1 space-y-0.5 rounded-md transition-colors",
+                    isDragOver && "bg-blue-500/5 ring-1 ring-inset ring-blue-500/20",
+                    groupDropIndicatorClassName,
+                  )}
+                >
+                  <div
+                    onDragOver={(event) => handleGroupHeaderDragOver(event, group.id)}
+                    onDrop={(event) => handleGroupHeaderDrop(event, group.id)}
+                    className={cn(
+                      "-ml-1 flex items-center gap-1 rounded px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80 transition-colors",
+                      isDragOver && "bg-blue-500/10 text-blue-600 ring-1 ring-inset ring-blue-500/20 dark:text-blue-300",
+                      isGroupDropTarget && "text-blue-600 dark:text-blue-300",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleSessionGroupExpanded(group.id)}
+                      className="hover:text-foreground focus:ring-ring flex shrink-0 items-center rounded focus:outline-none focus:ring-1"
+                      aria-label={group.expanded ? `Collapse ${group.name}` : `Expand ${group.name}`}
+                      aria-expanded={group.expanded}
+                    >
+                      {group.expanded ? (
+                        <ChevronDown className="h-3 w-3" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      draggable={editingGroupId !== group.id}
+                      onDragStart={(event) => handleGroupDragStart(event, group.id)}
+                      onDragEnd={clearSessionDragState}
+                      className="flex h-4 w-3 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground/45 transition-colors hover:bg-accent/50 hover:text-foreground active:cursor-grabbing"
+                      title="Drag to reorder group"
+                      aria-label={`Drag ${group.name} group`}
+                    >
+                      <GripVertical className="h-3 w-3" />
+                    </button>
+                    {editingGroupId === group.id ? (
+                      <input
+                        value={editingGroupName}
+                        onChange={(event) => setEditingGroupName(event.target.value)}
+                        onClick={(event) => event.stopPropagation()}
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onFocus={(event) => event.currentTarget.select()}
+                        onKeyDown={(event) => {
+                          event.stopPropagation()
+                          if (event.key === "Enter") {
+                            event.preventDefault()
+                            saveGroupNameEdit(group.id)
+                          } else if (event.key === "Escape") {
+                            event.preventDefault()
+                            clearGroupEditing()
+                          }
+                        }}
+                        onBlur={() => saveGroupNameEdit(group.id)}
+                        autoFocus
+                        className="app-no-drag-region h-5 min-w-0 flex-1 rounded border border-input bg-background px-1.5 text-[11px] normal-case tracking-normal text-foreground shadow-sm outline-none ring-0 focus-visible:border-ring"
+                        aria-label="Rename session group"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onDoubleClick={(event) => {
+                          event.preventDefault()
+                          startGroupEditing(group)
+                        }}
+                        className="min-w-0 flex-1 truncate text-left hover:text-foreground"
+                        title="Double-click to rename group"
+                      >
+                        {group.name}
+                      </button>
+                    )}
+                    <span
+                      className="ml-1 rounded-full bg-muted-foreground/20 px-1.5 py-px text-[9px] font-medium leading-none text-muted-foreground"
+                      title={`${entries.length} session${entries.length === 1 ? "" : "s"}`}
+                    >
+                      {entries.length}
+                    </span>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {groupStateSummaries.map(({ state, count }) => {
+                        const meta = GROUP_STATE_BADGE_META[state]
+                        return (
+                          <span
+                            key={`${group.id}:${state}`}
+                            className={cn(
+                              "rounded-full px-1.5 py-px text-[9px] font-medium leading-none normal-case tracking-normal",
+                              meta.className,
+                            )}
+                            title={`${count} ${meta.title.toLowerCase()} session${count === 1 ? "" : "s"}`}
+                          >
+                            {meta.label} {count}
+                          </span>
+                        )
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        removeSessionGroup(group.id)
+                      }}
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 transition-all hover:bg-destructive/20 hover:text-destructive focus:outline-none focus:ring-1 focus:ring-ring"
+                      title="Remove group"
+                      aria-label={`Remove ${group.name}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                  {group.expanded && entries.map((entry) =>
+                    renderSessionRow(
+                      entry,
+                      { reorderContainerGroupId: group.id },
+                    ),
+                  )}
+                </div>
+              )
+            }
             return (
               <>
                 {hasTaskSessions && (
@@ -1339,23 +2058,47 @@ export function ActiveAgentsSidebar({
                   </div>
                 )}
                 {tasksListVisible &&
-                  visibleTaskSidebarSessions.map((entry, idx) =>
-                    renderSessionRow(entry, tasksOffset + idx, { forceSingleLine: true }),
+                  visibleTaskSidebarSessions.map((entry) =>
+                    renderSessionRow(entry, { forceSingleLine: true }),
                   )}
-                {tasksSectionExpanded && hasMoreTaskSessions && (
-                  <button
-                    type="button"
-                    onClick={loadMoreTaskConversations}
-                    className="text-muted-foreground hover:bg-accent/50 hover:text-foreground mt-1 w-full rounded px-1.5 py-1 text-left text-[11px] transition-colors"
-                  >
-                    Load more tasks
-                  </button>
+                {tasksSectionExpanded && (hasMoreTaskSessions || (
+                  visibleTaskConversationCount > SIDEBAR_TASKS_MIN_VISIBLE &&
+                  visibleTaskSidebarSessions.length > SIDEBAR_TASKS_MIN_VISIBLE
+                )) && (
+                  <div className="mt-1 flex items-center gap-1">
+                    {hasMoreTaskSessions && (
+                      <button
+                        type="button"
+                        onClick={loadMoreTaskConversations}
+                        className="text-muted-foreground hover:bg-accent/50 hover:text-foreground flex-1 rounded px-1.5 py-1 text-left text-[11px] transition-colors"
+                      >
+                        Load more tasks
+                      </button>
+                    )}
+                    {visibleTaskConversationCount > SIDEBAR_TASKS_MIN_VISIBLE &&
+                      visibleTaskSidebarSessions.length > SIDEBAR_TASKS_MIN_VISIBLE && (
+                      <button
+                        type="button"
+                        onClick={showLessTaskConversations}
+                        className="text-muted-foreground hover:bg-accent/50 hover:text-foreground flex-1 rounded px-1.5 py-1 text-left text-[11px] transition-colors"
+                      >
+                        Show less
+                      </button>
+                    )}
+                  </div>
                 )}
-                {userSidebarSessions.length > 0 && (
+                {hasUserSidebarContent && (
                   <div
+                    onDragOver={handleUngroupDragOver}
+                    onDragLeave={() => {
+                      setIsUngroupDropTargetActive(false)
+                      setSessionDropTarget(null)
+                    }}
+                    onDrop={handleUngroupDrop}
                     className={cn(
                       hasTaskSessions ? "mt-2" : "mt-1",
                       "-ml-2 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80",
+                      isUngroupDropTargetActive && "rounded bg-blue-500/10 text-blue-600 ring-1 ring-inset ring-blue-500/20 dark:text-blue-300",
                     )}
                   >
                     <button
@@ -1375,13 +2118,25 @@ export function ActiveAgentsSidebar({
                     <span className="ml-1 rounded-full bg-muted-foreground/20 px-1.5 py-px text-[9px] font-medium leading-none text-muted-foreground">
                       {userSidebarSessions.length}
                     </span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        createSessionGroup()
+                      }}
+                      className="text-muted-foreground hover:text-foreground focus:ring-ring ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded focus:outline-none focus:ring-1 transition-colors"
+                      title="New session group"
+                      aria-label="New session group"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
                     {onOpenSavedConversationsDialog && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           onOpenSavedConversationsDialog()
                         }}
-                        className="text-muted-foreground hover:text-foreground focus:ring-ring ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded focus:outline-none focus:ring-1 transition-colors"
+                        className="text-muted-foreground hover:text-foreground focus:ring-ring flex h-5 w-5 shrink-0 items-center justify-center rounded focus:outline-none focus:ring-1 transition-colors"
                         title="Saved conversations"
                         aria-label="Saved conversations"
                       >
@@ -1390,8 +2145,12 @@ export function ActiveAgentsSidebar({
                     )}
                   </div>
                 )}
-                {isExpanded && userSidebarSessions.map((entry, idx) =>
-                  renderSessionRow(entry, userOffset + idx),
+                {isExpanded && userSidebarGroupSections.map(renderSessionGroupSection)}
+                {isExpanded && orderedUngroupedUserSidebarSessions.map((entry) =>
+                  renderSessionRow(
+                    entry,
+                    { reorderContainerGroupId: null },
+                  ),
                 )}
               </>
             )

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress'
 import type { QueuedMessage } from '@dotagents/shared/message-queue-utils'
+import type { DesktopTTSPlaybackState } from '@shared/types'
 import { clearSessionTTSTracking } from '@renderer/lib/tts-tracking'
 import {
   sanitizeAgentProgressUpdateForDisplay,
@@ -125,6 +126,16 @@ export type SessionViewMode = 'grid' | 'list' | 'kanban'
 export type SessionFilter = 'all' | 'active' | 'completed' | 'error'
 export type SessionSortBy = 'recent' | 'oldest' | 'status'
 
+export const createIdleTTSPlaybackState = (): DesktopTTSPlaybackState => ({
+  playbackId: null,
+  status: 'idle',
+  currentTime: 0,
+  duration: 0,
+  volume: 1,
+  muted: false,
+  updatedAt: Date.now(),
+})
+
 interface AgentState {
   agentProgressById: Map<string, AgentProgressUpdate>
   agentResponseReadAtBySessionId: Map<string, number>
@@ -147,9 +158,9 @@ interface AgentState {
   archivedSessionIdsRevision: number
 
   // Whether the floating panel window is currently visible. Used by the main
-  // window to suppress duplicate TTS auto-play when the panel is playing the
-  // same session's audio.
+  // window for UI visibility; TTS ownership is centralized in the main renderer.
   isFloatingPanelVisible: boolean
+  ttsPlaybackState: DesktopTTSPlaybackState
 
   updateSessionProgress: (update: AgentProgressUpdate) => void
   clearAllProgress: () => void
@@ -181,6 +192,7 @@ interface AgentState {
   isArchived: (sessionId: string) => boolean
 
   setFloatingPanelVisible: (visible: boolean) => void
+  setTTSPlaybackState: (state: DesktopTTSPlaybackState) => void
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -202,6 +214,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   archivedSessionIdsRevision: 0,
 
   isFloatingPanelVisible: false,
+  ttsPlaybackState: createIdleTTSPlaybackState(),
 
   updateSessionProgress: (incomingUpdate: AgentProgressUpdate) => {
     const update = sanitizeAgentProgressUpdateForDisplay(incomingUpdate)
@@ -717,6 +730,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   setFloatingPanelVisible: (visible: boolean) => {
     set({ isFloatingPanelVisible: visible })
   },
+
+  setTTSPlaybackState: (ttsPlaybackState: DesktopTTSPlaybackState) => {
+    set({ ttsPlaybackState })
+  },
 }))
 
 const EMPTY_MESSAGE_QUEUE: QueuedMessage[] = []
@@ -754,4 +771,12 @@ export const useIsQueuePaused = (conversationId: string | undefined) => {
 
 export const useIsFloatingPanelVisible = () => {
   return useAgentStore((state) => state.isFloatingPanelVisible)
+}
+
+export const useTTSPlaybackState = () => {
+  return useAgentStore((state) => state.ttsPlaybackState)
+}
+
+export const useIsTTSPlaybackActive = (playbackId: string | null | undefined) => {
+  return useAgentStore((state) => !!playbackId && state.ttsPlaybackState.playbackId === playbackId)
 }

@@ -363,6 +363,12 @@ function getSharedAgentSessionStoreSource(): string {
   return readFileSync(sharedAgentSessionStorePath, "utf8")
 }
 
+function getRemoteServerSecretSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const remoteServerSecretPath = path.join(testDir, "remote-server-secret.ts")
+  return readFileSync(remoteServerSecretPath, "utf8")
+}
+
 type RegisteredRoute = {
   method: string
   path: string
@@ -2776,10 +2782,14 @@ describe("remote-server route registration", () => {
     const mobileApiDesktopActionsSource = getMobileApiDesktopActionsSource()
     const sharedRemotePairingSource = getSharedRemotePairingSource()
     const sharedSettingsApiClientSource = getSharedSettingsApiClientSource()
+    const secretSource = getRemoteServerSecretSource()
 
     expect(desktopAdaptersSource).toContain("resolveDotAgentsSecretReferenceFromStore(value, () =>")
     expect(desktopAdaptersSource).toContain('const DOTAGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"')
     expect(desktopAdaptersSource).toContain("function getResolvedRemoteServerApiKey")
+    expect(secretSource).toContain('export const DOTAGENTS_SECRET_REF_PREFIX = "dotagents-secret://"')
+    expect(secretSource).toContain("export function getResolvedRemoteServerApiKey")
+    expect(secretSource).toContain("export function hasConfiguredRemoteServerApiKey")
     expect(sharedRemotePairingSource).toContain("export function resolveDotAgentsSecretReferenceFromStore(")
     expect(sharedRemotePairingSource).toContain("getDotAgentsSecretsRecord(loadStore())")
     expect(sharedRemotePairingSource).toContain("resolveDotAgentsSecretReference(value, secrets)")

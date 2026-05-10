@@ -18,7 +18,8 @@ import {
   useConfigQuery,
   useSaveConfigMutation,
 } from "@renderer/lib/queries"
-import { ttsManager } from "@renderer/lib/tts-manager"
+import { desktopTtsClient } from "@renderer/lib/desktop-tts-client"
+import { useTTSPlaybackController } from "@renderer/lib/tts-playback-controller"
 import { DEFAULT_DISCORD_ENABLED } from "@dotagents/shared/discord-config"
 import { DEFAULT_WHATSAPP_ENABLED } from "@dotagents/shared/whatsapp-config"
 import { DEFAULT_TTS_ENABLED } from "@dotagents/shared/text-to-speech-settings"
@@ -72,6 +73,7 @@ type SessionActionDialogState = {
 }
 
 export const Component = () => {
+  useTTSPlaybackController()
   const navigate = useNavigate()
   const location = useLocation()
   const [settingsExpanded, setSettingsExpanded] = useState(true)
@@ -267,8 +269,8 @@ export const Component = () => {
 
       const nextEnabled = !(configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED)
       if (!nextEnabled) {
-        ttsManager.stopAll("collapsed-sidebar-global-tts-disabled")
         try {
+          await desktopTtsClient.controlPlayback({ type: "stop", reason: "collapsed-sidebar-global-tts-disabled" })
           await desktopSettingsGeneralClient.stopAllTts()
         } catch (error) {
           console.error("Failed to stop TTS in all windows:", error)
@@ -285,8 +287,8 @@ export const Component = () => {
       if (isEmergencyStopping) return
 
       setIsEmergencyStopping(true)
-      ttsManager.stopAll("collapsed-sidebar-emergency-stop")
       try {
+        await desktopTtsClient.controlPlayback({ type: "stop", reason: "collapsed-sidebar-emergency-stop" })
         await desktopSettingsGeneralClient.stopAllTts()
       } catch (error) {
         console.error("Failed to stop TTS in all windows:", error)

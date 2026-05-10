@@ -97,7 +97,15 @@ function sendToWindows(update: AgentProgressUpdate): void {
 
   if (!panel.isVisible() && update.sessionId) {
     const isSnoozed = agentSessionTracker.isSessionSnoozed(update.sessionId)
-    if (floatingPanelAutoShowEnabled && !isPanelAutoShowSuppressed() && !isSnoozed && !(hidePanelWhenMainFocused && isMainFocused)) {
+    const isSessionPanelAutoShowSuppressed =
+      agentSessionTracker.getSession(update.sessionId)?.suppressPanelAutoShow ?? false
+    if (
+      floatingPanelAutoShowEnabled &&
+      !isPanelAutoShowSuppressed() &&
+      !isSessionPanelAutoShowSuppressed &&
+      !isSnoozed &&
+      !(hidePanelWhenMainFocused && isMainFocused)
+    ) {
       resizePanelForAgentMode()
       showPanelWindow({ markOpenedWithMain: false })
     }
@@ -137,9 +145,9 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
   const displayUpdate = sanitizeAgentProgressUpdateForDisplay(update)
 
   // Backfill snoozed state from the session tracker when callers omit it.
-  // Tile follow-ups intentionally start snoozed so the panel stays quiet; if
-  // early progress updates lose that flag, the renderer can briefly switch the
-  // hidden panel into overlay/agent mode and trigger unintended focus/TTS side effects.
+  // True background sessions intentionally start snoozed; if early progress
+  // updates lose that flag, the renderer can briefly switch hidden surfaces into
+  // foreground/agent mode and trigger unintended focus/TTS side effects.
   if (displayUpdate.sessionId && typeof displayUpdate.isSnoozed === "undefined") {
     displayUpdate.isSnoozed = agentSessionTracker.isSessionSnoozed(displayUpdate.sessionId)
   }

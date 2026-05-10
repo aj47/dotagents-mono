@@ -1,268 +1,395 @@
-.heroBanner {
-  padding: 6rem 0 4.5rem;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
+.pageShell {
   background:
-    radial-gradient(circle at top center, rgba(156, 220, 254, 0.16), transparent 32%),
-    radial-gradient(circle at 18% 20%, rgba(78, 201, 176, 0.12), transparent 24%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    linear-gradient(180deg, rgba(14, 21, 24, 0.96) 0%, rgba(8, 10, 12, 1) 38rem),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 96px);
+  overflow-x: hidden;
 }
 
-@media screen and (max-width: 996px) {
-  .heroBanner {
-    padding: 3rem 1.5rem;
-  }
+.hero {
+  padding: 3.8rem 0 2.5rem;
+  border-bottom: 1px solid var(--da-border);
 }
 
-.eyebrowRow {
-  display: flex;
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(22rem, 0.9fr);
+  gap: 3rem;
   align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.5rem;
 }
 
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid rgba(156, 220, 254, 0.25);
-  background: rgba(156, 220, 254, 0.08);
-  color: #fff;
-  font-size: 0.75rem;
+.heroCopy {
+  max-width: 50rem;
+}
+
+.kicker,
+.sectionHeader span,
+.panelHeader span,
+.commandBlock span,
+.stepNumber {
+  display: inline-block;
+  color: var(--da-accent-green);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
-.eyebrowDetail {
-  color: var(--da-fg-muted);
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 0.85rem;
+.heroCopy h1 {
+  max-width: 12ch;
+  margin: 0.8rem 0 0;
+  color: #fff;
+  font-size: 3.6rem;
+  line-height: 1.02;
+  letter-spacing: 0;
 }
 
-.heroTitle {
-  max-width: 13ch;
-  margin: 0 auto;
-  font-size: clamp(3rem, 8vw, 5.75rem);
-  line-height: 0.94;
-  letter-spacing: -0.06em;
-}
-
-.heroSubtitle {
-  max-width: 42rem;
-  margin: 1.5rem auto 0;
-  color: #f5f5f5;
-  font-size: clamp(1.15rem, 2vw, 1.45rem);
-}
-
-.heroBody {
-  max-width: 42rem;
-  margin: 1rem auto 0;
+.heroCopy p {
+  max-width: 43rem;
+  margin: 1.15rem 0 0;
   color: var(--da-fg-muted);
   font-size: 1rem;
-  line-height: 1.7;
+  line-height: 1.65;
 }
 
-.installPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  max-width: 58rem;
-  margin: 2rem auto 0;
-  padding: 1rem;
-  text-align: left;
-  border: 1px solid rgba(156, 220, 254, 0.24);
-  border-radius: 18px;
-  background: rgba(5, 10, 18, 0.58);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
-}
-
-.installLabel {
-  color: #fff;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.installCommand {
-  display: block;
-  overflow-x: auto;
-  padding: 0.85rem 1rem;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.42);
-  color: #d7fbe8;
-  font-size: 0.92rem;
-  white-space: nowrap;
-}
-
-.installSubtext {
-  color: var(--da-fg-muted);
-  font-size: 0.88rem;
-}
-
-.releaseLinks {
+.heroActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
-}
-
-.releaseLinks a {
-  padding: 0.45rem 0.7rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  color: #fff;
-  font-size: 0.86rem;
-  font-weight: 700;
-}
-
-.buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
+  gap: 0.85rem;
   margin-top: 1.5rem;
 }
 
-.signalGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  margin-top: 2.5rem;
-}
-
-.signalCard {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem 1.1rem;
-  text-align: left;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
-}
-
-.signalCard strong {
-  color: #fff;
-  font-size: 0.95rem;
-}
-
-.signalCard span {
-  color: var(--da-fg-muted);
-  font-size: 0.92rem;
-  line-height: 1.55;
-}
-
-.signalCard code {
-  font-size: 0.85em;
-}
-
-/* Quick Links Section */
-.quickLinks {
-  padding: 2rem 0;
-  background: rgba(124, 58, 237, 0.02);
-  border-bottom: 1px solid rgba(124, 58, 237, 0.08);
-}
-
-[data-theme='dark'] .quickLinks {
-  background: rgba(167, 139, 250, 0.03);
-  border-bottom-color: rgba(167, 139, 250, 0.08);
-}
-
-.quickLinksGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-}
-
-@media screen and (max-width: 768px) {
-  .quickLinksGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .signalGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media screen and (max-width: 480px) {
-  .quickLinksGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .buttons {
-    flex-direction: column;
-  }
-
-  .installCommand {
-    font-size: 0.78rem;
-  }
-}
-
-.quickLink {
-  display: flex;
-  flex-direction: column;
-  padding: 1rem 1.25rem;
+.primaryAction,
+.secondaryAction {
   border-radius: 8px;
-  border: 1px solid rgba(124, 58, 237, 0.12);
-  text-decoration: none;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-  color: inherit;
 }
 
-.quickLink:hover {
-  text-decoration: none;
-  color: inherit;
-  transform: translateY(-1px);
-  border-color: var(--ifm-color-primary);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.12);
+.primaryAction {
+  background: var(--da-accent-green);
+  border-color: var(--da-accent-green);
+  color: #04110d;
 }
 
-.quickLink strong {
-  font-size: 1rem;
-  margin-bottom: 0.25rem;
+.primaryAction:hover {
+  background: #78e6ca;
+  border-color: #78e6ca;
+  color: #04110d;
 }
 
-.quickLink span {
-  font-size: 0.85rem;
-  opacity: 0.7;
+.secondaryAction {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--da-border-light);
+  color: #fff;
 }
 
-/* Features Section */
-.features {
-  padding: 3rem 0 4rem;
+.secondaryAction:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--da-accent-cyan);
+  color: #fff;
 }
 
-.featureCard {
+.commandPanel,
+.capabilityTable {
+  border: 1px solid var(--da-border-light);
+  border-radius: 8px;
+  background: rgba(15, 19, 22, 0.88);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+.commandPanel {
+  padding: 1rem;
+  min-width: 0;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 0.2rem 0.85rem;
+  border-bottom: 1px solid var(--da-border);
+}
+
+.panelHeader a {
+  color: var(--da-accent-cyan);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.commandBlock {
+  padding: 0.85rem 0.2rem;
+  border-bottom: 1px solid var(--da-border);
+}
+
+.commandBlock code {
   display: block;
-  padding: 1.5rem 1rem;
+  max-width: 100%;
+  margin-top: 0.55rem;
+  overflow-x: auto;
+  padding: 0.8rem;
+  border-radius: 6px;
+  background: #07090a;
+  color: #d8f7e9;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.runtimeFacts {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.9rem 0 0;
+}
+
+.runtimeFacts div {
+  display: grid;
+  grid-template-columns: 5.4rem 1fr;
+  gap: 0.8rem;
+}
+
+.runtimeFacts dt {
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.runtimeFacts dd {
+  margin: 0;
+  color: var(--da-fg-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.startSection,
+.stepsSection,
+.systemSection {
+  padding: 3.5rem 0;
+}
+
+.stepsSection {
+  border-top: 1px solid var(--da-border);
+  border-bottom: 1px solid var(--da-border);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.sectionHeader {
+  display: grid;
+  gap: 0.7rem;
+  max-width: 44rem;
   margin-bottom: 1.5rem;
-  border-radius: 12px;
-  border: 1px solid rgba(124, 58, 237, 0.08);
-  text-decoration: none;
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 2rem;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.pathsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--da-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pathRow {
+  display: grid;
+  grid-template-columns: 12rem 1fr;
+  gap: 1rem;
+  min-height: 6.6rem;
+  padding: 1.1rem 1.2rem;
+  border-right: 1px solid var(--da-border);
+  border-bottom: 1px solid var(--da-border);
   color: inherit;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.featureCard:hover {
   text-decoration: none;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.pathRow:nth-child(2n) {
+  border-right: 0;
+}
+
+.pathRow:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.pathRow:hover {
+  background: rgba(78, 201, 176, 0.055);
   color: inherit;
-  transform: translateY(-3px);
-  border-color: var(--ifm-color-primary);
-  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.12);
+  text-decoration: none;
 }
 
-[data-theme='dark'] .featureCard {
-  border-color: rgba(167, 139, 250, 0.1);
-  background: rgba(255, 255, 255, 0.02);
+.pathRow span {
+  color: #fff;
+  font-weight: 800;
 }
 
-[data-theme='dark'] .featureCard:hover {
-  box-shadow: 0 8px 24px rgba(167, 139, 250, 0.08);
+.pathRow p,
+.stepCard p,
+.hubCard p,
+.capabilityRow p {
+  margin: 0;
+  color: var(--da-fg-muted);
+  line-height: 1.6;
+}
+
+.stepsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.stepCard,
+.hubCard {
+  display: block;
+  min-height: 100%;
+  padding: 1.1rem;
+  border: 1px solid var(--da-border);
+  border-radius: 8px;
+  background: rgba(13, 17, 19, 0.86);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.stepCard:hover,
+.hubCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(156, 220, 254, 0.45);
+  background: rgba(20, 28, 32, 0.9);
+  color: inherit;
+  text-decoration: none;
+}
+
+.stepCard h3,
+.hubCard h3 {
+  margin: 0.65rem 0 0.65rem;
+  color: #fff;
+  font-size: 1.05rem;
+  letter-spacing: 0;
+}
+
+.stepCard code {
+  display: block;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  color: var(--da-accent-cyan);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.systemLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 23rem;
+  gap: 2rem;
+  align-items: start;
+}
+
+.hubsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.capabilityTable {
+  position: sticky;
+  top: 5rem;
+  padding: 1rem;
+}
+
+.capabilityRow {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.95rem 0.2rem;
+  border-bottom: 1px solid var(--da-border);
+}
+
+.capabilityRow:last-child {
+  border-bottom: 0;
+}
+
+.capabilityRow strong {
+  color: #fff;
+  font-size: 0.92rem;
+}
+
+.capabilityRow p {
+  font-size: 0.88rem;
+}
+
+@media screen and (max-width: 996px) {
+  .hero {
+    padding: 3rem 0 2.5rem;
+  }
+
+  .heroGrid,
+  .systemLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .heroCopy h1 {
+    font-size: 3rem;
+  }
+
+  .stepsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .capabilityTable {
+    position: static;
+  }
+}
+
+@media screen and (max-width: 700px) {
+  .hero {
+    padding: 2.1rem 0 1.4rem;
+  }
+
+  .heroCopy h1 {
+    font-size: 2.05rem;
+  }
+
+  .heroCopy p {
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+
+  .heroActions {
+    margin-top: 1.1rem;
+  }
+
+  .commandPanel {
+    display: none;
+  }
+
+  .pathsGrid,
+  .stepsGrid,
+  .hubsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pathRow {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    border-right: 0;
+  }
+
+  .pathRow:nth-last-child(-n + 2) {
+    border-bottom: 1px solid var(--da-border);
+  }
+
+  .pathRow:last-child {
+    border-bottom: 0;
+  }
+
+  .runtimeFacts div {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
 }

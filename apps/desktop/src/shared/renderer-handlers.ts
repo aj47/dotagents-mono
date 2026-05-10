@@ -1,4 +1,9 @@
 import type { UpdateDownloadedEvent } from "electron-updater"
+import type {
+  DesktopTTSPlaybackCommand,
+  DesktopTTSPlaybackRequest,
+  DesktopTTSPlaybackState,
+} from "./types"
 import type { AgentProgressUpdate } from "@dotagents/shared/agent-progress"
 import type { ElicitationRequest, SamplingRequest } from "@dotagents/shared/mcp-api"
 import type { QueuedMessage } from "@dotagents/shared/message-queue-utils"
@@ -27,6 +32,13 @@ export type RendererHandlers = {
 
   stopAllTts: () => void
 
+  // Centralized TTS playback host/control messages. Requests and commands are
+  // routed to the main renderer host; state changes are broadcast to all windows.
+  ttsPlaybackRequest: (request: DesktopTTSPlaybackRequest) => void
+  ttsPlaybackCommand: (command: DesktopTTSPlaybackCommand) => void
+  ttsPlaybackStateChanged: (state: DesktopTTSPlaybackState) => void
+
+  // Floating panel visibility changed (broadcast to all windows)
   panelVisibilityChanged: (data: { visible: boolean }) => void
 
   agentSessionsUpdated: (data: {

@@ -22,6 +22,8 @@ import {
 } from "./langfuse-loader"
 import {
   appendLocalTraceEvent,
+  flushLocalTraceLogger,
+  isLocalTraceLoggingEnabled,
   resetLocalTraceLogger,
 } from "./local-trace-logger"
 import { DEFAULT_LANGFUSE_ENABLED } from "@dotagents/shared/observability-config"
@@ -52,6 +54,16 @@ export function isLangfuseEnabled(): boolean {
   if (!isInstalled) return false
   const config = configStore.get()
   return !!((config.langfuseEnabled ?? DEFAULT_LANGFUSE_ENABLED) && config.langfuseSecretKey && config.langfusePublicKey)
+}
+
+/**
+ * Whether trace instrumentation should run at all.
+ *
+ * Local trace logging is intentionally independent of Langfuse Cloud, so callers
+ * should use this when deciding whether to create trace/generation/span events.
+ */
+export function isTracingEnabled(): boolean {
+  return isLangfuseEnabled() || isLocalTraceLoggingEnabled()
 }
 
 /**
@@ -395,6 +407,8 @@ export function endLLMGeneration(
  * Flush all pending events to Langfuse
  */
 export async function flushLangfuse(): Promise<void> {
+  await flushLocalTraceLogger()
+
   const langfuse = getLangfuse()
   if (!langfuse) return
 

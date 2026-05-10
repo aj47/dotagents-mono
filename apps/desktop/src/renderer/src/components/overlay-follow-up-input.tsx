@@ -104,6 +104,7 @@ export function OverlayFollowUpInput({
         return await desktopMcpSessionActionsClient.createMcpTextInput({
           text: message,
           conversationId,
+          sessionId,
         })
       }
     },

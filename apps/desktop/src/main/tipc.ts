@@ -61,6 +61,11 @@ import type {
 import type { MCPConfig, MCPServerConfig } from "@dotagents/shared/mcp-utils"
 import type { RecordingHistoryItem } from "@dotagents/shared/types"
 import type { Config } from "../shared/types"
+import type {
+  DesktopTTSPlaybackCommand,
+  DesktopTTSPlaybackRequest,
+  DesktopTTSPlaybackState,
+} from "../shared/types"
 import type { PanelPosition } from "@dotagents/shared/api-types"
 import type {
   AgentProfile,
@@ -98,9 +103,10 @@ import {
   updatePanelPosition,
   constrainPositionToScreen,
 } from "./panel-position"
-import { state, agentProcessManager, suppressPanelAutoShow, isPanelAutoShowSuppressed, toolApprovalManager, agentSessionStateManager } from "@dotagents/core"
+import { state, agentProcessManager, suppressPanelAutoShow, toolApprovalManager, agentSessionStateManager } from "@dotagents/core"
 import { generateTTS } from "./tts-service"
 import { stopAllTtsPlayback } from "./tts-playback-actions"
+import { desktopTTSPlaybackCoordinator } from "./tts-playback-coordinator"
 
 
 import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus, getRemoteServerPairingApiKey } from "./remote-server"
@@ -113,7 +119,6 @@ import { messageQueueService } from "./message-queue-service"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { processWithAgentMode } from "./agent-loop-runner"
 import {
-  processQueuedMessages,
   pauseMessageQueueByConversationId,
   removeQueuedMessageById,
   retryQueuedMessageById,
@@ -281,6 +286,59 @@ import { summarizationService } from "./summarization-service"
 import { updateTrayIcon } from "./tray"
 import { isAccessibilityGranted } from "./utils"
 import { writeText, writeTextWithFocusRestore } from "./keyboard"
+
+type AgentLaunchStateInput = {
+  /** Origin hint: the action came from an in-app/session tile. */
+  fromTile?: boolean
+  /** True background mode: keep the session quiet/hidden and disable TTS autoplay. */
+  startSnoozed?: boolean
+  /** Prevent floating-panel auto-show without implying background/snoozed work. */
+  suppressPanelAutoShow?: boolean
+  /** Select this session in the panel renderer when it starts. */
+  focusPanelSession?: boolean
+}
+
+type AgentLaunchState = {
+  startSnoozed: boolean
+  shouldSuppressPanelAutoShow: boolean
+  shouldFocusPanelSession: boolean
+}
+
+function resolveAgentLaunchState(input: AgentLaunchStateInput = {}): AgentLaunchState {
+  const startSnoozed = input.startSnoozed ?? false
+  const shouldSuppressPanelAutoShow =
+    startSnoozed || input.suppressPanelAutoShow === true || input.fromTile === true
+  const shouldFocusPanelSession =
+    input.focusPanelSession ?? (!startSnoozed && !shouldSuppressPanelAutoShow)
+
+  return {
+    startSnoozed,
+    shouldSuppressPanelAutoShow,
+    shouldFocusPanelSession,
+  }
+}
+
+function normalizeAgentLaunchState(
+  launchStateOrStartSnoozed: boolean | AgentLaunchState = false,
+): AgentLaunchState {
+  if (typeof launchStateOrStartSnoozed === "boolean") {
+    return resolveAgentLaunchState({
+      startSnoozed: launchStateOrStartSnoozed,
+      suppressPanelAutoShow: launchStateOrStartSnoozed,
+      focusPanelSession: !launchStateOrStartSnoozed,
+    })
+  }
+
+  return launchStateOrStartSnoozed
+}
+
+function serializeAgentLaunchState(launchState: AgentLaunchState) {
+  return {
+    startSnoozed: launchState.startSnoozed,
+    suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow,
+    focusPanelSession: launchState.shouldFocusPanelSession,
+  }
+}
 
 
 
@@ -475,6 +533,139 @@ function mergeConflictMaps(
   return merged
 }
 
+/**
+ * Process queued messages for a conversation after the current session completes.
+ * This function peeks at messages and only removes them after successful processing.
+ * Uses a per-conversation lock to prevent concurrent processing of the same queue.
+ */
+async function processQueuedMessages(conversationId: string): Promise<void> {
+  logLLM(`[processQueuedMessages] Starting queue processing for ${conversationId}`)
+
+  // Try to acquire processing lock - if another processor is already running, skip
+  if (!messageQueueService.tryAcquireProcessingLock(conversationId)) {
+    logLLM(`[processQueuedMessages] Failed to acquire lock for ${conversationId}`)
+    return
+  }
+  logLLM(`[processQueuedMessages] Acquired lock for ${conversationId}`)
+
+  try {
+    while (true) {
+      // Check if queue is paused (e.g., by kill switch) before processing next message
+      if (messageQueueService.isQueuePaused(conversationId)) {
+        logLLM(`[processQueuedMessages] Queue is paused for ${conversationId}, stopping processing`)
+        return
+      }
+
+      // Peek at the next message without removing it
+      const queuedMessage = messageQueueService.peek(conversationId)
+      if (!queuedMessage) {
+        logLLM(`[processQueuedMessages] No more pending messages in queue for ${conversationId}`)
+        // Debug: log the actual queue state
+        const allMessages = messageQueueService.getQueue(conversationId)
+        if (allMessages.length > 0) {
+          logLLM(`[processQueuedMessages] Queue has ${allMessages.length} messages but peek returned null. First message status: ${allMessages[0]?.status}`)
+        }
+        return // No more messages in queue
+      }
+
+      logLLM(`[processQueuedMessages] Processing queued message ${queuedMessage.id} for ${conversationId}`)
+
+      // Mark as processing - if this fails, the message was removed/modified between peek and now
+      const markingSucceeded = messageQueueService.markProcessing(conversationId, queuedMessage.id)
+      if (!markingSucceeded) {
+        logLLM(`[processQueuedMessages] Message ${queuedMessage.id} was removed/modified before processing, re-checking queue`)
+        continue
+      }
+
+      try {
+        if (queuedMessage.sessionId?.startsWith("subsession_")) {
+          const { continueInternalSubSession } = await import("./acp/internal-agent")
+          const result = await continueInternalSubSession(queuedMessage.sessionId, queuedMessage.text)
+          if (!result.success) {
+            throw new Error(result.error || `Failed to continue internal sub-session ${queuedMessage.sessionId}`)
+          }
+
+          messageQueueService.markProcessed(conversationId, queuedMessage.id)
+          continue
+        }
+
+        // Only add to conversation history if not already added (prevents duplicates on retry)
+        if (!queuedMessage.addedToHistory) {
+          // Add the queued message to the conversation
+          const addResult = await conversationService.addMessageToConversation(
+            conversationId,
+            queuedMessage.text,
+            "user",
+          )
+          // If adding to history failed (conversation not found/IO error), treat as failure
+          // Don't continue processing since the message wasn't recorded
+          if (!addResult) {
+            throw new Error("Failed to add message to conversation history")
+          }
+          // Mark as added to history so retries don't duplicate
+          messageQueueService.markAddedToHistory(conversationId, queuedMessage.id)
+        }
+
+        // Preserve the launch semantics from the UI action that queued this
+        // message. Falling back to panel visibility is only for older/untyped
+        // enqueue sites that did not capture launch state.
+        const panelWindow = WINDOWS.get("panel")
+        const isPanelVisible = panelWindow?.isVisible() ?? false
+        const queuedLaunchState = queuedMessage.launchState
+          ? resolveAgentLaunchState(queuedMessage.launchState)
+          : resolveAgentLaunchState({
+            startSnoozed: !isPanelVisible,
+            suppressPanelAutoShow: !isPanelVisible,
+            focusPanelSession: isPanelVisible,
+          })
+        if (queuedLaunchState.shouldSuppressPanelAutoShow) {
+          suppressPanelAutoShow(2000)
+        }
+        logLLM(`[processQueuedMessages] Panel visible: ${isPanelVisible}, launchState: ${JSON.stringify(serializeAgentLaunchState(queuedLaunchState))}`)
+
+        // Prefer the exact session captured at enqueue time for strict same-session semantics.
+        // If revive fails, fall back to conversation lookup for backward compatibility and continuity.
+        let existingSessionId: string | undefined
+        const fallbackSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
+        const candidateSessionIds = [queuedMessage.sessionId, fallbackSessionId].filter(
+          (sessionId, index, list): sessionId is string =>
+            typeof sessionId === "string" && sessionId.length > 0 && list.indexOf(sessionId) === index,
+        )
+
+        for (const candidateSessionId of candidateSessionIds) {
+          const revived = agentSessionTracker.reviveSession(candidateSessionId, queuedLaunchState.startSnoozed)
+          if (revived) {
+            existingSessionId = candidateSessionId
+            logLLM(`[processQueuedMessages] Revived session ${existingSessionId} for conversation ${conversationId}, snoozed: ${queuedLaunchState.startSnoozed}`)
+            break
+          }
+
+          if (candidateSessionId === queuedMessage.sessionId) {
+            logLLM(`[processQueuedMessages] Preferred queued session ${candidateSessionId} could not be revived, trying fallback lookup`)
+          }
+        }
+
+        await processWithAgentMode(queuedMessage.text, conversationId, existingSessionId, queuedLaunchState.startSnoozed)
+
+        // Only remove the message after successful processing
+        messageQueueService.markProcessed(conversationId, queuedMessage.id)
+
+        // Continue to check for more queued messages
+      } catch (error) {
+        logLLM(`[processQueuedMessages] Error processing queued message ${queuedMessage.id}:`, error)
+        // Mark the message as failed so users can see it in the UI
+        const errorMessage = getErrorMessage(error)
+        messageQueueService.markFailed(conversationId, queuedMessage.id, errorMessage)
+        // Stop processing - user needs to handle the failed message
+        break
+      }
+    }
+  } finally {
+    // Always release the lock when done
+    messageQueueService.releaseProcessingLock(conversationId)
+  }
+}
+
 type OpenFileResult = {
   success: boolean
   error?: string
@@ -495,6 +686,99 @@ function revealFileInFolder(filePath: string): OpenFileResult {
       path: filePath,
       error: error instanceof Error ? error.message : String(error),
     }
+  }
+}
+
+function broadcastTTSPlaybackState(state: DesktopTTSPlaybackState): number {
+  let windowsNotified = 0
+  logApp("[tipc][TTS] Broadcasting playback state", {
+    playbackId: state.playbackId,
+    status: state.status,
+    sessionId: state.sessionId,
+    source: state.source,
+    totalWindows: WINDOWS.size,
+    error: state.error,
+  })
+  for (const [id, win] of WINDOWS.entries()) {
+    try {
+      const handler = getRendererHandlers<RendererHandlers>(win.webContents).ttsPlaybackStateChanged
+      if (!handler) {
+        logApp(`[tipc] ttsPlaybackStateChanged handler missing for ${id}`)
+        continue
+      }
+      handler.send(state)
+      windowsNotified += 1
+    } catch (e) {
+      logApp(`[tipc] ttsPlaybackStateChanged send to ${id} failed:`, e)
+    }
+  }
+  return windowsNotified
+}
+
+function sendTTSPlaybackCommandToHost(command: DesktopTTSPlaybackCommand): boolean {
+  const main = WINDOWS.get("main")
+  logApp("[tipc][TTS] Routing playback command to main host", {
+    command,
+    mainAvailable: !!main,
+  })
+  if (!main) {
+    logApp("[tipc] Main window unavailable for TTS playback command", { command })
+    return false
+  }
+
+  try {
+    const handler = getRendererHandlers<RendererHandlers>(main.webContents).ttsPlaybackCommand
+    if (!handler) {
+      logApp("[tipc] Main renderer has no TTS playback command handler", { command })
+      return false
+    }
+    handler.send(command)
+    return true
+  } catch (error) {
+    logApp("[tipc] Failed to route TTS playback command to main renderer:", error)
+    return false
+  }
+}
+
+function sendTTSPlaybackRequestToHost(request: DesktopTTSPlaybackRequest): boolean {
+  const main = WINDOWS.get("main")
+  logApp("[tipc][TTS] Routing playback request to main host", {
+    playbackId: request.playbackId,
+    sessionId: request.sessionId,
+    source: request.source,
+    autoPlay: request.autoPlay,
+    keyCount: request.ttsKeys?.length ?? 0,
+    audioByteLength: request.audio instanceof ArrayBuffer
+      ? request.audio.byteLength
+      : ArrayBuffer.isView(request.audio)
+        ? request.audio.byteLength
+        : Array.isArray(request.audio)
+          ? request.audio.length
+          : undefined,
+    mainAvailable: !!main,
+  })
+  if (!main) {
+    logApp("[tipc] Main window unavailable for TTS playback request", {
+      playbackId: request.playbackId,
+      sessionId: request.sessionId,
+    })
+    return false
+  }
+
+  try {
+    const handler = getRendererHandlers<RendererHandlers>(main.webContents).ttsPlaybackRequest
+    if (!handler) {
+      logApp("[tipc] Main renderer has no TTS playback request handler", {
+        playbackId: request.playbackId,
+        sessionId: request.sessionId,
+      })
+      return false
+    }
+    handler.send(request)
+    return true
+  } catch (error) {
+    logApp("[tipc] Failed to route TTS playback request to main renderer:", error)
+    return false
   }
 }
 
@@ -660,7 +944,124 @@ export const router = {
     return { success: true, message: "Agent mode emergency stopped" }
   }),
 
+  claimTTSPlaybackKeys: t.procedure
+    .input<{ ttsKeys?: string[]; sessionId?: string; forced?: boolean }>()
+    .action(async ({ input }) => {
+      logApp("[tipc][TTS] claimTTSPlaybackKeys", {
+        sessionId: input.sessionId,
+        forced: input.forced ?? false,
+        keys: input.ttsKeys,
+      })
+      const claimed = desktopTTSPlaybackCoordinator.claimAutoPlayKeys(input.ttsKeys, {
+        sessionId: input.sessionId,
+        forced: input.forced ?? false,
+      })
+      logApp("[tipc][TTS] claimTTSPlaybackKeys result", {
+        claimed,
+        sessionId: input.sessionId,
+      })
+      return { claimed }
+    }),
+
+  releaseTTSPlaybackKeys: t.procedure
+    .input<{ ttsKeys?: string[] }>()
+    .action(async ({ input }) => {
+      logApp("[tipc][TTS] releaseTTSPlaybackKeys", { keys: input.ttsKeys })
+      desktopTTSPlaybackCoordinator.releaseAutoPlayKeys(input.ttsKeys)
+      return { success: true }
+    }),
+
+  getTTSPlaybackState: t.procedure.action(async () => {
+    return desktopTTSPlaybackCoordinator.getState()
+  }),
+
+  requestTTSPlayback: t.procedure
+    .input<DesktopTTSPlaybackRequest>()
+    .action(async ({ input }) => {
+      logApp("[tipc][TTS] requestTTSPlayback received", {
+        playbackId: input.playbackId,
+        sessionId: input.sessionId,
+        source: input.source,
+        autoPlay: input.autoPlay,
+        keyCount: input.ttsKeys?.length ?? 0,
+        mimeType: input.mimeType,
+        audioOutputDeviceId: input.audioOutputDeviceId,
+      })
+      const state = desktopTTSPlaybackCoordinator.setState({
+        playbackId: input.playbackId,
+        sourceWindowId: input.sourceWindowId,
+        source: input.source,
+        sessionId: input.sessionId,
+        ttsKey: input.ttsKeys?.[0],
+        textPreview: input.textPreview ?? input.text.slice(0, 120),
+        status: "loading",
+        currentTime: 0,
+        duration: 0,
+        audioOutputDeviceId: input.audioOutputDeviceId,
+        error: undefined,
+      })
+      broadcastTTSPlaybackState(state)
+
+      const routed = sendTTSPlaybackRequestToHost(input)
+      if (!routed) {
+        const failedState = desktopTTSPlaybackCoordinator.setState({
+          playbackId: input.playbackId,
+          status: "error",
+          error: "Main playback host is unavailable",
+        })
+        broadcastTTSPlaybackState(failedState)
+        logApp("[tipc][TTS] requestTTSPlayback failed to route", {
+          playbackId: input.playbackId,
+          sessionId: input.sessionId,
+        })
+        return { success: false, error: failedState.error }
+      }
+
+      logApp("[tipc][TTS] requestTTSPlayback routed", {
+        playbackId: input.playbackId,
+        sessionId: input.sessionId,
+      })
+      return { success: true }
+    }),
+
+  controlTTSPlayback: t.procedure
+    .input<DesktopTTSPlaybackCommand>()
+    .action(async ({ input }) => {
+      logApp("[tipc][TTS] controlTTSPlayback received", { command: input })
+      const routed = sendTTSPlaybackCommandToHost(input)
+
+      if (input.type === "stop" || !routed) {
+        const state = input.type === "stop"
+          ? desktopTTSPlaybackCoordinator.reset(input.reason)
+          : desktopTTSPlaybackCoordinator.setState({ status: "error", error: "Main playback host is unavailable" })
+        broadcastTTSPlaybackState(state)
+      }
+
+      logApp("[tipc][TTS] controlTTSPlayback routed", { command: input, routed })
+      return { success: routed }
+    }),
+
+  publishTTSPlaybackState: t.procedure
+    .input<DesktopTTSPlaybackState>()
+    .action(async ({ input }) => {
+      logApp("[tipc][TTS] publishTTSPlaybackState received", {
+        playbackId: input.playbackId,
+        status: input.status,
+        sessionId: input.sessionId,
+        source: input.source,
+        currentTime: input.currentTime,
+        duration: input.duration,
+        error: input.error,
+      })
+      const state = desktopTTSPlaybackCoordinator.setState(input)
+      const windowsNotified = broadcastTTSPlaybackState(state)
+      return { success: true, windowsNotified }
+    }),
+
   stopAllTts: t.procedure.action(async () => {
+    sendTTSPlaybackCommandToHost({ type: "stop", reason: "stopAllTts" })
+    const state = desktopTTSPlaybackCoordinator.reset("stopAllTts")
+    broadcastTTSPlaybackState(state)
     return stopAllTtsPlayback()
   }),
 
@@ -683,6 +1084,7 @@ export const router = {
       // Session is being explicitly dismissed from UI; clear persisted
       // respond_to_user state for this session.
       clearSessionUserResponse(input.sessionId)
+      desktopTTSPlaybackCoordinator.clearSessionKeys(input.sessionId)
 
       // Also remove from the tracker's completed sessions list so it
       // doesn't re-appear in the sidebar on the next agentSessionsUpdated.
@@ -701,9 +1103,14 @@ export const router = {
 
   clearInactiveSessions: t.procedure.action(async () => {
     // Clear completed sessions from the tracker
-    agentSessionTracker.clearCompletedSessions(createInactiveAgentSessionClearPredicate({
+    const shouldClearInactiveSession = createInactiveAgentSessionClearPredicate({
       getQueuedMessageCount: (conversationId) => messageQueueService.getQueue(conversationId).length,
-    }))
+    })
+    agentSessionTracker.clearCompletedSessions((session) => {
+      const shouldClear = shouldClearInactiveSession(session)
+      if (shouldClear) desktopTTSPlaybackCoordinator.clearSessionKeys(session.id)
+      return shouldClear
+    })
 
     // Send to all windows so both main and panel can update their state
     for (const [id, win] of WINDOWS.entries()) {
@@ -1361,30 +1768,39 @@ export const router = {
     .input<{
       text: string
       conversationId?: string
-      fromTile?: boolean // When true, session runs in background (snoozed) - panel won't show
+      sessionId?: string
+      fromTile?: boolean // Origin hint: suppress floating-panel auto-show, but do not imply snoozed/background work.
+      startSnoozed?: boolean // True background mode: keep hidden/quiet and disable TTS autoplay.
+      suppressPanelAutoShow?: boolean
+      focusPanelSession?: boolean
     }>()
     .action(async ({ input }) => {
       const config = configStore.get()
       const queueEnabled = config.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED
+      const launchState = resolveAgentLaunchState(input)
 
       logApp("[createMcpTextInput] Request received", {
         conversationId: input.conversationId ?? null,
+        sessionId: input.sessionId ?? null,
+        sessionKind: describeAgentSessionId(input.sessionId),
         fromTile: input.fromTile ?? false,
+        ...serializeAgentLaunchState(launchState),
         messageLength: input.text.length,
         queueEnabled,
       })
 
-      // Defensive guard: when the caller explicitly asks for a snoozed session
-      // (fromTile=true, e.g. SessionActionDialog inside the main window), also
-      // time-suppress panel auto-show so an early progress update cannot race
-      // the snoozed flag and briefly surface the floating panel.
-      if (input.fromTile === true) {
+      // Panel suppression is separate from snoozing. Tile-originated sessions
+      // can stay foreground/audible while still avoiding floating-panel popups.
+      if (launchState.shouldSuppressPanelAutoShow) {
         suppressPanelAutoShow(2000)
       }
 
       // Create or get conversation ID
       let conversationId = input.conversationId
       let agentInputText = input.text
+      const requestedSessionId = input.sessionId && !input.sessionId.startsWith("pending-")
+        ? input.sessionId
+        : undefined
       if (!conversationId) {
         const conversation = await conversationService.createConversation(
           input.text,
@@ -1393,15 +1809,62 @@ export const router = {
         conversationId = conversation.id
         agentInputText = getLatestStoredUserMessageContent(conversation, input.text)
       } else {
+        if (requestedSessionId?.startsWith("subsession_")) {
+          const { getInternalSubSession, continueInternalSubSession } = await import("./acp/internal-agent")
+          const subSession = getInternalSubSession(requestedSessionId)
+          if (!subSession) {
+            throw new Error(`Internal sub-session not found: ${requestedSessionId}`)
+          }
+
+          const targetConversationId = subSession.conversationId ?? conversationId
+          const targetText = await conversationService.materializeInlineDataImagesInContent(targetConversationId, input.text)
+
+          if (queueEnabled && (subSession.status === "running" || subSession.status === "pending")) {
+            const queuedMessage = messageQueueService.enqueue(targetConversationId, targetText, requestedSessionId)
+            logApp("[createMcpTextInput] Queued message for running internal sub-session", {
+              conversationId: targetConversationId,
+              queuedMessageId: queuedMessage.id,
+              requestedSessionId,
+              subSessionStatus: subSession.status,
+              fromTile: input.fromTile ?? false,
+              messageLength: input.text.length,
+              queueLength: messageQueueService.getQueue(targetConversationId).length,
+            })
+            return { conversationId: targetConversationId, queued: true, queuedMessageId: queuedMessage.id }
+          }
+
+          continueInternalSubSession(requestedSessionId, targetText)
+            .catch((error) => {
+              logLLM("[createMcpTextInput] Internal sub-session continuation error:", error)
+            })
+
+          logApp("[createMcpTextInput] Continuing internal sub-session", {
+            conversationId: targetConversationId,
+            requestedSessionId,
+            subSessionStatus: subSession.status,
+            fromTile: input.fromTile ?? false,
+            messageLength: input.text.length,
+          })
+
+          return { conversationId: targetConversationId }
+        }
+
         // Check if message queuing is enabled and there's an active session
         if (queueEnabled) {
-          const activeSessionId = agentSessionTracker.findSessionByConversationId(conversationId)
+          const activeSessionId = requestedSessionId && agentSessionTracker.getSession(requestedSessionId)?.conversationId === conversationId
+            ? requestedSessionId
+            : agentSessionTracker.findSessionByConversationId(conversationId)
           if (activeSessionId) {
             const session = agentSessionTracker.getSession(activeSessionId)
             if (session && session.status === "active") {
               const queuedText = await conversationService.materializeInlineDataImagesInContent(conversationId, input.text)
               // Queue the message instead of starting a new session
-              const queuedMessage = messageQueueService.enqueue(conversationId, queuedText, activeSessionId)
+              const queuedMessage = messageQueueService.enqueue(
+                conversationId,
+                queuedText,
+                activeSessionId,
+                serializeAgentLaunchState(launchState),
+              )
               logApp("[createMcpTextInput] Queued message for active session", {
                 conversationId,
                 queuedMessageId: queuedMessage.id,
@@ -1439,10 +1902,11 @@ export const router = {
       // This handles the case where user continues from history
       let existingSessionId: string | undefined
       if (input.conversationId) {
-        const foundSessionId = agentSessionTracker.findSessionByConversationId(input.conversationId)
+        const foundSessionId = requestedSessionId && agentSessionTracker.getConversationIdForSession(requestedSessionId) === input.conversationId
+          ? requestedSessionId
+          : agentSessionTracker.findSessionByConversationId(input.conversationId)
         if (foundSessionId) {
-          // Pass fromTile to reviveSession so it stays snoozed when continuing from a tile
-          const revived = agentSessionTracker.reviveSession(foundSessionId, input.fromTile ?? false)
+          const revived = agentSessionTracker.reviveSession(foundSessionId, launchState.startSnoozed)
           if (revived) {
             existingSessionId = foundSessionId
             logApp("[createMcpTextInput] Revived existing session", {
@@ -1470,8 +1934,7 @@ export const router = {
       // Fire-and-forget: Start agent processing without blocking
       // This allows multiple sessions to run concurrently
       // Pass existingSessionId to reuse the session if found
-      // When fromTile=true, start snoozed so the floating panel doesn't appear
-      processWithAgentMode(agentInputText, conversationId, existingSessionId, input.fromTile ?? false)
+      processWithAgentMode(agentInputText, conversationId, existingSessionId, launchState.startSnoozed)
         .then((finalResponse) => {
           // Save to history after completion
           const history = getRecordingHistory()
@@ -1527,13 +1990,17 @@ export const router = {
       conversationId?: string
       sessionId?: string
       screenshot?: ScreenshotAttachmentInput
-      fromTile?: boolean // When true, session runs in background (snoozed) - panel won't show
+      fromTile?: boolean // Origin hint: suppress floating-panel auto-show, but do not imply snoozed/background work.
+      startSnoozed?: boolean // True background mode: keep hidden/quiet and disable TTS autoplay.
+      suppressPanelAutoShow?: boolean
+      focusPanelSession?: boolean
     }>()
     .action(async ({ input }) => {
-      // Defensive guard: see matching comment in createMcpTextInput. When a
-      // caller asks for a snoozed session, time-suppress panel auto-show to
-      // cover the window where progress updates may race the snoozed flag.
-      if (input.fromTile === true) {
+      const launchState = resolveAgentLaunchState(input)
+
+      // Panel suppression is separate from snoozing. Tile-originated recordings
+      // can stay foreground/audible while still hiding the waveform panel after capture.
+      if (launchState.shouldSuppressPanelAutoShow) {
         suppressPanelAutoShow(2000)
       }
 
@@ -1627,7 +2094,12 @@ export const router = {
             const queuedText = await conversationService.materializeInlineDataImagesInContent(input.conversationId, messageText)
 
             // Queue the transcript instead of processing immediately
-            const queuedMessage = messageQueueService.enqueue(input.conversationId, queuedText, activeSessionId)
+            const queuedMessage = messageQueueService.enqueue(
+              input.conversationId,
+              queuedText,
+              activeSessionId,
+              serializeAgentLaunchState(launchState),
+            )
             logApp(`[createMcpRecording] Queued voice transcript ${queuedMessage.id} for active session ${activeSessionId}`)
 
             return { conversationId: input.conversationId, queued: true, queuedMessageId: queuedMessage.id }
@@ -1669,8 +2141,7 @@ export const router = {
       // If sessionId is provided, try to revive that session.
       // Otherwise, if conversationId is provided, try to find and revive a session for that conversation.
       // This handles the case where user continues from history (only conversationId is set).
-      // When fromTile=true, sessions start snoozed so the floating panel doesn't appear.
-      const startSnoozed = input.fromTile ?? false
+      const startSnoozed = launchState.startSnoozed
       let sessionId: string
       if (input.sessionId) {
         // Try to revive the existing session by ID
@@ -1712,6 +2183,11 @@ export const router = {
         // No sessionId or conversationId provided, create a new session with profile snapshot
         sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
       }
+
+      agentSessionTracker.updateSession(sessionId, {
+        isSnoozed: startSnoozed,
+        suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow,
+      })
 
       try {
         // Emit initial "initializing" progress update
@@ -1851,9 +2327,9 @@ export const router = {
       )
 
         // Fire-and-forget: Start agent processing without blocking.
-        // Preserve the tile/background snooze state after transcription so
-        // voice follow-ups from a session tile do not re-focus the panel.
-        processWithAgentMode(agentInputText, conversationId, sessionId, startSnoozed)
+        // Preserve the explicit launch state after transcription so tile voice
+        // follow-ups remain audible without re-focusing the floating panel.
+        processWithAgentMode(agentInputText, conversationId, sessionId, launchState.startSnoozed)
         .then((finalResponse) => {
           // Save to history after completion
           const history = getRecordingHistory()
@@ -2739,7 +3215,7 @@ export const router = {
   loadConversation: t.procedure
     .input<{ conversationId: string; messageLimit?: number }>()
     .action(async ({ input }) => {
-      return conversationService.loadConversation(input.conversationId, {
+      return conversationService.loadConversationForDisplay(input.conversationId, {
         messageLimit: input.messageLimit,
       })
     }),
@@ -2786,15 +3262,10 @@ export const router = {
       )
 
       if (conversation) {
-        const activeSession = agentSessionTracker
-          .getActiveSessions()
-          .find((session) => session.conversationId === input.conversationId)
-
-        if (activeSession) {
-          agentSessionTracker.updateSession(activeSession.id, {
-            conversationTitle: conversation.title,
-          })
-        }
+        agentSessionTracker.updateConversationTitleForConversation(
+          input.conversationId,
+          conversation.title,
+        )
       }
 
       return conversation

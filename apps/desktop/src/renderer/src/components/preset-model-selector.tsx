@@ -178,12 +178,12 @@ export function PresetModelSelector({
       metaParts.push(selectedContextSize)
     }
 
-    if (metaParts.length === 0) return selectedModel.name
-    return `${selectedModel.name} • ${metaParts.join(" • ")}`
+    if (metaParts.length === 0) return selectedModel.name || selectedModel.id
+    return `${selectedModel.name || selectedModel.id} • ${metaParts.join(" • ")}`
   })()
 
   /** Render model item with pricing and capabilities */
-  const renderModelItem = (model: ModelInfo) => {
+  const renderModelItem = (model: ModelInfo | { id: string; name?: string | null }) => {
     const info = getModelInfo(model.id)
     const inputPrice = formatPrice(info?.cost?.input)
     const outputPrice = formatPrice(info?.cost?.output)
@@ -196,7 +196,7 @@ export function PresetModelSelector({
     return (
       <SelectItem key={model.id} value={model.id}>
         <div className="flex w-full min-w-0 items-center gap-2 py-0.5">
-          <span className="truncate">{model.name}</span>
+          <span className="truncate">{model.name || model.id}</span>
           {/* Capability indicators */}
           <div className="flex shrink-0 items-center gap-1">
             {hasToolCall && (

@@ -7,7 +7,7 @@ import {
   isGeneratedContextSummaryContent,
   isInternalNudgeContent,
   isRealUserRequestContent,
-  type ConversationMessage,
+  type ConversationHistoryFilterMessage as ConversationMessage,
 } from "@dotagents/shared/conversation-history-utils"
 
 describe("conversation-history-utils", () => {

@@ -64,7 +64,7 @@ export interface MessageQueueStore {
   tryAcquireProcessingLock(conversationId: string): boolean;
   releaseProcessingLock(conversationId: string): void;
   isProcessing(conversationId: string): boolean;
-  enqueue(conversationId: string, text: string, sessionId?: string): QueuedMessage;
+  enqueue(conversationId: string, text: string, sessionId?: string, launchState?: QueuedMessage['launchState']): QueuedMessage;
   getQueue(conversationId: string): QueuedMessage[];
   getAllQueues(): MessageQueue[];
   removeFromQueue(conversationId: string, messageId: string): MessageQueueStoreMutationActionResult;
@@ -523,12 +523,13 @@ export function createMessageQueueStore(options: MessageQueueStoreOptions = {}):
       return processingConversations.has(conversationId);
     },
 
-    enqueue(conversationId: string, text: string, sessionId?: string): QueuedMessage {
+    enqueue(conversationId: string, text: string, sessionId?: string, launchState?: QueuedMessage['launchState']): QueuedMessage {
       const createdAt = now();
       const message = buildQueuedMessage({
         id: idFactory(createdAt),
         conversationId,
         sessionId,
+        launchState,
         text,
         createdAt,
       });

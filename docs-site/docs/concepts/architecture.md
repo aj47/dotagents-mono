@@ -5,7 +5,7 @@ sidebar_label: "Architecture"
 
 # Architecture Overview
 
-DotAgents is a monorepo containing a desktop app, mobile app, shared libraries, and a marketing website — all built around the `.agents` open protocol.
+DotAgents is a monorepo containing a desktop app, mobile app, shared libraries, and a Docusaurus website — all built around the `.agents` open protocol.
 
 ---
 
@@ -63,9 +63,11 @@ dotagents-mono/
 │       ├── src/store/        # State management
 │       └── src/lib/          # API client and utilities
 ├── packages/
+│   ├── core/                 # Platform-agnostic config/runtime primitives
 │   ├── shared/               # Shared types, utilities, constants
 │   └── mcp-whatsapp/         # WhatsApp MCP server package
-├── website/                  # Static marketing site (dotagents.app)
+├── docs-site/                # Docusaurus docs and primary website
+├── apps/promo-studio/        # Tracked promotional/demo renders
 ├── scripts/                  # Build and release scripts
 └── tests/                    # Integration tests
 ```
@@ -82,9 +84,11 @@ dotagents-mono/
 | **Remote API** | Fastify | HTTP server for mobile/external clients |
 | **AI SDK** | Vercel AI SDK | Multi-provider LLM integration |
 | **MCP** | @modelcontextprotocol/sdk | Tool execution protocol |
+| **ACP/acpx** | JSON-RPC + DotAgents adapters | Agent delegation and injected runtime tools |
 | **State** | Zustand | Client-side state management |
 | **Routing** | React Router v6 | Desktop app navigation |
 | **Navigation** | React Navigation | Mobile app navigation |
+| **Docs** | Docusaurus | Documentation site |
 | **Build** | electron-vite, tsup | Desktop and library bundling |
 | **Tests** | Vitest | Unit and integration testing |
 | **Package Manager** | pnpm 9 | Monorepo dependency management |
@@ -99,13 +103,14 @@ The main process handles all system-level operations:
 
 - **LLM Engine** (`llm.ts`) — Core agent loop, tool calling, response generation, context management
 - **MCP Service** (`mcp-service.ts`) — Connects to MCP servers, discovers tools, executes calls
-- **ACP Service** (`acp-service.ts`) — Spawns external agents, manages JSON-RPC communication
+- **ACP/acpx Services** (`acp-service.ts`, `acpx/`) — Spawn external agents, manage JSON-RPC communication, and expose scoped runtime tools
 - **Agent Profile Service** (`agent-profile-service.ts`) — CRUD for agent profiles
 - **Skills Service** (`skills-service.ts`) — Loads and manages agent skills from `.agents/skills/`
 - **Knowledge Notes Service** (`knowledge-notes-service.ts`) — Persistent durable context via `.agents/knowledge/`
 - **Keyboard Service** (`keyboard.ts`) — System-wide hotkeys via Rust binary
 - **TTS Services** — Text-to-speech via OpenAI, Groq, Gemini, Kitten, Supertonic
 - **Remote Server** (`remote-server.ts`) — Fastify HTTP API for mobile clients
+- **Discord and WhatsApp Services** — Optional messaging integrations and operator commands
 - **Config Service** (`config.ts`) — Layered configuration management
 - **Conversation Service** (`conversation-service.ts`) — Persistent conversation storage
 - **OAuth Client** (`oauth-client.ts`) — OAuth 2.1 for MCP server authentication

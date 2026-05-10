@@ -142,6 +142,9 @@ export type McpToolEnabledLike = {
 export type McpToolFilterLike = McpToolEnabledLike & {
   description?: string | null
   serverEnabled?: boolean
+  sourceKind?: string
+  sourceLabel?: string
+  inputSchema?: unknown
 }
 
 export interface FilterMcpToolsOptions {
@@ -161,6 +164,13 @@ export type McpSourceToolEnabledLike = McpToolEnabledLike & {
 
 export type McpSourceNamedLike = {
   sourceName: string
+  name?: string
+  enabled?: boolean
+  description?: string | null
+  serverEnabled?: boolean
+  sourceKind?: string
+  sourceLabel?: string
+  inputSchema?: unknown
 }
 
 export type McpServerRuntimeEnabledLike = {

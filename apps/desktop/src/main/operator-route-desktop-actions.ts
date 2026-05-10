@@ -404,7 +404,11 @@ const integrationActionOptions: OperatorIntegrationActionOptions = {
     getWhatsAppSummary: getOperatorWhatsAppIntegrationSummary,
     whatsapp: {
       serverName: WHATSAPP_SERVER_NAME,
-      mcp: mcpService,
+      mcp: {
+        getServerStatus: () => mcpService.getServerStatus(),
+        executeToolCall: (toolCall, sessionId, allowBackground) =>
+          mcpService.executeToolCall(toolCall, undefined, allowBackground, sessionId),
+      },
     },
   }),
 }

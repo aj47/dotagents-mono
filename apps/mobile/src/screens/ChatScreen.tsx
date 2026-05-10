@@ -56,7 +56,7 @@ import {
   shouldCollapseMessage,
   sortAgentUserResponseEvents,
   formatToolArguments,
-  getIndividualToolCallPreview,
+  getCompactToolExecutionPreview,
   getToolResultsSummary,
   RESPOND_TO_USER_TOOL,
   getRenderableMessageContent,
@@ -2044,7 +2044,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // If message queue is enabled and we're already responding, queue the message
     if (messageQueueEnabled && responding) {
       console.log('[ChatScreen] Agent busy, queuing message:', getMessageLogMeta(text));
-      messageQueue.enqueue(currentConversationId, text);
+      messageQueue.enqueue(currentConversationId, text, currentConversationId);
       setInput('');
       if (options?.fromComposer) {
         setPendingImages([]);
@@ -2889,7 +2889,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const composedMessage = buildMessageWithPendingImages(input, pendingImages);
     if (!composedMessage.trim()) return;
 
-    messageQueue.enqueue(currentConversationId, composedMessage);
+    messageQueue.enqueue(currentConversationId, composedMessage, currentConversationId);
     setInput('');
     setPendingImages([]);
     setDebugInfo('Message queued. Use Send Next when you are ready.');
@@ -3505,7 +3505,7 @@ export default function ChatScreen({ route, navigation }: any) {
                               const tcPending = !tcResult;
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
-                              const toolPreview = label ?? getIndividualToolCallPreview(toolCall);
+                              const toolPreview = label ?? getCompactToolExecutionPreview(toolCall, tcResult ?? null);
                               return (
                                 <View key={tcIdx} style={styles.toolCallCompactLine}>
                                   <Text style={[
@@ -4870,10 +4870,10 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.info,
     },
     toolCallCompactNameSuccess: {
-      color: theme.colors.mutedForeground,
+      color: theme.colors.success,
     },
     toolCallCompactNameError: {
-      color: theme.colors.mutedForeground,
+      color: theme.colors.destructive,
     },
     toolCallCompactStatus: {
       fontSize: 9,
@@ -4882,10 +4882,10 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.info,
     },
     toolCallCompactStatusSuccess: {
-      color: theme.colors.mutedForeground,
+      color: theme.colors.success,
     },
     toolCallCompactStatusError: {
-      color: theme.colors.mutedForeground,
+      color: theme.colors.destructive,
     },
     // Tool-activity group styles (collapsed-by-default grouping of consecutive tool calls)
     toolActivityGroupCollapsed: {

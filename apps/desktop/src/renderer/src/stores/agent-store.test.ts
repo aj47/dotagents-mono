@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentProgressUpdate } from '@dotagents/shared/agent-progress'
+
+vi.mock('@renderer/lib/debug', () => ({ logUI: vi.fn() }))
+
 import { useAgentStore } from './agent-store'
 
 const localStorageMock = vi.hoisted(() => {
@@ -56,6 +59,26 @@ describe('agent-store delegation merge', () => {
       pinnedSessionIdsRevision: 0,
       archivedSessionIds: new Set(),
       archivedSessionIdsRevision: 0,
+      ttsPlaybackState: { playbackId: null, status: 'idle', currentTime: 0, duration: 0, volume: 1, muted: false, updatedAt: 1 },
+    })
+  })
+
+  it('stores centralized TTS playback state updates', () => {
+    useAgentStore.getState().setTTSPlaybackState({
+      playbackId: 'playback-1',
+      status: 'playing',
+      currentTime: 1.5,
+      duration: 8,
+      volume: 0.75,
+      muted: false,
+      updatedAt: 2,
+    })
+
+    expect(useAgentStore.getState().ttsPlaybackState).toMatchObject({
+      playbackId: 'playback-1',
+      status: 'playing',
+      currentTime: 1.5,
+      duration: 8,
     })
   })
 

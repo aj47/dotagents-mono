@@ -286,7 +286,7 @@ export function Component() {
             </div>
           )}
 
-          {!usesOpenAiCompatiblePreset && agentProviderId === "openai" && (
+          {!usesOpenAiCompatiblePreset && (agentProviderId as string) === "openai" && (
             <p className="px-3 py-2 text-sm text-muted-foreground">
               OpenAI-compatible preset controls appear here when Agent or Transcript Processing uses that provider.
             </p>

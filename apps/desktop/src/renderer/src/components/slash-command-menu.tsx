@@ -59,7 +59,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
       skills: skillsQuery.data ?? [],
       tasks: loopsQuery.data ?? [],
       promptDescriptionMaxLength: 80,
-      getTaskDescription: getRepeatTaskRunNowDescription,
+      getTaskDescription: (task) => getRepeatTaskRunNowDescription(task as Parameters<typeof getRepeatTaskRunNowDescription>[0]),
     })
   }, [configQuery.data, skillsQuery.data, loopsQuery.data])
 
@@ -179,7 +179,7 @@ export function useSlashCommands(
       setSlashQuery("")
       setIsSlashMenuOpen(false)
       try {
-        const result = await desktopLoopsClient.triggerLoop(item.id)
+        const result = await desktopLoopsClient.runLoop(item.id)
         if (result && !result.success) {
           toast.error(`Could not trigger "${item.name}" right now`)
           return

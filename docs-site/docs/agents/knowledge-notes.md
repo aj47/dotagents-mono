@@ -168,7 +168,7 @@ Knowledge notes are protected by the `.agents` protocol's resilience features:
 
 ## Next Steps
 
-- **[Agent Profiles](profiles)** — Configure agent behavior
+- **[Agents](profiles)** — Configure agent behavior
 - **[Skills](skills)** — Teach agents specialized capabilities
 - **[The .agents Protocol](/concepts/dot-agents-protocol)** — See the filesystem model and examples
 - **[Multi-Agent Delegation](delegation)** — Agent-to-agent coordination

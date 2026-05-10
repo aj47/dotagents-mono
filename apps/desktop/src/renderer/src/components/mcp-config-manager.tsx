@@ -257,7 +257,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
 
   const handleSave = () => {
     const draftResult = buildMcpServerConfigFromDraft(buildCurrentServerDraft(), SERVER_DIALOG_DRAFT_OPTIONS)
-    if (!draftResult.ok) {
+    if (draftResult.ok === false) {
       toast.error(formatServerDialogDraftError(draftResult.error))
       return
     }
@@ -472,7 +472,7 @@ function ServerDialog({ server, onSave, onCancel, onImportFromFile, onImportFrom
                   }
                   try {
                     const draftResult = buildMcpServerConfigFromDraft(buildCurrentServerDraft(), SERVER_DIALOG_DRAFT_OPTIONS)
-                    if (!draftResult.ok) {
+                    if (draftResult.ok === false) {
                       toast.error(formatServerDialogDraftError(draftResult.error))
                       return
                     }
@@ -1102,7 +1102,7 @@ export function MCPConfigManager({
 
 
   // Group tools by source
-  const toolsByServer = groupMcpToolsBySource(tools)
+  const toolsByServer: Record<string, DetailedTool[]> = groupMcpToolsBySource(tools)
   const filteredToolsByServer = filterMcpToolSourceGroups(toolsByServer, {
     searchQuery: toolSearchQuery,
     showDisabledTools,
@@ -1144,7 +1144,7 @@ export function MCPConfigManager({
     const serverTools = tools.filter((tool) => tool.sourceName === serverName)
     if (serverTools.length === 0) return
     const sourceLabel = serverTools[0]?.sourceLabel || serverName
-    const originalStates = new Map(
+    const originalStates = new Map<string, boolean>(
       serverTools.map((tool) => [tool.name, tool.enabled]),
     )
 
@@ -1178,7 +1178,7 @@ export function MCPConfigManager({
             return r.status === "rejected" || !(r.value as any)?.success
           },
         )
-        const failedOriginalStates = new Map(
+        const failedOriginalStates = new Map<string, boolean>(
           failedTools.map((tool) => [
             tool.name,
             originalStates.get(tool.name) ?? tool.enabled,
@@ -1474,7 +1474,7 @@ export function MCPConfigManager({
 
   const toggleLogs = (serverName: string) => {
     setExpandedLogs(prev => {
-      const newSet = new Set(prev)
+      const newSet = new Set<string>(prev)
       if (newSet.has(serverName)) {
         newSet.delete(serverName)
       } else {
@@ -1498,7 +1498,7 @@ export function MCPConfigManager({
 
   const toggleServerExpansion = (serverName: string) => {
     setExpandedServers(prev => {
-      const newSet = new Set(prev)
+      const newSet = new Set<string>(prev)
       if (newSet.has(serverName)) {
         newSet.delete(serverName)
       } else {
@@ -1592,7 +1592,7 @@ export function MCPConfigManager({
             (results[index].status === "fulfilled" &&
               (results[index] as PromiseFulfilledResult<any>).value.success !== true),
         )
-        const failedOriginalStates = new Map(
+        const failedOriginalStates = new Map<string, boolean>(
           failedTools.map((tool) => [
             tool.name,
             originalStates.get(tool.name) ?? tool.enabled,

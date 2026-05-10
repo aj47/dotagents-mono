@@ -51,7 +51,7 @@ export interface ToolActivityGroup {
 // ---------------------------------------------------------------------------
 
 /** Number of preview lines shown in the collapsed group header. */
-export const TOOL_GROUP_PREVIEW_COUNT = 3
+export const TOOL_GROUP_PREVIEW_COUNT = 8
 
 /** Minimum number of consecutive tool messages required to form a group. */
 export const TOOL_GROUP_MIN_SIZE = 2

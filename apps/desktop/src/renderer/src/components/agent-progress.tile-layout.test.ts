@@ -26,7 +26,8 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('className="flex items-center justify-between gap-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-x-2"')
     expect(agentProgressSource).toContain('<SessionModelPicker modelInfo={modelInfo} compact />')
-    expect(agentProgressSource).toContain('{(profileName || modelInfo || !isComplete) && (')
+    expect(agentProgressSource).toContain('<SessionThinkingPicker compact />')
+    expect(agentProgressSource).toContain('<SessionVerbosityPicker compact />')
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap">Step')
   })
 
@@ -122,7 +123,8 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('const collapsedPreviewLine = group.previewLines.join')
     expect(agentProgressSource).toContain('{collapsedPreviewLine || "Tool activity"}')
     expect(agentProgressSource).toContain('const collapsedToolPreviewLine = data.calls')
-    expect(agentProgressSource).toContain('className="flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] text-sky-700 transition-colors hover:bg-muted/30 dark:text-sky-300"')
+    expect(agentProgressSource).toContain('const toolStatusTextClass = isPending')
+    expect(agentProgressSource).toContain('className={cn("flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition-colors hover:bg-muted/30", toolStatusTextClass)}')
     expect(agentProgressSource).toContain('flex-1 truncate whitespace-nowrap font-mono')
     expect(agentProgressSource).not.toContain('toolCountLabel')
   })
@@ -196,7 +198,9 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('buildAgentModelConfigUpdates(config, providerId, modelId)')
     expect(agentProgressSource).toContain('Model/provider controls stay available even before live session metadata arrives')
     expect(agentProgressSource).toContain('<SessionModelPicker modelInfo={modelInfo} />')
-    expect(agentProgressSource).toContain('{(profileName || modelInfo || contextInfo || !isComplete) && (')
+    // Tile footer renders unconditionally so the model/thinking/verbosity controls
+    // stay reachable for inactive (completed) sessions too.
+    expect(agentProgressSource).toContain('always render so model picker, thinking,')
   })
 
   it("keeps inline tool approval cards readable in narrow tiles and under zoom", () => {
@@ -297,9 +301,11 @@ describe("agent progress tile layout", () => {
     )
   })
 
-  it("does not auto-play TTS for tile expansion/collapse interactions", () => {
+  it("allows tile auto-play without requiring tile focus", () => {
     expect(agentProgressSource).toContain('function shouldAutoPlayTTSForVariant')
-    expect(agentProgressSource).toContain('if (variant === "tile") return isFocused && !isFloatingPanelVisible')
+    expect(agentProgressSource).toContain('focus no\n  // longer decides whether a tile may request auto-play')
+    expect(agentProgressSource).toContain('return !isSnoozed')
+    expect(agentProgressSource).toContain('tipcClient.claimTTSPlaybackKeys')
   })
 
   it("uses shared conversation-state normalization across agent progress surfaces", () => {

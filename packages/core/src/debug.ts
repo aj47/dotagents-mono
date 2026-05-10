@@ -143,6 +143,21 @@ function ts(): string {
   return d.toISOString()
 }
 
+function formatDebugArg(arg: unknown): string {
+  if (arg instanceof Error) {
+    return `${arg.name}: ${arg.message}\n${arg.stack}`
+  }
+  if (typeof arg === "string") return arg
+  if (typeof arg === "object" && arg !== null) {
+    try {
+      return JSON.stringify(arg, null, 2)
+    } catch {
+      return String(arg)
+    }
+  }
+  return String(arg)
+}
+
 export function logLLM(...args: unknown[]) {
   if (!isDebugLLM()) return
   // eslint-disable-next-line no-console
@@ -163,27 +178,16 @@ export function logKeybinds(...args: unknown[]) {
 
 export function logApp(...args: unknown[]) {
   if (!isDebugApp()) return
-  const formattedArgs = args.map(arg => {
-    if (arg instanceof Error) {
-      return `${arg.name}: ${arg.message}\n${arg.stack}`
-    }
-    if (typeof arg === "object" && arg !== null) {
-      try {
-        return JSON.stringify(arg, null, 2)
-      } catch {
-        return String(arg)
-      }
-    }
-    return arg
-  })
+  const formattedArgs = args.map(formatDebugArg)
   // eslint-disable-next-line no-console
   console.log(`[${ts()}] [DEBUG][APP]`, ...formattedArgs)
 }
 
 export function logUI(...args: unknown[]) {
   if (!isDebugUI()) return
+  const formattedArgs = args.map(formatDebugArg)
   // eslint-disable-next-line no-console
-  console.log(`[${ts()}] [DEBUG][UI]`, ...args)
+  console.log(`[${ts()}] [DEBUG][UI]`, ...formattedArgs)
 }
 
 export function logMCP(direction: "REQUEST" | "RESPONSE", serverName: string, data: unknown) {

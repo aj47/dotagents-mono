@@ -534,10 +534,20 @@ function getRepeatTaskEntryTimestamp(session: RepeatTaskSessionDedupeLike): numb
   return Math.max(session.endTime ?? 0, session.startTime ?? 0)
 }
 
+function isRepeatTaskSubagentLikeEntry(session: RepeatTaskSessionLike): boolean {
+  if (session.id.startsWith("subsession_")) return true
+  const parentSessionId = session.parentSessionId?.trim()
+  return !!parentSessionId && parentSessionId !== session.id
+}
+
 function isBetterRepeatTaskEntry<T extends { session: RepeatTaskSessionDedupeLike }>(
   candidate: T,
   current: T,
 ): boolean {
+  const candidateIsSubagent = isRepeatTaskSubagentLikeEntry(candidate.session)
+  const currentIsSubagent = isRepeatTaskSubagentLikeEntry(current.session)
+  if (candidateIsSubagent !== currentIsSubagent) return !candidateIsSubagent
+
   const candidateIsActive = candidate.session.status === "active"
   const currentIsActive = current.session.status === "active"
   if (candidateIsActive !== currentIsActive) return candidateIsActive

@@ -190,7 +190,13 @@ async function loadAgentProgress(
 
   const Null = () => null
   const icon = (name: string) => (props: any) => ({ type: name, props })
-  const tipcMock = { tipcClient: new Proxy({ setPanelFocusable: vi.fn() }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
+  const tipcMock = { tipcClient: new Proxy({
+    setPanelFocusable: vi.fn(),
+    claimTTSPlaybackKeys: vi.fn().mockResolvedValue({ claimed: true }),
+    releaseTTSPlaybackKeys: vi.fn().mockResolvedValue({ success: true }),
+    controlTTSPlayback: vi.fn().mockResolvedValue({ success: true }),
+    requestTTSPlayback: vi.fn().mockResolvedValue({ success: true }),
+  }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
   const desktopTtsClientMock = { desktopTtsClient: { generateSpeech: vi.fn() } }
   const queriesMock = {
     useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: options?.ttsAutoPlay ?? false, dualModelEnabled: false } }),
@@ -289,10 +295,63 @@ async function loadAgentProgress(
     getAgentConversationStateLabel: (state: string) => state,
     getToolResultsSummary: () => "",
     getToolActivitySummaryLine: () => "",
+    getIndividualToolCallPreview: (call: { name: string; arguments?: Record<string, unknown> }) => {
+      const cmd = (call.arguments as { command?: string } | undefined)?.command
+      if (typeof cmd === "string" && cmd.trim()) return cmd.replace(/\s+/g, " ").trim()
+      return call.name
+    },
+    getToolCallPreview: (call: { name: string; arguments?: Record<string, unknown> }) => {
+      const cmd = (call.arguments as { command?: string } | undefined)?.command
+      if ((call.name === "execute_command") && typeof cmd === "string" && cmd.trim()) {
+        return cmd.trim().split(/\s+/)[0]
+      }
+      return call.name
+    },
+    getExecuteCommandResultPreview: (
+      call: { name: string; arguments?: Record<string, unknown> },
+      result?: { success: boolean; content: string; error?: string } | null,
+    ) => {
+      if (call.name !== "execute_command") return null
+      const cmd = (call.arguments as { command?: string } | undefined)?.command
+      if (typeof cmd !== "string" || !cmd.trim()) return null
+      const firstWord = cmd.trim().split(/\s+/)[0]
+      if (!firstWord) return null
+      if (!result) return firstWord
+      const raw = result
+        ? result.success === false
+          ? result.error || result.content || ""
+          : result.content || ""
+        : ""
+      const commandPreview = cmd.replace(/\s+/g, " ").trim()
+      const output = raw.replace(/\s+/g, " ").trim()
+      if (!output) return commandPreview
+      return `${commandPreview}:${output}`
+    },
+    getCompactToolExecutionPreview: (
+      call: { name: string; arguments?: Record<string, unknown> },
+      result?: { success: boolean; content: string; error?: string } | null,
+    ) => {
+      const cmd = (call.arguments as { command?: string } | undefined)?.command
+      if (call.name === "execute_command" && typeof cmd === "string" && cmd.trim()) {
+        const raw = result
+          ? result.success === false
+            ? result.error || result.content || ""
+            : result.content || ""
+          : ""
+        const commandPreview = cmd.replace(/\s+/g, " ").trim()
+        const output = raw.replace(/\s+/g, " ").trim()
+        return output ? `${commandPreview}:${output}` : commandPreview
+      }
+      if (result?.content?.trim()) {
+        const firstLine = result.content.trim().split("\n").find(Boolean) || result.content.trim()
+        return `${call.name}:${firstLine}`
+      }
+      return call.name
+    },
     normalizeAgentConversationState: (state: string | null | undefined, fallback: string) => state ?? fallback,
     getBuiltInModelPresets: () => [{ id: "default", name: "OpenAI", baseUrl: "https://api.openai.com/v1", agentModel: "gpt-4.1-mini", isBuiltIn: true }],
     DEFAULT_MODEL_PRESET_ID: "default",
-    TOOL_GROUP_PREVIEW_COUNT: 3,
+    TOOL_GROUP_PREVIEW_COUNT: 8,
     TOOL_GROUP_MIN_SIZE: 2,
   }))
   vi.doMock("./tool-execution-stats", () => ({ ToolExecutionStats: Null }))
@@ -302,6 +361,9 @@ async function loadAgentProgress(
     hasTTSPlayed: () => false,
     markTTSPlayed: vi.fn(),
     removeTTSKey: vi.fn(),
+    consumeSessionForcedAutoPlay: vi.fn(() => false),
+    buildResponseEventTTSKey: vi.fn(() => null),
+    buildContentTTSKey: vi.fn(() => null),
   }))
   vi.doMock("@dotagents/shared/tts-tracking", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@dotagents/shared/tts-tracking")>()
@@ -728,7 +790,7 @@ describe("agent progress response history", () => {
           content: "First tool thought",
           timestamp: 100,
           toolCalls: [
-            { name: "search_repo", arguments: { query: "thinking blocks" } },
+            { name: "execute_command", arguments: { command: "git status --short" } },
           ],
         },
         {
@@ -736,7 +798,7 @@ describe("agent progress response history", () => {
           content: "",
           timestamp: 110,
           toolResults: [
-            { success: true, content: "first result" },
+            { success: true, content: "M file.ts\n branch main" },
           ],
         },
         {
@@ -744,7 +806,7 @@ describe("agent progress response history", () => {
           content: "Second tool thought",
           timestamp: 120,
           toolCalls: [
-            { name: "open_file", arguments: { path: "agent-progress.tsx" } },
+            { name: "execute_command", arguments: { command: "pnpm test" } },
           ],
         },
         {
@@ -752,7 +814,7 @@ describe("agent progress response history", () => {
           content: "",
           timestamp: 130,
           toolResults: [
-            { success: true, content: "second result" },
+            { success: true, content: "all suites passed" },
           ],
         },
         { role: "assistant", content: "Now here is the answer", timestamp: 200 },
@@ -767,8 +829,15 @@ describe("agent progress response history", () => {
     expect(text).not.toMatch(/2 step(?:\s*s)?/)
     expect(text).not.toContain("First tool thought")
     expect(text).not.toContain("Second tool thought")
-    expect(text).toContain("search_repo")
-    expect(text.indexOf("search_repo")).toBeLessThan(text.indexOf("Now here is the answer"))
+    // Collapsed groups list every execute_command as
+    // "<command>:<output-preview>" in chronological order, with a call count
+    // next to the wrench icon.
+    expect(text).toContain("git status --short:M file.ts branch main")
+    expect(text).toContain("pnpm test:all suites passed")
+    expect(text.indexOf("git status --short:M file.ts branch main")).toBeLessThan(text.indexOf("pnpm test:all suites passed"))
+    expect(text.indexOf("pnpm test:all suites passed")).toBeLessThan(text.indexOf("Now here is the answer"))
+    // 2 tool calls in the run (search count badge before previews).
+    expect(text).toMatch(/2\s+git status --short:M file\.ts branch main/)
   })
 
   it("lets expanded tool groups collapse from the bottom", async () => {
@@ -1054,10 +1123,13 @@ describe("agent progress response history", () => {
     let tree = runtime.render(AgentProgress, { progress, variant: "overlay" })
     runtime.commitEffects()
     await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
 
     expect(desktopTtsClientMock.desktopTtsClient.generateSpeech).toHaveBeenCalledWith({
       text: "Mid-conversation answer",
     })
+    expect(tipcMock.tipcClient.claimTTSPlaybackKeys).toHaveBeenCalled()
   })
 
   it("removes tile maximize controls from the simplified session layout", async () => {

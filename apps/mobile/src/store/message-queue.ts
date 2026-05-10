@@ -23,7 +23,7 @@ export interface MessageQueueStore {
   queues: Map<string, QueuedMessage[]>;
   
   /** Add a message to the queue for a conversation */
-  enqueue: (conversationId: string, text: string) => QueuedMessage;
+  enqueue: (conversationId: string, text: string, sessionId?: string) => QueuedMessage;
   
   /** Get all queued messages for a conversation */
   getQueue: (conversationId: string) => QueuedMessage[];
@@ -77,8 +77,8 @@ export function useMessageQueue(): MessageQueueStore {
 
   const queueStore = storeRef.current;
 
-  const enqueue = useCallback((conversationId: string, text: string): QueuedMessage => {
-    const message = queueStore.enqueue(conversationId, text);
+  const enqueue = useCallback((conversationId: string, text: string, sessionId = conversationId): QueuedMessage => {
+    const message = queueStore.enqueue(conversationId, text, sessionId);
     console.log('[MessageQueue] Enqueued message:', message.id);
     return message;
   }, [queueStore]);

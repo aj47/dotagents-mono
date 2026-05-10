@@ -12,6 +12,7 @@ export interface AgentSession {
   lastActivity?: string;
   errorMessage?: string;
   isSnoozed?: boolean;
+  suppressPanelAutoShow?: boolean;
   isRepeatTask?: boolean;
   profileSnapshot?: SessionProfileSnapshot;
 }
@@ -58,6 +59,7 @@ export interface AgentSessionStore {
     sessionMetadata?: AgentSessionStartMetadata,
   ): string;
   updateSession(sessionId: string, updates: Partial<Omit<AgentSession, 'id' | 'startTime'>>): void;
+  updateConversationTitleForConversation(conversationId: string, conversationTitle: string): number;
   completeSession(sessionId: string, finalActivity?: string): boolean;
   stopSession(sessionId: string): boolean;
   errorSession(sessionId: string, errorMessage: string): boolean;
@@ -291,6 +293,33 @@ export function createAgentSessionStore(options: AgentSessionStoreOptions = {}):
       if (!session) return;
       Object.assign(session, updates);
       notifyChange();
+    },
+
+    updateConversationTitleForConversation(conversationId, conversationTitle): number {
+      const normalizedConversationId = conversationId.trim();
+      const normalizedTitle = conversationTitle.trim();
+      if (!normalizedConversationId || !normalizedTitle) return 0;
+
+      let updatedSessionCount = 0;
+      for (const session of sessions.values()) {
+        if (session.conversationId !== normalizedConversationId) continue;
+        if (session.conversationTitle === normalizedTitle) continue;
+        session.conversationTitle = normalizedTitle;
+        updatedSessionCount += 1;
+      }
+
+      for (const session of completedSessions) {
+        if (session.conversationId !== normalizedConversationId) continue;
+        if (session.conversationTitle === normalizedTitle) continue;
+        session.conversationTitle = normalizedTitle;
+        updatedSessionCount += 1;
+      }
+
+      if (updatedSessionCount > 0) {
+        notifyChange();
+      }
+
+      return updatedSessionCount;
     },
 
     completeSession(sessionId, finalActivity): boolean {

@@ -30,6 +30,7 @@ import os from "os"
 import fs from "fs"
 import { WhatsAppSession } from "./session.js"
 import type { WhatsAppConfig, WhatsAppMessage } from "./types.js"
+import { normalizeWhatsAppId } from "./whatsapp-id.js"
 
 // Configuration from environment variables
 const config: WhatsAppConfig = {
@@ -54,15 +55,15 @@ const MAX_PENDING_MESSAGES = 100
  * WhatsApp can return different JID formats for the same chat:
  * - "@s.whatsapp.net" (phone number format)
  * - "@lid" (Linked ID format)
- * This function extracts just the numeric ID to ensure consistency.
+ * Plus a multi-device tag like ":23" before the suffix. This function returns
+ * just the bare numeric ID so the same chat always maps to the same key.
  */
 function normalizeChatId(chatId: string): string {
-  // Strip the @suffix and non-numeric characters to get a consistent key
-  return chatId.replace(/@.*$/, "").replace(/[^0-9]/g, "")
+  return normalizeWhatsAppId(chatId)
 }
 
 function normalizeWhatsAppOperatorIdentity(value: string | undefined): string {
-  return (value || "").replace(/@.*$/, "").replace(/[^0-9]/g, "")
+  return normalizeWhatsAppId(value)
 }
 
 type OperatorCommandMethod = "GET" | "POST"
@@ -1324,7 +1325,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         // Normalize chat ID and search both @s.whatsapp.net and @lid formats
         // Some DMs may be keyed/stored under @lid chat IDs
         let messages: WhatsAppMessage[] = []
-        const numericId = chat_id.replace(/[^0-9]/g, "")
+        const numericId = normalizeWhatsAppId(chat_id)
 
         if (chat_id.includes("@")) {
           // Already has a suffix, use as-is

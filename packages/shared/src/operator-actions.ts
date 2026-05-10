@@ -1671,7 +1671,7 @@ export function parseOperatorDiagnosticReportSaveRequestBody(
     return { ok: false, statusCode: 400, error: "Invalid file path" }
   }
 
-  const filePath = rawFilePath?.trim()
+  const filePath = typeof rawFilePath === "string" ? rawFilePath.trim() : undefined
   return {
     ok: true,
     request: {
@@ -2890,7 +2890,7 @@ export function snoozeOperatorAgentSessionsAndHidePanelAction(
   options: OperatorAgentActionOptions,
 ): OperatorAgentActionResult {
   const parsed = parseOperatorAgentSessionsSnoozeAndHidePanelRequestBody(body)
-  if (!parsed.ok) {
+  if (parsed.ok === false) {
     const response = buildOperatorActionErrorResponse("agent-sessions-snooze-hide-panel", parsed.error)
     return operatorAgentActionResult(parsed.statusCode, response, buildOperatorActionAuditContext(response))
   }
@@ -3030,7 +3030,7 @@ export function showOperatorMainWindowAction(
   options: OperatorDesktopWindowActionOptions,
 ): OperatorDesktopWindowActionResult {
   const parsed = parseOperatorMainWindowShowRequestBody(body)
-  if (!parsed.ok) {
+  if (parsed.ok === false) {
     const response = buildOperatorActionErrorResponse("desktop-main-window-show", parsed.error)
     return operatorDesktopWindowActionResult(parsed.statusCode, response, buildOperatorActionAuditContext(response))
   }
@@ -3178,7 +3178,7 @@ export async function saveOperatorDiagnosticReportAction(
   options: OperatorObservabilityActionOptions,
 ): Promise<OperatorObservabilityActionResult> {
   const parsed = parseOperatorDiagnosticReportSaveRequestBody(body)
-  if (!parsed.ok) {
+  if (parsed.ok === false) {
     const response = buildOperatorActionErrorResponse("operator-save-diagnostic-report", parsed.error)
     return operatorObservabilityActionResult(parsed.statusCode, response, buildOperatorActionAuditContext(response))
   }

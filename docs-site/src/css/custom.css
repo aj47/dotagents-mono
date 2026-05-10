@@ -1,20 +1,21 @@
 /**
  * DotAgents Documentation Theme
  * Matches dotagents.com + dotagentsprotocol.com design system
- * Dark-first · JetBrains Mono + Inter · #0d0d0d bg
+ * Dark-first · JetBrains Mono + Inter · technical operator manual
  */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ── Brand tokens (shared with dotagents.com) ── */
 :root {
-  --da-bg: #0d0d0d;
-  --da-surface: #141414;
-  --da-border: #262626;
-  --da-border-light: #333;
-  --da-fg: #d4d4d4;
-  --da-fg-muted: #9a9a9a;
-  --da-fg-dim: #666;
+  --da-bg: #080a0b;
+  --da-surface: #111518;
+  --da-surface-raised: #151b1f;
+  --da-border: #243038;
+  --da-border-light: #34424a;
+  --da-fg: #d9e0df;
+  --da-fg-muted: #98a5a3;
+  --da-fg-dim: #66706f;
   --da-accent-green: #4ec9b0;
   --da-accent-blue: #569cd6;
   --da-accent-amber: #ce9178;
@@ -22,80 +23,53 @@
   --da-accent-cyan: #9cdcfe;
   --da-accent-violet: #b392f0;
   --da-accent-teal: #73c991;
-  --da-shadow-card: 0 20px 60px rgba(0, 0, 0, 0.3);
+  --da-shadow-card: 0 18px 46px rgba(0, 0, 0, 0.24);
 
   /* Docusaurus overrides – light mode */
-  --ifm-color-primary: #7c3aed;
-  --ifm-color-primary-dark: #6d28d9;
-  --ifm-color-primary-darker: #5b21b6;
-  --ifm-color-primary-darkest: #4c1d95;
-  --ifm-color-primary-light: #8b5cf6;
-  --ifm-color-primary-lighter: #a78bfa;
-  --ifm-color-primary-lightest: #c4b5fd;
+  --ifm-color-primary: #16866f;
+  --ifm-color-primary-dark: #137760;
+  --ifm-color-primary-darker: #106953;
+  --ifm-color-primary-darkest: #0c4d3e;
+  --ifm-color-primary-light: #25a98d;
+  --ifm-color-primary-lighter: #4ec9b0;
+  --ifm-color-primary-lightest: #91e8d3;
   --ifm-code-font-size: 95%;
   --ifm-font-family-base: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --ifm-font-family-monospace: 'JetBrains Mono', ui-monospace, monospace;
   --ifm-heading-font-weight: 700;
-  --docusaurus-highlighted-code-line-bg: rgba(124, 58, 237, 0.1);
+  --docusaurus-highlighted-code-line-bg: rgba(78, 201, 176, 0.12);
 }
 
 /* ── Dark mode – the primary mode ── */
 [data-theme='dark'] {
-  --ifm-color-primary: #b392f0;
-  --ifm-color-primary-dark: #9b74e8;
-  --ifm-color-primary-darker: #8b5cf6;
-  --ifm-color-primary-darkest: #7c3aed;
-  --ifm-color-primary-light: #c4b5fd;
-  --ifm-color-primary-lighter: #ddd6fe;
-  --ifm-color-primary-lightest: #ede9fe;
+  --ifm-color-primary: #4ec9b0;
+  --ifm-color-primary-dark: #31b69a;
+  --ifm-color-primary-darker: #25a98d;
+  --ifm-color-primary-darkest: #16866f;
+  --ifm-color-primary-light: #78dcc6;
+  --ifm-color-primary-lighter: #9eead9;
+  --ifm-color-primary-lightest: #cef7ee;
   --ifm-background-color: var(--da-bg);
   --ifm-background-surface-color: var(--da-surface);
-  --ifm-navbar-background-color: rgba(13, 13, 13, 0.9);
+  --ifm-navbar-background-color: rgba(8, 10, 11, 0.92);
   --ifm-footer-background-color: #0a0a0a;
   --ifm-font-color-base: var(--da-fg);
   --ifm-heading-color: #fff;
   --ifm-link-color: var(--da-accent-cyan);
-  --ifm-link-hover-color: #fff;
+  --ifm-link-hover-color: #f7fffc;
   --ifm-menu-color: var(--da-fg-muted);
   --ifm-menu-color-active: #fff;
   --ifm-toc-link-color: var(--da-fg-muted);
   --ifm-breadcrumb-color-active: #fff;
-  --ifm-tabs-color-active: var(--da-accent-cyan);
+  --ifm-tabs-color-active: var(--da-accent-green);
   --ifm-hr-border-color: var(--da-border);
   --ifm-card-background-color: var(--da-surface);
-  --docusaurus-highlighted-code-line-bg: rgba(179, 146, 240, 0.15);
+  --docusaurus-highlighted-code-line-bg: rgba(78, 201, 176, 0.14);
 }
 
 /* ── Global body ── */
 [data-theme='dark'] body {
   background: var(--da-bg);
-}
-
-/* Subtle ambient glow matching dotagents.com */
-[data-theme='dark'] #__docusaurus::before,
-[data-theme='dark'] #__docusaurus::after {
-  content: '';
-  position: fixed;
-  pointer-events: none;
-  z-index: -1;
-  filter: blur(60px);
-  opacity: 0.18;
-}
-
-[data-theme='dark'] #__docusaurus::before {
-  top: -120px;
-  right: -120px;
-  width: 320px;
-  height: 320px;
-  background: radial-gradient(circle, rgba(179, 146, 240, 0.7) 0%, transparent 68%);
-}
-
-[data-theme='dark'] #__docusaurus::after {
-  left: -120px;
-  top: 30%;
-  width: 280px;
-  height: 280px;
-  background: radial-gradient(circle, rgba(156, 220, 254, 0.45) 0%, transparent 68%);
 }
 
 /* ── Navbar ── */
@@ -111,14 +85,15 @@
 
 .navbar__title {
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 800;
+  letter-spacing: 0;
   color: #fff;
 }
 
 .navbar__link {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+  letter-spacing: 0;
 }
 
 [data-theme='dark'] .navbar__link {
@@ -149,9 +124,9 @@
 
 [data-theme='dark'] .menu__link--active:not(.menu__link--sublist) {
   color: #fff;
-  border-left: 2px solid var(--da-accent-cyan);
+  border-left: 2px solid var(--da-accent-green);
   padding-left: calc(var(--ifm-menu-link-padding-horizontal) - 2px);
-  background: rgba(156, 220, 254, 0.06);
+  background: rgba(78, 201, 176, 0.07);
 }
 
 [data-theme='dark'] .menu__list-item-collapsible:hover {
@@ -165,18 +140,18 @@
 [data-theme='dark'] h4 {
   color: #fff;
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 /* ── Code blocks ── */
 .prism-code {
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 [data-theme='dark'] pre {
   background-color: #101010 !important;
   border: 1px solid var(--da-border) !important;
-  border-radius: 12px !important;
+  border-radius: 8px !important;
 }
 
 [data-theme='dark'] code {
@@ -225,14 +200,14 @@ blockquote {
 }
 
 [data-theme='dark'] blockquote {
-  border-left-color: var(--da-accent-violet);
-  background-color: rgba(179, 146, 240, 0.05);
+  border-left-color: var(--da-accent-amber);
+  background-color: rgba(206, 145, 120, 0.06);
   color: var(--da-fg-muted);
 }
 
 /* ── Admonitions / alerts ── */
 [data-theme='dark'] .alert {
-  border-radius: 12px;
+  border-radius: 8px;
   border-width: 1px;
 }
 
@@ -240,7 +215,7 @@ blockquote {
 [data-theme='dark'] .card {
   border: 1px solid var(--da-border);
   background: var(--da-surface);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: var(--da-shadow-card);
   transition: transform 0.22s ease, border-color 0.22s ease;
 }
@@ -258,7 +233,7 @@ blockquote {
 .footer__title {
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 [data-theme='dark'] .footer__link-item {
@@ -291,7 +266,7 @@ blockquote {
 [data-theme='dark'] .pagination-nav__link {
   border-color: var(--da-border);
   background: var(--da-surface);
-  border-radius: 12px;
+  border-radius: 8px;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
@@ -338,7 +313,7 @@ blockquote {
 /* ── Feature cards (landing page) ── */
 .feature-card {
   padding: 1.5rem;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid var(--da-border);
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }

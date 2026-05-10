@@ -467,7 +467,7 @@ export function parseServerConversationStorageData<
       ...options,
       validateConversationShape,
     });
-    if (repaired.ok) {
+    if (repaired.ok === true) {
       return {
         ok: true,
         conversation: repaired.conversation,

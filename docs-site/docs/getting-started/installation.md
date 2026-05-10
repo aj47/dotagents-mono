@@ -200,7 +200,7 @@ For contributors, or if you want the bleeding-edge development version.
 | Tool | Version | Install |
 |------|---------|--------|
 | **Node.js** | 24.x recommended (min 20.19.4) | [nodejs.org](https://nodejs.org) or `nvm use` |
-| **pnpm** | 9.x | `npm i -g pnpm` |
+| **pnpm** | 9.x | `corepack enable && corepack prepare pnpm@9 --activate` |
 | **Rust** | stable (optional — needed for voice input binary) | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
 | **Xcode** | latest (macOS only, for code signing) | Mac App Store |
 

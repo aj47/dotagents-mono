@@ -1127,8 +1127,7 @@ main() {
     install_release
   fi
 
-  printf "\n${GREEN}${BOLD}Done!${NC} Documentation: ${CYAN}https://docs.dotagents.app${NC}\n\n"
+  printf "\n${GREEN}${BOLD}Done!${NC} Documentation: ${CYAN}https://dotagents.app${NC}\n\n"
 }
 
 main "$@"
-

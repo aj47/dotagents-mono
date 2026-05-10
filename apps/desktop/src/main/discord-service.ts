@@ -1,9 +1,9 @@
 import type { Client, Message } from "discord.js"
 import { configStore } from "./config"
+import { getResolvedRemoteServerApiKey } from "./remote-server-secret"
 import { emergencyStopAll } from "./emergency-stop"
 import { logApp } from "./debug"
 import { agentProfileService } from "./agent-profile-service"
-import { runAgent } from "./agent-run-actions"
 import {
   DEFAULT_DISCORD_ENABLED,
   DEFAULT_DISCORD_DM_ENABLED,
@@ -733,7 +733,7 @@ async function executeDiscordOperatorCommand(command: ParsedOperatorCommand): Pr
   }
 
   const cfg = configStore.get()
-  const apiKey = cfg.remoteServerApiKey?.trim()
+  const apiKey = getResolvedRemoteServerApiKey(cfg)
   const port = cfg.remoteServerPort || DEFAULT_REMOTE_SERVER_PORT
 
   if (!apiKey) {
@@ -1273,6 +1273,7 @@ class DiscordService {
         }
 
         try {
+          const { runAgent } = await import("./remote-server")
           const result = await runAgent({
             prompt: enrichedPrompt,
             conversationId,

@@ -280,8 +280,8 @@ export class ConversationService {
     try {
       const completion = await makeTextCompletionWithFetch(prompt, undefined, sessionId)
       return resolveServerConversationGeneratedTitle(seed, completion, {
-        maxChars: MAX_SESSION_TITLE_CHARS,
-        maxWords: MAX_AGENT_SESSION_TITLE_WORDS,
+        maxTitleChars: MAX_SESSION_TITLE_CHARS,
+        maxTitleWords: MAX_AGENT_SESSION_TITLE_WORDS,
       })
     } catch (error) {
       logApp("[ConversationService] Failed to auto-generate session title:", error)
@@ -655,6 +655,36 @@ export class ConversationService {
     return applyServerConversationMessageLimit(conversation, messageLimit) as LoadedConversation
   }
 
+  private buildDisplayLoadedConversation(
+    conversation: Conversation,
+    messageLimit?: number,
+  ): LoadedConversation {
+    const hasStoredRawMessages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
+    if (!hasStoredRawMessages) {
+      return this.applyConversationMessageLimit(conversation, messageLimit)
+    }
+
+    const displayMessages = this.getStoredRawMessages(conversation)
+    const normalizedLimit = typeof messageLimit === "number" && Number.isFinite(messageLimit)
+      ? Math.max(0, Math.floor(messageLimit ?? 0))
+      : 0
+    const totalMessageCount = displayMessages.length
+    const messageOffset = normalizedLimit > 0
+      ? Math.max(0, totalMessageCount - normalizedLimit)
+      : 0
+    const { rawMessages: _rawMessages, ...conversationWithoutRawMessages } = conversation
+
+    return {
+      ...conversationWithoutRawMessages,
+      messages: normalizedLimit > 0
+        ? displayMessages.slice(messageOffset)
+        : displayMessages,
+      messageOffset,
+      totalMessageCount,
+      branchMessageIndexOffset: messageOffset,
+    }
+  }
+
   private getStoredRawMessages(conversation: Conversation): ConversationMessage[] {
     return getStoredServerConversationMessages(conversation) as ConversationMessage[]
   }
@@ -697,6 +727,18 @@ export class ConversationService {
       const conversation = await this.loadConversationFromDisk(conversationId)
       return conversation
         ? this.applyConversationMessageLimit(conversation, options?.messageLimit)
+        : null
+    })
+  }
+
+  async loadConversationForDisplay(
+    conversationId: string,
+    options?: { messageLimit?: number },
+  ): Promise<LoadedConversation | null> {
+    return this.enqueueConversationMutation(conversationId, async () => {
+      const conversation = await this.loadConversationFromDisk(conversationId)
+      return conversation
+        ? this.buildDisplayLoadedConversation(conversation, options?.messageLimit)
         : null
     })
   }

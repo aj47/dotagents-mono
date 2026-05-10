@@ -88,8 +88,13 @@ class MessageQueueService {
   /**
    * Add a message to the queue for a conversation
    */
-  enqueue(conversationId: string, text: string, sessionId?: string): QueuedMessage {
-    const message = this.queueStore.enqueue(conversationId, text, sessionId)
+  enqueue(
+    conversationId: string,
+    text: string,
+    sessionId?: string,
+    launchState?: QueuedMessage["launchState"],
+  ): QueuedMessage {
+    const message = this.queueStore.enqueue(conversationId, text, sessionId, launchState)
 
     logApp(`[MessageQueueService] Enqueued message for ${conversationId}: ${message.id}`)
     return message

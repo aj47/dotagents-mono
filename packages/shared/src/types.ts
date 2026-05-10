@@ -70,6 +70,13 @@ export interface QueuedMessage {
   conversationId: string;
   /** Session that was active when this message was queued. */
   sessionId?: string;
+  /** Launch-state hints captured when the user queued the message. */
+  launchState?: {
+    fromTile?: boolean;
+    startSnoozed?: boolean;
+    suppressPanelAutoShow?: boolean;
+    focusPanelSession?: boolean;
+  };
   text: string;
   createdAt: number;
   status: 'pending' | 'processing' | 'cancelled' | 'failed';

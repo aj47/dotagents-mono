@@ -152,6 +152,10 @@ class AgentSessionTracker {
     this.store.updateSession(sessionId, updates)
   }
 
+  updateConversationTitleForConversation(conversationId: string, conversationTitle: string): number {
+    return this.store.updateConversationTitleForConversation(conversationId, conversationTitle)
+  }
+
   /**
    * Mark a session as completed and move it to recent sessions
    */

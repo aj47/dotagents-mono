@@ -609,13 +609,12 @@ ACP protocol types
 
 ---
 
-## Website / Landing Page
+## Website / Documentation
 
-The repo now contains a static website in `website/` for `https://dotagents.app`. The project includes:
+The repo now serves `https://dotagents.app` from the Docusaurus app in `docs-site`. The project includes:
 - **Desktop Application**: Electron-based (macOS, Windows, Linux)
 - **Mobile Application**: React Native (Expo)
-- **Website**: Static landing page in `website/`
-- **Documentation**: Markdown files in repo (README.md, DEVELOPMENT.md, AGENTS.md)
+- **Website and documentation**: Docusaurus site in `docs-site/`
 - **External Resources**: Discord, GitHub, techfren.net (referenced but not in repo)
 
 ---
@@ -643,4 +642,3 @@ The result is a **flexible, extensible platform** for AI agent orchestration tha
 - **Shared** across teams and workspaces
 - **Versioned** in git repositories
 - **Composed** into complex multi-agent systems
-

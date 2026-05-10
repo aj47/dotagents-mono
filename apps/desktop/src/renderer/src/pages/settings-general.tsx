@@ -67,9 +67,9 @@ import {
   useConfigQuery,
   useSaveConfigMutation,
 } from "@renderer/lib/queries"
-import { ttsManager } from "@renderer/lib/tts-manager"
 import { desktopAgentsFolderClient } from "@renderer/lib/desktop-agents-folder-client"
 import { desktopSettingsGeneralClient } from "@renderer/lib/desktop-settings-general-client"
+import { desktopTtsClient } from "@renderer/lib/desktop-tts-client"
 import { ExternalLink, FolderOpen, FolderUp, FileText, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -1164,8 +1164,8 @@ export function Component() {
               defaultChecked={configQuery.data.ttsEnabled ?? DEFAULT_TTS_ENABLED}
               onCheckedChange={async (value) => {
                 if (!value) {
-                  ttsManager.stopAll("settings-global-tts-disabled")
                   try {
+                    await desktopTtsClient.controlPlayback({ type: "stop", reason: "settings-global-tts-disabled" })
                     await desktopSettingsGeneralClient.stopAllTts()
                   } catch (error) {
                     console.error("Failed to stop TTS in all windows:", error)
