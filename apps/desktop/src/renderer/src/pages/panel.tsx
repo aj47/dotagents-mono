@@ -494,8 +494,8 @@ export function Component() {
       mcpScreenshotRef.current = undefined
       fromTileRef.current = false
 
-      // If recording was from a tile, hide the floating panel immediately
-      // The session will continue in the tile view
+      // If recording was from a tile, hide the floating panel immediately.
+      // The session continues in the tile view, but it is not forced snoozed.
       if (wasFromTile) {
         tipcClient.hidePanelWindow({})
       }
@@ -509,8 +509,10 @@ export function Component() {
         conversationId: conversationIdForMcp ?? undefined,
         sessionId: sessionIdForMcp,
         screenshot: screenshotForMcp,
-        // Pass fromTile so session starts snoozed when recording was from a tile
+        // Pass fromTile to suppress panel auto-show; keep interactive tile
+        // recordings unsnoozed so their replies can TTS autoplay.
         fromTile: wasFromTile,
+        startSnoozed: false,
       })
 
       // NOTE: Do NOT call continueConversation here!

@@ -11,7 +11,7 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://docs.dotagents.app',
+  url: 'https://dotagents.app',
   baseUrl: '/',
 
   organizationName: 'aj47',
@@ -65,17 +65,32 @@ const config: Config = {
           type: 'docSidebar',
           sidebarId: 'docsSidebar',
           position: 'left',
-          label: 'Docs',
+          label: 'All docs',
         },
         {
-          href: 'https://dotagents.app',
-          label: 'Website',
+          to: '/getting-started/quickstart',
+          label: 'Get started',
+          position: 'left',
+        },
+        {
+          to: '/agents/profiles',
+          label: 'Agents',
+          position: 'left',
+        },
+        {
+          to: '/tools/mcp',
+          label: 'Tools',
+          position: 'left',
+        },
+        {
+          to: '/reference/api',
+          label: 'Reference',
           position: 'left',
         },
         {
           href: 'https://dotagentsprotocol.com',
           label: 'Protocol',
-          position: 'left',
+          position: 'right',
         },
         {
           href: 'https://discord.gg/cK9WeQ7jPq',
@@ -117,7 +132,7 @@ const config: Config = {
               to: '/concepts/architecture',
             },
             {
-              label: 'Agent System',
+              label: 'Agents',
               to: '/agents/profiles',
             },
             {
@@ -136,10 +151,6 @@ const config: Config = {
             {
               label: 'GitHub',
               href: 'https://github.com/aj47/dotagents-mono',
-            },
-            {
-              label: 'Website',
-              href: 'https://dotagents.app',
             },
             {
               label: 'Protocol',

@@ -99,6 +99,39 @@ See [Remote Server & Mobile Pairing](/desktop/remote-server) for setup and secur
 | **Cloudflare Tunnel Mode** | Quick tunnel or named tunnel | Quick tunnel |
 | **Terminal QR** | Print QR payloads for headless pairing | Auto for QR/headless flows |
 
+## Messaging Integration Settings
+
+### Discord
+
+See [Discord Integration](/tools/discord) for setup and access-control guidance.
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Discord Enabled** | Starts or stops the Discord bot integration | `false` |
+| **Bot Token** | Discord bot token; can also come from `DOTAGENTS_DISCORD_BOT_TOKEN` | — |
+| **Allow Direct Messages** | Lets trusted users message the bot directly | `true` |
+| **Require Mention** | Requires bot mentions in guild channels | `true` in shared-channel deployments |
+| **Allow User IDs** | Users allowed to chat with the bot | Empty |
+| **Allow Guild IDs** | Guilds allowed to chat with the bot | Empty |
+| **Allow Channel IDs** | Channels allowed to chat with the bot | Empty |
+| **Allow Role IDs** | Roles allowed to chat with the bot | Empty |
+| **DM Allow User IDs** | Optional narrower user list for direct messages | Empty |
+| **Operator Allow User/Guild/Channel/Role IDs** | Separate allowlists for privileged `/ops` commands | Empty |
+| **Default Profile ID** | Agent profile used for Discord messages; can also come from `DOTAGENTS_DISCORD_DEFAULT_PROFILE_ID` | — |
+| **Log Messages** | Store Discord message content in integration logs | `false` |
+
+### WhatsApp
+
+See [WhatsApp Integration](/tools/whatsapp) for MCP setup and environment variables.
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **WhatsApp Enabled** | Enables the desktop integration controls for the WhatsApp MCP server | `false` |
+| **Allow From** | Phone numbers allowed to message the agent | Empty |
+| **Operator Allow From** | Phone numbers allowed to run `/ops` commands | Empty |
+| **Auto Reply** | Automatically route incoming messages to an agent reply flow | `false` |
+| **Log Messages** | Store WhatsApp message content in integration logs | `false` |
+
 ## Loop Settings
 
 | Setting | Description |

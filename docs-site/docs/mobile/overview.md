@@ -21,6 +21,7 @@ Built with Expo SDK 54 and React Native, the mobile app provides a portable inte
 - Agent profile management
 - Knowledge note editing
 - Loop (recurring task) scheduling
+- Operator dashboard for health checks, logs, tunnels, integrations, updater, and emergency actions
 - Session history with search
 - QR code connection setup
 - Split chat view for multi-agent conversations
@@ -103,6 +104,16 @@ Schedule recurring tasks:
 - Set the interval (e.g., every 5 minutes, every hour)
 - Choose which agent handles the loop
 - Start, pause, and monitor loops
+
+### Operations Screen
+
+Trusted operator dashboard backed by the desktop remote server:
+
+- View runtime status, health checks, recent errors, and audit events
+- Inspect Cloudflare Tunnel, Discord, WhatsApp, push, updater, and MCP status
+- Start or stop tunnel exposure
+- Connect or disconnect Discord and WhatsApp integrations
+- Trigger updater checks, reveal downloads, restart MCP services, restart the remote server, restart the app, or run an agent
 
 ### Split Chat Screen
 
@@ -188,6 +199,7 @@ Multi-agent conversation view:
 | `config.ts` | Persistent settings (API key, URLs, voice prefs) |
 | `sessions.ts` | Local session history |
 | `connectionManager.ts` | Connection pooling and recovery |
+| `tunnelConnection.ts` | Tunnel status and reconnect state |
 | `profile.ts` | Agent profile state |
 | `message-queue.ts` | Queued messages for offline/slow processing |
 
@@ -264,6 +276,7 @@ pnpm --filter @dotagents/mobile ios
 | Web speech not working | Use Chrome or Edge over HTTPS |
 | Cannot list agents | Verify Manage API URL and API key |
 | No assistant response | Check Run API URL and model setting |
+| Operations actions fail | Confirm the desktop remote server is reachable and the operator allowlists/API key are correct |
 
 ---
 

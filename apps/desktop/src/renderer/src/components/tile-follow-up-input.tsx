@@ -107,15 +107,19 @@ export function TileFollowUpInput({
     mutationFn: async (message: string) => {
       if (!conversationId) {
         // Start a new conversation if none exists
-        // Mark as fromTile so the floating panel doesn't show - session continues in the tile
-        return await tipcClient.createMcpTextInput({ text: message, fromTile: true })
+        // Mark as fromTile to suppress the floating panel while keeping the
+        // interactive tile session foreground/audible for TTS autoplay.
+        return await tipcClient.createMcpTextInput({ text: message, fromTile: true, startSnoozed: false })
       } else {
         // Continue the existing conversation
-        // Mark as fromTile so the floating panel doesn't show - session continues in the tile
+        // Mark as fromTile to suppress the floating panel while keeping the
+        // interactive tile session foreground/audible for TTS autoplay.
         return await tipcClient.createMcpTextInput({
           text: message,
           conversationId,
+          sessionId,
           fromTile: true,
+          startSnoozed: false,
         })
       }
     },
@@ -459,4 +463,3 @@ export function TileFollowUpInput({
     </form>
   )
 }
-

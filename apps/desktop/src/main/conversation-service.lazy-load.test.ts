@@ -85,6 +85,63 @@ describe("conversation lazy loading", () => {
     expect(loaded).not.toHaveProperty("rawMessages")
   })
 
+  it("loads display windows from preserved raw history after compaction", async () => {
+    const service = await setupConversationServiceTest()
+    const rawMessages = Array.from({ length: 25 }, (_, index) => ({
+      id: `r${index}`,
+      role: index % 2 === 0 ? "user" as const : "assistant" as const,
+      content: `Raw ${index}`,
+      timestamp: 1_700_000_000_000 + index,
+    }))
+
+    await service.saveConversation({
+      id: "conv_lazy_raw_window",
+      title: "Lazy raw window",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [
+        {
+          id: "summary-1",
+          role: "assistant",
+          content: "Summary",
+          timestamp: 1,
+          isSummary: true,
+          summarizedMessageCount: 15,
+        },
+        ...rawMessages.slice(15),
+      ],
+      rawMessages,
+      compaction: {
+        rawHistoryPreserved: true,
+        storedRawMessageCount: rawMessages.length,
+        representedMessageCount: rawMessages.length,
+        summary: "Summary",
+        firstKeptMessageIndex: 15,
+        summarizedRange: { startIndex: 0, endIndex: 14 },
+        summarizedMessageCount: 15,
+      },
+    }, true)
+
+    const loadedWindow = await service.loadConversationForDisplay("conv_lazy_raw_window", { messageLimit: 5 })
+    const loadedFull = await service.loadConversationForDisplay("conv_lazy_raw_window")
+
+    expect(loadedWindow?.messages.map((message) => message.content)).toEqual([
+      "Raw 20",
+      "Raw 21",
+      "Raw 22",
+      "Raw 23",
+      "Raw 24",
+    ])
+    expect(loadedWindow?.messageOffset).toBe(20)
+    expect(loadedWindow?.totalMessageCount).toBe(25)
+    expect(loadedWindow?.branchMessageIndexOffset).toBe(20)
+    expect(loadedWindow).not.toHaveProperty("rawMessages")
+
+    expect(loadedFull?.messages[0]?.content).toBe("Raw 0")
+    expect(loadedFull?.messages).toHaveLength(25)
+    expect(loadedFull).not.toHaveProperty("rawMessages")
+  })
+
   it("persists display-only message content separately from canonical content", async () => {
     const service = await setupConversationServiceTest()
     await service.saveConversation({

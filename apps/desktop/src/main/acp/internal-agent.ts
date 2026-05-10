@@ -23,7 +23,10 @@ import { skillsService } from '../skills-service';
 import { agentProfileService, createSessionSnapshotFromProfile } from '../agent-profile-service';
 import { getPreferredDelegationOutput } from '../agent-run-utils';
 import { configStore } from '../config';
+import { conversationService } from '../conversation-service';
+import { messageQueueService } from '../message-queue-service';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
+import { countPersistedSeedMessages, resolveQueuedSubSessionTarget } from './internal-agent-utils';
 import { stringifySubAgentToolResultContent } from '@shared/delegation-tool-display'
 import type { AgentProgressUpdate, SessionProfileSnapshot, ACPDelegationProgress, ACPSubAgentMessage, ConversationMessage, AgentProfile } from '../../shared/types';
 import type { MCPToolCall, MCPToolResult } from '../mcp-service';
@@ -61,6 +64,8 @@ const DEFAULT_SUB_SESSION_MAX_ITERATIONS = 10;
 export interface InternalSubSession {
   /** Unique ID for this sub-session */
   id: string;
+  /** UI delegation run ID. Changes when a completed sub-session is continued. */
+  delegationRunId?: string;
   /** Parent session ID that spawned this sub-session */
   parentSessionId: string;
   /** Parent session run ID captured when this sub-session started */
@@ -83,6 +88,8 @@ export interface InternalSubSession {
   agentDisplayName?: string;
   /** DotAgents conversation ID used for stateful agent context */
   conversationId?: string;
+  /** Profile snapshot used by the sub-session, retained for continuations. */
+  profileSnapshot?: SessionProfileSnapshot;
   /** Conversation history for this sub-session */
   conversationHistory: ACPSubAgentMessage[];
 }
@@ -150,6 +157,171 @@ export function getChildSubSessions(parentSessionId: string): InternalSubSession
     .filter((s): s is InternalSubSession => s !== undefined);
 }
 
+/**
+ * Get all retained sub-sessions for a parent, including completed children
+ * whose parent link was removed after the run ended but can still receive
+ * queued follow-up continuations.
+ */
+export function getAllSubSessionsForParent(parentSessionId: string): InternalSubSession[] {
+  return Array.from(activeSubSessions.values())
+    .filter(subSession => subSession.parentSessionId === parentSessionId);
+}
+
+/**
+ * Get an internal sub-session by ID, including completed/cancelled sub-sessions
+ * retained for UI history and follow-up continuations.
+ */
+export function getInternalSubSession(subSessionId: string): InternalSubSession | undefined {
+  return activeSubSessions.get(subSessionId);
+}
+
+function toAgentConversationHistory(history: ACPSubAgentMessage[]): Array<{
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  timestamp?: number;
+}> {
+  return history.map(msg => ({
+    role: msg.role,
+    content: msg.content,
+    timestamp: msg.timestamp,
+  }));
+}
+
+function addParentChildLink(parentSessionId: string, subSessionId: string): void {
+  if (!parentToChildren.has(parentSessionId)) {
+    parentToChildren.set(parentSessionId, new Set());
+  }
+  parentToChildren.get(parentSessionId)!.add(subSessionId);
+}
+
+function removeParentChildLink(parentSessionId: string, subSessionId: string): void {
+  const children = parentToChildren.get(parentSessionId);
+  if (children) {
+    children.delete(subSessionId);
+  }
+}
+
+async function appendMissingSeedMessages(
+  conversationId: string,
+  seedHistory: ACPSubAgentMessage[],
+  startIndex: number,
+): Promise<void> {
+  for (const message of seedHistory.slice(startIndex)) {
+    const updatedConversation = await conversationService.addMessageToConversation(
+      conversationId,
+      message.content,
+      message.role,
+    );
+    if (!updatedConversation) {
+      throw new Error(`Failed to persist ${message.role} seed message to conversation ${conversationId}`);
+    }
+  }
+}
+
+async function ensureDedicatedSubSessionConversation(
+  subSession: InternalSubSession,
+  seedHistory: ACPSubAgentMessage[],
+): Promise<string | undefined> {
+  const parentConversationId = agentSessionTracker.getConversationIdForSession(subSession.parentSessionId);
+  if (subSession.conversationId && subSession.conversationId !== parentConversationId) {
+    const conversation = await conversationService.loadConversation(subSession.conversationId);
+    if (conversation) {
+      const persistedMessages = conversation.rawMessages ?? conversation.messages ?? [];
+      const persistedSeedCount = countPersistedSeedMessages(seedHistory, persistedMessages);
+      await appendMissingSeedMessages(subSession.conversationId, seedHistory, persistedSeedCount);
+      return subSession.conversationId;
+    }
+
+    delete subSession.conversationId;
+  }
+
+  const firstMessage = seedHistory.find(msg => msg.role === 'user' || msg.role === 'assistant');
+  if (!firstMessage) {
+    return subSession.conversationId;
+  }
+
+  const conversation = await conversationService.createConversation(
+    firstMessage.content,
+    firstMessage.role === 'assistant' ? 'assistant' : 'user',
+  );
+  subSession.conversationId = conversation.id;
+
+  const firstMessageIndex = seedHistory.indexOf(firstMessage);
+  await appendMissingSeedMessages(conversation.id, seedHistory, firstMessageIndex + 1);
+
+  return conversation.id;
+}
+
+async function drainQueuedInternalSubSessionMessages(subSessionId: string): Promise<void> {
+  const subSession = activeSubSessions.get(subSessionId);
+  const conversationId = subSession?.conversationId;
+  if (!subSession || !conversationId) {
+    return;
+  }
+
+  if (!messageQueueService.tryAcquireProcessingLock(conversationId)) {
+    return;
+  }
+
+  try {
+    while (true) {
+      const queuedMessage = messageQueueService.peek(conversationId);
+      if (!queuedMessage) {
+        return;
+      }
+
+      const targetResolution = resolveQueuedSubSessionTarget(
+        subSessionId,
+        conversationId,
+        queuedMessage.sessionId,
+        id => activeSubSessions.get(id),
+      );
+      if (targetResolution.status === 'failed') {
+        messageQueueService.markFailed(conversationId, queuedMessage.id, targetResolution.error);
+        return;
+      }
+      if (targetResolution.status === 'wait') {
+        logSubSession(
+          `Queue head ${queuedMessage.id} for ${conversationId} belongs to active ${targetResolution.subSessionId}; waiting for that sub-session to drain it`,
+        );
+        return;
+      }
+
+      if (targetResolution.subSessionId !== subSessionId) {
+        logSubSession(
+          `Queue head ${queuedMessage.id} for ${conversationId} belongs to ${targetResolution.subSessionId}; routing FIFO drain from ${subSessionId}`,
+        );
+      }
+
+      if (!messageQueueService.markProcessing(conversationId, queuedMessage.id)) {
+        continue;
+      }
+
+      const result = await continueInternalSubSession(targetResolution.subSessionId, queuedMessage.text);
+      if (!result.success) {
+        messageQueueService.markFailed(
+          conversationId,
+          queuedMessage.id,
+          result.error || `Failed to continue internal sub-session ${targetResolution.subSessionId}`,
+        );
+        return;
+      }
+
+      messageQueueService.markProcessed(conversationId, queuedMessage.id);
+    }
+  } finally {
+    messageQueueService.releaseProcessingLock(conversationId);
+  }
+}
+
+function scheduleQueuedInternalSubSessionDrain(subSessionId: string): void {
+  setTimeout(() => {
+    drainQueuedInternalSubSessionMessages(subSessionId).catch(error => {
+      logSubSession(`Failed to drain queued messages for ${subSessionId}:`, error);
+    });
+  }, 0);
+}
+
 // ============================================================================
 // Sub-Session Execution
 // ============================================================================
@@ -188,8 +360,9 @@ function emitSubSessionDelegationProgress(
   // Build delegation progress
   // Use the agent display name stored in the sub-session, falling back to 'Internal'
   const agentName = subSession.agentDisplayName || 'Internal';
+  const delegationRunId = subSession.delegationRunId ?? subSession.id;
   const delegationProgress: ACPDelegationProgress = {
-    runId: subSession.id,
+    runId: delegationRunId,
     agentName,
     connectionType: 'internal',
     task: subSession.task,
@@ -221,7 +394,7 @@ function emitSubSessionDelegationProgress(
     isComplete: false,
     steps: [
       {
-        id: `delegation-${subSession.id}`,
+        id: `delegation-${delegationRunId}`,
         type: 'completion',
         title: `Sub-Agent: ${agentName}`,
         description: subSession.task.length > 100
@@ -343,10 +516,7 @@ export async function runInternalSubSession(
   setSessionDepth(subSessionId, subSessionDepth);
 
   // Track parent -> child relationship
-  if (!parentToChildren.has(parentSessionId)) {
-    parentToChildren.set(parentSessionId, new Set());
-  }
-  parentToChildren.get(parentSessionId)!.add(subSessionId);
+  addParentChildLink(parentSessionId, subSessionId);
 
   const agentIdentifier = agentProfile?.name ?? agentProfileName;
   logSubSession(`Starting sub-session ${subSessionId} (depth: ${subSessionDepth}, parent: ${parentSessionId}${agentIdentifier ? `, agent: ${agentIdentifier}` : ''})`);
@@ -430,6 +600,7 @@ export async function runInternalSubSession(
       ?? agentSessionStateManager.getSessionProfileSnapshot(parentSessionId)
       ?? agentSessionTracker.getSessionProfileSnapshot(parentSessionId);
   }
+  subSession.profileSnapshot = effectiveProfileSnapshot;
 
   setAcpToAppSessionMapping(subSessionId, parentSessionId, subSession.parentRunId, { registerAppSession: true });
 
@@ -601,18 +772,17 @@ export async function runInternalSubSession(
       conversationId = agentProfile?.conversationId;
     }
 
-    // Fallback: if no conversationId from profile, inherit from parent session
-    // This ensures Langfuse traces for sub-sessions are grouped with their parent
-    if (!conversationId) {
-      conversationId = agentSessionTracker.getConversationIdForSession(parentSessionId);
-    }
-
     // Determine effective max iterations: explicit value > config unlimited > config max > default
     const cfg = configStore.get();
     const effectiveSubSessionMaxIterations = maxIterations
       ?? (cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? DEFAULT_SUB_SESSION_MAX_ITERATIONS));
 
     subSession.conversationId = conversationId;
+    try {
+      await ensureDedicatedSubSessionConversation(subSession, subSession.conversationHistory);
+    } catch (error) {
+      logSubSession(`Failed to create dedicated conversation for ${subSessionId}, continuing without persistence:`, error);
+    }
 
     const result = await processTranscriptWithAgentMode(
       fullPrompt,
@@ -620,7 +790,7 @@ export async function runInternalSubSession(
       executeToolCall,
       effectiveSubSessionMaxIterations,
       previousConversationHistory, // Pass previous history for stateful agents
-      conversationId, // Use appropriate conversation ID if stateful
+      subSession.conversationId, // Use a sub-session-specific conversation when available
       subSessionId,
       subSessionOnProgress,
       effectiveProfileSnapshot
@@ -729,10 +899,244 @@ export async function runInternalSubSession(
     lastEmitTime.delete(subSessionId);
     
     // Clean up parent-child relationship to prevent MAX_CONCURRENT_SUB_SESSIONS from becoming a lifetime limit
-    const children = parentToChildren.get(parentSessionId);
-    if (children) {
-      children.delete(subSessionId);
+    removeParentChildLink(parentSessionId, subSessionId);
+    scheduleQueuedInternalSubSessionDrain(subSessionId);
+  }
+}
+
+export async function continueInternalSubSession(
+  subSessionId: string,
+  message: string,
+  options: { maxIterations?: number } = {},
+): Promise<SubSessionResult> {
+  const subSession = activeSubSessions.get(subSessionId);
+  if (!subSession) {
+    return {
+      success: false,
+      subSessionId,
+      error: `Internal sub-session not found: ${subSessionId}`,
+      conversationHistory: [],
+      duration: 0,
+    };
+  }
+
+  if (subSession.status === 'running' || subSession.status === 'pending') {
+    return {
+      success: false,
+      subSessionId,
+      conversationId: subSession.conversationId,
+      error: `Internal sub-session ${subSessionId} is already running`,
+      conversationHistory: subSession.conversationHistory,
+      duration: 0,
+    };
+  }
+
+  const parentSessionId = subSession.parentSessionId;
+  const startedAt = Date.now();
+  const previousConversationHistory = toAgentConversationHistory(subSession.conversationHistory);
+  const historyLengthBeforeContinuation = subSession.conversationHistory.length;
+  const effectiveProfileSnapshot = subSession.profileSnapshot
+    ?? agentSessionStateManager.getSessionProfileSnapshot(parentSessionId)
+    ?? agentSessionTracker.getSessionProfileSnapshot(parentSessionId);
+
+  subSession.status = 'running';
+  subSession.startTime = startedAt;
+  delete subSession.endTime;
+  delete subSession.error;
+  delete subSession.result;
+  subSession.delegationRunId = `${subSession.id}:turn:${startedAt}`;
+  subSession.profileSnapshot = effectiveProfileSnapshot;
+  subSession.parentRunId = agentSessionStateManager.getSessionRunId(parentSessionId);
+
+  addParentChildLink(parentSessionId, subSessionId);
+  setAcpToAppSessionMapping(subSessionId, parentSessionId, subSession.parentRunId, { registerAppSession: true });
+  agentSessionStateManager.createSession(subSessionId, effectiveProfileSnapshot);
+
+  try {
+    await ensureDedicatedSubSessionConversation(subSession, subSession.conversationHistory);
+  } catch (error) {
+    logSubSession(`Failed to create dedicated conversation for ${subSessionId}, continuing without persistence:`, error);
+  }
+
+  subSession.conversationHistory.push({
+    role: 'user',
+    content: message,
+    timestamp: startedAt,
+  });
+
+  emitSubSessionDelegationProgress(subSession, parentSessionId);
+
+  try {
+    const availableTools = effectiveProfileSnapshot?.mcpServerConfig
+      ? mcpService.getAvailableToolsForProfile(effectiveProfileSnapshot.mcpServerConfig)
+      : mcpService.getAvailableTools();
+
+    const executeToolCall = async (
+      toolCall: MCPToolCall,
+      toolOnProgress?: (message: string) => void
+    ): Promise<MCPToolResult> => {
+      if (agentSessionStateManager.shouldStopSession(subSessionId)) {
+        return {
+          content: [{ type: 'text', text: 'Sub-session was stopped.' }],
+          isError: true,
+        };
+      }
+
+      const result = await mcpService.executeToolCall(
+        toolCall,
+        toolOnProgress,
+        false,
+        subSessionId,
+        effectiveProfileSnapshot?.mcpServerConfig
+      );
+
+      subSession.conversationHistory.push({
+        role: 'tool',
+        toolName: toolCall.name,
+        toolInput: toolCall.arguments,
+        content: stringifySubAgentToolResultContent(result.content),
+        timestamp: Date.now(),
+      });
+
+      emitSubSessionDelegationProgress(subSession, parentSessionId);
+      return result;
+    };
+
+    const subSessionOnProgress = (update: AgentProgressUpdate) => {
+      const taggedUpdate: AgentProgressUpdate = {
+        ...update,
+        sessionId: subSessionId,
+        parentSessionId,
+      };
+
+      emitAgentProgress(taggedUpdate).catch(err => {
+        logSubSession('Failed to emit tagged sub-session continuation progress:', err);
+      });
+
+      if (update.conversationHistory) {
+        const lastMsg = update.conversationHistory[update.conversationHistory.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant' && lastMsg.content) {
+          const lastHistoryMsg = subSession.conversationHistory[subSession.conversationHistory.length - 1];
+          const isDuplicate = lastHistoryMsg &&
+            lastHistoryMsg.role === 'assistant' &&
+            lastHistoryMsg.content === lastMsg.content;
+          if (!isDuplicate) {
+            subSession.conversationHistory.push({
+              role: 'assistant',
+              content: lastMsg.content,
+              timestamp: lastMsg.timestamp || Date.now(),
+            });
+          }
+        }
+      }
+
+      emitSubSessionDelegationProgress(subSession, parentSessionId);
+    };
+
+    const cfg = configStore.get();
+    const effectiveSubSessionMaxIterations = options.maxIterations
+      ?? (cfg.mcpUnlimitedIterations ? Infinity : (cfg.mcpMaxIterations ?? DEFAULT_SUB_SESSION_MAX_ITERATIONS));
+
+    const result = await processTranscriptWithAgentMode(
+      message,
+      availableTools,
+      executeToolCall,
+      effectiveSubSessionMaxIterations,
+      previousConversationHistory,
+      subSession.conversationId,
+      subSessionId,
+      subSessionOnProgress,
+      effectiveProfileSnapshot,
+    );
+
+    const currentSubSession = activeSubSessions.get(subSessionId);
+    const wasCancelled = currentSubSession?.status === 'cancelled';
+
+    if (currentSubSession && !wasCancelled) {
+      const resolvedResultContent = getPreferredDelegationOutput(result.content, subSession.conversationHistory);
+      currentSubSession.status = 'completed';
+      currentSubSession.endTime = Date.now();
+      currentSubSession.result = resolvedResultContent;
+
+      const existingFinal = subSession.conversationHistory.find(
+        m => m.role === 'assistant' && m.content === resolvedResultContent
+      );
+      if (!existingFinal) {
+        subSession.conversationHistory.push({
+          role: 'assistant',
+          content: resolvedResultContent,
+          timestamp: Date.now(),
+        });
+      }
+
+      try {
+        await ensureDedicatedSubSessionConversation(subSession, subSession.conversationHistory);
+      } catch (error) {
+        logSubSession(`Failed to persist continuation history for ${subSessionId}:`, error);
+      }
     }
+
+    if (wasCancelled) {
+      subSession.conversationHistory.splice(historyLengthBeforeContinuation);
+    }
+
+    emitSubSessionDelegationProgress(subSession, parentSessionId);
+
+    if (wasCancelled) {
+      logSubSession(`Sub-session ${subSessionId} continuation was cancelled`);
+      return {
+        success: false,
+        subSessionId,
+        conversationId: subSession.conversationId,
+        error: 'Sub-session was cancelled',
+        conversationHistory: subSession.conversationHistory,
+        duration: Date.now() - startedAt,
+      };
+    }
+
+    logSubSession(`Sub-session ${subSessionId} continuation completed successfully`);
+
+    return {
+      success: true,
+      subSessionId,
+      conversationId: subSession.conversationId,
+      result: getPreferredDelegationOutput(result.content, subSession.conversationHistory),
+      conversationHistory: subSession.conversationHistory,
+      duration: Date.now() - startedAt,
+    };
+  } catch (error) {
+    const currentSubSession = activeSubSessions.get(subSessionId);
+    const wasCancelled = currentSubSession?.status === 'cancelled' || isExpectedCancellationError(error);
+
+    subSession.status = wasCancelled ? 'cancelled' : 'failed';
+    subSession.endTime = Date.now();
+    subSession.error = wasCancelled
+      ? 'Sub-session was cancelled'
+      : error instanceof Error ? error.message : String(error);
+
+    subSession.conversationHistory.splice(historyLengthBeforeContinuation);
+    emitSubSessionDelegationProgress(subSession, parentSessionId);
+
+    if (wasCancelled) {
+      logSubSession(`Sub-session ${subSessionId} continuation was cancelled`);
+    } else {
+      logSubSession(`Sub-session ${subSessionId} continuation failed:`, error);
+    }
+
+    return {
+      success: false,
+      subSessionId,
+      conversationId: subSession.conversationId,
+      error: subSession.error,
+      conversationHistory: subSession.conversationHistory,
+      duration: Date.now() - startedAt,
+    };
+  } finally {
+    agentSessionStateManager.cleanupSession(subSessionId);
+    clearAcpToAppSessionMapping(subSessionId);
+    lastEmitTime.delete(subSessionId);
+    removeParentChildLink(parentSessionId, subSessionId);
+    scheduleQueuedInternalSubSessionDrain(subSessionId);
   }
 }
 
@@ -755,10 +1159,7 @@ export function cancelSubSession(subSessionId: string): boolean {
   emitSubSessionDelegationProgress(subSession, subSession.parentSessionId);
 
   // Clean up parent-child relationship to prevent MAX_CONCURRENT_SUB_SESSIONS from becoming a lifetime limit
-  const children = parentToChildren.get(subSession.parentSessionId);
-  if (children) {
-    children.delete(subSessionId);
-  }
+  removeParentChildLink(subSession.parentSessionId, subSessionId);
 
   logSubSession(`Sub-session ${subSessionId} cancelled`);
   return true;

@@ -40,7 +40,6 @@ import { AgentSummaryView } from "./agent-summary-view"
 import { LoadingSpinner } from "./ui/loading-spinner"
 import { extractSubAgentToolDisplayContent } from "@shared/delegation-tool-display"
 import { buildContentTTSKey, buildResponseEventTTSKey, consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
-import { ttsManager } from "@renderer/lib/tts-manager"
 import { sanitizeMessageContentForDisplay, sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
 import { toast } from "sonner"
 import {
@@ -98,6 +97,7 @@ type DisplayItem =
       isComplete: boolean
       timestamp: number
       isThinking: boolean
+      isAssistantThought?: boolean
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
       responseEvent?: AgentUserResponseEvent
@@ -731,14 +731,13 @@ function normalizeAssistantResponseForDedupe(content: string | undefined): strin
 }
 
 function shouldAutoPlayTTSForVariant(
-  variant: "default" | "overlay" | "tile",
+  _variant: "default" | "overlay" | "tile",
   isSnoozed: boolean,
-  isFocused: boolean = false,
-  isFloatingPanelVisible: boolean = false,
 ): boolean {
-  // The floating panel owns TTS auto-play while it is visible. Tile surfaces
-  // in the main window defer so the same session isn't spoken twice.
-  if (variant === "tile") return isFocused && !isFloatingPanelVisible
+  // TTS playback ownership is centralized in the main renderer, so focus no
+  // longer decides whether a tile may request auto-play. The central
+  // coordinator prevents duplicate/overlapping speech. Snoozed/background
+  // sessions stay quiet until they are unsnoozed/revealed.
   return !isSnoozed
 }
 
@@ -774,6 +773,7 @@ type CompactMessageProps = {
     content: string
     isComplete?: boolean
     isThinking?: boolean
+    isAssistantThought?: boolean
     toolCalls?: Array<{ name: string; arguments: any }>
     toolResults?: Array<{ success: boolean; content: string; error?: string }>
     timestamp: number
@@ -786,14 +786,16 @@ type CompactMessageProps = {
   wasStopped?: boolean
   isExpanded: boolean
   onToggleExpand: () => void
-  /** Variant controls TTS auto-play; tile variants only auto-play when focused. */
+  /** Variant controls TTS presentation; focus does not gate centralized auto-play. */
   variant?: "default" | "overlay" | "tile"
-  /** Focused session tiles are the primary conversation surface and may auto-play TTS. */
+  /** Focused session tiles are the primary conversation surface for layout/scrolling. */
   isFocused?: boolean
   /** Session ID for tracking TTS playback across remounts */
   sessionId?: string
-  /** Snoozed/background sessions must never auto-play overlay TTS */
+  /** Snoozed/background sessions must not auto-play TTS */
   isSnoozed?: boolean
+  /** True when the parent session surface observed this run while it was live. */
+  parentObservedLiveProgress?: boolean
   /** Conversation ID for branching */
   conversationId?: string
   /** Absolute raw-history index to use when branching from this message */
@@ -805,7 +807,7 @@ type CompactMessageProps = {
 }
 
 // Compact message component for space efficiency
-const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", isFocused = false, sessionId, isSnoozed = false, conversationId, branchMessageIndex, turnDurationMs, turnIsLive }) => {
+const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, isLast, isComplete, hasErrors, wasStopped = false, isExpanded, onToggleExpand, variant = "default", isFocused = false, sessionId, isSnoozed = false, parentObservedLiveProgress = false, conversationId, branchMessageIndex, turnDurationMs, turnIsLive }) => {
   const messageVariant = normalizeProgressVariant(variant)
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null)
   const [audioMimeType, setAudioMimeType] = useState<string | null>(null)
@@ -819,13 +821,12 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const inFlightTtsKeysRef = useRef<string[]>([])
   // Track the last ttsSource that was successfully auto-played to prevent replay on follow-up messages
   const lastAutoPlayedSourceRef = useRef<string | null>(null)
-  // Track whether the agent's progress was ever observed in a non-complete state during
-  // this component's lifetime. Live runs (including mid-turn respond_to_user emissions)
-  // always pass through `isComplete=false` first; reopened/historical sessions mount with
-  // `isComplete=true` from the start. Auto-play is gated on having observed an active run.
+  // Track whether this message instance, or its parent session surface, ever observed
+  // the agent in a non-complete state. Final assistant messages can be created only
+  // after completion, so parentObservedLiveProgress keeps live-session final replies
+  // eligible for autoplay while reopened history still stays quiet.
   const observedLiveProgressRef = useRef(false)
   const configQuery = useConfigQuery()
-  const isFloatingPanelVisible = useAgentStore((s) => s.isFloatingPanelVisible)
 
   // Cleanup copy timeout on unmount
   // NOTE: We intentionally do NOT remove TTS tracking keys on unmount.
@@ -904,8 +905,13 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const ttsGenerationIdRef = useRef(0)
 
   // TTS functionality
-  const generateAudio = async (): Promise<ArrayBuffer> => {
+  const generateAudio = async (): Promise<{ audio: ArrayBuffer; mimeType: string }> => {
     if (!configQuery.data?.ttsEnabled) {
+      logUI("[AgentProgress][TTS] generateAudio blocked because TTS disabled", {
+        playbackId,
+        sessionId,
+        textPreview: ttsSource.slice(0, 80),
+      })
       throw new Error("TTS is not enabled")
     }
 
@@ -916,8 +922,22 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     setTtsError(null)
 
     try {
+      logUI("[AgentProgress][TTS] generateSpeech start", {
+        playbackId,
+        sessionId,
+        generationId,
+        textLength: generationSource.length,
+        textPreview: generationSource.slice(0, 80),
+      })
       const result = await tipcClient.generateSpeech({
         text: generationSource,
+      })
+      logUI("[AgentProgress][TTS] generateSpeech success", {
+        playbackId,
+        sessionId,
+        generationId,
+        mimeType: result.mimeType,
+        audioByteLength: result.audio?.byteLength,
       })
 
       // Ignore stale completions if the TTS source changed while this request was in-flight.
@@ -925,14 +945,27 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         ttsGenerationIdRef.current !== generationId ||
         latestTtsSourceRef.current !== generationSource
       ) {
-        return result.audio
+        logUI("[AgentProgress][TTS] generateSpeech result is stale", {
+          playbackId,
+          sessionId,
+          generationId,
+          currentGenerationId: ttsGenerationIdRef.current,
+          latestTextPreview: latestTtsSourceRef.current.slice(0, 80),
+        })
+        return { audio: result.audio, mimeType: result.mimeType }
       }
 
       setAudioData(result.audio)
       setAudioMimeType(result.mimeType)
-      return result.audio
+      return { audio: result.audio, mimeType: result.mimeType }
     } catch (error) {
       console.error("[TTS UI] Failed to generate TTS audio:", error)
+      logUI("[AgentProgress][TTS] generateSpeech failed", {
+        playbackId,
+        sessionId,
+        generationId,
+        error: error instanceof Error ? error.message : String(error),
+      })
 
       // Set user-friendly error message
       let errorMessage = "Failed to generate audio"
@@ -979,104 +1012,221 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
     }
   }, [ttsSource])
 
-  // Detect whether this component has observed the parent agent in a non-complete
-  // state. Reopened/historical sessions mount with `isComplete=true` from the very
-  // first render, so the ref stays false and the auto-play effect treats those
-  // messages as historical. Live runs (including mid-turn respond_to_user updates
-  // before the agent overall completes) pass through `isComplete=false`, flipping
-  // the ref so subsequent final renders may auto-play.
+  // Detect whether this message component has observed the parent agent in a
+  // non-complete state. The parent session also passes a session-level signal
+  // for final messages that only mount after completion.
   useEffect(() => {
     if (!isComplete) {
       observedLiveProgressRef.current = true
     }
   }, [isComplete])
+  const hasObservedLiveProgress = observedLiveProgressRef.current || parentObservedLiveProgress || !isComplete
 
-  // Check if TTS button should be shown for this message (any completed assistant message with content)
+  const isThoughtEligibleForTTS = !!message.responseEvent
+
+  // Check if TTS button should be shown for this message. The overall session
+  // can remain incomplete briefly after the final assistant prose is visible
+  // (e.g. verification/title cleanup). Treat the latest non-thinking assistant
+  // text as TTS-eligible immediately so hiding/snoozing the panel after seeing
+  // the answer does not race ahead of autoplay. Provider thinking/thought blocks
+  // stay silent by default; they should only become speakable via an explicit
+  // user-facing response event or a future opt-in setting.
+  const canUseTTSForAssistantMessage =
+    isComplete ||
+    !!message.responseEvent ||
+    message.isComplete ||
+    (isLast && !message.isThinking && (!message.isAssistantThought || isThoughtEligibleForTTS))
   const shouldShowTTSButton =
     message.role === "assistant" &&
     configQuery.data?.ttsEnabled &&
     !!ttsSource &&
-    (isComplete || !!message.responseEvent)
+    !message.isThinking &&
+    (!message.isAssistantThought || isThoughtEligibleForTTS) &&
+    canUseTTSForAssistantMessage
   // Auto-play only the latest assistant message. Older response-linked messages
   // remain manually replayable but should not all auto-play after reload/remount.
   const shouldAutoPlayTTS = shouldShowTTSButton && isLast
+  const ttsKeys = useMemo(() => [
+    message.responseEvent ? buildResponseEventTTSKey(sessionId, message.responseEvent.id, "final") : null,
+    buildContentTTSKey(sessionId, ttsSource, "final"),
+  ].filter((key, index, arr): key is string => Boolean(key) && arr.indexOf(key) === index), [message.responseEvent, sessionId, ttsSource])
+  const playbackId = `agent-progress:${sessionId ?? "no-session"}:${message.responseEvent?.id ?? message.timestamp}`
   const shouldAutoPlayLoadedAudio =
     shouldAutoPlayTTS &&
-    shouldAutoPlayTTSForVariant(messageVariant, isSnoozed, isFocused, isFloatingPanelVisible) &&
+    shouldAutoPlayTTSForVariant(messageVariant, isSnoozed) &&
     (configQuery.data?.ttsAutoPlay ?? true) &&
+    !ttsKeys.some((key) => hasTTSPlayed(key)) &&
     lastAutoPlayedSourceRef.current === ttsSource
 
   // Auto-play TTS when assistant message completes (but NOT if agent was stopped by kill switch)
   //
   // TTS AUTO-PLAY STRATEGY:
-  // - Auto-play in the primary full conversation and overlay surfaces.
-  // - Never auto-play tile previews/expansion content.
+  // - Auto-play in the primary full conversation, overlay, and tile surfaces.
+  // - Tile focus is layout state only; it does not block auto-play requests.
   // - Snoozed sessions intentionally don't auto-play TTS
   //   (they run silently in background - user can unsnooze to see/hear them)
   // - Additionally, we track which sessions have already played TTS in a module-level set
   //   to prevent double playback when AgentProgress remounts (e.g., when switching between
   //   single-session and multi-session views in the panel)
   useEffect(() => {
-    const shouldAutoPlay = shouldAutoPlayTTSForVariant(messageVariant, isSnoozed, isFocused, isFloatingPanelVisible)
+    const shouldAutoPlay = shouldAutoPlayTTSForVariant(messageVariant, isSnoozed)
     const ttsAutoPlayEnabled = configQuery.data?.ttsAutoPlay ?? true
 
     if (!shouldAutoPlay || !shouldAutoPlayTTS || !ttsAutoPlayEnabled || audioData || isGeneratingAudio || ttsError || wasStopped) {
-      return
+      logUI("[AgentProgress][TTS] autoplay skipped by initial gate", {
+        playbackId,
+        sessionId,
+        shouldAutoPlay,
+        shouldAutoPlayTTS,
+        ttsAutoPlayEnabled,
+        hasAudioData: !!audioData,
+        isGeneratingAudio,
+        hasTtsError: !!ttsError,
+        wasStopped,
+        messageVariant,
+        isSnoozed,
+        isFocused,
+      })
+      return undefined
     }
 
     // Synthetic pending-resume tiles render saved conversation history before a
     // live session exists (e.g. after branching). The last assistant message is
     // historical, so auto-playing its TTS would replay an already-heard response.
     if (sessionId?.startsWith("pending-")) {
-      return
+      logUI("[AgentProgress][TTS] autoplay skipped for pending session", { playbackId, sessionId })
+      return undefined
     }
 
     // Reopening a previous session re-renders its last assistant message with
-    // `isComplete=true` from the first render. Treat as historical when the
-    // component never observed the parent agent in a non-complete state under
-    // its own lifetime. Manual TTS playback remains available via the play
-    // button. The speakOnTrigger path explicitly authorizes one auto-play via
-    // markSessionForcedAutoPlay, which we consume here so the historical guard
-    // does not suppress that flow.
-    if (!observedLiveProgressRef.current) {
-      const forced = sessionId ? consumeSessionForcedAutoPlay(sessionId) : false
+    // `isComplete=true` from the first render. Treat as historical when neither
+    // the message nor its parent session surface observed live progress. Manual
+    // TTS playback remains available via the play button. The speakOnTrigger path
+    // explicitly authorizes one auto-play via markSessionForcedAutoPlay, which we
+    // consume here so the historical guard does not suppress that flow.
+    let forced = false
+    if (!hasObservedLiveProgress) {
+      forced = sessionId ? consumeSessionForcedAutoPlay(sessionId) : false
       if (!forced) {
-        return
+        logUI("[AgentProgress][TTS] autoplay skipped for historical complete mount", {
+          playbackId,
+          sessionId,
+          observedLiveProgress: hasObservedLiveProgress,
+          parentObservedLiveProgress,
+        })
+        return undefined
       }
+      logUI("[AgentProgress][TTS] forced autoplay consumed", { playbackId, sessionId })
     }
 
     // Guard against replaying the same content on follow-up user messages.
     // When a user sends a follow-up, the message list re-evaluates and this effect
     // can re-fire even though the agent response hasn't changed. (fixes #72)
     if (ttsSource && lastAutoPlayedSourceRef.current === ttsSource) {
-      return
+      logUI("[AgentProgress][TTS] autoplay skipped because source already auto-played locally", {
+        playbackId,
+        sessionId,
+        textPreview: ttsSource.slice(0, 80),
+      })
+      return undefined
     }
-
-    const ttsKeys = [
-      message.responseEvent ? buildResponseEventTTSKey(sessionId, message.responseEvent.id, "final") : null,
-      buildContentTTSKey(sessionId, ttsSource, "final"),
-    ].filter((key, index, arr): key is string => Boolean(key) && arr.indexOf(key) === index)
 
     // If this response was already spoken from a mid-turn card or an earlier render, skip.
     if (ttsKeys.some((key) => hasTTSPlayed(key))) {
-      return
+      logUI("[AgentProgress][TTS] autoplay skipped because local TTS key already played", {
+        playbackId,
+        sessionId,
+        ttsKeys,
+      })
+      return undefined
     }
 
-    // Mark as playing before starting generation to prevent race conditions
-    if (ttsKeys.length > 0) {
-      ttsKeys.forEach((key) => markTTSPlayed(key))
-      inFlightTtsKeysRef.current = ttsKeys
-    }
+    logUI("[AgentProgress][TTS] claiming central autoplay keys", {
+      playbackId,
+      sessionId,
+      forced,
+      ttsKeys,
+      textPreview: ttsSource.slice(0, 80),
+    })
+    void tipcClient.claimTTSPlaybackKeys({ ttsKeys, sessionId, forced })
+      .then((claimResult: { claimed: boolean }) => {
+        logUI("[AgentProgress][TTS] central autoplay claim result", {
+          playbackId,
+          sessionId,
+          forced,
+          claimed: claimResult?.claimed,
+        })
+        if (!claimResult?.claimed) return undefined
 
-    // Track the source we're auto-playing to prevent replay on follow-up
-    lastAutoPlayedSourceRef.current = ttsSource
+        // Mark as playing before starting generation to prevent renderer-local rerender races.
+        if (ttsKeys.length > 0) {
+          ttsKeys.forEach((key) => markTTSPlayed(key))
+          inFlightTtsKeysRef.current = ttsKeys
+        }
 
-    generateAudio()
-      .then(() => {
-        // Generation succeeded, clear the in-flight ref (keys stay in the set permanently)
+        // Track the source we're auto-playing to prevent replay on follow-up.
+        lastAutoPlayedSourceRef.current = ttsSource
+
+        return generateAudio()
+      })
+      .then((generated) => {
+        if (!generated) return undefined
+        if (latestTtsSourceRef.current !== ttsSource) {
+          logUI("[AgentProgress][TTS] releasing generated autoplay because source became stale", {
+            playbackId,
+            sessionId,
+            ttsKeys,
+          })
+          void tipcClient.releaseTTSPlaybackKeys({ ttsKeys })
+          ttsKeys.forEach((key) => removeTTSKey(key))
+          inFlightTtsKeysRef.current = []
+          if (lastAutoPlayedSourceRef.current === ttsSource) {
+            lastAutoPlayedSourceRef.current = null
+          }
+          return undefined
+        }
+
+        // Generation succeeded, clear the in-flight ref (keys stay claimed centrally)
         inFlightTtsKeysRef.current = []
+        logUI("[AgentProgress][TTS] autoplay generation ready for playback request", {
+          playbackId,
+          sessionId,
+          mimeType: generated.mimeType,
+          audioByteLength: generated.audio.byteLength,
+        })
+
+        return tipcClient.requestTTSPlayback({
+          playbackId,
+          sourceWindowId: typeof window !== "undefined" ? window.location?.pathname || "renderer" : "renderer",
+          source: messageVariant,
+          sessionId,
+          ttsKeys,
+          text: ttsSource,
+          textPreview: ttsSource.slice(0, 120),
+          audio: generated.audio,
+          mimeType: generated.mimeType,
+          autoPlay: true,
+          audioOutputDeviceId: configQuery.data?.audioOutputDeviceId,
+        })
+          .then((result) => {
+            if (result?.success === false) {
+              throw new Error(result.error || "Failed to request autoplay playback")
+            }
+            logUI("[AgentProgress][TTS] autoplay requestPlayback success", {
+              playbackId,
+              sessionId,
+              source: messageVariant,
+            })
+            return undefined
+          })
       })
       .catch((error) => {
+        logUI("[AgentProgress][TTS] autoplay generation promise failed", {
+          playbackId,
+          sessionId,
+          ttsKeys,
+          error: error instanceof Error ? error.message : String(error),
+        })
         // If generation fails, remove from the set so user can retry
         // Only remove if these are still the in-flight keys (prevents race conditions
         // where a newer render re-added the keys and this old catch handler would delete them).
@@ -1085,6 +1235,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
           inFlightTtsKeysRef.current.length === ttsKeys.length &&
           inFlightTtsKeysRef.current.every((key) => ttsKeys.includes(key))
         ) {
+          void tipcClient.releaseTTSPlaybackKeys({ ttsKeys })
           ttsKeys.forEach((key) => removeTTSKey(key))
           inFlightTtsKeysRef.current = []
         }
@@ -1094,7 +1245,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
         }
         // Error is already handled in generateAudio function
       })
-  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isFocused, isSnoozed, isFloatingPanelVisible, ttsError, wasStopped, variant, sessionId, ttsSource, message.responseEvent])
+  }, [shouldAutoPlayTTS, configQuery.data?.ttsAutoPlay, audioData, isGeneratingAudio, isFocused, isSnoozed, ttsError, wasStopped, messageVariant, sessionId, ttsSource, message.responseEvent, ttsKeys, hasObservedLiveProgress, parentObservedLiveProgress])
 
   const getRoleStyle = () => {
     switch (message.role) {
@@ -1286,7 +1437,11 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                ttsManager.stopAll("agent-progress-message-pause")
+                void tipcClient.controlTTSPlayback({
+                  type: "pause",
+                  playbackId,
+                  reason: "agent-progress-message-pause",
+                })
               }}
               className={cn(
                 "p-1 rounded hover:bg-muted/30 transition-colors",
@@ -1357,6 +1512,10 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
             error={ttsError}
             compact={true}
             autoPlay={shouldAutoPlayLoadedAudio}
+            playbackId={playbackId}
+            sessionId={sessionId}
+            ttsKeys={ttsKeys}
+            source={messageVariant}
             onPlayStateChange={setIsTTSPlaying}
             audioOutputDeviceId={configQuery.data?.audioOutputDeviceId}
             autoPlaySuppressionKey={
@@ -1382,6 +1541,7 @@ const CompactMessage = React.memo(CompactMessageBase, (prev, next) => (
   prev.variant === next.variant &&
   prev.sessionId === next.sessionId &&
   prev.isSnoozed === next.isSnoozed &&
+  prev.parentObservedLiveProgress === next.parentObservedLiveProgress &&
   prev.message.responseEvent?.id === next.message.responseEvent?.id &&
   prev.conversationId === next.conversationId &&
   prev.branchMessageIndex === next.branchMessageIndex &&
@@ -3663,6 +3823,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     steps?.some(step => step.title === "Agent stopped" ||
                                step.description?.includes("emergency kill switch"))
   const shouldAutoScrollContent = variant !== "tile" || !!isFocused || !!isExpanded || !isComplete
+  const observedSessionIdRef = useRef(progress.sessionId)
+  const observedSessionLiveProgressRef = useRef(false)
+
+  if (observedSessionIdRef.current !== progress.sessionId) {
+    observedSessionIdRef.current = progress.sessionId
+    observedSessionLiveProgressRef.current = false
+  }
+
+  useEffect(() => {
+    if (!isComplete) {
+      observedSessionLiveProgressRef.current = true
+    }
+  }, [isComplete, progress.sessionId])
 
   const messages = useMemo<Array<{
     role: "user" | "assistant" | "tool"
@@ -3670,6 +3843,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     isComplete: boolean
     timestamp: number
     isThinking: boolean
+    isAssistantThought?: boolean
     toolCalls?: Array<{ name: string; arguments: any }>
     toolResults?: Array<{ success: boolean; content: string; error?: string }>
     /** Absolute raw-history index to use when branching from this message */
@@ -3681,6 +3855,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       isComplete: boolean
       timestamp: number
       isThinking: boolean
+      isAssistantThought?: boolean
       toolCalls?: Array<{ name: string; arguments: any }>
       toolResults?: Array<{ success: boolean; content: string; error?: string }>
       branchMessageIndex?: number
@@ -3753,6 +3928,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             isComplete: false,
             timestamp: currentThinkingStep.timestamp,
             isThinking: false,
+            isAssistantThought: true,
           })
         } else if (!isStreaming) {
           const isVerificationStep = currentThinkingStep.title?.toLowerCase().includes("verifying")
@@ -3778,6 +3954,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               isComplete: step.status === "completed",
               timestamp: step.timestamp ?? fallbackBaseTimestamp + index,
               isThinking: false,
+                isAssistantThought: true,
             })
           } else if (step.status === "in_progress" && !isComplete) {
             const isVerificationStep = step.title?.toLowerCase().includes("verifying")
@@ -4873,6 +5050,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                             isFocused={isFocused}
                             sessionId={progress.sessionId}
                             isSnoozed={progress.isSnoozed}
+                            parentObservedLiveProgress={observedSessionLiveProgressRef.current}
                             conversationId={progress.conversationId}
                             branchMessageIndex={item.data.branchMessageIndex}
                             turnDurationMs={turnEntry?.durationMs}
@@ -5330,6 +5508,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                       isFocused={isFocused}
                       sessionId={progress.sessionId}
                       isSnoozed={progress.isSnoozed}
+                      parentObservedLiveProgress={observedSessionLiveProgressRef.current}
                       conversationId={progress.conversationId}
                       branchMessageIndex={item.data.branchMessageIndex}
                       turnDurationMs={turnEntry?.durationMs}

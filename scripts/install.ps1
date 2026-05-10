@@ -192,5 +192,5 @@ if ($FromSource) {
 }
 
 Write-Host ''
-Write-Host 'Done! Documentation: https://docs.dotagents.app' -ForegroundColor Green
+Write-Host 'Done! Documentation: https://dotagents.app' -ForegroundColor Green
 Write-Host ''

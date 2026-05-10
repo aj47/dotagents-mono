@@ -60,6 +60,7 @@ The settings interface has dedicated sections:
 | **Capabilities** | MCP server management, tool enable/disable |
 | **Agents** | Agent profile creation and management |
 | **Loops** | Recurring automated task scheduling |
+| **Discord** | Discord bot integration, access lists, and default agent routing |
 | **WhatsApp** | WhatsApp integration settings |
 | **Remote Server** | Mobile QR pairing, API key, port/bind address, and tunnel controls |
 
@@ -113,6 +114,13 @@ Export and import complete agent configurations:
 
 Enable **Settings > Remote Server** when you want DotAgents mobile, operator dashboards, or OpenAI-compatible clients to use your desktop runtime. The desktop app generates a bearer token and QR code for mobile pairing, and can optionally expose the server through a Cloudflare Tunnel.
 
+### Messaging Integrations
+
+Discord and WhatsApp let trusted messages reach the desktop agent runtime:
+
+- **Discord** — DMs, mentions, and configured guild/channel traffic can run a selected agent profile. Operator slash commands are separately allowlisted.
+- **WhatsApp** — MCP-backed messaging tools can send, read, and auto-reply to WhatsApp messages through the WhatsApp package.
+
 ### Loops (Recurring Tasks)
 
 Set up tasks that run on a schedule:
@@ -156,4 +164,5 @@ All data is stored locally on your machine:
 - **[MCP Tools](/tools/mcp)** — Connect tools and services
 - **[Agent Profiles](/agents/profiles)** — Create specialized agents
 - **[Remote Server & Pairing](/desktop/remote-server)** — Connect mobile and remote clients
+- **[Discord Integration](/tools/discord)** — Connect a Discord bot to trusted agents
 - **[Keyboard Shortcuts](/configuration/shortcuts)** — Full shortcut reference

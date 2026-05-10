@@ -9,6 +9,12 @@ function getRemoteServerSource(): string {
   return readFileSync(remoteServerPath, "utf8")
 }
 
+function getRemoteServerSecretSource(): string {
+  const testDir = path.dirname(fileURLToPath(import.meta.url))
+  const remoteServerSecretPath = path.join(testDir, "remote-server-secret.ts")
+  return readFileSync(remoteServerSecretPath, "utf8")
+}
+
 function getDuplicateRoutes(source: string): Array<{ key: string; lines: number[] }> {
   const routeRegex = /fastify\.(get|post|patch|delete|put)\("([^"]+)"/g
   const linesByRoute = new Map<string, number[]>()
@@ -210,11 +216,13 @@ describe("remote-server route registration", () => {
 
   it("resolves remote server secret references only for authenticated pairing surfaces", () => {
     const source = getRemoteServerSource()
+    const secretSource = getRemoteServerSecretSource()
 
-    expect(source).toContain('const DOTAGENTS_SECRET_REF_PREFIX = "dotagents-secret://"')
-    expect(source).toContain('const DOTAGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"')
-    expect(source).toContain("function getResolvedRemoteServerApiKey")
-    expect(source).toContain("function hasConfiguredRemoteServerApiKey")
+    expect(source).toContain('from "./remote-server-secret"')
+    expect(secretSource).toContain('export const DOTAGENTS_SECRET_REF_PREFIX = "dotagents-secret://"')
+    expect(secretSource).toContain('export const DOTAGENTS_SECRETS_LOCAL_JSON = "secrets.local.json"')
+    expect(secretSource).toContain("export function getResolvedRemoteServerApiKey")
+    expect(secretSource).toContain("export function hasConfiguredRemoteServerApiKey")
     expect(source).toContain("const hasConfiguredApiKey = hasConfiguredRemoteServerApiKey(cfg)")
     expect(source).toContain("!configuredApiKey && !hasConfiguredApiKey")
     expect(source).toContain("Remote server API key is configured but could not be resolved; preserving configured value")

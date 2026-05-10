@@ -249,18 +249,6 @@ function broadcastPanelVisibility(visible: boolean) {
   }
 }
 
-// Stop TTS playing in the floating panel renderer only. Invoked from the
-// panel's `hide` handler so every hide path (ESC, hideFloatingPanelWindow,
-// main-window focus auto-hide, etc.) silences panel TTS without affecting
-// TTS playing in the main window.
-function stopPanelRendererTts() {
-  const panel = WINDOWS.get("panel")
-  if (!panel) return
-  try {
-    getRendererHandlers<RendererHandlers>(panel.webContents).stopAllTts?.send()
-  } catch {}
-}
-
 // One-shot flag for intentional main-window hide paths.
 // If main is hidden without this flag, we treat it as accidental and recover.
 let allowExpectedMainHide = false
@@ -1082,7 +1070,8 @@ export function createPanelWindow(): BrowserWindow | undefined {
       snapshot: getWindowFocusDebugSnapshot(),
     })
     getRendererHandlers<RendererHandlers>(win.webContents).stopRecording.send()
-    stopPanelRendererTts()
+    // Panel hide no longer owns or silences TTS. The main renderer playback
+    // host and global/emergency stop controls are the only TTS playback owners.
     broadcastPanelVisibility(false)
   })
 

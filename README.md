@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/aj47/dotagents-mono/releases/latest"><strong>Download</strong></a> &middot;
   <a href="https://discord.gg/cK9WeQ7jPq"><strong>Discord</strong></a> &middot;
-  <a href="https://dotagents.app"><strong>Website</strong></a>
+  <a href="https://dotagents.app"><strong>Docs</strong></a>
 </p>
 
 <p align="center">
@@ -159,13 +159,16 @@ nvm use
 pnpm install && pnpm --filter @dotagents/desktop build-rs && pnpm dev
 ```
 
-See **[DEVELOPMENT.md](DEVELOPMENT.md)** for full setup, build commands, troubleshooting, and architecture details.
+See **[DEVELOPMENT.md](DEVELOPMENT.md)** for contributor entry points, or jump straight to the canonical docs:
 
-For the static marketing site, run:
+- [Development Setup](docs-site/docs/development/setup.md)
+- [Apps & Packages](docs-site/docs/development/apps-and-packages.md)
+- [Build, Release, Deploy](docs-site/docs/development/build-release-deploy.md)
+
+For the Docusaurus docs site, run:
 
 ```bash
-cd website
-python3 -m http.server 4321
+pnpm --filter docs-site start
 ```
 
 ### Architecture
@@ -178,9 +181,8 @@ dotagents-mono/
 ├── packages/
 │   ├── core/        # Cross-app runtime/config primitives
 │   ├── shared/      # Shared utilities, types, and constants
-│   ├── acpx/        # Agent delegation adapter/proxy
 │   └── mcp-whatsapp/# WhatsApp MCP server
-├── website/         # Static marketing site for dotagents.app
+├── docs-site/       # Docusaurus docs and primary website
 └── .agents/         # The open standard — skills, knowledge notes, commands
 ```
 
@@ -188,7 +190,7 @@ dotagents-mono/
 
 We welcome contributions. Fork the repo, create a feature branch, and open a Pull Request.
 
-**[Discord](https://discord.gg/cK9WeQ7jPq)** | **[Website](https://dotagents.app)**
+**[Discord](https://discord.gg/cK9WeQ7jPq)** | **[Docs](https://dotagents.app)**
 
 ## License
 

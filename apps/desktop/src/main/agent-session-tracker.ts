@@ -25,6 +25,7 @@ export interface AgentSession {
   lastActivity?: string
   errorMessage?: string
   isSnoozed?: boolean // When true, session runs in background without stealing focus
+  suppressPanelAutoShow?: boolean // When true, foreground/audible session still should not auto-open the floating panel
   isRepeatTask?: boolean // True for sessions created by repeat-task/loop execution
   /**
    * Profile snapshot captured at session creation time.

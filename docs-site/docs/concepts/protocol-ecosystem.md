@@ -12,7 +12,7 @@ DotAgents integrates five complementary protocols that together form a complete 
 | **MCP** | "What tools can I access?" |
 | **ACP / acpx** | "What agents can I delegate to, and what runtime executes them?" |
 | **Skills** | "What knowledge do I have?" |
-| **Agent Profiles** | "Who am I and how am I configured?" |
+| **Agents** | "Who am I and how am I configured?" |
 | **.agents/** | "How is my configuration stored and shared?" |
 
 ---
@@ -129,11 +129,11 @@ Agent uses skill knowledge to complete the task
 
 ---
 
-## Agent Profiles
+## Agents
 
-Agent Profiles are the unified type that consolidates agent identity, behavior, and access control.
+Agents consolidate identity, behavior, model choice, tool access, skills, and connection mode. The desktop API and TypeScript type still call this shape `AgentProfile` internally.
 
-### Profile Components
+### Agent Components
 
 ```
 AgentProfile
@@ -142,7 +142,7 @@ AgentProfile
 ├── Model Config (provider, model override)
 ├── Tool Config (enabled/disabled servers and tools)
 ├── Skills Config (which skills are active)
-├── Connection (how to run: internal, acp, stdio, remote)
+├── Connection (how to run: internal, acpx, acp, stdio, remote)
 └── State (enabled, isDefault, role)
 ```
 
@@ -165,8 +165,8 @@ Agents have fine-grained tool access:
 │                 (Configuration Layer)                        │
 │                                                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │ Agent        │  │ Skills       │  │ Knowledge    │      │
-│  │ Profiles     │  │              │  │ & Notes      │      │
+│  │ Agents       │  │ Skills       │  │ Knowledge    │      │
+│  │              │  │              │  │ & Notes      │      │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘      │
 └─────────┼─────────────────┼─────────────────┼───────────────┘
           │                 │                 │
@@ -174,7 +174,7 @@ Agents have fine-grained tool access:
 ┌──────────────────────────────────────────────────────┐
 │              Core Agent Engine                        │
 │                                                      │
-│  Agent Profile defines WHO the agent is              │
+│  Agent config defines WHO the agent is               │
 │  Skills define WHAT the agent knows                  │
 │  Notes provide durable CONTEXT across sessions       │
 │                                                      │
@@ -194,7 +194,7 @@ Agents have fine-grained tool access:
 ### Complete Flow Example
 
 1. **App starts** → Loads `.agents/` config (global + workspace layers)
-2. **Agent initialized** → Profile loaded, skills indexed, relevant notes resolved
+2. **Agent initialized** → Agent config loaded, skills indexed, relevant notes resolved
 3. **User speaks** → Voice transcribed, sent to agent
 4. **Agent reasons** → Uses skills knowledge, checks available tools
 5. **Agent acts** → Calls MCP tools or delegates to ACP agents
@@ -206,6 +206,6 @@ Agents have fine-grained tool access:
 ## Next Steps
 
 - **[MCP Tools](/tools/mcp)** — Configure and use MCP tool servers
-- **[Agent Profiles](/agents/profiles)** — Create specialized agents
+- **[Agents](/agents/profiles)** — Create specialized agents
 - **[Skills](/agents/skills)** — Build portable agent capabilities
 - **[Multi-Agent Delegation](/agents/delegation)** — Set up `acpx`/ACP coordination

@@ -12,7 +12,8 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "format": "pnpm -r format"
+    "format": "pnpm -r format",
+    "docs:coverage": "node scripts/check-docs-coverage.mjs"
   },
   "engines": {
     "node": ">=20.19.4",
@@ -21,9 +22,11 @@
   "packageManager": "pnpm@9.12.1",
   "pnpm": {
     "overrides": {
+      "@slorber/remark-comment>micromark-util-symbol": "^1.1.0",
       "dotenv-expand": "11.0.6",
       "micromark-util-symbol": "^2.0.1",
-      "nan": "^2.25.0"
+      "nan": "^2.25.0",
+      "webpack": "5.101.3"
     }
   }
 }

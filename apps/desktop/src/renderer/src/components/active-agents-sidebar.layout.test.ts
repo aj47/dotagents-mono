@@ -9,4 +9,11 @@ describe("active agents sidebar layout", () => {
     expect(sidebarSource).toContain('className="rounded-lg border border-border/60 bg-muted/20 p-2"')
     expect(sidebarSource).toContain('title="Start text session"')
   })
+
+  it("marks selected nested subagent rows with a visible selected state", () => {
+    expect(sidebarSource).toContain("const isSelectedNestedSubagent = isNestedSubagent && isCurrentView")
+    expect(sidebarSource).toContain('aria-current={isCurrentView ? "true" : undefined}')
+    expect(sidebarSource).toContain("bg-blue-500/15 text-foreground ring-1 ring-inset ring-blue-500/25")
+    expect(sidebarSource).toContain('isSelectedNestedSubagent ? "bg-blue-500" : statusRailColor')
+  })
 })

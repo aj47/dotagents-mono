@@ -5,6 +5,7 @@ import {
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
   getSidebarSessionGroupKey,
+  getSidebarSessionGroupKeys,
   getSidebarActivityPresentation,
   getSidebarProgressTitle,
   getSubagentParentSessionIdMap,
@@ -13,6 +14,7 @@ import {
   getSessionIdsWithActiveChildProgress,
   getLatestAgentResponseTimestamp,
   hasUnreadAgentResponse,
+  hasSidebarSessionGroupKey,
   isProgressLiveForSidebar,
   isSidebarSessionCurrentlyViewed,
   moveSidebarSessionToGroupPosition,
@@ -62,6 +64,10 @@ describe("sidebar session groups", () => {
     expect(getSidebarSessionGroupKey(activeSession("session-1", "conversation-1"))).toBe(
       "conversation:conversation-1",
     )
+    expect(getSidebarSessionGroupKeys(activeSession("session-1", "conversation-1"))).toEqual([
+      "conversation:conversation-1",
+      "session:session-1",
+    ])
     expect(getSidebarSessionGroupKey(activeSession("session-2"))).toBe(
       "session:session-2",
     )
@@ -181,6 +187,20 @@ describe("sidebar session groups", () => {
     ])
   })
 
+  it("orders entries using older session keys after a conversation id is assigned", () => {
+    const entries = [
+      { session: activeSession("session-1", "conversation-1") },
+      { session: activeSession("session-2") },
+    ]
+
+    expect(orderSidebarSessionEntriesByKeys(entries, [
+      "session:session-1",
+    ]).map((entry) => entry.session.id)).toEqual([
+      "session-1",
+      "session-2",
+    ])
+  })
+
   it("normalizes persisted ungrouped session key order", () => {
     expect(normalizeSidebarSessionKeyOrder([
       " session:one ",
@@ -212,6 +232,32 @@ describe("sidebar session groups", () => {
     ])
     expect(result.ungroupedEntries.map((entry) => entry.session.id)).toEqual([
       "session-3",
+    ])
+  })
+
+  it("keeps folders populated when persisted keys predate conversation ids", () => {
+    const entries = [
+      { session: activeSession("session-1", "conversation-1") },
+      { session: activeSession("session-2", "conversation-2") },
+    ]
+
+    const groupedSessionKeys = new Set(["session:session-1"])
+    expect(hasSidebarSessionGroupKey(entries[0].session, groupedSessionKeys)).toBe(true)
+
+    const result = groupSidebarSessionEntries(entries, [
+      {
+        id: "group-a",
+        name: "A",
+        expanded: true,
+        sessionKeys: ["session:session-1"],
+      },
+    ])
+
+    expect(result.groupedSections[0]?.entries.map((entry) => entry.session.id)).toEqual([
+      "session-1",
+    ])
+    expect(result.ungroupedEntries.map((entry) => entry.session.id)).toEqual([
+      "session-2",
     ])
   })
 
@@ -1135,6 +1181,37 @@ describe("paginateSidebarEntries", () => {
       "personal",
     ])
     expect(paginated.hasMoreEntries).toBe(true)
+    expect(grouped.groupedSections[0]?.entries.map((entry) => entry.session.id)).toEqual([
+      "personal",
+    ])
+  })
+
+  it("keeps grouped saved entries visible when the group stores the older session key", () => {
+    const groupedSessionKeys = new Set(["session:personal"])
+    const paginated = paginateSidebarEntries(
+      [
+        { session: { id: "active", conversationId: "active-c" }, isSavedConversation: false },
+        { session: { id: "personal", conversationId: "personal-c" }, isSavedConversation: true },
+        { session: { id: "hidden", conversationId: "hidden-c" }, isSavedConversation: true },
+      ],
+      new Set(),
+      0,
+      groupedSessionKeys,
+    )
+
+    const grouped = groupSidebarSessionEntries(paginated.visibleEntries, [
+      {
+        id: "personal",
+        name: "Personal",
+        expanded: true,
+        sessionKeys: ["session:personal"],
+      },
+    ])
+
+    expect(paginated.visibleEntries.map((entry) => entry.session.id)).toEqual([
+      "active",
+      "personal",
+    ])
     expect(grouped.groupedSections[0]?.entries.map((entry) => entry.session.id)).toEqual([
       "personal",
     ])

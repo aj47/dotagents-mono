@@ -96,8 +96,22 @@ export interface SidebarActivityPresentation {
 type RepeatTaskTitleHints = ReadonlySet<string>
 
 export function getSidebarSessionGroupKey(session: SessionLike): string {
+  return getSidebarSessionGroupKeys(session)[0]
+}
+
+export function getSidebarSessionGroupKeys(session: SessionLike): string[] {
   const conversationId = session.conversationId?.trim()
-  return conversationId ? `conversation:${conversationId}` : `session:${session.id}`
+  const keys = conversationId
+    ? [`conversation:${conversationId}`, `session:${session.id}`]
+    : [`session:${session.id}`]
+  return Array.from(new Set(keys))
+}
+
+export function hasSidebarSessionGroupKey(
+  session: SessionLike,
+  sessionKeys: ReadonlySet<string>,
+): boolean {
+  return getSidebarSessionGroupKeys(session).some((key) => sessionKeys.has(key))
 }
 
 export function normalizeSidebarSessionKeyOrder(input: unknown): string[] {
@@ -259,28 +273,34 @@ export function groupSidebarSessionEntries<T extends { session: SessionLike }>(
 ): { groupedSections: SidebarSessionGroupSection<T>[]; ungroupedEntries: T[] } {
   const entryBySessionKey = new Map<string, T>()
   for (const entry of entries) {
-    const sessionKey = getSidebarSessionGroupKey(entry.session)
-    if (!entryBySessionKey.has(sessionKey)) {
-      entryBySessionKey.set(sessionKey, entry)
+    for (const sessionKey of getSidebarSessionGroupKeys(entry.session)) {
+      if (!entryBySessionKey.has(sessionKey)) {
+        entryBySessionKey.set(sessionKey, entry)
+      }
     }
   }
 
   const groupedSessionKeys = new Set<string>()
+  const groupedSessionIds = new Set<string>()
   const groupedSections = groups.map((group) => {
     const seenInGroup = new Set<string>()
     const groupedEntries = group.sessionKeys.flatMap((sessionKey) => {
       if (seenInGroup.has(sessionKey) || groupedSessionKeys.has(sessionKey)) return []
       seenInGroup.add(sessionKey)
       const entry = entryBySessionKey.get(sessionKey)
+      if (entry && groupedSessionIds.has(entry.session.id)) return []
       if (!entry) return []
-      groupedSessionKeys.add(sessionKey)
+      groupedSessionIds.add(entry.session.id)
+      for (const key of getSidebarSessionGroupKeys(entry.session)) {
+        groupedSessionKeys.add(key)
+      }
       return [entry]
     })
     return { group, entries: groupedEntries }
   })
 
   const ungroupedEntries = entries.filter(
-    (entry) => !groupedSessionKeys.has(getSidebarSessionGroupKey(entry.session)),
+    (entry) => !hasSidebarSessionGroupKey(entry.session, groupedSessionKeys),
   )
 
   return { groupedSections, ungroupedEntries }
@@ -294,24 +314,29 @@ export function orderSidebarSessionEntriesByKeys<T extends { session: SessionLik
 
   const entryBySessionKey = new Map<string, T>()
   for (const entry of entries) {
-    const sessionKey = getSidebarSessionGroupKey(entry.session)
-    if (!entryBySessionKey.has(sessionKey)) {
-      entryBySessionKey.set(sessionKey, entry)
+    for (const sessionKey of getSidebarSessionGroupKeys(entry.session)) {
+      if (!entryBySessionKey.has(sessionKey)) {
+        entryBySessionKey.set(sessionKey, entry)
+      }
     }
   }
 
   const orderedEntries: T[] = []
   const seenSessionKeys = new Set<string>()
+  const seenSessionIds = new Set<string>()
   for (const sessionKey of orderedSessionKeys) {
     const entry = entryBySessionKey.get(sessionKey)
-    if (!entry || seenSessionKeys.has(sessionKey)) continue
+    if (!entry || seenSessionKeys.has(sessionKey) || seenSessionIds.has(entry.session.id)) continue
     orderedEntries.push(entry)
-    seenSessionKeys.add(sessionKey)
+    seenSessionIds.add(entry.session.id)
+    for (const key of getSidebarSessionGroupKeys(entry.session)) {
+      seenSessionKeys.add(key)
+    }
   }
 
   return [
     ...orderedEntries,
-    ...entries.filter((entry) => !seenSessionKeys.has(getSidebarSessionGroupKey(entry.session))),
+    ...entries.filter((entry) => !hasSidebarSessionGroupKey(entry.session, seenSessionKeys)),
   ]
 }
 
@@ -497,13 +522,12 @@ export function paginateSidebarEntries<
   const pageableEntries: T[] = []
   for (const entry of entries) {
     const conversationId = entry.session.conversationId
-    const sessionKey = getSidebarSessionGroupKey(entry.session)
     const isPinnedSavedConversation =
       entry.isSavedConversation &&
       !!conversationId &&
       pinnedSessionIds.has(conversationId)
     const isGroupedSavedConversation =
-      entry.isSavedConversation && alwaysVisibleSessionKeys.has(sessionKey)
+      entry.isSavedConversation && hasSidebarSessionGroupKey(entry.session, alwaysVisibleSessionKeys)
 
     if (!entry.isSavedConversation || isPinnedSavedConversation || isGroupedSavedConversation) {
       alwaysVisibleEntries.push(entry)

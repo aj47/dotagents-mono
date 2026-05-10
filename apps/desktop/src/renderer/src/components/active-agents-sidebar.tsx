@@ -28,6 +28,7 @@ import {
   getSidebarSessionGroupKey,
   getLatestAgentResponseTimestamp,
   getSidebarProgressTitle,
+  hasSidebarSessionGroupKey,
   getSessionIdsWithActiveChildProgress,
   getSubagentTitleBySessionIdMap,
   getSubagentParentSessionIdMap,
@@ -696,7 +697,7 @@ export function ActiveAgentsSidebar({
         const conversationId = entry.session.conversationId
         return (
           (!!conversationId && pinnedSessionIds.has(conversationId)) ||
-          alwaysVisibleSessionKeys.has(getSidebarSessionGroupKey(entry.session))
+          hasSidebarSessionGroupKey(entry.session, alwaysVisibleSessionKeys)
         )
       }),
     [allUserSidebarSessions, alwaysVisibleSessionKeys, pinnedSessionIds, sessionGroups],
@@ -731,7 +732,7 @@ export function ActiveAgentsSidebar({
       if (!entry.isSavedConversation) return false
       const conversationId = entry.session.conversationId
       if (conversationId && pinnedSessionIds.has(conversationId)) return false
-      return !alwaysVisibleSessionKeys.has(getSidebarSessionGroupKey(entry.session))
+      return !hasSidebarSessionGroupKey(entry.session, alwaysVisibleSessionKeys)
     }).length,
     [alwaysVisibleSessionKeys, pinnedSessionIds, userSidebarSessions],
   )
@@ -818,20 +819,46 @@ export function ActiveAgentsSidebar({
   const hasTaskSessions = taskSidebarSessions.length > 0
   const tasksListVisible = visibleTaskSidebarSessions.length > 0
 
-  // Hotkeys (Cmd/Ctrl+1..9) target only entries that are currently rendered,
-  // in the same order as they appear: visible task rows → user sessions.
-  // Running task rows remain visible even when historical task rows are collapsed.
+  // Hotkeys (Cmd/Ctrl+1..9) only target *active* sessions/tasks, in the order
+  // they appear in the sidebar (visible task rows → user sessions). Saved
+  // conversations and completed/stopped sessions are skipped so the numbered
+  // shortcuts always cycle through running work.
+  const isSidebarHotkeyEligible = useCallback((entry: SidebarSessionEntry) => {
+    if (entry.isSavedConversation) return false
+    if (entry.isSubagent && (entry.nestingDepth ?? 0) > 0) return false
+    const progress = agentProgressById.get(entry.session.id)
+    const hasActiveChildProgress = sessionsWithActiveChildProgress.has(entry.session.id)
+    return hasActiveChildProgress || (
+      entry.session.status === "active" &&
+      progress?.isComplete !== true
+    )
+  }, [agentProgressById, sessionsWithActiveChildProgress])
+
   const visibleSidebarSessions = useMemo(
-    () => [
-      ...visibleTaskSidebarSessions,
-      ...(isExpanded ? visibleGroupedUserSidebarSessions : []),
-    ],
+    () => {
+      const entries = [
+        ...visibleTaskSidebarSessions,
+        ...(isExpanded ? visibleGroupedUserSidebarSessions : []),
+      ]
+      return entries.filter(isSidebarHotkeyEligible)
+    },
     [
       isExpanded,
       visibleTaskSidebarSessions,
       visibleGroupedUserSidebarSessions,
+      isSidebarHotkeyEligible,
     ],
   )
+
+  // Per-session shortcut index (0-based) so each row can render its `⌘N`
+  // badge in sync with the hotkey handler above.
+  const hotkeyIndexBySessionId = useMemo(() => {
+    const map = new Map<string, number>()
+    visibleSidebarSessions.forEach((entry, idx) => {
+      map.set(entry.session.id, idx)
+    })
+    return map
+  }, [visibleSidebarSessions])
 
   const hasUserSidebarContent = userSidebarSessions.length > 0 || sessionGroups.length > 0
   const hasAnySessions = sidebarSessions.length > 0 || sessionGroups.length > 0
@@ -1511,7 +1538,6 @@ export function ActiveAgentsSidebar({
                 isSubagent = false,
                 nestingDepth = 0,
               }: SidebarSessionEntry,
-              index: number,
               options: {
                 forceSingleLine?: boolean
                 reorderContainerGroupId?: string | null
@@ -1684,6 +1710,7 @@ export function ActiveAgentsSidebar({
 
             // Active session row
             // Retained completed turns should stay visually active until the user dismisses them.
+            const hotkeyIndex = hotkeyIndexBySessionId.get(session.id)
             const repeatTaskLoop = findLoopForSession(session)
             const isInactiveRepeatTask =
               !!repeatTaskLoop &&
@@ -1709,6 +1736,11 @@ export function ActiveAgentsSidebar({
               Math.min(nestingDepth, 2),
             )
             const isNestedSubagent = isSubagent && normalizedNestingDepth > 0
+            const isSelectedNestedSubagent = isNestedSubagent && isCurrentView
+            const canShowHotkeyBadge =
+              hotkeyIndex !== undefined &&
+              hotkeyIndex < 9 &&
+              !isNestedSubagent
             const subagentIndentClass = normalizedNestingDepth > 1 ? "ml-12" : "ml-8"
             const showSessionDetails =
               !forceSingleLine &&
@@ -1728,6 +1760,7 @@ export function ActiveAgentsSidebar({
                   ? (event) => handleSessionRowDrop(event, reorderContainerGroupId, sessionGroupKey)
                   : undefined}
                 onClick={() => handleActiveSessionSelect(session.id)}
+                aria-current={isCurrentView ? "true" : undefined}
                 className={cn(
                   "group relative flex cursor-pointer items-start rounded text-xs transition-all",
                   isNestedSubagent
@@ -1736,8 +1769,8 @@ export function ActiveAgentsSidebar({
                   isNestedSubagent
                     ? isLifecycleNeedsInput
                       ? "text-amber-700 hover:bg-amber-500/5 dark:text-amber-300"
-                      : isCurrentView
-                        ? "bg-muted/25 text-foreground"
+                      : isSelectedNestedSubagent
+                        ? "bg-blue-500/15 text-foreground ring-1 ring-inset ring-blue-500/25 shadow-[inset_2px_0_0_rgb(59_130_246)]"
                         : "text-muted-foreground hover:bg-muted/20"
                     : isLifecycleNeedsInput
                       ? "bg-amber-500/10"
@@ -1754,7 +1787,10 @@ export function ActiveAgentsSidebar({
                 {isNestedSubagent && (
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -left-6 top-0 h-1/2 w-6 rounded-bl border-b border-l border-border/70"
+                    className={cn(
+                      "pointer-events-none absolute -left-6 top-0 h-1/2 w-6 rounded-bl border-b border-l",
+                      isSelectedNestedSubagent ? "border-blue-500/60" : "border-border/70",
+                    )}
                   />
                 )}
                 {!isNestedSubagent && isActivePinned ? (
@@ -1785,7 +1821,10 @@ export function ActiveAgentsSidebar({
                     {isNestedSubagent && (
                       <CornerDownRight
                         aria-hidden="true"
-                        className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/60"
+                        className={cn(
+                          "mt-0.5 h-3 w-3 shrink-0",
+                          isSelectedNestedSubagent ? "text-blue-500" : "text-muted-foreground/60",
+                        )}
                       />
                     )}
                     {isNestedSubagent && (
@@ -1793,7 +1832,7 @@ export function ActiveAgentsSidebar({
                         aria-hidden="true"
                         className={cn(
                           "mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full",
-                          statusRailColor,
+                          isSelectedNestedSubagent ? "bg-blue-500" : statusRailColor,
                           shouldPulseStatus && "animate-pulse",
                         )}
                       />
@@ -1826,13 +1865,13 @@ export function ActiveAgentsSidebar({
                         {lastMessageMinutesAgo}
                       </span>
                     )}
-                    {!isNestedSubagent && index < 9 && (sessionPreview || lastMessageMinutesAgo) && (
+                    {canShowHotkeyBadge && (sessionPreview || lastMessageMinutesAgo) && (
                       <span
                         className="shrink-0 text-[10px] leading-4 tabular-nums text-muted-foreground/60 transition-opacity group-hover:opacity-0"
-                        title={`${IS_MAC ? "⌘" : "Ctrl+"}${index + 1} to focus this session`}
+                        title={`${IS_MAC ? "⌘" : "Ctrl+"}${hotkeyIndex + 1} to focus this session`}
                         aria-hidden="true"
                       >
-                        {SHORTCUT_MOD_SYMBOL}{IS_MAC ? "" : "+"}{index + 1}
+                        {SHORTCUT_MOD_SYMBOL}{IS_MAC ? "" : "+"}{hotkeyIndex + 1}
                       </span>
                     )}
                   </div>
@@ -1899,17 +1938,6 @@ export function ActiveAgentsSidebar({
               </div>
             )
             }
-
-            // Hotkey ordering must mirror render ordering exactly; see
-            // visibleSidebarSessions above.
-            const tasksOffset = 0
-            const userOffset = visibleTaskSidebarSessions.length
-            const userHotkeyIndexByEntryKey = new Map(
-              visibleGroupedUserSidebarSessions.map((entry, idx) => [
-                entry.key,
-                userOffset + idx,
-              ]),
-            )
 
             const renderSessionGroupSection = (
               section: typeof userSidebarGroupSections[number],
@@ -2058,14 +2086,12 @@ export function ActiveAgentsSidebar({
                   {group.expanded && entries.map((entry) =>
                     renderSessionRow(
                       entry,
-                      userHotkeyIndexByEntryKey.get(entry.key) ?? userOffset,
                       { reorderContainerGroupId: group.id },
                     ),
                   )}
                 </div>
               )
             }
-
             return (
               <>
                 {hasTaskSessions && (
@@ -2090,8 +2116,8 @@ export function ActiveAgentsSidebar({
                   </div>
                 )}
                 {tasksListVisible &&
-                  visibleTaskSidebarSessions.map((entry, idx) =>
-                    renderSessionRow(entry, tasksOffset + idx, { forceSingleLine: true }),
+                  visibleTaskSidebarSessions.map((entry) =>
+                    renderSessionRow(entry, { forceSingleLine: true }),
                   )}
                 {tasksSectionExpanded && (hasMoreTaskSessions || (
                   visibleTaskConversationCount > SIDEBAR_TASKS_MIN_VISIBLE &&
@@ -2181,7 +2207,6 @@ export function ActiveAgentsSidebar({
                 {isExpanded && orderedUngroupedUserSidebarSessions.map((entry) =>
                   renderSessionRow(
                     entry,
-                    userHotkeyIndexByEntryKey.get(entry.key) ?? userOffset,
                     { reorderContainerGroupId: null },
                   ),
                 )}

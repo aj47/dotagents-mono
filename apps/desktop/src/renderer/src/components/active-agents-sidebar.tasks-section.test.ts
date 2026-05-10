@@ -50,8 +50,8 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("reorderContainerGroupId?: string | null")
     expect(sidebarSource).toContain("const forceSingleLine = options.forceSingleLine ?? false")
     expect(sidebarSource).toContain("!forceSingleLine &&")
-    expect(sidebarSource).toContain("visibleTaskSidebarSessions.map((entry, idx) =>")
-    expect(sidebarSource).toContain("renderSessionRow(entry, tasksOffset + idx, { forceSingleLine: true })")
+    expect(sidebarSource).toContain("visibleTaskSidebarSessions.map((entry) =>")
+    expect(sidebarSource).toContain("renderSessionRow(entry, { forceSingleLine: true })")
   })
 
   it("supports dragging session groups to reorder them", () => {
@@ -94,6 +94,19 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("progress?.isComplete !== true")
     expect(sidebarSource).toContain("tasksSectionExpanded ? paginatedTaskSidebarSessions : activeTaskSidebarSessions")
     expect(sidebarSource).toContain("const tasksListVisible = visibleTaskSidebarSessions.length > 0")
+  })
+
+  it("keeps hotkey targets aligned with active parent rows and visible badges", () => {
+    expect(sidebarSource).toContain("const isSidebarHotkeyEligible = useCallback")
+    expect(sidebarSource).toContain("if (entry.isSubagent && (entry.nestingDepth ?? 0) > 0) return false")
+    expect(sidebarSource).toContain("const hasActiveChildProgress = sessionsWithActiveChildProgress.has(entry.session.id)")
+    expect(sidebarSource).toContain("return hasActiveChildProgress || (")
+    expect(sidebarSource).toContain("return entries.filter(isSidebarHotkeyEligible)")
+    expect(sidebarSource).toContain("const hotkeyIndexBySessionId = useMemo")
+    expect(sidebarSource).toContain("const hotkeyIndex = hotkeyIndexBySessionId.get(session.id)")
+    expect(sidebarSource).toContain("const canShowHotkeyBadge =")
+    expect(sidebarSource).toContain("!isNestedSubagent")
+    expect(sidebarSource).toContain("canShowHotkeyBadge && (sessionPreview || lastMessageMinutesAgo)")
   })
 
   it("lets the session list size naturally instead of keeping a collapsed gap", () => {

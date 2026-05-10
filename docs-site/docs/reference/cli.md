@@ -78,11 +78,13 @@ For acpx Codex mode, the setup flow creates a Codex agent profile at:
 ~/.agents/agents/codex/
 ```
 
-If the Codex CLI is not installed, setup can install it with npm. If you choose the acpx mode, setup can also install `acpx`. You can install them manually:
+If the Codex CLI is not installed, setup can install it. If you choose the acpx mode, setup can also install `acpx`. You can install them manually with pnpm:
 
 ```bash
-npm install -g acpx@latest
-npm install -g @openai/codex@latest
+corepack enable
+corepack prepare pnpm@9 --activate
+pnpm add -g acpx@latest
+pnpm add -g @openai/codex@latest
 ```
 
 For headless SSH servers, DotAgents setup runs Codex device-code OAuth for you:
