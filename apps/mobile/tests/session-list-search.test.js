@@ -11,7 +11,7 @@ const screenSource = fs.readFileSync(
 test('adds a mobile chat search field with a search-specific empty state', () => {
   assert.match(screenSource, /placeholder='Search chats\.\.\.'/);
   assert.match(screenSource, /accessibilityHint="Search chat titles, previews, and loaded message text\."/);
-  assert.match(screenSource, /<Text style=\{styles\.emptyTitle\}>No matching chats<\/Text>/);
+  assert.match(screenSource, /sessionListMode === 'archived' \? 'No matching archived chats' : 'No matching chats'/);
   assert.match(screenSource, /ListEmptyComponent=\{hasActiveSearch \? SearchEmptyState : EmptyState\}/);
 });
 

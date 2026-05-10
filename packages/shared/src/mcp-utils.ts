@@ -393,6 +393,27 @@ export function isReservedMcpServerName(
   )
 }
 
+export function partitionMcpServersByReservedName<TServerConfig>(
+  servers: Record<string, TServerConfig>,
+  reservedServerNames: readonly string[],
+): {
+  visibleServers: Record<string, TServerConfig>
+  hiddenServerNames: string[]
+} {
+  const visibleServers: Record<string, TServerConfig> = {}
+  const hiddenServerNames: string[] = []
+
+  for (const [serverName, serverConfig] of Object.entries(servers)) {
+    if (isReservedMcpServerName(serverName, reservedServerNames)) {
+      hiddenServerNames.push(serverName)
+    } else {
+      visibleServers[serverName] = serverConfig
+    }
+  }
+
+  return { visibleServers, hiddenServerNames }
+}
+
 export type McpKeyValueDraftParseResult = {
   value: Record<string, string>
   error?: string

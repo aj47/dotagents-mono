@@ -63,83 +63,21 @@ describe("summarizeAgentStep", () => {
     }
   })
 
-  it("extracts and sanitizes noteCandidates (single-line, max 5)", async () => {
+  it("keeps step summarization disabled after summarization removal", async () => {
     enableSummarization()
     const { generateText } = await import("ai")
-    const { summarizeAgentStep } = await import("./summarization-service")
+    const { isSummarizationEnabled, shouldSummarizeStep, summarizeAgentStep } = await import("./summarization-service")
 
-    const input = {
+    const summary = await summarizeAgentStep({
       sessionId: "sess_1",
       stepNumber: 1,
       assistantResponse: "ok",
-    }
-
-    const response = JSON.stringify({
-      actionSummary: "did stuff",
-      keyFindings: [],
-      nextSteps: "",
-      decisionsMade: [],
-      noteCandidates: [
-        "preference:  user likes  pnpm\nand hates npm",
-        123,
-        "",
-        "constraint:  don't run installs  without permission",
-        "fact: repo uses tipc",
-        "insight:    durable note candidates reduce bloat",
-      ],
-      importance: "high",
-    })
-
-    vi.mocked(generateText).mockResolvedValue({ text: response } as any)
-
-    const summary = await summarizeAgentStep(input as any)
-
-    expect(summary?.actionSummary).toBe("did stuff")
-    expect(summary?.importance).toBe("high")
-    expect(summary?.noteCandidates).toEqual([
-      "preference: user likes pnpm and hates npm",
-      "constraint: don't run installs without permission",
-      "fact: repo uses tipc",
-      "insight: durable note candidates reduce bloat",
-    ])
-  })
-
-  it("truncates noteCandidates to 240 chars", async () => {
-    enableSummarization()
-    const { generateText } = await import("ai")
-    const { summarizeAgentStep } = await import("./summarization-service")
-
-    const long = `fact: ${"a".repeat(500)}`
-    const response = JSON.stringify({
-      actionSummary: "x",
-      noteCandidates: [long],
-      importance: "medium",
-    })
-
-    vi.mocked(generateText).mockResolvedValue({ text: response } as any)
-
-    const summary = await summarizeAgentStep({ sessionId: "s", stepNumber: 1 } as any)
-    expect(summary?.noteCandidates).toHaveLength(1)
-    expect(summary?.noteCandidates?.[0]).toHaveLength(240)
-    expect(summary?.noteCandidates?.[0].startsWith("fact: ")).toBe(true)
-  })
-
-  it("returns empty noteCandidates on parse failure", async () => {
-    enableSummarization()
-    const { generateText } = await import("ai")
-    const { summarizeAgentStep } = await import("./summarization-service")
-
-    vi.mocked(generateText).mockResolvedValue({ text: "not json" } as any)
-
-    const summary = await summarizeAgentStep({
-      sessionId: "sess",
-      stepNumber: 2,
-      assistantResponse: "hello world",
     } as any)
 
-    expect(summary?.noteCandidates).toEqual([])
-    expect(summary?.actionSummary).toBe("hello world")
-    expect(summary?.importance).toBe("medium")
+    expect(isSummarizationEnabled()).toBe(false)
+    expect(shouldSummarizeStep(true, true)).toBe(false)
+    expect(summary).toBeNull()
+    expect(generateText).not.toHaveBeenCalled()
   })
 })
 

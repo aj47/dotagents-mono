@@ -14,7 +14,7 @@ const langfuseSection = settingsSource.match(
 
 test('keeps the mobile langfuse section text-first without duplicate intro helper copy', () => {
   assert.ok(langfuseSection, 'expected to find the mobile Langfuse section');
-  assert.match(langfuseSection, />Enable tracing</);
+  assert.match(langfuseSection, />Langfuse tracing</);
   assert.doesNotMatch(langfuseSection, />Langfuse Observability</);
   assert.doesNotMatch(langfuseSection, /Enable tracing and observability via Langfuse/);
   assert.match(langfuseSection, /<Text style=\{styles\.helperText\}>\s*Leave empty for Langfuse Cloud\s*<\/Text>/);

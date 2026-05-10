@@ -32,7 +32,8 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(screenSource, /id: 'action-add-prompt'/);
   assert.match(screenSource, /title: '\+ Add Prompt'/);
   assert.match(screenSource, /setAddPromptModalVisible\(true\)/);
-  assert.match(screenSource, /const handleSaveNewPrompt = async \(\) =>/);
+  assert.match(screenSource, /const handleSavePrompt = async \(\) =>/);
+  assert.match(screenSource, /onPress=\{handleSavePrompt\}/);
   assert.match(screenSource, /await settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
   assert.match(screenSource, /Prompt saved to your desktop prompt library\./);
 });

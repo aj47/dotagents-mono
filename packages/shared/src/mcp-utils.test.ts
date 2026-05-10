@@ -14,6 +14,7 @@ import {
   isReservedMcpServerName,
   mergeImportedMcpServers,
   normalizeMcpConfig,
+  partitionMcpServersByReservedName,
   parseMcpKeyValueDraft,
   removeMcpServerConfig,
   removeMcpServerFromList,
@@ -536,6 +537,20 @@ describe('MCP server config mutations', () => {
   it('detects reserved server names case-insensitively', () => {
     expect(isReservedMcpServerName(' DOTAGENTS-RUNTIME-TOOLS ', ['dotagents-runtime-tools'])).toBe(true)
     expect(isReservedMcpServerName('github', ['dotagents-runtime-tools'])).toBe(false)
+  })
+
+  it('partitions server configs by reserved names', () => {
+    const result = partitionMcpServersByReservedName({
+      github: { command: 'github-mcp' },
+      'DotAgents-Runtime-Tools': { command: 'reserved' },
+      filesystem: { command: 'filesystem-mcp' },
+    }, ['dotagents-runtime-tools'])
+
+    expect(result.hiddenServerNames).toEqual(['DotAgents-Runtime-Tools'])
+    expect(result.visibleServers).toEqual({
+      github: { command: 'github-mcp' },
+      filesystem: { command: 'filesystem-mcp' },
+    })
   })
 
   it('upserts, renames, and removes MCP server configs without mutating input', () => {

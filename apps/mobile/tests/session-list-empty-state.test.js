@@ -9,10 +9,11 @@ const screenSource = fs.readFileSync(
 );
 
 test('gives the empty session state an in-place primary action', () => {
-  assert.match(screenSource, /<Text style=\{styles\.emptyTitle\}>No chats yet<\/Text>/);
+  assert.match(screenSource, /isArchivedMode \? 'No archived chats' : 'No chats yet'/);
   assert.match(screenSource, /Start your first chat so recent conversations show up here\./);
-  assert.match(screenSource, /onPress=\{handleCreateSession\}[\s\S]*?createButtonAccessibilityLabel\('Start first chat'\)/);
-  assert.match(screenSource, /accessibilityHint="Creates and opens your first chat\."/);
+  assert.match(screenSource, /onPress=\{isArchivedMode \? \(\) => setSessionListMode\('active'\) : handleCreateSession\}/);
+  assert.match(screenSource, /createButtonAccessibilityLabel\(isArchivedMode \? 'View chats' : 'Start first chat'\)/);
+  assert.match(screenSource, /accessibilityHint=\{isArchivedMode \? 'Returns to the chats list\.' : 'Creates and opens your first chat\.'\}/);
 });
 
 test('keeps the empty-state primary action wide and centered for narrow mobile layouts', () => {
