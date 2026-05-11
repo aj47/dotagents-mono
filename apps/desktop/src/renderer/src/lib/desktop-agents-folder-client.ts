@@ -5,6 +5,7 @@ export interface DesktopAgentsFolderLayer {
   skillsDir: string
   knowledgeDir: string
   memoriesDir: string
+  systemPromptExists: boolean
 }
 
 export interface DesktopAgentsFolders {
