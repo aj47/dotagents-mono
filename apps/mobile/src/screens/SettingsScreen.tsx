@@ -2655,7 +2655,7 @@ export default function SettingsScreen({ navigation }: any) {
                           <Text style={styles.serverMeta}>
                             {profile.connectionType} • {profile.role || 'agent'}
                           </Text>
-                          {profile.systemPrompt?.trim() && (
+                          {profile.systemPrompt?.trim() && !profile.isBuiltIn && (
                             <Text style={styles.serverMeta} numberOfLines={2}>
                               Default system prompt updates are blocked until this custom prompt is reset.
                             </Text>

@@ -780,6 +780,22 @@ export function SettingsAgents() {
                 <Input id="description" value={editing.description} onChange={e => setEditing({ ...editing, description: e.target.value })} placeholder="What this agent does..." />
                 <p className="text-[11px] text-muted-foreground">Shown only in the UI. Not visible to the agent—use Guidelines for instructions.</p>
               </div>
+              {customSystemPromptActive && (
+                <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+                  <div className="flex min-w-0 gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Custom base system prompt active</p>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        This agent is using a saved system prompt snapshot, so it will not receive DotAgents default system prompt updates until you reset it.
+                      </p>
+                    </div>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="h-7 border-amber-500/50 bg-background/70 px-2 text-xs" onClick={() => setEditing({ ...editing, systemPrompt: "" })}>
+                    Reset to Default
+                  </Button>
+                </div>
+              )}
               {isInternal && (
                 <>
                   <div className="space-y-2">
@@ -789,22 +805,6 @@ export function SettingsAgents() {
                       Additional instructions for this agent. These are appended to the core tool-calling system prompt.
                     </p>
                   </div>
-                  {customSystemPromptActive && (
-                    <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-                      <div className="flex min-w-0 gap-2">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                        <div className="min-w-0 space-y-1">
-                          <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Custom base system prompt active</p>
-                          <p className="text-xs leading-5 text-muted-foreground">
-                            This agent is using a saved system prompt snapshot, so it will not receive DotAgents default system prompt updates until you reset it.
-                          </p>
-                        </div>
-                      </div>
-                      <Button type="button" variant="outline" size="sm" className="h-7 border-amber-500/50 bg-background/70 px-2 text-xs" onClick={() => setEditing({ ...editing, systemPrompt: "" })}>
-                        Reset to Default
-                      </Button>
-                    </div>
-                  )}
                   <div className="space-y-2 pt-2 border-t">
                     <div
                       className="flex flex-wrap items-center gap-2 cursor-pointer select-none"

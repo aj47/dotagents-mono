@@ -2987,6 +2987,14 @@ export const router = {
     const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
     const { getAgentsKnowledgeDir, getAgentsKnowledgeDirs } = await import("./agents-files/knowledge-notes")
     const { getAgentsSkillsDir } = await import("./agents-files/skills")
+    const safeFileExists = (filePath: string) => {
+      try {
+        return fs.existsSync(filePath)
+      } catch (error) {
+        logApp(`[getAgentsFolders] Failed to check ${filePath}: ${getErrorMessage(error)}`)
+        return false
+      }
+    }
 
     const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
     const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
@@ -2998,7 +3006,7 @@ export const router = {
       global: {
         agentsDir: globalLayer.agentsDir,
         systemPromptPath: globalLayer.systemPromptMdPath,
-        systemPromptExists: fs.existsSync(globalLayer.systemPromptMdPath),
+        systemPromptExists: safeFileExists(globalLayer.systemPromptMdPath),
         skillsDir: getAgentsSkillsDir(globalLayer),
         knowledgeDir: getAgentsKnowledgeDir(globalLayer),
         knowledgeDirs: getAgentsKnowledgeDirs(globalLayer),
@@ -3008,7 +3016,7 @@ export const router = {
         ? {
             agentsDir: workspaceLayer.agentsDir,
             systemPromptPath: workspaceLayer.systemPromptMdPath,
-            systemPromptExists: fs.existsSync(workspaceLayer.systemPromptMdPath),
+            systemPromptExists: safeFileExists(workspaceLayer.systemPromptMdPath),
             skillsDir: getAgentsSkillsDir(workspaceLayer),
             knowledgeDir: getAgentsKnowledgeDir(workspaceLayer),
             knowledgeDirs: getAgentsKnowledgeDirs(workspaceLayer),

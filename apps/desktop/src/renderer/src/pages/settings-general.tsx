@@ -21,7 +21,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { AlertTriangle, ExternalLink, FolderOpen, FolderUp, FileText, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { Config } from "@shared/types"
 import { KeyRecorder } from "@renderer/components/key-recorder"
@@ -57,6 +57,7 @@ function parseMcpMaxIterationsDraft(value: string) {
 
 export function Component() {
   const configQuery = useConfigQuery()
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const cfg = configQuery.data as Config | undefined
 
@@ -93,7 +94,6 @@ export function Component() {
     queryFn: async () => {
       return tipcClient.getAgentsFolders()
     },
-    staleTime: Infinity,
   })
 
   const externalAgentsQuery = useQuery({
@@ -151,8 +151,10 @@ export function Component() {
     } catch (error) {
       console.error("Failed to reveal system prompt file:", error)
       toast.error("Failed to reveal system prompt file")
+    } finally {
+      await queryClient.invalidateQueries({ queryKey: ["agentsFolders"] })
     }
-  }, [])
+  }, [queryClient])
 
   const openAgentsGuidelinesFile = useCallback(async () => {
     try {

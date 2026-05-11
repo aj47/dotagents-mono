@@ -49,6 +49,7 @@ test('marks mobile agents with custom system prompts in the settings list', () =
   );
 
   assert.match(agentsSection, /profile\.systemPrompt\?\.trim\(\)/);
+  assert.match(agentsSection, /profile\.systemPrompt\?\.trim\(\) && !profile\.isBuiltIn/);
   assert.match(agentsSection, /Custom prompt/);
   assert.match(agentsSection, /Default system prompt updates are blocked until this custom prompt is reset\./);
 });
