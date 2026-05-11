@@ -55,3 +55,12 @@ metrics are appended to `2026-05-11-agent-loop-metrics.jsonl`.
 - Live AutoResearch metric: latest full run reduced verifier calls from the prior full run's 17 to 8 and reduced iteration-limit hits from 2 to 1.
 - Live hard-compaction metric: remained correct with `read_more_context:2`, hidden token recovered, and no iteration-limit hit.
 - Decision: keep.
+
+## 2026-05-11T23:43Z - Status follow-up verifier prompt
+
+- Change tried: teach the verifier that grounded status answers can complete status/failure/next-action follow-ups even when older background work remains unfinished.
+- First full live e2e: AutoResearch passed 5/5 and improved prompt chars from 41,332 to 30,099, but the hard-compaction case failed. It returned a procedural continuation, did not include `HX-7492-PRISM-RIVER`, and did not match the requested form.
+- Refinement tried: add a verifier guard that procedural "continuing/searching/checking" replies are not deliverables.
+- Refined validation: `pnpm --filter @dotagents/desktop exec vitest run src/main/llm-verification-replay.test.ts` passed 10/10, `pnpm --filter @dotagents/desktop run typecheck:node` passed, and full live e2e passed 6/6.
+- Refined live metric versus the prior kept full live run: AutoResearch prompt chars increased from 41,332 to 49,561, LLM calls increased from 8 to 9, and duration increased from 93,740ms to 112,770ms. Hard-compaction still passed, but `read_more_context` increased from 2 to 3 and prompt chars increased from 28,764 to 30,733.
+- Decision: discard. The status-only rule caused a correctness failure, and the guarded version removed the failure but regressed the primary hard-compaction metric.
