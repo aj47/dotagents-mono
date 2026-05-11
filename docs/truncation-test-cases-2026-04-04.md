@@ -38,6 +38,15 @@ Live E2E harness added and validated on 2026-05-11:
   - cwd: repo root
   - result: passed
 
+Versioned agent-loop metrics were captured on 2026-05-11:
+
+- `docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl`
+  - rows: `7`
+  - result: `7/7` rows passed
+  - live E2E: `10,717 ms`, `2` LLM calls, `1` verifier call, `2` tool calls, final answer matched the requested recovered-token form
+- `docs/test-results/agent-loop/2026-05-11-agent-loop-summary.md`
+  - concise rollup of pass rate, durations, LLM calls, verifier calls, and tool calls
+
 ## Before vs after summary
 
 | Area | Before | After |
