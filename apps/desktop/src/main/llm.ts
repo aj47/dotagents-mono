@@ -1920,6 +1920,12 @@ export async function processTranscriptWithAgentMode(
         verified = true
         break
       }
+      const hasActionableIncompleteFeedback =
+        normalizeMissingItemsList(verification?.missingItems).length > 0 ||
+        (typeof verification?.reason === "string" && verification.reason.trim().length > 0)
+      if (hasActionableIncompleteFeedback) {
+        break
+      }
     }
 
     const missingItems = normalizeMissingItemsList(verification?.missingItems)

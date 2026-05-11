@@ -45,3 +45,13 @@ metrics are appended to `2026-05-11-agent-loop-metrics.jsonl`.
 - Full live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live` passed 6/6.
 - Full live metric: final hard-compaction row used `read_more_context:2`, recovered the hidden token, and avoided the iteration limit. AutoResearch live rows had provider variance, but those cases do not expose `read_more_context`, so this prompt branch is inactive for them.
 - Decision: keep.
+
+## 2026-05-11T23:38Z - Skip redundant verifier retries after actionable feedback
+
+- Change tried: when the verifier returns concrete `reason` or `missingItems`, stop retrying that same verifier decision immediately and feed the actionable feedback back into the next agent iteration. Keep verifier retries for ambiguous/malformed verifier output.
+- Deterministic validation: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl pnpm --filter @dotagents/desktop exec vitest run src/main/llm.respond-to-user-history.test.ts` passed 38/38.
+- Type validation: `pnpm --filter @dotagents/desktop run typecheck:node` passed.
+- Full live e2e: `AGENT_LOOP_METRICS_FILE=docs/test-results/agent-loop/2026-05-11-agent-loop-metrics.jsonl LIVE_AGENT_LOOP_E2E=1 pnpm --filter @dotagents/desktop run test:agent-loop-live` passed 6/6.
+- Live AutoResearch metric: latest full run reduced verifier calls from the prior full run's 17 to 8 and removed the prior full run's 2 iteration-limit hits.
+- Live hard-compaction metric: remained correct with `read_more_context:2`, hidden token recovered, and no iteration-limit hit.
+- Decision: keep.

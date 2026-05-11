@@ -173,6 +173,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-prior-display-content",
       "session-recovered-context-final-answer",
       "session-deduped-context-read",
+      "session-actionable-verifier-feedback",
       ...autoresearchContinuationCases.map((testCase) => testCase.sessionId),
     )
   })
@@ -1274,6 +1275,52 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .join("\n")
     expect(secondPrompt).toContain("[respond_to_user]")
     expect(secondPrompt.split("First interim answer").length - 1).toBe(0)
+  })
+
+  it("does not retry verifier output that already includes actionable missing work", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 1
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Interim answer" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Final answer" } },
+        { name: "mark_work_complete", arguments: { summary: "Done" } },
+      ] })
+
+    mocks.verifyCompletionWithFetch
+      .mockResolvedValueOnce({
+        isComplete: false,
+        conversationState: "running",
+        reason: "The final answer is not complete yet.",
+        missingItems: ["Needs final answer"],
+      })
+      .mockResolvedValueOnce({
+        isComplete: true,
+        conversationState: "complete",
+        confidence: 0.96,
+        missingItems: [],
+      })
+
+    const result = await processTranscriptWithAgentMode(
+      "Answer the user",
+      availableTools as any,
+      makeExecuteToolCall("session-actionable-verifier-feedback", 1),
+      4,
+      [],
+      "conv-actionable-verifier-feedback",
+      "session-actionable-verifier-feedback",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Final answer")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(2)
   })
 
   it("verifies the first communication-only respond_to_user turn instead of making a second agent call", async () => {
