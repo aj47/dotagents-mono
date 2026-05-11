@@ -1,10 +1,26 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+type EffectRecord = {
+  callback?: () => void | (() => void)
+  cleanup?: void | (() => void)
+  deps?: any[]
+  nextDeps?: any[]
+  hasRun: boolean
+}
+
 function createHookRuntime() {
   const states: any[] = []
   const refs: Array<{ current: any }> = []
+  const effects: EffectRecord[] = []
   let stateIndex = 0
   let refIndex = 0
+  let effectIndex = 0
+
+  const depsChanged = (prev?: any[], next?: any[]) =>
+    !prev ||
+    !next ||
+    prev.length !== next.length ||
+    prev.some((value, index) => !Object.is(value, next[index]))
 
   const useState = <T,>(initial: T | (() => T)) => {
     const idx = stateIndex++
@@ -20,13 +36,21 @@ function createHookRuntime() {
     return refs[idx] as { current: T }
   }
 
+  const useEffect = (callback: EffectRecord["callback"], deps?: any[]) => {
+    const idx = effectIndex++
+    const record = effects[idx] ?? { hasRun: false }
+    record.callback = callback
+    record.nextDeps = deps
+    effects[idx] = record
+  }
+
   const reactMock: any = {
     __esModule: true,
     createContext: (defaultValue: any) => ({ _currentValue: defaultValue }),
     useState,
     useRef,
     useContext: (context: { _currentValue: any }) => context?._currentValue,
-    useEffect: () => undefined,
+    useEffect,
     useImperativeHandle: (ref: { current: any } | null, create: () => any) => {
       if (ref) ref.current = create()
     },
@@ -41,10 +65,23 @@ function createHookRuntime() {
   }
 
   return {
+    refs,
     render<P,>(Component: (props: P) => any, props: P) {
       stateIndex = 0
       refIndex = 0
+      effectIndex = 0
       return Component(props)
+    },
+    commitEffects() {
+      for (const record of effects) {
+        if (!record?.callback) continue
+        const shouldRun = !record.hasRun || depsChanged(record.deps, record.nextDeps)
+        if (!shouldRun) continue
+        if (typeof record.cleanup === "function") record.cleanup()
+        record.cleanup = record.callback()
+        record.deps = record.nextDeps
+        record.hasRun = true
+      }
     },
     reactMock,
     jsxRuntimeMock: { __esModule: true, Fragment, jsx: invoke, jsxs: invoke, jsxDEV: invoke },
@@ -94,6 +131,10 @@ async function flushPromises() {
 async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>) {
   vi.resetModules()
   const Null = () => null
+  const tipcClientMock = {
+    setPanelFocusable: vi.fn(() => Promise.resolve(undefined)),
+  }
+  const ipcInvokeMock = vi.fn(() => Promise.resolve(undefined))
 
   const localStorageMock = { getItem: vi.fn(() => null) }
   vi.stubGlobal("localStorage", localStorageMock)
@@ -102,7 +143,7 @@ async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>)
     localStorage: localStorageMock,
     electron: {
       ipcRenderer: {
-        invoke: vi.fn(),
+        invoke: ipcInvokeMock,
         on: vi.fn(),
         send: vi.fn(),
       },
@@ -112,13 +153,18 @@ async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>)
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
-  vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
+  vi.doMock("@renderer/components/ui/textarea", () => ({
+    Textarea: (props: any) => {
+      if (props.ref && typeof props.ref === "object") {
+        props.ref.current = { focus: vi.fn() }
+      }
+      return { type: "Textarea", props }
+    },
+  }))
   vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ") }))
   vi.doMock("@renderer/lib/tipc-client", () => ({
-    tipcClient: {
-      setPanelFocusable: vi.fn(async () => undefined),
-    },
+    tipcClient: tipcClientMock,
   }))
   vi.doMock("./agent-processing-view", () => ({ AgentProcessingView: Null }))
   const themeContextMock = { useTheme: () => ({ isDark: false }) }
@@ -142,15 +188,50 @@ async function loadTextInputPanel(runtime: ReturnType<typeof createHookRuntime>)
     return { ImagePlus: Icon, X: Icon }
   })
 
-  return import("./text-input-panel")
+  const mod = await import("./text-input-panel")
+  return { ...mod, ipcInvokeMock, tipcClientMock }
 }
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.resetModules()
 })
 
 describe("TextInputPanel submit behavior", () => {
+  it("only requests panel focus for the initial mount handoff", async () => {
+    vi.useFakeTimers()
+    const runtime = createHookRuntime()
+    const { TextInputPanel, ipcInvokeMock, tipcClientMock } = await loadTextInputPanel(runtime)
+    const focusRequestCount = () =>
+      tipcClientMock.setPanelFocusable.mock.calls.length + ipcInvokeMock.mock.calls.length
+    const props = {
+      onSubmit: vi.fn(),
+      onCancel: vi.fn(),
+      selectedAgentId: null,
+      onSelectAgent: vi.fn(),
+      initialText: "Focus once",
+    }
+
+    runtime.render(TextInputPanel, props as any)
+    runtime.refs[0].current = { focus: vi.fn() }
+    runtime.commitEffects()
+    expect(focusRequestCount()).toBe(1)
+
+    vi.advanceTimersByTime(200)
+    expect(focusRequestCount()).toBe(3)
+
+    runtime.render(TextInputPanel, { ...props, isProcessing: true } as any)
+    runtime.commitEffects()
+    expect(focusRequestCount()).toBe(3)
+
+    runtime.render(TextInputPanel, { ...props, isProcessing: false } as any)
+    runtime.commitEffects()
+    vi.advanceTimersByTime(200)
+
+    expect(focusRequestCount()).toBe(3)
+  })
+
   it("keeps the draft when the async submit handler declines the submission", async () => {
     const runtime = createHookRuntime()
     const { TextInputPanel } = await loadTextInputPanel(runtime)

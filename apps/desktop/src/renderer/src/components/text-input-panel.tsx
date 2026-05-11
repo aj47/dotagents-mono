@@ -54,6 +54,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
+  const shouldRunInitialFocusRetryRef = useRef(!isProcessing && !isSubmitting)
   const { isDark } = useTheme()
   const isBusy = isProcessing || isSubmitting
   const { isSlashMenuOpen, slashQuery, handleSlashSelect, closeSlashMenu, handleSlashKeyDown, menuRef } = useSlashCommands(text, setText)
@@ -68,7 +69,8 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   }))
 
   useEffect(() => {
-    if (textareaRef.current && !isBusy) {
+    if (textareaRef.current && !isBusy && shouldRunInitialFocusRetryRef.current) {
+      shouldRunInitialFocusRetryRef.current = false
       // Pair textarea focus retries with panel-window focus re-requests.
       // When Ctrl+T is pressed while the main window is the focused window,
       // the initial panel.focus() call from panel.tsx can lose the focus race
@@ -76,9 +78,9 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
       // panel-window focus alongside the textarea retries makes the handoff
       // converge even when the first attempt is dropped.
       const ensurePanelFocus = () => {
-        void tipcClient
-          .setPanelFocusable({ focusable: true, andFocus: true })
-          .catch(() => {
+        void Promise.resolve(
+          tipcClient.setPanelFocusable({ focusable: true, andFocus: true })
+        ).catch(() => {
             // Ignore — textarea retries below may still succeed.
           })
       }
